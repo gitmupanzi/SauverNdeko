@@ -1,3 +1,28 @@
+
+SELECT * FROM referentiel."T_Generique"
+Where "ID_Generique"=102
+ORDER BY "ID_Generique" ASC 
+
+
+DELETE FROM logistique."T_Mouvement";
+DELETE FROM logistique."T_Article";
+DELETE FROM logistique."T_Commande";
+DELETE FROM logistique."T_CommandeDetail";
+
+
+SELECT * FROM logistique."T_Article";
+SELECT * FROM logistique."T_Commande";
+SELECT * FROM logistique."T_CommandeDetail";
+SELECT * FROM logistique."T_Mouvement";
+
+/ Entrée : 448
+Select "ID_Generique" FROM referentiel."T_Generique"
+where "AbrGenerique"='Entrée'
+/Sortie : 449
+Select "ID_Generique" FROM referentiel."T_Generique"
+where "AbrGenerique"='Sortie'
+
+
 /* ============================================================================
    JEU DE TEST LOGISTIQUE
    Objectif : vérifier le comportement coordonné de :
@@ -418,40 +443,14 @@ ORDER BY "ID_Mvt";
 -------------------------------------------------------------------------------
 -- 9. DELETE DE LA COMMANDE D’ENTRÉE (10001) VIA ps_crud_commande
 -------------------------------------------------------------------------------
--- Ici tu peux tester ton DELETE "métiers" :
---   CALL logistique.ps_crud_commande(10001, <old_id_type>, NULL, 'DELETE');
--- Mais comme le trigger ne l'appelle pas automatiquement, on fait un test manuel.
-
--- On récupère l'ancien type de commande (Entrée)
-DROP TABLE IF EXISTS tmp_old_type_entree;
-
-SELECT "ID_TypeCmdFk" AS old_type
-INTO TEMP TABLE tmp_old_type_entree
-FROM logistique."T_Commande"
-WHERE "ID_Commande" = 10001;
-
-DO $$
-DECLARE
-    v_old_type integer;
-BEGIN
-    SELECT old_type
-    INTO   v_old_type
-    FROM   tmp_old_type_entree;
-
-    -- Appel d'une PROCÉDURE → utiliser CALL (et pas PERFORM)
-    CALL logistique.ps_crud_commande(
-        10001,
-        v_old_type,
-        NULL,
-        'DELETE'
-    );
-END $$;
-
 -- Vérifier que :
 --  - la commande 10001 est supprimée
 --  - ses détails le sont aussi
 --  - les mouvements liés ont disparu
 --  - le stock a été restitué à 90 (stock avant la commande d’entrée)
+DELETE FROM logistique."T_Commande"
+WHERE "ID_Commande" = 10001;
+
 SELECT * FROM logistique."T_Commande"
 WHERE "ID_Commande" = 10001;
 
