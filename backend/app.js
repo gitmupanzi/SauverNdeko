@@ -4,6 +4,8 @@ const routes = require('./routes/index.routes');
 const domainRoutes = require('./routes/domain.routes');
 const viewsRoutes = require('./routes/views.routes');
 const authRoutes = require('./routes/auth.routes');
+const publicRoutes = require('./routes/public.routes');
+const discussionRoutes = require('./routes/discussion.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -19,6 +21,8 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.use('/api/public', publicRoutes);
+app.use('/api/discussions', discussionRoutes);
 app.use('/api', domainRoutes);
 app.use('/api', routes);
 app.use('/api/views', viewsRoutes);

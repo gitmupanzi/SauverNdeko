@@ -43,10 +43,16 @@ model T_Chat {
   ChatFile       String?
   ChatLink       String?
   AuthorIdFk     Int?
+  IdDiscussionFk Int?
+  DateChat       DateTime        @default(now()) @db.Timestamptz(6)
+  LuChat         Boolean         @default(false)
   T_Utilisateurs T_Utilisateurs? @relation("ChatAuthor", fields: [AuthorIdFk], references: [IdUser], onUpdate: SetNull, map: "AuthorIdFk")
+  T_Discussion   T_Discussion?   @relation(fields: [IdDiscussionFk], references: [IdDiscussion], onDelete: Cascade, map: "Fk_Chat_Discussion")
 
   @@index([AuthorIdFk], map: "idx_chat_author")
   @@index([AuthorIdFk, IdChat(sort: Desc)], map: "idx_chat_author_idchat_desc")
+  @@index([IdDiscussionFk, DateChat], map: "idx_chat_discussion_date")
+  @@index([IdDiscussionFk, IdChat], map: "idx_chat_discussion_idchat")
   @@schema("communication")
 }
 
@@ -443,6 +449,7 @@ model T_Professionnel {
   ExperienceAns          Int?
   ObsProfessionnel       String?
   ValideProfessionnel    Boolean?                 @default(true)
+  T_Discussion           T_Discussion[]
   T_GeneriqueSpecialite  T_Generique              @relation("ProfessionnelSpecialite", fields: [IdSpecialiteFk], references: [ID_Generique], map: "Fk_Prof_Specialite")
   T_GeneriqueType        T_Generique              @relation("ProfessionnelType", fields: [IdTypeProfessionnelFk], references: [ID_Generique], map: "Fk_Prof_TypeProfessionnel")
   T_Utilisateurs         T_Utilisateurs           @relation("ProfessionnelUser", fields: [IdUserFk], references: [IdUser], map: "Fk_Prof_User")
@@ -546,6 +553,7 @@ model T_Entite {
   ValideEntite           Boolean?                 @default(true)
   T_Recherche            T_Recherche[]            @relation("RechercheEntite")
   T_Communication        T_Communication[]        @relation("EntiteCommunications")
+  T_Discussion           T_Discussion[]
   T_Caisse               T_Caisse[]               @relation("EntiteCaisses")
   T_Paiement             T_Paiement[]             @relation("EntitePaiements")
   T_Paiement_Archive     T_Paiement_Archive[]
@@ -633,6 +641,7 @@ model T_Utilisateurs {
   T_Recherche          T_Recherche[]     @relation("RechercheUser")
   T_Chat               T_Chat[]          @relation("ChatAuthor")
   T_Communication      T_Communication[] @relation("CommunicationUser")
+  T_Discussion         T_Discussion[]
   T_Article            T_Article[]       @relation("ArticleUser")
   T_Commande           T_Commande[]      @relation("CommandeUser")
   T_Payeur             T_Paiement[]      @relation("PaiementPayeur")
@@ -648,4 +657,27 @@ model T_Utilisateurs {
   @@index([PhoneUser], map: "idx_utilisateur_phone")
   @@index([IdRoleFk], map: "idx_utilisateur_role")
   @@schema("systeme")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model T_Discussion {
+  IdDiscussion      Int              @id @default(autoincrement())
+  IdUserClientFk    Int?
+  IdProfessionnelFk Int?
+  IdEntiteFk        Int?
+  TypeDiscussion    String           @db.VarChar(30)
+  SujetDiscussion   String?          @db.VarChar(255)
+  DateCreation      DateTime         @default(now()) @db.Timestamptz(6)
+  DernierMessageAt  DateTime?        @db.Timestamptz(6)
+  ValideDiscussion  Boolean          @default(true)
+  T_Chat            T_Chat[]
+  T_Entite          T_Entite?        @relation(fields: [IdEntiteFk], references: [IdEntite], map: "Fk_Discussion_Entite")
+  T_Professionnel   T_Professionnel? @relation(fields: [IdProfessionnelFk], references: [IdProfessionnel], map: "Fk_Discussion_Professionnel")
+  T_Utilisateurs    T_Utilisateurs?  @relation(fields: [IdUserClientFk], references: [IdUser], map: "Fk_Discussion_UserClient")
+
+  @@index([DernierMessageAt(sort: Desc)], map: "idx_discussion_dernier_message")
+  @@index([IdEntiteFk], map: "idx_discussion_entite")
+  @@index([IdProfessionnelFk], map: "idx_discussion_professionnel")
+  @@index([IdUserClientFk], map: "idx_discussion_user_client")
+  @@schema("communication")
 }

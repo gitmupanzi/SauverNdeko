@@ -1,0 +1,135 @@
+export const mockArticles = [
+  {
+    id: "article-paracetamol",
+    name: "Paracétamol 500 mg",
+    reference: "ART-001",
+    price: "4 500 FC",
+    priceValue: 4500,
+    availability: "Disponible",
+    photo: "/illustration-produits.svg",
+    observation: "Médicament de première intention pour les douleurs courantes et la fièvre.",
+  },
+  {
+    id: "article-amoxicilline",
+    name: "Amoxicilline",
+    reference: "ART-002",
+    price: "8 000 FC",
+    priceValue: 8000,
+    availability: "Disponibilité à confirmer",
+    photo: "/illustration-produits.svg",
+    observation: "Antibiotique à utiliser uniquement sur avis d’un professionnel de santé.",
+  },
+  {
+    id: "article-vitamine-c",
+    name: "Vitamine C",
+    reference: "ART-003",
+    price: "3 000 FC",
+    priceValue: 3000,
+    availability: "Disponible",
+    photo: "/illustration-produits.svg",
+    observation: "Produit de soutien utilisé dans plusieurs routines de prévention et de récupération.",
+  },
+];
+
+export const mockPharmacies = [
+  {
+    id: "pharmacie-1",
+    name: "Hôpital Central",
+    address: "Gombe, avenue principale",
+    phone: "+243 000 000 001",
+    type: "Hôpital",
+    status: "Structure active",
+    hours: "24h/24",
+  },
+  {
+    id: "pharmacie-2",
+    name: "Pharmacie de la Liberté",
+    address: "Masina, boulevard Lumumba",
+    phone: "+243 000 000 002",
+    type: "Pharmacie",
+    status: "Disponibilité mise à jour",
+    hours: "07:00 - 22:00",
+  },
+  {
+    id: "pharmacie-3",
+    name: "Dépôt Santé Plus",
+    address: "Kinshasa, marché central",
+    phone: "+243 000 000 003",
+    type: "Dépôt",
+    status: "Point de proximité",
+    hours: "08:00 - 18:00",
+  },
+];
+
+export const mockExperts = [
+  {
+    id: "expert-1",
+    firstName: "Grâce",
+    lastName: "Mbala",
+    fullName: "Grâce Mbala",
+    photo: "/illustration-experts.svg",
+    professionalType: "Médecine générale",
+    specialty: "Médecine générale",
+    experience: 8,
+    structure: "Hôpital Central",
+    availability: "Disponible aujourd’hui",
+  },
+  {
+    id: "expert-2",
+    firstName: "Patrick",
+    lastName: "Kanku",
+    fullName: "Patrick Kanku",
+    photo: "/illustration-experts.svg",
+    professionalType: "Pédiatre",
+    specialty: "Pédiatrie",
+    experience: 11,
+    structure: "Clinique Nzambe",
+    availability: "Réponse rapide",
+  },
+  {
+    id: "expert-3",
+    firstName: "Sarah",
+    lastName: "Mbuyi",
+    fullName: "Sarah Mbuyi",
+    photo: "/illustration-experts.svg",
+    professionalType: "Médecin spécialiste",
+    specialty: "Cardiologie",
+    experience: 6,
+    structure: "Centre Médical Horizon",
+    availability: "Sur rendez-vous",
+  },
+];
+
+export const mockDiseases = [
+  {
+    id: "maladie-1",
+    name: "Paludisme",
+    abbreviation: "PAL",
+    description: "Maladie parasitaire fréquente nécessitant une orientation rapide en cas de fièvre.",
+    category: "Maladie",
+  },
+  {
+    id: "maladie-2",
+    name: "Rougeole",
+    abbreviation: "ROU",
+    description: "Maladie virale évitable par la vaccination, à surveiller chez l’enfant.",
+    category: "Maladie",
+  },
+  {
+    id: "maladie-3",
+    name: "Hypertension artérielle",
+    abbreviation: "HTA",
+    description: "Affection chronique nécessitant un suivi médical et un conseil thérapeutique régulier.",
+    category: "Maladie",
+  },
+];
+
+export const mockStats = {
+  productsCount: mockArticles.length,
+  pharmaciesCount: mockPharmacies.length,
+  expertsCount: mockExperts.length,
+  diseasesCount: mockDiseases.length,
+  activeStructures: 12,
+  latestAnnouncements: 6,
+  responseLabel: "Réponse rapide",
+};

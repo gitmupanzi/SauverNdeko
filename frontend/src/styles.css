@@ -1511,3 +1511,497 @@ img {
     height: calc(100% - 88px);
   }
 }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.mobile-content {
+  scroll-behavior: smooth;
+}
+
+.desktop-brand,
+.desktop-tab {
+  text-decoration: none;
+}
+
+.desktop-search-static {
+  cursor: default;
+}
+
+.page-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 14px 120px;
+  display: grid;
+  gap: 18px;
+}
+
+.page-products {
+  padding-top: 12px;
+}
+
+.page-hero-card,
+.product-card,
+.pharmacy-public-card,
+.expert-public-card,
+.disease-card,
+.discussion-page-card,
+.public-table-wrap,
+.table-empty-state {
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+.page-hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+}
+
+.page-hero-card h2,
+.section-head h3,
+.discussion-page-card h2 {
+  margin: 0 0 10px;
+}
+
+.page-hero-card p,
+.section-head p,
+.discussion-page-card p {
+  margin: 0;
+  color: #66758c;
+  line-height: 1.6;
+}
+
+.page-highlight-grid,
+.cards-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.product-card,
+.pharmacy-public-card,
+.expert-public-card,
+.disease-card {
+  overflow: hidden;
+}
+
+.product-card-media {
+  height: 180px;
+  background: linear-gradient(180deg, #eff4ff 0%, #dfeaff 100%);
+  display: grid;
+  place-items: center;
+}
+
+.product-card-media img {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.product-card-body,
+.pharmacy-public-card,
+.expert-public-card,
+.disease-card,
+.discussion-page-card {
+  padding: 20px;
+}
+
+.product-card-body strong,
+.pharmacy-public-card strong,
+.expert-public-card strong,
+.disease-card strong {
+  display: block;
+  font-size: 1.02rem;
+}
+
+.product-card-body p,
+.disease-card p {
+  margin: 10px 0 0;
+  color: #66758c;
+  line-height: 1.55;
+}
+
+.pharmacy-card-head,
+.expert-public-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.pharmacy-card-head p,
+.expert-public-head p {
+  margin: 6px 0 0;
+  color: #66758c;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(17, 180, 187, 0.12);
+  color: #0d7b80;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.public-meta-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.public-meta-list div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f7faff;
+}
+
+.public-meta-list dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7b8aa0;
+}
+
+.public-meta-list dd {
+  margin: 0;
+  color: #32445e;
+}
+
+.expert-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #3f7df1, #11b4bb);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.expert-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.disease-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.disease-card small {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--blue-strong);
+  font-weight: 700;
+}
+
+.page-table-section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-head {
+  display: grid;
+  gap: 6px;
+}
+
+.public-table-wrap {
+  overflow: auto;
+  padding: 8px;
+}
+
+.public-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.public-table th,
+.public-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  vertical-align: top;
+}
+
+.public-table th {
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6f7f95;
+}
+
+.public-table td {
+  color: #31435d;
+}
+
+.public-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-empty-state {
+  padding: 24px;
+  color: #66758c;
+}
+
+.discussion-page-card {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 18px;
+  min-height: 420px;
+}
+
+.discussion-page-card img {
+  width: min(260px, 80%);
+}
+
+.chat-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.chat-sidebar,
+.chat-thread-card,
+.chat-contact-card {
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+.chat-sidebar {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.chat-contact-card {
+  padding: 20px;
+}
+
+.chat-contact-card h3 {
+  margin: 14px 0 8px;
+}
+
+.chat-capabilities {
+  margin-top: 14px;
+}
+
+.chat-contact-card p,
+.chat-contact-card small,
+.chat-thread-head p {
+  margin: 0;
+  color: #66758c;
+  line-height: 1.55;
+}
+
+.chat-thread-card {
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.chat-discussions-list {
+  display: grid;
+  gap: 12px;
+}
+
+.chat-discussion-item {
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f7faff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: grid;
+  gap: 8px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.chat-discussion-item:hover,
+.chat-discussion-item.is-active {
+  border-color: rgba(63, 125, 241, 0.32);
+  box-shadow: 0 10px 22px rgba(63, 125, 241, 0.12);
+  transform: translateY(-1px);
+}
+
+.chat-discussion-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-discussion-item-head strong {
+  font-size: 0.98rem;
+  color: #23354d;
+}
+
+.chat-discussion-item-head small,
+.chat-discussion-item span,
+.chat-discussion-item p {
+  color: #66758c;
+}
+
+.chat-discussion-item span {
+  font-size: 0.9rem;
+}
+
+.chat-discussion-item p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.chat-thread-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.chat-thread-head strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1.08rem;
+}
+
+.chat-thread-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chat-thread-meta-item,
+.chat-empty-state {
+  border-radius: 14px;
+  background: #f7faff;
+  color: #66758c;
+}
+
+.chat-thread-meta-item {
+  padding: 10px 14px;
+}
+
+.chat-messages {
+  display: grid;
+  gap: 12px;
+  min-height: 240px;
+}
+
+.chat-empty-state {
+  padding: 18px;
+  text-align: center;
+}
+
+.chat-message {
+  max-width: min(100%, 520px);
+  padding: 14px 16px;
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.chat-message span {
+  line-height: 1.55;
+}
+
+.chat-message small {
+  color: #7b8aa0;
+}
+
+.chat-message.is-system {
+  background: #f5f8ff;
+  border: 1px solid rgba(63, 125, 241, 0.12);
+}
+
+.chat-message.is-user {
+  margin-left: auto;
+  background: linear-gradient(135deg, var(--blue), var(--blue-strong));
+  color: #fff;
+}
+
+.chat-message.is-user small {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.chat-composer {
+  display: grid;
+  gap: 14px;
+}
+
+.chat-textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  font: inherit;
+  outline: none;
+}
+
+.chat-textarea:focus {
+  border-color: rgba(63, 125, 241, 0.5);
+  box-shadow: 0 0 0 4px rgba(63, 125, 241, 0.12);
+}
+
+.discussion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.scroll-anchor {
+  scroll-margin-top: 110px;
+}
+
+@media (min-width: 980px) {
+  .page-shell {
+    padding: 28px 24px 140px;
+  }
+
+  .page-highlight-grid {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .page-highlight-grid .product-focus-card {
+    position: sticky;
+    top: 112px;
+  }
+
+  .chat-layout {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .chat-sidebar {
+    position: sticky;
+    top: 112px;
+  }
+}
