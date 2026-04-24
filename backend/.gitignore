@@ -1,6 +1,13 @@
+# Environnement
 .env
+.env.local
+.env.*.local
+
+# Garder uniquement les fichiers d'exemple
+!.env.example
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -8,16 +15,52 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dépendances
+node_modules/
+
+# Build backend
+dist/
+build/
+out/
+
+# Cache
+.cache/
+.tmp/
+temp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Tests / coverage
+coverage/
+
+
+
+# Fichiers locaux
 *.local
 
-# Editor directories and files
+# Uploads / fichiers utilisateurs
+uploads/
+storage/
+public/uploads/
+
+# Backups / exports locaux
+backups/
+exports/
+*.backup
+*.dump
+*.sql
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
+
+# Fichiers Visual Studio / autres IDE
 *.suo
 *.ntvs*
 *.njsproj

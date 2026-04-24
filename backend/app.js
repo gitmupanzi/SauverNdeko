@@ -1,17 +1,28 @@
-//backend/app.js
 const express = require('express');
-const app = express();
-const routes = require('./routes/index.routes'); 
+const cors = require('cors');
+const routes = require('./routes/index.routes');
+const domainRoutes = require('./routes/domain.routes');
 const viewsRoutes = require('./routes/views.routes');
-const authRoutes = require('./routes/auth.routes'); 
+const authRoutes = require('./routes/auth.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
+const app = express();
 
-app.use(express.json()); // Middleware pour gérer les requêtes JSON
-app.use('/api', routes); // Routes générales
-app.use('/api', viewsRoutes); // Routes pour les vues (ex : V_Apprenant, VS_Exemple, etc.)
-app.use('/SauverNdeko', authRoutes); //pour le token
-app.use(errorHandler);// Gestion des erreurs globales
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'SauverNdeko backend is running.',
+  });
+});
+
+app.use('/api', domainRoutes);
+app.use('/api', routes);
+app.use('/api/views', viewsRoutes);
+app.use('/SauverNdeko', authRoutes);
+app.use(errorHandler);
 
 module.exports = app;
-

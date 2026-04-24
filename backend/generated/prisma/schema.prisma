@@ -1,0 +1,651 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["analytics", "communication", "geolocalisation", "logistique", "operations", "professionnel", "referentiel", "systeme"]
+}
+
+model T_Recherche {
+  IdRecherche        Int                      @id(map: "Pk_IdRecherche") @default(autoincrement())
+  IdUserFk           Int?
+  TexteRecherche     String
+  TypeRecherche      String?                  @db.VarChar(50)
+  ID_ArticleResultFk Int?
+  IdEntiteResultFk   Int?
+  IdSpecialiteFk     Int?
+  LatitudeUser       Decimal?                 @db.Decimal(9, 6)
+  LongitudeUser      Decimal?                 @db.Decimal(9, 6)
+  DateRecherche      DateTime?                @default(now()) @db.Timestamp(6)
+  TexteRecherche_tsv Unsupported("tsvector")? @default(dbgenerated("to_tsvector('french'::regconfig, COALESCE(\"TexteRecherche\", ''::text))"))
+  T_Article          T_Article?               @relation("RechercheArticle", fields: [ID_ArticleResultFk], references: [ID_Article], map: "Fk_Recherche_Article")
+  T_Entite           T_Entite?                @relation("RechercheEntite", fields: [IdEntiteResultFk], references: [IdEntite], map: "Fk_Recherche_Entite")
+  T_Generique        T_Generique?             @relation("RechercheSpecialite", fields: [IdSpecialiteFk], references: [ID_Generique], map: "Fk_Recherche_Specialite")
+  T_Utilisateurs     T_Utilisateurs?          @relation("RechercheUser", fields: [IdUserFk], references: [IdUser], map: "Fk_Recherche_User")
+
+  @@index([DateRecherche], map: "idx_recherche_date")
+  @@index([IdEntiteResultFk], map: "idx_recherche_entite")
+  @@index([TexteRecherche_tsv], map: "idx_recherche_fts", type: Gin)
+  @@index([IdSpecialiteFk], map: "idx_recherche_specialite")
+  @@index([IdSpecialiteFk, DateRecherche], map: "idx_recherche_specialite_date")
+  @@index([TexteRecherche(ops: raw("gin_trgm_ops"))], map: "idx_recherche_texte_trgm", type: Gin)
+  @@index([IdUserFk], map: "idx_recherche_user")
+  @@index([IdUserFk, DateRecherche], map: "idx_recherche_user_date")
+  @@schema("analytics")
+}
+
+model T_Chat {
+  IdChat         Int             @id @default(autoincrement())
+  TextChat       String?
+  ChatFile       String?
+  ChatLink       String?
+  AuthorIdFk     Int?
+  T_Utilisateurs T_Utilisateurs? @relation("ChatAuthor", fields: [AuthorIdFk], references: [IdUser], onUpdate: SetNull, map: "AuthorIdFk")
+
+  @@index([AuthorIdFk], map: "idx_chat_author")
+  @@index([AuthorIdFk, IdChat(sort: Desc)], map: "idx_chat_author_idchat_desc")
+  @@schema("communication")
+}
+
+model T_Communication {
+  IdCommunication      Int             @id(map: "Pk_IdCommunication") @default(autoincrement())
+  IdUserFk             Int?
+  IdTypeCommunication  Int?
+  ContenuCommunication String?
+  DateCommunication    DateTime        @default(now()) @db.Timestamp(6)
+  ObsCommunication     String?
+  ValideCommunication  Boolean         @default(true)
+  LectureCommunication Boolean         @default(false)
+  IdEntiteFk           Int?
+  T_Entite             T_Entite?       @relation("EntiteCommunications", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+  T_Generique          T_Generique?    @relation("CommunicationType", fields: [IdTypeCommunication], references: [ID_Generique], map: "Fk_IdTypeCommunication")
+  T_Utilisateurs       T_Utilisateurs? @relation("CommunicationUser", fields: [IdUserFk], references: [IdUser], map: "Fk_IdUser")
+
+  @@index([DateCommunication], map: "idx_comm_date")
+  @@index([IdEntiteFk], map: "idx_comm_entite")
+  @@index([IdTypeCommunication], map: "idx_comm_type")
+  @@index([IdUserFk], map: "idx_comm_user")
+  @@schema("communication")
+}
+
+model T_Niveau_0 {
+  ID_Niveau_0      Int          @id @default(autoincrement())
+  NomNiveau_0      String?      @db.VarChar(255)
+  CodeNiveau_0     String?      @db.VarChar(10)
+  geometryNiveau_0 String?
+  T_Niveau_1       T_Niveau_1[] @relation("Niveau1Parent")
+
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_1_Old {
+  ID_Niveau_1_Old      Int          @id @default(autoincrement())
+  NomNiveau_1_Old      String?      @db.VarChar(255)
+  geometryNiveau_1_Old String?
+  surfaceNiveau_1_Old  String?      @db.VarChar(255)
+  T_Niveau_1           T_Niveau_1[] @relation("Niveau1Legacy")
+
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_1 {
+  ID_Niveau_1        Int             @id @default(autoincrement())
+  ID_Niveau_0_Fk     Int?
+  ID_Niveau_1_Old_Fk Int?
+  NomNiveau_1        String?         @db.VarChar(255)
+  Alt1_Niveau_1      String?         @db.VarChar(255)
+  Alt2_Niveau_1      String?         @db.VarChar(255)
+  AbreNiveau_1       String?         @db.VarChar(255)
+  CodeSNIS           String?         @db.VarChar(255)
+  CodeNiveau_1       String?         @db.VarChar(255)
+  PopulationNiveau_1 Decimal?        @db.Decimal(12, 0)
+  geometryNiveau_1   String?
+  surfaceNiveau_1    String?         @db.VarChar(255)
+  timezoneNiveau_1   String?         @db.VarChar(255)
+  wikidataNiveau_1   String?
+  EtenduNiveau_1     String?
+  ObsNiveau_1        String?
+  FusionNiveau_1     Boolean?
+  VisibleNiveau_1    Boolean         @default(true)
+  VisibleNiveau_5    Boolean         @default(true)
+  LatitudeNiveau_1   Decimal?        @db.Decimal(9, 6)
+  LongitudeNiveau_1  Decimal?        @db.Decimal(9, 6)
+  T_Niveau_0         T_Niveau_0?     @relation("Niveau1Parent", fields: [ID_Niveau_0_Fk], references: [ID_Niveau_0], onDelete: NoAction, map: "Fk_ID_Niveau_0")
+  T_Niveau_1_Old     T_Niveau_1_Old? @relation("Niveau1Legacy", fields: [ID_Niveau_1_Old_Fk], references: [ID_Niveau_1_Old], onDelete: NoAction, map: "Fk_ID_Niveau_1_Old")
+  T_Niveau_2         T_Niveau_2[]    @relation("Niveau2Parent")
+
+  @@index([ID_Niveau_0_Fk])
+  @@index([ID_Niveau_0_Fk], map: "idx_n1_id_niveau0_fk")
+  @@index([ID_Niveau_1_Old_Fk], map: "idx_n1_id_niveau1_old_fk")
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_2 {
+  ID_Niveau_2          Int          @id @default(autoincrement())
+  ID_Niveau_1_FK       Int?
+  ID_TypeNiveau_2_Fk   Int?
+  NomNiveau_2          String?      @db.VarChar(255)
+  Alt1_NomNiveau_2     String?      @db.VarChar(255)
+  AbreNiveau_2         String?      @db.VarChar(255)
+  CodeNiveau_2         String?      @db.VarChar(255)
+  PopulationNiveau_2   Decimal?     @db.Decimal(12, 0)
+  geometryNiveau_2     String?
+  surfaceNiveau_2      String?      @db.VarChar(255)
+  EtenduNiveau_2       String?
+  ObsNiveau_2          String?
+  ID_StatutNiveau_2    Int?
+  ID_StatusDeploiFk    Int?
+  KmDPSANT             Decimal?     @db.Decimal(10, 2)
+  ID_VoieAccesDPSANTFk Int?
+  SelectNiveau_2       Boolean?
+  LatitudeNiveau_2     Decimal?     @db.Decimal(9, 6)
+  LongitudeNiveau_2    Decimal?     @db.Decimal(9, 6)
+  AltitudeNiveau_2     Decimal?     @db.Decimal(10, 2)
+  T_Niveau_1           T_Niveau_1?  @relation("Niveau2Parent", fields: [ID_Niveau_1_FK], references: [ID_Niveau_1], onDelete: NoAction, map: "Fk_ID_Niveau_1")
+  T_Generique          T_Generique? @relation("Niveau2Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_TypeNiveau_2")
+  T_Niveau_3           T_Niveau_3[] @relation("Niveau3Parent")
+
+  @@index([ID_Niveau_1_FK])
+  @@index([ID_Niveau_1_FK], map: "idx_n2_id_niveau1_fk")
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_3 {
+  ID_Niveau_3           Int                     @id @default(autoincrement())
+  ID_Niveau_2_FK        Int?
+  ID_TypeNiveau_2_Fk    Int?
+  NomNiveau_3           String?                 @db.VarChar(255)
+  Alt_Niveau_3          String?                 @db.VarChar(255)
+  surfaceNiveau_3       String?                 @db.VarChar(255)
+  geometryNiveau_3      String?
+  AbreNiveau_3          String?                 @db.VarChar(255)
+  CodeNiveau_3          String?                 @db.VarChar(255)
+  PopulationNiveau_3    Decimal?                @db.Decimal(12, 0)
+  EtenduNiveau_3        String?
+  ObsNiveau_3           String?
+  ID_StatutNiveau_3_Fk  Int?
+  ID_StatutDeploieFk    Int?
+  KmAntenneBCZS         Decimal?                @db.Decimal(100, 7)
+  ID_VoieAccesANTBCZFk  Int?
+  KmDPSBCZS             Decimal?                @db.Decimal(100, 7)
+  ID_VoieAccesDPSBCZFk  Int?
+  SelectNiveau_3        Boolean?
+  LatitudeNiveau_3      Decimal?                @db.Decimal(13, 5)
+  LongitudeNiveau_3     Decimal?                @db.Decimal(13, 5)
+  AltitudeNiveau_3      Decimal?                @db.Decimal(10, 7)
+  T_Niveau_2            T_Niveau_2?             @relation("Niveau3Parent", fields: [ID_Niveau_2_FK], references: [ID_Niveau_2], onDelete: NoAction, map: "Fk_ID_Niveau_2")
+  T_Generique           T_Generique?            @relation("Niveau3Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_2")
+  T_Niveau_4            T_Niveau_4[]            @relation("Niveau4Parent")
+  T_Niveau_5            T_Niveau_5[]            @relation("Niveau5N3")
+  T_Entite_Localisation T_Entite_Localisation[] @relation("EntiteLocalisationN3")
+
+  @@index([ID_Niveau_2_FK])
+  @@index([ID_Niveau_2_FK], map: "idx_n3_id_niveau2_fk")
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_4 {
+  ID_Niveau_4            Int                     @id @default(autoincrement())
+  ID_Niveau_3_Fk         Int?
+  ID_TypeNiveau_4_Fk     Int?
+  NomNiveau_4            String?                 @db.VarChar(255)
+  AbreNiveau_4           String?                 @db.VarChar(255)
+  CodeNiveau_4           String?                 @db.VarChar(255)
+  surfaceNiveau_4        String?                 @db.VarChar(255)
+  geometryNiveau_4       String?
+  ID_DispoReseauNiveau_4 Int?
+  ID_VoieAccesZsASFk     Int?
+  ID_StatutNiveau_4      Int?
+  ID_StatutDeploiementFk Int?
+  ObsNiveau_4            String?
+  SelectNiveau_4         Boolean?
+  LatitudeNiveau_4       Decimal?                @db.Decimal(13, 6)
+  LongitudeNiveau_4      Decimal?                @db.Decimal(13, 6)
+  AltitudeNiveau_4       Decimal?                @db.Decimal(10, 2)
+  PopulationNiveau_4     Decimal?                @db.Decimal(12, 0)
+  KmZoneSanteAS          Decimal?                @db.Decimal(10, 2)
+  T_Niveau_3             T_Niveau_3?             @relation("Niveau4Parent", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3")
+  T_Generique            T_Generique?            @relation("Niveau4Type", fields: [ID_TypeNiveau_4_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_4")
+  T_Niveau_5             T_Niveau_5[]            @relation("Niveau5N4")
+  T_Entite_Localisation  T_Entite_Localisation[] @relation("EntiteLocalisationN4")
+
+  @@index([ID_Niveau_3_Fk])
+  @@index([ID_Niveau_3_Fk], map: "idx_n4_id_niveau3_fk")
+  @@schema("geolocalisation")
+}
+
+model T_Niveau_5 {
+  ID_Niveau_5            Int                     @id @default(autoincrement())
+  ID_Niveau_4_Fk         Int?
+  ID_Niveau_3_Fk         Int?
+  ID_TypeNiveau_5_Fk     Int?
+  NomNiveau_5            String?                 @db.VarChar(255)
+  AbreNiveau_5           String?                 @db.VarChar(255)
+  CodeNiveau_5           String?                 @db.VarChar(255)
+  PopulationNiveau_5     Decimal?                @db.Decimal(12, 0)
+  surfaceNiveau_5        String?                 @db.VarChar(255)
+  geometryNiveau_5       String?
+  ID_DispoReseauNiveau_5 Int?
+  ID_VoieAccesZsSiteFk   Int?
+  ID_StatutNiveau_5      Int?
+  ID_StatutDeploiementFk Int?
+  ObsNiveau_5            String?
+  SelectNiveau_5         Boolean?
+  ID_TypeToitFk          Int?
+  KmZoneSanteNiveau_5    Decimal?                @db.Decimal(12, 2)
+  LatitudeNiveau_5       Decimal?                @db.Decimal(12, 6)
+  LongitudeNiveau_5      Decimal?                @db.Decimal(12, 6)
+  AltitudeNiveau_5       Decimal?                @db.Decimal(12, 2)
+  T_Niveau_3             T_Niveau_3?             @relation("Niveau5N3", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3_N5")
+  T_Niveau_4             T_Niveau_4?             @relation("Niveau5N4", fields: [ID_Niveau_4_Fk], references: [ID_Niveau_4], onDelete: NoAction, map: "Fk_ID_Niveau_4")
+  T_Entite_Localisation  T_Entite_Localisation[] @relation("EntiteLocalisationN5")
+
+  @@index([ID_Niveau_3_Fk])
+  @@index([ID_Niveau_4_Fk])
+  @@index([ID_Niveau_4_Fk], map: "idx_n5_id_niveau4_fk")
+  @@schema("geolocalisation")
+}
+
+model T_Article {
+  ID_Article                  Int                @id @default(autoincrement())
+  ID_TypeArticleFk            Int?
+  ID_CategorieArticleFk       Int?
+  ID_UserFK                   Int?
+  ID_UniteFk                  Int?
+  DateHeureAuto               DateTime?          @db.Timestamptz(6)
+  CodeArticleExterne          Int?
+  NomArticle                  String             @db.VarChar(100)
+  RefArticle                  String?            @db.VarChar(255)
+  QteArticle                  Decimal            @default(0) @db.Decimal(14, 3)
+  PUArticle                   Decimal            @db.Decimal(12, 2)
+  PVArticle                   Decimal            @db.Decimal(12, 2)
+  QteMinArticle               Int?
+  PhotoArticle                String?            @db.VarChar(255)
+  ObsArticle                  String?
+  ValideArticle               Boolean            @default(true)
+  DatePeremptionArticle       DateTime?          @db.Timestamptz(6)
+  DatePeremptionAlerteArticle DateTime?          @db.Timestamptz(6)
+  NbreJoursAlerteArticle      Int?
+  CodeArticleInterne          String?            @unique(map: "uq_article_codeinterne") @db.VarChar(243)
+  T_Recherche                 T_Recherche[]      @relation("RechercheArticle")
+  T_Utilisateurs              T_Utilisateurs?    @relation("ArticleUser", fields: [ID_UserFK], references: [IdUser], onDelete: NoAction, map: "Fk_ID_User")
+  T_CommandeDetail            T_CommandeDetail[]
+  T_Mouvement                 T_Mouvement[]
+
+  @@index([ID_CategorieArticleFk], map: "idx_article_categorie")
+  @@index([NomArticle], map: "idx_article_nom")
+  @@index([NomArticle(ops: raw("gin_trgm_ops"))], map: "idx_article_nom_trgm", type: Gin)
+  @@index([ID_TypeArticleFk], map: "idx_article_type")
+  @@index([ID_UniteFk], map: "idx_article_unite")
+  @@schema("logistique")
+}
+
+model T_Commande {
+  ID_Commande            Int                @id @default(autoincrement())
+  ID_TypeCmdFk           Int?
+  ID_StatutCmd           Int?
+  ID_ClientFk            Int?
+  ID_UserFk              Int?
+  geolocalisationCmd     String?            @db.VarChar(255)
+  DateHeureAutoCmd       DateTime?          @db.Timestamptz(6)
+  DateCmd                DateTime?          @db.Timestamptz(6)
+  CodeCmd                String?            @unique(map: "uq_commande_codecmd") @db.VarChar(20)
+  RefCmd                 String?            @db.VarChar(255)
+  MontantHT              Decimal?           @db.Decimal(12, 2)
+  MontantTTC             Decimal?           @db.Decimal(12, 2)
+  UrlBL                  String?            @db.VarChar(255)
+  ObsCmd                 String?            @db.VarChar(255)
+  SelectCmd              Boolean?
+  DateHeureAutoFacture   DateTime?          @db.Timestamptz(6)
+  DateFacture            DateTime?          @db.Timestamptz(6)
+  CodeFacture            String?            @unique(map: "uq_commande_codefacture") @db.VarChar(255)
+  MontantRegleFacture    Decimal?           @db.Decimal(12, 2)
+  MontantResteFacture    Decimal?           @db.Decimal(12, 2)
+  StatusFacture          String?            @db.VarChar(243)
+  ValideRemiseFacture    Boolean?
+  UrlFacture             String?            @db.VarChar(255)
+  ID_ConditionPaiementFk Int?
+  DateEcheancePaiement   DateTime?          @db.Timestamptz(6)
+  ID_ModePaiementFk      Int?
+  T_Utilisateurs         T_Utilisateurs?    @relation("CommandeUser", fields: [ID_UserFk], references: [IdUser], onDelete: NoAction, map: "Fk_ID_User")
+  T_CommandeDetail       T_CommandeDetail[]
+  T_Mouvement            T_Mouvement[]
+
+  @@index([ID_ClientFk], map: "idx_cmd_client")
+  @@index([DateCmd], map: "idx_cmd_date")
+  @@index([ID_TypeCmdFk], map: "idx_cmd_type")
+  @@index([ID_UserFk], map: "idx_cmd_user")
+  @@schema("logistique")
+}
+
+model T_CommandeDetail {
+  ID_CmdFk        Int
+  ID_ArticleFk    Int
+  QteCmdDetail    Decimal?   @db.Decimal(14, 3)
+  PUCmdDetail     Decimal?   @db.Decimal(12, 2)
+  ObsCmdDetail    String?
+  RemiseCmdDetail Boolean?
+  LieuCmdDetail   Int?
+  SelectCmdDetail Boolean?
+  T_Commande      T_Commande @relation(fields: [ID_CmdFk], references: [ID_Commande], onDelete: Cascade, map: "Fk_CmdDetail_Commande")
+  T_Article       T_Article  @relation(fields: [ID_ArticleFk], references: [ID_Article], onDelete: NoAction, map: "Fk_ID_Article")
+
+  @@id([ID_ArticleFk, ID_CmdFk])
+  @@index([ID_ArticleFk], map: "idx_cmddetail_article")
+  @@index([ID_CmdFk], map: "idx_cmddetail_cmd")
+  @@schema("logistique")
+}
+
+model T_Mouvement {
+  ID_Mvt           Int         @id @default(autoincrement())
+  ID_TypeMvtFk     Int?
+  ID_ArticleFk     Int?
+  ID_cmdFk         Int?
+  DateHeureAutoMvt DateTime?   @db.Timestamp(6)
+  DateMvt          DateTime?   @db.Timestamp(6)
+  QteMvt           Int?
+  PUMvt            Decimal?    @db.Decimal(12, 2)
+  T_Article        T_Article?  @relation(fields: [ID_ArticleFk], references: [ID_Article], onDelete: NoAction, map: "Fk_Mvt_Article")
+  T_Commande       T_Commande? @relation(fields: [ID_cmdFk], references: [ID_Commande], map: "Fk_Mvt_Cmd")
+
+  @@index([ID_ArticleFk], map: "idx_mvt_article")
+  @@index([ID_cmdFk], map: "idx_mvt_cmd")
+  @@schema("logistique")
+}
+
+model T_Reglements {
+  ID_Reglement       Int         @id @default(autoincrement())
+  CodeFactureFk      String?     @db.VarChar(255)
+  ID_ModeReglementFk Int
+  ID_ClientFk        Int?
+  DateReglement      DateTime?   @db.Timestamp(6)
+  MontantRegle       Decimal?    @db.Decimal(12, 2)
+  T_Generique        T_Generique @relation("ModeReglement", fields: [ID_ModeReglementFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_Reg_Mode")
+
+  @@index([ID_ClientFk], map: "idx_reglement_client")
+  @@index([DateReglement], map: "idx_reglement_date")
+  @@schema("logistique")
+}
+
+model T_Caisse {
+  IdCaisse      Int         @id @default(autoincrement())
+  IdDeviseFk    Int
+  MontantCaisse Decimal?    @default(0) @db.Decimal(10, 2)
+  IdEntiteFk    Int?
+  T_Generique   T_Generique @relation("CaisseDevise", fields: [IdDeviseFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_IdDevise")
+  T_Entite      T_Entite?   @relation("EntiteCaisses", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+
+  @@unique([IdEntiteFk, IdDeviseFk], map: "UQ_Entite_Devise")
+  @@schema("operations")
+}
+
+model T_Paiement {
+  IdPaiement         Int             @id(map: "Pk_IdPaiement") @default(autoincrement())
+  CodePaiement       String?         @db.VarChar(25)
+  IdUserFk           Int
+  IdTypePaiementFk   Int
+  MontantPaiement    Decimal         @db.Decimal(10, 2)
+  IdStatutPaiementFk Int?
+  DatePaiement       DateTime?       @default(now()) @db.Timestamptz(6)
+  ObsPaiement        String?
+  ValidePaiement     Boolean         @default(true)
+  IdDeviseFk         Int
+  IdPayeurFk         Int?
+  IdTypeMouvementFk  Int?
+  IdEntiteFk         Int
+  T_GeneriqueDevise  T_Generique     @relation("PaiementDevise", fields: [IdDeviseFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_IdDevise")
+  T_Entite           T_Entite        @relation("EntitePaiements", fields: [IdEntiteFk], references: [IdEntite], onDelete: Cascade, map: "Fk_IdEntite")
+  T_Payeur           T_Utilisateurs? @relation("PaiementPayeur", fields: [IdPayeurFk], references: [IdUser], map: "Fk_IdPayeurFk")
+  T_GeneriqueType    T_Generique     @relation("PaiementType", fields: [IdTypePaiementFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_IdTypePaiement")
+  T_Utilisateurs     T_Utilisateurs  @relation("PaiementUser", fields: [IdUserFk], references: [IdUser], onDelete: NoAction, map: "Fk_IdUserFk")
+
+  @@index([IdUserFk], map: "idx_fk_paiement_user")
+  @@index([DatePaiement], map: "idx_paiement_date")
+  @@index([IdDeviseFk], map: "idx_paiement_devise")
+  @@index([IdEntiteFk, DatePaiement], map: "idx_paiement_entite_date")
+  @@index([IdStatutPaiementFk], map: "idx_paiement_statut")
+  @@schema("operations")
+}
+
+model T_Paiement_Archive {
+  IdPaiement         Int?
+  CodePaiement       String?   @db.VarChar(25)
+  IdUserFk           Int?
+  IdTypePaiementFk   Int?
+  MontantPaiement    Decimal?  @db.Decimal(10, 2)
+  IdStatutPaiementFk Int?
+  DatePaiement       DateTime? @db.Timestamptz(6)
+  ObsPaiement        String?
+  ValidePaiement     Boolean?
+  IdDeviseFk         Int?
+  IdPayeurFk         Int?
+  IdTypeMouvementFk  Int?
+  DateArchivage      DateTime? @default(now()) @db.Timestamptz(6)
+  IdEntiteFk         Int?
+  IdPaiementArchive  Int       @id @default(autoincrement())
+  T_Entite           T_Entite? @relation(fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+
+  @@index([DatePaiement], map: "idx_paiement_archive_date")
+  @@index([IdEntiteFk], map: "idx_paiement_archive_entite")
+  @@index([IdPaiement], map: "idx_paiement_archive_idpaiement")
+  @@schema("operations")
+}
+
+model T_Professionnel {
+  IdProfessionnel        Int                      @id(map: "Pk_IdProfessionnel") @default(autoincrement())
+  IdUserFk               Int                      @unique(map: "Uq_Prof_IdUser")
+  IdTypeProfessionnelFk  Int
+  IdSpecialiteFk         Int
+  NumeroIdentification   String?                  @unique(map: "Uq_Prof_NumeroIdentification") @db.VarChar(50)
+  ExperienceAns          Int?
+  ObsProfessionnel       String?
+  ValideProfessionnel    Boolean?                 @default(true)
+  T_GeneriqueSpecialite  T_Generique              @relation("ProfessionnelSpecialite", fields: [IdSpecialiteFk], references: [ID_Generique], map: "Fk_Prof_Specialite")
+  T_GeneriqueType        T_Generique              @relation("ProfessionnelType", fields: [IdTypeProfessionnelFk], references: [ID_Generique], map: "Fk_Prof_TypeProfessionnel")
+  T_Utilisateurs         T_Utilisateurs           @relation("ProfessionnelUser", fields: [IdUserFk], references: [IdUser], map: "Fk_Prof_User")
+  T_Professionnel_Entite T_Professionnel_Entite[]
+
+  @@index([IdSpecialiteFk], map: "idx_prof_specialite")
+  @@index([IdTypeProfessionnelFk], map: "idx_prof_type")
+  @@schema("professionnel")
+}
+
+model T_Professionnel_Entite {
+  IdProfessionnelFk Int
+  IdEntiteFk        Int
+  IdTypeLienFk      Int?
+  DateDebut         DateTime?       @db.Timestamp(6)
+  DateFin           DateTime?       @db.Timestamp(6)
+  EstPrincipal      Boolean?        @default(false)
+  ObsLien           String?
+  T_Entite          T_Entite        @relation("EntiteProfessionnels", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_ProfEnt_Entite")
+  T_Professionnel   T_Professionnel @relation(fields: [IdProfessionnelFk], references: [IdProfessionnel], onDelete: Cascade, map: "Fk_ProfEnt_Prof")
+  T_Generique       T_Generique?    @relation("ProfessionnelLienType", fields: [IdTypeLienFk], references: [ID_Generique], onDelete: Restrict, map: "Fk_ProfEnt_TypeLien")
+
+  @@id([IdProfessionnelFk, IdEntiteFk], map: "Pk_Professionnel_Entite")
+  @@index([DateDebut], map: "idx_profent_datedebut")
+  @@index([IdEntiteFk], map: "idx_profent_entite")
+  @@schema("professionnel")
+}
+
+model T_CategorieGenerique {
+  ID_CategorieGenerique    Int           @id @default(autoincrement())
+  NomCategorieGenerique    String?       @db.VarChar(255)
+  ModuleCategorieGenerique String?
+  ValideCategorieGenerique Boolean?      @default(true)
+  T_Generique              T_Generique[]
+
+  @@schema("referentiel")
+}
+
+model T_Generique {
+  ID_Generique              Int                      @id(map: "Pk_T_Generique") @default(autoincrement())
+  ID_CategorieGeneriqueFk   Int
+  NomGenerique              String                   @db.VarChar(255)
+  AbrGenerique              String?                  @db.VarChar(255)
+  VisibleNiveau_2           Boolean?                 @default(true)
+  VisibleNiveau_3           Boolean?                 @default(true)
+  VisibleNiveau_4           Boolean?                 @default(true)
+  VisibleNiveau_5           Boolean?                 @default(true)
+  VisibleArticle            Boolean?                 @default(true)
+  VisibleCmd                Boolean?                 @default(true)
+  VisibleFacture            Boolean?                 @default(true)
+  VisibleUsers              Boolean?                 @default(true)
+  VisibleVoie               Boolean?                 @default(true)
+  VisibleAll                Boolean?                 @default(true)
+  ObsGenerique              String?
+  ValideGenerique           Boolean                  @default(true)
+  T_Recherche               T_Recherche[]            @relation("RechercheSpecialite")
+  T_Communication           T_Communication[]        @relation("CommunicationType")
+  T_Niveau_2                T_Niveau_2[]             @relation("Niveau2Type")
+  T_Niveau_3                T_Niveau_3[]             @relation("Niveau3Type")
+  T_Niveau_4                T_Niveau_4[]             @relation("Niveau4Type")
+  T_Reglements              T_Reglements[]           @relation("ModeReglement")
+  T_Caisse                  T_Caisse[]               @relation("CaisseDevise")
+  T_PaiementDevise          T_Paiement[]             @relation("PaiementDevise")
+  T_PaiementType            T_Paiement[]             @relation("PaiementType")
+  T_ProfessionnelSpecialite T_Professionnel[]        @relation("ProfessionnelSpecialite")
+  T_ProfessionnelType       T_Professionnel[]        @relation("ProfessionnelType")
+  T_Professionnel_Entite    T_Professionnel_Entite[] @relation("ProfessionnelLienType")
+  T_CategorieGenerique      T_CategorieGenerique     @relation(fields: [ID_CategorieGeneriqueFk], references: [ID_CategorieGenerique], onDelete: NoAction, map: "Fk_ID_CategorieGenerique")
+  T_Entite                  T_Entite[]               @relation("EntiteType")
+  T_Licence                 T_Licence[]              @relation("LicenceStatut")
+  T_Login                   T_Login[]                @relation("LoginType")
+  T_Utilisateurs            T_Utilisateurs[]         @relation("UserRole")
+
+  @@index([ID_CategorieGeneriqueFk], map: "idx_generique_id_categorie")
+  @@schema("referentiel")
+}
+
+model T_Audit_Log {
+  IdLog      Int       @id @default(autoincrement())
+  TableName  String?
+  Operation  String?
+  OldData    Json?
+  NewData    Json?
+  ChangedAt  DateTime? @default(now()) @db.Timestamp(6)
+  IdEntiteFk Int?
+  T_Entite   T_Entite? @relation("EntiteAuditLogs", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+
+  @@index([ChangedAt(sort: Desc)], map: "idx_audit_changedat")
+  @@index([IdEntiteFk], map: "idx_audit_log_entite")
+  @@schema("systeme")
+}
+
+model T_Entite {
+  IdEntite               Int                      @id(map: "Pk_IdEntite") @default(autoincrement())
+  NomEntite              String
+  PhoneEntite            String?                  @unique @db.VarChar(20)
+  EmailEntite            String                   @unique @db.VarChar(255)
+  AdresseEntite          String?
+  DateCreationEntite     DateTime?                @default(now()) @db.Timestamp(6)
+  IdTypeEntiteFk         Int?
+  ValideEntite           Boolean?                 @default(true)
+  T_Recherche            T_Recherche[]            @relation("RechercheEntite")
+  T_Communication        T_Communication[]        @relation("EntiteCommunications")
+  T_Caisse               T_Caisse[]               @relation("EntiteCaisses")
+  T_Paiement             T_Paiement[]             @relation("EntitePaiements")
+  T_Paiement_Archive     T_Paiement_Archive[]
+  T_Professionnel_Entite T_Professionnel_Entite[] @relation("EntiteProfessionnels")
+  T_Audit_Log            T_Audit_Log[]            @relation("EntiteAuditLogs")
+  T_Generique            T_Generique?             @relation("EntiteType", fields: [IdTypeEntiteFk], references: [ID_Generique], map: "Fk_TypeEntite")
+  T_Entite_Localisation  T_Entite_Localisation[]  @relation("EntiteLocations")
+  T_Licence              T_Licence[]              @relation("EntiteLicences")
+  T_Login                T_Login[]                @relation("EntiteLogins")
+  T_Utilisateurs         T_Utilisateurs[]         @relation("EntiteUsers")
+
+  @@index([NomEntite], map: "idx_entite_nom")
+  @@schema("systeme")
+}
+
+model T_Entite_Localisation {
+  IdEntiteLocalisation Int         @id(map: "Pk_IdEntiteLocalisation") @default(autoincrement())
+  IdEntiteFk           Int
+  IdNiveau_3_Fk        Int?
+  IdNiveau_4_Fk        Int?
+  IdNiveau_5_Fk        Int?
+  Latitude             Decimal?    @db.Decimal(9, 6)
+  Longitude            Decimal?    @db.Decimal(9, 6)
+  AdresseDetaillee     String?
+  DateCreation         DateTime?   @default(now()) @db.Timestamp(6)
+  T_Entite             T_Entite    @relation("EntiteLocations", fields: [IdEntiteFk], references: [IdEntite], onDelete: Cascade, map: "Fk_EL_Entite")
+  T_Niveau_3           T_Niveau_3? @relation("EntiteLocalisationN3", fields: [IdNiveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, onUpdate: NoAction, map: "Fk_EL_N3")
+  T_Niveau_4           T_Niveau_4? @relation("EntiteLocalisationN4", fields: [IdNiveau_4_Fk], references: [ID_Niveau_4], onDelete: NoAction, onUpdate: NoAction, map: "Fk_EL_N4")
+  T_Niveau_5           T_Niveau_5? @relation("EntiteLocalisationN5", fields: [IdNiveau_5_Fk], references: [ID_Niveau_5], onDelete: NoAction, onUpdate: NoAction, map: "Fk_EL_N5")
+
+  @@index([Latitude, Longitude], map: "idx_entite_loc_coords")
+  @@index([IdEntiteFk], map: "idx_entite_loc_entite")
+  @@schema("systeme")
+}
+
+model T_Licence {
+  IdLicence         Int         @id(map: "Pk_IdLicence")
+  IdEntiteFk        Int
+  CleLicence        String?     @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  DateDebut         DateTime?   @default(now()) @db.Timestamp(6)
+  DateFin           DateTime    @db.Timestamp(6)
+  IdStatutLicenceFk Int
+  ValideLicence     Boolean?    @default(true)
+  ExpireeLicence    Boolean?    @default(false)
+  T_Entite          T_Entite    @relation("EntiteLicences", fields: [IdEntiteFk], references: [IdEntite], onDelete: NoAction, map: "Fk_Entite")
+  T_Generique       T_Generique @relation("LicenceStatut", fields: [IdStatutLicenceFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_StatutLicence")
+
+  @@index([IdEntiteFk], map: "idx_fk_licence_entite")
+  @@index([IdStatutLicenceFk], map: "idx_fk_licence_statut")
+  @@schema("systeme")
+}
+
+model T_Login {
+  IdLogin        Int            @id(map: "Pk_IdLogin") @default(autoincrement())
+  IdUserFk       Int
+  IdTypeLoginFk  Int
+  DateLogin      DateTime       @default(now()) @db.Timestamptz(6)
+  IdEntiteFk     Int?
+  T_Entite       T_Entite?      @relation("EntiteLogins", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+  T_Generique    T_Generique    @relation("LoginType", fields: [IdTypeLoginFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_IdTypeLogin")
+  T_Utilisateurs T_Utilisateurs @relation("UserLogins", fields: [IdUserFk], references: [IdUser], onDelete: NoAction, map: "Fk_IdUserFk")
+
+  @@index([IdEntiteFk], map: "idx_login_entite")
+  @@index([IdTypeLoginFk], map: "idx_login_type")
+  @@index([IdUserFk, DateLogin], map: "idx_login_user_date")
+  @@schema("systeme")
+}
+
+model T_Utilisateurs {
+  IdUser               Int               @id(map: "Pk_IdUser") @default(autoincrement())
+  NomUser              String            @db.VarChar(100)
+  PrenomUser           String            @db.VarChar(100)
+  EmailUser            String            @unique(map: "utilisateurs_emailuser_key") @db.VarChar(150)
+  MotdepasseUser       String
+  PhoneUser            String?           @db.VarChar(20)
+  DatecreationUser     DateTime?         @default(now()) @db.Timestamp(6)
+  IdRoleFk             Int?
+  ValideUser           Boolean           @default(true)
+  SexeUser             String            @db.Char(1)
+  DateModificationUser DateTime          @default(now()) @db.Timestamp(6)
+  UrlPhoto             String?
+  IdEntiteFk           Int?
+  Is_staff             Boolean           @default(false)
+  Is_Admin             Boolean           @default(false)
+  T_Recherche          T_Recherche[]     @relation("RechercheUser")
+  T_Chat               T_Chat[]          @relation("ChatAuthor")
+  T_Communication      T_Communication[] @relation("CommunicationUser")
+  T_Article            T_Article[]       @relation("ArticleUser")
+  T_Commande           T_Commande[]      @relation("CommandeUser")
+  T_Payeur             T_Paiement[]      @relation("PaiementPayeur")
+  T_Paiement           T_Paiement[]      @relation("PaiementUser")
+  T_Professionnel      T_Professionnel?  @relation("ProfessionnelUser")
+  T_Login              T_Login[]         @relation("UserLogins")
+  T_Entite             T_Entite?         @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+  T_Generique          T_Generique?      @relation("UserRole", fields: [IdRoleFk], references: [ID_Generique], map: "Fk_RoleFk")
+
+  @@index([IdEntiteFk], map: "idx_user_entite")
+  @@index([DatecreationUser], map: "idx_utilisateur_date_creation")
+  @@index([NomUser, PrenomUser], map: "idx_utilisateur_nom")
+  @@index([PhoneUser], map: "idx_utilisateur_phone")
+  @@index([IdRoleFk], map: "idx_utilisateur_role")
+  @@schema("systeme")
+}
