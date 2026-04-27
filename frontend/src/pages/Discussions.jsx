@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import {
   fetchDiscussionMessages,
   fetchDiscussions,
@@ -95,66 +96,6 @@ function buildLocationRecipient(type, id, state) {
   return null;
 }
 
-function buildMockDiscussion(recipient) {
-  if (!recipient?.id || !recipient?.type) {
-    return null;
-  }
-
-  const now = new Date().toISOString();
-  const discussionId = `mock-${recipient.type}-${recipient.id}`;
-  const displayName = recipient.type === "expert" ? recipient.fullName : recipient.name;
-
-  return {
-    IdDiscussion: discussionId,
-    TypeDiscussion: recipient.type,
-    SujetDiscussion:
-      recipient.type === "expert"
-        ? `Discussion avec ${displayName || "un expert"}`
-        : `Discussion avec ${displayName || "une structure"}`,
-    DateCreation: now,
-    DernierMessageAt: now,
-    recipient,
-    lastMessage: {
-      IdChat: `mock-intro-${discussionId}`,
-      TextChat:
-        recipient.type === "expert"
-          ? `Conversation de demonstration demarree avec ${displayName}.`
-          : `Conversation de demonstration demarree avec ${displayName}.`,
-      ChatFile: null,
-      ChatLink: null,
-      DateChat: now,
-      LuChat: false,
-      author: null,
-    },
-  };
-}
-
-function buildMockMessages(discussion) {
-  if (!discussion) {
-    return [];
-  }
-
-  const displayName =
-    discussion.recipient?.type === "expert"
-      ? discussion.recipient?.fullName
-      : discussion.recipient?.name;
-
-  return [
-    {
-      IdChat: `mock-intro-${discussion.IdDiscussion}`,
-      TextChat:
-        discussion.recipient?.type === "expert"
-          ? `Conversation de demonstration demarree avec ${displayName}. Vous pouvez decrire ici votre besoin de sante ou votre demande d'orientation.`
-          : `Conversation de demonstration demarree avec ${displayName}. Vous pouvez demander ici des informations publiques sur la structure, les horaires ou la disponibilite.`,
-      ChatFile: null,
-      ChatLink: null,
-      DateChat: discussion.DateCreation,
-      LuChat: false,
-      author: null,
-    },
-  ];
-}
-
 function upsertDiscussion(currentDiscussions, nextDiscussion) {
   if (!nextDiscussion) {
     return currentDiscussions;
@@ -191,24 +132,19 @@ function messagePreview(discussion) {
   return discussion?.lastMessage?.TextChat || "Aucun message pour l'instant.";
 }
 
-function sourceBadgeLabel(source) {
-  return source === "api" ? "Donnees reelles" : "Donnees de demonstration";
-}
-
 export default function Discussions({ experts = [], pharmacies = [] }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [draft, setDraft] = useState("");
   const [discussions, setDiscussions] = useState([]);
   const [selectedDiscussionId, setSelectedDiscussionId] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [mockMessagesByDiscussion, setMockMessagesByDiscussion] = useState({});
-  const [dataSource, setDataSource] = useState("mock");
-  const [currentUserId, setCurrentUserId] = useState("demo-user");
   const [loadingDiscussions, setLoadingDiscussions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(user?.IdUser || null);
 
   const targetType = searchParams.get("type");
   const targetId = searchParams.get("id");
@@ -235,6 +171,12 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
   );
 
   useEffect(() => {
+    if (user?.IdUser != null) {
+      setCurrentUserId(user.IdUser);
+    }
+  }, [user?.IdUser]);
+
+  useEffect(() => {
     let active = true;
 
     async function initializeDiscussions() {
@@ -247,17 +189,19 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
         return;
       }
 
-      let nextSource = "mock";
-      let nextDiscussions = [];
-      let nextCurrentUserId = "demo-user";
-      let nextSelectedId = null;
+      if (!listPayload?.success) {
+        setDiscussions([]);
+        setSelectedDiscussionId(null);
+        setLoadingDiscussions(false);
+        setErrorMessage(listPayload?.message || "Impossible de charger les discussions.");
+        return;
+      }
 
-      if (listPayload?.success) {
-        nextSource = "api";
-        nextDiscussions = Array.isArray(listPayload.data) ? listPayload.data : [];
-        nextCurrentUserId = listPayload.meta?.currentUserId ?? nextCurrentUserId;
-      } else if (listPayload && listPayload.success === false) {
-        setErrorMessage(listPayload.message || "Impossible de charger les discussions.");
+      let nextDiscussions = Array.isArray(listPayload.data) ? listPayload.data : [];
+      let nextSelectedId = nextDiscussions[0]?.IdDiscussion || null;
+
+      if (listPayload.meta?.currentUserId != null) {
+        setCurrentUserId(listPayload.meta.currentUserId);
       }
 
       if (targetType && targetId && canUseDiscussionApiTarget) {
@@ -268,47 +212,16 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
         }
 
         if (startPayload?.success) {
-          nextSource = "api";
-          nextCurrentUserId = startPayload.meta?.currentUserId ?? nextCurrentUserId;
           nextDiscussions = upsertDiscussion(nextDiscussions, startPayload.data);
           nextSelectedId = startPayload.data?.IdDiscussion || nextSelectedId;
-        } else if (startPayload === null) {
-          const mockDiscussion = buildMockDiscussion(requestedRecipient);
-
-          if (mockDiscussion) {
-            nextSource = "mock";
-            nextDiscussions = upsertDiscussion(nextDiscussions, mockDiscussion);
-            nextSelectedId = mockDiscussion.IdDiscussion;
-            setMockMessagesByDiscussion((current) => ({
-              ...current,
-              [mockDiscussion.IdDiscussion]:
-                current[mockDiscussion.IdDiscussion] || buildMockMessages(mockDiscussion),
-            }));
+          if (startPayload.meta?.currentUserId != null) {
+            setCurrentUserId(startPayload.meta.currentUserId);
           }
         } else {
-          setErrorMessage(startPayload.message || "Impossible d'ouvrir la discussion cible.");
-        }
-      } else if (targetType && targetId) {
-        const mockDiscussion = buildMockDiscussion(requestedRecipient);
-
-        if (mockDiscussion) {
-          nextSource = "mock";
-          nextDiscussions = upsertDiscussion(nextDiscussions, mockDiscussion);
-          nextSelectedId = mockDiscussion.IdDiscussion;
-          setMockMessagesByDiscussion((current) => ({
-            ...current,
-            [mockDiscussion.IdDiscussion]:
-              current[mockDiscussion.IdDiscussion] || buildMockMessages(mockDiscussion),
-          }));
+          setErrorMessage(startPayload?.message || "Impossible d'ouvrir la discussion cible.");
         }
       }
 
-      if (!nextSelectedId && nextDiscussions.length > 0) {
-        nextSelectedId = nextDiscussions[0].IdDiscussion;
-      }
-
-      setDataSource(nextSource);
-      setCurrentUserId(nextCurrentUserId);
       setDiscussions(nextDiscussions);
       setSelectedDiscussionId(nextSelectedId);
       setLoadingDiscussions(false);
@@ -319,23 +232,13 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
     return () => {
       active = false;
     };
-  }, [canUseDiscussionApiTarget, numericTargetId, requestedRecipient, targetId, targetType]);
+  }, [canUseDiscussionApiTarget, numericTargetId, targetId, targetType]);
 
   useEffect(() => {
     let active = true;
 
     async function loadMessages() {
       if (!selectedDiscussionId) {
-        setMessages([]);
-        return;
-      }
-
-      if (String(selectedDiscussionId).startsWith("mock-")) {
-        setMessages(mockMessagesByDiscussion[selectedDiscussionId] || []);
-        return;
-      }
-
-      if (dataSource !== "api") {
         setMessages([]);
         return;
       }
@@ -353,12 +256,9 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
         if (payload.meta?.currentUserId != null) {
           setCurrentUserId(payload.meta.currentUserId);
         }
-      } else if (payload && payload.success === false) {
-        setErrorMessage(payload.message || "Impossible de recuperer les messages.");
-        setMessages([]);
       } else {
-        setErrorMessage("API indisponible. Affichage local maintenu.");
         setMessages([]);
+        setErrorMessage(payload?.message || "Impossible de recuperer les messages.");
       }
 
       setLoadingMessages(false);
@@ -369,50 +269,11 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
     return () => {
       active = false;
     };
-  }, [dataSource, mockMessagesByDiscussion, selectedDiscussionId]);
+  }, [selectedDiscussionId]);
 
   async function handleSend() {
     const nextMessage = draft.trim();
     if (!nextMessage || !selectedDiscussion) {
-      return;
-    }
-
-    if (String(selectedDiscussion.IdDiscussion).startsWith("mock-") || dataSource !== "api") {
-      const mockMessage = {
-        IdChat: `mock-user-${Date.now()}`,
-        TextChat: nextMessage,
-        ChatFile: null,
-        ChatLink: null,
-        DateChat: new Date().toISOString(),
-        LuChat: false,
-        author: {
-          IdUser: "demo-user",
-          NomUser: "Utilisateur",
-          PrenomUser: "Demo",
-          UrlPhoto: null,
-        },
-      };
-
-      setMockMessagesByDiscussion((current) => {
-        const updatedMessages = [...(current[selectedDiscussion.IdDiscussion] || []), mockMessage];
-        return {
-          ...current,
-          [selectedDiscussion.IdDiscussion]: updatedMessages,
-        };
-      });
-      setMessages((current) => [...current, mockMessage]);
-      setDiscussions((current) =>
-        current.map((item) =>
-          String(item.IdDiscussion) === String(selectedDiscussion.IdDiscussion)
-            ? {
-                ...item,
-                DernierMessageAt: mockMessage.DateChat,
-                lastMessage: mockMessage,
-              }
-            : item
-        )
-      );
-      setDraft("");
       return;
     }
 
@@ -440,19 +301,19 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
         setCurrentUserId(payload.meta.currentUserId);
       }
       setDraft("");
-    } else if (payload && payload.success === false) {
-      setErrorMessage(payload.message || "Impossible d'envoyer le message.");
     } else {
-      setErrorMessage("API indisponible. Le message n'a pas pu etre enregistre.");
+      setErrorMessage(payload?.message || "Impossible d'envoyer le message.");
     }
 
     setSendingMessage(false);
   }
 
   const fallbackMessage =
-    location.state?.targetName && location.state?.targetType
-      ? `Preparez ici votre prise de contact avec ${location.state.targetName}.`
-      : "Selectionnez un expert ou une structure depuis les cartes publiques pour ouvrir une conversation ciblee.";
+    requestedRecipient?.type === "expert"
+      ? `La discussion avec ${requestedRecipient.fullName || "cet expert"} sera creee des que l'API la validera.`
+      : requestedRecipient?.type === "structure"
+        ? `La discussion avec ${requestedRecipient.name || "cette structure"} sera creee des que l'API la validera.`
+        : "Selectionnez un expert ou une structure depuis les cartes publiques pour ouvrir une conversation ciblee.";
 
   return (
     <div className="page-shell">
@@ -465,7 +326,7 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
             boutons "Contacter".
           </p>
         </div>
-        <span className="status-pill">{sourceBadgeLabel(dataSource)}</span>
+        <span className="status-pill">Donnees reelles</span>
       </section>
 
       {errorMessage ? <section className="table-empty-state">{errorMessage}</section> : null}
@@ -476,9 +337,7 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
         <section className="chat-layout">
           <aside className="chat-sidebar">
             <div className="chat-contact-card">
-              <span className="badge rounded-pill text-bg-light text-primary-emphasis">
-                {dataSource === "api" ? "Synchronise avec l'API" : "Mode demonstration"}
-              </span>
+              <span className="badge rounded-pill text-bg-light text-primary-emphasis">Session connectee</span>
               <h3>Vos discussions</h3>
               <p>Selectionnez une conversation pour afficher l'historique et envoyer un message.</p>
             </div>
@@ -603,8 +462,8 @@ export default function Discussions({ experts = [], pharmacies = [] }) {
             >
               Contact public
             </a>
-            <button className="secondary-action" type="button">
-              Reponse rapide
+            <button className="secondary-action" type="button" disabled>
+              En attente de discussion
             </button>
           </div>
         </section>

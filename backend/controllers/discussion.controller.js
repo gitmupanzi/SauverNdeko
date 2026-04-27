@@ -1,10 +1,5 @@
 const prisma = require('../config/db');
 const catchAsync = require('../middlewares/catchAsync');
-const { verifyAccessToken } = require('../utils/jwt');
-
-const FALLBACK_DISCUSSION_USER_ID = Number(process.env.CHAT_TEST_USER_ID || process.env.DISCUSSION_TEST_USER_ID || 1);
-const FALLBACK_DISCUSSION_USER_EMAIL =
-  process.env.CHAT_TEST_USER_EMAIL || 'chat.demo@sauverndeko.local';
 const fallbackActorSelect = {
   IdUser: true,
   NomUser: true,
@@ -222,55 +217,16 @@ const buildDiscussionSubject = (type, recipient) => {
 };
 
 const resolveCurrentActor = async (req) => {
-  let userId = Number.isInteger(req.userId) ? req.userId : null;
-  const authHeader = req.headers.authorization;
-  const explicitUserIdHeader = req.headers['x-user-id'];
-  let usedFallbackUser = false;
-
-  if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const decoded = verifyAccessToken(authHeader.split(' ')[1]);
-      userId = decoded.userId;
-    } catch (error) {
-      const authError = new Error('Token invalide ou expire.');
-      authError.statusCode = 403;
-      throw authError;
-    }
+  if (!Number.isInteger(req.userId)) {
+    const error = new Error('Session utilisateur introuvable.');
+    error.statusCode = 401;
+    throw error;
   }
 
-  if (!userId && explicitUserIdHeader) {
-    userId = parsePositiveInt(explicitUserIdHeader, 'Identifiant utilisateur');
-  }
-
-  if (!userId) {
-    userId = FALLBACK_DISCUSSION_USER_ID;
-    usedFallbackUser = true;
-  }
-
-  let actor = await prisma.t_Utilisateurs.findUnique({
-    where: { IdUser: userId },
+  const actor = await prisma.t_Utilisateurs.findUnique({
+    where: { IdUser: req.userId },
     select: fallbackActorSelect,
   });
-
-  if (!actor && usedFallbackUser) {
-    actor = await prisma.t_Utilisateurs.findUnique({
-      where: { EmailUser: FALLBACK_DISCUSSION_USER_EMAIL },
-      select: fallbackActorSelect,
-    });
-  }
-
-  if (!actor && usedFallbackUser) {
-    actor = await prisma.t_Utilisateurs.create({
-      data: {
-        NomUser: 'Chat',
-        PrenomUser: 'Demo',
-        EmailUser: FALLBACK_DISCUSSION_USER_EMAIL,
-        MotdepasseUser: 'DISABLED_FALLBACK_USER',
-        SexeUser: 'M',
-      },
-      select: fallbackActorSelect,
-    });
-  }
 
   if (!actor) {
     const error = new Error('Utilisateur de discussion introuvable.');
@@ -283,7 +239,6 @@ const resolveCurrentActor = async (req) => {
     professionalId: actor.T_Professionnel?.IdProfessionnel || null,
     entityId: actor.IdEntiteFk || null,
     profile: actor,
-    usingFallbackUser: usedFallbackUser,
   };
 };
 
@@ -411,7 +366,6 @@ const startDiscussion = catchAsync(async (req, res) => {
     data: serializeDiscussion(discussion),
     meta: {
       currentUserId: actor.userId,
-      usingFallbackUser: actor.usingFallbackUser,
       created,
     },
   });
@@ -438,7 +392,6 @@ const listDiscussions = catchAsync(async (req, res) => {
     data: discussions.map(serializeDiscussion),
     meta: {
       currentUserId: actor.userId,
-      usingFallbackUser: actor.usingFallbackUser,
     },
   });
 });
@@ -470,7 +423,6 @@ const listDiscussionMessages = catchAsync(async (req, res) => {
     data: messages.map(serializeMessage),
     meta: {
       currentUserId: actor.userId,
-      usingFallbackUser: actor.usingFallbackUser,
     },
   });
 });
@@ -525,13 +477,11 @@ const postDiscussionMessage = catchAsync(async (req, res) => {
     data: serializeMessage(createdMessage),
     meta: {
       currentUserId: actor.userId,
-      usingFallbackUser: actor.usingFallbackUser,
     },
   });
 });
 
 module.exports = {
-  FALLBACK_DISCUSSION_USER_ID,
   listDiscussionMessages,
   listDiscussions,
   postDiscussionMessage,

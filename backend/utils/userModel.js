@@ -3,6 +3,48 @@ const { toDelegateName } = require('./prismaMetadata');
 
 const REQUIRED_FIELDS = ['IdUser', 'EmailUser', 'MotdepasseUser'];
 
+const userEntitySelect = {
+  IdEntite: true,
+  NomEntite: true,
+  EmailEntite: true,
+  PhoneEntite: true,
+  AdresseEntite: true,
+};
+
+const userRoleSelect = {
+  ID_Generique: true,
+  NomGenerique: true,
+  AbrGenerique: true,
+};
+
+const userProfileSelect = {
+  IdUser: true,
+  NomUser: true,
+  PrenomUser: true,
+  EmailUser: true,
+  PhoneUser: true,
+  SexeUser: true,
+  ValideUser: true,
+  IdRoleFk: true,
+  IdEntiteFk: true,
+  DatecreationUser: true,
+  DateModificationUser: true,
+  UrlPhoto: true,
+  Is_staff: true,
+  Is_Admin: true,
+  T_Entite: {
+    select: userEntitySelect,
+  },
+  T_Generique: {
+    select: userRoleSelect,
+  },
+};
+
+const userAuthSelect = {
+  ...userProfileSelect,
+  MotdepasseUser: true,
+};
+
 const getUserModel = (prisma) => {
   const model = Prisma.dmmf.datamodel.models.find((item) =>
     REQUIRED_FIELDS.every((fieldName) => item.fields.some((field) => field.name === fieldName))
@@ -30,7 +72,13 @@ const getUserModel = (prisma) => {
   };
 };
 
-const sanitizeUser = (user) => ({
+const sanitizeUser = (user) => {
+  const canAccessAdmin =
+    Boolean(user.Is_Admin) ||
+    Boolean(user.Is_staff) ||
+    ['admin', 'administrateur'].includes(String(user.T_Generique?.NomGenerique || '').toLowerCase());
+
+  return {
   IdUser: user.IdUser,
   NomUser: user.NomUser,
   PrenomUser: user.PrenomUser,
@@ -40,14 +88,34 @@ const sanitizeUser = (user) => ({
   ValideUser: user.ValideUser,
   IdRoleFk: user.IdRoleFk,
   IdEntiteFk: user.IdEntiteFk,
-  Is_staff: user.Is_staff,
-  Is_Admin: user.Is_Admin,
   DatecreationUser: user.DatecreationUser,
   DateModificationUser: user.DateModificationUser,
   UrlPhoto: user.UrlPhoto,
-});
+  role: user.T_Generique
+    ? {
+        id: user.T_Generique.ID_Generique,
+        name: user.T_Generique.NomGenerique,
+        abbreviation: user.T_Generique.AbrGenerique,
+      }
+    : null,
+  entite: user.T_Entite
+    ? {
+        IdEntite: user.T_Entite.IdEntite,
+        NomEntite: user.T_Entite.NomEntite,
+        EmailEntite: user.T_Entite.EmailEntite,
+        PhoneEntite: user.T_Entite.PhoneEntite,
+        AdresseEntite: user.T_Entite.AdresseEntite,
+      }
+    : null,
+  permissions: {
+    canAccessAdmin,
+  },
+  };
+};
 
 module.exports = {
   getUserModel,
   sanitizeUser,
+  userAuthSelect,
+  userProfileSelect,
 };

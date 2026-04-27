@@ -1,7 +1,12 @@
 const express = require('express');
+const verifyToken = require('../middlewares/verifyToken');
+const requireAdmin = require('../middlewares/requireAdmin');
 const domainController = require('../controllers/domain.controller');
 
 const router = express.Router();
+
+router.use(verifyToken);
+router.use(requireAdmin);
 
 router.get('/utilisateurs', domainController.listUtilisateurs);
 router.get('/utilisateurs/:id', domainController.getUtilisateur);

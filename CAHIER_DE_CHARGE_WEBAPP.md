@@ -2,11 +2,11 @@
 
 ## 1. Contexte
 
-SauverNdeko evolue d'un site public vitrine vers une application web complete avec authentification, espace utilisateur et modules metier connectes au backend Node.js + Prisma + PostgreSQL.
+Une application web complete avec authentification, espace utilisateur et modules metier connectes au backend Node.js + Prisma + PostgreSQL.
 
 Le projet est structure en deux parties :
 
-- `frontend/` : React + Vite
+- `frontend/` : Reactjs
 - `backend/` : Node.js + Express + Prisma + PostgreSQL
 
 Ce document sert de support de suivi fonctionnel et technique.
@@ -244,27 +244,7 @@ ou
 
 ---
 
-## 11. Donnees et modeles concernes
-
-### Tables principales
-
-- `systeme.T_Utilisateurs`
-- `professionnel.T_Professionnel`
-- `systeme.T_Entite`
-- `communication.T_Discussion`
-- `communication.T_Chat`
-- `referentiel.T_Generique`
-- `referentiel.T_CategorieGenerique`
-
-### Points de vigilance
-
-- Les maladies viennent de `T_Generique`, filtre par categorie `Maladie`.
-- Les discussions relient un utilisateur client a un expert ou une structure.
-- Les messages sont relies a une discussion et a un auteur.
-
----
-
-## 12. Routes backend cibles
+## 11. Routes backend cibles
 
 ### Authentification
 
@@ -291,7 +271,7 @@ ou
 
 ---
 
-## 13. Routes frontend cibles
+## 12. Routes frontend cibles
 
 - [x] `/`
 - [x] `/produits`

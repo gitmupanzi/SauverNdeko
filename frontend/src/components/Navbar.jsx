@@ -16,11 +16,24 @@ const TITLE_BY_PATH = {
   "/experts": "Experts",
   "/maladies": "Maladies",
   "/discussions": "Discussions",
+  "/login": "Connexion",
+  "/register": "Creer un compte",
+  "/profil": "Profil",
+  "/admin": "Administration",
 };
 
-export default function Navbar({ currentPath, onOpenMenu, onOpenSearch }) {
+export default function Navbar({
+  currentPath,
+  onOpenMenu,
+  onOpenSearch,
+  isAuthenticated,
+  user,
+  onLogout,
+}) {
   const pageTitle = TITLE_BY_PATH[currentPath] || "SauverNdeko";
   const showSearch = currentPath !== "/discussions";
+  const displayName = user?.PrenomUser || user?.NomUser || "Mon profil";
+  const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
 
   return (
     <header className="topbar">
@@ -60,17 +73,40 @@ export default function Navbar({ currentPath, onOpenMenu, onOpenSearch }) {
           ))}
         </nav>
 
-        {showSearch ? (
-          <button className="desktop-search" type="button" onClick={onOpenSearch}>
-            <i className="bi bi-search" aria-hidden="true" />
-            <span>Rechercher</span>
-          </button>
-        ) : (
-          <div className="desktop-search desktop-search-static">
-            <i className="bi bi-chat-dots" aria-hidden="true" />
-            <span>Contact public</span>
-          </div>
-        )}
+        <div className="desktop-actions">
+          {showSearch ? (
+            <button className="desktop-search" type="button" onClick={onOpenSearch}>
+              <i className="bi bi-search" aria-hidden="true" />
+              <span>Rechercher</span>
+            </button>
+          ) : (
+            <div className="desktop-search desktop-search-static">
+              <i className="bi bi-chat-dots" aria-hidden="true" />
+              <span>Contact public</span>
+            </div>
+          )}
+
+          {isAuthenticated ? (
+            <>
+              {canAccessAdmin ? (
+                <NavLink className="desktop-auth-button is-secondary" to="/admin">
+                  Administration
+                </NavLink>
+              ) : null}
+              <NavLink className="desktop-account-link" to="/profil">
+                <i className="bi bi-person-circle" aria-hidden="true" />
+                <span>{displayName}</span>
+              </NavLink>
+              <button className="desktop-auth-button is-secondary" type="button" onClick={onLogout}>
+                Se deconnecter
+              </button>
+            </>
+          ) : (
+            <NavLink className="desktop-auth-button" to="/login">
+              Se connecter
+            </NavLink>
+          )}
+        </div>
       </div>
     </header>
   );

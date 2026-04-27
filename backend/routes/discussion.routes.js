@@ -1,4 +1,5 @@
 const express = require('express');
+const verifyToken = require('../middlewares/verifyToken');
 const {
   listDiscussionMessages,
   listDiscussions,
@@ -7,6 +8,8 @@ const {
 } = require('../controllers/discussion.controller');
 
 const router = express.Router();
+
+router.use(verifyToken);
 
 router.post('/start', startDiscussion);
 router.get('/', listDiscussions);

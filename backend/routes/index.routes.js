@@ -1,7 +1,12 @@
 const express = require('express');
+const verifyToken = require('../middlewares/verifyToken');
+const requireAdmin = require('../middlewares/requireAdmin');
 const crudController = require('../controllers/crud.controller');
 
 const router = express.Router();
+
+router.use(verifyToken);
+router.use(requireAdmin);
 
 router.get('/models', crudController.listAvailableModels);
 router.get('/models/:model', crudController.getAll);

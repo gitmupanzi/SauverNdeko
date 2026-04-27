@@ -6,6 +6,7 @@ const {
   logout,
   refresh,
   register,
+  updateCurrentUser,
   verifySession,
 } = require('../controllers/auth.controller');
 
@@ -16,6 +17,7 @@ router.post('/auth/register', register);
 router.post('/auth/refresh', refresh);
 router.post('/auth/logout', verifyToken, logout);
 router.get('/auth/me', verifyToken, currentUser);
+router.put('/auth/me', verifyToken, updateCurrentUser);
 router.get('/auth/verify', verifyToken, verifySession);
 
 module.exports = router;

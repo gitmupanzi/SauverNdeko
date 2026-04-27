@@ -1,12 +1,19 @@
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import AdminRoute from "./components/AdminRoute";
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { useAuth } from "./contexts/AuthContext";
 import Discussions from "./pages/Discussions";
 import Diseases from "./pages/Diseases";
 import Experts from "./pages/Experts";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
 import Pharmacies from "./pages/Pharmacies";
 import Products from "./pages/Products";
+import Profile from "./pages/Profile";
+import Register from "./pages/Register";
+import Admin from "./pages/Admin";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
 import { buildDiscussionPath, matchesSearch, normalizeText } from "./services/mappers";
 
@@ -90,7 +97,8 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
   );
 }
 
-function SidebarDrawer({ isOpen, onClose, onNavigate }) {
+function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onLogout }) {
+  const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
   const items = [
     { label: "Accueil", path: "/", icon: "bi-house-door" },
     { label: "Produits", path: "/produits", icon: "bi-capsule" },
@@ -98,6 +106,8 @@ function SidebarDrawer({ isOpen, onClose, onNavigate }) {
     { label: "Experts", path: "/experts", icon: "bi-people" },
     { label: "Maladies", path: "/maladies", icon: "bi-virus2" },
     { label: "Discussions", path: "/discussions", icon: "bi-chat-dots" },
+    ...(isAuthenticated ? [{ label: "Profil", path: "/profil", icon: "bi-person-circle" }] : []),
+    ...(canAccessAdmin ? [{ label: "Administration", path: "/admin", icon: "bi-shield-lock" }] : []),
   ];
 
   return (
@@ -108,6 +118,21 @@ function SidebarDrawer({ isOpen, onClose, onNavigate }) {
           <i className="bi bi-x-lg" aria-hidden="true" />
         </button>
       </div>
+
+      <div className="drawer-account-card">
+        <span className="drawer-account-kicker">{isAuthenticated ? "Session active" : "Mode public"}</span>
+        <strong>
+          {isAuthenticated
+            ? `${user?.PrenomUser || ""} ${user?.NomUser || ""}`.trim() || "Utilisateur"
+            : "Connectez-vous pour acceder a votre espace"}
+        </strong>
+        <p>
+          {isAuthenticated
+            ? user?.EmailUser || "Compte utilisateur"
+            : "Les discussions et le profil deviennent disponibles apres authentification."}
+        </p>
+      </div>
+
       <nav className="drawer-nav">
         {items.map((item) => (
           <button
@@ -123,6 +148,23 @@ function SidebarDrawer({ isOpen, onClose, onNavigate }) {
           </button>
         ))}
       </nav>
+
+      <div className="drawer-auth-actions">
+        {isAuthenticated ? (
+          <button className="secondary-action" type="button" onClick={onLogout}>
+            Se deconnecter
+          </button>
+        ) : (
+          <>
+            <button className="primary-action" type="button" onClick={() => onNavigate("/login")}>
+              Se connecter
+            </button>
+            <button className="secondary-action" type="button" onClick={() => onNavigate("/register")}>
+              Creer un compte
+            </button>
+          </>
+        )}
+      </div>
     </aside>
   );
 }
@@ -153,6 +195,7 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const { health, catalogue } = usePublicCatalogue();
+  const { isAuthenticated, user, logout } = useAuth();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(normalizeText(search));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -189,6 +232,15 @@ export default function App() {
   function goTo(path, options) {
     closeOverlays();
     navigate(path, options);
+  }
+
+  async function handleLogout() {
+    await logout();
+    closeOverlays();
+
+    if (["/discussions", "/profil", "/admin"].includes(location.pathname)) {
+      navigate("/", { replace: true });
+    }
   }
 
   function handleSearchChange(event) {
@@ -275,7 +327,14 @@ export default function App() {
           onClick={closeOverlays}
         />
 
-        <SidebarDrawer isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={goTo} />
+        <SidebarDrawer
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          onNavigate={goTo}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          onLogout={handleLogout}
+        />
 
         <SearchOverlay
           isOpen={isSearchOpen}
@@ -291,6 +350,9 @@ export default function App() {
           currentPath={location.pathname}
           onOpenMenu={() => setIsSidebarOpen(true)}
           onOpenSearch={toggleSearchOverlay}
+          isAuthenticated={isAuthenticated}
+          user={user}
+          onLogout={handleLogout}
         />
 
         <main className="mobile-content" ref={contentRef}>
@@ -323,9 +385,31 @@ export default function App() {
             />
             <Route path="/experts" element={<Experts experts={catalogue.experts} onContact={openDiscussion} />} />
             <Route path="/maladies" element={<Diseases diseases={catalogue.diseases} />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/profil"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/discussions"
-              element={<Discussions experts={catalogue.experts} pharmacies={catalogue.pharmacies} />}
+              element={
+                <ProtectedRoute>
+                  <Discussions experts={catalogue.experts} pharmacies={catalogue.pharmacies} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <Admin />
+                </AdminRoute>
+              }
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -296,7 +296,20 @@ const getUtilisateur = catchAsync(async (req, res) => {
 });
 
 const createUtilisateur = catchAsync(async (req, res) => {
-  const { NomUser, PrenomUser, EmailUser, MotdepasseUser, SexeUser, PhoneUser, IdRoleFk, IdEntiteFk } = req.body;
+  const {
+    NomUser,
+    PrenomUser,
+    EmailUser,
+    MotdepasseUser,
+    SexeUser,
+    PhoneUser,
+    IdRoleFk,
+    IdEntiteFk,
+    ValideUser,
+    UrlPhoto,
+    Is_staff,
+    Is_Admin,
+  } = req.body;
 
   if (!NomUser || !PrenomUser || !EmailUser || !MotdepasseUser || !SexeUser) {
     return res.status(400).json({
@@ -328,6 +341,10 @@ const createUtilisateur = catchAsync(async (req, res) => {
       PhoneUser: PhoneUser || null,
       IdRoleFk: IdRoleFk || null,
       IdEntiteFk: IdEntiteFk || null,
+      ValideUser: typeof ValideUser === 'boolean' ? ValideUser : true,
+      UrlPhoto: UrlPhoto || null,
+      Is_staff: Boolean(Is_staff),
+      Is_Admin: Boolean(Is_Admin),
     },
     include: includeUser,
   });
