@@ -139,7 +139,10 @@ exports.Prisma.T_ChatScalarFieldEnum = {
   TextChat: 'TextChat',
   ChatFile: 'ChatFile',
   ChatLink: 'ChatLink',
-  AuthorIdFk: 'AuthorIdFk'
+  AuthorIdFk: 'AuthorIdFk',
+  IdDiscussionFk: 'IdDiscussionFk',
+  DateChat: 'DateChat',
+  LuChat: 'LuChat'
 };
 
 exports.Prisma.T_CommunicationScalarFieldEnum = {
@@ -467,6 +470,17 @@ exports.Prisma.T_Audit_LogScalarFieldEnum = {
   IdEntiteFk: 'IdEntiteFk'
 };
 
+exports.Prisma.T_Admin_UI_SettingScalarFieldEnum = {
+  IdAdminUiSetting: 'IdAdminUiSetting',
+  SettingKey: 'SettingKey',
+  SettingValue: 'SettingValue',
+  UpdatedAt: 'UpdatedAt',
+  UpdatedByUserFk: 'UpdatedByUserFk',
+  ObsAdminUiSetting: 'ObsAdminUiSetting',
+  SettingScope: 'SettingScope',
+  ScopeValue: 'ScopeValue'
+};
+
 exports.Prisma.T_EntiteScalarFieldEnum = {
   IdEntite: 'IdEntite',
   NomEntite: 'NomEntite',
@@ -527,6 +541,18 @@ exports.Prisma.T_UtilisateursScalarFieldEnum = {
   Is_Admin: 'Is_Admin'
 };
 
+exports.Prisma.T_DiscussionScalarFieldEnum = {
+  IdDiscussion: 'IdDiscussion',
+  IdUserClientFk: 'IdUserClientFk',
+  IdProfessionnelFk: 'IdProfessionnelFk',
+  IdEntiteFk: 'IdEntiteFk',
+  TypeDiscussion: 'TypeDiscussion',
+  SujetDiscussion: 'SujetDiscussion',
+  DateCreation: 'DateCreation',
+  DernierMessageAt: 'DernierMessageAt',
+  ValideDiscussion: 'ValideDiscussion'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -534,6 +560,10 @@ exports.Prisma.SortOrder = {
 
 exports.Prisma.NullableJsonNullValueInput = {
   DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.JsonNullValueInput = {
   JsonNull: Prisma.JsonNull
 };
 
@@ -578,11 +608,13 @@ exports.Prisma.ModelName = {
   T_CategorieGenerique: 'T_CategorieGenerique',
   T_Generique: 'T_Generique',
   T_Audit_Log: 'T_Audit_Log',
+  T_Admin_UI_Setting: 'T_Admin_UI_Setting',
   T_Entite: 'T_Entite',
   T_Entite_Localisation: 'T_Entite_Localisation',
   T_Licence: 'T_Licence',
   T_Login: 'T_Login',
-  T_Utilisateurs: 'T_Utilisateurs'
+  T_Utilisateurs: 'T_Utilisateurs',
+  T_Discussion: 'T_Discussion'
 };
 
 /**

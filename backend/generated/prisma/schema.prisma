@@ -43,10 +43,16 @@ model T_Chat {
   ChatFile       String?
   ChatLink       String?
   AuthorIdFk     Int?
+  IdDiscussionFk Int?
+  DateChat       DateTime        @default(now()) @db.Timestamptz(6)
+  LuChat         Boolean         @default(false)
   T_Utilisateurs T_Utilisateurs? @relation("ChatAuthor", fields: [AuthorIdFk], references: [IdUser], onUpdate: SetNull, map: "AuthorIdFk")
+  T_Discussion   T_Discussion?   @relation(fields: [IdDiscussionFk], references: [IdDiscussion], onDelete: Cascade, map: "Fk_Chat_Discussion")
 
   @@index([AuthorIdFk], map: "idx_chat_author")
   @@index([AuthorIdFk, IdChat(sort: Desc)], map: "idx_chat_author_idchat_desc")
+  @@index([IdDiscussionFk, DateChat], map: "idx_chat_discussion_date")
+  @@index([IdDiscussionFk, IdChat], map: "idx_chat_discussion_idchat")
   @@schema("communication")
 }
 
@@ -124,128 +130,164 @@ model T_Niveau_1 {
 }
 
 model T_Niveau_2 {
-  ID_Niveau_2          Int          @id @default(autoincrement())
-  ID_Niveau_1_FK       Int?
-  ID_TypeNiveau_2_Fk   Int?
-  NomNiveau_2          String?      @db.VarChar(255)
-  Alt1_NomNiveau_2     String?      @db.VarChar(255)
-  AbreNiveau_2         String?      @db.VarChar(255)
-  CodeNiveau_2         String?      @db.VarChar(255)
-  PopulationNiveau_2   Decimal?     @db.Decimal(12, 0)
-  geometryNiveau_2     String?
-  surfaceNiveau_2      String?      @db.VarChar(255)
-  EtenduNiveau_2       String?
-  ObsNiveau_2          String?
-  ID_StatutNiveau_2    Int?
-  ID_StatusDeploiFk    Int?
-  KmDPSANT             Decimal?     @db.Decimal(10, 2)
-  ID_VoieAccesDPSANTFk Int?
-  SelectNiveau_2       Boolean?
-  LatitudeNiveau_2     Decimal?     @db.Decimal(9, 6)
-  LongitudeNiveau_2    Decimal?     @db.Decimal(9, 6)
-  AltitudeNiveau_2     Decimal?     @db.Decimal(10, 2)
-  T_Niveau_1           T_Niveau_1?  @relation("Niveau2Parent", fields: [ID_Niveau_1_FK], references: [ID_Niveau_1], onDelete: NoAction, map: "Fk_ID_Niveau_1")
-  T_Generique          T_Generique? @relation("Niveau2Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_TypeNiveau_2")
-  T_Niveau_3           T_Niveau_3[] @relation("Niveau3Parent")
+  ID_Niveau_2                                              Int          @id @default(autoincrement())
+  ID_Niveau_1_FK                                           Int?
+  ID_TypeNiveau_2_Fk                                       Int?
+  NomNiveau_2                                              String?      @db.VarChar(255)
+  Alt1_NomNiveau_2                                         String?      @db.VarChar(255)
+  AbreNiveau_2                                             String?      @db.VarChar(255)
+  CodeNiveau_2                                             String?      @db.VarChar(255)
+  PopulationNiveau_2                                       Decimal?     @db.Decimal(12, 0)
+  geometryNiveau_2                                         String?
+  surfaceNiveau_2                                          String?      @db.VarChar(255)
+  EtenduNiveau_2                                           String?
+  ObsNiveau_2                                              String?
+  ID_StatutNiveau_2                                        Int?
+  ID_StatusDeploiFk                                        Int?
+  KmDPSANT                                                 Decimal?     @db.Decimal(10, 2)
+  ID_VoieAccesDPSANTFk                                     Int?
+  SelectNiveau_2                                           Boolean?
+  LatitudeNiveau_2                                         Decimal?     @db.Decimal(9, 6)
+  LongitudeNiveau_2                                        Decimal?     @db.Decimal(9, 6)
+  AltitudeNiveau_2                                         Decimal?     @db.Decimal(10, 2)
+  T_Niveau_1                                               T_Niveau_1?  @relation("Niveau2Parent", fields: [ID_Niveau_1_FK], references: [ID_Niveau_1], onDelete: NoAction, map: "Fk_ID_Niveau_1")
+  T_Generique_T_Niveau_2_ID_StatusDeploiFkToT_Generique    T_Generique? @relation("T_Niveau_2_ID_StatusDeploiFkToT_Generique", fields: [ID_StatusDeploiFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatusDeploiFk")
+  T_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_Generique    T_Generique? @relation("T_Niveau_2_ID_StatutNiveau_2ToT_Generique", fields: [ID_StatutNiveau_2], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutNiveau_2")
+  T_Generique_Type                                         T_Generique? @relation("Niveau2Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_TypeNiveau_2")
+  T_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique T_Generique? @relation("T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique", fields: [ID_VoieAccesDPSANTFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_VoieAccesDPSANTFk")
+  T_Niveau_3                                               T_Niveau_3[] @relation("Niveau3Parent")
 
   @@index([ID_Niveau_1_FK])
   @@index([ID_Niveau_1_FK], map: "idx_n2_id_niveau1_fk")
+  @@index([ID_StatusDeploiFk], map: "idx_n2_id_statusdeploi_fk_ref")
+  @@index([ID_StatutNiveau_2], map: "idx_n2_id_statutniveau2_fk_ref")
+  @@index([ID_TypeNiveau_2_Fk], map: "idx_n2_id_typeniveau2_fk_ref")
+  @@index([ID_VoieAccesDPSANTFk], map: "idx_n2_id_voieaccesdpsant_fk_ref")
   @@schema("geolocalisation")
 }
 
 model T_Niveau_3 {
-  ID_Niveau_3           Int                     @id @default(autoincrement())
-  ID_Niveau_2_FK        Int?
-  ID_TypeNiveau_2_Fk    Int?
-  NomNiveau_3           String?                 @db.VarChar(255)
-  Alt_Niveau_3          String?                 @db.VarChar(255)
-  surfaceNiveau_3       String?                 @db.VarChar(255)
-  geometryNiveau_3      String?
-  AbreNiveau_3          String?                 @db.VarChar(255)
-  CodeNiveau_3          String?                 @db.VarChar(255)
-  PopulationNiveau_3    Decimal?                @db.Decimal(12, 0)
-  EtenduNiveau_3        String?
-  ObsNiveau_3           String?
-  ID_StatutNiveau_3_Fk  Int?
-  ID_StatutDeploieFk    Int?
-  KmAntenneBCZS         Decimal?                @db.Decimal(100, 7)
-  ID_VoieAccesANTBCZFk  Int?
-  KmDPSBCZS             Decimal?                @db.Decimal(100, 7)
-  ID_VoieAccesDPSBCZFk  Int?
-  SelectNiveau_3        Boolean?
-  LatitudeNiveau_3      Decimal?                @db.Decimal(13, 5)
-  LongitudeNiveau_3     Decimal?                @db.Decimal(13, 5)
-  AltitudeNiveau_3      Decimal?                @db.Decimal(10, 7)
-  T_Niveau_2            T_Niveau_2?             @relation("Niveau3Parent", fields: [ID_Niveau_2_FK], references: [ID_Niveau_2], onDelete: NoAction, map: "Fk_ID_Niveau_2")
-  T_Generique           T_Generique?            @relation("Niveau3Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_2")
-  T_Niveau_4            T_Niveau_4[]            @relation("Niveau4Parent")
-  T_Niveau_5            T_Niveau_5[]            @relation("Niveau5N3")
-  T_Entite_Localisation T_Entite_Localisation[] @relation("EntiteLocalisationN3")
+  ID_Niveau_3                                              Int                     @id @default(autoincrement())
+  ID_Niveau_2_FK                                           Int?
+  ID_TypeNiveau_2_Fk                                       Int?
+  NomNiveau_3                                              String?                 @db.VarChar(255)
+  Alt_Niveau_3                                             String?                 @db.VarChar(255)
+  surfaceNiveau_3                                          String?                 @db.VarChar(255)
+  geometryNiveau_3                                         String?
+  AbreNiveau_3                                             String?                 @db.VarChar(255)
+  CodeNiveau_3                                             String?                 @db.VarChar(255)
+  PopulationNiveau_3                                       Decimal?                @db.Decimal(12, 0)
+  EtenduNiveau_3                                           String?
+  ObsNiveau_3                                              String?
+  ID_StatutNiveau_3_Fk                                     Int?
+  ID_StatutDeploieFk                                       Int?
+  KmAntenneBCZS                                            Decimal?                @db.Decimal(100, 7)
+  ID_VoieAccesANTBCZFk                                     Int?
+  KmDPSBCZS                                                Decimal?                @db.Decimal(100, 7)
+  ID_VoieAccesDPSBCZFk                                     Int?
+  SelectNiveau_3                                           Boolean?
+  LatitudeNiveau_3                                         Decimal?                @db.Decimal(13, 5)
+  LongitudeNiveau_3                                        Decimal?                @db.Decimal(13, 5)
+  AltitudeNiveau_3                                         Decimal?                @db.Decimal(10, 7)
+  T_Niveau_2                                               T_Niveau_2?             @relation("Niveau3Parent", fields: [ID_Niveau_2_FK], references: [ID_Niveau_2], onDelete: NoAction, map: "Fk_ID_Niveau_2")
+  T_Generique_T_Niveau_3_ID_StatutDeploieFkToT_Generique   T_Generique?            @relation("T_Niveau_3_ID_StatutDeploieFkToT_Generique", fields: [ID_StatutDeploieFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutDeploieFk")
+  T_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique T_Generique?            @relation("T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique", fields: [ID_StatutNiveau_3_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutNiveau_3")
+  T_Generique_Type                                         T_Generique?            @relation("Niveau3Type", fields: [ID_TypeNiveau_2_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_2")
+  T_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique T_Generique?            @relation("T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique", fields: [ID_VoieAccesANTBCZFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_VoieAccesANTBCZFk")
+  T_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique T_Generique?            @relation("T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique", fields: [ID_VoieAccesDPSBCZFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_VoieAccesDPSBCZFk")
+  T_Niveau_4                                               T_Niveau_4[]            @relation("Niveau4Parent")
+  T_Niveau_5                                               T_Niveau_5[]            @relation("Niveau5N3")
+  T_Entite_Localisation                                    T_Entite_Localisation[] @relation("EntiteLocalisationN3")
 
   @@index([ID_Niveau_2_FK])
   @@index([ID_Niveau_2_FK], map: "idx_n3_id_niveau2_fk")
+  @@index([ID_StatutDeploieFk], map: "idx_n3_id_statutdeploie_fk_ref")
+  @@index([ID_StatutNiveau_3_Fk], map: "idx_n3_id_statutniveau3_fk_ref")
+  @@index([ID_TypeNiveau_2_Fk], map: "idx_n3_id_typeniveau2_fk_ref")
+  @@index([ID_VoieAccesANTBCZFk], map: "idx_n3_id_voieaccesantbcz_fk_ref")
+  @@index([ID_VoieAccesDPSBCZFk], map: "idx_n3_id_voieaccesdpsbcz_fk_ref")
   @@schema("geolocalisation")
 }
 
 model T_Niveau_4 {
-  ID_Niveau_4            Int                     @id @default(autoincrement())
-  ID_Niveau_3_Fk         Int?
-  ID_TypeNiveau_4_Fk     Int?
-  NomNiveau_4            String?                 @db.VarChar(255)
-  AbreNiveau_4           String?                 @db.VarChar(255)
-  CodeNiveau_4           String?                 @db.VarChar(255)
-  surfaceNiveau_4        String?                 @db.VarChar(255)
-  geometryNiveau_4       String?
-  ID_DispoReseauNiveau_4 Int?
-  ID_VoieAccesZsASFk     Int?
-  ID_StatutNiveau_4      Int?
-  ID_StatutDeploiementFk Int?
-  ObsNiveau_4            String?
-  SelectNiveau_4         Boolean?
-  LatitudeNiveau_4       Decimal?                @db.Decimal(13, 6)
-  LongitudeNiveau_4      Decimal?                @db.Decimal(13, 6)
-  AltitudeNiveau_4       Decimal?                @db.Decimal(10, 2)
-  PopulationNiveau_4     Decimal?                @db.Decimal(12, 0)
-  KmZoneSanteAS          Decimal?                @db.Decimal(10, 2)
-  T_Niveau_3             T_Niveau_3?             @relation("Niveau4Parent", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3")
-  T_Generique            T_Generique?            @relation("Niveau4Type", fields: [ID_TypeNiveau_4_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_4")
-  T_Niveau_5             T_Niveau_5[]            @relation("Niveau5N4")
-  T_Entite_Localisation  T_Entite_Localisation[] @relation("EntiteLocalisationN4")
+  ID_Niveau_4                                                Int                     @id @default(autoincrement())
+  ID_Niveau_3_Fk                                             Int?
+  ID_TypeNiveau_4_Fk                                         Int?
+  NomNiveau_4                                                String?                 @db.VarChar(255)
+  AbreNiveau_4                                               String?                 @db.VarChar(255)
+  CodeNiveau_4                                               String?                 @db.VarChar(255)
+  surfaceNiveau_4                                            String?                 @db.VarChar(255)
+  geometryNiveau_4                                           String?
+  ID_DispoReseauNiveau_4                                     Int?
+  ID_VoieAccesZsASFk                                         Int?
+  ID_StatutNiveau_4                                          Int?
+  ID_StatutDeploiementFk                                     Int?
+  ObsNiveau_4                                                String?
+  SelectNiveau_4                                             Boolean?
+  LatitudeNiveau_4                                           Decimal?                @db.Decimal(13, 6)
+  LongitudeNiveau_4                                          Decimal?                @db.Decimal(13, 6)
+  AltitudeNiveau_4                                           Decimal?                @db.Decimal(10, 2)
+  PopulationNiveau_4                                         Decimal?                @db.Decimal(12, 0)
+  KmZoneSanteAS                                              Decimal?                @db.Decimal(10, 2)
+  T_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique T_Generique?            @relation("T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique", fields: [ID_DispoReseauNiveau_4], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_DispoReseauNiveau_4")
+  T_Niveau_3                                                 T_Niveau_3?             @relation("Niveau4Parent", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3")
+  T_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_Generique T_Generique?            @relation("T_Niveau_4_ID_StatutDeploiementFkToT_Generique", fields: [ID_StatutDeploiementFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutDeploiementNiveau_4")
+  T_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_Generique      T_Generique?            @relation("T_Niveau_4_ID_StatutNiveau_4ToT_Generique", fields: [ID_StatutNiveau_4], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutNiveau_4")
+  T_Generique_Type                                           T_Generique?            @relation("Niveau4Type", fields: [ID_TypeNiveau_4_Fk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeNiveau_4")
+  T_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique     T_Generique?            @relation("T_Niveau_4_ID_VoieAccesZsASFkToT_Generique", fields: [ID_VoieAccesZsASFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_VoieAccesZsASFk")
+  T_Niveau_5                                                 T_Niveau_5[]            @relation("Niveau5N4")
+  T_Entite_Localisation                                      T_Entite_Localisation[] @relation("EntiteLocalisationN4")
 
   @@index([ID_Niveau_3_Fk])
   @@index([ID_Niveau_3_Fk], map: "idx_n4_id_niveau3_fk")
+  @@index([ID_DispoReseauNiveau_4], map: "idx_n4_id_disporeseau_fk_ref")
+  @@index([ID_StatutDeploiementFk], map: "idx_n4_id_statutdeploiement_fk_ref")
+  @@index([ID_StatutNiveau_4], map: "idx_n4_id_statutniveau4_fk_ref")
+  @@index([ID_TypeNiveau_4_Fk], map: "idx_n4_id_typeniveau4_fk_ref")
+  @@index([ID_VoieAccesZsASFk], map: "idx_n4_id_voieacceszsa_fk_ref")
   @@schema("geolocalisation")
 }
 
 model T_Niveau_5 {
-  ID_Niveau_5            Int                     @id @default(autoincrement())
-  ID_Niveau_4_Fk         Int?
-  ID_Niveau_3_Fk         Int?
-  ID_TypeNiveau_5_Fk     Int?
-  NomNiveau_5            String?                 @db.VarChar(255)
-  AbreNiveau_5           String?                 @db.VarChar(255)
-  CodeNiveau_5           String?                 @db.VarChar(255)
-  PopulationNiveau_5     Decimal?                @db.Decimal(12, 0)
-  surfaceNiveau_5        String?                 @db.VarChar(255)
-  geometryNiveau_5       String?
-  ID_DispoReseauNiveau_5 Int?
-  ID_VoieAccesZsSiteFk   Int?
-  ID_StatutNiveau_5      Int?
-  ID_StatutDeploiementFk Int?
-  ObsNiveau_5            String?
-  SelectNiveau_5         Boolean?
-  ID_TypeToitFk          Int?
-  KmZoneSanteNiveau_5    Decimal?                @db.Decimal(12, 2)
-  LatitudeNiveau_5       Decimal?                @db.Decimal(12, 6)
-  LongitudeNiveau_5      Decimal?                @db.Decimal(12, 6)
-  AltitudeNiveau_5       Decimal?                @db.Decimal(12, 2)
-  T_Niveau_3             T_Niveau_3?             @relation("Niveau5N3", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3_N5")
-  T_Niveau_4             T_Niveau_4?             @relation("Niveau5N4", fields: [ID_Niveau_4_Fk], references: [ID_Niveau_4], onDelete: NoAction, map: "Fk_ID_Niveau_4")
-  T_Entite_Localisation  T_Entite_Localisation[] @relation("EntiteLocalisationN5")
+  ID_Niveau_5                                                Int                     @id @default(autoincrement())
+  ID_Niveau_4_Fk                                             Int?
+  ID_Niveau_3_Fk                                             Int?
+  ID_TypeNiveau_5_Fk                                         Int?
+  NomNiveau_5                                                String?                 @db.VarChar(255)
+  AbreNiveau_5                                               String?                 @db.VarChar(255)
+  CodeNiveau_5                                               String?                 @db.VarChar(255)
+  PopulationNiveau_5                                         Decimal?                @db.Decimal(12, 0)
+  surfaceNiveau_5                                            String?                 @db.VarChar(255)
+  geometryNiveau_5                                           String?
+  ID_DispoReseauNiveau_5                                     Int?
+  ID_VoieAccesZsSiteFk                                       Int?
+  ID_StatutNiveau_5                                          Int?
+  ID_StatutDeploiementFk                                     Int?
+  ObsNiveau_5                                                String?
+  SelectNiveau_5                                             Boolean?
+  ID_TypeToitFk                                              Int?
+  KmZoneSanteNiveau_5                                        Decimal?                @db.Decimal(12, 2)
+  LatitudeNiveau_5                                           Decimal?                @db.Decimal(12, 6)
+  LongitudeNiveau_5                                          Decimal?                @db.Decimal(12, 6)
+  AltitudeNiveau_5                                           Decimal?                @db.Decimal(12, 2)
+  T_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique T_Generique?            @relation("T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique", fields: [ID_DispoReseauNiveau_5], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_DispoReseauNiveau_5")
+  T_Niveau_3                                                 T_Niveau_3?             @relation("Niveau5N3", fields: [ID_Niveau_3_Fk], references: [ID_Niveau_3], onDelete: NoAction, map: "Fk_ID_Niveau_3_N5")
+  T_Niveau_4                                                 T_Niveau_4?             @relation("Niveau5N4", fields: [ID_Niveau_4_Fk], references: [ID_Niveau_4], onDelete: NoAction, map: "Fk_ID_Niveau_4")
+  T_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_Generique T_Generique?            @relation("T_Niveau_5_ID_StatutDeploiementFkToT_Generique", fields: [ID_StatutDeploiementFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutDeploiementNiveau_5")
+  T_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_Generique      T_Generique?            @relation("T_Niveau_5_ID_StatutNiveau_5ToT_Generique", fields: [ID_StatutNiveau_5], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_StatutNiveau_5")
+  T_Generique_T_Niveau_5_ID_TypeToitFkToT_Generique          T_Generique?            @relation("T_Niveau_5_ID_TypeToitFkToT_Generique", fields: [ID_TypeToitFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_TypeToitFk")
+  T_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique   T_Generique?            @relation("T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique", fields: [ID_VoieAccesZsSiteFk], references: [ID_Generique], onDelete: NoAction, map: "Fk_ID_VoieAccesZsSiteFk")
+  T_Entite_Localisation                                      T_Entite_Localisation[] @relation("EntiteLocalisationN5")
 
   @@index([ID_Niveau_3_Fk])
   @@index([ID_Niveau_4_Fk])
   @@index([ID_Niveau_4_Fk], map: "idx_n5_id_niveau4_fk")
+  @@index([ID_DispoReseauNiveau_5], map: "idx_n5_id_disporeseau_fk_ref")
+  @@index([ID_StatutDeploiementFk], map: "idx_n5_id_statutdeploiement_fk_ref")
+  @@index([ID_StatutNiveau_5], map: "idx_n5_id_statutniveau5_fk_ref")
+  @@index([ID_TypeNiveau_5_Fk], map: "idx_n5_id_typeniveau5_fk_ref")
+  @@index([ID_TypeToitFk], map: "idx_n5_id_typetoit_fk_ref")
+  @@index([ID_VoieAccesZsSiteFk], map: "idx_n5_id_voieaccessite_fk_ref")
   @@schema("geolocalisation")
 }
 
@@ -443,6 +485,7 @@ model T_Professionnel {
   ExperienceAns          Int?
   ObsProfessionnel       String?
   ValideProfessionnel    Boolean?                 @default(true)
+  T_Discussion           T_Discussion[]
   T_GeneriqueSpecialite  T_Generique              @relation("ProfessionnelSpecialite", fields: [IdSpecialiteFk], references: [ID_Generique], map: "Fk_Prof_Specialite")
   T_GeneriqueType        T_Generique              @relation("ProfessionnelType", fields: [IdTypeProfessionnelFk], references: [ID_Generique], map: "Fk_Prof_TypeProfessionnel")
   T_Utilisateurs         T_Utilisateurs           @relation("ProfessionnelUser", fields: [IdUserFk], references: [IdUser], map: "Fk_Prof_User")
@@ -482,39 +525,55 @@ model T_CategorieGenerique {
 }
 
 model T_Generique {
-  ID_Generique              Int                      @id(map: "Pk_T_Generique") @default(autoincrement())
-  ID_CategorieGeneriqueFk   Int
-  NomGenerique              String                   @db.VarChar(255)
-  AbrGenerique              String?                  @db.VarChar(255)
-  VisibleNiveau_2           Boolean?                 @default(true)
-  VisibleNiveau_3           Boolean?                 @default(true)
-  VisibleNiveau_4           Boolean?                 @default(true)
-  VisibleNiveau_5           Boolean?                 @default(true)
-  VisibleArticle            Boolean?                 @default(true)
-  VisibleCmd                Boolean?                 @default(true)
-  VisibleFacture            Boolean?                 @default(true)
-  VisibleUsers              Boolean?                 @default(true)
-  VisibleVoie               Boolean?                 @default(true)
-  VisibleAll                Boolean?                 @default(true)
-  ObsGenerique              String?
-  ValideGenerique           Boolean                  @default(true)
-  T_Recherche               T_Recherche[]            @relation("RechercheSpecialite")
-  T_Communication           T_Communication[]        @relation("CommunicationType")
-  T_Niveau_2                T_Niveau_2[]             @relation("Niveau2Type")
-  T_Niveau_3                T_Niveau_3[]             @relation("Niveau3Type")
-  T_Niveau_4                T_Niveau_4[]             @relation("Niveau4Type")
-  T_Reglements              T_Reglements[]           @relation("ModeReglement")
-  T_Caisse                  T_Caisse[]               @relation("CaisseDevise")
-  T_PaiementDevise          T_Paiement[]             @relation("PaiementDevise")
-  T_PaiementType            T_Paiement[]             @relation("PaiementType")
-  T_ProfessionnelSpecialite T_Professionnel[]        @relation("ProfessionnelSpecialite")
-  T_ProfessionnelType       T_Professionnel[]        @relation("ProfessionnelType")
-  T_Professionnel_Entite    T_Professionnel_Entite[] @relation("ProfessionnelLienType")
-  T_CategorieGenerique      T_CategorieGenerique     @relation(fields: [ID_CategorieGeneriqueFk], references: [ID_CategorieGenerique], onDelete: NoAction, map: "Fk_ID_CategorieGenerique")
-  T_Entite                  T_Entite[]               @relation("EntiteType")
-  T_Licence                 T_Licence[]              @relation("LicenceStatut")
-  T_Login                   T_Login[]                @relation("LoginType")
-  T_Utilisateurs            T_Utilisateurs[]         @relation("UserRole")
+  ID_Generique                                              Int                      @id(map: "Pk_T_Generique") @default(autoincrement())
+  ID_CategorieGeneriqueFk                                   Int
+  NomGenerique                                              String                   @db.VarChar(255)
+  AbrGenerique                                              String?                  @db.VarChar(255)
+  VisibleNiveau_2                                           Boolean?                 @default(true)
+  VisibleNiveau_3                                           Boolean?                 @default(true)
+  VisibleNiveau_4                                           Boolean?                 @default(true)
+  VisibleNiveau_5                                           Boolean?                 @default(true)
+  VisibleArticle                                            Boolean?                 @default(true)
+  VisibleCmd                                                Boolean?                 @default(true)
+  VisibleFacture                                            Boolean?                 @default(true)
+  VisibleUsers                                              Boolean?                 @default(true)
+  VisibleVoie                                               Boolean?                 @default(true)
+  VisibleAll                                                Boolean?                 @default(true)
+  ObsGenerique                                              String?
+  ValideGenerique                                           Boolean                  @default(true)
+  T_Recherche                                               T_Recherche[]            @relation("RechercheSpecialite")
+  T_Communication                                           T_Communication[]        @relation("CommunicationType")
+  T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique      T_Niveau_2[]             @relation("T_Niveau_2_ID_StatusDeploiFkToT_Generique")
+  T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique      T_Niveau_2[]             @relation("T_Niveau_2_ID_StatutNiveau_2ToT_Generique")
+  T_Niveau_2_Type                                           T_Niveau_2[]             @relation("Niveau2Type")
+  T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique   T_Niveau_2[]             @relation("T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique")
+  T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique     T_Niveau_3[]             @relation("T_Niveau_3_ID_StatutDeploieFkToT_Generique")
+  T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique   T_Niveau_3[]             @relation("T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique")
+  T_Niveau_3_Type                                           T_Niveau_3[]             @relation("Niveau3Type")
+  T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique   T_Niveau_3[]             @relation("T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique")
+  T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique   T_Niveau_3[]             @relation("T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique")
+  T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique T_Niveau_4[]             @relation("T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique")
+  T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique T_Niveau_4[]             @relation("T_Niveau_4_ID_StatutDeploiementFkToT_Generique")
+  T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique      T_Niveau_4[]             @relation("T_Niveau_4_ID_StatutNiveau_4ToT_Generique")
+  T_Niveau_4_Type                                           T_Niveau_4[]             @relation("Niveau4Type")
+  T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique     T_Niveau_4[]             @relation("T_Niveau_4_ID_VoieAccesZsASFkToT_Generique")
+  T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique T_Niveau_5[]             @relation("T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique")
+  T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique T_Niveau_5[]             @relation("T_Niveau_5_ID_StatutDeploiementFkToT_Generique")
+  T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique      T_Niveau_5[]             @relation("T_Niveau_5_ID_StatutNiveau_5ToT_Generique")
+  T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique          T_Niveau_5[]             @relation("T_Niveau_5_ID_TypeToitFkToT_Generique")
+  T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique   T_Niveau_5[]             @relation("T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique")
+  T_Reglements                                              T_Reglements[]           @relation("ModeReglement")
+  T_Caisse                                                  T_Caisse[]               @relation("CaisseDevise")
+  T_PaiementDevise                                          T_Paiement[]             @relation("PaiementDevise")
+  T_PaiementType                                            T_Paiement[]             @relation("PaiementType")
+  T_ProfessionnelSpecialite                                 T_Professionnel[]        @relation("ProfessionnelSpecialite")
+  T_ProfessionnelType                                       T_Professionnel[]        @relation("ProfessionnelType")
+  T_Professionnel_Entite                                    T_Professionnel_Entite[] @relation("ProfessionnelLienType")
+  T_CategorieGenerique                                      T_CategorieGenerique     @relation(fields: [ID_CategorieGeneriqueFk], references: [ID_CategorieGenerique], onDelete: NoAction, map: "Fk_ID_CategorieGenerique")
+  T_Entite                                                  T_Entite[]               @relation("EntiteType")
+  T_Licence                                                 T_Licence[]              @relation("LicenceStatut")
+  T_Login                                                   T_Login[]                @relation("LoginType")
+  T_Utilisateurs                                            T_Utilisateurs[]         @relation("UserRole")
 
   @@index([ID_CategorieGeneriqueFk], map: "idx_generique_id_categorie")
   @@schema("referentiel")
@@ -535,6 +594,22 @@ model T_Audit_Log {
   @@schema("systeme")
 }
 
+model T_Admin_UI_Setting {
+  IdAdminUiSetting  Int             @id @default(autoincrement())
+  SettingKey        String          @db.VarChar(120)
+  SettingValue      Json            @default("{}")
+  UpdatedAt         DateTime        @default(now()) @db.Timestamp(6)
+  UpdatedByUserFk   Int?
+  ObsAdminUiSetting String?
+  SettingScope      String          @default("global") @db.VarChar(60)
+  ScopeValue        String?         @db.VarChar(120)
+  T_Utilisateurs    T_Utilisateurs? @relation("AdminUiSettingUpdatedBy", fields: [UpdatedByUserFk], references: [IdUser], map: "Fk_AdminUiSetting_User")
+
+  @@unique([SettingKey, SettingScope, ScopeValue], map: "UQ_AdminUiSetting_Scope")
+  @@index([UpdatedByUserFk], map: "idx_adminuisetting_updatedby")
+  @@schema("systeme")
+}
+
 model T_Entite {
   IdEntite               Int                      @id(map: "Pk_IdEntite") @default(autoincrement())
   NomEntite              String
@@ -546,6 +621,7 @@ model T_Entite {
   ValideEntite           Boolean?                 @default(true)
   T_Recherche            T_Recherche[]            @relation("RechercheEntite")
   T_Communication        T_Communication[]        @relation("EntiteCommunications")
+  T_Discussion           T_Discussion[]
   T_Caisse               T_Caisse[]               @relation("EntiteCaisses")
   T_Paiement             T_Paiement[]             @relation("EntitePaiements")
   T_Paiement_Archive     T_Paiement_Archive[]
@@ -615,32 +691,34 @@ model T_Login {
 }
 
 model T_Utilisateurs {
-  IdUser               Int               @id(map: "Pk_IdUser") @default(autoincrement())
-  NomUser              String            @db.VarChar(100)
-  PrenomUser           String            @db.VarChar(100)
-  EmailUser            String            @unique(map: "utilisateurs_emailuser_key") @db.VarChar(150)
+  IdUser               Int                  @id(map: "Pk_IdUser") @default(autoincrement())
+  NomUser              String               @db.VarChar(100)
+  PrenomUser           String               @db.VarChar(100)
+  EmailUser            String               @unique(map: "utilisateurs_emailuser_key") @db.VarChar(150)
   MotdepasseUser       String
-  PhoneUser            String?           @db.VarChar(20)
-  DatecreationUser     DateTime?         @default(now()) @db.Timestamp(6)
+  PhoneUser            String?              @db.VarChar(20)
+  DatecreationUser     DateTime?            @default(now()) @db.Timestamp(6)
   IdRoleFk             Int?
-  ValideUser           Boolean           @default(true)
-  SexeUser             String            @db.Char(1)
-  DateModificationUser DateTime          @default(now()) @db.Timestamp(6)
+  ValideUser           Boolean              @default(true)
+  SexeUser             String               @db.Char(1)
+  DateModificationUser DateTime             @default(now()) @db.Timestamp(6)
   UrlPhoto             String?
   IdEntiteFk           Int?
-  Is_staff             Boolean           @default(false)
-  Is_Admin             Boolean           @default(false)
-  T_Recherche          T_Recherche[]     @relation("RechercheUser")
-  T_Chat               T_Chat[]          @relation("ChatAuthor")
-  T_Communication      T_Communication[] @relation("CommunicationUser")
-  T_Article            T_Article[]       @relation("ArticleUser")
-  T_Commande           T_Commande[]      @relation("CommandeUser")
-  T_Payeur             T_Paiement[]      @relation("PaiementPayeur")
-  T_Paiement           T_Paiement[]      @relation("PaiementUser")
-  T_Professionnel      T_Professionnel?  @relation("ProfessionnelUser")
-  T_Login              T_Login[]         @relation("UserLogins")
-  T_Entite             T_Entite?         @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
-  T_Generique          T_Generique?      @relation("UserRole", fields: [IdRoleFk], references: [ID_Generique], map: "Fk_RoleFk")
+  Is_staff             Boolean              @default(false)
+  Is_Admin             Boolean              @default(false)
+  T_Recherche          T_Recherche[]        @relation("RechercheUser")
+  T_Chat               T_Chat[]             @relation("ChatAuthor")
+  T_Communication      T_Communication[]    @relation("CommunicationUser")
+  T_Discussion         T_Discussion[]
+  T_Article            T_Article[]          @relation("ArticleUser")
+  T_Commande           T_Commande[]         @relation("CommandeUser")
+  T_Payeur             T_Paiement[]         @relation("PaiementPayeur")
+  T_Paiement           T_Paiement[]         @relation("PaiementUser")
+  T_Professionnel      T_Professionnel?     @relation("ProfessionnelUser")
+  T_Admin_UI_Setting   T_Admin_UI_Setting[] @relation("AdminUiSettingUpdatedBy")
+  T_Login              T_Login[]            @relation("UserLogins")
+  T_Entite             T_Entite?            @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+  T_Generique          T_Generique?         @relation("UserRole", fields: [IdRoleFk], references: [ID_Generique], map: "Fk_RoleFk")
 
   @@index([IdEntiteFk], map: "idx_user_entite")
   @@index([DatecreationUser], map: "idx_utilisateur_date_creation")
@@ -648,4 +726,27 @@ model T_Utilisateurs {
   @@index([PhoneUser], map: "idx_utilisateur_phone")
   @@index([IdRoleFk], map: "idx_utilisateur_role")
   @@schema("systeme")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model T_Discussion {
+  IdDiscussion      Int              @id @default(autoincrement())
+  IdUserClientFk    Int?
+  IdProfessionnelFk Int?
+  IdEntiteFk        Int?
+  TypeDiscussion    String           @db.VarChar(30)
+  SujetDiscussion   String?          @db.VarChar(255)
+  DateCreation      DateTime         @default(now()) @db.Timestamptz(6)
+  DernierMessageAt  DateTime?        @db.Timestamptz(6)
+  ValideDiscussion  Boolean          @default(true)
+  T_Chat            T_Chat[]
+  T_Entite          T_Entite?        @relation(fields: [IdEntiteFk], references: [IdEntite], map: "Fk_Discussion_Entite")
+  T_Professionnel   T_Professionnel? @relation(fields: [IdProfessionnelFk], references: [IdProfessionnel], map: "Fk_Discussion_Professionnel")
+  T_Utilisateurs    T_Utilisateurs?  @relation(fields: [IdUserClientFk], references: [IdUser], map: "Fk_Discussion_UserClient")
+
+  @@index([DernierMessageAt(sort: Desc)], map: "idx_discussion_dernier_message")
+  @@index([IdEntiteFk], map: "idx_discussion_entite")
+  @@index([IdProfessionnelFk], map: "idx_discussion_professionnel")
+  @@index([IdUserClientFk], map: "idx_discussion_user_client")
+  @@schema("communication")
 }

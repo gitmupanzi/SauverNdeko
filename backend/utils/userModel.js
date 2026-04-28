@@ -9,6 +9,43 @@ const userEntitySelect = {
   EmailEntite: true,
   PhoneEntite: true,
   AdresseEntite: true,
+  T_Entite_Localisation: {
+    select: {
+      IdEntiteLocalisation: true,
+      IdNiveau_3_Fk: true,
+      IdNiveau_4_Fk: true,
+      IdNiveau_5_Fk: true,
+      T_Niveau_3: {
+        select: {
+          ID_Niveau_3: true,
+          NomNiveau_3: true,
+          T_Niveau_2: {
+            select: {
+              ID_Niveau_2: true,
+              NomNiveau_2: true,
+              T_Niveau_1: {
+                select: {
+                  ID_Niveau_1: true,
+                  NomNiveau_1: true,
+                  T_Niveau_0: {
+                    select: {
+                      ID_Niveau_0: true,
+                      NomNiveau_0: true,
+                      CodeNiveau_0: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    take: 1,
+    orderBy: {
+      IdEntiteLocalisation: 'asc',
+    },
+  },
 };
 
 const userRoleSelect = {
@@ -77,6 +114,10 @@ const sanitizeUser = (user) => {
     Boolean(user.Is_Admin) ||
     Boolean(user.Is_staff) ||
     ['admin', 'administrateur'].includes(String(user.T_Generique?.NomGenerique || '').toLowerCase());
+  const entityLocation = Array.isArray(user.T_Entite?.T_Entite_Localisation)
+    ? user.T_Entite.T_Entite_Localisation[0] || null
+    : null;
+  const niveau0 = entityLocation?.T_Niveau_3?.T_Niveau_2?.T_Niveau_1?.T_Niveau_0 || null;
 
   return {
   IdUser: user.IdUser,
@@ -105,8 +146,39 @@ const sanitizeUser = (user) => {
         EmailEntite: user.T_Entite.EmailEntite,
         PhoneEntite: user.T_Entite.PhoneEntite,
         AdresseEntite: user.T_Entite.AdresseEntite,
+        localisation:
+          entityLocation
+            ? {
+                IdEntiteLocalisation: entityLocation.IdEntiteLocalisation,
+                IdNiveau_3_Fk: entityLocation.IdNiveau_3_Fk,
+                IdNiveau_4_Fk: entityLocation.IdNiveau_4_Fk,
+                IdNiveau_5_Fk: entityLocation.IdNiveau_5_Fk,
+                country: niveau0
+                  ? {
+                      id: niveau0.ID_Niveau_0,
+                      name: niveau0.NomNiveau_0,
+                      code: niveau0.CodeNiveau_0,
+                    }
+                  : null,
+              }
+            : null,
       }
     : null,
+  scopeContext: {
+    entity: user.T_Entite
+      ? {
+          id: user.T_Entite.IdEntite,
+          name: user.T_Entite.NomEntite,
+        }
+      : null,
+    country: niveau0
+      ? {
+          id: niveau0.ID_Niveau_0,
+          name: niveau0.NomNiveau_0,
+          code: niveau0.CodeNiveau_0,
+        }
+      : null,
+  },
   permissions: {
     canAccessAdmin,
   },

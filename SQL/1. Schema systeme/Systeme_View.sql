@@ -11,6 +11,36 @@ SELECT a."IdLog",
 FROM systeme."T_Audit_Log" a
     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = a."IdEntiteFk";
 ALTER TABLE systeme."V_Audit_log" OWNER TO postgres;
+-- View: systeme.V_Admin_UI_Setting_Audit
+-- DROP VIEW systeme."V_Admin_UI_Setting_Audit";
+CREATE OR REPLACE VIEW systeme."V_Admin_UI_Setting_Audit" AS
+SELECT a."IdLog",
+    a."TableName",
+    a."Operation",
+    a."ChangedAt",
+    COALESCE(
+        a."NewData"->>'settingScope'::text,
+        a."OldData"->>'settingScope'::text,
+        'global'::text
+    ) AS "SettingScope",
+    COALESCE(
+        a."NewData"->>'updatedByName'::text,
+        a."OldData"->>'updatedByName'::text
+    ) AS "UpdatedByName",
+    COALESCE(
+        a."NewData"->>'updatedByUserId'::text,
+        a."OldData"->>'updatedByUserId'::text
+    ) AS "UpdatedByUserId",
+    COALESCE(
+        a."NewData"->>'updatedAt'::text,
+        a."OldData"->>'updatedAt'::text
+    ) AS "UpdatedSettingAt",
+    a."OldData",
+    a."NewData"
+FROM systeme."T_Audit_Log" a
+WHERE a."TableName"::text = 'T_Admin_UI_Setting'::text
+ORDER BY a."ChangedAt" DESC;
+ALTER TABLE systeme."V_Admin_UI_Setting_Audit" OWNER TO postgres;
 -- View: systeme.V_Entite_Localisation_Detail
 -- DROP VIEW systeme."V_Entite_Localisation_Detail";
 CREATE OR REPLACE VIEW systeme."V_Entite_Localisation_Detail" AS

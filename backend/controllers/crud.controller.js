@@ -9,8 +9,30 @@ const {
   resolveModelName,
 } = require('../utils/prismaMetadata');
 
-const READABLE_MODELS = new Set(['T_CategorieGenerique', 'T_Generique', 'T_Entite_Localisation']);
-const WRITABLE_MODELS = new Set(['T_Generique', 'T_Entite_Localisation']);
+const READABLE_MODELS = new Set([
+  'T_CategorieGenerique',
+  'T_Generique',
+  'T_Entite_Localisation',
+  'T_Niveau_0',
+  'T_Niveau_1_Old',
+  'T_Niveau_1',
+  'T_Niveau_2',
+  'T_Niveau_3',
+  'T_Niveau_4',
+  'T_Niveau_5',
+]);
+const WRITABLE_MODELS = new Set([
+  'T_CategorieGenerique',
+  'T_Generique',
+  'T_Entite_Localisation',
+  'T_Niveau_0',
+  'T_Niveau_1_Old',
+  'T_Niveau_1',
+  'T_Niveau_2',
+  'T_Niveau_3',
+  'T_Niveau_4',
+  'T_Niveau_5',
+]);
 
 const normalizeModelName = (value) => resolveModelName(value);
 

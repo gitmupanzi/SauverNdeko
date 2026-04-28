@@ -1,6 +1,7 @@
 SELECT * FROM systeme."T_Login";
 SELECT * FROM systeme."T_Licence";
 SELECT * FROM systeme."T_Audit_Log";
+SELECT * FROM systeme."V_Admin_UI_Setting_Audit";
 SELECT * FROM systeme."T_Utilisateurs";
 SELECT * FROM systeme."T_Entite";
 

@@ -1,63 +1,68 @@
-# Cahier de charge - SauverNdeko Application Web
+# Cahier de charge - SauverNdeko
 
 ## 1. Contexte
 
-SauverNdeko est un projet d'application web de sante et d'orientation medicale.
+SauverNdeko est un projet d'application web modulaire destine a la sante, a l'orientation, aux services et a l'administration de donnees.
 
-Le produit evolue d'un site public vitrine vers une application web complete, avec :
+Le projet ne doit pas etre pense comme un site local ou comme une solution reservee a un seul pays.  
+Il doit pouvoir etre reutilise par :
 
-- authentification
-- espace utilisateur
-- discussions
-- administration
-- modules metier relies a PostgreSQL
+- plusieurs entreprises
+- plusieurs ONG
+- plusieurs institutions publiques
+- plusieurs programmes nationaux
+- plusieurs pays ou groupes de pays
 
-L'application est structuree en deux parties :
+L'architecture actuelle repose sur :
 
-- `frontend/` : interface web React
-- `backend/` : API Node.js + Express + Prisma + PostgreSQL
+- `frontend/` : React + Vite
+- `backend/` : Node.js + Express + Prisma
+- `PostgreSQL` : base de donnees structuree par schemas
 
-Ce document sert de reference fonctionnelle, technique et organisationnelle pour le projet.
+## 2. Vision produit
 
-## 2. Vision du produit
+SauverNdeko doit devenir une plateforme web configurable capable de separer clairement :
 
-SauverNdeko doit devenir une application web capable de proposer une experience claire entre :
+- l'experience publique
+- l'experience connectee
+- l'experience d'administration
+- les referentiels communs
+- les adaptations locales par entite ou par pays
 
-- consultation publique
-- espace connecte
-- espace administration
+Le produit doit offrir un socle standard international, tout en laissant chaque contexte activer ou adapter :
 
-L'application doit permettre a un utilisateur de :
-
-- rechercher des informations utiles en sante
-- consulter des produits, structures et experts
-- creer un compte et se connecter
-- gerer son profil
-- echanger via des discussions
-- acceder a des services et modules metier plus avances dans la suite du projet
+- ses nomenclatures
+- ses structures
+- ses niveaux geographiques
+- ses listes deroulantes
+- ses regles d'administration
 
 ## 3. Objectif principal
 
-Transformer SauverNdeko en application web metier, avec une architecture claire, un frontend moderne, un backend securise et une base de donnees PostgreSQL exploitable a travers Prisma et des vues admin.
+Construire une application web metier claire, securisee, evolutive et internationalisable, basee sur :
+
+- un frontend moderne
+- un backend securise
+- une base PostgreSQL exploitable par API, vues et administration
+- un systeme de parametrage par portee
 
 ## 4. Objectifs specifiques
 
-- mettre en place un systeme d'authentification fonctionnel
-- distinguer clairement les pages publiques et les pages privees
-- relier toutes les donnees frontend au backend
-- securiser l'exposition des donnees
-- creer une administration web exploitable
-- preparer la plateforme pour les futurs modules metier
+- proposer une base web reusable entre organisations
+- separer les referentiels globaux et les adaptations locales
+- permettre des reglages par portee `global`, `country`, `entity`
+- exposer une administration professionnelle exploitable par des equipes non techniques
+- preparer l'application a des extensions multi-pays et multi-organisations
 
 ## 5. Perimetre fonctionnel
 
 ### 5.1 Espace public
 
 - page d'accueil
-- consultation des produits
-- consultation des pharmacies et structures
-- consultation des experts
-- consultation des maladies
+- catalogue public
+- consultation de structures
+- consultation d'experts ou professionnels
+- consultation de contenus de reference
 - recherche publique
 
 ### 5.2 Espace utilisateur connecte
@@ -73,18 +78,21 @@ Transformer SauverNdeko en application web metier, avec une architecture claire,
 ### 5.3 Espace administration
 
 - acces reserve aux administrateurs
-- consultation des vues d'administration
-- CRUD metier sur certaines donnees
-- recherche globale, filtres, tri et export
+- consultation de vues d'administration
+- CRUD cible sur des donnees metier
+- parametrage des listes deroulantes
+- parametrage partage selon la portee
+- historique des changements de parametrage
 
 ### 5.4 Evolutions futures
 
-- historique utilisateur
 - commandes
 - paiements
+- reporting
 - notifications
 - tableaux de bord
-- reporting
+- supervision multi-entites
+- multi-langue
 
 ## 6. Acteurs
 
@@ -92,34 +100,71 @@ Transformer SauverNdeko en application web metier, avec une architecture claire,
 
 - consulte les informations publiques
 - recherche un produit, une structure ou un expert
-- peut etre oriente vers une prise de contact
+- identifie un service ou une orientation utile
 
 ### 6.2 Utilisateur connecte
 
-- se connecte a l'application
+- accede a son espace
 - consulte et modifie son profil
-- gere ses discussions
+- suit ses discussions
 
-### 6.3 Expert / Professionnel
+### 6.3 Professionnel ou expert
 
-- recoit des discussions
-- consulte les messages qui le concernent
-- repond aux utilisateurs
+- recoit ou consulte des echanges
+- repond aux demandes
+- exploite les donnees qui lui sont accessibles
 
-### 6.4 Structure / Pharmacie
+### 6.4 Structure ou organisation
 
-- est visible dans l'espace public
-- peut etre cible de discussions ou d'autres interactions metier
+- est visible dans les modules publics ou prives
+- porte une partie du contexte fonctionnel
+- peut avoir ses reglages propres selon la portee
 
 ### 6.5 Administrateur
 
-- accede a l'interface d'administration
-- consulte les vues systeme
-- effectue des operations de supervision et de gestion
+- administre les vues, tables et reglages
+- supervise la qualite des donnees
+- gere les correspondances et les listes de support
 
-## 7. Modules de l'application web
+## 7. Principes directeurs
 
-### 7.1 Authentification
+### 7.1 Standard international
+
+Le produit doit pouvoir fonctionner dans plusieurs pays sans redev lourd de code.
+
+Implications :
+
+- vocabulaire adaptable
+- referentiels parametrables
+- niveaux geographiques non figes a un seul modele national
+- logique de portee applicable a differents contextes
+
+### 7.2 Portee des reglages
+
+Les reglages d'administration doivent supporter au minimum :
+
+- `global`
+- `country`
+- `entity`
+
+Ordre logique de lecture :
+
+1. portee la plus specifique disponible
+2. fallback vers une portee plus large
+3. fallback final vers `global`
+
+### 7.3 Gouvernance des donnees
+
+Les donnees de reference et les correspondances doivent etre :
+
+- auditables
+- historisees
+- administrables sans changer le code
+- partageables entre utilisateurs autorises
+
+## 8. Modules de l'application
+
+### 8.1 Authentification
 
 Fonctions attendues :
 
@@ -127,84 +172,96 @@ Fonctions attendues :
 - register
 - logout
 - verification de session
-- gestion du token
-- protection des routes privees
+- protection des routes
+- stockage et renouvellement des tokens
 
-### 7.2 Catalogue public
+### 8.2 Catalogue et consultation
 
 Fonctions attendues :
 
-- affichage des articles
+- affichage des produits ou services
 - affichage des structures
-- affichage des experts
-- affichage des maladies
+- affichage des professionnels
+- affichage de contenus de reference
 - recherche publique
 
-### 7.3 Profil utilisateur
+### 8.3 Profil utilisateur
 
 Fonctions attendues :
 
-- affichage des informations de l'utilisateur connecte
-- modification de certaines informations personnelles
+- lecture du profil
+- modification d'informations autorisees
+- prise en compte du contexte utilisateur connecte
 
-### 7.4 Discussions
+### 8.4 Discussions
 
 Fonctions attendues :
 
 - creation ou reutilisation d'une discussion
-- liste des discussions d'un utilisateur
+- liste des discussions
 - lecture des messages
 - envoi de messages
-- persistance en base PostgreSQL
+- persistance PostgreSQL
 
-### 7.5 Administration
+### 8.5 Administration
 
 Fonctions attendues :
 
 - lecture de vues backend
-- exploitation des vues du schema `systeme`
-- CRUD sur les donnees reliees
-- filtres, tri, recherche et export
+- CRUD cible
+- tri, filtres, export, pagination
+- gel et visibilite des colonnes
+- parametres partages des listes
+- comportement hierarchique des listes
+- historique des parametres
 
-## 8. Etat actuel du projet
+## 9. Etat actuel
 
-### 8.1 Deja en place
+### 9.1 Deja en place
 
 - frontend React + Vite
 - backend Express + Prisma
-- connexion a PostgreSQL
-- inscription et connexion
-- verification de session
-- deconnexion
+- connexion PostgreSQL
+- authentification
+- session restauree
 - profil utilisateur
 - discussions protegees
-- interface administration
+- administration web
+- parametrage partage des listes via backend
 
-### 8.2 En consolidation
+### 9.2 En consolidation
 
-- enrichissement des modules metier
-- stabilisation des parcours utilisateurs
-- documentation et cadrage fonctionnel
+- standardisation des vues admin
+- couverture des schemas `referentiel`, `systeme` et `geolocalisation`
+- stabilisation de la logique de portee
+- documentation internationale
 
-### 8.3 A venir
+### 9.3 A venir
 
-- commandes
-- paiements
-- historiques
-- notifications
-- autres schemas metier au-dela du schema `systeme`
+- exploitation plus fine du scope `country`
+- parametrage multi-entites
+- multi-langue
+- tableaux de bord
+- autres schemas metier
 
-## 9. Administration cible
+## 10. Administration cible
 
-L'administration web est un composant central du projet.
+L'administration web est un composant central.
 
-Pour le travail actuel, l'accent est mis en priorite sur le schema `systeme`.
+Elle doit permettre a un administrateur de :
 
-### Vues d'administration prioritaires
+- consulter les vues utiles
+- modifier les donnees cibles
+- comprendre les relations FK
+- corriger les listes deroulantes
+- adapter les reglages sans ouvrir le code
+
+### 10.1 Vues prioritaires
 
 #### Schema `systeme`
 
 - `systeme.V_Audit_log`
+- `systeme.V_Admin_UI_Setting_Audit`
 - `systeme.V_Entite_Localisation_Detail`
 - `systeme.V_Licence_active`
 - `systeme.V_Login_history`
@@ -213,193 +270,96 @@ Pour le travail actuel, l'accent est mis en priorite sur le schema `systeme`.
 #### Schema `referentiel`
 
 - `referentiel.V_Generique`
+- `referentiel.V_CategorieGenerique`
 
-### Capacites attendues dans les tableaux admin
+#### Schema `geolocalisation`
+
+- `geolocalisation.V_Niveau_0`
+- `geolocalisation.V_Niveau_1_Old`
+- `geolocalisation.V_Niveau_1`
+- `geolocalisation.V_Niveau_2`
+- `geolocalisation.V_Niveau_3`
+- `geolocalisation.V_Niveau_4`
+- `geolocalisation.V_Niveau_5`
+
+### 10.2 Capacites attendues
 
 - recherche globale
 - filtres par colonnes
 - tri
 - pagination
 - export
-- colonnes visibles
-- gel et degel de colonnes
-- redimensionnement des colonnes
+- gestion des colonnes
 - selection de lignes
-- actions hors du tableau pour garder une bonne lisibilite
+- actions hors tableau
+- panneau `Correspondances FK`
 
-## 10. Exigences fonctionnelles prioritaires
+## 11. Exigences fonctionnelles prioritaires
 
-### Priorite 1 - Fondations application web
+### Priorite 1 - Fondations
 
-- distinguer les pages publiques et les pages privees
-- utiliser un systeme d'authentification JWT
-- verifier la session au chargement du frontend
-- relier les donnees frontend au backend reel
+- distinguer les pages publiques et privees
+- securiser l'acces par JWT
+- restaurer la session au chargement
+- connecter le frontend au backend reel
 
-### Priorite 2 - Espace utilisateur
+### Priorite 2 - Standard international
 
-- afficher l'etat connecte / non connecte
-- permettre la modification du profil
-- proteger les routes privees
+- ne pas figer le produit a un seul pays
+- permettre l'adaptation des niveaux geographiques
+- permettre la configuration de listes par referentiels
+- supporter des portees de parametrage
 
-### Priorite 3 - Discussions
+### Priorite 3 - Experience d'administration
 
-- ouvrir une discussion a partir d'un utilisateur authentifie
-- lister les discussions de l'utilisateur
-- persister les messages en base
+- rendre les reglages comprenables et actionnables
+- eviter les changements manuels dans le code pour des besoins fonctionnels
+- historiser les parametres et les operations
 
-### Priorite 4 - Administration
+## 12. Exigences techniques
 
-- permettre aux administrateurs d'exploiter les vues systeme
-- proposer une experience de tableau professionnelle
-- offrir les actions metier utiles sans nuire a la lisibilite
+### 12.1 Frontend
 
-## 11. Exigences techniques
+- application React moderne
+- routes publiques et privees
+- etat de session restaure
+- administration ergonomique
+- composants reutilisables
 
-### 11.1 Frontend
+### 12.2 Backend
 
-- React
-- Vite
-- React Router
-- organisation claire en :
-  - `components/`
-  - `pages/`
-  - `services/`
-  - `hooks/`
-  - `contexts/`
-  - `data/`
+- API REST Express
+- acces protege aux routes sensibles
+- Prisma pour les CRUD standards
+- vues SQL pour les lectures metier
+- logique de parametrage partage
 
-### 11.2 Backend
+### 12.3 Base de donnees
 
-- Node.js
-- Express
-- Prisma Client
 - PostgreSQL
-- reponses JSON coherentes
+- schemas separes par domaine
+- tables de reference
+- vues de lecture
+- journalisation des changements
 
-Format attendu :
+## 13. Criteres de reussite
 
-```json
-{
-  "success": true,
-  "data": {}
-}
-```
+Le projet sera considere en bonne voie si :
 
-ou
+- l'application fonctionne en public, connecte et admin
+- les vues et CRUD sont exploitables depuis le web
+- les listes deroulantes se parametrent sans modifier le code
+- les reglages peuvent etre differencies par portee
+- la documentation reste claire pour une reutilisation dans d'autres contextes
 
-```json
-{
-  "success": false,
-  "message": "Message d'erreur"
-}
-```
+## 14. Orientation long terme
 
-### 11.3 Base de donnees
+SauverNdeko doit rester un socle.
 
-- PostgreSQL multi-schemas
-- schema Prisma principal dans `backend/prisma/schema.prisma`
-- scripts SQL de support dans `SQL/`
+La cible n'est pas seulement de finaliser une application locale, mais de disposer d'une plateforme :
 
-## 12. Exigences de securite
-
-- ne jamais exposer les mots de passe
-- limiter les champs sensibles retournes par les endpoints
-- proteger les routes privees et admin
-- verifier les droits avant les operations critiques
-- journaliser les operations importantes si necessaire
-
-## 13. Exigences UX/UI
-
-L'application web doit :
-
-- conserver une identite claire et professionnelle
-- distinguer le mode public, connecte et administrateur
-- afficher des etats de chargement, erreur, vide et succes
-- proposer une administration lisible et efficace
-- privilegier une navigation simple et une lecture confortable des tableaux
-
-## 14. Routes cibles
-
-### Backend Auth
-
-- `POST /SauverNdeko/auth/login`
-- `POST /SauverNdeko/auth/register`
-- `POST /SauverNdeko/auth/logout`
-- `POST /SauverNdeko/auth/refresh`
-- `GET /SauverNdeko/auth/me`
-- `PUT /SauverNdeko/auth/me`
-- `GET /SauverNdeko/auth/verify`
-
-### Backend Public
-
-- `GET /api/public/articles`
-- `GET /api/public/pharmacies`
-- `GET /api/public/experts`
-- `GET /api/public/maladies`
-- `GET /api/public/stats`
-
-### Backend Discussions
-
-- `POST /api/discussions/start`
-- `GET /api/discussions`
-- `GET /api/discussions/:id/messages`
-- `POST /api/discussions/:id/messages`
-
-### Frontend
-
-- `/`
-- `/produits`
-- `/pharmacies`
-- `/experts`
-- `/maladies`
-- `/login`
-- `/register`
-- `/profil`
-- `/discussions`
-- `/admin`
-
-## 15. Roadmap recommande
-
-### Phase 1 - Fondations web
-
-- consolider l'authentification
-- fiabiliser les routes protegees
-- maintenir la coherence frontend / backend
-
-### Phase 2 - Experience utilisateur
-
-- enrichir l'espace profil
-- consolider les discussions
-- fluidifier les parcours connectes
-
-### Phase 3 - Administration metier
-
-- completer le schema `systeme`
-- etendre le CRUD metier
-- optimiser l'experience des vues admin
-
-### Phase 4 - Extensions
-
-- commandes
-- paiements
-- historiques
-- reporting
-
-## 16. Risques et points d'attention
-
-- Prisma genere dans un environnement Windows / Dropbox peut parfois poser des contraintes de verrouillage
-- certaines donnees de test peuvent manquer selon les schemas ou les vues
-- les modules metier ne sont pas tous encore finalises
-- l'administration doit rester ciblee et lisible meme si le volume de donnees augmente
-
-## 17. Definition de succes
-
-SauverNdeko pourra etre considere comme une vraie application web aboutie lorsque :
-
-- un utilisateur peut creer un compte et se connecter
-- les pages privees sont correctement protegees
-- le frontend travaille avec les vraies donnees backend
-- les discussions sont persistantes
-- l'administration est exploitable pour les donnees systeme
-- les espaces public, utilisateur et administration sont clairement separes
+- reutilisable
+- configurable
+- administrable
+- extensible
+- compatible avec des besoins multi-pays et multi-organisations

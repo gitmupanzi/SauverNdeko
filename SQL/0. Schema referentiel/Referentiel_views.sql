@@ -1,3 +1,14 @@
+-- View: referentiel.V_CategorieGenerique
+-- DROP VIEW referentiel."V_CategorieGenerique";
+CREATE OR REPLACE VIEW referentiel."V_CategorieGenerique" AS
+SELECT c."ID_CategorieGenerique",
+  c."NomCategorieGenerique",
+  c."ModuleCategorieGenerique",
+  c."ValideCategorieGenerique"
+FROM referentiel."T_CategorieGenerique" c
+ORDER BY c."NomCategorieGenerique",
+  c."ModuleCategorieGenerique";
+ALTER TABLE referentiel."V_CategorieGenerique" OWNER TO postgres;
 -- View: referentiel.V_Generique
 -- DROP VIEW referentiel."V_Generique";
 CREATE OR REPLACE VIEW referentiel."V_Generique" AS

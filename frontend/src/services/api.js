@@ -279,3 +279,17 @@ export function deleteAdminModelRecord(model, id) {
     requiresAuth: true,
   });
 }
+
+export function fetchAdminUiSettings(options = {}) {
+  return requestJson(`/api/admin-ui-settings${buildQueryString(options)}`, {
+    requiresAuth: true,
+  });
+}
+
+export function saveAdminUiSettings(payload) {
+  return requestJson("/api/admin-ui-settings", {
+    method: "PUT",
+    requiresAuth: true,
+    body: JSON.stringify(payload),
+  });
+}

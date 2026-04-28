@@ -1,171 +1,158 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  createAdminEntity,
-  createAdminLicence,
-  createAdminModelRecord,
-  createAdminUser,
-  deleteAdminLicence,
-  deleteAdminEntity,
-  deleteAdminModelRecord,
-  deleteAdminUser,
+  fetchAdminUiSettings,
   fetchAdminEntities,
-  fetchAdminEntity,
-  fetchAdminLicence,
   fetchAdminLicences,
-  fetchAdminModelItem,
   fetchAdminModelList,
-  fetchAdminUser,
   fetchAvailableViews,
   fetchViewData,
-  updateAdminLicence,
-  updateAdminEntity,
-  updateAdminModelRecord,
-  updateAdminUser,
+  saveAdminUiSettings,
 } from "../services/api";
+import { getStoredAuth } from "../services/authStorage";
+import { GEOLOCALISATION_ADMIN_SCHEMA } from "./admin/geolocalisation";
+import { REFERENTIEL_ADMIN_SCHEMA } from "./admin/referentiel";
+import { SYSTEME_ADMIN_SCHEMA } from "./admin/systeme";
 
-const ADMIN_VIEWS = [
-  {
-    schema: "systeme",
-    name: "V_Audit_log",
-    title: "Journal d'audit",
-    description: "Consulte les modifications tracees dans le systeme.",
-  },
-  {
-    schema: "systeme",
-    name: "V_Entite_Localisation_Detail",
-    title: "Localisation des entites",
-    description: "Affiche les entites, leurs contacts et leur positionnement geographique.",
-  },
-  {
-    schema: "systeme",
-    name: "V_Licence_active",
-    title: "Licences actives",
-    description: "Controle les licences par entite et leur statut d'expiration.",
-  },
-  {
-    schema: "systeme",
-    name: "V_Login_history",
-    title: "Historique des connexions",
-    description: "Suit les connexions et deconnexions enregistrees.",
-  },
-  {
-    schema: "systeme",
-    name: "V_User_profil",
-    title: "Profils utilisateurs",
-    description: "Expose les comptes utilisateurs et leur rattachement.",
-  },
-  {
-    schema: "referentiel",
-    name: "V_Generique",
-    title: "Referentiel generique",
-    description: "Permet de consulter les categories et valeurs du referentiel.",
-  },
-];
-
-const SCHEMA_TITLES = {
-  systeme: "Schema systeme",
-  referentiel: "Schema referentiel",
-};
+const ADMIN_SCHEMAS = [SYSTEME_ADMIN_SCHEMA, REFERENTIEL_ADMIN_SCHEMA, GEOLOCALISATION_ADMIN_SCHEMA];
+const ADMIN_VIEWS = ADMIN_SCHEMAS.flatMap((schemaConfig) => schemaConfig.views);
+const SCHEMA_TITLES = Object.fromEntries(
+  ADMIN_SCHEMAS.map((schemaConfig) => [schemaConfig.schema, schemaConfig.title])
+);
+const CRUD_CONFIGS = ADMIN_SCHEMAS.reduce((accumulator, schemaConfig) => {
+  Object.assign(accumulator, schemaConfig.crudConfigs);
+  return accumulator;
+}, {});
 
 const DEFAULT_ROWS_PER_PAGE = 25;
 const MIN_COLUMN_WIDTH = 120;
 const ADMIN_VIEW_STORAGE_PREFIX = "sauverndeko.admin.view.";
+const ADMIN_GENERIC_CATEGORY_STORAGE_KEY = "sauverndeko.admin.generic-category-overrides";
+const ADMIN_HIERARCHY_FILTER_STORAGE_KEY = "sauverndeko.admin.hierarchy-filter-modes";
 const NOTIFICATION_TIMEOUT = 4000;
-
-const USER_FIELDS = [
-  { name: "NomUser", label: "Nom", type: "text", required: true, initialValue: "" },
-  { name: "PrenomUser", label: "Prenom", type: "text", required: true, initialValue: "" },
-  { name: "EmailUser", label: "Email", type: "email", required: true, initialValue: "" },
-  {
-    name: "MotdepasseUser",
-    label: "Mot de passe",
-    type: "password",
-    requiredOnCreate: true,
-    initialValue: "",
-    placeholderCreate: "Mot de passe initial",
-    placeholderEdit: "Laisser vide pour conserver l'ancien mot de passe",
+const ADMIN_UI_SCOPE_PRIORITY = ["entity", "country", "global"];
+const GENERIC_OPTION_SOURCE_CONFIG = {
+  roles: {
+    label: "Role",
+    defaultCategoryIds: [39],
+    fallbackKeywords: ["role"],
   },
-  { name: "PhoneUser", label: "Telephone", type: "text", initialValue: "" },
-  {
-    name: "SexeUser",
-    label: "Sexe",
-    type: "select",
-    required: true,
-    initialValue: "M",
-    options: [
-      { value: "M", label: "Masculin" },
-      { value: "F", label: "Feminin" },
-    ],
+  entityTypes: {
+    label: "Type entite",
+    defaultCategoryIds: [48],
+    fallbackKeywords: ["typeentite"],
   },
-  { name: "IdRoleFk", label: "Role", type: "select", optionsSource: "roles", initialValue: "" },
-  { name: "IdEntiteFk", label: "Entite", type: "select", optionsSource: "entities", initialValue: "" },
-  { name: "ValideUser", label: "Compte valide", type: "checkbox", initialValue: true },
-  { name: "Is_staff", label: "Acces staff", type: "checkbox", initialValue: false },
-  { name: "Is_Admin", label: "Acces administrateur", type: "checkbox", initialValue: false },
-  { name: "UrlPhoto", label: "Photo URL", type: "text", initialValue: "" },
-];
-
-const ENTITY_CORE_FIELDS = [
-  { name: "NomEntite", label: "Nom entite", type: "text", required: true, initialValue: "" },
-  { name: "EmailEntite", label: "Email entite", type: "email", required: true, initialValue: "" },
-  { name: "PhoneEntite", label: "Telephone entite", type: "text", initialValue: "" },
-  { name: "IdTypeEntiteFk", label: "Type entite", type: "select", optionsSource: "entityTypes", initialValue: "" },
-  { name: "ValideEntite", label: "Entite valide", type: "checkbox", initialValue: true },
-  { name: "AdresseEntite", label: "Adresse entite", type: "textarea", initialValue: "" },
-];
-
-const LOCATION_FIELDS = [
-  { name: "Latitude", label: "Latitude", type: "number", initialValue: "", step: "0.000001" },
-  { name: "Longitude", label: "Longitude", type: "number", initialValue: "", step: "0.000001" },
-  { name: "IdNiveau_3_Fk", label: "Id niveau 3", type: "number", initialValue: "", min: "1" },
-  { name: "IdNiveau_4_Fk", label: "Id niveau 4", type: "number", initialValue: "", min: "1" },
-  { name: "IdNiveau_5_Fk", label: "Id niveau 5", type: "number", initialValue: "", min: "1" },
-  { name: "AdresseDetaillee", label: "Adresse detaillee", type: "textarea", initialValue: "" },
-];
-
-const ENTITY_FIELDS = [...ENTITY_CORE_FIELDS, ...LOCATION_FIELDS];
-
-const GENERIC_FIELDS = [
-  {
-    name: "ID_CategorieGeneriqueFk",
-    label: "Categorie",
-    type: "select",
-    optionsSource: "categories",
-    required: true,
-    initialValue: "",
-  },
-  { name: "NomGenerique", label: "Nom", type: "text", required: true, initialValue: "" },
-  { name: "AbrGenerique", label: "Abreviation", type: "text", initialValue: "" },
-  { name: "ObsGenerique", label: "Observation", type: "textarea", initialValue: "" },
-  { name: "ValideGenerique", label: "Valeur active", type: "checkbox", initialValue: true },
-  { name: "VisibleNiveau_2", label: "Visible niveau 2", type: "checkbox", initialValue: true },
-  { name: "VisibleNiveau_3", label: "Visible niveau 3", type: "checkbox", initialValue: true },
-  { name: "VisibleNiveau_4", label: "Visible niveau 4", type: "checkbox", initialValue: true },
-  { name: "VisibleNiveau_5", label: "Visible niveau 5", type: "checkbox", initialValue: true },
-  { name: "VisibleArticle", label: "Visible article", type: "checkbox", initialValue: true },
-  { name: "VisibleCmd", label: "Visible commande", type: "checkbox", initialValue: true },
-  { name: "VisibleFacture", label: "Visible facture", type: "checkbox", initialValue: true },
-  { name: "VisibleUsers", label: "Visible utilisateurs", type: "checkbox", initialValue: true },
-  { name: "VisibleVoie", label: "Visible voie", type: "checkbox", initialValue: true },
-  { name: "VisibleAll", label: "Visible partout", type: "checkbox", initialValue: true },
-];
-
-const LICENSE_FIELDS = [
-  { name: "IdLicence", label: "Id licence", type: "number", required: true, initialValue: "", min: "1" },
-  { name: "IdEntiteFk", label: "Entite", type: "select", optionsSource: "entities", required: true, initialValue: "" },
-  {
-    name: "IdStatutLicenceFk",
+  licenseStatuses: {
     label: "Statut licence",
-    type: "select",
-    optionsSource: "licenseStatuses",
-    required: true,
-    initialValue: "",
+    defaultCategoryIds: [55],
+    fallbackKeywords: ["statutlicence"],
   },
-  { name: "DateDebut", label: "Date debut", type: "datetime-local", initialValue: "" },
-  { name: "DateFin", label: "Date fin", type: "datetime-local", required: true, initialValue: "" },
-  { name: "ValideLicence", label: "Licence valide", type: "checkbox", initialValue: true },
-  { name: "ExpireeLicence", label: "Licence expiriee", type: "checkbox", initialValue: false },
-];
+  niveau2Types: {
+    label: "Type niveau 2",
+    defaultCategoryIds: [32],
+  },
+  niveau3Types: {
+    label: "Type niveau 3",
+    defaultCategoryIds: [32],
+    predicate: (item) => isFalseFlag(item.VisibleNiveau_3),
+    fallbackMode: "withoutPredicate",
+  },
+  niveau2Statuses: {
+    label: "Statut niveau 2",
+    defaultCategoryIds: [4],
+  },
+  niveau3Statuses: {
+    label: "Statut niveau 3",
+    defaultCategoryIds: [4],
+  },
+  deploymentStatuses: {
+    label: "Statut deploiement",
+    defaultCategoryIds: [27],
+  },
+  dpsAccessRoutes: {
+    label: "Voie acces DPS",
+    defaultCategoryIds: [29],
+    predicate: (item) => isFalseFlag(item.VisibleVoie),
+    fallbackMode: "withoutPredicate",
+  },
+  antBczAccessRoutes: {
+    label: "Voie acces antenne BCZS",
+    defaultCategoryIds: [29],
+  },
+  dpsBczAccessRoutes: {
+    label: "Voie acces DPS BCZS",
+    defaultCategoryIds: [29],
+  },
+  niveau4Types: {
+    label: "Type niveau 4",
+    defaultCategoryIds: [32],
+  },
+  niveau5Types: {
+    label: "Type niveau 5",
+    defaultCategoryIds: [32],
+  },
+  niveau4Statuses: {
+    label: "Statut niveau 4",
+    defaultCategoryIds: [4],
+  },
+  niveau5Statuses: {
+    label: "Statut niveau 5",
+    defaultCategoryIds: [4],
+  },
+  networkAvailabilities: {
+    label: "Disponibilite reseau",
+    defaultCategoryIds: [19],
+    fallbackKeywords: ["disporeseau", "reseau"],
+  },
+  zsAsAccessRoutes: {
+    label: "Voie acces ZS-AS",
+    defaultCategoryIds: [29],
+  },
+  zsSiteAccessRoutes: {
+    label: "Voie acces ZS-Site",
+    defaultCategoryIds: [29],
+  },
+  roofTypes: {
+    label: "Type de toit",
+    defaultCategoryIds: [18],
+  },
+};
+const HIERARCHY_OPTION_SOURCE_CONFIG = {
+  niveaux0: {
+    label: "Niveau 0",
+    defaultMode: "all",
+    availableModes: ["all"],
+  },
+  niveaux1Old: {
+    label: "Niveau 1 historique",
+    defaultMode: "all",
+    availableModes: ["all"],
+  },
+  niveaux1: {
+    label: "Niveau 1",
+    defaultMode: "filtered",
+    availableModes: ["filtered", "all"],
+  },
+  niveaux2: {
+    label: "Niveau 2",
+    defaultMode: "filtered",
+    availableModes: ["filtered", "all"],
+  },
+  niveaux3: {
+    label: "Niveau 3",
+    defaultMode: "filtered",
+    availableModes: ["filtered", "all"],
+  },
+  niveaux4: {
+    label: "Niveau 4",
+    defaultMode: "filtered",
+    availableModes: ["filtered", "all"],
+  },
+  niveaux5: {
+    label: "Niveau 5",
+    defaultMode: "filtered",
+    availableModes: ["filtered", "all"],
+  },
+};
 
 function normalizeViewKey(schema, name) {
   return `${schema}.${name}`;
@@ -205,6 +192,257 @@ function formatDisplayDateTime(value) {
         }
       : {}),
   }).format(parsed);
+}
+
+function formatAdminSettingsSyncLabel(meta) {
+  if (!meta?.updatedAt) {
+    return "Aucune synchronisation serveur enregistree";
+  }
+
+  const formattedDate = formatDisplayDateTime(meta.updatedAt) || String(meta.updatedAt);
+  const authorLabel = meta.updatedByName ? ` par ${meta.updatedByName}` : "";
+  return `Synchronise le ${formattedDate}${authorLabel}`;
+}
+
+function buildSharedFkSyncStatus({
+  loading,
+  saving,
+  error,
+  targetScopeLabel,
+  loadedScope,
+  loadedScopeLabel,
+  meta,
+  hasDirtyDrafts,
+  hasInvalidDrafts,
+}) {
+  const scopeDetails = [];
+
+  if (targetScopeLabel) {
+    scopeDetails.push({
+      tone: "muted",
+      text: targetScopeLabel,
+    });
+  }
+
+  if (loading) {
+    return {
+      tone: "info",
+      title: "Chargement des reglages partages...",
+      details: scopeDetails,
+    };
+  }
+
+  if (saving) {
+    return {
+      tone: "info",
+      title: "Enregistrement serveur en cours...",
+      details: [
+        ...scopeDetails,
+        {
+          tone: "info",
+          text: "Les modifications sont en cours d'enregistrement sur le serveur.",
+        },
+      ],
+    };
+  }
+
+  if (error) {
+    return {
+      tone: "danger",
+      title: "Synchronisation serveur indisponible",
+      details: [
+        ...scopeDetails,
+        {
+          tone: "danger",
+          text: error,
+        },
+        {
+          tone: "warning",
+          text: "Les reglages visibles restent actifs localement dans cette session.",
+        },
+      ],
+    };
+  }
+
+  if (loadedScope) {
+    const details = [...scopeDetails];
+
+    if (loadedScopeLabel && loadedScopeLabel !== targetScopeLabel) {
+      details.push({
+        tone: "warning",
+        text: `Valeurs actuellement heritees de ${loadedScopeLabel.toLowerCase()}.`,
+      });
+    } else {
+      details.push({
+        tone: "success",
+        text: "Les reglages affiches proviennent du serveur et sont deja actifs.",
+      });
+    }
+
+    details.push({
+      tone: "muted",
+      text: formatAdminSettingsSyncLabel(meta),
+    });
+
+    if (hasInvalidDrafts) {
+      details.push({
+        tone: "danger",
+        text: "Certaines categories saisies sont invalides.",
+      });
+    } else if (hasDirtyDrafts) {
+      details.push({
+        tone: "warning",
+        text: "Des modifications locales attendent encore d'etre appliquees.",
+      });
+    }
+
+    return {
+      tone: loadedScopeLabel && loadedScopeLabel !== targetScopeLabel ? "warning" : "success",
+      title:
+        loadedScopeLabel && loadedScopeLabel !== targetScopeLabel
+          ? "Reglages herites depuis une portee plus large"
+          : "Reglages synchronises via le serveur admin",
+      details,
+    };
+  }
+
+  const details = [
+    ...scopeDetails,
+    {
+      tone: "muted",
+      text: "Aucune synchronisation serveur enregistree pour cette portee.",
+    },
+    {
+      tone: "warning",
+      text: "Les reglages affiches restent actifs localement jusqu'au premier enregistrement serveur.",
+    },
+  ];
+
+  if (hasInvalidDrafts) {
+    details.push({
+      tone: "danger",
+      text: "Certaines categories saisies sont invalides.",
+    });
+  } else if (hasDirtyDrafts) {
+    details.push({
+      tone: "warning",
+      text: "Des modifications locales attendent d'etre appliquees.",
+    });
+  }
+
+  return {
+    tone: "warning",
+    title: "Reglages locaux actifs",
+    details,
+  };
+}
+
+function parseAuditPayload(rawValue) {
+  if (!rawValue) {
+    return null;
+  }
+
+  if (typeof rawValue === "object") {
+    return rawValue;
+  }
+
+  if (typeof rawValue !== "string") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function getAuditSettingScope(row) {
+  const newData = parseAuditPayload(row?.NewData);
+  const oldData = parseAuditPayload(row?.OldData);
+  const settingScope = newData?.settingScope || oldData?.settingScope || "global";
+  const scopeValue = newData?.scopeValue ?? oldData?.scopeValue ?? null;
+
+  return {
+    scope: settingScope,
+    scopeValue: scopeValue == null || scopeValue === "" ? null : String(scopeValue),
+  };
+}
+
+function isSameAdminUiScope(leftScope, rightScope) {
+  if (!leftScope || !rightScope) {
+    return false;
+  }
+
+  return (
+    String(leftScope.scope || "global") === String(rightScope.scope || "global") &&
+    String(leftScope.scopeValue ?? "") === String(rightScope.scopeValue ?? "")
+  );
+}
+
+function buildAdminUiScopeLabelFromValues(scope, scopeValue) {
+  return buildAdminUiScopeLabel(
+    createAdminUiScope(scope || "global", scopeValue, scope === "global" ? "Global" : String(scopeValue || ""))
+  );
+}
+
+function buildAdminUiScopeLabel(scope) {
+  if (!scope) {
+    return "Portee globale";
+  }
+
+  if (scope.scope === "entity") {
+    return scope.name ? `Portee entite: ${scope.name}` : `Portee entite: ${scope.scopeValue}`;
+  }
+
+  if (scope.scope === "country") {
+    if (scope.name && scope.code) {
+      return `Portee pays: ${scope.name} (${scope.code})`;
+    }
+
+    return scope.name ? `Portee pays: ${scope.name}` : `Portee pays: ${scope.scopeValue}`;
+  }
+
+  return "Portee globale";
+}
+
+function createAdminUiScope(scope, scopeValue, name = "", code = "") {
+  return {
+    scope,
+    scopeValue: scopeValue == null || scopeValue === "" ? null : String(scopeValue),
+    name: String(name || "").trim(),
+    code: String(code || "").trim(),
+  };
+}
+
+function buildAdminUiScopeCandidates(user) {
+  const candidates = [];
+  const scopeContext = user?.scopeContext || {};
+
+  if (scopeContext.entity?.id) {
+    candidates.push(createAdminUiScope("entity", scopeContext.entity.id, scopeContext.entity.name));
+  }
+
+  if (scopeContext.country?.id || scopeContext.country?.code) {
+    candidates.push(
+      createAdminUiScope(
+        "country",
+        scopeContext.country.id || scopeContext.country.code,
+        scopeContext.country.name,
+        scopeContext.country.code
+      )
+    );
+  }
+
+  candidates.push(createAdminUiScope("global", null, "Global"));
+
+  return ADMIN_UI_SCOPE_PRIORITY.flatMap((priority) =>
+    candidates.filter(
+      (item, index, array) =>
+        item.scope === priority &&
+        array.findIndex((candidate) => candidate.scope === item.scope && candidate.scopeValue === item.scopeValue) === index
+    )
+  );
 }
 
 function formatCellValue(value) {
@@ -317,45 +555,210 @@ function normalizeCategoryName(value) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function toOptionalNumber(value) {
-  if (value === "" || value == null) {
+function filterGenericsByCategory(generics, keywords, fallbackKeywords = []) {
+  const matchKeywords = (item, values) => {
+    const categoryName = normalizeCategoryName(item.NomCategorieGenerique);
+    return values.some((keyword) => categoryName.includes(keyword));
+  };
+
+  const primaryMatches = generics.filter((item) => matchKeywords(item, keywords));
+
+  if (primaryMatches.length > 0 || fallbackKeywords.length === 0) {
+    return primaryMatches;
+  }
+
+  return generics.filter((item) => matchKeywords(item, fallbackKeywords));
+}
+
+function isFalseFlag(value) {
+  if (value === false || value === 0) {
+    return true;
+  }
+
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "false" || normalized === "0" || normalized === "no" || normalized === "non";
+}
+
+function filterGenericsByCategoryIds(generics, categoryIds, predicate = null) {
+  const allowedIds = new Set(categoryIds.map((value) => Number(value)));
+  const matches = generics.filter((item) => {
+    const categoryId = Number(item.ID_CategorieGeneriqueFk ?? item.ID_CategorieGenerique);
+    const categoryMatches = allowedIds.has(categoryId);
+    const predicateMatches = typeof predicate === "function" ? predicate(item) : true;
+    return categoryMatches && predicateMatches;
+  });
+
+  return matches;
+}
+
+function serializeCategoryIds(categoryIds) {
+  return categoryIds.map((value) => String(value)).join(", ");
+}
+
+function parseCategoryOverrideInput(value) {
+  const parts = String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const parsed = [];
+
+  for (const part of parts) {
+    const number = Number(part);
+
+    if (!Number.isInteger(number) || number <= 0) {
+      return null;
+    }
+
+    if (!parsed.includes(number)) {
+      parsed.push(number);
+    }
+  }
+
+  return parsed;
+}
+
+function readGenericCategoryOverrides() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(ADMIN_GENERIC_CATEGORY_STORAGE_KEY);
+
+    if (!rawValue) {
+      return {};
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function readHierarchyFilterModes() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(ADMIN_HIERARCHY_FILTER_STORAGE_KEY);
+
+    if (!rawValue) {
+      return {};
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function getConfiguredCategoryIdsForSource(source, overrides) {
+  const config = GENERIC_OPTION_SOURCE_CONFIG[source];
+
+  if (!config) {
+    return [];
+  }
+
+  const overrideValue = overrides?.[source];
+  const parsedOverride = parseCategoryOverrideInput(overrideValue);
+  return parsedOverride && parsedOverride.length > 0 ? parsedOverride : config.defaultCategoryIds;
+}
+
+function buildGenericSupportList(source, generics, overrides) {
+  const config = GENERIC_OPTION_SOURCE_CONFIG[source];
+
+  if (!config) {
+    return [];
+  }
+
+  const categoryIds = getConfiguredCategoryIdsForSource(source, overrides);
+  let matches = filterGenericsByCategoryIds(generics, categoryIds, config.predicate || null);
+
+  if (matches.length === 0 && config.fallbackMode === "withoutPredicate" && config.predicate) {
+    matches = filterGenericsByCategoryIds(generics, categoryIds);
+  }
+
+  if (matches.length === 0 && Array.isArray(config.fallbackKeywords) && config.fallbackKeywords.length > 0) {
+    matches = filterGenericsByCategory(generics, config.fallbackKeywords);
+  }
+
+  return matches;
+}
+
+function getHierarchyFilterMode(source, modes) {
+  const config = HIERARCHY_OPTION_SOURCE_CONFIG[source];
+
+  if (!config) {
+    return "filtered";
+  }
+
+  return modes?.[source] === "all" ? "all" : config.defaultMode;
+}
+
+function preferSupportRows(viewRows, tableRows) {
+  return viewRows.length > 0 ? viewRows : tableRows;
+}
+
+function getEditorContextValue(editorValues, keys) {
+  for (const key of keys) {
+    const value = editorValues?.[key];
+    if (value !== "" && value != null) {
+      return String(value);
+    }
+  }
+
+  return "";
+}
+
+function filterRowsByParent(rows, rowKey, editorValues, editorKeys) {
+  const parentValue = getEditorContextValue(editorValues, editorKeys);
+
+  if (!parentValue) {
+    return rows;
+  }
+
+  return rows.filter((row) => String(row?.[rowKey] ?? "") === parentValue);
+}
+
+function findSupportRowById(rows, idKey, value) {
+  if (value == null || value === "") {
     return null;
   }
 
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return rows.find((row) => String(row?.[idKey] ?? "") === String(value)) || null;
 }
 
-function toOptionalDecimal(value) {
-  if (value === "" || value == null) {
-    return null;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+function buildNiveau2OptionLabel(row) {
+  const typeLabel = row?.Type_Niveau_2 || row?.AbrGenerique || "";
+  const mainLabel = typeLabel && row?.NomNiveau_2 ? `${typeLabel} (${row.NomNiveau_2})` : row?.NomNiveau_2 || "";
+  return buildOptionLabel([mainLabel, row?.NomNiveau_1], `Niveau 2 ${row?.ID_Niveau_2 ?? ""}`);
 }
 
-function buildEntityPayload(values) {
-  return {
-    NomEntite: values.NomEntite.trim(),
-    EmailEntite: values.EmailEntite.trim(),
-    PhoneEntite: values.PhoneEntite.trim() || null,
-    AdresseEntite: values.AdresseEntite.trim() || null,
-    IdTypeEntiteFk: toOptionalNumber(values.IdTypeEntiteFk),
-    ValideEntite: Boolean(values.ValideEntite),
-  };
+function buildNiveau3OptionLabel(row, supportData) {
+  const typeLabel = row?.Type_Niveau_3 || row?.AbrGenerique || "";
+  const mainLabel = typeLabel && row?.NomNiveau_3 ? `${typeLabel} (${row.NomNiveau_3})` : row?.NomNiveau_3 || "";
+  const parentNiveau2 =
+    row?.NomNiveau_2 || findSupportRowById(supportData.niveaux2, "ID_Niveau_2", row?.ID_Niveau_2_FK)?.NomNiveau_2 || "";
+  const parentNiveau1 =
+    row?.NomNiveau_1 ||
+    findSupportRowById(supportData.niveaux2, "ID_Niveau_2", row?.ID_Niveau_2_FK)?.NomNiveau_1 ||
+    "";
+
+  return buildOptionLabel([mainLabel, parentNiveau2, parentNiveau1], `Niveau 3 ${row?.ID_Niveau_3 ?? ""}`);
 }
 
-function buildLocationPayload(values) {
-  return {
-    IdEntiteLocalisation: toOptionalNumber(values.IdEntiteLocalisation),
-    Latitude: toOptionalDecimal(values.Latitude),
-    Longitude: toOptionalDecimal(values.Longitude),
-    IdNiveau_3_Fk: toOptionalNumber(values.IdNiveau_3_Fk),
-    IdNiveau_4_Fk: toOptionalNumber(values.IdNiveau_4_Fk),
-    IdNiveau_5_Fk: toOptionalNumber(values.IdNiveau_5_Fk),
-    AdresseDetaillee: values.AdresseDetaillee.trim() || null,
-  };
+function buildNiveau4OptionLabel(row) {
+  const mainLabel = row?.SITE || buildOptionLabel([row?.Type_Niveau_4, row?.NomNiveau_4], row?.NomNiveau_4 || "");
+  return buildOptionLabel([mainLabel, row?.NomNiveau_3, row?.NomNiveau_2, row?.NomNiveau_1], `Niveau 4 ${row?.ID_Niveau_4 ?? ""}`);
+}
+
+function buildNiveau5OptionLabel(row) {
+  const mainLabel = row?.SITE || buildOptionLabel([row?.Type_Niveau_5, row?.NomNiveau_5], row?.NomNiveau_5 || "");
+  return buildOptionLabel([mainLabel, row?.NomNiveau_3, row?.NomNiveau_2, row?.NomNiveau_1], `Niveau 5 ${row?.ID_Niveau_5 ?? ""}`);
 }
 
 function getDefaultColumnWidth(column) {
@@ -384,33 +787,104 @@ function getSchemaTitle(schema) {
   return SCHEMA_TITLES[schema] || `Schema ${schema}`;
 }
 
-function formatDateTimeLocalValue(value) {
-  if (!value) {
+const COLUMN_LABEL_OVERRIDES = {
+  OldData: "Anciennes donnees",
+  NewData: "Nouvelles donnees",
+  TableName: "Table",
+  Operation: "Operation",
+  ChangedAt: "Date modification",
+  TypeLogin: "Type connexion",
+  DateLogin: "Date connexion",
+  EmailUser: "Email utilisateur",
+  PhoneUser: "Telephone utilisateur",
+  UrlPhoto: "Photo",
+  Is_staff: "Acces staff",
+  Is_Admin: "Acces admin",
+  ValideUser: "Compte valide",
+  NomEntite: "Nom entite",
+  EmailEntite: "Email entite",
+  PhoneEntite: "Telephone entite",
+  AdresseEntite: "Adresse entite",
+  AdresseDetaillee: "Adresse detaillee",
+  ID_Niveau_0_Fk: "Parent niveau 0",
+  ID_Niveau_1_Old_Fk: "Ancien niveau 1",
+  ID_Niveau_1_FK: "Parent niveau 1",
+  ID_Niveau_2_FK: "Parent niveau 2",
+  ID_Niveau_3_Fk: "Parent niveau 3",
+  ID_Niveau_4_Fk: "Parent niveau 4",
+  ID_TypeNiveau_2_Fk: "Type niveau",
+  ID_TypeNiveau_4_Fk: "Type niveau 4",
+  ID_TypeNiveau_5_Fk: "Type niveau 5",
+  ID_StatusDeploiFk: "Statut deploiement",
+  ID_StatutDeploieFk: "Statut deploiement",
+  ID_DispoReseauNiveau_4: "Disponibilite reseau",
+  ID_DispoReseauNiveau_5: "Disponibilite reseau",
+  ID_VoieAccesDPSANTFk: "Voie acces DPS",
+  ID_VoieAccesANTBCZFk: "Voie acces antenne",
+  ID_VoieAccesDPSBCZFk: "Voie acces DPS BCZS",
+  ID_VoieAccesZsASFk: "Voie acces ZS-AS",
+  ID_VoieAccesZsSiteFk: "Voie acces ZS-site",
+  ID_TypeToitFk: "Type de toit",
+  KmDPSANT: "Distance DPS",
+  KmAntenneBCZS: "Distance antenne BCZS",
+  KmDPSBCZS: "Distance DPS BCZS",
+  KmZoneSanteAS: "Distance zone de sante",
+  KmZoneSanteNiveau_5: "Distance zone de sante",
+  VOIE_AS_ZS: "Voie AS-ZS",
+  VOIE_AS_Site: "Voie AS-site",
+  STATUT_AS: "Statut AS",
+  STATUT_Site: "Statut site",
+  STATUT_DEPLOI: "Statut deploiement",
+  RESEAU: "Reseau",
+  SITE: "Site",
+};
+
+function getColumnDisplayLabel(column) {
+  if (!column) {
     return "";
   }
 
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
+  if (COLUMN_LABEL_OVERRIDES[column]) {
+    return COLUMN_LABEL_OVERRIDES[column];
   }
 
-  const offset = parsed.getTimezoneOffset();
-  const local = new Date(parsed.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
-}
+  const normalized = String(column)
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z0-9])/g, "$1 $2")
+    .replace(/([0-9])([A-Za-z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
 
-function toIsoDateTimeOrNull(value) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  return normalized
+    .replace(/\bID\b/g, "ID")
+    .replace(/\bFk\b/g, "FK")
+    .replace(/\bOld\b/g, "historique")
+    .replace(/\bNom\b/g, "Nom")
+    .replace(/\bCode\b/g, "Code")
+    .replace(/\bLatitude\b/g, "Latitude")
+    .replace(/\bLongitude\b/g, "Longitude")
+    .replace(/\bAltitude\b/g, "Altitude")
+    .replace(/\bPopulation\b/g, "Population")
+    .replace(/\bgeometry\b/g, "Geometrie")
+    .replace(/\bsurface\b/g, "Surface");
 }
 
 function getAdminViewStorageKey(viewKey) {
   return `${ADMIN_VIEW_STORAGE_PREFIX}${viewKey}`;
+}
+
+function resolveRowRecordId(row, crudConfig) {
+  if (!crudConfig?.primaryKey || !row) {
+    return null;
+  }
+
+  const rawValue = row[crudConfig.primaryKey];
+
+  if (rawValue === undefined || rawValue === null || rawValue === "") {
+    return null;
+  }
+
+  return String(rawValue);
 }
 
 function loadStoredAdminViewState(viewKey) {
@@ -438,359 +912,395 @@ function saveStoredAdminViewState(viewKey, state) {
   }
 }
 
-function getFieldOptions(field, supportData) {
+function sortSelectOptions(options) {
+  return [...options].sort((leftOption, rightOption) =>
+    normalizeSearchText(leftOption.label || "").localeCompare(normalizeSearchText(rightOption.label || ""), "fr")
+  );
+}
+
+function getFieldOptions(field, supportData, editorValues = {}, hierarchyFilterModes = {}) {
   if (Array.isArray(field.options)) {
-    return field.options;
+    return sortSelectOptions(field.options);
+  }
+
+  if (field.optionsSource === "niveaux0") {
+    const rows =
+      getHierarchyFilterMode("niveaux0", hierarchyFilterModes) === "all" ? supportData.niveaux0 : supportData.niveaux0;
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_0),
+      label: item.NomNiveau_0 || `Niveau 0 ${item.ID_Niveau_0}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveaux1Old") {
+    const rows =
+      getHierarchyFilterMode("niveaux1Old", hierarchyFilterModes) === "all"
+        ? supportData.niveaux1Old
+        : supportData.niveaux1Old;
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_1_Old),
+      label: item.NomNiveau_1_Old || `Niveau 1 ancien ${item.ID_Niveau_1_Old}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveaux1") {
+    const rows =
+      getHierarchyFilterMode("niveaux1", hierarchyFilterModes) === "all"
+        ? supportData.niveaux1
+        : filterRowsByParent(supportData.niveaux1, "ID_Niveau_0_Fk", editorValues, ["ID_Niveau_0_Fk", "IdNiveau_0_Fk"]);
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_1),
+      label: buildOptionLabel([item.NomNiveau_1, item.NomNiveau_0], `Niveau 1 ${item.ID_Niveau_1}`),
+    })));
+  }
+
+  if (field.optionsSource === "niveaux2") {
+    const rows =
+      getHierarchyFilterMode("niveaux2", hierarchyFilterModes) === "all"
+        ? supportData.niveaux2
+        : filterRowsByParent(supportData.niveaux2, "ID_Niveau_1_FK", editorValues, ["ID_Niveau_1_FK", "IdNiveau_1_FK"]);
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_2),
+      label: buildNiveau2OptionLabel(item),
+    })));
+  }
+
+  if (field.optionsSource === "niveaux3") {
+    const rows =
+      getHierarchyFilterMode("niveaux3", hierarchyFilterModes) === "all"
+        ? supportData.niveaux3
+        : filterRowsByParent(supportData.niveaux3, "ID_Niveau_2_FK", editorValues, ["ID_Niveau_2_FK", "IdNiveau_2_FK"]);
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_3),
+      label: buildNiveau3OptionLabel(item, supportData),
+    })));
+  }
+
+  if (field.optionsSource === "niveaux4") {
+    const rows =
+      getHierarchyFilterMode("niveaux4", hierarchyFilterModes) === "all"
+        ? supportData.niveaux4
+        : filterRowsByParent(supportData.niveaux4, "ID_Niveau_3_Fk", editorValues, ["ID_Niveau_3_Fk", "IdNiveau_3_Fk"]);
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_4),
+      label: buildNiveau4OptionLabel(item),
+    })));
+  }
+
+  if (field.optionsSource === "niveaux5") {
+    const parentNiveau4 = getEditorContextValue(editorValues, ["ID_Niveau_4_Fk", "IdNiveau_4_Fk"]);
+    const rows =
+      getHierarchyFilterMode("niveaux5", hierarchyFilterModes) === "all"
+        ? supportData.niveaux5
+        : parentNiveau4
+          ? supportData.niveaux5.filter((item) => String(item?.ID_Niveau_4_Fk ?? "") === parentNiveau4)
+          : filterRowsByParent(supportData.niveaux5, "ID_Niveau_3_Fk", editorValues, ["ID_Niveau_3_Fk", "IdNiveau_3_Fk"]);
+
+    return sortSelectOptions(rows.map((item) => ({
+      value: String(item.ID_Niveau_5),
+      label: buildNiveau5OptionLabel(item),
+    })));
   }
 
   if (field.optionsSource === "roles") {
-    return supportData.roles.map((item) => ({
+    return sortSelectOptions(supportData.roles.map((item) => ({
       value: String(item.ID_Generique),
       label: item.NomGenerique || `Role ${item.ID_Generique}`,
-    }));
+    })));
   }
 
   if (field.optionsSource === "entities") {
-    return supportData.entities.map((item) => ({
+    return sortSelectOptions(supportData.entities.map((item) => ({
       value: String(item.IdEntite),
       label: item.NomEntite || `Entite ${item.IdEntite}`,
-    }));
+    })));
   }
 
   if (field.optionsSource === "categories") {
-    return supportData.categories.map((item) => ({
+    return sortSelectOptions(supportData.categories.map((item) => ({
       value: String(item.ID_CategorieGenerique),
       label: item.NomCategorieGenerique || `Categorie ${item.ID_CategorieGenerique}`,
-    }));
+    })));
   }
 
   if (field.optionsSource === "entityTypes") {
-    return supportData.entityTypes.map((item) => ({
+    return sortSelectOptions(supportData.entityTypes.map((item) => ({
       value: String(item.ID_Generique),
       label: item.NomGenerique || `Type ${item.ID_Generique}`,
-    }));
+    })));
   }
 
   if (field.optionsSource === "licenseStatuses") {
-    return supportData.licenseStatuses.map((item) => ({
+    return sortSelectOptions(supportData.licenseStatuses.map((item) => ({
       value: String(item.ID_Generique),
       label: item.NomGenerique || `Statut ${item.ID_Generique}`,
-    }));
+    })));
+  }
+
+  if (field.optionsSource === "niveau2Types") {
+    return sortSelectOptions(supportData.niveau2Types.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau3Types") {
+    return sortSelectOptions(supportData.niveau3Types.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau2Statuses") {
+    return sortSelectOptions(supportData.niveau2Statuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau3Statuses") {
+    return sortSelectOptions(supportData.niveau3Statuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "deploymentStatuses") {
+    return sortSelectOptions(supportData.deploymentStatuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Deploiement ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "dpsAccessRoutes") {
+    return sortSelectOptions(supportData.dpsAccessRoutes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "antBczAccessRoutes") {
+    return sortSelectOptions(supportData.antBczAccessRoutes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "dpsBczAccessRoutes") {
+    return sortSelectOptions(supportData.dpsBczAccessRoutes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau4Types") {
+    return sortSelectOptions(supportData.niveau4Types.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau5Types") {
+    return sortSelectOptions(supportData.niveau5Types.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau4Statuses") {
+    return sortSelectOptions(supportData.niveau4Statuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "niveau5Statuses") {
+    return sortSelectOptions(supportData.niveau5Statuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "networkAvailabilities") {
+    return sortSelectOptions(supportData.networkAvailabilities.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Reseau ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "zsAsAccessRoutes") {
+    return sortSelectOptions(supportData.zsAsAccessRoutes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "zsSiteAccessRoutes") {
+    return sortSelectOptions(supportData.zsSiteAccessRoutes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+    })));
+  }
+
+  if (field.optionsSource === "roofTypes") {
+    return sortSelectOptions(supportData.roofTypes.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || item.AbrGenerique || `Toit ${item.ID_Generique}`,
+    })));
   }
 
   return [];
 }
 
-async function fetchEntityViewRecord(row) {
-  const [entityPayload, locationPayload] = await Promise.all([
-    fetchAdminEntity(row.IdEntite),
-    row.IdEntiteLocalisation
-      ? fetchAdminModelItem("T_Entite_Localisation", row.IdEntiteLocalisation)
-      : Promise.resolve({ success: true, data: null }),
-  ]);
-
-  if (!entityPayload?.success) {
-    return entityPayload;
+function extractPayloadRows(payload) {
+  if (payload?.success && Array.isArray(payload.data)) {
+    return payload.data;
   }
 
-  if (row.IdEntiteLocalisation && !locationPayload?.success) {
-    return locationPayload;
-  }
-
-  return {
-    success: true,
-    data: {
-      entity: entityPayload.data,
-      location: locationPayload?.data || entityPayload.data?.T_Entite_Localisation?.[0] || null,
-    },
-  };
+  return [];
 }
 
-async function createEntityViewRecord(payload) {
-  const entityResponse = await createAdminEntity(payload.entity);
+function normalizeGenericRows(rows, categories) {
+  const categoriesById = new Map(
+    categories.map((category) => [String(category.ID_CategorieGenerique), category.NomCategorieGenerique || ""])
+  );
 
-  if (!entityResponse?.success) {
-    return entityResponse;
-  }
+  return rows.map((item) => {
+    const categoryId = item.ID_CategorieGeneriqueFk ?? item.ID_CategorieGenerique;
 
-  const entityId = entityResponse.data?.IdEntite;
-  const locationResponse = await createAdminModelRecord("T_Entite_Localisation", {
-    ...payload.location,
-    IdEntiteFk: entityId,
+    return {
+      ...item,
+      NomCategorieGenerique:
+        item.NomCategorieGenerique ||
+        categoriesById.get(String(categoryId ?? "")) ||
+        "",
+    };
   });
-
-  if (!locationResponse?.success) {
-    if (entityId) {
-      await deleteAdminEntity(entityId).catch?.(() => {});
-    }
-
-    return {
-      success: false,
-      message:
-        locationResponse?.message ||
-        "L'entite a ete creee mais sa localisation n'a pas pu etre finalisee.",
-    };
-  }
-
-  return {
-    success: true,
-    data: {
-      entity: entityResponse.data,
-      location: locationResponse.data,
-    },
-  };
 }
 
-async function updateEntityViewRecord(id, payload) {
-  const entityResponse = await updateAdminEntity(id, payload.entity);
-
-  if (!entityResponse?.success) {
-    return entityResponse;
+function ensureCurrentSelectOption(options, value) {
+  if (value == null || value === "") {
+    return options;
   }
 
-  const locationId = payload.location.IdEntiteLocalisation;
-  const locationBody = {
-    Latitude: payload.location.Latitude,
-    Longitude: payload.location.Longitude,
-    IdNiveau_3_Fk: payload.location.IdNiveau_3_Fk,
-    IdNiveau_4_Fk: payload.location.IdNiveau_4_Fk,
-    IdNiveau_5_Fk: payload.location.IdNiveau_5_Fk,
-    AdresseDetaillee: payload.location.AdresseDetaillee,
-  };
+  const normalizedValue = String(value);
+  const hasCurrentValue = options.some((option) => String(option.value) === normalizedValue);
 
-  const locationResponse = locationId
-    ? await updateAdminModelRecord("T_Entite_Localisation", locationId, locationBody)
-    : await createAdminModelRecord("T_Entite_Localisation", {
-        ...locationBody,
-        IdEntiteFk: id,
-      });
-
-  if (!locationResponse?.success) {
-    return {
-      success: false,
-      message:
-        locationResponse?.message ||
-        "L'entite a ete mise a jour mais la localisation n'a pas pu etre synchronisee.",
-    };
+  if (hasCurrentValue) {
+    return options;
   }
 
-  return {
-    success: true,
-    data: {
-      entity: entityResponse.data,
-      location: locationResponse.data,
+  return [
+    {
+      value: normalizedValue,
+      label: `Valeur actuelle (${normalizedValue})`,
     },
-  };
+    ...options,
+  ];
 }
 
-const CRUD_CONFIGS = {
-  "systeme.V_Entite_Localisation_Detail": {
-    primaryKey: "IdEntite",
-    resourceLabel: "entite",
-    createLabel: "Nouvelle entite",
-    allFields: ENTITY_FIELDS,
-    fields: ENTITY_FIELDS,
-    rowActions: [
-      { mode: "edit-entity", label: "Modifier entite" },
-      { mode: "edit-location", label: "Modifier localisation" },
-      { mode: "delete", label: "Supprimer", tone: "danger" },
-    ],
-    getFields: (mode) => {
-      if (mode === "edit-entity") {
-        return ENTITY_CORE_FIELDS;
-      }
+function buildOptionLabel(parts, fallback) {
+  const label = parts.filter(Boolean).join(" - ").trim();
+  return label || fallback || "";
+}
 
-      if (mode === "edit-location") {
-        return LOCATION_FIELDS;
-      }
+function getSelectFallbackLabel(field, value, sourceRow) {
+  if (!sourceRow || value == null || value === "") {
+    return "";
+  }
 
-      return ENTITY_FIELDS;
+  switch (field.optionsSource) {
+    case "niveaux0":
+      return buildOptionLabel([sourceRow.NomNiveau_0], `Niveau 0 ${value}`);
+    case "niveaux1Old":
+      return buildOptionLabel([sourceRow.NomNiveau_1_Old], `Niveau 1 ancien ${value}`);
+    case "niveaux1":
+      return buildOptionLabel([sourceRow.CodeNiveau_1, sourceRow.NomNiveau_1], `Niveau 1 ${value}`);
+    case "niveaux2":
+      return buildOptionLabel([sourceRow.CodeNiveau_2, sourceRow.NomNiveau_2], `Niveau 2 ${value}`);
+    case "niveaux3":
+      return buildOptionLabel([sourceRow.CodeNiveau_3, sourceRow.NomNiveau_3], `Niveau 3 ${value}`);
+    case "niveaux4":
+      return buildOptionLabel([sourceRow.CodeNiveau_4, sourceRow.NomNiveau_4 || sourceRow.SITE], `Niveau 4 ${value}`);
+    case "niveaux5":
+      return buildOptionLabel([sourceRow.CodeNiveau_5, sourceRow.NomNiveau_5 || sourceRow.SITE], `Niveau 5 ${value}`);
+    case "niveau2Types":
+      return buildOptionLabel([sourceRow.Type_Niveau_2], `Type ${value}`);
+    case "niveau3Types":
+      return buildOptionLabel([sourceRow.Type_Niveau_3], `Type ${value}`);
+    case "niveau4Types":
+      return buildOptionLabel([sourceRow.Type_Niveau_4], `Type ${value}`);
+    case "niveau5Types":
+      return buildOptionLabel([sourceRow.Type_Niveau_5], `Type ${value}`);
+    case "niveau2Statuses":
+      return buildOptionLabel([sourceRow.Statut_Niveau_2], `Statut ${value}`);
+    case "niveau3Statuses":
+      return buildOptionLabel([sourceRow.Statut_Niveau_3], `Statut ${value}`);
+    case "niveau4Statuses":
+      return buildOptionLabel([sourceRow.STATUT_AS], `Statut ${value}`);
+    case "niveau5Statuses":
+      return buildOptionLabel([sourceRow.STATUT_Site], `Statut ${value}`);
+    case "deploymentStatuses":
+      return buildOptionLabel([sourceRow.Statut_Deploiement, sourceRow.STATUT_DEPLOI], `Deploiement ${value}`);
+    case "networkAvailabilities":
+      return buildOptionLabel([sourceRow.RESEAU], `Reseau ${value}`);
+    case "dpsAccessRoutes":
+      return buildOptionLabel([sourceRow.Voie_Acces_DPS], `Voie ${value}`);
+    case "antBczAccessRoutes":
+      return buildOptionLabel([sourceRow.Voie_ANTBCZ], `Voie ${value}`);
+    case "dpsBczAccessRoutes":
+      return buildOptionLabel([sourceRow.Voie_DPSBCZS], `Voie ${value}`);
+    case "zsAsAccessRoutes":
+      return buildOptionLabel([sourceRow.VOIE_AS_ZS], `Voie ${value}`);
+    case "zsSiteAccessRoutes":
+      return buildOptionLabel([sourceRow.VOIE_AS_Site], `Voie ${value}`);
+    case "roles":
+      return buildOptionLabel([sourceRow.RoleUser, sourceRow.Role, sourceRow.NomRole], `Role ${value}`);
+    case "entities":
+      return buildOptionLabel([sourceRow.NomEntite], `Entite ${value}`);
+    case "categories":
+      return buildOptionLabel([sourceRow.NomCategorieGenerique], `Categorie ${value}`);
+    case "entityTypes":
+      return buildOptionLabel([sourceRow.TypeEntite], `Type ${value}`);
+    case "licenseStatuses":
+      return buildOptionLabel([sourceRow.statut_licence, sourceRow.StatutLicence], `Statut ${value}`);
+    case "roofTypes":
+      return buildOptionLabel([sourceRow.TypeToit], `Toit ${value}`);
+    default:
+      return "";
+  }
+}
+
+function ensureCurrentSelectOptionWithLabel(options, value, fallbackLabel) {
+  if (value == null || value === "") {
+    return options;
+  }
+
+  const normalizedValue = String(value);
+  const hasCurrentValue = options.some((option) => String(option.value) === normalizedValue);
+
+  if (hasCurrentValue) {
+    return options;
+  }
+
+  return [
+    {
+      value: normalizedValue,
+      label: fallbackLabel || `Valeur actuelle (${normalizedValue})`,
     },
-    getModeLabel: (mode) => {
-      if (mode === "edit-entity") {
-        return "Modifier l'entite";
-      }
-
-      if (mode === "edit-location") {
-        return "Modifier la localisation";
-      }
-
-      return "Nouvelle entite";
-    },
-    getModeDescription: (mode) => {
-      if (mode === "edit-entity") {
-        return "Mettez a jour les informations principales de l'entite.";
-      }
-
-      if (mode === "edit-location") {
-        return "Mettez a jour les coordonnees et la localisation detaillee.";
-      }
-
-      return "Les champs saisis seront envoyes au backend admin.";
-    },
-    getSuccessMessage: (mode) => {
-      if (mode === "edit-entity") {
-        return "Entite mise a jour avec succes.";
-      }
-
-      if (mode === "edit-location") {
-        return "Localisation mise a jour avec succes.";
-      }
-
-      return "Entite creee avec succes.";
-    },
-    fetchRecord: (row) => fetchEntityViewRecord(row),
-    createRecord: (payload) => createEntityViewRecord(payload),
-    updateRecord: (id, payload) => updateEntityViewRecord(id, payload),
-    deleteRecord: (_id, row) => deleteAdminEntity(row.IdEntite),
-    deleteConfirmation:
-      "Voulez-vous vraiment supprimer cette entite ? Ses localisations associees seront aussi supprimees.",
-    mapRecord: (record) => ({
-      NomEntite: record?.entity?.NomEntite || "",
-      EmailEntite: record?.entity?.EmailEntite || "",
-      PhoneEntite: record?.entity?.PhoneEntite || "",
-      AdresseEntite: record?.entity?.AdresseEntite || "",
-      IdTypeEntiteFk: record?.entity?.IdTypeEntiteFk ? String(record.entity.IdTypeEntiteFk) : "",
-      ValideEntite: record?.entity?.ValideEntite !== false,
-      Latitude: record?.location?.Latitude != null ? String(record.location.Latitude) : "",
-      Longitude: record?.location?.Longitude != null ? String(record.location.Longitude) : "",
-      IdNiveau_3_Fk: record?.location?.IdNiveau_3_Fk ? String(record.location.IdNiveau_3_Fk) : "",
-      IdNiveau_4_Fk: record?.location?.IdNiveau_4_Fk ? String(record.location.IdNiveau_4_Fk) : "",
-      IdNiveau_5_Fk: record?.location?.IdNiveau_5_Fk ? String(record.location.IdNiveau_5_Fk) : "",
-      AdresseDetaillee: record?.location?.AdresseDetaillee || "",
-      IdEntiteLocalisation: record?.location?.IdEntiteLocalisation ? String(record.location.IdEntiteLocalisation) : "",
-    }),
-    buildPayload: (values) => ({
-      entity: buildEntityPayload(values),
-      location: buildLocationPayload(values),
-    }),
-  },
-  "systeme.V_User_profil": {
-    primaryKey: "IdUser",
-    resourceLabel: "utilisateur",
-    createLabel: "Nouvel utilisateur",
-    allFields: USER_FIELDS,
-    fields: USER_FIELDS,
-    fetchRecord: (_row, id) => fetchAdminUser(id),
-    createRecord: (payload) => createAdminUser(payload),
-    updateRecord: (id, payload) => updateAdminUser(id, payload),
-    deleteRecord: (id) => deleteAdminUser(id),
-    mapRecord: (record) => ({
-      NomUser: record?.NomUser || "",
-      PrenomUser: record?.PrenomUser || "",
-      EmailUser: record?.EmailUser || "",
-      MotdepasseUser: "",
-      PhoneUser: record?.PhoneUser || "",
-      SexeUser: record?.SexeUser || "M",
-      IdRoleFk: record?.IdRoleFk ? String(record.IdRoleFk) : "",
-      IdEntiteFk: record?.IdEntiteFk ? String(record.IdEntiteFk) : "",
-      ValideUser: Boolean(record?.ValideUser),
-      Is_staff: Boolean(record?.Is_staff),
-      Is_Admin: Boolean(record?.Is_Admin),
-      UrlPhoto: record?.UrlPhoto || "",
-    }),
-    buildPayload: (values, mode) => {
-      const payload = {
-        NomUser: values.NomUser.trim(),
-        PrenomUser: values.PrenomUser.trim(),
-        EmailUser: values.EmailUser.trim(),
-        PhoneUser: values.PhoneUser.trim() || null,
-        SexeUser: values.SexeUser,
-        IdRoleFk: values.IdRoleFk ? Number(values.IdRoleFk) : null,
-        IdEntiteFk: values.IdEntiteFk ? Number(values.IdEntiteFk) : null,
-        ValideUser: Boolean(values.ValideUser),
-        Is_staff: Boolean(values.Is_staff),
-        Is_Admin: Boolean(values.Is_Admin),
-        UrlPhoto: values.UrlPhoto.trim() || null,
-      };
-
-      if (mode === "create" || values.MotdepasseUser.trim()) {
-        payload.MotdepasseUser = values.MotdepasseUser;
-      }
-
-      return payload;
-    },
-  },
-  "systeme.V_Licence_active": {
-    primaryKey: "IdLicence",
-    resourceLabel: "licence",
-    createLabel: "Nouvelle licence",
-    allFields: LICENSE_FIELDS,
-    fields: LICENSE_FIELDS,
-    getFields: (mode) => (mode === "create" ? LICENSE_FIELDS : LICENSE_FIELDS.filter((field) => field.name !== "IdLicence")),
-    fetchRecord: (_row, id) => fetchAdminLicence(id),
-    createRecord: (payload) => createAdminLicence(payload),
-    updateRecord: (id, payload) => updateAdminLicence(id, payload),
-    deleteRecord: (id) => deleteAdminLicence(id),
-    mapRecord: (record) => ({
-      IdLicence: record?.IdLicence ? String(record.IdLicence) : "",
-      IdEntiteFk: record?.IdEntiteFk ? String(record.IdEntiteFk) : "",
-      IdStatutLicenceFk: record?.IdStatutLicenceFk ? String(record.IdStatutLicenceFk) : "",
-      DateDebut: formatDateTimeLocalValue(record?.DateDebut),
-      DateFin: formatDateTimeLocalValue(record?.DateFin),
-      ValideLicence: record?.ValideLicence !== false,
-      ExpireeLicence: Boolean(record?.ExpireeLicence),
-    }),
-    buildPayload: (values) => ({
-      IdLicence: Number(values.IdLicence),
-      IdEntiteFk: Number(values.IdEntiteFk),
-      IdStatutLicenceFk: Number(values.IdStatutLicenceFk),
-      DateDebut: toIsoDateTimeOrNull(values.DateDebut),
-      DateFin: toIsoDateTimeOrNull(values.DateFin),
-      ValideLicence: Boolean(values.ValideLicence),
-      ExpireeLicence: Boolean(values.ExpireeLicence),
-    }),
-  },
-  "referentiel.V_Generique": {
-    primaryKey: "ID_Generique",
-    resourceLabel: "valeur de referentiel",
-    createLabel: "Nouvelle valeur",
-    allFields: GENERIC_FIELDS,
-    fields: GENERIC_FIELDS,
-    fetchRecord: (_row, id) => fetchAdminModelItem("T_Generique", id),
-    createRecord: (payload) => createAdminModelRecord("T_Generique", payload),
-    updateRecord: (id, payload) => updateAdminModelRecord("T_Generique", id, payload),
-    deleteRecord: (id) => deleteAdminModelRecord("T_Generique", id),
-    mapRecord: (record) => ({
-      ID_CategorieGeneriqueFk: record?.ID_CategorieGeneriqueFk ? String(record.ID_CategorieGeneriqueFk) : "",
-      NomGenerique: record?.NomGenerique || "",
-      AbrGenerique: record?.AbrGenerique || "",
-      ObsGenerique: record?.ObsGenerique || "",
-      ValideGenerique: record?.ValideGenerique !== false,
-      VisibleNiveau_2: record?.VisibleNiveau_2 !== false,
-      VisibleNiveau_3: record?.VisibleNiveau_3 !== false,
-      VisibleNiveau_4: record?.VisibleNiveau_4 !== false,
-      VisibleNiveau_5: record?.VisibleNiveau_5 !== false,
-      VisibleArticle: record?.VisibleArticle !== false,
-      VisibleCmd: record?.VisibleCmd !== false,
-      VisibleFacture: record?.VisibleFacture !== false,
-      VisibleUsers: record?.VisibleUsers !== false,
-      VisibleVoie: record?.VisibleVoie !== false,
-      VisibleAll: record?.VisibleAll !== false,
-    }),
-    buildPayload: (values) => ({
-      ID_CategorieGeneriqueFk: Number(values.ID_CategorieGeneriqueFk),
-      NomGenerique: values.NomGenerique.trim(),
-      AbrGenerique: values.AbrGenerique.trim() || null,
-      ObsGenerique: values.ObsGenerique.trim() || null,
-      ValideGenerique: Boolean(values.ValideGenerique),
-      VisibleNiveau_2: Boolean(values.VisibleNiveau_2),
-      VisibleNiveau_3: Boolean(values.VisibleNiveau_3),
-      VisibleNiveau_4: Boolean(values.VisibleNiveau_4),
-      VisibleNiveau_5: Boolean(values.VisibleNiveau_5),
-      VisibleArticle: Boolean(values.VisibleArticle),
-      VisibleCmd: Boolean(values.VisibleCmd),
-      VisibleFacture: Boolean(values.VisibleFacture),
-      VisibleUsers: Boolean(values.VisibleUsers),
-      VisibleVoie: Boolean(values.VisibleVoie),
-      VisibleAll: Boolean(values.VisibleAll),
-    }),
-  },
-};
+    ...options,
+  ];
+}
 
 const DEFAULT_ADMIN_VIEW_KEY =
   ADMIN_VIEWS.map((view) => normalizeViewKey(view.schema, view.name)).find((viewKey) => Boolean(CRUD_CONFIGS[viewKey])) ||
-  normalizeViewKey(ADMIN_VIEWS[0].schema, ADMIN_VIEWS[0].name);
+  (ADMIN_VIEWS[0] ? normalizeViewKey(ADMIN_VIEWS[0].schema, ADMIN_VIEWS[0].name) : "");
 
 function AdminMultiSelectFilter({
   definition,
@@ -810,7 +1320,7 @@ function AdminMultiSelectFilter({
 
   return (
     <div className="admin-multiselect">
-      <span>{definition.column}</span>
+      <span>{definition.displayLabel || definition.column}</span>
       <button
         type="button"
         className={`admin-multiselect-trigger ${isOpen ? "is-open" : ""}`}
@@ -836,7 +1346,7 @@ function AdminMultiSelectFilter({
             type="search"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder={`Rechercher dans ${definition.column}`}
+            placeholder={`Rechercher dans ${definition.displayLabel || definition.column}`}
           />
 
           <div className="admin-multiselect-options">
@@ -902,12 +1412,36 @@ export default function Admin() {
     categories: [],
     entityTypes: [],
     licenseStatuses: [],
+    niveaux0: [],
+    niveaux1Old: [],
+    niveaux1: [],
+    niveaux2: [],
+    niveaux3: [],
+    niveaux4: [],
+    niveaux5: [],
+    niveau2Types: [],
+    niveau3Types: [],
+    niveau2Statuses: [],
+    niveau3Statuses: [],
+    deploymentStatuses: [],
+    dpsAccessRoutes: [],
+    antBczAccessRoutes: [],
+    dpsBczAccessRoutes: [],
+    niveau4Types: [],
+    niveau5Types: [],
+    niveau4Statuses: [],
+    niveau5Statuses: [],
+    networkAvailabilities: [],
+    zsAsAccessRoutes: [],
+    zsSiteAccessRoutes: [],
+    roofTypes: [],
   });
   const [loadingSupport, setLoadingSupport] = useState(true);
   const [supportError, setSupportError] = useState("");
   const [editorMode, setEditorMode] = useState(null);
   const [editorRecordId, setEditorRecordId] = useState(null);
   const [editorValues, setEditorValues] = useState({});
+  const [editorSourceRow, setEditorSourceRow] = useState(null);
   const [loadingEditor, setLoadingEditor] = useState(false);
   const [submittingEditor, setSubmittingEditor] = useState(false);
   const [actionFeedback, setActionFeedback] = useState(null);
@@ -931,8 +1465,27 @@ export default function Admin() {
   const [notifications, setNotifications] = useState([]);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [expandedCells, setExpandedCells] = useState({});
+  const [showFkMappingPanel, setShowFkMappingPanel] = useState(false);
+  const [genericCategoryOverrides, setGenericCategoryOverrides] = useState(() => readGenericCategoryOverrides());
+  const [genericCategoryDrafts, setGenericCategoryDrafts] = useState({});
+  const [hierarchyFilterModes, setHierarchyFilterModes] = useState(() => readHierarchyFilterModes());
+  const [loadingSharedFkSettings, setLoadingSharedFkSettings] = useState(true);
+  const [savingSharedFkSettings, setSavingSharedFkSettings] = useState(false);
+  const [sharedFkSettingsError, setSharedFkSettingsError] = useState("");
+  const [sharedFkTargetScope, setSharedFkTargetScope] = useState(null);
+  const [sharedFkLoadedScope, setSharedFkLoadedScope] = useState(null);
+  const [sharedFkSettingsMeta, setSharedFkSettingsMeta] = useState({
+    updatedAt: null,
+    updatedByUserId: null,
+    updatedByName: null,
+  });
+  const [sharedFkAuditRows, setSharedFkAuditRows] = useState([]);
+  const [loadingSharedFkAudit, setLoadingSharedFkAudit] = useState(false);
+  const [sharedFkAuditError, setSharedFkAuditError] = useState("");
   const resizingRef = useRef(null);
   const tableWrapRef = useRef(null);
+  const tableFooterRef = useRef(null);
+  const paginationViewportRef = useRef(null);
   const exportMenuRef = useRef(null);
   const navigationMenuRef = useRef(null);
   const [horizontalScrollState, setHorizontalScrollState] = useState({
@@ -945,6 +1498,9 @@ export default function Admin() {
     const availableKeys = new Set(availableViews.map((view) => normalizeViewKey(view.schema, view.name)));
     return ADMIN_VIEWS.filter((view) => availableKeys.has(normalizeViewKey(view.schema, view.name)));
   }, [availableViews]);
+
+  const storedAuthUser = useMemo(() => getStoredAuth()?.user || null, []);
+  const adminUiScopeCandidates = useMemo(() => buildAdminUiScopeCandidates(storedAuthUser), [storedAuthUser]);
 
   const selectedView = useMemo(
     () => adminViews.find((view) => normalizeViewKey(view.schema, view.name) === selectedViewKey) || null,
@@ -965,6 +1521,334 @@ export default function Admin() {
 
     return rows.length > 0 ? Object.keys(rows[0]) : [];
   }, [rows, viewMeta.columns]);
+
+  const configurableFkMappings = useMemo(() => {
+    if (!selectedCrudConfig) {
+      return [];
+    }
+
+    const sourceMap = new Map();
+    const sourceFields = selectedCrudConfig.allFields || selectedCrudConfig.fields || [];
+
+    sourceFields.forEach((field) => {
+      if (field.type !== "select" || !GENERIC_OPTION_SOURCE_CONFIG[field.optionsSource]) {
+        return;
+      }
+
+      const existing = sourceMap.get(field.optionsSource);
+
+      if (existing) {
+        existing.labels.push(field.label);
+        existing.fieldNames.push(field.name);
+        return;
+      }
+
+      sourceMap.set(field.optionsSource, {
+        source: field.optionsSource,
+        labels: [field.label],
+        fieldNames: [field.name],
+      });
+    });
+
+    return Array.from(sourceMap.values()).sort((leftItem, rightItem) =>
+      leftItem.labels[0].localeCompare(rightItem.labels[0], "fr")
+    );
+  }, [selectedCrudConfig]);
+
+  const configurableHierarchyMappings = useMemo(() => {
+    if (!selectedCrudConfig) {
+      return [];
+    }
+
+    const sourceMap = new Map();
+    const sourceFields = selectedCrudConfig.allFields || selectedCrudConfig.fields || [];
+
+    sourceFields.forEach((field) => {
+      if (field.type !== "select" || !HIERARCHY_OPTION_SOURCE_CONFIG[field.optionsSource]) {
+        return;
+      }
+
+      const existing = sourceMap.get(field.optionsSource);
+
+      if (existing) {
+        existing.labels.push(field.label);
+        existing.fieldNames.push(field.name);
+        return;
+      }
+
+      sourceMap.set(field.optionsSource, {
+        source: field.optionsSource,
+        labels: [field.label],
+        fieldNames: [field.name],
+      });
+    });
+
+    return Array.from(sourceMap.values()).sort((leftItem, rightItem) =>
+      leftItem.labels[0].localeCompare(rightItem.labels[0], "fr")
+    );
+  }, [selectedCrudConfig]);
+
+  const categoryNameById = useMemo(
+    () =>
+      new Map(
+        supportData.categories.map((category) => [
+          String(category.ID_CategorieGenerique),
+          category.NomCategorieGenerique || `Categorie ${category.ID_CategorieGenerique}`,
+        ])
+      ),
+    [supportData.categories]
+  );
+
+  const genericMappingStates = useMemo(
+    () =>
+      configurableFkMappings.map((mapping) => {
+        const config = GENERIC_OPTION_SOURCE_CONFIG[mapping.source];
+        const defaultValue = serializeCategoryIds(config.defaultCategoryIds);
+        const storedOverride = genericCategoryOverrides[mapping.source];
+        const inputValue = genericCategoryDrafts[mapping.source] ?? storedOverride ?? defaultValue;
+        const parsedInput = parseCategoryOverrideInput(inputValue);
+        const isValid = Boolean(parsedInput && parsedInput.length > 0);
+        const normalizedInput = isValid ? serializeCategoryIds(parsedInput) : String(inputValue ?? "").trim();
+        const isDirty = normalizedInput !== String(storedOverride ?? defaultValue);
+        const effectiveIds = getConfiguredCategoryIdsForSource(mapping.source, genericCategoryOverrides);
+        const effectiveCategoryLabels = effectiveIds
+          .map((categoryId) => categoryNameById.get(String(categoryId)) || `Categorie ${categoryId}`)
+          .join(", ");
+        const optionsCount = Array.isArray(supportData[mapping.source]) ? supportData[mapping.source].length : 0;
+
+        return {
+          ...mapping,
+          config,
+          defaultValue,
+          storedOverride,
+          inputValue,
+          parsedInput,
+          isValid,
+          isDirty,
+          isCustom: Boolean(storedOverride),
+          effectiveIds,
+          effectiveCategoryLabels,
+          optionsCount,
+        };
+      }),
+    [categoryNameById, configurableFkMappings, genericCategoryDrafts, genericCategoryOverrides, supportData]
+  );
+
+  const hierarchyMappingStates = useMemo(
+    () =>
+      configurableHierarchyMappings.map((mapping) => {
+        const config = HIERARCHY_OPTION_SOURCE_CONFIG[mapping.source];
+        const mode = getHierarchyFilterMode(mapping.source, hierarchyFilterModes);
+        const optionsCount = Array.isArray(supportData[mapping.source]) ? supportData[mapping.source].length : 0;
+
+        return {
+          ...mapping,
+          config,
+          mode,
+          isCustom: mode !== config.defaultMode,
+          optionsCount,
+        };
+      }),
+    [configurableHierarchyMappings, hierarchyFilterModes, supportData]
+  );
+
+  const hasInvalidGenericDrafts = genericMappingStates.some((item) => !item.isValid);
+  const hasDirtyGenericDrafts = genericMappingStates.some((item) => item.isDirty);
+  const hasCustomFkSettings =
+    genericMappingStates.some((item) => item.isCustom) || hierarchyMappingStates.some((item) => item.isCustom);
+  const sharedFkTargetScopeLabel = buildAdminUiScopeLabel(sharedFkTargetScope);
+  const sharedFkLoadedScopeLabel = sharedFkLoadedScope ? buildAdminUiScopeLabel(sharedFkLoadedScope) : "";
+  const sharedFkSyncStatus = useMemo(
+    () =>
+      buildSharedFkSyncStatus({
+        loading: loadingSharedFkSettings,
+        saving: savingSharedFkSettings,
+        error: sharedFkSettingsError,
+        targetScopeLabel: sharedFkTargetScopeLabel,
+        loadedScope: sharedFkLoadedScope,
+        loadedScopeLabel: sharedFkLoadedScopeLabel,
+        meta: sharedFkSettingsMeta,
+        hasDirtyDrafts: hasDirtyGenericDrafts,
+        hasInvalidDrafts: hasInvalidGenericDrafts,
+      }),
+    [
+      hasDirtyGenericDrafts,
+      hasInvalidGenericDrafts,
+      loadingSharedFkSettings,
+      savingSharedFkSettings,
+      sharedFkLoadedScope,
+      sharedFkLoadedScopeLabel,
+      sharedFkSettingsError,
+      sharedFkSettingsMeta,
+      sharedFkTargetScopeLabel,
+    ]
+  );
+  const sharedFkAuditTargetScope = sharedFkLoadedScope || sharedFkTargetScope;
+  const visibleSharedFkAuditRows = useMemo(() => {
+    const filteredRows = sharedFkAuditRows.filter((row) => {
+      if (!sharedFkAuditTargetScope) {
+        return true;
+      }
+
+      return isSameAdminUiScope(getAuditSettingScope(row), sharedFkAuditTargetScope);
+    });
+
+    return filteredRows.slice(0, 4);
+  }, [sharedFkAuditRows, sharedFkAuditTargetScope]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(ADMIN_GENERIC_CATEGORY_STORAGE_KEY, JSON.stringify(genericCategoryOverrides));
+  }, [genericCategoryOverrides]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(ADMIN_HIERARCHY_FILTER_STORAGE_KEY, JSON.stringify(hierarchyFilterModes));
+  }, [hierarchyFilterModes]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSharedAdminUiSettings() {
+      setLoadingSharedFkSettings(true);
+      setSharedFkSettingsError("");
+      const scopeCandidates = adminUiScopeCandidates.length > 0 ? adminUiScopeCandidates : [createAdminUiScope("global", null, "Global")];
+
+      try {
+        if (!active) {
+          return;
+        }
+
+        setSharedFkTargetScope(scopeCandidates[0] || null);
+
+        let matchingPayload = null;
+        let matchingScope = null;
+
+        for (const candidate of scopeCandidates) {
+          const response = await fetchAdminUiSettings({
+            scope: candidate.scope,
+            scopeValue: candidate.scopeValue,
+          });
+
+          if (!active) {
+            return;
+          }
+
+          if (response?.success && response.data?.exists) {
+            matchingPayload = response.data;
+            matchingScope = candidate;
+            break;
+          }
+
+          if (response && !response.success) {
+            const message = response.message || "Impossible de charger les reglages partages du panneau FK.";
+            setSharedFkSettingsError(message);
+          }
+        }
+
+        if (matchingPayload) {
+          setSharedFkSettingsError("");
+          setGenericCategoryOverrides(normalizeStringRecord(matchingPayload.genericCategoryOverrides));
+          setHierarchyFilterModes(normalizeHierarchyModes(matchingPayload.hierarchyFilterModes));
+          setGenericCategoryDrafts({});
+          setSharedFkLoadedScope(matchingScope);
+          setSharedFkSettingsMeta({
+            updatedAt: matchingPayload.updatedAt || null,
+            updatedByUserId: matchingPayload.updatedByUserId ?? null,
+            updatedByName: matchingPayload.updatedByName || null,
+          });
+          return;
+        }
+
+        setSharedFkLoadedScope(null);
+        setSharedFkSettingsMeta({
+          updatedAt: null,
+          updatedByUserId: null,
+          updatedByName: null,
+        });
+      } catch (_error) {
+        if (!active) {
+          return;
+        }
+
+        setSharedFkSettingsError("Impossible de charger les reglages partages du panneau FK.");
+      } finally {
+        if (active) {
+          setLoadingSharedFkSettings(false);
+        }
+      }
+    }
+
+    loadSharedAdminUiSettings();
+
+    return () => {
+      active = false;
+    };
+  }, [adminUiScopeCandidates]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSharedFkAuditTrail() {
+      if (!showFkMappingPanel) {
+        return;
+      }
+
+      setLoadingSharedFkAudit(true);
+      setSharedFkAuditError("");
+
+      const payload = await fetchViewData("systeme", "V_Admin_UI_Setting_Audit", {
+        take: 12,
+        skip: 0,
+      });
+
+      if (!active) {
+        return;
+      }
+
+      if (payload?.success && Array.isArray(payload.data)) {
+        setSharedFkAuditRows(payload.data);
+        setSharedFkAuditError("");
+      } else {
+        setSharedFkAuditRows([]);
+        setSharedFkAuditError(payload?.message || "Impossible de charger l'historique compact des reglages FK.");
+      }
+
+      setLoadingSharedFkAudit(false);
+    }
+
+    loadSharedFkAuditTrail();
+
+    return () => {
+      active = false;
+    };
+  }, [showFkMappingPanel, sharedFkSettingsMeta.updatedAt]);
+
+  useEffect(() => {
+    if (configurableFkMappings.length === 0) {
+      return;
+    }
+
+    setGenericCategoryDrafts((current) => {
+      const nextDrafts = { ...current };
+
+      configurableFkMappings.forEach((item) => {
+        if (nextDrafts[item.source] == null) {
+          nextDrafts[item.source] =
+            genericCategoryOverrides[item.source] ??
+            serializeCategoryIds(GENERIC_OPTION_SOURCE_CONFIG[item.source].defaultCategoryIds);
+        }
+      });
+
+      return nextDrafts;
+    });
+  }, [configurableFkMappings, genericCategoryOverrides]);
 
   const effectiveVisibleColumns = useMemo(() => {
     if (columns.length === 0) {
@@ -1008,6 +1892,7 @@ export default function Admin() {
 
         return {
           column,
+          displayLabel: getColumnDisplayLabel(column),
           values,
           useMultiSelect: values.length > 1 && values.length <= 80,
         };
@@ -1022,7 +1907,10 @@ export default function Admin() {
       return [];
     }
 
-    return rows.filter((row) => selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey])));
+    return rows.filter((row) => {
+      const recordId = resolveRowRecordId(row, selectedCrudConfig);
+      return recordId ? selectedRowIds.includes(recordId) : false;
+    });
   }, [rows, selectedCrudConfig, selectedRowIds]);
 
   const selectedPrimaryRow = selectedRows[0] || null;
@@ -1068,13 +1956,13 @@ export default function Admin() {
       if (Array.isArray(filterValue) && filterValue.length > 0) {
         chips.push({
           key: `filter-${column}`,
-          label: `${column}: ${filterValue.join(", ")}`,
+          label: `${getColumnDisplayLabel(column)}: ${filterValue.join(", ")}`,
           onRemove: () => handleClearMultiFilter(column),
         });
       } else if (typeof filterValue === "string" && filterValue.trim()) {
         chips.push({
           key: `filter-${column}`,
-          label: `${column}: ${filterValue.trim()}`,
+          label: `${getColumnDisplayLabel(column)}: ${filterValue.trim()}`,
           onRemove: () => handleColumnFilterChange(column, ""),
         });
       }
@@ -1083,7 +1971,7 @@ export default function Admin() {
     if (sortConfig.column && sortConfig.direction) {
       chips.push({
         key: "sort",
-        label: `Tri: ${sortConfig.column} (${sortConfig.direction === "asc" ? "croissant" : "decroissant"})`,
+        label: `Tri: ${getColumnDisplayLabel(sortConfig.column)} (${sortConfig.direction === "asc" ? "croissant" : "decroissant"})`,
         onRemove: () =>
           setSortConfig({
             column: "",
@@ -1095,7 +1983,7 @@ export default function Admin() {
     if (pinnedColumns.length > 0) {
       chips.push({
         key: "pinned",
-        label: `Colonnes gelees: ${pinnedColumns.join(", ")}`,
+        label: `Colonnes gelees: ${pinnedColumns.map((column) => getColumnDisplayLabel(column)).join(", ")}`,
         onRemove: () => setPinnedColumns([]),
       });
     }
@@ -1239,6 +2127,66 @@ export default function Admin() {
     printWindow.print();
   }
 
+  function getPageScrollContainer() {
+    if (tableWrapRef.current?.closest) {
+      const closestScrollable = tableWrapRef.current.closest(".mobile-content");
+
+      if (closestScrollable) {
+        return closestScrollable;
+      }
+    }
+
+    if (typeof document !== "undefined") {
+      return document.querySelector(".mobile-content");
+    }
+
+    return null;
+  }
+
+  function capturePaginationViewport() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const pageScrollContainer = getPageScrollContainer();
+
+    const footerRect = tableFooterRef.current?.getBoundingClientRect?.() || null;
+    const pageContainerRect = pageScrollContainer?.getBoundingClientRect?.() || null;
+
+    paginationViewportRef.current = {
+      pageScrollTop: pageScrollContainer?.scrollTop ?? null,
+      pageScrollLeft: pageScrollContainer?.scrollLeft ?? null,
+      footerOffsetTop:
+        footerRect && pageContainerRect ? footerRect.top - pageContainerRect.top : footerRect?.top ?? null,
+      pageScrollY:
+        window.scrollY ??
+        window.pageYOffset ??
+        document.documentElement?.scrollTop ??
+        document.body?.scrollTop ??
+        0,
+      tableScrollTop: tableWrapRef.current?.scrollTop ?? 0,
+      tableScrollLeft: tableWrapRef.current?.scrollLeft ?? 0,
+    };
+  }
+
+  function handlePageNavigation(nextPage) {
+    if (nextPage === currentPage) {
+      return;
+    }
+
+    capturePaginationViewport();
+    setCurrentPage(nextPage);
+  }
+
+  function handleRowsPerPageChange(nextRowsPerPage) {
+    if (nextRowsPerPage === rowsPerPage) {
+      return;
+    }
+
+    capturePaginationViewport();
+    setRowsPerPage(nextRowsPerPage);
+  }
+
   useEffect(() => {
     async function handleMouseMove(event) {
       if (!resizingRef.current) {
@@ -1308,6 +2256,59 @@ export default function Admin() {
       window.removeEventListener("resize", updateHorizontalScrollState);
     };
   }, [rows, effectiveVisibleColumns, columnWidths, selectedViewKey, loadingData]);
+
+  useEffect(() => {
+    if (loadingData || !paginationViewportRef.current) {
+      return;
+    }
+
+    const snapshot = paginationViewportRef.current;
+    paginationViewportRef.current = null;
+
+    const restoreScroll = () => {
+      const pageScrollContainer = getPageScrollContainer();
+
+      if (pageScrollContainer && snapshot.pageScrollTop != null) {
+        pageScrollContainer.scrollTop = snapshot.pageScrollTop;
+        pageScrollContainer.scrollLeft = snapshot.pageScrollLeft ?? 0;
+      }
+
+      if (typeof window !== "undefined") {
+        window.scrollTo({
+          top: snapshot.pageScrollY,
+          left: 0,
+          behavior: "auto",
+        });
+      }
+
+      if (tableWrapRef.current) {
+        tableWrapRef.current.scrollTop = snapshot.tableScrollTop;
+        tableWrapRef.current.scrollLeft = snapshot.tableScrollLeft;
+      }
+
+      if (pageScrollContainer && snapshot.footerOffsetTop != null && tableFooterRef.current) {
+        const currentFooterRect = tableFooterRef.current.getBoundingClientRect();
+        const currentContainerRect = pageScrollContainer.getBoundingClientRect();
+        const currentFooterOffsetTop = currentFooterRect.top - currentContainerRect.top;
+        const delta = currentFooterOffsetTop - snapshot.footerOffsetTop;
+
+        if (Math.abs(delta) > 1) {
+          pageScrollContainer.scrollTop += delta;
+        }
+      }
+    };
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      restoreScroll();
+      window.requestAnimationFrame(() => {
+        restoreScroll();
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [loadingData, currentPage, rowsPerPage, rows.length]);
 
   async function loadViewRows(view, overrides = {}) {
     if (!view) {
@@ -1401,30 +2402,139 @@ export default function Admin() {
       setLoadingSupport(true);
       setSupportError("");
 
-      const [entitiesPayload, categoriesPayload, genericsPayload, licencesPayload] = await Promise.all([
+      const [
+        entitiesPayload,
+        categoriesPayload,
+        genericViewsPayload,
+        genericTablePayload,
+        licencesPayload,
+        niveaux0Payload,
+        niveaux1OldPayload,
+        niveaux1Payload,
+        niveaux2Payload,
+        niveaux3Payload,
+        niveaux4Payload,
+        niveaux5Payload,
+        niveaux0ViewPayload,
+        niveaux1OldViewPayload,
+        niveaux1ViewPayload,
+        niveaux2ViewPayload,
+        niveaux3ViewPayload,
+        niveaux4ViewPayload,
+        niveaux5ViewPayload,
+      ] = await Promise.all([
         fetchAdminEntities({ take: 100 }),
         fetchAdminModelList("T_CategorieGenerique", { take: 200 }),
         fetchViewData("referentiel", "V_Generique", { take: 500 }),
+        fetchAdminModelList("T_Generique", { take: 500 }),
         fetchAdminLicences({ take: 50 }),
+        fetchAdminModelList("T_Niveau_0", { take: 1000 }),
+        fetchAdminModelList("T_Niveau_1_Old", { take: 1000 }),
+        fetchAdminModelList("T_Niveau_1", { take: 2000 }),
+        fetchAdminModelList("T_Niveau_2", { take: 3000 }),
+        fetchAdminModelList("T_Niveau_3", { take: 4000 }),
+        fetchAdminModelList("T_Niveau_4", { take: 6000 }),
+        fetchAdminModelList("T_Niveau_5", { take: 8000 }),
+        fetchViewData("geolocalisation", "V_Niveau_0", { take: 1000 }),
+        fetchViewData("geolocalisation", "V_Niveau_1_Old", { take: 1000 }),
+        fetchViewData("geolocalisation", "V_Niveau_1", { take: 2000 }),
+        fetchViewData("geolocalisation", "V_Niveau_2", { take: 3000 }),
+        fetchViewData("geolocalisation", "V_Niveau_3", { take: 4000 }),
+        fetchViewData("geolocalisation", "V_Niveau_4", { take: 6000 }),
+        fetchViewData("geolocalisation", "V_Niveau_5", { take: 8000 }),
       ]);
 
       if (!active) {
         return;
       }
 
-      const generics = genericsPayload?.success && Array.isArray(genericsPayload.data) ? genericsPayload.data : [];
+      const categories = extractPayloadRows(categoriesPayload);
+      const genericViewRows = normalizeGenericRows(extractPayloadRows(genericViewsPayload), categories);
+      const genericTableRows = normalizeGenericRows(extractPayloadRows(genericTablePayload), categories);
+      const generics = genericViewRows.length > 0 ? genericViewRows : genericTableRows;
+      const roles = buildGenericSupportList("roles", generics, genericCategoryOverrides);
+      const entityTypes = buildGenericSupportList("entityTypes", generics, genericCategoryOverrides);
+      const licenseStatuses = buildGenericSupportList("licenseStatuses", generics, genericCategoryOverrides);
+      const niveau2Types = buildGenericSupportList("niveau2Types", generics, genericCategoryOverrides);
+      const niveau3Types = buildGenericSupportList("niveau3Types", generics, genericCategoryOverrides);
+      const niveau2Statuses = buildGenericSupportList("niveau2Statuses", generics, genericCategoryOverrides);
+      const niveau3Statuses = buildGenericSupportList("niveau3Statuses", generics, genericCategoryOverrides);
+      const deploymentStatuses = buildGenericSupportList("deploymentStatuses", generics, genericCategoryOverrides);
+      const dpsAccessRoutes = buildGenericSupportList("dpsAccessRoutes", generics, genericCategoryOverrides);
+      const antBczAccessRoutes = buildGenericSupportList("antBczAccessRoutes", generics, genericCategoryOverrides);
+      const dpsBczAccessRoutes = buildGenericSupportList("dpsBczAccessRoutes", generics, genericCategoryOverrides);
+      const niveau4Types = buildGenericSupportList("niveau4Types", generics, genericCategoryOverrides);
+      const niveau5Types = buildGenericSupportList("niveau5Types", generics, genericCategoryOverrides);
+      const niveau4Statuses = buildGenericSupportList("niveau4Statuses", generics, genericCategoryOverrides);
+      const niveau5Statuses = buildGenericSupportList("niveau5Statuses", generics, genericCategoryOverrides);
+      const networkAvailabilities = buildGenericSupportList("networkAvailabilities", generics, genericCategoryOverrides);
+      const zsAsAccessRoutes = buildGenericSupportList("zsAsAccessRoutes", generics, genericCategoryOverrides);
+      const zsSiteAccessRoutes = buildGenericSupportList("zsSiteAccessRoutes", generics, genericCategoryOverrides);
+      const roofTypes = buildGenericSupportList("roofTypes", generics, genericCategoryOverrides);
+      const niveaux0 = preferSupportRows(extractPayloadRows(niveaux0ViewPayload), extractPayloadRows(niveaux0Payload));
+      const niveaux1Old = preferSupportRows(
+        extractPayloadRows(niveaux1OldViewPayload),
+        extractPayloadRows(niveaux1OldPayload)
+      );
+      const niveaux1 = preferSupportRows(extractPayloadRows(niveaux1ViewPayload), extractPayloadRows(niveaux1Payload));
+      const niveaux2 = preferSupportRows(extractPayloadRows(niveaux2ViewPayload), extractPayloadRows(niveaux2Payload));
+      const niveaux3 = preferSupportRows(extractPayloadRows(niveaux3ViewPayload), extractPayloadRows(niveaux3Payload));
+      const niveaux4 = preferSupportRows(extractPayloadRows(niveaux4ViewPayload), extractPayloadRows(niveaux4Payload));
+      const niveaux5 = preferSupportRows(extractPayloadRows(niveaux5ViewPayload), extractPayloadRows(niveaux5Payload));
 
       setSupportData({
         entities: entitiesPayload?.success && Array.isArray(entitiesPayload.data) ? entitiesPayload.data : [],
-        categories: categoriesPayload?.success && Array.isArray(categoriesPayload.data) ? categoriesPayload.data : [],
-        roles: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
-        entityTypes: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("typeentite")),
-        licenseStatuses: generics.filter((item) =>
-          normalizeCategoryName(item.NomCategorieGenerique).includes("statutlicence")
-        ),
+        categories,
+        roles: roles.length > 0 ? roles : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
+        entityTypes:
+          entityTypes.length > 0
+            ? entityTypes
+            : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("typeentite")),
+        licenseStatuses:
+          licenseStatuses.length > 0
+            ? licenseStatuses
+            : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("statutlicence")),
+        niveaux0,
+        niveaux1Old,
+        niveaux1,
+        niveaux2,
+        niveaux3,
+        niveaux4,
+        niveaux5,
+        niveau2Types,
+        niveau3Types: niveau3Types.length > 0 ? niveau3Types : niveau2Types,
+        niveau2Statuses,
+        niveau3Statuses,
+        deploymentStatuses,
+        dpsAccessRoutes,
+        antBczAccessRoutes,
+        dpsBczAccessRoutes,
+        niveau4Types,
+        niveau5Types,
+        niveau4Statuses,
+        niveau5Statuses,
+        networkAvailabilities:
+          networkAvailabilities.length > 0
+            ? networkAvailabilities
+            : filterGenericsByCategory(generics, ["disporeseau", "reseau"]),
+        zsAsAccessRoutes,
+        zsSiteAccessRoutes,
+        roofTypes,
       });
 
-      if (!entitiesPayload?.success || !categoriesPayload?.success || !genericsPayload?.success || !licencesPayload?.success) {
+      if (
+        !entitiesPayload?.success ||
+        !categoriesPayload?.success ||
+        (!genericViewsPayload?.success && !genericTablePayload?.success) ||
+        !licencesPayload?.success ||
+        !niveaux0Payload?.success ||
+        !niveaux1OldPayload?.success ||
+        !niveaux1Payload?.success ||
+        !niveaux2Payload?.success ||
+        !niveaux3Payload?.success ||
+        !niveaux4Payload?.success ||
+        !niveaux5Payload?.success
+      ) {
         setSupportError("Certaines listes de support n'ont pas pu etre chargees. Le CRUD reste disponible.");
       }
 
@@ -1436,7 +2546,7 @@ export default function Admin() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [genericCategoryOverrides]);
 
   useEffect(() => {
     if (adminViews.length === 0) {
@@ -1593,7 +2703,9 @@ export default function Admin() {
       return;
     }
 
-    const rowIds = new Set(rows.map((row) => String(row[selectedCrudConfig.primaryKey])));
+    const rowIds = new Set(
+      rows.map((row) => resolveRowRecordId(row, selectedCrudConfig)).filter((recordId) => Boolean(recordId))
+    );
     setSelectedRowIds((current) => current.filter((item) => rowIds.has(item)));
   }, [rows, selectedCrudConfig]);
 
@@ -1602,7 +2714,7 @@ export default function Admin() {
       const nextState = {};
 
       schemaGroups.forEach((group) => {
-        nextState[group.schema] = current[group.schema] ?? false;
+        nextState[group.schema] = current[group.schema] ?? true;
       });
 
       return nextState;
@@ -1634,6 +2746,172 @@ export default function Admin() {
       ...current,
       [fieldName]: nextValue,
     }));
+  }
+
+  async function persistSharedFkSettings(nextGenericOverrides, nextHierarchyModes, successMessage) {
+    const targetScope = sharedFkTargetScope || createAdminUiScope("global", null, "Global");
+
+    setSavingSharedFkSettings(true);
+    setSharedFkSettingsError("");
+
+    const response = await saveAdminUiSettings({
+      scope: targetScope.scope,
+      scopeValue: targetScope.scopeValue,
+      genericCategoryOverrides: nextGenericOverrides,
+      hierarchyFilterModes: nextHierarchyModes,
+    });
+
+    setSavingSharedFkSettings(false);
+
+    if (!response?.success || !response.data) {
+      setSharedFkSettingsError(response?.message || "Impossible d'enregistrer les reglages partages.");
+      pushNotification("error", response?.message || "Impossible d'enregistrer les reglages partages.");
+      return false;
+    }
+
+    const normalizedGenericOverrides = normalizeStringRecord(response.data.genericCategoryOverrides);
+    const normalizedHierarchyModes = normalizeHierarchyModes(response.data.hierarchyFilterModes);
+
+    setGenericCategoryOverrides(normalizedGenericOverrides);
+    setHierarchyFilterModes(normalizedHierarchyModes);
+    setSharedFkLoadedScope(targetScope);
+    setSharedFkSettingsError("");
+    setSharedFkSettingsMeta({
+      updatedAt: response.data.updatedAt || null,
+      updatedByUserId: response.data.updatedByUserId ?? null,
+      updatedByName: response.data.updatedByName || null,
+    });
+
+    if (successMessage) {
+      pushNotification("success", successMessage);
+    }
+
+    return true;
+  }
+
+  function handleGenericCategoryDraftChange(source, nextValue) {
+    setGenericCategoryDrafts((current) => ({
+      ...current,
+      [source]: nextValue,
+    }));
+  }
+
+  async function handleHierarchyFilterModeChange(source, nextMode) {
+    const config = HIERARCHY_OPTION_SOURCE_CONFIG[source];
+
+    if (!config) {
+      return;
+    }
+
+    const nextModes = { ...hierarchyFilterModes };
+
+    if (nextMode === config.defaultMode) {
+      delete nextModes[source];
+    } else {
+      nextModes[source] = nextMode;
+    }
+
+    await persistSharedFkSettings(
+      genericCategoryOverrides,
+      nextModes,
+      nextMode === "all"
+        ? `Liste complete activee pour ${config.label}.`
+        : `Filtrage par parent reactive pour ${config.label}.`
+    );
+  }
+
+  async function handleApplyGenericCategoryOverride(source) {
+    const config = GENERIC_OPTION_SOURCE_CONFIG[source];
+
+    if (!config) {
+      return;
+    }
+
+    const draftValue =
+      genericCategoryDrafts[source] ?? genericCategoryOverrides[source] ?? serializeCategoryIds(config.defaultCategoryIds);
+    const parsedCategoryIds = parseCategoryOverrideInput(draftValue);
+
+    if (!parsedCategoryIds || parsedCategoryIds.length === 0) {
+      pushNotification("error", "Saisissez un ou plusieurs IDs de categorie valides, separes par des virgules.");
+      return;
+    }
+
+    const serializedValue = serializeCategoryIds(parsedCategoryIds);
+    const defaultValue = serializeCategoryIds(config.defaultCategoryIds);
+
+    setGenericCategoryDrafts((current) => ({
+      ...current,
+      [source]: serializedValue,
+    }));
+
+    const nextOverrides = { ...genericCategoryOverrides };
+
+    if (serializedValue === defaultValue) {
+      delete nextOverrides[source];
+    } else {
+      nextOverrides[source] = serializedValue;
+    }
+
+    await persistSharedFkSettings(nextOverrides, hierarchyFilterModes, `Correspondance mise a jour pour ${config.label}.`);
+  }
+
+  async function handleResetGenericCategoryOverride(source) {
+    const config = GENERIC_OPTION_SOURCE_CONFIG[source];
+
+    if (!config) {
+      return;
+    }
+
+    setGenericCategoryDrafts((current) => ({
+      ...current,
+      [source]: serializeCategoryIds(config.defaultCategoryIds),
+    }));
+
+    const nextOverrides = { ...genericCategoryOverrides };
+    delete nextOverrides[source];
+
+    await persistSharedFkSettings(nextOverrides, hierarchyFilterModes, `Correspondance reinitialisee pour ${config.label}.`);
+  }
+
+  async function handleApplyAllGenericCategoryOverrides() {
+    if (genericMappingStates.some((item) => !item.isValid)) {
+      pushNotification("error", "Certaines categories sont invalides. Corrigez la saisie avant d'appliquer.");
+      return;
+    }
+
+    const nextOverrides = {};
+    const nextDrafts = {};
+
+    genericMappingStates.forEach((item) => {
+      const serializedValue = serializeCategoryIds(item.parsedInput);
+      nextDrafts[item.source] = serializedValue;
+
+      if (serializedValue !== item.defaultValue) {
+        nextOverrides[item.source] = serializedValue;
+      }
+    });
+
+    setGenericCategoryDrafts((current) => ({
+      ...current,
+      ...nextDrafts,
+    }));
+
+    await persistSharedFkSettings(nextOverrides, hierarchyFilterModes, "Toutes les correspondances de categories ont ete appliquees.");
+  }
+
+  async function handleResetAllFkSettings() {
+    const nextDrafts = {};
+
+    genericMappingStates.forEach((item) => {
+      nextDrafts[item.source] = item.defaultValue;
+    });
+
+    setGenericCategoryDrafts((current) => ({
+      ...current,
+      ...nextDrafts,
+    }));
+
+    await persistSharedFkSettings({}, {}, "Tous les reglages du panneau ont ete reinitialises.");
   }
 
   function handleColumnFilterChange(column, value) {
@@ -1823,7 +3101,15 @@ export default function Admin() {
       return;
     }
 
-    const recordId = String(row[selectedCrudConfig.primaryKey]);
+    const recordId = resolveRowRecordId(row, selectedCrudConfig);
+
+    if (!recordId) {
+      setActionFeedback({
+        type: "error",
+        message: `La cle primaire ${selectedCrudConfig.primaryKey} est absente de cette vue.`,
+      });
+      return;
+    }
 
     setSelectedRowIds((current) =>
       current.includes(recordId) ? current.filter((item) => item !== recordId) : [...current, recordId]
@@ -1835,7 +3121,9 @@ export default function Admin() {
       return;
     }
 
-    const pageIds = rows.map((row) => String(row[selectedCrudConfig.primaryKey]));
+    const pageIds = rows
+      .map((row) => resolveRowRecordId(row, selectedCrudConfig))
+      .filter((recordId) => Boolean(recordId));
     const everySelected = pageIds.length > 0 && pageIds.every((id) => selectedRowIds.includes(id));
 
     setSelectedRowIds((current) =>
@@ -1854,7 +3142,12 @@ export default function Admin() {
       return;
     }
 
-    const recordId = String(row[selectedCrudConfig.primaryKey]);
+    const recordId = resolveRowRecordId(row, selectedCrudConfig);
+
+    if (!recordId) {
+      return;
+    }
+
     setSelectedRowIds((current) => (current.length === 1 && current[0] === recordId ? [] : [recordId]));
   }
 
@@ -1903,6 +3196,7 @@ export default function Admin() {
     setEditorMode("create");
     setEditorRecordId(null);
     setEditorValues(createInitialValues(selectedCrudConfig.allFields || selectedCrudConfig.fields));
+    setEditorSourceRow(null);
   }
 
   async function handleEdit(row, mode = "edit") {
@@ -1922,6 +3216,7 @@ export default function Admin() {
 
     setActionFeedback(null);
     setLoadingEditor(true);
+    setEditorSourceRow(row);
 
     const payload = await selectedCrudConfig.fetchRecord(row, recordId);
 
@@ -1933,6 +3228,7 @@ export default function Admin() {
       setEditorMode(null);
       setEditorRecordId(null);
       setEditorValues({});
+      setEditorSourceRow(null);
       setActionFeedback({
         type: "error",
         message: payload?.message || "Impossible de charger cet enregistrement.",
@@ -1946,6 +3242,7 @@ export default function Admin() {
     setEditorMode(null);
     setEditorRecordId(null);
     setEditorValues({});
+    setEditorSourceRow(null);
   }
 
   async function handleSubmitEditor(event) {
@@ -1979,6 +3276,7 @@ export default function Admin() {
       setEditorMode(null);
       setEditorRecordId(null);
       setEditorValues({});
+      setEditorSourceRow(null);
       await loadViewRows(selectedView);
     } else {
       setActionFeedback({
@@ -2051,7 +3349,12 @@ export default function Admin() {
     }
 
     if (field.type === "select") {
-      const options = getFieldOptions(field, supportData);
+      const fallbackLabel = getSelectFallbackLabel(field, value, editorSourceRow);
+      const options = ensureCurrentSelectOptionWithLabel(
+        getFieldOptions(field, supportData, editorValues, hierarchyFilterModes),
+        value,
+        fallbackLabel
+      );
 
       return (
         <label key={field.name} className="admin-form-field">
@@ -2291,6 +3594,15 @@ export default function Admin() {
                 >
                   {showSearchPanel ? "Masquer filtres" : "Filtres"}
                 </button>
+                {selectedCrudConfig && (configurableFkMappings.length > 0 || configurableHierarchyMappings.length > 0) ? (
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => setShowFkMappingPanel((current) => !current)}
+                  >
+                    {showFkMappingPanel ? "Masquer correspondances FK" : "Correspondances FK"}
+                  </button>
+                ) : null}
                 <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export">
                   <button
                     className={`secondary-action admin-scroll-trigger ${showExportMenu ? "is-active" : ""}`}
@@ -2383,6 +3695,243 @@ export default function Admin() {
                 ) : null}
               </div>
             </div>
+
+            {selectedCrudConfig &&
+            showFkMappingPanel &&
+            (configurableFkMappings.length > 0 || configurableHierarchyMappings.length > 0) ? (
+              <section className="admin-fk-mapping-card">
+                <div className="admin-fk-mapping-head">
+                  <div>
+                    <strong>Correspondances FK et comportement des listes</strong>
+                    <p>
+                      Ajustez ici les categories generiques et le filtrage des listes hierarchiques pour cette vue.
+                    </p>
+                  </div>
+                  <div className="admin-fk-mapping-head-side">
+                    <span className="status-pill is-muted">
+                      {`${configurableFkMappings.length + configurableHierarchyMappings.length} reglages configurables`}
+                    </span>
+                    <div className="admin-fk-mapping-head-actions">
+                      {genericMappingStates.length > 0 ? (
+                        <button
+                          className="secondary-action"
+                          type="button"
+                          onClick={handleApplyAllGenericCategoryOverrides}
+                          disabled={!hasDirtyGenericDrafts || hasInvalidGenericDrafts || savingSharedFkSettings || loadingSharedFkSettings}
+                        >
+                          Appliquer toutes les categories
+                        </button>
+                      ) : null}
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={handleResetAllFkSettings}
+                        disabled={(!hasCustomFkSettings && !hasDirtyGenericDrafts) || savingSharedFkSettings || loadingSharedFkSettings}
+                      >
+                        Reinitialiser tout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`admin-fk-mapping-note is-${sharedFkSyncStatus.tone}`}>
+                  <div className="admin-fk-mapping-note-head">
+                    <span className={`admin-fk-state-chip is-${sharedFkSyncStatus.tone}`}>{sharedFkSyncStatus.title}</span>
+                  </div>
+                  <div className="admin-fk-mapping-note-details">
+                    {sharedFkSyncStatus.details.map((detail, index) => (
+                      <span key={`${detail.text}-${index}`} className={`admin-fk-note-item is-${detail.tone || "muted"}`}>
+                        {detail.text}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="admin-fk-history-card">
+                  <div className="admin-fk-history-head">
+                    <div>
+                      <strong>Historique compact</strong>
+                      <p>Les dernieres modifications enregistrees pour le parametrage partage.</p>
+                    </div>
+                    <span className="status-pill is-muted">
+                      {loadingSharedFkAudit ? "Chargement..." : `${visibleSharedFkAuditRows.length} entree(s) affichee(s)`}
+                    </span>
+                  </div>
+
+                  {sharedFkAuditError ? <div className="admin-fk-history-empty is-error">{sharedFkAuditError}</div> : null}
+
+                  {!sharedFkAuditError && loadingSharedFkAudit ? (
+                    <div className="admin-fk-history-empty">Chargement de l'historique des reglages FK...</div>
+                  ) : null}
+
+                  {!sharedFkAuditError && !loadingSharedFkAudit && visibleSharedFkAuditRows.length === 0 ? (
+                    <div className="admin-fk-history-empty">
+                      Aucun historique n'est encore disponible pour cette portee.
+                    </div>
+                  ) : null}
+
+                  {!sharedFkAuditError && !loadingSharedFkAudit && visibleSharedFkAuditRows.length > 0 ? (
+                    <div className="admin-fk-history-list">
+                      {visibleSharedFkAuditRows.map((row) => {
+                        const auditScope = getAuditSettingScope(row);
+                        const auditScopeLabel = buildAdminUiScopeLabelFromValues(auditScope.scope, auditScope.scopeValue);
+                        const operationLabel = row.Operation === "CREATE" ? "Creation" : "Mise a jour";
+                        const changedAtLabel =
+                          formatDisplayDateTime(row.ChangedAt || row.UpdatedSettingAt) ||
+                          String(row.ChangedAt || row.UpdatedSettingAt || "");
+                        const authorLabel = row.UpdatedByName || row.UpdatedByUserId || "Utilisateur inconnu";
+
+                        return (
+                          <article key={row.IdLog || `${row.ChangedAt}-${row.Operation}`} className="admin-fk-history-item">
+                            <div className="admin-fk-history-item-top">
+                              <strong>{operationLabel}</strong>
+                              <span className="admin-fk-state-chip is-info">{auditScopeLabel}</span>
+                            </div>
+                            <div className="admin-fk-history-item-meta">
+                              <span>{changedAtLabel}</span>
+                              <span>{authorLabel}</span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {configurableFkMappings.length > 0 ? (
+                  <>
+                    <div className="admin-fk-mapping-section-head">
+                      <strong>Categories generiques</strong>
+                      <span>ID_CategorieGenerique utilise pour chaque liste deroulante</span>
+                    </div>
+
+                    <div className="admin-fk-mapping-grid">
+                      {genericMappingStates.map((mapping) => {
+                        return (
+                          <article key={mapping.source} className="admin-fk-mapping-item">
+                            <div className="admin-fk-mapping-meta">
+                              <div className="admin-fk-mapping-title-row">
+                                <strong>{mapping.labels.join(", ")}</strong>
+                                <div className="admin-fk-state-badges">
+                                  <span className={`admin-fk-state-chip ${mapping.isCustom ? "is-custom" : "is-default"}`}>
+                                    {mapping.isCustom ? "Personnalise" : "Defaut"}
+                                  </span>
+                                  {mapping.isDirty ? (
+                                    <span className="admin-fk-state-chip is-pending">Non applique</span>
+                                  ) : null}
+                                  {!mapping.isValid ? (
+                                    <span className="admin-fk-state-chip is-invalid">Invalide</span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <span>{mapping.fieldNames.join(", ")}</span>
+                              <small>{mapping.source}</small>
+                            </div>
+
+                            <label className={`admin-form-field ${!mapping.isValid ? "is-invalid" : ""}`}>
+                              <span>ID categorie</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={mapping.inputValue}
+                                onChange={(event) => handleGenericCategoryDraftChange(mapping.source, event.target.value)}
+                                placeholder={mapping.defaultValue}
+                              />
+                            </label>
+
+                            <div className="admin-fk-mapping-hint">
+                              <small>{`Defaut: ${mapping.defaultValue}`}</small>
+                              <small>{`Categorie active: ${mapping.effectiveCategoryLabels}`}</small>
+                              <small>{`${mapping.optionsCount} options chargees actuellement`}</small>
+                              {!mapping.isValid ? (
+                                <small>Utilisez un ou plusieurs IDs entiers positifs separes par des virgules.</small>
+                              ) : null}
+                            </div>
+
+                            <div className="admin-fk-mapping-actions">
+                              <button
+                                className="secondary-action"
+                                type="button"
+                                onClick={() => handleApplyGenericCategoryOverride(mapping.source)}
+                                disabled={!mapping.isValid || !mapping.isDirty || savingSharedFkSettings || loadingSharedFkSettings}
+                              >
+                                Appliquer
+                              </button>
+                              <button
+                                className="secondary-action"
+                                type="button"
+                                onClick={() => handleResetGenericCategoryOverride(mapping.source)}
+                                disabled={(!mapping.isCustom && mapping.inputValue === mapping.defaultValue) || savingSharedFkSettings || loadingSharedFkSettings}
+                              >
+                                Reinitialiser
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+
+                {configurableHierarchyMappings.length > 0 ? (
+                  <>
+                    <div className="admin-fk-mapping-section-head">
+                      <strong>Listes hierarchiques</strong>
+                      <span>Choisissez entre une liste filtree par le parent saisi ou la liste complete</span>
+                    </div>
+
+                    <div className="admin-fk-mapping-grid">
+                      {hierarchyMappingStates.map((mapping) => {
+                        const availableModes = mapping.config.availableModes || ["filtered", "all"];
+
+                        return (
+                          <article key={mapping.source} className="admin-fk-mapping-item">
+                            <div className="admin-fk-mapping-meta">
+                              <div className="admin-fk-mapping-title-row">
+                                <strong>{mapping.labels.join(", ")}</strong>
+                                <div className="admin-fk-state-badges">
+                                  <span className={`admin-fk-state-chip ${mapping.isCustom ? "is-custom" : "is-default"}`}>
+                                    {mapping.isCustom ? "Personnalise" : "Defaut"}
+                                  </span>
+                                </div>
+                              </div>
+                              <span>{mapping.fieldNames.join(", ")}</span>
+                              <small>{mapping.source}</small>
+                            </div>
+
+                            <label className="admin-form-field">
+                              <span>Mode de liste</span>
+                              <select
+                                value={mapping.mode}
+                                onChange={(event) => handleHierarchyFilterModeChange(mapping.source, event.target.value)}
+                                disabled={savingSharedFkSettings || loadingSharedFkSettings || availableModes.length <= 1}
+                              >
+                                {availableModes.includes("filtered") ? (
+                                  <option value="filtered">Liste filtree par parent</option>
+                                ) : null}
+                                {availableModes.includes("all") ? <option value="all">Liste complete</option> : null}
+                              </select>
+                            </label>
+
+                            <div className="admin-fk-mapping-hint">
+                              <small>
+                                {mapping.mode === "all"
+                                  ? "Toutes les valeurs de ce niveau sont affichees."
+                                  : "Seules les valeurs liees au parent renseigne sont affichees."}
+                              </small>
+                              <small>{`${mapping.optionsCount} options disponibles dans la source`}</small>
+                              {availableModes.length <= 1 ? (
+                                <small>Cette liste ne depend pas d'un parent, elle reste donc complete.</small>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
 
             {selectedCrudConfig ? (
               <div className="admin-selection-strip">
@@ -2546,12 +4095,12 @@ export default function Admin() {
                     />
                   ) : (
                     <label key={definition.column} className="admin-form-field">
-                      <span>{definition.column}</span>
+                      <span>{definition.displayLabel || definition.column}</span>
                       <input
                         type="search"
                         value={typeof columnFilters[definition.column] === "string" ? columnFilters[definition.column] : ""}
                         onChange={(event) => handleColumnFilterChange(definition.column, event.target.value)}
-                        placeholder={`Filtrer ${definition.column}`}
+                        placeholder={`Filtrer ${definition.displayLabel || definition.column}`}
                       />
                     </label>
                   )
@@ -2581,7 +4130,7 @@ export default function Admin() {
                               checked={effectiveVisibleColumns.includes(column)}
                               onChange={() => handleToggleVisibleColumn(column)}
                             />
-                            <span>{column}</span>
+                            <span>{getColumnDisplayLabel(column)}</span>
                           </label>
                           <div className="admin-column-option-actions">
                             <button
@@ -2675,12 +4224,23 @@ export default function Admin() {
                     <tr>
                       {selectedCrudConfig ? (
                         <th className="admin-select-column">
-                          <input
-                            type="checkbox"
-                            checked={rows.length > 0 && rows.every((row) => selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey])))}
-                            onChange={handleTogglePageSelection}
-                            aria-label="Selectionner la page"
-                          />
+                          {(() => {
+                            const selectablePageIds = rows
+                              .map((row) => resolveRowRecordId(row, selectedCrudConfig))
+                              .filter((recordId) => Boolean(recordId));
+
+                            return (
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selectablePageIds.length > 0 &&
+                                  selectablePageIds.every((recordId) => selectedRowIds.includes(recordId))
+                                }
+                                onChange={handleTogglePageSelection}
+                                aria-label="Selectionner la page"
+                              />
+                            );
+                          })()}
                         </th>
                       ) : null}
                       {effectiveVisibleColumns.map((column) => {
@@ -2693,41 +4253,47 @@ export default function Admin() {
                             style={getCellStyle(column, true)}
                           >
                             <div className="admin-header-cell">
-                              <button
-                                type="button"
-                                className={`admin-sort-button ${sortConfig.column === column ? "is-active" : ""} ${
-                                  sortConfig.column === column && sortConfig.direction ? `is-${sortConfig.direction}` : ""
-                                }`}
-                                onClick={() => handleSortColumn(column)}
-                              >
-                                <span>{column}</span>
-                                <small>
-                                  {sortConfig.column === column
-                                    ? sortConfig.direction === "asc"
-                                      ? "Asc"
-                                      : sortConfig.direction === "desc"
-                                        ? "Desc"
-                                        : "Tri"
-                                    : "Tri"}
-                                </small>
-                              </button>
+                              <div className="admin-header-content">
+                                <div className="admin-header-tools">
+                                  <button
+                                    type="button"
+                                    className={`admin-sort-button ${sortConfig.column === column ? "is-active" : ""} ${
+                                      sortConfig.column === column && sortConfig.direction ? `is-${sortConfig.direction}` : ""
+                                    }`}
+                                    onClick={() => handleSortColumn(column)}
+                                  >
+                                    <small>
+                                      {sortConfig.column === column
+                                        ? sortConfig.direction === "asc"
+                                          ? "Asc"
+                                          : sortConfig.direction === "desc"
+                                            ? "Desc"
+                                            : "Tri"
+                                        : "Tri"}
+                                    </small>
+                                  </button>
 
-                              <div className="admin-header-tools">
-                                <button
-                                  type="button"
-                                  className={`admin-pin-button ${isPinned ? "is-active" : ""}`}
-                                  onClick={() => handleTogglePinnedColumn(column)}
-                                >
-                                  {isPinned ? "Degeler" : "Geler"}
-                                </button>
-                                <div
-                                  className="admin-resize-handle"
-                                  onMouseDown={(event) => handleResizeStart(column, event)}
-                                  role="separator"
-                                  aria-orientation="vertical"
-                                  aria-label={`Redimensionner la colonne ${column}`}
-                                />
+                                  <button
+                                    type="button"
+                                    className={`admin-pin-button ${isPinned ? "is-active" : ""}`}
+                                    onClick={() => handleTogglePinnedColumn(column)}
+                                  >
+                                    {isPinned ? "Degeler" : "Geler"}
+                                  </button>
+                                </div>
+
+                                <div className="admin-header-label" title={column}>
+                                  {getColumnDisplayLabel(column)}
+                                </div>
                               </div>
+
+                              <div
+                                className="admin-resize-handle"
+                                onMouseDown={(event) => handleResizeStart(column, event)}
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label={`Redimensionner la colonne ${column}`}
+                              />
                             </div>
                           </th>
                         );
@@ -2735,23 +4301,23 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedRows.map((row, rowIndex) => (
-                      <tr
-                        key={`${selectedViewKey}-${row[selectedCrudConfig?.primaryKey] || "row"}-${row.IdEntiteLocalisation || rowIndex}`}
-                        className={
-                          selectedCrudConfig &&
-                          selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey]))
-                            ? "admin-table-row is-selected"
-                            : "admin-table-row"
-                        }
-                        onClick={(event) => handleActivateRow(row, event)}
-                      >
+                    {paginatedRows.map((row, rowIndex) => {
+                      const rowRecordId = resolveRowRecordId(row, selectedCrudConfig);
+                      const isSelected = rowRecordId ? selectedRowIds.includes(rowRecordId) : false;
+
+                      return (
+                        <tr
+                          key={`${selectedViewKey}-${rowRecordId || "row"}-${row.IdEntiteLocalisation || rowIndex}`}
+                          className={isSelected ? "admin-table-row is-selected" : "admin-table-row"}
+                          onClick={(event) => handleActivateRow(row, event)}
+                        >
                         {selectedCrudConfig ? (
                           <td className="admin-select-column">
                             <input
                               type="checkbox"
-                              checked={selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey]))}
+                              checked={isSelected}
                               onChange={() => handleToggleRowSelection(row)}
+                              disabled={!rowRecordId}
                               aria-label="Selectionner la ligne"
                             />
                           </td>
@@ -2769,8 +4335,9 @@ export default function Admin() {
                             </td>
                           );
                         })}
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2782,7 +4349,7 @@ export default function Admin() {
               ) : null}
 
               {sortedRows.length > 0 ? (
-                <section className="admin-table-footer">
+                <section ref={tableFooterRef} className="admin-table-footer">
                   <div className="admin-table-footer-meta">
                     <span>{`Page ${currentPage} sur ${totalPages}`}</span>
                     <span>{`${rows.length} lignes affichees sur ${viewMeta.filteredCount || rows.length}`}</span>
@@ -2791,7 +4358,7 @@ export default function Admin() {
                   <div className="admin-table-footer-actions">
                     <label className="admin-page-size">
                       <span>Lignes par page</span>
-                      <select value={rowsPerPage} onChange={(event) => setRowsPerPage(Number(event.target.value))}>
+                      <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
                         {[10, 25, 50, 100].map((value) => (
                           <option key={value} value={value}>
                             {value}
@@ -2801,13 +4368,13 @@ export default function Admin() {
                     </label>
 
                     <div className="admin-pagination">
-                      <button type="button" className="secondary-action" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                      <button type="button" className="secondary-action" onClick={() => handlePageNavigation(1)} disabled={currentPage === 1}>
                         1ere
                       </button>
                       <button
                         type="button"
                         className="secondary-action"
-                        onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                        onClick={() => handlePageNavigation(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
                       >
                         Prec
@@ -2815,7 +4382,7 @@ export default function Admin() {
                       <button
                         type="button"
                         className="secondary-action"
-                        onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                        onClick={() => handlePageNavigation(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages}
                       >
                         Suiv
@@ -2823,7 +4390,7 @@ export default function Admin() {
                       <button
                         type="button"
                         className="secondary-action"
-                        onClick={() => setCurrentPage(totalPages)}
+                        onClick={() => handlePageNavigation(totalPages)}
                         disabled={currentPage === totalPages}
                       >
                         Dern
