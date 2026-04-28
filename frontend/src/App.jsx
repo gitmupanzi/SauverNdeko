@@ -14,6 +14,7 @@ import Products from "./pages/Products";
 import Profile from "./pages/Profile";
 import Register from "./pages/Register";
 import Admin from "./pages/Admin";
+import Logistique from "./pages/Logistique";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
 import { buildDiscussionPath, matchesSearch, normalizeText } from "./services/mappers";
 
@@ -107,6 +108,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     { label: "Maladies", path: "/maladies", icon: "bi-virus2" },
     { label: "Discussions", path: "/discussions", icon: "bi-chat-dots" },
     ...(isAuthenticated ? [{ label: "Profil", path: "/profil", icon: "bi-person-circle" }] : []),
+    ...(canAccessAdmin ? [{ label: "Logistique", path: "/logistique", icon: "bi-box-seam" }] : []),
     ...(canAccessAdmin ? [{ label: "Administration", path: "/admin", icon: "bi-shield-lock" }] : []),
   ];
 
@@ -238,7 +240,7 @@ export default function App() {
     await logout();
     closeOverlays();
 
-    if (["/discussions", "/profil", "/admin"].includes(location.pathname)) {
+    if (["/discussions", "/profil", "/admin", "/logistique"].includes(location.pathname)) {
       navigate("/", { replace: true });
     }
   }
@@ -408,6 +410,14 @@ export default function App() {
               element={
                 <AdminRoute>
                   <Admin />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/logistique"
+              element={
+                <AdminRoute>
+                  <Logistique />
                 </AdminRoute>
               }
             />

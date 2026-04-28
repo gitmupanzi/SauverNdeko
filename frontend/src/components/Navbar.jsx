@@ -21,6 +21,7 @@ const TITLE_BY_PATH = {
   "/register": "Creer un compte",
   "/profil": "Profil",
   "/admin": "Administration",
+  "/logistique": "Logistique",
 };
 
 export default function Navbar({
@@ -37,6 +38,7 @@ export default function Navbar({
   const showSearch = currentPath !== "/discussions";
   const displayName = user?.PrenomUser || user?.NomUser || "Mon profil";
   const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
+  const navItems = canAccessAdmin ? [...NAV_ITEMS, { label: "Logistique", path: "/logistique" }] : NAV_ITEMS;
 
   useEffect(() => {
     setIsUserMenuOpen(false);
@@ -99,7 +101,7 @@ export default function Navbar({
         </NavLink>
 
         <nav className="desktop-tabs" aria-label="Navigation principale">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -146,6 +148,11 @@ export default function Navbar({
                   {canAccessAdmin ? (
                     <NavLink className="desktop-user-option" to="/admin">
                       Administration
+                    </NavLink>
+                  ) : null}
+                  {canAccessAdmin ? (
+                    <NavLink className="desktop-user-option" to="/logistique">
+                      Logistique
                     </NavLink>
                   ) : null}
                   <button className="desktop-user-option is-danger" type="button" onClick={handleLogoutClick}>
