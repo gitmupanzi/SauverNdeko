@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
@@ -12,7 +13,7 @@ const NAV_ITEMS = [
 const TITLE_BY_PATH = {
   "/": "Accueil",
   "/produits": "Produits",
-  "/pharmacies": "Pharmacies et dépôts",
+  "/pharmacies": "Pharmacies et depots",
   "/experts": "Experts",
   "/maladies": "Maladies",
   "/discussions": "Discussions",
@@ -30,10 +31,47 @@ export default function Navbar({
   user,
   onLogout,
 }) {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const pageTitle = TITLE_BY_PATH[currentPath] || "SauverNdeko";
   const showSearch = currentPath !== "/discussions";
   const displayName = user?.PrenomUser || user?.NomUser || "Mon profil";
   const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
+
+  useEffect(() => {
+    setIsUserMenuOpen(false);
+  }, [currentPath, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (!userMenuRef.current?.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsUserMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isUserMenuOpen]);
+
+  async function handleLogoutClick() {
+    setIsUserMenuOpen(false);
+    await onLogout?.();
+  }
 
   return (
     <header className="topbar">
@@ -87,20 +125,35 @@ export default function Navbar({
           )}
 
           {isAuthenticated ? (
-            <>
-              {canAccessAdmin ? (
-                <NavLink className="desktop-auth-button is-secondary" to="/admin">
-                  Administration
-                </NavLink>
-              ) : null}
-              <NavLink className="desktop-account-link" to="/profil">
+            <div className={`desktop-user-menu ${isUserMenuOpen ? "is-open" : ""}`} ref={userMenuRef}>
+              <button
+                className="desktop-account-link desktop-user-trigger"
+                type="button"
+                onClick={() => setIsUserMenuOpen((current) => !current)}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+              >
                 <i className="bi bi-person-circle" aria-hidden="true" />
                 <span>{displayName}</span>
-              </NavLink>
-              <button className="desktop-auth-button is-secondary" type="button" onClick={onLogout}>
-                Se deconnecter
+                <i className={`bi ${isUserMenuOpen ? "bi-chevron-up" : "bi-chevron-down"}`} aria-hidden="true" />
               </button>
-            </>
+
+              {isUserMenuOpen ? (
+                <div className="desktop-user-dropdown" role="menu" aria-label="Menu utilisateur">
+                  <NavLink className="desktop-user-option" to="/profil">
+                    Profil
+                  </NavLink>
+                  {canAccessAdmin ? (
+                    <NavLink className="desktop-user-option" to="/admin">
+                      Administration
+                    </NavLink>
+                  ) : null}
+                  <button className="desktop-user-option is-danger" type="button" onClick={handleLogoutClick}>
+                    Se deconnecter
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <NavLink className="desktop-auth-button" to="/login">
               Se connecter

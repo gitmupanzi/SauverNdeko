@@ -20,6 +20,12 @@ router.post('/entites', domainController.createEntite);
 router.put('/entites/:id', domainController.updateEntite);
 router.delete('/entites/:id', domainController.removeEntite);
 
+router.get('/licences', domainController.listLicences);
+router.get('/licences/:id', domainController.getLicence);
+router.post('/licences', domainController.createLicence);
+router.put('/licences/:id', domainController.updateLicence);
+router.delete('/licences/:id', domainController.removeLicence);
+
 router.get('/articles', domainController.listArticles);
 router.get('/articles/:id', domainController.getArticle);
 router.post('/articles', domainController.createArticle);

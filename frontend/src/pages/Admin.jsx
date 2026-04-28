@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createAdminEntity,
+  createAdminLicence,
   createAdminModelRecord,
   createAdminUser,
+  deleteAdminLicence,
   deleteAdminEntity,
   deleteAdminModelRecord,
   deleteAdminUser,
   fetchAdminEntities,
   fetchAdminEntity,
+  fetchAdminLicence,
+  fetchAdminLicences,
   fetchAdminModelItem,
   fetchAdminModelList,
   fetchAdminUser,
   fetchAvailableViews,
   fetchViewData,
+  updateAdminLicence,
   updateAdminEntity,
   updateAdminModelRecord,
   updateAdminUser,
@@ -56,6 +61,16 @@ const ADMIN_VIEWS = [
     description: "Permet de consulter les categories et valeurs du referentiel.",
   },
 ];
+
+const SCHEMA_TITLES = {
+  systeme: "Schema systeme",
+  referentiel: "Schema referentiel",
+};
+
+const DEFAULT_ROWS_PER_PAGE = 25;
+const MIN_COLUMN_WIDTH = 120;
+const ADMIN_VIEW_STORAGE_PREFIX = "sauverndeko.admin.view.";
+const NOTIFICATION_TIMEOUT = 4000;
 
 const USER_FIELDS = [
   { name: "NomUser", label: "Nom", type: "text", required: true, initialValue: "" },
@@ -135,12 +150,61 @@ const GENERIC_FIELDS = [
   { name: "VisibleAll", label: "Visible partout", type: "checkbox", initialValue: true },
 ];
 
+const LICENSE_FIELDS = [
+  { name: "IdLicence", label: "Id licence", type: "number", required: true, initialValue: "", min: "1" },
+  { name: "IdEntiteFk", label: "Entite", type: "select", optionsSource: "entities", required: true, initialValue: "" },
+  {
+    name: "IdStatutLicenceFk",
+    label: "Statut licence",
+    type: "select",
+    optionsSource: "licenseStatuses",
+    required: true,
+    initialValue: "",
+  },
+  { name: "DateDebut", label: "Date debut", type: "datetime-local", initialValue: "" },
+  { name: "DateFin", label: "Date fin", type: "datetime-local", required: true, initialValue: "" },
+  { name: "ValideLicence", label: "Licence valide", type: "checkbox", initialValue: true },
+  { name: "ExpireeLicence", label: "Licence expiriee", type: "checkbox", initialValue: false },
+];
+
 function normalizeViewKey(schema, name) {
   return `${schema}.${name}`;
 }
 
 function buildViewLabel(view) {
   return `${view.schema}.${view.name}`;
+}
+
+function isLikelyIsoDateTimeString(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return /^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(value.trim());
+}
+
+function formatDisplayDateTime(value) {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  const hasTime = /[T\s]\d{2}:\d{2}/.test(normalized);
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    ...(hasTime
+      ? {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }
+      : {}),
+  }).format(parsed);
 }
 
 function formatCellValue(value) {
@@ -150,6 +214,14 @@ function formatCellValue(value) {
 
   if (typeof value === "object") {
     return JSON.stringify(value, null, 2);
+  }
+
+  if (isLikelyIsoDateTimeString(value)) {
+    const formattedDateTime = formatDisplayDateTime(value);
+
+    if (formattedDateTime) {
+      return formattedDateTime;
+    }
   }
 
   return String(value);
@@ -286,6 +358,86 @@ function buildLocationPayload(values) {
   };
 }
 
+function getDefaultColumnWidth(column) {
+  const normalized = normalizeSearchText(column);
+
+  if (/olddata|newdata|description|adresse|detaillee|email/.test(normalized)) {
+    return 280;
+  }
+
+  if (/date|time|login/.test(normalized)) {
+    return 210;
+  }
+
+  if (/phone|telephone|nom|prenom|role|type|statut/.test(normalized)) {
+    return 180;
+  }
+
+  if (/id|sexe|admin|staff|valide|visible/.test(normalized)) {
+    return 150;
+  }
+
+  return 200;
+}
+
+function getSchemaTitle(schema) {
+  return SCHEMA_TITLES[schema] || `Schema ${schema}`;
+}
+
+function formatDateTimeLocalValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  const offset = parsed.getTimezoneOffset();
+  const local = new Date(parsed.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+function toIsoDateTimeOrNull(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function getAdminViewStorageKey(viewKey) {
+  return `${ADMIN_VIEW_STORAGE_PREFIX}${viewKey}`;
+}
+
+function loadStoredAdminViewState(viewKey) {
+  if (!viewKey) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getAdminViewStorageKey(viewKey));
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveStoredAdminViewState(viewKey, state) {
+  if (!viewKey) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(getAdminViewStorageKey(viewKey), JSON.stringify(state));
+  } catch (error) {
+    console.warn("Impossible d'enregistrer les preferences admin.", error);
+  }
+}
+
 function getFieldOptions(field, supportData) {
   if (Array.isArray(field.options)) {
     return field.options;
@@ -316,6 +468,13 @@ function getFieldOptions(field, supportData) {
     return supportData.entityTypes.map((item) => ({
       value: String(item.ID_Generique),
       label: item.NomGenerique || `Type ${item.ID_Generique}`,
+    }));
+  }
+
+  if (field.optionsSource === "licenseStatuses") {
+    return supportData.licenseStatuses.map((item) => ({
+      value: String(item.ID_Generique),
+      label: item.NomGenerique || `Statut ${item.ID_Generique}`,
     }));
   }
 
@@ -432,8 +591,8 @@ const CRUD_CONFIGS = {
     allFields: ENTITY_FIELDS,
     fields: ENTITY_FIELDS,
     rowActions: [
-      { mode: "edit-entity", label: "Modifier entite", tone: "secondary" },
-      { mode: "edit-location", label: "Modifier localisation", tone: "secondary" },
+      { mode: "edit-entity", label: "Modifier entite" },
+      { mode: "edit-location", label: "Modifier localisation" },
       { mode: "delete", label: "Supprimer", tone: "danger" },
     ],
     getFields: (mode) => {
@@ -552,6 +711,36 @@ const CRUD_CONFIGS = {
       return payload;
     },
   },
+  "systeme.V_Licence_active": {
+    primaryKey: "IdLicence",
+    resourceLabel: "licence",
+    createLabel: "Nouvelle licence",
+    allFields: LICENSE_FIELDS,
+    fields: LICENSE_FIELDS,
+    getFields: (mode) => (mode === "create" ? LICENSE_FIELDS : LICENSE_FIELDS.filter((field) => field.name !== "IdLicence")),
+    fetchRecord: (_row, id) => fetchAdminLicence(id),
+    createRecord: (payload) => createAdminLicence(payload),
+    updateRecord: (id, payload) => updateAdminLicence(id, payload),
+    deleteRecord: (id) => deleteAdminLicence(id),
+    mapRecord: (record) => ({
+      IdLicence: record?.IdLicence ? String(record.IdLicence) : "",
+      IdEntiteFk: record?.IdEntiteFk ? String(record.IdEntiteFk) : "",
+      IdStatutLicenceFk: record?.IdStatutLicenceFk ? String(record.IdStatutLicenceFk) : "",
+      DateDebut: formatDateTimeLocalValue(record?.DateDebut),
+      DateFin: formatDateTimeLocalValue(record?.DateFin),
+      ValideLicence: record?.ValideLicence !== false,
+      ExpireeLicence: Boolean(record?.ExpireeLicence),
+    }),
+    buildPayload: (values) => ({
+      IdLicence: Number(values.IdLicence),
+      IdEntiteFk: Number(values.IdEntiteFk),
+      IdStatutLicenceFk: Number(values.IdStatutLicenceFk),
+      DateDebut: toIsoDateTimeOrNull(values.DateDebut),
+      DateFin: toIsoDateTimeOrNull(values.DateFin),
+      ValideLicence: Boolean(values.ValideLicence),
+      ExpireeLicence: Boolean(values.ExpireeLicence),
+    }),
+  },
   "referentiel.V_Generique": {
     primaryKey: "ID_Generique",
     resourceLabel: "valeur de referentiel",
@@ -615,8 +804,7 @@ function AdminMultiSelectFilter({
   onClear,
 }) {
   const visibleOptions = useMemo(
-    () =>
-      definition.values.filter((value) => normalizeSearchText(value).includes(normalizeSearchText(searchValue))),
+    () => definition.values.filter((value) => normalizeSearchText(value).includes(normalizeSearchText(searchValue))),
     [definition.values, searchValue]
   );
 
@@ -629,7 +817,7 @@ function AdminMultiSelectFilter({
         onClick={onToggleOpen}
       >
         <strong>{buildColumnFilterSummary(selectedValues)}</strong>
-        <small>{isOpen ? "−" : "+"}</small>
+        <small>{isOpen ? "-" : "+"}</small>
       </button>
 
       {isOpen ? (
@@ -682,10 +870,29 @@ function AdminSummaryCard({ title, value, tone = "primary" }) {
   );
 }
 
+function AdminViewButton({ view, isActive, onSelect }) {
+  return (
+    <button className={`admin-view-button ${isActive ? "is-active" : ""}`} type="button" onClick={onSelect}>
+      <strong>{view.title}</strong>
+      <span>{buildViewLabel(view)}</span>
+      <p>{view.description}</p>
+    </button>
+  );
+}
+
 export default function Admin() {
   const [availableViews, setAvailableViews] = useState([]);
   const [selectedViewKey, setSelectedViewKey] = useState(DEFAULT_ADMIN_VIEW_KEY);
   const [rows, setRows] = useState([]);
+  const [viewMeta, setViewMeta] = useState({
+    totalCount: 0,
+    filteredCount: 0,
+    take: DEFAULT_ROWS_PER_PAGE,
+    skip: 0,
+    sortBy: "",
+    sortDir: "asc",
+    columns: [],
+  });
   const [loadingViews, setLoadingViews] = useState(true);
   const [loadingData, setLoadingData] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -694,6 +901,7 @@ export default function Admin() {
     entities: [],
     categories: [],
     entityTypes: [],
+    licenseStatuses: [],
   });
   const [loadingSupport, setLoadingSupport] = useState(true);
   const [supportError, setSupportError] = useState("");
@@ -708,205 +916,70 @@ export default function Admin() {
   const [columnFilters, setColumnFilters] = useState({});
   const [filterSearchTerms, setFilterSearchTerms] = useState({});
   const [openFilterColumn, setOpenFilterColumn] = useState("");
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showNavigationMenu, setShowNavigationMenu] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     column: "",
     direction: "",
   });
   const [visibleColumns, setVisibleColumns] = useState([]);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [columnWidths, setColumnWidths] = useState({});
+  const [pinnedColumns, setPinnedColumns] = useState([]);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
   const [currentPage, setCurrentPage] = useState(1);
-
-  async function loadViewRows(view) {
-    if (!view) {
-      setRows([]);
-      setLoadingData(false);
-      return;
-    }
-
-    setLoadingData(true);
-    setErrorMessage("");
-
-    const payload = await fetchViewData(view.schema, view.name);
-
-    if (payload?.success && Array.isArray(payload.data)) {
-      setRows(payload.data);
-    } else {
-      setRows([]);
-      setErrorMessage(payload?.message || "Impossible de charger les donnees de la vue selectionnee.");
-    }
-
-    setLoadingData(false);
-  }
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadViews() {
-      const payload = await fetchAvailableViews();
-
-      if (!active) {
-        return;
-      }
-
-      if (payload?.success && Array.isArray(payload.data)) {
-        setAvailableViews(payload.data);
-      } else {
-        setErrorMessage(payload?.message || "Impossible de charger la liste des vues d'administration.");
-      }
-
-      setLoadingViews(false);
-    }
-
-    loadViews();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSupportData() {
-      setLoadingSupport(true);
-      setSupportError("");
-
-      const [entitiesPayload, categoriesPayload, genericsPayload] = await Promise.all([
-        fetchAdminEntities({ take: 100 }),
-        fetchAdminModelList("T_CategorieGenerique", { take: 200 }),
-        fetchViewData("referentiel", "V_Generique"),
-      ]);
-
-      if (!active) {
-        return;
-      }
-
-      const generics = genericsPayload?.success && Array.isArray(genericsPayload.data) ? genericsPayload.data : [];
-      const nextSupportData = {
-        entities: entitiesPayload?.success && Array.isArray(entitiesPayload.data) ? entitiesPayload.data : [],
-        categories: categoriesPayload?.success && Array.isArray(categoriesPayload.data) ? categoriesPayload.data : [],
-        roles: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
-        entityTypes: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("typeentite")),
-      };
-
-      setSupportData(nextSupportData);
-
-      if (!entitiesPayload?.success || !categoriesPayload?.success || !genericsPayload?.success) {
-        setSupportError("Certaines listes de support n'ont pas pu etre chargees. Le CRUD reste disponible.");
-      }
-
-      setLoadingSupport(false);
-    }
-
-    loadSupportData();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [collapsedSchemas, setCollapsedSchemas] = useState({});
+  const [notifications, setNotifications] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [expandedCells, setExpandedCells] = useState({});
+  const resizingRef = useRef(null);
+  const tableWrapRef = useRef(null);
+  const exportMenuRef = useRef(null);
+  const navigationMenuRef = useRef(null);
+  const [horizontalScrollState, setHorizontalScrollState] = useState({
+    overflow: false,
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const adminViews = useMemo(() => {
     const availableKeys = new Set(availableViews.map((view) => normalizeViewKey(view.schema, view.name)));
     return ADMIN_VIEWS.filter((view) => availableKeys.has(normalizeViewKey(view.schema, view.name)));
   }, [availableViews]);
 
-  const crudAdminViews = useMemo(
-    () => adminViews.filter((view) => Boolean(CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)])),
-    [adminViews]
+  const selectedView = useMemo(
+    () => adminViews.find((view) => normalizeViewKey(view.schema, view.name) === selectedViewKey) || null,
+    [adminViews, selectedViewKey]
   );
-
-  const readOnlyAdminViews = useMemo(
-    () => adminViews.filter((view) => !CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)]),
-    [adminViews]
-  );
-
-  const selectedView =
-    adminViews.find((view) => normalizeViewKey(view.schema, view.name) === selectedViewKey) ||
-    crudAdminViews[0] ||
-    readOnlyAdminViews[0] ||
-    null;
 
   const selectedCrudConfig = selectedView ? CRUD_CONFIGS[normalizeViewKey(selectedView.schema, selectedView.name)] || null : null;
+
   const editorFields =
     selectedCrudConfig && editorMode
       ? selectedCrudConfig.getFields?.(editorMode) || selectedCrudConfig.fields
       : selectedCrudConfig?.fields || [];
-  const effectiveVisibleColumns = visibleColumns.length > 0 ? visibleColumns : columns;
 
-  useEffect(() => {
-    setEditorMode(null);
-    setEditorRecordId(null);
-    setEditorValues({});
-    setLoadingEditor(false);
-    setSubmittingEditor(false);
-    setActionFeedback(null);
-    setSearchTerm("");
-    setColumnFilters({});
-    setFilterSearchTerms({});
-    setOpenFilterColumn("");
-    setShowSearchPanel(false);
-    setSortConfig({
-      column: "",
-      direction: "",
-    });
-    setVisibleColumns([]);
-    setRowsPerPage(25);
-    setCurrentPage(1);
-  }, [selectedViewKey]);
-
-  useEffect(() => {
-    if (adminViews.length === 0) {
-      return;
+  const columns = useMemo(() => {
+    if (Array.isArray(viewMeta.columns) && viewMeta.columns.length > 0) {
+      return viewMeta.columns;
     }
 
-    const selectedExists = adminViews.some((view) => normalizeViewKey(view.schema, view.name) === selectedViewKey);
+    return rows.length > 0 ? Object.keys(rows[0]) : [];
+  }, [rows, viewMeta.columns]);
 
-    if (!selectedExists) {
-      const fallbackView = crudAdminViews[0] || readOnlyAdminViews[0] || null;
-
-      if (fallbackView) {
-        setSelectedViewKey(normalizeViewKey(fallbackView.schema, fallbackView.name));
-      }
-    }
-  }, [adminViews, crudAdminViews, readOnlyAdminViews, selectedViewKey]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function refreshSelectedView() {
-      if (!selectedView) {
-        setRows([]);
-        setLoadingData(false);
-        return;
-      }
-
-      setLoadingData(true);
-      setErrorMessage("");
-
-      const payload = await fetchViewData(selectedView.schema, selectedView.name);
-
-      if (!active) {
-        return;
-      }
-
-      if (payload?.success && Array.isArray(payload.data)) {
-        setRows(payload.data);
-      } else {
-        setRows([]);
-        setErrorMessage(payload?.message || "Impossible de charger les donnees de la vue selectionnee.");
-      }
-
-      setLoadingData(false);
+  const effectiveVisibleColumns = useMemo(() => {
+    if (columns.length === 0) {
+      return [];
     }
 
-    refreshSelectedView();
+    if (!Array.isArray(visibleColumns) || visibleColumns.length === 0) {
+      return columns;
+    }
 
-    return () => {
-      active = false;
-    };
-  }, [selectedView]);
+    const nextVisibleColumns = visibleColumns.filter((column) => columns.includes(column));
+    const missingColumns = columns.filter((column) => !nextVisibleColumns.includes(column));
+    return [...nextVisibleColumns, ...missingColumns];
+  }, [columns, visibleColumns]);
 
-  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
   const filterableColumns = useMemo(
     () =>
       columns.filter((column) => {
@@ -933,77 +1006,52 @@ export default function Admin() {
           )
         ).sort((leftValue, rightValue) => compareSortableValues(leftValue, rightValue));
 
-        const useMultiSelect = values.length > 1 && values.length <= 80;
-
         return {
           column,
           values,
-          useMultiSelect,
+          useMultiSelect: values.length > 1 && values.length <= 80,
         };
       }),
     [filterableColumns, rows]
   );
 
-  const filteredRows = useMemo(() => {
-    const normalizedSearchTerm = normalizeSearchText(searchTerm);
-
-    return rows.filter((row) => {
-      const matchesGlobalSearch =
-        !normalizedSearchTerm ||
-        filterableColumns.some((column) =>
-          normalizeSearchText(getFilterableCellValue(row[column])).includes(normalizedSearchTerm)
-        );
-
-      if (!matchesGlobalSearch) {
-        return false;
-      }
-
-      return Object.entries(columnFilters).every(([column, filterValue]) => {
-        if (Array.isArray(filterValue)) {
-          if (filterValue.length === 0) {
-            return true;
-          }
-
-          return filterValue.some(
-            (item) => normalizeSearchText(getFilterableCellValue(row[column])) === normalizeSearchText(item)
-          );
-        }
-
-        if (!filterValue) {
-          return true;
-        }
-
-        return normalizeSearchText(getFilterableCellValue(row[column])).includes(normalizeSearchText(filterValue));
-      });
-    });
-  }, [columnFilters, filterableColumns, rows, searchTerm]);
-
-  const sortedRows = useMemo(() => {
-    if (!sortConfig.column || !sortConfig.direction) {
-      return filteredRows;
+  const filteredRows = rows;
+  const sortedRows = rows;
+  const selectedRows = useMemo(() => {
+    if (!selectedCrudConfig) {
+      return [];
     }
 
-    const directionFactor = sortConfig.direction === "asc" ? 1 : -1;
-    const nextRows = [...filteredRows];
+    return rows.filter((row) => selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey])));
+  }, [rows, selectedCrudConfig, selectedRowIds]);
 
-    nextRows.sort((leftRow, rightRow) => {
-      const leftValue = getFilterableCellValue(leftRow[sortConfig.column]);
-      const rightValue = getFilterableCellValue(rightRow[sortConfig.column]);
-      return compareSortableValues(leftValue, rightValue) * directionFactor;
-    });
-
-    return nextRows;
-  }, [filteredRows, sortConfig]);
+  const selectedPrimaryRow = selectedRows[0] || null;
 
   const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(sortedRows.length / rowsPerPage)),
-    [rowsPerPage, sortedRows.length]
+    () => Math.max(1, Math.ceil((viewMeta.filteredCount || rows.length || 1) / rowsPerPage)),
+    [rows.length, rowsPerPage, viewMeta.filteredCount]
   );
 
-  const paginatedRows = useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return sortedRows.slice(startIndex, startIndex + rowsPerPage);
-  }, [currentPage, rowsPerPage, sortedRows]);
+  const paginatedRows = rows;
+
+  const schemaGroups = useMemo(() => {
+    const schemaOrder = Array.from(new Set(ADMIN_VIEWS.map((view) => view.schema)));
+
+    return schemaOrder
+      .map((schema) => {
+        const views = adminViews.filter((view) => view.schema === schema);
+        const crudViews = views.filter((view) => Boolean(CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)]));
+        const readOnlyViews = views.filter((view) => !CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)]);
+
+        return {
+          schema,
+          title: getSchemaTitle(schema),
+          crudViews,
+          readOnlyViews,
+        };
+      })
+      .filter((group) => group.crudViews.length > 0 || group.readOnlyViews.length > 0);
+  }, [adminViews]);
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -1044,8 +1092,433 @@ export default function Admin() {
       });
     }
 
+    if (pinnedColumns.length > 0) {
+      chips.push({
+        key: "pinned",
+        label: `Colonnes gelees: ${pinnedColumns.join(", ")}`,
+        onRemove: () => setPinnedColumns([]),
+      });
+    }
+
     return chips;
-  }, [columnFilters, searchTerm, sortConfig]);
+  }, [columnFilters, pinnedColumns, searchTerm, sortConfig]);
+
+  const pinnedOffsets = useMemo(() => {
+    const offsets = {};
+    let currentLeft = 0;
+
+    effectiveVisibleColumns.forEach((column) => {
+      if (!pinnedColumns.includes(column)) {
+        return;
+      }
+
+      offsets[column] = currentLeft;
+      currentLeft += columnWidths[column] || getDefaultColumnWidth(column);
+    });
+
+    return offsets;
+  }, [columnWidths, effectiveVisibleColumns, pinnedColumns]);
+
+  function pushNotification(type, message) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setNotifications((current) => [...current, { id, type, message }]);
+    window.setTimeout(() => {
+      setNotifications((current) => current.filter((item) => item.id !== id));
+    }, NOTIFICATION_TIMEOUT);
+  }
+
+  function dismissNotification(notificationId) {
+    setNotifications((current) => current.filter((item) => item.id !== notificationId));
+  }
+
+  function toggleExpandedCell(cellKey) {
+    setExpandedCells((current) => ({
+      ...current,
+      [cellKey]: !current[cellKey],
+    }));
+  }
+
+  function buildServerFilters(sourceFilters = columnFilters) {
+    return Object.entries(sourceFilters).reduce((accumulator, [column, value]) => {
+      if (Array.isArray(value) && value.length > 0) {
+        accumulator[column] = value;
+      } else if (typeof value === "string" && value.trim()) {
+        accumulator[column] = value.trim();
+      }
+
+      return accumulator;
+    }, {});
+  }
+
+  function getSelectedRows() {
+    if (!selectedCrudConfig) {
+      return [];
+    }
+
+    return selectedRows;
+  }
+
+  function exportRowsToExcel(rowsToExport, fileLabel) {
+    const exportColumns = effectiveVisibleColumns;
+    const headerHtml = exportColumns.map((column) => `<th>${column}</th>`).join("");
+    const rowsHtml = rowsToExport
+      .map(
+        (row) =>
+          `<tr>${exportColumns
+            .map((column) => `<td>${String(formatCellValue(row[column])).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`)
+            .join("")}</tr>`
+      )
+      .join("");
+
+    const html = `
+      <html>
+        <head><meta charset="utf-8" /></head>
+        <body>
+          <table border="1">
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${fileLabel}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportRowsToPdf(rowsToExport, fileLabel) {
+    const exportColumns = effectiveVisibleColumns;
+    const headerHtml = exportColumns.map((column) => `<th>${column}</th>`).join("");
+    const rowsHtml = rowsToExport
+      .map(
+        (row) =>
+          `<tr>${exportColumns
+            .map((column) => `<td>${String(formatCellValue(row[column])).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`)
+            .join("")}</tr>`
+      )
+      .join("");
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1200,height=800");
+
+    if (!printWindow) {
+      pushNotification("error", "Impossible d'ouvrir la fenetre PDF.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${fileLabel}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #cfd7e4; padding: 8px; text-align: left; vertical-align: top; }
+            th { background: #eef4ff; }
+          </style>
+        </head>
+        <body>
+          <h1>${fileLabel}</h1>
+          <table>
+            <thead><tr>${headerHtml}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+
+  useEffect(() => {
+    async function handleMouseMove(event) {
+      if (!resizingRef.current) {
+        return;
+      }
+
+      const { column, startX, startWidth } = resizingRef.current;
+      const width = Math.max(MIN_COLUMN_WIDTH, startWidth + (event.clientX - startX));
+
+      setColumnWidths((current) => ({
+        ...current,
+        [column]: width,
+      }));
+    }
+
+    function handleMouseUp() {
+      if (resizingRef.current) {
+        resizingRef.current = null;
+      }
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    const tableElement = tableWrapRef.current;
+
+    if (!tableElement) {
+      return undefined;
+    }
+
+    function updateHorizontalScrollState() {
+      const overflow = tableElement.scrollWidth - tableElement.clientWidth > 2;
+      const maxScrollLeft = Math.max(0, tableElement.scrollWidth - tableElement.clientWidth);
+      const canScrollLeft = tableElement.scrollLeft > 2;
+      const canScrollRight = tableElement.scrollLeft < maxScrollLeft - 2;
+
+      setHorizontalScrollState({
+        overflow,
+        canScrollLeft,
+        canScrollRight,
+      });
+    }
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            updateHorizontalScrollState();
+          })
+        : null;
+
+    updateHorizontalScrollState();
+
+    tableElement.addEventListener("scroll", updateHorizontalScrollState);
+    resizeObserver?.observe(tableElement);
+    window.addEventListener("resize", updateHorizontalScrollState);
+
+    return () => {
+      tableElement.removeEventListener("scroll", updateHorizontalScrollState);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateHorizontalScrollState);
+    };
+  }, [rows, effectiveVisibleColumns, columnWidths, selectedViewKey, loadingData]);
+
+  async function loadViewRows(view, overrides = {}) {
+    if (!view) {
+      setRows([]);
+      setViewMeta((current) => ({
+        ...current,
+        columns: [],
+        totalCount: 0,
+        filteredCount: 0,
+      }));
+      setLoadingData(false);
+      return;
+    }
+
+    setLoadingData(true);
+    setErrorMessage("");
+
+    const effectiveSortColumn =
+      overrides.sortConfig?.column !== undefined ? overrides.sortConfig.column : sortConfig.column;
+    const effectiveSortDirection =
+      overrides.sortConfig?.direction !== undefined ? overrides.sortConfig.direction : sortConfig.direction;
+    const effectiveSearchTerm = overrides.searchTerm !== undefined ? overrides.searchTerm : searchTerm;
+    const effectiveFilters = overrides.columnFilters !== undefined ? overrides.columnFilters : columnFilters;
+    const effectiveRowsPerPage = overrides.rowsPerPage || rowsPerPage;
+    const effectiveCurrentPage = overrides.currentPage || currentPage;
+
+    const payload = await fetchViewData(view.schema, view.name, {
+      take: effectiveRowsPerPage,
+      skip: (effectiveCurrentPage - 1) * effectiveRowsPerPage,
+      q: effectiveSearchTerm.trim() || undefined,
+      sortBy: effectiveSortColumn || undefined,
+      sortDir: effectiveSortDirection || undefined,
+      filters: JSON.stringify(buildServerFilters(effectiveFilters)),
+    });
+
+    if (payload?.success && Array.isArray(payload.data)) {
+      setRows(payload.data);
+      setViewMeta({
+        columns: Array.isArray(payload.meta?.columns) ? payload.meta.columns : [],
+        totalCount: Number(payload.meta?.totalCount || payload.data.length || 0),
+        filteredCount: Number(payload.meta?.filteredCount || payload.data.length || 0),
+        take: Number(payload.meta?.take || effectiveRowsPerPage),
+        skip: Number(payload.meta?.skip || 0),
+        sortBy: payload.meta?.sortBy || effectiveSortColumn || "",
+        sortDir: payload.meta?.sortDir || effectiveSortDirection || "asc",
+      });
+    } else {
+      setRows([]);
+      setViewMeta((current) => ({
+        ...current,
+        columns: [],
+        totalCount: 0,
+        filteredCount: 0,
+      }));
+      setErrorMessage(payload?.message || "Impossible de charger les donnees de la vue selectionnee.");
+    }
+
+    setLoadingData(false);
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadViews() {
+      const payload = await fetchAvailableViews();
+
+      if (!active) {
+        return;
+      }
+
+      if (payload?.success && Array.isArray(payload.data)) {
+        setAvailableViews(payload.data);
+      } else {
+        setErrorMessage(payload?.message || "Impossible de charger la liste des vues d'administration.");
+      }
+
+      setLoadingViews(false);
+    }
+
+    loadViews();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSupportData() {
+      setLoadingSupport(true);
+      setSupportError("");
+
+      const [entitiesPayload, categoriesPayload, genericsPayload, licencesPayload] = await Promise.all([
+        fetchAdminEntities({ take: 100 }),
+        fetchAdminModelList("T_CategorieGenerique", { take: 200 }),
+        fetchViewData("referentiel", "V_Generique", { take: 500 }),
+        fetchAdminLicences({ take: 50 }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      const generics = genericsPayload?.success && Array.isArray(genericsPayload.data) ? genericsPayload.data : [];
+
+      setSupportData({
+        entities: entitiesPayload?.success && Array.isArray(entitiesPayload.data) ? entitiesPayload.data : [],
+        categories: categoriesPayload?.success && Array.isArray(categoriesPayload.data) ? categoriesPayload.data : [],
+        roles: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
+        entityTypes: generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("typeentite")),
+        licenseStatuses: generics.filter((item) =>
+          normalizeCategoryName(item.NomCategorieGenerique).includes("statutlicence")
+        ),
+      });
+
+      if (!entitiesPayload?.success || !categoriesPayload?.success || !genericsPayload?.success || !licencesPayload?.success) {
+        setSupportError("Certaines listes de support n'ont pas pu etre chargees. Le CRUD reste disponible.");
+      }
+
+      setLoadingSupport(false);
+    }
+
+    loadSupportData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (adminViews.length === 0) {
+      return;
+    }
+
+    const selectedExists = adminViews.some((view) => normalizeViewKey(view.schema, view.name) === selectedViewKey);
+
+    if (!selectedExists) {
+      const fallbackView =
+        adminViews.find((view) => Boolean(CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)])) || adminViews[0];
+
+      if (fallbackView) {
+        setSelectedViewKey(normalizeViewKey(fallbackView.schema, fallbackView.name));
+      }
+    }
+  }, [adminViews, selectedViewKey]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshSelectedView() {
+      await loadViewRows(selectedView);
+
+      if (!active) {
+        return;
+      }
+    }
+
+    refreshSelectedView();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedView, searchTerm, columnFilters, sortConfig, rowsPerPage, currentPage]);
+
+  useEffect(() => {
+    const storedState = loadStoredAdminViewState(selectedViewKey);
+
+    setEditorMode(null);
+    setEditorRecordId(null);
+    setEditorValues({});
+    setLoadingEditor(false);
+    setSubmittingEditor(false);
+    setActionFeedback(null);
+    setSearchTerm(storedState?.searchTerm || "");
+    setColumnFilters(storedState?.columnFilters || {});
+    setFilterSearchTerms(storedState?.filterSearchTerms || {});
+    setOpenFilterColumn("");
+    setShowSearchPanel(Boolean(storedState?.showSearchPanel));
+    setSortConfig(
+      storedState?.sortConfig || {
+        column: "",
+        direction: "",
+      }
+    );
+    setVisibleColumns(storedState?.visibleColumns || []);
+    setPinnedColumns(storedState?.pinnedColumns || []);
+    setRowsPerPage(Number(storedState?.rowsPerPage || DEFAULT_ROWS_PER_PAGE));
+    setSelectedRowIds([]);
+    setCurrentPage(1);
+    setShowExportMenu(false);
+    setShowNavigationMenu(false);
+  }, [selectedViewKey]);
+
+  useEffect(() => {
+    function handleDocumentPointerDown(event) {
+      if (!exportMenuRef.current?.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+
+      if (!navigationMenuRef.current?.contains(event.target)) {
+        setShowNavigationMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentPointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentPointerDown);
+    };
+  }, []);
 
   useEffect(() => {
     setVisibleColumns((current) => {
@@ -1053,13 +1526,31 @@ export default function Admin() {
         return [];
       }
 
-      if (!current || current.length === 0) {
+      if (!Array.isArray(current) || current.length === 0) {
         return columns;
       }
 
       const nextVisibleColumns = current.filter((column) => columns.includes(column));
       const missingColumns = columns.filter((column) => !nextVisibleColumns.includes(column));
       return [...nextVisibleColumns, ...missingColumns];
+    });
+
+    setColumnWidths((current) => {
+      const next = {};
+      columns.forEach((column) => {
+        next[column] = current[column] || getDefaultColumnWidth(column);
+      });
+      return next;
+    });
+
+    setPinnedColumns((current) => {
+      const nextPinned = current.filter((column) => columns.includes(column));
+
+      if (nextPinned.length > 0) {
+        return nextPinned;
+      }
+
+      return columns[0] ? [columns[0]] : [];
     });
   }, [columns]);
 
@@ -1072,6 +1563,71 @@ export default function Admin() {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    saveStoredAdminViewState(selectedViewKey, {
+      searchTerm,
+      columnFilters,
+      filterSearchTerms,
+      sortConfig,
+      visibleColumns,
+      pinnedColumns,
+      rowsPerPage,
+      showSearchPanel,
+    });
+  }, [
+    columnFilters,
+    filterSearchTerms,
+    pinnedColumns,
+    rowsPerPage,
+    searchTerm,
+    selectedViewKey,
+    showSearchPanel,
+    sortConfig,
+    visibleColumns,
+  ]);
+
+  useEffect(() => {
+    if (!selectedCrudConfig) {
+      setSelectedRowIds([]);
+      return;
+    }
+
+    const rowIds = new Set(rows.map((row) => String(row[selectedCrudConfig.primaryKey])));
+    setSelectedRowIds((current) => current.filter((item) => rowIds.has(item)));
+  }, [rows, selectedCrudConfig]);
+
+  useEffect(() => {
+    setCollapsedSchemas((current) => {
+      const nextState = {};
+
+      schemaGroups.forEach((group) => {
+        nextState[group.schema] = current[group.schema] ?? false;
+      });
+
+      return nextState;
+    });
+  }, [schemaGroups]);
+
+  function getColumnWidth(column) {
+    return columnWidths[column] || getDefaultColumnWidth(column);
+  }
+
+  function getCellStyle(column, isHeader = false) {
+    const isPinned = pinnedColumns.includes(column);
+    const width = getColumnWidth(column);
+
+    return {
+      width,
+      minWidth: width,
+      ...(isPinned
+        ? {
+            left: pinnedOffsets[column] || 0,
+            zIndex: isHeader ? 6 : 3,
+          }
+        : null),
+    };
+  }
 
   function handleEditorValueChange(fieldName, nextValue) {
     setEditorValues((current) => ({
@@ -1134,6 +1690,11 @@ export default function Admin() {
 
   function handleResetColumns() {
     setVisibleColumns(columns);
+    setPinnedColumns(columns[0] ? [columns[0]] : []);
+    setColumnWidths(columns.reduce((accumulator, column) => {
+      accumulator[column] = getDefaultColumnWidth(column);
+      return accumulator;
+    }, {}));
   }
 
   function handleSortColumn(column) {
@@ -1166,6 +1727,43 @@ export default function Admin() {
     });
   }
 
+  function handleToggleSchema(schema) {
+    setCollapsedSchemas((current) => ({
+      ...current,
+      [schema]: !current[schema],
+    }));
+  }
+
+  function handleTogglePinnedColumn(column) {
+    setPinnedColumns((current) => {
+      if (current.includes(column)) {
+        return current.filter((item) => item !== column);
+      }
+
+      return [...current, column].sort(
+        (leftValue, rightValue) => effectiveVisibleColumns.indexOf(leftValue) - effectiveVisibleColumns.indexOf(rightValue)
+      );
+    });
+  }
+
+  function handleResetColumnWidth(column) {
+    setColumnWidths((current) => ({
+      ...current,
+      [column]: getDefaultColumnWidth(column),
+    }));
+  }
+
+  function handleResizeStart(column, event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    resizingRef.current = {
+      column,
+      startX: event.clientX,
+      startWidth: getColumnWidth(column),
+    };
+  }
+
   function handleResetFilters() {
     setSearchTerm("");
     setColumnFilters({});
@@ -1178,11 +1776,94 @@ export default function Admin() {
     setCurrentPage(1);
   }
 
+  function scrollTableHorizontally(mode) {
+    const tableElement = tableWrapRef.current;
+
+    if (!tableElement) {
+      return;
+    }
+
+    const maxScrollLeft = Math.max(0, tableElement.scrollWidth - tableElement.clientWidth);
+    const pageStep = Math.max(240, Math.round(tableElement.clientWidth * 0.75));
+
+    if (mode === "start") {
+      tableElement.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+
+    if (mode === "end") {
+      tableElement.scrollTo({ left: maxScrollLeft, behavior: "smooth" });
+      return;
+    }
+
+    const delta = mode === "left" ? -pageStep : pageStep;
+    tableElement.scrollBy({ left: delta, behavior: "smooth" });
+  }
+
+  function handleNavigationAction(mode) {
+    scrollTableHorizontally(mode);
+    setShowNavigationMenu(false);
+  }
+
+  function handleTableWrapKeyDown(event) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      scrollTableHorizontally("left");
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      scrollTableHorizontally("right");
+    }
+  }
+
+  function handleToggleRowSelection(row) {
+    if (!selectedCrudConfig) {
+      return;
+    }
+
+    const recordId = String(row[selectedCrudConfig.primaryKey]);
+
+    setSelectedRowIds((current) =>
+      current.includes(recordId) ? current.filter((item) => item !== recordId) : [...current, recordId]
+    );
+  }
+
+  function handleTogglePageSelection() {
+    if (!selectedCrudConfig) {
+      return;
+    }
+
+    const pageIds = rows.map((row) => String(row[selectedCrudConfig.primaryKey]));
+    const everySelected = pageIds.length > 0 && pageIds.every((id) => selectedRowIds.includes(id));
+
+    setSelectedRowIds((current) =>
+      everySelected ? current.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...current, ...pageIds]))
+    );
+  }
+
+  function handleActivateRow(row, event) {
+    if (!selectedCrudConfig) {
+      return;
+    }
+
+    const interactiveTarget = event.target.closest("button, input, a, select, textarea, label");
+
+    if (interactiveTarget) {
+      return;
+    }
+
+    const recordId = String(row[selectedCrudConfig.primaryKey]);
+    setSelectedRowIds((current) => (current.length === 1 && current[0] === recordId ? [] : [recordId]));
+  }
+
   function handleExportCsv() {
+    const rowsToExport = selectedRowIds.length > 0 ? getSelectedRows() : rows;
     const exportColumns = effectiveVisibleColumns;
     const csvRows = [
       exportColumns.join(";"),
-      ...sortedRows.map((row) =>
+      ...rowsToExport.map((row) =>
         exportColumns.map((column) => escapeCsvValue(getFilterableCellValue(row[column]))).join(";")
       ),
     ];
@@ -1197,6 +1878,20 @@ export default function Admin() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  }
+
+  function handleExportExcel() {
+    const rowsToExport = selectedRowIds.length > 0 ? getSelectedRows() : rows;
+    exportRowsToExcel(rowsToExport, selectedView?.name || "tableau-admin");
+    pushNotification("success", "Export Excel prepare.");
+    setShowExportMenu(false);
+  }
+
+  function handleExportPdf() {
+    const rowsToExport = selectedRowIds.length > 0 ? getSelectedRows() : rows;
+    exportRowsToPdf(rowsToExport, selectedView?.name || "tableau-admin");
+    setShowExportMenu(false);
   }
 
   function handleCreate() {
@@ -1280,6 +1975,7 @@ export default function Admin() {
         type: "success",
         message: successMessage,
       });
+      pushNotification("success", successMessage);
       setEditorMode(null);
       setEditorRecordId(null);
       setEditorValues({});
@@ -1289,6 +1985,7 @@ export default function Admin() {
         type: "error",
         message: response?.message || "L'operation a echoue.",
       });
+      pushNotification("error", response?.message || "L'operation a echoue.");
     }
 
     setSubmittingEditor(false);
@@ -1326,12 +2023,14 @@ export default function Admin() {
         type: "success",
         message: `${selectedCrudConfig.resourceLabel} supprime avec succes.`,
       });
+      pushNotification("success", `${selectedCrudConfig.resourceLabel} supprime avec succes.`);
       await loadViewRows(selectedView);
     } else {
       setActionFeedback({
         type: "error",
         message: response?.message || "La suppression a echoue.",
       });
+      pushNotification("error", response?.message || "La suppression a echoue.");
     }
   }
 
@@ -1405,27 +2104,51 @@ export default function Admin() {
     );
   }
 
-  return (
-    <div className="page-shell">
-      <section className="page-hero-card admin-hero-card">
-        <div>
-          <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Administration</span>
-          <h2>Fenetre d'administration</h2>
-          <p>
-            Cet espace est reserve aux administrateurs et consomme directement les vues du backend
-            pour suivre les activites systeme.
-          </p>
+  function renderTableCell(row, column, rowIndex) {
+    const rawValue = row[column];
+    const cellKey = `${selectedViewKey}-${rowIndex}-${column}`;
+    const isObjectValue = typeof rawValue === "object" && rawValue !== null;
+    const formattedValue = formatCellValue(rawValue);
+    const isLongText = String(formattedValue).length > 180 || isObjectValue;
+    const isExpanded = Boolean(expandedCells[cellKey]);
+
+    if (isLongText) {
+      return (
+        <div className="admin-cell-stack">
+          <pre className={`admin-json-cell ${isExpanded ? "is-expanded" : "is-collapsed"}`}>{formattedValue}</pre>
+          <button
+            type="button"
+            className="admin-json-toggle"
+            onClick={() => toggleExpandedCell(cellKey)}
+          >
+            {isExpanded ? "Voir moins" : "Voir plus"}
+          </button>
         </div>
-        <span className="status-pill">Acces admin</span>
-      </section>
+      );
+    }
 
-      <section className="admin-summary-grid">
-        <AdminSummaryCard title="Vues admin disponibles" value={String(adminViews.length)} />
-        <AdminSummaryCard title="Vue selectionnee" value={selectedView ? selectedView.title : "Aucune"} tone="soft" />
-        <AdminSummaryCard title="Lignes chargees" value={loadingData ? "..." : String(rows.length)} tone="soft" />
-      </section>
+    return formatCellValue(rawValue);
+  }
 
-      <section className="admin-layout">
+  return (
+    <div className="page-shell admin-page-shell">
+      {notifications.length > 0 ? (
+        <div className="admin-notification-stack">
+          {notifications.map((notification) => (
+            <button
+              key={notification.id}
+              type="button"
+              className={`admin-notification is-${notification.type}`}
+              onClick={() => dismissNotification(notification.id)}
+            >
+              <strong>{notification.type === "success" ? "Succes" : "Attention"}</strong>
+              <span>{notification.message}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <section className="admin-workspace">
         <aside className="admin-sidebar-card">
           <div className="section-head">
             <h3>Sources d'administration</h3>
@@ -1434,106 +2157,319 @@ export default function Admin() {
 
           {loadingViews ? (
             <div className="table-empty-state">Chargement des vues...</div>
-          ) : adminViews.length > 0 ? (
+          ) : schemaGroups.length > 0 ? (
             <div className="admin-view-list">
-              {crudAdminViews.length > 0 ? (
-                <section className="admin-view-group">
-                  <div className="admin-view-group-head">
-                    <strong>Vues avec CRUD</strong>
-                    <span>{crudAdminViews.length}</span>
+              {schemaGroups.map((group) => (
+                <section key={group.schema} className="admin-schema-group">
+                  <div className="admin-schema-group-head">
+                    <div className="admin-schema-group-title">
+                      <strong>{group.title}</strong>
+                      <span>{group.crudViews.length + group.readOnlyViews.length}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-schema-toggle"
+                      onClick={() => handleToggleSchema(group.schema)}
+                      aria-expanded={!collapsedSchemas[group.schema]}
+                    >
+                      {collapsedSchemas[group.schema] ? "Derouler" : "Rouler"}
+                    </button>
                   </div>
 
-                  {crudAdminViews.map((view) => {
-                    const viewKey = normalizeViewKey(view.schema, view.name);
+                  {!collapsedSchemas[group.schema] ? (
+                    <>
+                      {group.crudViews.length > 0 ? (
+                        <div className="admin-view-group">
+                          <div className="admin-view-group-head">
+                            <strong>Vues avec CRUD</strong>
+                            <span>{group.crudViews.length}</span>
+                          </div>
 
-                    return (
-                      <button
-                        key={viewKey}
-                        className={`admin-view-button ${selectedViewKey === viewKey ? "is-active" : ""}`}
-                        type="button"
-                        onClick={() => setSelectedViewKey(viewKey)}
-                      >
-                        <strong>{view.title}</strong>
-                        <span>{buildViewLabel(view)}</span>
-                        <p>{view.description}</p>
-                      </button>
-                    );
-                  })}
+                          {group.crudViews.map((view) => {
+                            const viewKey = normalizeViewKey(view.schema, view.name);
+
+                            return (
+                              <AdminViewButton
+                                key={viewKey}
+                                view={view}
+                                isActive={selectedViewKey === viewKey}
+                                onSelect={() => setSelectedViewKey(viewKey)}
+                              />
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
+                      {group.readOnlyViews.length > 0 ? (
+                        <div className="admin-view-group">
+                          <div className="admin-view-group-head">
+                            <strong>Vues en lecture seule</strong>
+                            <span>{group.readOnlyViews.length}</span>
+                          </div>
+
+                          {group.readOnlyViews.map((view) => {
+                            const viewKey = normalizeViewKey(view.schema, view.name);
+
+                            return (
+                              <AdminViewButton
+                                key={viewKey}
+                                view={view}
+                                isActive={selectedViewKey === viewKey}
+                                onSelect={() => setSelectedViewKey(viewKey)}
+                              />
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
                 </section>
-              ) : null}
-
-              {readOnlyAdminViews.length > 0 ? (
-                <section className="admin-view-group">
-                  <div className="admin-view-group-head">
-                    <strong>Vues en lecture seule</strong>
-                    <span>{readOnlyAdminViews.length}</span>
-                  </div>
-
-                  {readOnlyAdminViews.map((view) => {
-                    const viewKey = normalizeViewKey(view.schema, view.name);
-
-                    return (
-                      <button
-                        key={viewKey}
-                        className={`admin-view-button ${selectedViewKey === viewKey ? "is-active" : ""}`}
-                        type="button"
-                        onClick={() => setSelectedViewKey(viewKey)}
-                      >
-                        <strong>{view.title}</strong>
-                        <span>{buildViewLabel(view)}</span>
-                        <p>{view.description}</p>
-                      </button>
-                    );
-                  })}
-                </section>
-              ) : null}
+              ))}
             </div>
           ) : (
             <div className="table-empty-state">Aucune vue d'administration cible n'est disponible.</div>
           )}
         </aside>
 
-        <section className="admin-content-card">
-          <div className="admin-content-head">
-            <div className="section-head">
-              <h3>{selectedView?.title || "Vue d'administration"}</h3>
-              <p>{selectedView?.description || "Selectionnez une vue."}</p>
+        <div className="admin-main-column">
+          <section className="page-hero-card admin-hero-card">
+            <div>
+              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Administration</span>
+              <h2>Fenetre d'administration</h2>
+              <p>
+                Cet espace est reserve aux administrateurs et consomme directement les vues du backend
+                pour suivre les activites systeme.
+              </p>
             </div>
-            {selectedView ? <span className="status-pill">{buildViewLabel(selectedView)}</span> : null}
-          </div>
+            <span className="status-pill">Acces admin</span>
+          </section>
 
-          <div className="admin-toolbar">
-            <div className="admin-toolbar-meta">
-              <span className={`status-pill ${selectedCrudConfig ? "" : "is-muted"}`}>
-                {selectedCrudConfig ? "CRUD disponible" : "Lecture seule"}
-              </span>
-              <span className="status-pill is-muted">{`${sortedRows.length}/${rows.length} lignes apres filtres`}</span>
-              {loadingSupport ? <small>Chargement des listes de support...</small> : null}
-              {supportError ? <small>{supportError}</small> : null}
+          <section className="admin-summary-grid">
+            <AdminSummaryCard title="Vues admin disponibles" value={String(adminViews.length)} />
+            <AdminSummaryCard title="Vue selectionnee" value={selectedView ? selectedView.title : "Aucune"} tone="soft" />
+            <AdminSummaryCard
+              title="Lignes visibles"
+              value={loadingData ? "..." : `${rows.length}/${viewMeta.filteredCount || rows.length}`}
+              tone="soft"
+            />
+          </section>
+
+          <section className="admin-content-card">
+          <div className="admin-sticky-panel">
+            <div className="admin-content-head">
+              <div className="section-head">
+                <h3>{selectedView?.title || "Vue d'administration"}</h3>
+                <p>{selectedView?.description || "Selectionnez une vue."}</p>
+              </div>
+              {selectedView ? <span className="status-pill">{buildViewLabel(selectedView)}</span> : null}
             </div>
 
-            <div className="admin-toolbar-actions">
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() => setShowSearchPanel((current) => !current)}
-              >
-                {showSearchPanel ? "Masquer recherche" : "Recherche et filtres"}
-              </button>
-              <button className="secondary-action" type="button" onClick={handleExportCsv} disabled={sortedRows.length === 0}>
-                Export CSV
-              </button>
+            <div className="admin-toolbar">
+              <div className="admin-toolbar-meta">
+                <span className={`status-pill ${selectedCrudConfig ? "" : "is-muted"}`}>
+                  {selectedCrudConfig ? "CRUD disponible" : "Lecture seule"}
+                </span>
+                <span className="status-pill is-muted">
+                  {`${viewMeta.filteredCount || rows.length}/${viewMeta.totalCount || rows.length} lignes`}
+                </span>
+                <span className="status-pill is-muted">{`${pinnedColumns.length} colonnes gelees`}</span>
+                {horizontalScrollState.overflow ? (
+                  <span className="status-pill is-muted">Defilement horizontal actif</span>
+                ) : null}
+                {selectedCrudConfig ? (
+                  <span className="status-pill is-muted">{`${selectedRowIds.length} selectionnees`}</span>
+                ) : null}
+                {loadingSupport ? <small>Chargement des listes de support...</small> : null}
+                {supportError ? <small>{supportError}</small> : null}
+              </div>
 
-              {selectedCrudConfig ? (
+              <div className="admin-toolbar-actions">
                 <button
-                  className="primary-action"
+                  className="secondary-action"
                   type="button"
-                  onClick={handleCreate}
-                  disabled={loadingSupport || loadingEditor || submittingEditor}
+                  onClick={() => setShowSearchPanel((current) => !current)}
                 >
-                  {selectedCrudConfig.createLabel}
+                  {showSearchPanel ? "Masquer filtres" : "Filtres"}
                 </button>
-              ) : null}
+                <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export">
+                  <button
+                    className={`secondary-action admin-scroll-trigger ${showExportMenu ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      setShowNavigationMenu(false);
+                      setShowExportMenu((current) => !current);
+                    }}
+                    disabled={rows.length === 0}
+                    aria-expanded={showExportMenu}
+                    aria-haspopup="true"
+                  >
+                    Exporter
+                  </button>
+                  {showExportMenu ? (
+                    <div className="admin-scroll-menu-panel">
+                      <button className="secondary-action" type="button" onClick={handleExportCsv} disabled={sortedRows.length === 0}>
+                        Export CSV
+                      </button>
+                      <button className="secondary-action" type="button" onClick={handleExportExcel} disabled={rows.length === 0}>
+                        Export Excel
+                      </button>
+                      <button className="secondary-action" type="button" onClick={handleExportPdf} disabled={rows.length === 0}>
+                        Export PDF
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <div ref={navigationMenuRef} className="admin-scroll-menu" aria-label="Controles de defilement horizontal">
+                  <button
+                    className={`secondary-action admin-scroll-trigger ${showNavigationMenu ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      setShowExportMenu(false);
+                      setShowNavigationMenu((current) => !current);
+                    }}
+                    disabled={!horizontalScrollState.overflow}
+                    aria-expanded={showNavigationMenu}
+                    aria-haspopup="true"
+                  >
+                    Navigation
+                  </button>
+                  {showNavigationMenu ? (
+                    <div className="admin-scroll-menu-panel">
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => handleNavigationAction("start")}
+                        disabled={!horizontalScrollState.canScrollLeft}
+                      >
+                        Debut
+                      </button>
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => handleNavigationAction("left")}
+                        disabled={!horizontalScrollState.canScrollLeft}
+                      >
+                        Gauche
+                      </button>
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => handleNavigationAction("right")}
+                        disabled={!horizontalScrollState.canScrollRight}
+                      >
+                        Droite
+                      </button>
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => handleNavigationAction("end")}
+                        disabled={!horizontalScrollState.canScrollRight}
+                      >
+                        Fin
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedCrudConfig ? (
+                  <button
+                    className="primary-action"
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={loadingSupport || loadingEditor || submittingEditor}
+                  >
+                    {selectedCrudConfig.createLabel}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {selectedCrudConfig ? (
+              <div className="admin-selection-strip">
+                <div className="admin-bulk-actions">
+                  <div className="admin-bulk-actions-main">
+                    <span>{selectedRowIds.length > 0 ? `${selectedRowIds.length} lignes selectionnees` : "Aucune ligne selectionnee"}</span>
+                    {selectedPrimaryRow ? (
+                      <small>{`Ligne active: ${selectedCrudConfig.primaryKey} ${selectedPrimaryRow[selectedCrudConfig.primaryKey]}`}</small>
+                    ) : (
+                      <small>Cliquez sur une ligne du tableau pour afficher ses actions hors de la grille.</small>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-selection-actions">
+                  <div className="admin-selection-actions-head">
+                    <strong>Actions de la ligne selectionnee</strong>
+                    <span>
+                      {selectedPrimaryRow
+                        ? `Vous agissez hors du tableau sur la ligne ${selectedPrimaryRow[selectedCrudConfig.primaryKey]}.`
+                        : selectedRowIds.length > 1
+                          ? "Plusieurs lignes sont selectionnees. Gardez une seule ligne active pour voir ses actions."
+                          : "Selectionnez une seule ligne pour voir ses actions metier."}
+                    </span>
+                  </div>
+                  <div className="admin-selection-actions-buttons">
+                    {selectedPrimaryRow ? (
+                      (selectedCrudConfig.rowActions || []).length > 0 ? (
+                        selectedCrudConfig.rowActions.map((action) =>
+                          action.mode === "delete" ? (
+                            <button
+                              key={action.mode}
+                              type="button"
+                              className="admin-danger-button"
+                              onClick={() => handleDelete(selectedPrimaryRow)}
+                              disabled={selectedRowIds.length !== 1 || submittingEditor}
+                            >
+                              {action.label}
+                            </button>
+                          ) : (
+                            <button
+                              key={action.mode}
+                              type="button"
+                              className="secondary-action"
+                              onClick={() => handleEdit(selectedPrimaryRow, action.mode)}
+                              disabled={selectedRowIds.length !== 1 || submittingEditor}
+                            >
+                              {action.label}
+                            </button>
+                          )
+                        )
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="secondary-action"
+                            onClick={() => handleEdit(selectedPrimaryRow)}
+                            disabled={selectedRowIds.length !== 1 || submittingEditor}
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-danger-button"
+                            onClick={() => handleDelete(selectedPrimaryRow)}
+                            disabled={selectedRowIds.length !== 1 || submittingEditor}
+                          >
+                            Supprimer
+                          </button>
+                        </>
+                      )
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="admin-global-search-bar">
+              <label className="admin-form-field admin-global-search-field">
+                <span>Recherche globale</span>
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Rechercher une information dans le tableau"
+                />
+              </label>
             </div>
           </div>
 
@@ -1541,8 +2477,8 @@ export default function Admin() {
             <section className="admin-search-card">
               <div className="admin-search-head">
                 <div className="section-head">
-                  <h3>Recherche et filtres</h3>
-                  <p>Recherchez dans le tableau et filtrez les colonnes importantes.</p>
+                  <h3>Filtres</h3>
+                  <p>Affinez le tableau, gelez et redimensionnez les colonnes importantes.</p>
                 </div>
                 <button className="secondary-action" type="button" onClick={handleResetFilters}>
                   Reinitialiser
@@ -1554,37 +2490,35 @@ export default function Admin() {
                   {activeFilterChips.map((chip) => (
                     <button key={chip.key} type="button" className="admin-filter-chip" onClick={chip.onRemove}>
                       <span>{chip.label}</span>
-                      <small>×</small>
+                      <small>x</small>
                     </button>
                   ))}
                 </div>
               ) : null}
 
               <div className="admin-search-grid">
-                <label className="admin-form-field admin-form-field-wide">
-                  <span>Recherche globale</span>
-                  <input
-                    type="search"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Rechercher une information dans le tableau"
-                  />
-                </label>
-
                 {selectedViewKey === "systeme.V_Login_history" && filterableColumns.includes("TypeLogin") ? (
                   <div className="admin-quick-filters admin-form-field-wide">
                     <span>Filtre rapide historique</span>
                     <div className="admin-quick-filter-actions">
-                      {["", "Connexion", "D\u00e9connexion"].map((value) => (
-                        <button
-                          key={value || "all"}
-                          type="button"
-                          className={`secondary-action ${JSON.stringify(columnFilters.TypeLogin || []) === JSON.stringify(value ? [value] : []) ? "is-active" : ""}`}
-                          onClick={() => handleSelectAllMultiFilter("TypeLogin", value ? [value] : [])}
-                        >
-                          {value || "Tout"}
-                        </button>
-                      ))}
+                      {[
+                        { label: "Tout", values: [] },
+                        { label: "Connexion", values: ["Connexion"] },
+                        { label: "D\u00e9connexion", values: ["Deconnexion", "D\u00e9connexion"] },
+                      ].map((option) => {
+                        const isActive = JSON.stringify(columnFilters.TypeLogin || []) === JSON.stringify(option.values);
+
+                        return (
+                          <button
+                            key={option.label}
+                            type="button"
+                            className={`secondary-action ${isActive ? "is-active" : ""}`}
+                            onClick={() => handleSelectAllMultiFilter("TypeLogin", option.values)}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}
@@ -1625,7 +2559,7 @@ export default function Admin() {
 
                 <div className="admin-visibility-card admin-form-field-wide">
                   <div className="admin-visibility-head">
-                    <span>Colonnes visibles</span>
+                    <span>Colonnes visibles, gelees et largeur</span>
                     <div className="admin-visibility-actions">
                       <button type="button" className="secondary-action" onClick={handleShowAllColumns}>
                         Tout afficher
@@ -1636,16 +2570,38 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="admin-visibility-grid">
-                    {columns.map((column) => (
-                      <label key={`visible-${column}`} className="admin-multiselect-option">
-                        <input
-                          type="checkbox"
-                          checked={effectiveVisibleColumns.includes(column)}
-                          onChange={() => handleToggleVisibleColumn(column)}
-                        />
-                        <span>{column}</span>
-                      </label>
-                    ))}
+                    {columns.map((column) => {
+                      const isPinned = pinnedColumns.includes(column);
+
+                      return (
+                        <div key={`visible-${column}`} className="admin-column-option">
+                          <label className="admin-multiselect-option">
+                            <input
+                              type="checkbox"
+                              checked={effectiveVisibleColumns.includes(column)}
+                              onChange={() => handleToggleVisibleColumn(column)}
+                            />
+                            <span>{column}</span>
+                          </label>
+                          <div className="admin-column-option-actions">
+                            <button
+                              type="button"
+                              className={`secondary-action ${isPinned ? "is-active" : ""}`}
+                              onClick={() => handleTogglePinnedColumn(column)}
+                            >
+                              {isPinned ? "Degeler" : "Geler"}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-action"
+                              onClick={() => handleResetColumnWidth(column)}
+                            >
+                              Largeur auto
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1684,12 +2640,7 @@ export default function Admin() {
                 <div className="admin-editor-grid">{editorFields.map(renderEditorField)}</div>
 
                 <div className="admin-editor-actions">
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={handleCancelEditor}
-                    disabled={submittingEditor}
-                  >
+                  <button className="secondary-action" type="button" onClick={handleCancelEditor} disabled={submittingEditor}>
                     Annuler
                   </button>
                   <button className="primary-action" type="submit" disabled={loadingEditor || submittingEditor}>
@@ -1705,90 +2656,183 @@ export default function Admin() {
           {loadingData ? (
             <section className="table-empty-state">Chargement des donnees...</section>
           ) : rows.length > 0 ? (
-            <div className="public-table-wrap admin-table-wrap">
-              <table className="public-table admin-table">
-                <thead>
-                  <tr>
+            <>
+              <div
+                ref={tableWrapRef}
+                className="public-table-wrap admin-table-wrap"
+                tabIndex={0}
+                onKeyDown={handleTableWrapKeyDown}
+                aria-label="Tableau d'administration avec defilement horizontal et vertical"
+              >
+                <table className="public-table admin-table">
+                  <colgroup>
+                    {selectedCrudConfig ? <col style={{ width: 64 }} /> : null}
                     {effectiveVisibleColumns.map((column) => (
-                      <th key={column}>
-                        <button
-                          type="button"
-                          className={`admin-sort-button ${sortConfig.column === column ? "is-active" : ""} ${
-                            sortConfig.column === column && sortConfig.direction ? `is-${sortConfig.direction}` : ""
-                          }`}
-                          onClick={() => handleSortColumn(column)}
-                        >
-                          <span>{column}</span>
-                          <small>
-                            {sortConfig.column === column
-                              ? sortConfig.direction === "asc"
-                                ? "↑"
-                                : sortConfig.direction === "desc"
-                                  ? "↓"
-                                  : "↕"
-                              : "↕"}
-                          </small>
-                        </button>
-                      </th>
+                      <col key={`col-${column}`} style={{ width: getColumnWidth(column) }} />
                     ))}
-                    {selectedCrudConfig ? <th>Actions</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedRows.map((row, rowIndex) => (
-                    <tr key={`${selectedViewKey}-${row[selectedCrudConfig?.primaryKey] || "row"}-${row.IdEntiteLocalisation || rowIndex}`}>
-                      {effectiveVisibleColumns.map((column) => (
-                        <td key={`${rowIndex}-${column}`}>
-                          {typeof row[column] === "object" && row[column] !== null ? (
-                            <pre className="admin-json-cell">{formatCellValue(row[column])}</pre>
-                          ) : (
-                            formatCellValue(row[column])
-                          )}
-                        </td>
-                      ))}
+                  </colgroup>
+                  <thead>
+                    <tr>
                       {selectedCrudConfig ? (
-                        <td className="admin-actions-cell">
-                          <div className="admin-row-actions">
-                            {(selectedCrudConfig.rowActions || []).length > 0 ? (
-                              selectedCrudConfig.rowActions.map((action) =>
-                                action.mode === "delete" ? (
-                                  <button
-                                    key={action.mode}
-                                    type="button"
-                                    className="admin-danger-button"
-                                    onClick={() => handleDelete(row)}
-                                  >
-                                    {action.label}
-                                  </button>
-                                ) : (
-                                  <button
-                                    key={action.mode}
-                                    type="button"
-                                    className="secondary-action"
-                                    onClick={() => handleEdit(row, action.mode)}
-                                  >
-                                    {action.label}
-                                  </button>
-                                )
-                              )
-                            ) : (
-                              <>
-                                <button type="button" className="secondary-action" onClick={() => handleEdit(row)}>
-                                  Modifier
-                                </button>
-                                <button type="button" className="admin-danger-button" onClick={() => handleDelete(row)}>
-                                  Supprimer
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                        <th className="admin-select-column">
+                          <input
+                            type="checkbox"
+                            checked={rows.length > 0 && rows.every((row) => selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey])))}
+                            onChange={handleTogglePageSelection}
+                            aria-label="Selectionner la page"
+                          />
+                        </th>
                       ) : null}
+                      {effectiveVisibleColumns.map((column) => {
+                        const isPinned = pinnedColumns.includes(column);
+
+                        return (
+                          <th
+                            key={column}
+                            className={`admin-table-head-cell ${isPinned ? "is-pinned" : ""}`}
+                            style={getCellStyle(column, true)}
+                          >
+                            <div className="admin-header-cell">
+                              <button
+                                type="button"
+                                className={`admin-sort-button ${sortConfig.column === column ? "is-active" : ""} ${
+                                  sortConfig.column === column && sortConfig.direction ? `is-${sortConfig.direction}` : ""
+                                }`}
+                                onClick={() => handleSortColumn(column)}
+                              >
+                                <span>{column}</span>
+                                <small>
+                                  {sortConfig.column === column
+                                    ? sortConfig.direction === "asc"
+                                      ? "Asc"
+                                      : sortConfig.direction === "desc"
+                                        ? "Desc"
+                                        : "Tri"
+                                    : "Tri"}
+                                </small>
+                              </button>
+
+                              <div className="admin-header-tools">
+                                <button
+                                  type="button"
+                                  className={`admin-pin-button ${isPinned ? "is-active" : ""}`}
+                                  onClick={() => handleTogglePinnedColumn(column)}
+                                >
+                                  {isPinned ? "Degeler" : "Geler"}
+                                </button>
+                                <div
+                                  className="admin-resize-handle"
+                                  onMouseDown={(event) => handleResizeStart(column, event)}
+                                  role="separator"
+                                  aria-orientation="vertical"
+                                  aria-label={`Redimensionner la colonne ${column}`}
+                                />
+                              </div>
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedRows.map((row, rowIndex) => (
+                      <tr
+                        key={`${selectedViewKey}-${row[selectedCrudConfig?.primaryKey] || "row"}-${row.IdEntiteLocalisation || rowIndex}`}
+                        className={
+                          selectedCrudConfig &&
+                          selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey]))
+                            ? "admin-table-row is-selected"
+                            : "admin-table-row"
+                        }
+                        onClick={(event) => handleActivateRow(row, event)}
+                      >
+                        {selectedCrudConfig ? (
+                          <td className="admin-select-column">
+                            <input
+                              type="checkbox"
+                              checked={selectedRowIds.includes(String(row[selectedCrudConfig.primaryKey]))}
+                              onChange={() => handleToggleRowSelection(row)}
+                              aria-label="Selectionner la ligne"
+                            />
+                          </td>
+                        ) : null}
+                        {effectiveVisibleColumns.map((column) => {
+                          const isPinned = pinnedColumns.includes(column);
+
+                          return (
+                            <td
+                              key={`${rowIndex}-${column}`}
+                              className={isPinned ? "admin-table-cell is-pinned" : "admin-table-cell"}
+                              style={getCellStyle(column)}
+                            >
+                              {renderTableCell(row, column, rowIndex)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {!loadingData && viewMeta.filteredCount === 0 ? (
+                <section className="table-empty-state">
+                  Aucun resultat ne correspond a votre recherche ou a vos filtres.
+                </section>
+              ) : null}
+
+              {sortedRows.length > 0 ? (
+                <section className="admin-table-footer">
+                  <div className="admin-table-footer-meta">
+                    <span>{`Page ${currentPage} sur ${totalPages}`}</span>
+                    <span>{`${rows.length} lignes affichees sur ${viewMeta.filteredCount || rows.length}`}</span>
+                  </div>
+
+                  <div className="admin-table-footer-actions">
+                    <label className="admin-page-size">
+                      <span>Lignes par page</span>
+                      <select value={rowsPerPage} onChange={(event) => setRowsPerPage(Number(event.target.value))}>
+                        {[10, 25, 50, 100].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="admin-pagination">
+                      <button type="button" className="secondary-action" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                        1ere
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Prec
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Suiv
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Dern
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+            </>
           ) : (
             <section className="table-empty-state">
               {selectedCrudConfig
@@ -1796,63 +2840,8 @@ export default function Admin() {
                 : "Aucune donnee disponible pour cette vue."}
             </section>
           )}
-
-          {!loadingData && rows.length > 0 && filteredRows.length === 0 ? (
-            <section className="table-empty-state">Aucun resultat ne correspond a votre recherche ou a vos filtres.</section>
-          ) : null}
-
-          {!loadingData && sortedRows.length > 0 ? (
-            <section className="admin-table-footer">
-              <div className="admin-table-footer-meta">
-                <span>{`Page ${currentPage} sur ${totalPages}`}</span>
-                <span>{`${paginatedRows.length} lignes affichees sur ${sortedRows.length}`}</span>
-              </div>
-
-              <div className="admin-table-footer-actions">
-                <label className="admin-page-size">
-                  <span>Lignes par page</span>
-                  <select value={rowsPerPage} onChange={(event) => setRowsPerPage(Number(event.target.value))}>
-                    {[10, 25, 50, 100].map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="admin-pagination">
-                  <button type="button" className="secondary-action" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                    «
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-action"
-                    onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-action"
-                    onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    ›
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-action"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                  >
-                    »
-                  </button>
-                </div>
-              </div>
-            </section>
-          ) : null}
-        </section>
+          </section>
+        </div>
       </section>
     </div>
   );

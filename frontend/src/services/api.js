@@ -140,8 +140,8 @@ export function fetchAvailableViews() {
   });
 }
 
-export function fetchViewData(schema, view) {
-  return requestJson(`/api/views/${schema}/${view}`, {
+export function fetchViewData(schema, view, options = {}) {
+  return requestJson(`/api/views/${schema}/${view}${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
@@ -176,6 +176,41 @@ export function updateAdminEntity(id, payload) {
 
 export function deleteAdminEntity(id) {
   return requestJson(`/api/entites/${id}`, {
+    method: "DELETE",
+    requiresAuth: true,
+  });
+}
+
+export function fetchAdminLicences(options = {}) {
+  return requestJson(`/api/licences${buildQueryString(options)}`, {
+    requiresAuth: true,
+  });
+}
+
+export function fetchAdminLicence(id) {
+  return requestJson(`/api/licences/${id}`, {
+    requiresAuth: true,
+  });
+}
+
+export function createAdminLicence(payload) {
+  return requestJson("/api/licences", {
+    method: "POST",
+    requiresAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminLicence(id, payload) {
+  return requestJson(`/api/licences/${id}`, {
+    method: "PUT",
+    requiresAuth: true,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminLicence(id) {
+  return requestJson(`/api/licences/${id}`, {
     method: "DELETE",
     requiresAuth: true,
   });

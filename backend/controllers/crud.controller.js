@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const catchAsync = require('../middlewares/catchAsync');
+const { recordAdminAuditLog } = require('../utils/adminAudit');
 const {
   coercePrimaryKeyValue,
   getDelegateByModelName,
@@ -8,12 +9,30 @@ const {
   resolveModelName,
 } = require('../utils/prismaMetadata');
 
+const READABLE_MODELS = new Set(['T_CategorieGenerique', 'T_Generique', 'T_Entite_Localisation']);
+const WRITABLE_MODELS = new Set(['T_Generique', 'T_Entite_Localisation']);
+
+const normalizeModelName = (value) => resolveModelName(value);
+
+const ensureModelAccess = (modelName, mode = 'read') => {
+  const allowedModels = mode === 'write' ? WRITABLE_MODELS : READABLE_MODELS;
+
+  if (!allowedModels.has(modelName)) {
+    const error = new Error(`Acces refuse au modele "${modelName}".`);
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
 const listAvailableModels = catchAsync(async (req, res) => {
-  const models = listModels().map((model) => ({
-    model: model.name,
-    schema: model.schema || 'public',
-    primaryKey: model.primaryKey,
-  }));
+  const models = listModels()
+    .filter((model) => READABLE_MODELS.has(model.name))
+    .map((model) => ({
+      model: model.name,
+      schema: model.schema || 'public',
+      primaryKey: model.primaryKey,
+      writable: WRITABLE_MODELS.has(model.name),
+    }));
 
   res.json({
     success: true,
@@ -22,7 +41,9 @@ const listAvailableModels = catchAsync(async (req, res) => {
 });
 
 const getAll = catchAsync(async (req, res) => {
-  const modelName = resolveModelName(req.params.model);
+  const modelName = normalizeModelName(req.params.model);
+  ensureModelAccess(modelName, 'read');
+
   const delegate = getDelegateByModelName(prisma, modelName);
   const take = req.query.take ? Number(req.query.take) : undefined;
   const skip = req.query.skip ? Number(req.query.skip) : undefined;
@@ -36,7 +57,9 @@ const getAll = catchAsync(async (req, res) => {
 });
 
 const getOne = catchAsync(async (req, res) => {
-  const modelName = resolveModelName(req.params.model);
+  const modelName = normalizeModelName(req.params.model);
+  ensureModelAccess(modelName, 'read');
+
   const modelInfo = getModelInfo(modelName);
   const delegate = getDelegateByModelName(prisma, modelName);
 
@@ -57,40 +80,90 @@ const getOne = catchAsync(async (req, res) => {
 });
 
 const create = catchAsync(async (req, res) => {
-  const modelName = resolveModelName(req.params.model);
-  const delegate = getDelegateByModelName(prisma, modelName);
+  const modelName = normalizeModelName(req.params.model);
+  ensureModelAccess(modelName, 'write');
 
+  const delegate = getDelegateByModelName(prisma, modelName);
   const data = await delegate.create({
     data: req.body,
+  });
+
+  await recordAdminAuditLog({
+    tableName: modelName,
+    operation: 'CREATE',
+    newData: data,
   });
 
   res.status(201).json({ success: true, data });
 });
 
 const update = catchAsync(async (req, res) => {
-  const modelName = resolveModelName(req.params.model);
+  const modelName = normalizeModelName(req.params.model);
+  ensureModelAccess(modelName, 'write');
+
   const modelInfo = getModelInfo(modelName);
   const delegate = getDelegateByModelName(prisma, modelName);
+  const recordId = coercePrimaryKeyValue(modelInfo, req.params.id);
+  const previous = await delegate.findUnique({
+    where: {
+      [modelInfo.primaryKey]: recordId,
+    },
+  });
+
+  if (!previous) {
+    return res.status(404).json({
+      success: false,
+      message: 'Enregistrement introuvable.',
+    });
+  }
 
   const data = await delegate.update({
     where: {
-      [modelInfo.primaryKey]: coercePrimaryKeyValue(modelInfo, req.params.id),
+      [modelInfo.primaryKey]: recordId,
     },
     data: req.body,
+  });
+
+  await recordAdminAuditLog({
+    tableName: modelName,
+    operation: 'UPDATE',
+    oldData: previous,
+    newData: data,
   });
 
   res.json({ success: true, data });
 });
 
 const remove = catchAsync(async (req, res) => {
-  const modelName = resolveModelName(req.params.model);
+  const modelName = normalizeModelName(req.params.model);
+  ensureModelAccess(modelName, 'write');
+
   const modelInfo = getModelInfo(modelName);
   const delegate = getDelegateByModelName(prisma, modelName);
+  const recordId = coercePrimaryKeyValue(modelInfo, req.params.id);
+  const previous = await delegate.findUnique({
+    where: {
+      [modelInfo.primaryKey]: recordId,
+    },
+  });
+
+  if (!previous) {
+    return res.status(404).json({
+      success: false,
+      message: 'Enregistrement introuvable.',
+    });
+  }
 
   const data = await delegate.delete({
     where: {
-      [modelInfo.primaryKey]: coercePrimaryKeyValue(modelInfo, req.params.id),
+      [modelInfo.primaryKey]: recordId,
     },
+  });
+
+  await recordAdminAuditLog({
+    tableName: modelName,
+    operation: 'DELETE',
+    oldData: previous,
   });
 
   res.json({ success: true, data });

@@ -1,29 +1,20 @@
 -- View: systeme.V_Audit_log
-
 -- DROP VIEW systeme."V_Audit_log";
-
-CREATE OR REPLACE VIEW systeme."V_Audit_log"
- AS
- SELECT a."IdLog",
+CREATE OR REPLACE VIEW systeme."V_Audit_log" AS
+SELECT a."IdLog",
     a."TableName",
     a."Operation",
     a."ChangedAt",
     e."NomEntite",
     a."OldData",
     a."NewData"
-   FROM systeme."T_Audit_Log" a
-     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = a."IdEntiteFk";
-
-ALTER TABLE systeme."V_Audit_log"
-    OWNER TO postgres;
-
+FROM systeme."T_Audit_Log" a
+    LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = a."IdEntiteFk";
+ALTER TABLE systeme."V_Audit_log" OWNER TO postgres;
 -- View: systeme.V_Entite_Localisation_Detail
-
 -- DROP VIEW systeme."V_Entite_Localisation_Detail";
-
-CREATE OR REPLACE VIEW systeme."V_Entite_Localisation_Detail"
- AS
- SELECT el."IdEntiteLocalisation",
+CREATE OR REPLACE VIEW systeme."V_Entite_Localisation_Detail" AS
+SELECT el."IdEntiteLocalisation",
     e."IdEntite",
     e."NomEntite",
     e."PhoneEntite",
@@ -41,47 +32,35 @@ CREATE OR REPLACE VIEW systeme."V_Entite_Localisation_Detail"
     n4."NomNiveau_4",
     el."IdNiveau_5_Fk",
     n5."NomNiveau_5"
-   FROM systeme."T_Entite_Localisation" el
-     JOIN systeme."T_Entite" e ON e."IdEntite" = el."IdEntiteFk"
-     LEFT JOIN referentiel."T_Generique" te ON te."ID_Generique" = e."IdTypeEntiteFk"
-     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON n3."ID_Niveau_3" = el."IdNiveau_3_Fk"
-     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON n4."ID_Niveau_4" = el."IdNiveau_4_Fk"
-     LEFT JOIN geolocalisation."T_Niveau_5" n5 ON n5."ID_Niveau_5" = el."IdNiveau_5_Fk";
-
-ALTER TABLE systeme."V_Entite_Localisation_Detail"
-    OWNER TO postgres;
-
+FROM systeme."T_Entite" e
+    LEFT JOIN systeme."T_Entite_Localisation" el ON el."IdEntiteFk" = e."IdEntite"
+    LEFT JOIN referentiel."T_Generique" te ON te."ID_Generique" = e."IdTypeEntiteFk"
+    LEFT JOIN geolocalisation."T_Niveau_3" n3 ON n3."ID_Niveau_3" = el."IdNiveau_3_Fk"
+    LEFT JOIN geolocalisation."T_Niveau_4" n4 ON n4."ID_Niveau_4" = el."IdNiveau_4_Fk"
+    LEFT JOIN geolocalisation."T_Niveau_5" n5 ON n5."ID_Niveau_5" = el."IdNiveau_5_Fk";
+ALTER TABLE systeme."V_Entite_Localisation_Detail" OWNER TO postgres;
 -- View: systeme.V_Licence_active
-
 -- DROP VIEW systeme."V_Licence_active";
-
-CREATE OR REPLACE VIEW systeme."V_Licence_active"
- AS
- SELECT l."IdLicence",
+CREATE OR REPLACE VIEW systeme."V_Licence_active" AS
+SELECT l."IdLicence",
     l."IdEntiteFk",
     e."NomEntite",
     l."DateDebut",
     l."DateFin",
     l."ValideLicence",
     l."ExpireeLicence",
-        CASE
-            WHEN l."DateFin" < CURRENT_DATE THEN 'Expirée'::text
-            WHEN l."ExpireeLicence" = true THEN 'Expirée'::text
-            ELSE 'Active'::text
-        END AS statut_licence
-   FROM systeme."T_Licence" l
-     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = l."IdEntiteFk";
-
-ALTER TABLE systeme."V_Licence_active"
-    OWNER TO postgres;
-
+    CASE
+        WHEN l."DateFin" < CURRENT_DATE THEN 'Expirée'::text
+        WHEN l."ExpireeLicence" = true THEN 'Expirée'::text
+        ELSE 'Active'::text
+    END AS statut_licence
+FROM systeme."T_Licence" l
+    LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = l."IdEntiteFk";
+ALTER TABLE systeme."V_Licence_active" OWNER TO postgres;
 -- View: systeme.V_Login_history
-
 -- DROP VIEW systeme."V_Login_history";
-
-CREATE OR REPLACE VIEW systeme."V_Login_history"
- AS
- SELECT lg."IdLogin",
+CREATE OR REPLACE VIEW systeme."V_Login_history" AS
+SELECT lg."IdLogin",
     lg."DateLogin",
     lg."IdTypeLoginFk",
     type_log."AbrGenerique" AS "TypeLogin",
@@ -91,21 +70,15 @@ CREATE OR REPLACE VIEW systeme."V_Login_history"
     u."EmailUser",
     e."IdEntite",
     e."NomEntite"
-   FROM systeme."T_Login" lg
-     JOIN systeme."T_Utilisateurs" u ON u."IdUser" = lg."IdUserFk"
-     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = lg."IdEntiteFk"
-     LEFT JOIN referentiel."T_Generique" type_log ON lg."IdTypeLoginFk" = type_log."ID_Generique";
-
-ALTER TABLE systeme."V_Login_history"
-    OWNER TO postgres;
-
+FROM systeme."T_Login" lg
+    JOIN systeme."T_Utilisateurs" u ON u."IdUser" = lg."IdUserFk"
+    LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = lg."IdEntiteFk"
+    LEFT JOIN referentiel."T_Generique" type_log ON lg."IdTypeLoginFk" = type_log."ID_Generique";
+ALTER TABLE systeme."V_Login_history" OWNER TO postgres;
 -- View: systeme.V_User_profil
-
 -- DROP VIEW systeme."V_User_profil";
-
-CREATE OR REPLACE VIEW systeme."V_User_profil"
- AS
- SELECT u."IdUser",
+CREATE OR REPLACE VIEW systeme."V_User_profil" AS
+SELECT u."IdUser",
     u."NomUser",
     u."PrenomUser",
     u."EmailUser",
@@ -119,9 +92,6 @@ CREATE OR REPLACE VIEW systeme."V_User_profil"
     e."NomEntite",
     e."EmailEntite",
     e."PhoneEntite"
-   FROM systeme."T_Utilisateurs" u
-     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = u."IdEntiteFk";
-
-ALTER TABLE systeme."V_User_profil"
-    OWNER TO postgres;
-
+FROM systeme."T_Utilisateurs" u
+    LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = u."IdEntiteFk";
+ALTER TABLE systeme."V_User_profil" OWNER TO postgres;
