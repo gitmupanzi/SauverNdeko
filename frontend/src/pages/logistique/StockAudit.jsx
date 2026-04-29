@@ -56,6 +56,9 @@ export default function StockAudit({ refreshKey }) {
       {!loading && !error && rows.length > 0 ? (
         <SimpleTable
           rows={rows}
+          enableSelection
+          defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
+          defaultSortColumn="Ecart"
           columns={[
             { key: "CodeArticleInterne", label: "Code" },
             { key: "NomArticle", label: "Article" },

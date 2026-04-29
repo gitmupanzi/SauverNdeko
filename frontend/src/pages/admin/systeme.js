@@ -33,6 +33,18 @@ const SYSTEME_VIEWS = [
   },
   {
     schema: SCHEMA_NAME,
+    name: "V_Fk_Correspondance_Audit",
+    title: "Historique correspondances FK",
+    description: "Consulte les modifications effectuees sur les correspondances de cles etrangeres.",
+  },
+  {
+    schema: SCHEMA_NAME,
+    name: "V_Fk_Correspondance_Detail",
+    title: "Correspondances FK detaillees",
+    description: "Affiche le parametrage detaille des correspondances FK par module, schema, view et champ.",
+  },
+  {
+    schema: SCHEMA_NAME,
     name: "V_Entite_Localisation_Detail",
     title: "Localisation des entites",
     description: "Affiche les entites, leurs contacts et leur positionnement geographique.",

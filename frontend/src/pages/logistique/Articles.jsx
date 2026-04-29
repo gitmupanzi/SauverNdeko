@@ -9,7 +9,6 @@ import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
-  FkMappingCard,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -149,7 +148,16 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         return;
       }
 
-      setRows(asArrayPayload(response));
+      const nextRows = asArrayPayload(response);
+      setRows(nextRows);
+      if (selectedArticle?.ID_Article != null) {
+        const matchedArticle = nextRows.find((row) => row.ID_Article === selectedArticle.ID_Article);
+        if (matchedArticle) {
+          sharedTable?.setSelectedRow?.(matchedArticle);
+        } else {
+          sharedTable?.clearSelectedRow?.();
+        }
+      }
       setLoading(false);
     }
 
@@ -276,6 +284,28 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
           </label>
         </div>
 
+        <SelectionStrip
+          selectedRow={selectedArticle}
+          label={selectedArticle ? `Ligne selectionnee: article #${selectedArticle.ID_Article}` : "Aucune ligne selectionnee"}
+          description={
+            selectedArticle
+              ? `${selectedArticle.NomArticle || "-"} | ${selectedArticle.CodeArticleInterne || "Sans code"}`
+              : "Cliquez une ligne pour l'activer et reutiliser ses actions hors du tableau."
+          }
+          actions={
+            selectedArticle ? (
+              <>
+                <button type="button" className="secondary-action" onClick={() => handleEditArticle(selectedArticle)}>
+                  Modifier
+                </button>
+                <button type="button" className="admin-danger-button" onClick={() => handleDisableArticle(selectedArticle)}>
+                  Desactiver
+                </button>
+              </>
+            ) : null
+          }
+        />
+
         <TableToolbar
           title={sharedTable?.toolbarTitle || "Tableau V_Article"}
           rows={rows}
@@ -291,35 +321,12 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
             columns={tableColumns}
             selectedRowId={selectedArticle?.ID_Article || null}
             onRowSelect={sharedTable?.setSelectedRow}
+            defaultPinnedColumns={["NomArticle", "CodeArticleInterne"]}
+            defaultSortColumn="NomArticle"
+            exportFilename={sharedTable?.exportFilename || "logistique-v_article.csv"}
           />
         ) : null}
       </SectionCard>
-
-      <SelectionStrip
-        selectedRow={selectedArticle}
-        label={selectedArticle ? `Ligne selectionnee: article #${selectedArticle.ID_Article}` : "Aucune ligne selectionnee"}
-        description={
-          selectedArticle
-            ? `${selectedArticle.NomArticle || "-"} | ${selectedArticle.CodeArticleInterne || "Sans code"}`
-            : "Cliquez une ligne pour l'activer et reutiliser ses actions hors du tableau."
-        }
-        actions={
-          selectedArticle ? (
-            <>
-              <button type="button" className="secondary-action" onClick={() => handleEditArticle(selectedArticle)}>
-                Modifier
-              </button>
-              <button type="button" className="admin-danger-button" onClick={() => handleDisableArticle(selectedArticle)}>
-                Desactiver
-              </button>
-            </>
-          ) : null
-        }
-      />
-
-      <FkMappingCard
-        mappings={sharedTable?.fkMappings || []}
-      />
 
       {selectedArticle ? (
         <SectionCard title="Fiche article" subtitle="Lecture detaillee issue de la vue logistique.">

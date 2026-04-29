@@ -16,6 +16,7 @@ router.post('/models/:model', crudController.create);
 router.put('/models/:model/:id', crudController.update);
 router.delete('/models/:model/:id', crudController.remove);
 router.get('/admin-ui-settings', adminUiSettingsController.getAdminUiSettings);
+router.get('/admin-ui-settings/audit', adminUiSettingsController.getAdminUiSettingsAudit);
 router.put('/admin-ui-settings', adminUiSettingsController.updateAdminUiSettings);
 
 module.exports = router;

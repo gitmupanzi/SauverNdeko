@@ -315,7 +315,7 @@ exports.Prisma.T_ArticleScalarFieldEnum = {
 exports.Prisma.T_CommandeScalarFieldEnum = {
   ID_Commande: 'ID_Commande',
   ID_TypeCmdFk: 'ID_TypeCmdFk',
-  ID_StatutCmd: 'ID_StatutCmd',
+  ID_StatutCmdFk: 'ID_StatutCmdFk',
   ID_ClientFk: 'ID_ClientFk',
   ID_UserFk: 'ID_UserFk',
   geolocalisationCmd: 'geolocalisationCmd',
@@ -470,15 +470,28 @@ exports.Prisma.T_Audit_LogScalarFieldEnum = {
   IdEntiteFk: 'IdEntiteFk'
 };
 
-exports.Prisma.T_Admin_UI_SettingScalarFieldEnum = {
-  IdAdminUiSetting: 'IdAdminUiSetting',
-  SettingKey: 'SettingKey',
-  SettingValue: 'SettingValue',
+exports.Prisma.T_Fk_CorrespondanceScalarFieldEnum = {
+  IdFkCorrespondance: 'IdFkCorrespondance',
+  ModuleName: 'ModuleName',
+  SchemaName: 'SchemaName',
+  ViewName: 'ViewName',
+  SourceKey: 'SourceKey',
+  FieldName: 'FieldName',
+  FieldLabel: 'FieldLabel',
+  MappingType: 'MappingType',
+  ReferenceSchemaName: 'ReferenceSchemaName',
+  ReferenceObjectName: 'ReferenceObjectName',
+  ReferenceFieldName: 'ReferenceFieldName',
+  TargetCategoryIdFk: 'TargetCategoryIdFk',
+  MappingValue: 'MappingValue',
+  IsDefaultMapping: 'IsDefaultMapping',
+  ValideFkCorrespondance: 'ValideFkCorrespondance',
+  SettingScope: 'SettingScope',
+  ScopeValue: 'ScopeValue',
+  DisplayOrder: 'DisplayOrder',
   UpdatedAt: 'UpdatedAt',
   UpdatedByUserFk: 'UpdatedByUserFk',
-  ObsAdminUiSetting: 'ObsAdminUiSetting',
-  SettingScope: 'SettingScope',
-  ScopeValue: 'ScopeValue'
+  ObsFkCorrespondance: 'ObsFkCorrespondance'
 };
 
 exports.Prisma.T_EntiteScalarFieldEnum = {
@@ -563,10 +576,6 @@ exports.Prisma.NullableJsonNullValueInput = {
   JsonNull: Prisma.JsonNull
 };
 
-exports.Prisma.JsonNullValueInput = {
-  JsonNull: Prisma.JsonNull
-};
-
 exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
@@ -608,7 +617,7 @@ exports.Prisma.ModelName = {
   T_CategorieGenerique: 'T_CategorieGenerique',
   T_Generique: 'T_Generique',
   T_Audit_Log: 'T_Audit_Log',
-  T_Admin_UI_Setting: 'T_Admin_UI_Setting',
+  T_Fk_Correspondance: 'T_Fk_Correspondance',
   T_Entite: 'T_Entite',
   T_Entite_Localisation: 'T_Entite_Localisation',
   T_Licence: 'T_Licence',

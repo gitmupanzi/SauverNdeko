@@ -629,6 +629,8 @@ UPDATE annule l’ancien effet puis applique le nouveau.
 Un mouvement lié à une commande est identifié par :
 ID_TypeMvtFk + ID_ArticleFk + ID_CmdFk.
 
+```
+
 ## 12. Ordre d'execution recommande du schema logistique
 
 1. Schemas + tables + cles etrangeres
@@ -657,4 +659,41 @@ Rappels metier importants
 - `T_Mouvement` ne doit jamais etre modifie directement hors logique metier.
 - Les mouvements de commande sont identifies par `ID_TypeMvtFk + ID_ArticleFk + ID_cmdFk`.
 - Les modifications de `T_Article` provoquees par `T_CommandeDetail` ne doivent pas creer de mouvement de rapport supplementaire.
+
+## 13. Alignement referentiel obligatoire
+
+Le module logistique ne doit pas valider une FK generique uniquement par :
+
+```text
+referentiel.T_Generique.ID_Generique
 ```
+
+La validation correcte est :
+
+```text
+la valeur existe dans T_Generique
+ET
+la valeur appartient a la bonne categorie dans T_CategorieGenerique
+```
+
+Correspondances metier attendues :
+
+```text
+T_Article.ID_TypeArticleFk        -> categorie 46 = Type produit
+T_Article.ID_CategorieArticleFk   -> categorie 40 = Categorie produit
+T_Article.ID_UniteFk              -> categorie 34 = Unites
+
+T_Commande.ID_TypeCmdFk           -> categorie 64 = Type de commande
+T_Commande.ID_StatutCmdFk         -> categorie 28 = Statut
+T_Commande.ID_ConditionPaiementFk -> categorie 37 = Condition de paiement
+T_Commande.ID_ModePaiementFk      -> categorie 36 = Mode paiement
+
+T_Mouvement.ID_TypeMvtFk          -> categorie 64 = Type de commande
+T_Reglements.ID_ModeReglementFk   -> categorie 36 = Mode paiement
+```
+
+Les valeurs metier de stock `Entree` et `Sortie` doivent etre recherchees dans la categorie 64.
+
+## 14. Alignement des vues
+
+Les vues de lecture doivent exposer le champ technique `ID_StatutCmdFk` et peuvent conserver l'alias `ID_StatutCmd` pour la compatibilite applicative.

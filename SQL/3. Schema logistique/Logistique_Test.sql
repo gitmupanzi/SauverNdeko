@@ -18,6 +18,7 @@ DO $$
 DECLARE
     v_type_entree integer;
     v_type_sortie integer;
+    v_categorie_type_commande integer := 64;
     v_suffix text;
     v_code_article text;
     v_code_cmd_entree text;
@@ -29,21 +30,29 @@ DECLARE
     v_stock numeric;
     v_count integer;
 BEGIN
-    SELECT "ID_Generique"
+    SELECT g."ID_Generique"
     INTO v_type_entree
-    FROM referentiel."T_Generique"
-    WHERE "AbrGenerique" = 'Entrée'
+    FROM referentiel."T_Generique" g
+    WHERE g."ID_CategorieGeneriqueFk" = v_categorie_type_commande
+      AND g."AbrGenerique" ILIKE 'entr%'
+    ORDER BY g."ID_Generique"
     LIMIT 1;
 
-    SELECT "ID_Generique"
+    SELECT g."ID_Generique"
     INTO v_type_sortie
-    FROM referentiel."T_Generique"
-    WHERE "AbrGenerique" = 'Sortie'
+    FROM referentiel."T_Generique" g
+    WHERE g."ID_CategorieGeneriqueFk" = v_categorie_type_commande
+      AND g."AbrGenerique" ILIKE 'sort%'
+    ORDER BY g."ID_Generique"
     LIMIT 1;
 
     IF v_type_entree IS NULL OR v_type_sortie IS NULL THEN
-        RAISE EXCEPTION 'Les types Entrée / Sortie sont introuvables dans referentiel.T_Generique.';
+        RAISE EXCEPTION
+            'Les types Entree / Sortie sont introuvables dans T_Generique pour la categorie %.',
+            v_categorie_type_commande;
     END IF;
+
+    RAISE NOTICE 'Categorie generique attendue pour Entree / Sortie : %', v_categorie_type_commande;
 
     v_suffix := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
     v_code_article := 'SCN-ART-' || right(v_suffix, 10);
@@ -87,7 +96,8 @@ BEGIN
       AND "QteMvt" = 5;
 
     IF v_count <> 1 THEN
-        RAISE EXCEPTION 'Echec: la creation de l''article avec QteArticle=5 devait creer 1 mouvement d''entree de 5.';
+        RAISE EXCEPTION
+            'Echec: la creation de l''article avec QteArticle=5 devait creer 1 mouvement d''entree de 5.';
     END IF;
 
     RAISE NOTICE '=== 2. Mise a jour directe de l''article ===';
@@ -105,7 +115,8 @@ BEGIN
       AND "QteMvt" = 5;
 
     IF v_count < 2 THEN
-        RAISE EXCEPTION 'Echec: l''augmentation directe du stock devait creer un second mouvement d''entree de 5.';
+        RAISE EXCEPTION
+            'Echec: l''augmentation directe du stock devait creer un second mouvement d''entree de 5.';
     END IF;
 
     RAISE NOTICE '=== 3. Commande d''entree ===';
@@ -153,7 +164,9 @@ BEGIN
     WHERE "ID_Article" = v_id_article;
 
     IF v_stock <> 15 THEN
-        RAISE EXCEPTION 'Echec: la ligne de commande entree devait porter le stock a 15, stock obtenu=%.', v_stock;
+        RAISE EXCEPTION
+            'Echec: la ligne de commande entree devait porter le stock a 15, stock obtenu=%.',
+            v_stock;
     END IF;
 
     SELECT COUNT(*)::int
@@ -165,7 +178,8 @@ BEGIN
       AND "QteMvt" = 5;
 
     IF v_count <> 1 THEN
-        RAISE EXCEPTION 'Echec: la ligne de commande entree devait creer 1 mouvement de commande.';
+        RAISE EXCEPTION
+            'Echec: la ligne de commande entree devait creer 1 mouvement de commande.';
     END IF;
 
     RAISE NOTICE '=== 4. Mise a jour du detail de commande d''entree ===';
@@ -181,7 +195,9 @@ BEGIN
     WHERE "ID_Article" = v_id_article;
 
     IF v_stock <> 17 THEN
-        RAISE EXCEPTION 'Echec: la mise a jour de la ligne d''entree devait porter le stock a 17, stock obtenu=%.', v_stock;
+        RAISE EXCEPTION
+            'Echec: la mise a jour de la ligne d''entree devait porter le stock a 17, stock obtenu=%.',
+            v_stock;
     END IF;
 
     SELECT COUNT(*)::int
@@ -192,7 +208,8 @@ BEGIN
       AND "ID_cmdFk" = v_id_cmd_entree;
 
     IF v_count <> 1 THEN
-        RAISE EXCEPTION 'Echec: l''UPDATE devait laisser un seul mouvement de commande pour le triplet type/article/commande.';
+        RAISE EXCEPTION
+            'Echec: l''UPDATE devait laisser un seul mouvement de commande pour le triplet type/article/commande.';
     END IF;
 
     SELECT COUNT(*)::int
@@ -204,7 +221,8 @@ BEGIN
       AND "QteMvt" = 7;
 
     IF v_count <> 1 THEN
-        RAISE EXCEPTION 'Echec: le mouvement final devait representer la nouvelle quantite 7.';
+        RAISE EXCEPTION
+            'Echec: le mouvement final devait representer la nouvelle quantite 7.';
     END IF;
 
     RAISE NOTICE '=== 5. Commande de sortie ===';
@@ -252,7 +270,9 @@ BEGIN
     WHERE "ID_Article" = v_id_article;
 
     IF v_stock <> 13 THEN
-        RAISE EXCEPTION 'Echec: la ligne de commande sortie devait porter le stock a 13, stock obtenu=%.', v_stock;
+        RAISE EXCEPTION
+            'Echec: la ligne de commande sortie devait porter le stock a 13, stock obtenu=%.',
+            v_stock;
     END IF;
 
     RAISE NOTICE '=== 6. Sortie impossible si stock insuffisant ===';
@@ -295,7 +315,8 @@ BEGIN
             FALSE
         );
 
-        RAISE EXCEPTION 'Echec: une sortie qui rend le stock negatif aurait du etre bloquee.';
+        RAISE EXCEPTION
+            'Echec: une sortie qui rend le stock negatif aurait du etre bloquee.';
     EXCEPTION
         WHEN OTHERS THEN
             RAISE NOTICE 'Blocage attendu recu pour la sortie insuffisante: %', SQLERRM;
@@ -313,7 +334,9 @@ BEGIN
     WHERE "ID_Article" = v_id_article;
 
     IF v_stock <> 17 THEN
-        RAISE EXCEPTION 'Echec: la suppression de la sortie devait restituer le stock a 17, stock obtenu=%.', v_stock;
+        RAISE EXCEPTION
+            'Echec: la suppression de la sortie devait restituer le stock a 17, stock obtenu=%.',
+            v_stock;
     END IF;
 
     SELECT COUNT(*)::int
@@ -324,7 +347,8 @@ BEGIN
       AND "ID_cmdFk" = v_id_cmd_sortie;
 
     IF v_count <> 0 THEN
-        RAISE EXCEPTION 'Echec: la suppression du detail de sortie devait supprimer son mouvement associe.';
+        RAISE EXCEPTION
+            'Echec: la suppression du detail de sortie devait supprimer son mouvement associe.';
     END IF;
 
     RAISE NOTICE '=== 8. Suppression de la commande d''entree ===';
@@ -338,7 +362,9 @@ BEGIN
     WHERE "ID_Article" = v_id_article;
 
     IF v_stock <> 10 THEN
-        RAISE EXCEPTION 'Echec: la suppression de la commande d''entree devait annuler son effet et ramener le stock a 10, stock obtenu=%.', v_stock;
+        RAISE EXCEPTION
+            'Echec: la suppression de la commande d''entree devait annuler son effet et ramener le stock a 10, stock obtenu=%.',
+            v_stock;
     END IF;
 
     SELECT COUNT(*)::int
@@ -349,7 +375,8 @@ BEGIN
       AND "ID_cmdFk" = v_id_cmd_entree;
 
     IF v_count <> 0 THEN
-        RAISE EXCEPTION 'Echec: la suppression de la commande d''entree devait nettoyer ses mouvements associes.';
+        RAISE EXCEPTION
+            'Echec: la suppression de la commande d''entree devait nettoyer ses mouvements associes.';
     END IF;
 
     RAISE NOTICE '=== 9. Suppression article lie a un mouvement interdite ===';
@@ -358,7 +385,8 @@ BEGIN
         DELETE FROM logistique."T_Article"
         WHERE "ID_Article" = v_id_article;
 
-        RAISE EXCEPTION 'Echec: la suppression d''un article lie a T_Mouvement aurait du etre interdite.';
+        RAISE EXCEPTION
+            'Echec: la suppression d''un article lie a T_Mouvement aurait du etre interdite.';
     EXCEPTION
         WHEN OTHERS THEN
             RAISE NOTICE 'Blocage attendu recu pour la suppression de l''article: %', SQLERRM;

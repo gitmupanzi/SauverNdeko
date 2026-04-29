@@ -3943,6 +3943,23 @@ img {
   padding: 22px;
 }
 
+.logistics-table-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.logistics-table-actions .secondary-action,
+.logistics-table-actions .admin-danger-button {
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.logistics-table .admin-actions-cell {
+  min-width: 220px;
+}
+
 .logistics-sidebar-card .section-head h3 {
   margin: 0;
 }
@@ -4001,6 +4018,18 @@ img {
   gap: 18px;
 }
 
+.logistics-kpi-strip,
+.logistics-view-indicator-grid,
+.logistics-table-pills {
+  display: grid;
+  gap: 14px;
+}
+
+.logistics-kpi-board {
+  display: grid;
+  gap: 14px;
+}
+
 .logistics-card-nested {
   padding: 18px;
   background: #fff;
@@ -4029,6 +4058,142 @@ img {
 .logistics-bars {
   display: grid;
   gap: 12px;
+}
+
+.logistics-kpi-feature,
+.logistics-view-indicator {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(63, 125, 241, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.logistics-kpi-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(63, 125, 241, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  box-shadow: 0 18px 40px rgba(71, 102, 155, 0.08);
+}
+
+.logistics-kpi-card.is-danger {
+  background: linear-gradient(180deg, #fff4f8 0%, #ffffff 100%);
+}
+
+.logistics-kpi-card.is-warning {
+  background: linear-gradient(180deg, #fff9f0 0%, #ffffff 100%);
+}
+
+.logistics-kpi-card.is-success {
+  background: linear-gradient(180deg, #f3fff6 0%, #ffffff 100%);
+}
+
+.logistics-kpi-card.is-info {
+  background: linear-gradient(180deg, #f1f8ff 0%, #ffffff 100%);
+}
+
+.logistics-kpi-card-head,
+.logistics-view-indicator-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logistics-kpi-card-head .logistics-badge {
+  white-space: nowrap;
+}
+
+.logistics-kpi-card span {
+  color: #60718a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.logistics-kpi-card strong {
+  margin: 0;
+  color: #1d3553;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.logistics-kpi-card p {
+  margin: 0;
+  color: #66758c;
+}
+
+.logistics-kpi-progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(105, 131, 178, 0.14);
+}
+
+.logistics-kpi-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f8cff 0%, #6dd0d8 100%);
+}
+
+.logistics-kpi-feature span,
+.logistics-view-indicator span {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #60718a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.logistics-kpi-feature strong,
+.logistics-view-indicator h4,
+.logistics-view-indicator strong {
+  margin: 0;
+  color: #1d3553;
+}
+
+.logistics-kpi-feature strong,
+.logistics-view-indicator h4 {
+  display: block;
+  font-size: 1.5rem;
+}
+
+.logistics-kpi-feature small,
+.logistics-view-indicator p {
+  color: #66758c;
+}
+
+.logistics-view-indicator {
+  display: grid;
+  gap: 12px;
+}
+
+.logistics-view-indicator-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.logistics-view-indicator.is-danger {
+  background: linear-gradient(180deg, #fff4f8 0%, #ffffff 100%);
+}
+
+.logistics-view-indicator.is-warning {
+  background: linear-gradient(180deg, #fff9f0 0%, #ffffff 100%);
+}
+
+.logistics-view-indicator.is-success {
+  background: linear-gradient(180deg, #f2fff5 0%, #ffffff 100%);
+}
+
+.logistics-view-indicator.is-info {
+  background: linear-gradient(180deg, #f1f8ff 0%, #ffffff 100%);
 }
 
 .logistics-bar-row {
@@ -4133,6 +4298,51 @@ img {
   max-height: clamp(280px, 60vh, 720px);
 }
 
+.logistics-advanced-table {
+  display: grid;
+  gap: 16px;
+}
+
+.logistics-table-controls {
+  margin-bottom: 0;
+}
+
+.logistics-table-search-card {
+  margin-bottom: 0;
+}
+
+.logistics-table-pills {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.logistics-scroll-card,
+.logistics-visibility-card {
+  display: grid;
+  gap: 14px;
+}
+
+.logistics-scroll-card-head {
+  display: grid;
+  gap: 4px;
+}
+
+.logistics-scroll-card-head span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6f7f95;
+}
+
+.logistics-scroll-card-head small {
+  color: #66758c;
+}
+
+.logistics-scroll-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .logistics-table td,
 .logistics-table th {
   vertical-align: middle;
@@ -4149,6 +4359,11 @@ img {
   border-radius: 18px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border: 1px solid rgba(63, 125, 241, 0.12);
+}
+
+.logistics-selection-grid {
+  display: grid;
+  gap: 14px;
 }
 
 .logistics-table-toolbar-copy,
@@ -4177,6 +4392,14 @@ img {
   gap: 10px;
 }
 
+.logistics-selection-strip-actions {
+  align-items: center;
+}
+
+.logistics-table-footer {
+  margin-top: 0;
+}
+
 .logistics-row-clickable {
   cursor: pointer;
 }
@@ -4198,6 +4421,133 @@ img {
   border-radius: 16px;
   background: #f8fbff;
   border: 1px solid rgba(63, 125, 241, 0.1);
+}
+
+.logistics-page-shell {
+  align-content: start;
+}
+
+.logistics-hero-card {
+  align-items: center;
+}
+
+.logistics-content-card,
+.logistics-sidebar-card {
+  min-width: 0;
+}
+
+.logistics-shell-view {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  justify-items: stretch;
+}
+
+.logistics-sticky-panel {
+  margin-bottom: 14px;
+}
+
+.logistics-sidebar-card .section-head h3 {
+  margin: 0;
+}
+
+.logistics-sidebar-card .admin-view-group + .admin-view-group {
+  margin-top: 8px;
+}
+
+.logistics-sidebar-card .admin-view-button {
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.logistics-catalogue-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.logistics-catalogue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(17, 180, 187, 0.12);
+  color: #0c7f84;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.logistics-catalogue-badge.is-muted {
+  background: rgba(63, 125, 241, 0.1);
+  color: #4e6487;
+}
+
+.logistics-sidebar-card .admin-view-button span {
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.logistics-sidebar-card .admin-view-button small {
+  color: #7b8aa0;
+  font-size: 0.76rem;
+  word-break: break-word;
+}
+
+.logistics-card .logistics-card-head,
+.logistics-card .logistics-table-toolbar {
+  width: 100%;
+}
+
+.logistics-shell-view .admin-form-field {
+  max-width: 380px;
+}
+
+.logistics-shell-view .admin-form-field.admin-form-field-wide {
+  max-width: min(100%, 860px);
+}
+
+.logistics-shell-view .admin-form-field input,
+.logistics-shell-view .admin-form-field select,
+.logistics-shell-view .admin-form-field textarea {
+  max-width: 100%;
+}
+
+.logistics-filter-grid,
+.logistics-filter-grid-wide {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 360px));
+  justify-content: start;
+  align-items: end;
+}
+
+.logistics-detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 380px));
+  justify-content: start;
+}
+
+.logistics-selection-strip {
+  min-height: 100%;
+}
+
+.logistics-table-search-card .admin-form-field {
+  max-width: 520px;
+}
+
+.logistics-table-controls .admin-search-head,
+.logistics-table-controls .admin-search-grid {
+  width: 100%;
+}
+
+.logistics-table-controls .admin-search-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+  justify-content: start;
+}
+
+.logistics-table-controls .admin-visibility-card {
+  max-width: min(100%, 980px);
 }
 
 @media (min-width: 980px) {
@@ -4225,11 +4575,27 @@ img {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
+  .logistics-kpi-board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .logistics-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .logistics-view-indicator-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .logistics-grid-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .logistics-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(240px, 360px));
+  }
+
+  .logistics-selection-grid {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
   }
 }

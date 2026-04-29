@@ -286,6 +286,12 @@ export function fetchAdminUiSettings(options = {}) {
   });
 }
 
+export function fetchAdminUiSettingsAudit(options = {}) {
+  return requestJson(`/api/admin-ui-settings/audit${buildQueryString(options)}`, {
+    requiresAuth: true,
+  });
+}
+
 export function saveAdminUiSettings(payload) {
   return requestJson("/api/admin-ui-settings", {
     method: "PUT",

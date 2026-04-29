@@ -34,6 +34,26 @@ function resolveEntityId(record) {
   return null;
 }
 
+async function resolveExistingEntityId(rawEntityId) {
+  const entityId = Number(rawEntityId);
+
+  if (!Number.isInteger(entityId) || entityId <= 0) {
+    return null;
+  }
+
+  const rows = await prisma.$queryRawUnsafe(
+    `
+      SELECT e."IdEntite"
+      FROM systeme."T_Entite" e
+      WHERE e."IdEntite" = $1
+      LIMIT 1;
+    `,
+    entityId
+  );
+
+  return Array.isArray(rows) && rows[0]?.IdEntite != null ? Number(rows[0].IdEntite) : null;
+}
+
 async function recordAdminAuditLog({
   tableName,
   operation,
@@ -42,13 +62,16 @@ async function recordAdminAuditLog({
   idEntiteFk,
 }) {
   try {
+    const resolvedEntityId = await resolveExistingEntityId(
+      Number.isInteger(idEntiteFk) && idEntiteFk > 0
+        ? idEntiteFk
+        : resolveEntityId(newData) || resolveEntityId(oldData) || null
+    );
+
     const payload = {
       TableName: tableName,
       Operation: operation,
-      IdEntiteFk:
-        Number.isInteger(idEntiteFk) && idEntiteFk > 0
-          ? idEntiteFk
-          : resolveEntityId(newData) || resolveEntityId(oldData) || null,
+      IdEntiteFk: resolvedEntityId,
     };
 
     const normalizedOldData = sanitizeForAudit(oldData);
@@ -73,5 +96,6 @@ async function recordAdminAuditLog({
 module.exports = {
   recordAdminAuditLog,
   resolveEntityId,
+  resolveExistingEntityId,
   sanitizeForAudit,
 };

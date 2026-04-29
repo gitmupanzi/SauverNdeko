@@ -4,7 +4,6 @@ import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
-  FkMappingCard,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -58,7 +57,16 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
         return;
       }
 
-      setRows(asArrayPayload(response));
+      const nextRows = asArrayPayload(response);
+      setRows(nextRows);
+      if (selectedMouvement?.ID_Mvt != null) {
+        const matchedMouvement = nextRows.find((row) => row.ID_Mvt === selectedMouvement.ID_Mvt);
+        if (matchedMouvement) {
+          sharedTable?.setSelectedRow?.(matchedMouvement);
+        } else {
+          sharedTable?.clearSelectedRow?.();
+        }
+      }
       setLoading(false);
     }
 
@@ -111,6 +119,16 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
           </label>
         </div>
 
+        <SelectionStrip
+          selectedRow={selectedMouvement}
+          label={selectedMouvement ? `Ligne selectionnee: mouvement #${selectedMouvement.ID_Mvt}` : "Aucune ligne selectionnee"}
+          description={
+            selectedMouvement
+              ? `${selectedMouvement.TypeMvt || "-"} | ${selectedMouvement.NomArticle || "-"} | ${formatNumber(selectedMouvement.QteMvt)}`
+              : "Selectionnez un mouvement pour le lire plus facilement."
+          }
+        />
+
         <TableToolbar
           title={sharedTable?.toolbarTitle || "Tableau V_Mouvement"}
           rows={rows}
@@ -136,6 +154,9 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
             rows={rows}
             selectedRowId={selectedMouvement?.ID_Mvt || null}
             onRowSelect={sharedTable?.setSelectedRow}
+            defaultPinnedColumns={["DateMvt", "NomArticle"]}
+            defaultSortColumn="DateMvt"
+            exportFilename={sharedTable?.exportFilename || "logistique-v_mouvement.csv"}
             columns={[
               { key: "DateMvt", label: "Date", render: (row) => formatDate(row.DateMvt, { withTime: true }) },
               {
@@ -151,20 +172,6 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
           />
         ) : null}
       </SectionCard>
-
-      <SelectionStrip
-        selectedRow={selectedMouvement}
-        label={selectedMouvement ? `Ligne selectionnee: mouvement #${selectedMouvement.ID_Mvt}` : "Aucune ligne selectionnee"}
-        description={
-          selectedMouvement
-            ? `${selectedMouvement.TypeMvt || "-"} | ${selectedMouvement.NomArticle || "-"} | ${formatNumber(selectedMouvement.QteMvt)}`
-            : "Selectionnez un mouvement pour le lire plus facilement."
-        }
-      />
-
-      <FkMappingCard
-        mappings={sharedTable?.fkMappings || []}
-      />
     </div>
   );
 }

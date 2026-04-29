@@ -183,7 +183,7 @@ const COMMANDE_DETAIL_INCLUDE = {
       CodeCmd: true,
       DateCmd: true,
       ID_TypeCmdFk: true,
-      ID_StatutCmd: true,
+      ID_StatutCmdFk: true,
     },
   },
   T_Article: {
@@ -360,6 +360,61 @@ const buildListMeta = ({ data, take, skip, totalCount, filteredCount, sortBy, so
   sortDir,
 });
 
+const normalizeForJson = (value) => {
+  const isDecimalLike =
+    value &&
+    typeof value === 'object' &&
+    typeof value.s === 'number' &&
+    typeof value.e === 'number' &&
+    Array.isArray(value.d);
+
+  if (typeof value === 'bigint') {
+    return value <= Number.MAX_SAFE_INTEGER && value >= Number.MIN_SAFE_INTEGER ? Number(value) : value.toString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeForJson(item));
+  }
+
+  if (value instanceof Date || value == null) {
+    return value;
+  }
+
+  if (typeof value === 'object') {
+    if (isDecimalLike) {
+      const chunks = value.d.map((chunk, index) => (index === 0 ? String(chunk) : String(chunk).padStart(7, '0')));
+      const digits = chunks.join('');
+      const decimalIndex = value.e + 1;
+      let asString = digits;
+
+      if (decimalIndex <= 0) {
+        asString = `0.${'0'.repeat(Math.abs(decimalIndex))}${digits}`;
+      } else if (decimalIndex < digits.length) {
+        asString = `${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
+      } else if (decimalIndex > digits.length) {
+        asString = `${digits}${'0'.repeat(decimalIndex - digits.length)}`;
+      }
+
+      if (value.s < 0) {
+        asString = `-${asString}`;
+      }
+
+      const asNumber = Number(asString);
+      return Number.isFinite(asNumber) ? asNumber : asString;
+    }
+
+    if (value.constructor?.name === 'Decimal' && typeof value.toJSON === 'function') {
+      return value.toJSON();
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, normalizeForJson(nestedValue)])
+    );
+  }
+
+  return value;
+};
+
 const appendCondition = (conditions, params, column, operator, value) => {
   params.push(value);
   conditions.push(`${quoteIdentifier(column)} ${operator} $${params.length}`);
@@ -464,8 +519,9 @@ const queryViewList = async (viewKey, query = {}) => {
   ]);
 
   return {
-    data,
-    meta: buildListMeta({
+    data: normalizeForJson(data),
+    meta: normalizeForJson(
+      buildListMeta({
       data,
       take,
       skip,
@@ -473,7 +529,8 @@ const queryViewList = async (viewKey, query = {}) => {
       filteredCount: filteredRows?.[0]?.count || 0,
       sortBy,
       sortDir,
-    }),
+      })
+    ),
   };
 };
 
@@ -566,6 +623,10 @@ const getDashboardSummary = async () => {
     consoRows,
     topAlerts,
     topConso,
+    topReglements,
+    topCommandesSansDetails,
+    topAuditEcarts,
+    recentCommandes,
   ] = await Promise.all([
     prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM logistique."V_Article"`),
     prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM logistique."V_Commande"`),
@@ -611,9 +672,35 @@ const getDashboardSummary = async () => {
       ORDER BY "ConsoMensuelle" DESC, "NomArticle" ASC
       LIMIT 6
     `),
+    prisma.$queryRawUnsafe(`
+      SELECT *
+      FROM logistique."V_SuiviReglements"
+      WHERE COALESCE("Reste", 0) > 0
+      ORDER BY "Reste" DESC, "MontantTTC" DESC, "ID_Commande" DESC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT *
+      FROM logistique."V_CommandesSansDetails"
+      ORDER BY "ID_Commande" DESC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT *
+      FROM logistique."V_AuditStock"
+      WHERE COALESCE(ABS("Ecart"), 0) > 0
+      ORDER BY ABS("Ecart") DESC, "ID_Article" DESC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT *
+      FROM logistique."V_Commande"
+      ORDER BY "DateCmd" DESC NULLS LAST, "ID_Commande" DESC
+      LIMIT 5
+    `),
   ]);
 
-  return {
+  return normalizeForJson({
     totals: {
       articles: articleRows?.[0]?.count || 0,
       commandes: commandeRows?.[0]?.count || 0,
@@ -631,11 +718,15 @@ const getDashboardSummary = async () => {
     highlights: {
       alertes: topAlerts,
       consommation: topConso,
+      reglements: topReglements,
+      commandesSansDetails: topCommandesSansDetails,
+      audit: topAuditEcarts,
+      commandesRecentes: recentCommandes,
     },
     assumptions: {
       procheRuptureMargeMax: NEAR_RUPTURE_MARGIN,
     },
-  };
+  });
 };
 
 const listReferences = async () => {
@@ -847,8 +938,12 @@ const buildCommandePayload = (body, reqUserId, existingRecord = null) => {
     throw error;
   }
 
-  if (body.ID_StatutCmd !== undefined) {
-    payload.ID_StatutCmd = normalizeInteger(body.ID_StatutCmd, 'Statut de commande', { allowNull: true });
+  if (body.ID_StatutCmdFk !== undefined || body.ID_StatutCmd !== undefined) {
+    payload.ID_StatutCmdFk = normalizeInteger(
+      body.ID_StatutCmdFk !== undefined ? body.ID_StatutCmdFk : body.ID_StatutCmd,
+      'Statut de commande',
+      { allowNull: true }
+    );
   }
 
   if (body.ID_ClientFk !== undefined) {
@@ -1096,14 +1191,14 @@ const listReglementEntries = async (query = {}) => {
   ]);
 
   return {
-    data,
-    meta: {
+    data: normalizeForJson(data),
+    meta: normalizeForJson({
       count: data.length,
       filteredCount: totalCount,
       totalCount,
       take,
       skip,
-    },
+    }),
   };
 };
 

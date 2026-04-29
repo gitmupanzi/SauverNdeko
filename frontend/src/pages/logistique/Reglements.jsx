@@ -9,7 +9,6 @@ import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
-  FkMappingCard,
   formatCurrency,
   formatDate,
   getApiMessage,
@@ -101,8 +100,18 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         return;
       }
 
-      setSummaryRows(asArrayPayload(summaryResponse));
-      setEntryRows(asArrayPayload(entriesResponse));
+      const nextSummaryRows = asArrayPayload(summaryResponse);
+      const nextEntryRows = asArrayPayload(entriesResponse);
+      setSummaryRows(nextSummaryRows);
+      setEntryRows(nextEntryRows);
+      if (selectedEntry?.ID_Reglement != null) {
+        const matchedEntry = nextEntryRows.find((row) => row.ID_Reglement === selectedEntry.ID_Reglement);
+        if (matchedEntry) {
+          sharedTable?.setSelectedRow?.(matchedEntry);
+        } else {
+          sharedTable?.clearSelectedRow?.();
+        }
+      }
       setLoading(false);
     }
 
@@ -201,6 +210,9 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         {!loading && !error && summaryRows.length > 0 ? (
           <SimpleTable
             rows={summaryRows}
+            enableSelection
+            defaultPinnedColumns={["ID_Commande", "CodeFacture"]}
+            defaultSortColumn="Reste"
             columns={[
               { key: "ID_Commande", label: "Commande", render: (row) => `#${row.ID_Commande}` },
               { key: "CodeFacture", label: "Facture" },
@@ -218,6 +230,23 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       </SectionCard>
 
       <SectionCard title="Ecritures de reglement" subtitle="Historique modifiable des lignes de T_Reglements.">
+        <SelectionStrip
+          selectedRow={selectedEntry}
+          label={selectedEntry ? `Ligne selectionnee: reglement #${selectedEntry.ID_Reglement}` : "Aucune ligne selectionnee"}
+          description={
+            selectedEntry
+              ? `${selectedEntry.CodeFactureFk || "-"} | ${formatCurrency(selectedEntry.MontantRegle)}`
+              : "Selectionnez une ecriture pour la consulter ou la modifier plus vite."
+          }
+          actions={
+            selectedEntry ? (
+              <button type="button" className="secondary-action" onClick={() => handleEditReglement(selectedEntry)}>
+                Modifier
+              </button>
+            ) : null
+          }
+        />
+
         <TableToolbar
           title="Ecritures T_Reglements"
           rows={entryRows}
@@ -242,6 +271,9 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
             rows={entryRows}
             selectedRowId={selectedEntry?.ID_Reglement || null}
             onRowSelect={sharedTable?.setSelectedRow}
+            defaultPinnedColumns={["DateReglement", "CodeFactureFk"]}
+            defaultSortColumn="DateReglement"
+            exportFilename="logistique-reglements.csv"
             columns={[
               { key: "DateReglement", label: "Date", render: (row) => formatDate(row.DateReglement) },
               { key: "CodeFactureFk", label: "Facture" },
@@ -263,7 +295,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
                 key: "actions",
                 label: "Actions",
                 render: (row) => (
-                  <div className="logistics-table-actions">
+                  <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
                     <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
                       Voir
                     </button>
@@ -277,27 +309,6 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
           />
         ) : null}
       </SectionCard>
-
-      <SelectionStrip
-        selectedRow={selectedEntry}
-        label={selectedEntry ? `Ligne selectionnee: reglement #${selectedEntry.ID_Reglement}` : "Aucune ligne selectionnee"}
-        description={
-          selectedEntry
-            ? `${selectedEntry.CodeFactureFk || "-"} | ${formatCurrency(selectedEntry.MontantRegle)}`
-            : "Selectionnez une ecriture pour la consulter ou la modifier plus vite."
-        }
-        actions={
-          selectedEntry ? (
-            <button type="button" className="secondary-action" onClick={() => handleEditReglement(selectedEntry)}>
-              Modifier
-            </button>
-          ) : null
-        }
-      />
-
-      <FkMappingCard
-        mappings={sharedTable?.fkMappings || []}
-      />
 
       {selectedEntry ? (
         <SectionCard title="Reglement selectionne" subtitle="Lecture detaillee de l'ecriture choisie.">

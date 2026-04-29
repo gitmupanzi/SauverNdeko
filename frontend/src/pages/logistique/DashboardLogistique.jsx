@@ -10,6 +10,36 @@ import {
   ToneBadge,
 } from "./logistiqueShared";
 
+function formatPercent(value) {
+  return `${formatNumber(Number(value || 0).toFixed(1))} %`;
+}
+
+function resolveIndicatorTone(value, warningThreshold, dangerThreshold, reverse = false) {
+  const numericValue = Number(value || 0);
+
+  if (reverse) {
+    if (numericValue >= dangerThreshold) {
+      return "danger";
+    }
+
+    if (numericValue >= warningThreshold) {
+      return "warning";
+    }
+
+    return "success";
+  }
+
+  if (numericValue <= dangerThreshold) {
+    return "danger";
+  }
+
+  if (numericValue <= warningThreshold) {
+    return "warning";
+  }
+
+  return "success";
+}
+
 export default function DashboardLogistique({ refreshKey, onNavigate }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +78,83 @@ export default function DashboardLogistique({ refreshKey, onNavigate }) {
 
   const totals = summary?.totals || {};
   const highlights = summary?.highlights || {};
+  const paiementRate =
+    Number(totals.montantTotalFacture || 0) > 0
+      ? Number(
+          (
+            (Number(totals.montantTotalRegle || 0) / Number(totals.montantTotalFacture || 0)) *
+            100
+          ).toFixed(1)
+        )
+      : 0;
+  const detailCompletionRate =
+    Number(totals.commandes || 0) > 0
+      ? Number(
+          (((Number(totals.commandes || 0) - Number(totals.commandesSansDetails || 0)) / Number(totals.commandes || 0)) * 100).toFixed(
+            1
+          )
+        )
+      : 0;
+  const stockRiskRate =
+    Number(totals.articles || 0) > 0
+      ? Number(((Number(totals.alertesStock || 0) / Number(totals.articles || 0)) * 100).toFixed(1))
+      : 0;
+  const remainingCoverageRisk =
+    Number(totals.articles || 0) > 0
+      ? Number(((Number(totals.couvertureCritique || 0) / Number(totals.articles || 0)) * 100).toFixed(1))
+      : 0;
+  const completionTone = resolveIndicatorTone(detailCompletionRate, 90, 75);
+  const paymentTone = resolveIndicatorTone(paiementRate, 80, 55);
+  const stockTone = resolveIndicatorTone(stockRiskRate, 15, 30, true);
+  const coverageTone = resolveIndicatorTone(Number(totals.couvertureMinimale || 0), 2, 1);
+  const viewIndicators = [
+    {
+      view: "V_Article",
+      label: "Articles suivis",
+      value: formatNumber(totals.articles),
+      caption: `${formatNumber(totals.alertesStock)} articles en alerte`,
+      tone: "info",
+    },
+    {
+      view: "V_Commande",
+      label: "Commandes",
+      value: formatNumber(totals.commandes),
+      caption: `${formatCurrency(totals.montantTotalFacture)} factures TTC`,
+      tone: "default",
+    },
+    {
+      view: "V_CommandesSansDetails",
+      label: "Taux de completion",
+      value: formatPercent(detailCompletionRate),
+      caption: `${formatNumber(totals.commandesSansDetails)} commandes a completer`,
+      tone: Number(totals.commandesSansDetails || 0) > 0 ? "warning" : "success",
+      actionKey: "commandes",
+    },
+    {
+      view: "V_AlertStock",
+      label: "Pression stock",
+      value: formatPercent(stockRiskRate),
+      caption: `${formatNumber(totals.prochesRupture)} proches rupture`,
+      tone: Number(totals.alertesStock || 0) > 0 ? "danger" : "success",
+      actionKey: "alertes",
+    },
+    {
+      view: "V_CouvertureStock",
+      label: "Couverture minimale",
+      value: `${formatNumber(totals.couvertureMinimale)} mois`,
+      caption: `${formatNumber(totals.couvertureCritique)} articles <= 1 mois`,
+      tone: Number(totals.couvertureCritique || 0) > 0 ? "warning" : "success",
+      actionKey: "couverture",
+    },
+    {
+      view: "V_SuiviReglements",
+      label: "Taux d'encaissement",
+      value: formatPercent(paiementRate),
+      caption: `${formatCurrency(totals.montantRestant)} reste a payer`,
+      tone: Number(totals.montantRestant || 0) > 0 ? "warning" : "success",
+      actionKey: "reglements",
+    },
+  ];
   const actions = [
     { key: "articles", label: "Articles" },
     { key: "commandes", label: "Commandes" },
@@ -94,11 +201,88 @@ export default function DashboardLogistique({ refreshKey, onNavigate }) {
               <SummaryCard title="Conso du mois" value={formatNumber(totals.consommationMensuelle)} tone="default" />
             </div>
 
+            <div className="logistics-kpi-board">
+              <article className={`logistics-kpi-card is-${completionTone}`}>
+                <div className="logistics-kpi-card-head">
+                  <span>Execution des commandes</span>
+                  <ToneBadge tone={completionTone}>{formatNumber(totals.commandesSansDetails)} a traiter</ToneBadge>
+                </div>
+                <strong>{formatPercent(detailCompletionRate)}</strong>
+                <p>Part des commandes deja documentees avec leurs lignes de detail.</p>
+                <div className="logistics-kpi-progress">
+                  <span style={{ width: `${Math.min(100, Math.max(6, detailCompletionRate))}%` }} />
+                </div>
+              </article>
+
+              <article className={`logistics-kpi-card is-${paymentTone}`}>
+                <div className="logistics-kpi-card-head">
+                  <span>Encaissement facture</span>
+                  <ToneBadge tone={paymentTone}>{formatCurrency(totals.montantRestant)} ouverts</ToneBadge>
+                </div>
+                <strong>{formatPercent(paiementRate)}</strong>
+                <p>Part du chiffre facture deja reglee par les clients.</p>
+                <div className="logistics-kpi-progress">
+                  <span style={{ width: `${Math.min(100, Math.max(6, paiementRate))}%` }} />
+                </div>
+              </article>
+
+              <article className={`logistics-kpi-card is-${stockTone}`}>
+                <div className="logistics-kpi-card-head">
+                  <span>Exposition stock</span>
+                  <ToneBadge tone={stockTone}>{formatNumber(totals.alertesStock)} alertes</ToneBadge>
+                </div>
+                <strong>{formatPercent(stockRiskRate)}</strong>
+                <p>Part du catalogue actuellement exposee a une tension de stock.</p>
+                <div className="logistics-kpi-progress">
+                  <span style={{ width: `${Math.min(100, Math.max(6, stockRiskRate))}%` }} />
+                </div>
+              </article>
+
+              <article className={`logistics-kpi-card is-${coverageTone}`}>
+                <div className="logistics-kpi-card-head">
+                  <span>Couverture critique</span>
+                  <ToneBadge tone={coverageTone}>{formatNumber(totals.couvertureCritique)} sensibles</ToneBadge>
+                </div>
+                <strong>{`${formatNumber(totals.couvertureMinimale)} mois`}</strong>
+                <p>Couverture la plus basse relevee sur les articles suivis.</p>
+                <div className="logistics-kpi-progress">
+                  <span style={{ width: `${Math.min(100, Math.max(6, 100 - remainingCoverageRisk))}%` }} />
+                </div>
+              </article>
+            </div>
+
+            <SectionCard
+              title="Indicateurs par vue"
+              subtitle="Lecture de pilotage alignee sur les principales vues metier du schema logistique."
+              className="logistics-card-nested"
+            >
+              <div className="logistics-view-indicator-grid">
+                {viewIndicators.map((indicator) => (
+                  <button
+                    key={indicator.view}
+                    type="button"
+                    className={`logistics-view-indicator logistics-view-indicator-button is-${indicator.tone}`}
+                    onClick={() => indicator.actionKey && onNavigate(indicator.actionKey)}
+                  >
+                    <div className="logistics-view-indicator-head">
+                      <span>{indicator.view}</span>
+                      <strong>{indicator.label}</strong>
+                    </div>
+                    <h4>{indicator.value}</h4>
+                    <p>{indicator.caption}</p>
+                  </button>
+                ))}
+              </div>
+            </SectionCard>
+
             <div className="logistics-grid-2">
               <SectionCard title="Articles critiques" subtitle="Les cinq alertes les plus sensibles du stock." className="logistics-card-nested">
                 <SimpleTable
                   emptyMessage="Aucune alerte critique."
                   rows={highlights.alertes || []}
+                  showControls={false}
+                  defaultPinnedColumns={["NomArticle"]}
+                  defaultSortColumn="Marge"
                   columns={[
                     { key: "NomArticle", label: "Article" },
                     { key: "QteArticle", label: "Stock", render: (row) => formatNumber(row.QteArticle) },
@@ -136,6 +320,105 @@ export default function DashboardLogistique({ refreshKey, onNavigate }) {
                     );
                   })}
                 </div>
+              </SectionCard>
+            </div>
+
+            <div className="logistics-grid-2">
+              <SectionCard
+                title="Reglements a suivre"
+                subtitle="Factures avec reste a payer prioritaires."
+                className="logistics-card-nested"
+              >
+                <SimpleTable
+                  emptyMessage="Aucune facture en attente de reglement."
+                  rows={highlights.reglements || []}
+                  showControls={false}
+                  defaultPinnedColumns={["CodeFacture"]}
+                  defaultSortColumn="Reste"
+                  columns={[
+                    { key: "CodeFacture", label: "Facture" },
+                    { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC) },
+                    { key: "TotalRegle", label: "Regle", render: (row) => formatCurrency(row.TotalRegle) },
+                    {
+                      key: "Reste",
+                      label: "Reste",
+                      render: (row) => <ToneBadge tone="warning">{formatCurrency(row.Reste)}</ToneBadge>,
+                    },
+                  ]}
+                />
+              </SectionCard>
+
+              <SectionCard
+                title="Commandes a completer"
+                subtitle="Commandes creees sans lignes de detail a enrichir."
+                className="logistics-card-nested"
+              >
+                <SimpleTable
+                  emptyMessage="Toutes les commandes visibles ont deja leurs details."
+                  rows={highlights.commandesSansDetails || []}
+                  showControls={false}
+                  defaultPinnedColumns={["CodeCmd"]}
+                  defaultSortColumn="ID_Commande"
+                  columns={[
+                    { key: "ID_Commande", label: "Commande", render: (row) => formatNumber(row.ID_Commande) },
+                    { key: "CodeCmd", label: "Code" },
+                  ]}
+                />
+              </SectionCard>
+            </div>
+
+            <div className="logistics-grid-2">
+              <SectionCard
+                title="Audit prioritaire"
+                subtitle="Ecarts de stock qui meritent une verification rapide."
+                className="logistics-card-nested"
+              >
+                <SimpleTable
+                  emptyMessage="Aucun ecart de stock remonte actuellement."
+                  rows={highlights.audit || []}
+                  showControls={false}
+                  defaultPinnedColumns={["NomArticle"]}
+                  defaultSortColumn="Ecart"
+                  columns={[
+                    { key: "NomArticle", label: "Article" },
+                    { key: "StockArticle", label: "Stock fiche", render: (row) => formatNumber(row.StockArticle) },
+                    { key: "StockMouvements", label: "Stock mouvements", render: (row) => formatNumber(row.StockMouvements) },
+                    {
+                      key: "Ecart",
+                      label: "Ecart",
+                      render: (row) => <ToneBadge tone={Number(row.Ecart || 0) === 0 ? "success" : "danger"}>{formatNumber(row.Ecart)}</ToneBadge>,
+                    },
+                  ]}
+                />
+              </SectionCard>
+
+              <SectionCard
+                title="Commandes recentes"
+                subtitle="Dernieres commandes visibles pour un point de situation rapide."
+                className="logistics-card-nested"
+              >
+                <SimpleTable
+                  emptyMessage="Aucune commande recente disponible."
+                  rows={highlights.commandesRecentes || []}
+                  showControls={false}
+                  defaultPinnedColumns={["CodeCmd"]}
+                  defaultSortColumn="DateCmd"
+                  columns={[
+                    { key: "CodeCmd", label: "Commande" },
+                    { key: "DateCmd", label: "Date", render: (row) => (row.DateCmd ? new Date(row.DateCmd).toLocaleDateString("fr-FR") : "-") },
+                    { key: "AbrTypeCmd", label: "Type" },
+                    { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC) },
+                    {
+                      key: "EtatPaiement",
+                      label: "Paiement",
+                      render: (row) => (
+                        <ToneBadge tone={Number(row.MontantResteFacture || 0) > 0 ? "warning" : "success"}>
+                          {row.EtatPaiement || "-"}
+                        </ToneBadge>
+                      ),
+                    },
+                  ]}
+                />
               </SectionCard>
             </div>
           </>

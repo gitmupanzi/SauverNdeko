@@ -64,6 +64,60 @@ BEGIN
     END IF;
 END $$;
 
+DROP FUNCTION IF EXISTS logistique.fn_assert_generique_category(integer, integer, text, text) CASCADE;
+
+CREATE OR REPLACE FUNCTION logistique.fn_assert_generique_category(
+    IN p_id_generique integer,
+    IN p_id_categorie_generique integer,
+    IN p_contexte text,
+    IN p_nom_colonne text
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_nom_categorie text;
+BEGIN
+    IF p_id_generique IS NULL THEN
+        RETURN;
+    END IF;
+
+    SELECT cg."NomCategorieGenerique"
+    INTO v_nom_categorie
+    FROM referentiel."T_CategorieGenerique" cg
+    WHERE cg."ID_CategorieGenerique" = p_id_categorie_generique;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM referentiel."T_Generique" g
+        WHERE g."ID_Generique" = p_id_generique
+          AND g."ID_CategorieGeneriqueFk" = p_id_categorie_generique
+    ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM referentiel."T_Generique" g
+            WHERE g."ID_Generique" = p_id_generique
+        ) THEN
+            RAISE EXCEPTION
+                '% : %= % present dans T_Generique mais hors categorie attendue % (%).',
+                p_contexte,
+                p_nom_colonne,
+                p_id_generique,
+                p_id_categorie_generique,
+                COALESCE(v_nom_categorie, 'Categorie inconnue');
+        END IF;
+
+        RAISE EXCEPTION
+            '% : %= % introuvable dans T_Generique pour la categorie % (%).',
+            p_contexte,
+            p_nom_colonne,
+            p_id_generique,
+            p_id_categorie_generique,
+            COALESCE(v_nom_categorie, 'Categorie inconnue');
+    END IF;
+END;
+$BODY$;
+
 
 /* ============================================================================
    1. OUTIL CENTRAL : variation de stock sur T_Article
@@ -124,9 +178,13 @@ $BODY$;
    ============================================================================ */
 
 DROP PROCEDURE IF EXISTS logistique.ps_crud_article(integer, numeric, numeric, character varying);
+DROP PROCEDURE IF EXISTS logistique.ps_crud_article(integer, integer, integer, integer, numeric, numeric, character varying);
 
 CREATE OR REPLACE PROCEDURE logistique.ps_crud_article(
     IN p_id_article integer,
+    IN p_id_type_article integer,
+    IN p_id_categorie_article integer,
+    IN p_id_unite integer,
     IN p_old_qte numeric(14,3),
     IN p_new_qte numeric(14,3),
     IN p_operation character varying
@@ -139,6 +197,27 @@ DECLARE
 BEGIN
     v_op := upper(trim(p_operation));
     v_new_qte := COALESCE(p_new_qte, 0)::numeric(14,3);
+
+    IF v_op IN ('INSERT', 'UPDATE') THEN
+        PERFORM logistique.fn_assert_generique_category(
+            p_id_type_article,
+            46,
+            format('ps_crud_article(%s)', v_op),
+            'ID_TypeArticleFk'
+        );
+        PERFORM logistique.fn_assert_generique_category(
+            p_id_categorie_article,
+            40,
+            format('ps_crud_article(%s)', v_op),
+            'ID_CategorieArticleFk'
+        );
+        PERFORM logistique.fn_assert_generique_category(
+            p_id_unite,
+            34,
+            format('ps_crud_article(%s)', v_op),
+            'ID_UniteFk'
+        );
+    END IF;
 
     IF v_op IN ('INSERT', 'UPDATE') AND v_new_qte < 0 THEN
         RAISE EXCEPTION
@@ -163,13 +242,24 @@ BEGIN
         v_new_qte := COALESCE(NEW."QteArticle", 0)::numeric(14,3);
         NEW."QteArticle" := v_new_qte;
 
-        CALL logistique.ps_crud_article(NEW."ID_Article", NULL, v_new_qte, 'INSERT');
+        CALL logistique.ps_crud_article(
+            NEW."ID_Article",
+            NEW."ID_TypeArticleFk",
+            NEW."ID_CategorieArticleFk",
+            NEW."ID_UniteFk",
+            NULL,
+            v_new_qte,
+            'INSERT'
+        );
         RETURN NEW;
     ELSIF TG_OP = 'UPDATE' THEN
         NEW."QteArticle" := COALESCE(NEW."QteArticle", 0)::numeric(14,3);
 
         CALL logistique.ps_crud_article(
             NEW."ID_Article",
+            NEW."ID_TypeArticleFk",
+            NEW."ID_CategorieArticleFk",
+            NEW."ID_UniteFk",
             COALESCE(OLD."QteArticle", 0)::numeric(14,3),
             NEW."QteArticle",
             'UPDATE'
@@ -238,6 +328,7 @@ BEGIN
         INTO v_type_mvt
         FROM referentiel."T_Generique" g
         WHERE g."AbrGenerique" ILIKE 'entr%'
+          AND g."ID_CategorieGeneriqueFk" = 64
         ORDER BY g."ID_Generique"
         LIMIT 1;
 
@@ -266,6 +357,7 @@ BEGIN
             INTO v_type_mvt
             FROM referentiel."T_Generique" g
             WHERE g."AbrGenerique" ILIKE 'entr%'
+              AND g."ID_CategorieGeneriqueFk" = 64
             ORDER BY g."ID_Generique"
             LIMIT 1;
 
@@ -279,6 +371,7 @@ BEGIN
             INTO v_type_mvt
             FROM referentiel."T_Generique" g
             WHERE g."AbrGenerique" ILIKE 'sort%'
+              AND g."ID_CategorieGeneriqueFk" = 64
             ORDER BY g."ID_Generique"
             LIMIT 1;
 
@@ -340,11 +433,15 @@ EXECUTE FUNCTION logistique.tr_crud_article_after();
    ============================================================================ */
 
 DROP PROCEDURE IF EXISTS logistique.ps_crud_commande(integer, integer, integer, character varying);
+DROP PROCEDURE IF EXISTS logistique.ps_crud_commande(integer, integer, integer, integer, integer, integer, character varying);
 
 CREATE OR REPLACE PROCEDURE logistique.ps_crud_commande(
     IN p_id_commande integer,
     IN p_old_id_type_cmd integer,
     IN p_new_id_type_cmd integer,
+    IN p_new_id_statut_cmd integer,
+    IN p_new_id_condition_paiement integer,
+    IN p_new_id_mode_paiement integer,
     IN p_operation character varying
 )
 LANGUAGE plpgsql
@@ -354,40 +451,46 @@ DECLARE
 BEGIN
     v_op := upper(trim(p_operation));
 
-    IF v_op = 'INSERT' THEN
-        IF p_new_id_type_cmd IS NOT NULL THEN
-            PERFORM 1
-            FROM referentiel."T_Generique" g
-            WHERE g."ID_Generique" = p_new_id_type_cmd;
+    IF v_op IN ('INSERT', 'UPDATE') THEN
+        PERFORM logistique.fn_assert_generique_category(
+            p_new_id_type_cmd,
+            64,
+            format('ps_crud_commande(%s)', v_op),
+            'ID_TypeCmdFk'
+        );
+        PERFORM logistique.fn_assert_generique_category(
+            p_new_id_statut_cmd,
+            28,
+            format('ps_crud_commande(%s)', v_op),
+            'ID_StatutCmdFk'
+        );
+        PERFORM logistique.fn_assert_generique_category(
+            p_new_id_condition_paiement,
+            37,
+            format('ps_crud_commande(%s)', v_op),
+            'ID_ConditionPaiementFk'
+        );
+        PERFORM logistique.fn_assert_generique_category(
+            p_new_id_mode_paiement,
+            36,
+            format('ps_crud_commande(%s)', v_op),
+            'ID_ModePaiementFk'
+        );
+    END IF;
 
-            IF NOT FOUND THEN
-                RAISE EXCEPTION
-                    'ps_crud_commande(INSERT) : ID_TypeCmdFk=% introuvable.',
-                    p_new_id_type_cmd;
-            END IF;
-        END IF;
+    IF v_op = 'INSERT' THEN
         RETURN;
     END IF;
 
     IF v_op = 'UPDATE' THEN
-        IF p_old_id_type_cmd IS NOT DISTINCT FROM p_new_id_type_cmd THEN
-            RETURN;
-        END IF;
-
         IF p_new_id_type_cmd IS NULL THEN
             RAISE EXCEPTION
                 'ps_crud_commande(UPDATE) : nouveau ID_TypeCmdFk NULL pour commande %.',
                 p_id_commande;
         END IF;
 
-        PERFORM 1
-        FROM referentiel."T_Generique" g
-        WHERE g."ID_Generique" = p_new_id_type_cmd;
-
-        IF NOT FOUND THEN
-            RAISE EXCEPTION
-                'ps_crud_commande(UPDATE) : ID_TypeCmdFk=% introuvable.',
-                p_new_id_type_cmd;
+        IF p_old_id_type_cmd IS NOT DISTINCT FROM p_new_id_type_cmd THEN
+            RETURN;
         END IF;
 
         PERFORM set_config('logistique.allow_t_mouvement_write', 'on', true);
@@ -414,12 +517,28 @@ LANGUAGE plpgsql
 AS $BODY$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        CALL logistique.ps_crud_commande(NEW."ID_Commande", NULL, NEW."ID_TypeCmdFk", 'INSERT');
+        CALL logistique.ps_crud_commande(
+            NEW."ID_Commande",
+            NULL,
+            NEW."ID_TypeCmdFk",
+            NEW."ID_StatutCmdFk",
+            NEW."ID_ConditionPaiementFk",
+            NEW."ID_ModePaiementFk",
+            'INSERT'
+        );
         RETURN NEW;
     END IF;
 
     IF TG_OP = 'UPDATE' THEN
-        CALL logistique.ps_crud_commande(NEW."ID_Commande", OLD."ID_TypeCmdFk", NEW."ID_TypeCmdFk", 'UPDATE');
+        CALL logistique.ps_crud_commande(
+            NEW."ID_Commande",
+            OLD."ID_TypeCmdFk",
+            NEW."ID_TypeCmdFk",
+            NEW."ID_StatutCmdFk",
+            NEW."ID_ConditionPaiementFk",
+            NEW."ID_ModePaiementFk",
+            'UPDATE'
+        );
         RETURN NEW;
     END IF;
 
@@ -486,7 +605,9 @@ BEGIN
         SELECT c."ID_TypeCmdFk", g."AbrGenerique"
         INTO v_new_type_cmd_id, v_new_abr_type
         FROM logistique."T_Commande" c
-        JOIN referentiel."T_Generique" g ON c."ID_TypeCmdFk" = g."ID_Generique"
+        JOIN referentiel."T_Generique" g
+          ON c."ID_TypeCmdFk" = g."ID_Generique"
+         AND g."ID_CategorieGeneriqueFk" = 64
         WHERE c."ID_Commande" = p_new_cmd_fk
         LIMIT 1;
 
@@ -573,7 +694,9 @@ BEGIN
             SELECT c."ID_TypeCmdFk", g."AbrGenerique"
             INTO v_old_type_cmd_id, v_old_abr_type
             FROM logistique."T_Commande" c
-            JOIN referentiel."T_Generique" g ON c."ID_TypeCmdFk" = g."ID_Generique"
+            JOIN referentiel."T_Generique" g
+              ON c."ID_TypeCmdFk" = g."ID_Generique"
+             AND g."ID_CategorieGeneriqueFk" = 64
             WHERE c."ID_Commande" = p_old_cmd_fk
             LIMIT 1;
 
@@ -581,7 +704,9 @@ BEGIN
                 SELECT m."ID_TypeMvtFk", g."AbrGenerique"
                 INTO v_old_type_cmd_id, v_old_abr_type
                 FROM logistique."T_Mouvement" m
-                JOIN referentiel."T_Generique" g ON m."ID_TypeMvtFk" = g."ID_Generique"
+                JOIN referentiel."T_Generique" g
+                  ON m."ID_TypeMvtFk" = g."ID_Generique"
+                 AND g."ID_CategorieGeneriqueFk" = 64
                 WHERE m."ID_ArticleFk" = p_old_article_fk
                   AND m."ID_cmdFk" = p_old_cmd_fk
                 LIMIT 1;
@@ -620,7 +745,9 @@ BEGIN
         SELECT c."ID_TypeCmdFk", g."AbrGenerique"
         INTO v_new_type_cmd_id, v_new_abr_type
         FROM logistique."T_Commande" c
-        JOIN referentiel."T_Generique" g ON c."ID_TypeCmdFk" = g."ID_Generique"
+        JOIN referentiel."T_Generique" g
+          ON c."ID_TypeCmdFk" = g."ID_Generique"
+         AND g."ID_CategorieGeneriqueFk" = 64
         WHERE c."ID_Commande" = p_new_cmd_fk
         LIMIT 1;
 
@@ -693,7 +820,9 @@ BEGIN
         SELECT c."ID_TypeCmdFk", g."AbrGenerique"
         INTO v_old_type_cmd_id, v_old_abr_type
         FROM logistique."T_Commande" c
-        JOIN referentiel."T_Generique" g ON c."ID_TypeCmdFk" = g."ID_Generique"
+        JOIN referentiel."T_Generique" g
+          ON c."ID_TypeCmdFk" = g."ID_Generique"
+         AND g."ID_CategorieGeneriqueFk" = 64
         WHERE c."ID_Commande" = p_old_cmd_fk
         LIMIT 1;
 
@@ -701,7 +830,9 @@ BEGIN
             SELECT m."ID_TypeMvtFk", g."AbrGenerique"
             INTO v_old_type_cmd_id, v_old_abr_type
             FROM logistique."T_Mouvement" m
-            JOIN referentiel."T_Generique" g ON m."ID_TypeMvtFk" = g."ID_Generique"
+            JOIN referentiel."T_Generique" g
+              ON m."ID_TypeMvtFk" = g."ID_Generique"
+             AND g."ID_CategorieGeneriqueFk" = 64
             WHERE m."ID_ArticleFk" = p_old_article_fk
               AND m."ID_cmdFk" = p_old_cmd_fk
             LIMIT 1;
@@ -876,6 +1007,14 @@ BEGIN
         IF TG_OP = 'DELETE' THEN
             RETURN OLD;
         END IF;
+
+        PERFORM logistique.fn_assert_generique_category(
+            NEW."ID_TypeMvtFk",
+            64,
+            format('tr_lock_mouvement_direct(%s)', TG_OP),
+            'ID_TypeMvtFk'
+        );
+
         RETURN NEW;
     END IF;
 
@@ -928,7 +1067,68 @@ EXECUTE FUNCTION logistique.tr_lock_commande_cloturee();
 
 
 /* ============================================================================
-   8. Vues metier et analytiques
+   8. Validation des reglements
+   ============================================================================ */
+
+DROP PROCEDURE IF EXISTS logistique.ps_crud_reglement(integer, integer, character varying);
+
+CREATE OR REPLACE PROCEDURE logistique.ps_crud_reglement(
+    IN p_id_reglement integer,
+    IN p_id_mode_reglement integer,
+    IN p_operation character varying
+)
+LANGUAGE plpgsql
+AS $BODY$
+DECLARE
+    v_op text;
+BEGIN
+    v_op := upper(trim(p_operation));
+
+    IF v_op IN ('INSERT', 'UPDATE') THEN
+        PERFORM logistique.fn_assert_generique_category(
+            p_id_mode_reglement,
+            36,
+            format('ps_crud_reglement(%s)', v_op),
+            'ID_ModeReglementFk'
+        );
+    END IF;
+END;
+$BODY$;
+
+DROP FUNCTION IF EXISTS logistique.tr_crud_reglement() CASCADE;
+
+CREATE OR REPLACE FUNCTION logistique.tr_crud_reglement()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    IF TG_OP IN ('INSERT', 'UPDATE') THEN
+        CALL logistique.ps_crud_reglement(
+            NEW."ID_Reglement",
+            NEW."ID_ModeReglementFk",
+            TG_OP
+        );
+    END IF;
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+
+    RETURN NEW;
+END;
+$BODY$;
+
+DROP TRIGGER IF EXISTS tr_crud_reglement ON logistique."T_Reglements";
+
+CREATE TRIGGER tr_crud_reglement
+BEFORE INSERT OR UPDATE
+ON logistique."T_Reglements"
+FOR EACH ROW
+EXECUTE FUNCTION logistique.tr_crud_reglement();
+
+
+/* ============================================================================
+   9. Vues metier et analytiques
    ============================================================================ */
 
 DROP VIEW IF EXISTS logistique."V_AuditStock";
@@ -968,8 +1168,12 @@ SELECT m."ID_Mvt",
     )::numeric AS "QteMvtSigned"
 FROM logistique."T_Mouvement" m
 LEFT JOIN logistique."T_Commande" c ON c."ID_Commande" = m."ID_cmdFk"
-LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = c."ID_TypeCmdFk"
-LEFT JOIN referentiel."T_Generique" g2 ON g2."ID_Generique" = m."ID_TypeMvtFk";
+LEFT JOIN referentiel."T_Generique" g
+  ON g."ID_Generique" = c."ID_TypeCmdFk"
+ AND g."ID_CategorieGeneriqueFk" = 64
+LEFT JOIN referentiel."T_Generique" g2
+  ON g2."ID_Generique" = m."ID_TypeMvtFk"
+ AND g2."ID_CategorieGeneriqueFk" = 64;
 
 DROP FUNCTION IF EXISTS logistique.fn_audit_stock(integer, timestamp without time zone) CASCADE;
 CREATE OR REPLACE FUNCTION logistique.fn_audit_stock(
@@ -1056,7 +1260,9 @@ WITH mvt AS (
             END
         ) AS stock_mouvement
     FROM logistique."T_Mouvement" m
-    LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = m."ID_TypeMvtFk"
+    LEFT JOIN referentiel."T_Generique" g
+      ON g."ID_Generique" = m."ID_TypeMvtFk"
+     AND g."ID_CategorieGeneriqueFk" = 64
     GROUP BY m."ID_ArticleFk"
 )
 SELECT a."ID_Article",
@@ -1072,7 +1278,8 @@ SELECT c."DateHeureAutoCmd",
     c."DateCmd",
     c."ID_Commande",
     c."ID_TypeCmdFk",
-    c."ID_StatutCmd",
+    c."ID_StatutCmdFk",
+    c."ID_StatutCmdFk" AS "ID_StatutCmd",
     c."ID_ClientFk",
     c."ID_UserFk",
     u."NomUser",
@@ -1097,7 +1304,8 @@ LEFT JOIN systeme."T_Utilisateurs" u ON c."ID_UserFk" = u."IdUser";
 CREATE OR REPLACE VIEW logistique."V_CommandeDetail" AS
 SELECT d."ID_CmdFk",
     c."ID_TypeCmdFk",
-    c."ID_StatutCmd",
+    c."ID_StatutCmdFk",
+    c."ID_StatutCmdFk" AS "ID_StatutCmd",
     c."DateCmd",
     c."CodeCmd",
     c."CodeFacture",
@@ -1142,7 +1350,9 @@ SELECT a."ID_Article",
     ) AS "ConsoMensuelle"
 FROM logistique."T_Mouvement" m
 JOIN logistique."T_Article" a ON a."ID_Article" = m."ID_ArticleFk"
-LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = m."ID_TypeMvtFk"
+LEFT JOIN referentiel."T_Generique" g
+  ON g."ID_Generique" = m."ID_TypeMvtFk"
+ AND g."ID_CategorieGeneriqueFk" = 64
 GROUP BY a."ID_Article", a."NomArticle", date_trunc('month', m."DateMvt");
 
 CREATE OR REPLACE VIEW logistique."V_CouvertureStock" AS
@@ -1155,7 +1365,9 @@ WITH conso AS (
             END
         ) AS conso_6m
     FROM logistique."T_Mouvement" m
-    LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = m."ID_TypeMvtFk"
+    LEFT JOIN referentiel."T_Generique" g
+      ON g."ID_Generique" = m."ID_TypeMvtFk"
+     AND g."ID_CategorieGeneriqueFk" = 64
     WHERE m."DateMvt" >= CURRENT_DATE - INTERVAL '6 months'
     GROUP BY m."ID_ArticleFk"
 )
@@ -1186,7 +1398,9 @@ SELECT m."DateHeureAutoMvt",
 FROM logistique."T_Mouvement" m
 JOIN logistique."T_Article" a ON m."ID_ArticleFk" = a."ID_Article"
 LEFT JOIN logistique."T_Commande" c ON m."ID_cmdFk" = c."ID_Commande"
-LEFT JOIN referentiel."T_Generique" g_typemvt ON m."ID_TypeMvtFk" = g_typemvt."ID_Generique";
+LEFT JOIN referentiel."T_Generique" g_typemvt
+  ON m."ID_TypeMvtFk" = g_typemvt."ID_Generique"
+ AND g_typemvt."ID_CategorieGeneriqueFk" = 64;
 
 CREATE OR REPLACE VIEW logistique."V_SuiviReglements" AS
 SELECT c."ID_Commande",

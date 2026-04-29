@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchAdminUiSettings,
+  fetchAdminUiSettingsAudit,
   fetchAdminEntities,
   fetchAdminLicences,
   fetchAdminModelList,
@@ -443,6 +444,12 @@ function buildAdminUiScopeCandidates(user) {
         array.findIndex((candidate) => candidate.scope === item.scope && candidate.scopeValue === item.scopeValue) === index
     )
   );
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 function formatCellValue(value) {
@@ -1658,6 +1665,46 @@ export default function Admin() {
     genericMappingStates.some((item) => item.isCustom) || hierarchyMappingStates.some((item) => item.isCustom);
   const sharedFkTargetScopeLabel = buildAdminUiScopeLabel(sharedFkTargetScope);
   const sharedFkLoadedScopeLabel = sharedFkLoadedScope ? buildAdminUiScopeLabel(sharedFkLoadedScope) : "";
+  function applySharedFkServerPayload(payload, scope) {
+    setSharedFkSettingsError("");
+    setGenericCategoryOverrides(normalizeStringRecord(payload.genericCategoryOverrides));
+    setHierarchyFilterModes(normalizeHierarchyModes(payload.hierarchyFilterModes));
+    setGenericCategoryDrafts({});
+    setSharedFkLoadedScope(scope);
+    setSharedFkSettingsMeta({
+      updatedAt: payload.updatedAt || null,
+      updatedByUserId: payload.updatedByUserId ?? null,
+      updatedByName: payload.updatedByName || null,
+    });
+  }
+
+  function resetSharedFkServerPayload() {
+    setSharedFkLoadedScope(null);
+    setSharedFkSettingsMeta({
+      updatedAt: null,
+      updatedByUserId: null,
+      updatedByName: null,
+    });
+  }
+
+  async function fetchSharedFkSettingsCandidate(candidate) {
+    let response = await fetchAdminUiSettings({
+      scope: candidate.scope,
+      scopeValue: candidate.scopeValue,
+    });
+
+    if (response) {
+      return response;
+    }
+
+    await wait(250);
+
+    return fetchAdminUiSettings({
+      scope: candidate.scope,
+      scopeValue: candidate.scopeValue,
+    });
+  }
+
   const sharedFkSyncStatus = useMemo(
     () =>
       buildSharedFkSyncStatus({
@@ -1729,12 +1776,10 @@ export default function Admin() {
 
         let matchingPayload = null;
         let matchingScope = null;
+        let lastErrorMessage = "";
 
         for (const candidate of scopeCandidates) {
-          const response = await fetchAdminUiSettings({
-            scope: candidate.scope,
-            scopeValue: candidate.scopeValue,
-          });
+          const response = await fetchSharedFkSettingsCandidate(candidate);
 
           if (!active) {
             return;
@@ -1747,31 +1792,20 @@ export default function Admin() {
           }
 
           if (response && !response.success) {
-            const message = response.message || "Impossible de charger les reglages partages du panneau FK.";
-            setSharedFkSettingsError(message);
+            lastErrorMessage = response.message || "Impossible de charger les reglages partages du panneau FK.";
           }
         }
 
         if (matchingPayload) {
-          setSharedFkSettingsError("");
-          setGenericCategoryOverrides(normalizeStringRecord(matchingPayload.genericCategoryOverrides));
-          setHierarchyFilterModes(normalizeHierarchyModes(matchingPayload.hierarchyFilterModes));
-          setGenericCategoryDrafts({});
-          setSharedFkLoadedScope(matchingScope);
-          setSharedFkSettingsMeta({
-            updatedAt: matchingPayload.updatedAt || null,
-            updatedByUserId: matchingPayload.updatedByUserId ?? null,
-            updatedByName: matchingPayload.updatedByName || null,
-          });
+          applySharedFkServerPayload(matchingPayload, matchingScope);
           return;
         }
 
-        setSharedFkLoadedScope(null);
-        setSharedFkSettingsMeta({
-          updatedAt: null,
-          updatedByUserId: null,
-          updatedByName: null,
-        });
+        if (lastErrorMessage) {
+          setSharedFkSettingsError(lastErrorMessage);
+        }
+
+        resetSharedFkServerPayload();
       } catch (_error) {
         if (!active) {
           return;
@@ -1803,7 +1837,7 @@ export default function Admin() {
       setLoadingSharedFkAudit(true);
       setSharedFkAuditError("");
 
-      const payload = await fetchViewData("systeme", "V_Admin_UI_Setting_Audit", {
+      const payload = await fetchAdminUiSettingsAudit({
         take: 12,
         skip: 0,
       });
@@ -1812,10 +1846,37 @@ export default function Admin() {
         return;
       }
 
-      if (payload?.success && Array.isArray(payload.data)) {
-        setSharedFkAuditRows(payload.data);
-        setSharedFkAuditError("");
-      } else {
+        if (payload?.success && Array.isArray(payload.data)) {
+          setSharedFkAuditRows(payload.data);
+          setSharedFkAuditError("");
+
+          const scopeCandidates = adminUiScopeCandidates.length > 0 ? adminUiScopeCandidates : [createAdminUiScope("global", null, "Global")];
+          const shouldResyncSharedFkSettings = Boolean(sharedFkSettingsError) || !sharedFkLoadedScope;
+
+          if (shouldResyncSharedFkSettings) {
+            const hasAuditForKnownScope = scopeCandidates.some((candidate) =>
+              payload.data.some((row) => isSameAdminUiScope(getAuditSettingScope(row), candidate))
+            );
+
+            if (!hasAuditForKnownScope && !sharedFkSettingsError) {
+              setLoadingSharedFkAudit(false);
+              return;
+            }
+
+            for (const candidate of scopeCandidates) {
+              const response = await fetchSharedFkSettingsCandidate(candidate);
+
+            if (!active) {
+              return;
+            }
+
+            if (response?.success && response.data?.exists) {
+              applySharedFkServerPayload(response.data, candidate);
+                break;
+              }
+            }
+          }
+        } else {
         setSharedFkAuditRows([]);
         setSharedFkAuditError(payload?.message || "Impossible de charger l'historique compact des reglages FK.");
       }
@@ -1828,7 +1889,7 @@ export default function Admin() {
     return () => {
       active = false;
     };
-  }, [showFkMappingPanel, sharedFkSettingsMeta.updatedAt]);
+  }, [adminUiScopeCandidates, sharedFkLoadedScope, sharedFkSettingsError, showFkMappingPanel, sharedFkSettingsMeta.updatedAt]);
 
   useEffect(() => {
     if (configurableFkMappings.length === 0) {

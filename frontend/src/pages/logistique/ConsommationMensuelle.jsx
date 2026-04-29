@@ -107,6 +107,9 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
         <SectionCard title="Tableau detaille" subtitle="Detail mensuel par article.">
           <SimpleTable
             rows={rows}
+            enableSelection
+            defaultPinnedColumns={["NomArticle", "Mois"]}
+            defaultSortColumn="ConsoMensuelle"
             columns={[
               { key: "NomArticle", label: "Article" },
               { key: "Mois", label: "Mois", render: (row) => formatDate(row.Mois) },

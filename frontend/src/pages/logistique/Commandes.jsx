@@ -8,7 +8,6 @@ import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
-  FkMappingCard,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -180,7 +179,16 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         return;
       }
 
-      setRows(asArrayPayload(response));
+      const nextRows = asArrayPayload(response);
+      setRows(nextRows);
+      if (selectedCommande?.ID_Commande != null) {
+        const matchedCommande = nextRows.find((row) => row.ID_Commande === selectedCommande.ID_Commande);
+        if (matchedCommande) {
+          sharedTable?.setSelectedRow?.(matchedCommande);
+        } else {
+          sharedTable?.clearSelectedRow?.();
+        }
+      }
       setLoading(false);
     }
 
@@ -316,6 +324,28 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           </label>
         </div>
 
+        <SelectionStrip
+          selectedRow={selectedCommande}
+          label={selectedCommande ? `Ligne selectionnee: commande #${selectedCommande.ID_Commande}` : "Aucune ligne selectionnee"}
+          description={
+            selectedCommande
+              ? `${selectedCommande.CodeCmd || "-"} | ${clientLabelMap.get(String(selectedCommande.ID_ClientFk)) || "Sans client"}`
+              : "Selectionnez une commande pour agir dessus plus rapidement."
+          }
+          actions={
+            selectedCommande ? (
+              <>
+                <button type="button" className="secondary-action" onClick={() => handleEditCommande(selectedCommande)}>
+                  Modifier
+                </button>
+                <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(selectedCommande)}>
+                  Ouvrir details
+                </button>
+              </>
+            ) : null
+          }
+        />
+
         <TableToolbar
           title={sharedTable?.toolbarTitle || "Tableau V_Commande"}
           rows={rows}
@@ -331,35 +361,12 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
             columns={tableColumns}
             selectedRowId={selectedCommande?.ID_Commande || null}
             onRowSelect={sharedTable?.setSelectedRow}
+            defaultPinnedColumns={["CodeCmd", "DateCmd"]}
+            defaultSortColumn="DateCmd"
+            exportFilename={sharedTable?.exportFilename || "logistique-v_commande.csv"}
           />
         ) : null}
       </SectionCard>
-
-      <SelectionStrip
-        selectedRow={selectedCommande}
-        label={selectedCommande ? `Ligne selectionnee: commande #${selectedCommande.ID_Commande}` : "Aucune ligne selectionnee"}
-        description={
-          selectedCommande
-            ? `${selectedCommande.CodeCmd || "-"} | ${clientLabelMap.get(String(selectedCommande.ID_ClientFk)) || "Sans client"}`
-            : "Selectionnez une commande pour agir dessus plus rapidement."
-        }
-        actions={
-          selectedCommande ? (
-            <>
-              <button type="button" className="secondary-action" onClick={() => handleEditCommande(selectedCommande)}>
-                Modifier
-              </button>
-              <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(selectedCommande)}>
-                Ouvrir details
-              </button>
-            </>
-          ) : null
-        }
-      />
-
-      <FkMappingCard
-        mappings={sharedTable?.fkMappings || []}
-      />
 
       {selectedCommande ? (
         <SectionCard title="Fiche commande" subtitle="Synthese de la commande selectionnee.">

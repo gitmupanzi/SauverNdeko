@@ -2,6 +2,10 @@ SELECT * FROM systeme."T_Login";
 SELECT * FROM systeme."T_Licence";
 SELECT * FROM systeme."T_Audit_Log";
 SELECT * FROM systeme."V_Admin_UI_Setting_Audit";
+SELECT * FROM systeme."T_Fk_Correspondance";
+SELECT * FROM systeme."V_Fk_Correspondance_Detail";
+SELECT * FROM systeme."V_Fk_Correspondance";
+SELECT * FROM systeme."V_Fk_Correspondance_Audit";
 SELECT * FROM systeme."T_Utilisateurs";
 SELECT * FROM systeme."T_Entite";
 

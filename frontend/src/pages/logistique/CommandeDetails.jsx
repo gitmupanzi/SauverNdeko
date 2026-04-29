@@ -8,7 +8,6 @@ import {
 import {
   asArrayPayload,
   buildReferenceOptions,
-  FkMappingCard,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -83,7 +82,18 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
         return;
       }
 
-      setRows(asArrayPayload(response));
+      const nextRows = asArrayPayload(response);
+      setRows(nextRows);
+      if (selectedDetail?.ID_CmdFk != null && selectedDetail?.ID_ArticleFk != null) {
+        const matchedDetail = nextRows.find(
+          (row) => row.ID_CmdFk === selectedDetail.ID_CmdFk && row.ID_ArticleFk === selectedDetail.ID_ArticleFk
+        );
+        if (matchedDetail) {
+          sharedTable?.setSelectedRow?.(matchedDetail);
+        } else {
+          sharedTable?.clearSelectedRow?.();
+        }
+      }
       setLoading(false);
     }
 
@@ -199,6 +209,32 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           </article>
         </div>
 
+        <SelectionStrip
+          selectedRow={selectedDetail}
+          label={
+            selectedDetail
+              ? `Ligne selectionnee: commande #${selectedDetail.ID_CmdFk} / article #${selectedDetail.ID_ArticleFk}`
+              : "Aucune ligne selectionnee"
+          }
+          description={
+            selectedDetail
+              ? `${selectedDetail.NomArticle || "-"} | ${formatNumber(selectedDetail.QteCmdDetail)}`
+              : "Selectionnez une ligne du detail pour la modifier plus rapidement."
+          }
+          actions={
+            selectedDetail ? (
+              <>
+                <button type="button" className="secondary-action" onClick={() => handleEditLine(selectedDetail)}>
+                  Modifier
+                </button>
+                <button type="button" className="admin-danger-button" onClick={() => handleDeleteLine(selectedDetail)}>
+                  Supprimer
+                </button>
+              </>
+            ) : null
+          }
+        />
+
         <TableToolbar
           title={sharedTable?.toolbarTitle || "Tableau V_CommandeDetail"}
           rows={rows}
@@ -220,6 +256,9 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
             selectedRowId={selectedDetail ? `${selectedDetail.ID_CmdFk}-${selectedDetail.ID_ArticleFk}` : null}
             getRowId={(row) => `${row.ID_CmdFk}-${row.ID_ArticleFk}`}
             onRowSelect={sharedTable?.setSelectedRow}
+            defaultPinnedColumns={["NomArticle", "QteCmdDetail"]}
+            defaultSortColumn="NomArticle"
+            exportFilename={sharedTable?.exportFilename || "logistique-v_commandedetail.csv"}
             columns={[
               { key: "NomArticle", label: "Article" },
               { key: "QteCmdDetail", label: "Quantite", render: (row) => formatNumber(row.QteCmdDetail) },
@@ -230,7 +269,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                 key: "actions",
                 label: "Actions",
                 render: (row) => (
-                  <div className="logistics-table-actions">
+                  <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
                     <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
                       Voir
                     </button>
@@ -247,36 +286,6 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           />
         ) : null}
       </SectionCard>
-
-      <SelectionStrip
-        selectedRow={selectedDetail}
-        label={
-          selectedDetail
-            ? `Ligne selectionnee: commande #${selectedDetail.ID_CmdFk} / article #${selectedDetail.ID_ArticleFk}`
-            : "Aucune ligne selectionnee"
-        }
-        description={
-          selectedDetail
-            ? `${selectedDetail.NomArticle || "-"} | ${formatNumber(selectedDetail.QteCmdDetail)}`
-            : "Selectionnez une ligne du detail pour la modifier plus rapidement."
-        }
-        actions={
-          selectedDetail ? (
-            <>
-              <button type="button" className="secondary-action" onClick={() => handleEditLine(selectedDetail)}>
-                Modifier
-              </button>
-              <button type="button" className="admin-danger-button" onClick={() => handleDeleteLine(selectedDetail)}>
-                Supprimer
-              </button>
-            </>
-          ) : null
-        }
-      />
-
-      <FkMappingCard
-        mappings={sharedTable?.fkMappings || []}
-      />
 
       {selectedDetail ? (
         <SectionCard title="Ligne selectionnee" subtitle="Controle rapide avant modification.">

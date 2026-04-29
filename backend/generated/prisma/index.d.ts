@@ -129,10 +129,10 @@ export type T_Generique = $Result.DefaultSelection<Prisma.$T_GeneriquePayload>
  */
 export type T_Audit_Log = $Result.DefaultSelection<Prisma.$T_Audit_LogPayload>
 /**
- * Model T_Admin_UI_Setting
+ * Model T_Fk_Correspondance
  * 
  */
-export type T_Admin_UI_Setting = $Result.DefaultSelection<Prisma.$T_Admin_UI_SettingPayload>
+export type T_Fk_Correspondance = $Result.DefaultSelection<Prisma.$T_Fk_CorrespondancePayload>
 /**
  * Model T_Entite
  * 
@@ -513,14 +513,14 @@ export class PrismaClient<
   get t_Audit_Log(): Prisma.T_Audit_LogDelegate<ExtArgs, ClientOptions>;
 
   /**
-   * `prisma.t_Admin_UI_Setting`: Exposes CRUD operations for the **T_Admin_UI_Setting** model.
+   * `prisma.t_Fk_Correspondance`: Exposes CRUD operations for the **T_Fk_Correspondance** model.
     * Example usage:
     * ```ts
-    * // Fetch zero or more T_Admin_UI_Settings
-    * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany()
+    * // Fetch zero or more T_Fk_Correspondances
+    * const t_Fk_Correspondances = await prisma.t_Fk_Correspondance.findMany()
     * ```
     */
-  get t_Admin_UI_Setting(): Prisma.T_Admin_UI_SettingDelegate<ExtArgs, ClientOptions>;
+  get t_Fk_Correspondance(): Prisma.T_Fk_CorrespondanceDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.t_Entite`: Exposes CRUD operations for the **T_Entite** model.
@@ -1045,7 +1045,7 @@ export namespace Prisma {
     T_CategorieGenerique: 'T_CategorieGenerique',
     T_Generique: 'T_Generique',
     T_Audit_Log: 'T_Audit_Log',
-    T_Admin_UI_Setting: 'T_Admin_UI_Setting',
+    T_Fk_Correspondance: 'T_Fk_Correspondance',
     T_Entite: 'T_Entite',
     T_Entite_Localisation: 'T_Entite_Localisation',
     T_Licence: 'T_Licence',
@@ -1070,7 +1070,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "t_Recherche" | "t_Chat" | "t_Communication" | "t_Niveau_0" | "t_Niveau_1_Old" | "t_Niveau_1" | "t_Niveau_2" | "t_Niveau_3" | "t_Niveau_4" | "t_Niveau_5" | "t_Article" | "t_Commande" | "t_CommandeDetail" | "t_Mouvement" | "t_Reglements" | "t_Caisse" | "t_Paiement" | "t_Paiement_Archive" | "t_Professionnel" | "t_Professionnel_Entite" | "t_CategorieGenerique" | "t_Generique" | "t_Audit_Log" | "t_Admin_UI_Setting" | "t_Entite" | "t_Entite_Localisation" | "t_Licence" | "t_Login" | "t_Utilisateurs" | "t_Discussion"
+      modelProps: "t_Recherche" | "t_Chat" | "t_Communication" | "t_Niveau_0" | "t_Niveau_1_Old" | "t_Niveau_1" | "t_Niveau_2" | "t_Niveau_3" | "t_Niveau_4" | "t_Niveau_5" | "t_Article" | "t_Commande" | "t_CommandeDetail" | "t_Mouvement" | "t_Reglements" | "t_Caisse" | "t_Paiement" | "t_Paiement_Archive" | "t_Professionnel" | "t_Professionnel_Entite" | "t_CategorieGenerique" | "t_Generique" | "t_Audit_Log" | "t_Fk_Correspondance" | "t_Entite" | "t_Entite_Localisation" | "t_Licence" | "t_Login" | "t_Utilisateurs" | "t_Discussion"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2776,77 +2776,77 @@ export namespace Prisma {
           }
         }
       }
-      T_Admin_UI_Setting: {
-        payload: Prisma.$T_Admin_UI_SettingPayload<ExtArgs>
-        fields: Prisma.T_Admin_UI_SettingFieldRefs
+      T_Fk_Correspondance: {
+        payload: Prisma.$T_Fk_CorrespondancePayload<ExtArgs>
+        fields: Prisma.T_Fk_CorrespondanceFieldRefs
         operations: {
           findUnique: {
-            args: Prisma.T_Admin_UI_SettingFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload> | null
+            args: Prisma.T_Fk_CorrespondanceFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload> | null
           }
           findUniqueOrThrow: {
-            args: Prisma.T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           findFirst: {
-            args: Prisma.T_Admin_UI_SettingFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload> | null
+            args: Prisma.T_Fk_CorrespondanceFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload> | null
           }
           findFirstOrThrow: {
-            args: Prisma.T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           findMany: {
-            args: Prisma.T_Admin_UI_SettingFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+            args: Prisma.T_Fk_CorrespondanceFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>[]
           }
           create: {
-            args: Prisma.T_Admin_UI_SettingCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           createMany: {
-            args: Prisma.T_Admin_UI_SettingCreateManyArgs<ExtArgs>
+            args: Prisma.T_Fk_CorrespondanceCreateManyArgs<ExtArgs>
             result: BatchPayload
           }
           createManyAndReturn: {
-            args: Prisma.T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+            args: Prisma.T_Fk_CorrespondanceCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>[]
           }
           delete: {
-            args: Prisma.T_Admin_UI_SettingDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           update: {
-            args: Prisma.T_Admin_UI_SettingUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           deleteMany: {
-            args: Prisma.T_Admin_UI_SettingDeleteManyArgs<ExtArgs>
+            args: Prisma.T_Fk_CorrespondanceDeleteManyArgs<ExtArgs>
             result: BatchPayload
           }
           updateMany: {
-            args: Prisma.T_Admin_UI_SettingUpdateManyArgs<ExtArgs>
+            args: Prisma.T_Fk_CorrespondanceUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
           updateManyAndReturn: {
-            args: Prisma.T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+            args: Prisma.T_Fk_CorrespondanceUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>[]
           }
           upsert: {
-            args: Prisma.T_Admin_UI_SettingUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+            args: Prisma.T_Fk_CorrespondanceUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Fk_CorrespondancePayload>
           }
           aggregate: {
-            args: Prisma.T_Admin_UI_SettingAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateT_Admin_UI_Setting>
+            args: Prisma.T_Fk_CorrespondanceAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateT_Fk_Correspondance>
           }
           groupBy: {
-            args: Prisma.T_Admin_UI_SettingGroupByArgs<ExtArgs>
-            result: $Utils.Optional<T_Admin_UI_SettingGroupByOutputType>[]
+            args: Prisma.T_Fk_CorrespondanceGroupByArgs<ExtArgs>
+            result: $Utils.Optional<T_Fk_CorrespondanceGroupByOutputType>[]
           }
           count: {
-            args: Prisma.T_Admin_UI_SettingCountArgs<ExtArgs>
-            result: $Utils.Optional<T_Admin_UI_SettingCountAggregateOutputType> | number
+            args: Prisma.T_Fk_CorrespondanceCountArgs<ExtArgs>
+            result: $Utils.Optional<T_Fk_CorrespondanceCountAggregateOutputType> | number
           }
         }
       }
@@ -3413,7 +3413,7 @@ export namespace Prisma {
     t_CategorieGenerique?: T_CategorieGeneriqueOmit
     t_Generique?: T_GeneriqueOmit
     t_Audit_Log?: T_Audit_LogOmit
-    t_Admin_UI_Setting?: T_Admin_UI_SettingOmit
+    t_Fk_Correspondance?: T_Fk_CorrespondanceOmit
     t_Entite?: T_EntiteOmit
     t_Entite_Localisation?: T_Entite_LocalisationOmit
     t_Licence?: T_LicenceOmit
@@ -3874,10 +3874,12 @@ export namespace Prisma {
 
   export type T_CategorieGeneriqueCountOutputType = {
     T_Generique: number
+    T_Fk_Correspondance: number
   }
 
   export type T_CategorieGeneriqueCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_Generique?: boolean | T_CategorieGeneriqueCountOutputTypeCountT_GeneriqueArgs
+    T_Fk_Correspondance?: boolean | T_CategorieGeneriqueCountOutputTypeCountT_Fk_CorrespondanceArgs
   }
 
   // Custom InputTypes
@@ -3896,6 +3898,13 @@ export namespace Prisma {
    */
   export type T_CategorieGeneriqueCountOutputTypeCountT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_CategorieGeneriqueCountOutputType without action
+   */
+  export type T_CategorieGeneriqueCountOutputTypeCountT_Fk_CorrespondanceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_Fk_CorrespondanceWhereInput
   }
 
 
@@ -4352,7 +4361,7 @@ export namespace Prisma {
     T_Commande: number
     T_Payeur: number
     T_Paiement: number
-    T_Admin_UI_Setting: number
+    T_Fk_Correspondance: number
     T_Login: number
   }
 
@@ -4365,7 +4374,7 @@ export namespace Prisma {
     T_Commande?: boolean | T_UtilisateursCountOutputTypeCountT_CommandeArgs
     T_Payeur?: boolean | T_UtilisateursCountOutputTypeCountT_PayeurArgs
     T_Paiement?: boolean | T_UtilisateursCountOutputTypeCountT_PaiementArgs
-    T_Admin_UI_Setting?: boolean | T_UtilisateursCountOutputTypeCountT_Admin_UI_SettingArgs
+    T_Fk_Correspondance?: boolean | T_UtilisateursCountOutputTypeCountT_Fk_CorrespondanceArgs
     T_Login?: boolean | T_UtilisateursCountOutputTypeCountT_LoginArgs
   }
 
@@ -4439,8 +4448,8 @@ export namespace Prisma {
   /**
    * T_UtilisateursCountOutputType without action
    */
-  export type T_UtilisateursCountOutputTypeCountT_Admin_UI_SettingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: T_Admin_UI_SettingWhereInput
+  export type T_UtilisateursCountOutputTypeCountT_Fk_CorrespondanceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_Fk_CorrespondanceWhereInput
   }
 
   /**
@@ -19384,7 +19393,7 @@ export namespace Prisma {
   export type T_CommandeAvgAggregateOutputType = {
     ID_Commande: number | null
     ID_TypeCmdFk: number | null
-    ID_StatutCmd: number | null
+    ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
     ID_UserFk: number | null
     MontantHT: Decimal | null
@@ -19398,7 +19407,7 @@ export namespace Prisma {
   export type T_CommandeSumAggregateOutputType = {
     ID_Commande: number | null
     ID_TypeCmdFk: number | null
-    ID_StatutCmd: number | null
+    ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
     ID_UserFk: number | null
     MontantHT: Decimal | null
@@ -19412,7 +19421,7 @@ export namespace Prisma {
   export type T_CommandeMinAggregateOutputType = {
     ID_Commande: number | null
     ID_TypeCmdFk: number | null
-    ID_StatutCmd: number | null
+    ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
@@ -19441,7 +19450,7 @@ export namespace Prisma {
   export type T_CommandeMaxAggregateOutputType = {
     ID_Commande: number | null
     ID_TypeCmdFk: number | null
-    ID_StatutCmd: number | null
+    ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
@@ -19470,7 +19479,7 @@ export namespace Prisma {
   export type T_CommandeCountAggregateOutputType = {
     ID_Commande: number
     ID_TypeCmdFk: number
-    ID_StatutCmd: number
+    ID_StatutCmdFk: number
     ID_ClientFk: number
     ID_UserFk: number
     geolocalisationCmd: number
@@ -19501,7 +19510,7 @@ export namespace Prisma {
   export type T_CommandeAvgAggregateInputType = {
     ID_Commande?: true
     ID_TypeCmdFk?: true
-    ID_StatutCmd?: true
+    ID_StatutCmdFk?: true
     ID_ClientFk?: true
     ID_UserFk?: true
     MontantHT?: true
@@ -19515,7 +19524,7 @@ export namespace Prisma {
   export type T_CommandeSumAggregateInputType = {
     ID_Commande?: true
     ID_TypeCmdFk?: true
-    ID_StatutCmd?: true
+    ID_StatutCmdFk?: true
     ID_ClientFk?: true
     ID_UserFk?: true
     MontantHT?: true
@@ -19529,7 +19538,7 @@ export namespace Prisma {
   export type T_CommandeMinAggregateInputType = {
     ID_Commande?: true
     ID_TypeCmdFk?: true
-    ID_StatutCmd?: true
+    ID_StatutCmdFk?: true
     ID_ClientFk?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
@@ -19558,7 +19567,7 @@ export namespace Prisma {
   export type T_CommandeMaxAggregateInputType = {
     ID_Commande?: true
     ID_TypeCmdFk?: true
-    ID_StatutCmd?: true
+    ID_StatutCmdFk?: true
     ID_ClientFk?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
@@ -19587,7 +19596,7 @@ export namespace Prisma {
   export type T_CommandeCountAggregateInputType = {
     ID_Commande?: true
     ID_TypeCmdFk?: true
-    ID_StatutCmd?: true
+    ID_StatutCmdFk?: true
     ID_ClientFk?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
@@ -19703,7 +19712,7 @@ export namespace Prisma {
   export type T_CommandeGroupByOutputType = {
     ID_Commande: number
     ID_TypeCmdFk: number | null
-    ID_StatutCmd: number | null
+    ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
@@ -19751,7 +19760,7 @@ export namespace Prisma {
   export type T_CommandeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     ID_Commande?: boolean
     ID_TypeCmdFk?: boolean
-    ID_StatutCmd?: boolean
+    ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
@@ -19784,7 +19793,7 @@ export namespace Prisma {
   export type T_CommandeSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     ID_Commande?: boolean
     ID_TypeCmdFk?: boolean
-    ID_StatutCmd?: boolean
+    ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
@@ -19814,7 +19823,7 @@ export namespace Prisma {
   export type T_CommandeSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     ID_Commande?: boolean
     ID_TypeCmdFk?: boolean
-    ID_StatutCmd?: boolean
+    ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
@@ -19844,7 +19853,7 @@ export namespace Prisma {
   export type T_CommandeSelectScalar = {
     ID_Commande?: boolean
     ID_TypeCmdFk?: boolean
-    ID_StatutCmd?: boolean
+    ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
@@ -19870,7 +19879,7 @@ export namespace Prisma {
     ID_ModePaiementFk?: boolean
   }
 
-  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmd" | "ID_ClientFk" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk", ExtArgs["result"]["t_Commande"]>
+  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmdFk" | "ID_ClientFk" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk", ExtArgs["result"]["t_Commande"]>
   export type T_CommandeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
     T_CommandeDetail?: boolean | T_Commande$T_CommandeDetailArgs<ExtArgs>
@@ -19894,7 +19903,7 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       ID_Commande: number
       ID_TypeCmdFk: number | null
-      ID_StatutCmd: number | null
+      ID_StatutCmdFk: number | null
       ID_ClientFk: number | null
       ID_UserFk: number | null
       geolocalisationCmd: string | null
@@ -20346,7 +20355,7 @@ export namespace Prisma {
   interface T_CommandeFieldRefs {
     readonly ID_Commande: FieldRef<"T_Commande", 'Int'>
     readonly ID_TypeCmdFk: FieldRef<"T_Commande", 'Int'>
-    readonly ID_StatutCmd: FieldRef<"T_Commande", 'Int'>
+    readonly ID_StatutCmdFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_ClientFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_UserFk: FieldRef<"T_Commande", 'Int'>
     readonly geolocalisationCmd: FieldRef<"T_Commande", 'String'>
@@ -30567,6 +30576,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: boolean
     ValideCategorieGenerique?: boolean
     T_Generique?: boolean | T_CategorieGenerique$T_GeneriqueArgs<ExtArgs>
+    T_Fk_Correspondance?: boolean | T_CategorieGenerique$T_Fk_CorrespondanceArgs<ExtArgs>
     _count?: boolean | T_CategorieGeneriqueCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["t_CategorieGenerique"]>
 
@@ -30594,6 +30604,7 @@ export namespace Prisma {
   export type T_CategorieGeneriqueOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_CategorieGenerique" | "NomCategorieGenerique" | "ModuleCategorieGenerique" | "ValideCategorieGenerique", ExtArgs["result"]["t_CategorieGenerique"]>
   export type T_CategorieGeneriqueInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_Generique?: boolean | T_CategorieGenerique$T_GeneriqueArgs<ExtArgs>
+    T_Fk_Correspondance?: boolean | T_CategorieGenerique$T_Fk_CorrespondanceArgs<ExtArgs>
     _count?: boolean | T_CategorieGeneriqueCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type T_CategorieGeneriqueIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -30603,6 +30614,7 @@ export namespace Prisma {
     name: "T_CategorieGenerique"
     objects: {
       T_Generique: Prisma.$T_GeneriquePayload<ExtArgs>[]
+      T_Fk_Correspondance: Prisma.$T_Fk_CorrespondancePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       ID_CategorieGenerique: number
@@ -31004,6 +31016,7 @@ export namespace Prisma {
   export interface Prisma__T_CategorieGeneriqueClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     T_Generique<T extends T_CategorieGenerique$T_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_CategorieGenerique$T_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Fk_Correspondance<T extends T_CategorieGenerique$T_Fk_CorrespondanceArgs<ExtArgs> = {}>(args?: Subset<T, T_CategorieGenerique$T_Fk_CorrespondanceArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -31446,6 +31459,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: T_GeneriqueScalarFieldEnum | T_GeneriqueScalarFieldEnum[]
+  }
+
+  /**
+   * T_CategorieGenerique.T_Fk_Correspondance
+   */
+  export type T_CategorieGenerique$T_Fk_CorrespondanceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Fk_Correspondance
+     */
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Fk_Correspondance
+     */
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
+    where?: T_Fk_CorrespondanceWhereInput
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_Fk_CorrespondanceScalarFieldEnum | T_Fk_CorrespondanceScalarFieldEnum[]
   }
 
   /**
@@ -34738,421 +34775,596 @@ export namespace Prisma {
 
 
   /**
-   * Model T_Admin_UI_Setting
+   * Model T_Fk_Correspondance
    */
 
-  export type AggregateT_Admin_UI_Setting = {
-    _count: T_Admin_UI_SettingCountAggregateOutputType | null
-    _avg: T_Admin_UI_SettingAvgAggregateOutputType | null
-    _sum: T_Admin_UI_SettingSumAggregateOutputType | null
-    _min: T_Admin_UI_SettingMinAggregateOutputType | null
-    _max: T_Admin_UI_SettingMaxAggregateOutputType | null
+  export type AggregateT_Fk_Correspondance = {
+    _count: T_Fk_CorrespondanceCountAggregateOutputType | null
+    _avg: T_Fk_CorrespondanceAvgAggregateOutputType | null
+    _sum: T_Fk_CorrespondanceSumAggregateOutputType | null
+    _min: T_Fk_CorrespondanceMinAggregateOutputType | null
+    _max: T_Fk_CorrespondanceMaxAggregateOutputType | null
   }
 
-  export type T_Admin_UI_SettingAvgAggregateOutputType = {
-    IdAdminUiSetting: number | null
+  export type T_Fk_CorrespondanceAvgAggregateOutputType = {
+    IdFkCorrespondance: number | null
+    TargetCategoryIdFk: number | null
+    DisplayOrder: number | null
     UpdatedByUserFk: number | null
   }
 
-  export type T_Admin_UI_SettingSumAggregateOutputType = {
-    IdAdminUiSetting: number | null
+  export type T_Fk_CorrespondanceSumAggregateOutputType = {
+    IdFkCorrespondance: number | null
+    TargetCategoryIdFk: number | null
+    DisplayOrder: number | null
     UpdatedByUserFk: number | null
   }
 
-  export type T_Admin_UI_SettingMinAggregateOutputType = {
-    IdAdminUiSetting: number | null
-    SettingKey: string | null
-    UpdatedAt: Date | null
-    UpdatedByUserFk: number | null
-    ObsAdminUiSetting: string | null
+  export type T_Fk_CorrespondanceMinAggregateOutputType = {
+    IdFkCorrespondance: number | null
+    ModuleName: string | null
+    SchemaName: string | null
+    ViewName: string | null
+    SourceKey: string | null
+    FieldName: string | null
+    FieldLabel: string | null
+    MappingType: string | null
+    ReferenceSchemaName: string | null
+    ReferenceObjectName: string | null
+    ReferenceFieldName: string | null
+    TargetCategoryIdFk: number | null
+    MappingValue: string | null
+    IsDefaultMapping: boolean | null
+    ValideFkCorrespondance: boolean | null
     SettingScope: string | null
     ScopeValue: string | null
-  }
-
-  export type T_Admin_UI_SettingMaxAggregateOutputType = {
-    IdAdminUiSetting: number | null
-    SettingKey: string | null
+    DisplayOrder: number | null
     UpdatedAt: Date | null
     UpdatedByUserFk: number | null
-    ObsAdminUiSetting: string | null
-    SettingScope: string | null
-    ScopeValue: string | null
+    ObsFkCorrespondance: string | null
   }
 
-  export type T_Admin_UI_SettingCountAggregateOutputType = {
-    IdAdminUiSetting: number
-    SettingKey: number
-    SettingValue: number
-    UpdatedAt: number
-    UpdatedByUserFk: number
-    ObsAdminUiSetting: number
+  export type T_Fk_CorrespondanceMaxAggregateOutputType = {
+    IdFkCorrespondance: number | null
+    ModuleName: string | null
+    SchemaName: string | null
+    ViewName: string | null
+    SourceKey: string | null
+    FieldName: string | null
+    FieldLabel: string | null
+    MappingType: string | null
+    ReferenceSchemaName: string | null
+    ReferenceObjectName: string | null
+    ReferenceFieldName: string | null
+    TargetCategoryIdFk: number | null
+    MappingValue: string | null
+    IsDefaultMapping: boolean | null
+    ValideFkCorrespondance: boolean | null
+    SettingScope: string | null
+    ScopeValue: string | null
+    DisplayOrder: number | null
+    UpdatedAt: Date | null
+    UpdatedByUserFk: number | null
+    ObsFkCorrespondance: string | null
+  }
+
+  export type T_Fk_CorrespondanceCountAggregateOutputType = {
+    IdFkCorrespondance: number
+    ModuleName: number
+    SchemaName: number
+    ViewName: number
+    SourceKey: number
+    FieldName: number
+    FieldLabel: number
+    MappingType: number
+    ReferenceSchemaName: number
+    ReferenceObjectName: number
+    ReferenceFieldName: number
+    TargetCategoryIdFk: number
+    MappingValue: number
+    IsDefaultMapping: number
+    ValideFkCorrespondance: number
     SettingScope: number
     ScopeValue: number
+    DisplayOrder: number
+    UpdatedAt: number
+    UpdatedByUserFk: number
+    ObsFkCorrespondance: number
     _all: number
   }
 
 
-  export type T_Admin_UI_SettingAvgAggregateInputType = {
-    IdAdminUiSetting?: true
+  export type T_Fk_CorrespondanceAvgAggregateInputType = {
+    IdFkCorrespondance?: true
+    TargetCategoryIdFk?: true
+    DisplayOrder?: true
     UpdatedByUserFk?: true
   }
 
-  export type T_Admin_UI_SettingSumAggregateInputType = {
-    IdAdminUiSetting?: true
+  export type T_Fk_CorrespondanceSumAggregateInputType = {
+    IdFkCorrespondance?: true
+    TargetCategoryIdFk?: true
+    DisplayOrder?: true
     UpdatedByUserFk?: true
   }
 
-  export type T_Admin_UI_SettingMinAggregateInputType = {
-    IdAdminUiSetting?: true
-    SettingKey?: true
-    UpdatedAt?: true
-    UpdatedByUserFk?: true
-    ObsAdminUiSetting?: true
+  export type T_Fk_CorrespondanceMinAggregateInputType = {
+    IdFkCorrespondance?: true
+    ModuleName?: true
+    SchemaName?: true
+    ViewName?: true
+    SourceKey?: true
+    FieldName?: true
+    FieldLabel?: true
+    MappingType?: true
+    ReferenceSchemaName?: true
+    ReferenceObjectName?: true
+    ReferenceFieldName?: true
+    TargetCategoryIdFk?: true
+    MappingValue?: true
+    IsDefaultMapping?: true
+    ValideFkCorrespondance?: true
     SettingScope?: true
     ScopeValue?: true
-  }
-
-  export type T_Admin_UI_SettingMaxAggregateInputType = {
-    IdAdminUiSetting?: true
-    SettingKey?: true
+    DisplayOrder?: true
     UpdatedAt?: true
     UpdatedByUserFk?: true
-    ObsAdminUiSetting?: true
-    SettingScope?: true
-    ScopeValue?: true
+    ObsFkCorrespondance?: true
   }
 
-  export type T_Admin_UI_SettingCountAggregateInputType = {
-    IdAdminUiSetting?: true
-    SettingKey?: true
-    SettingValue?: true
-    UpdatedAt?: true
-    UpdatedByUserFk?: true
-    ObsAdminUiSetting?: true
+  export type T_Fk_CorrespondanceMaxAggregateInputType = {
+    IdFkCorrespondance?: true
+    ModuleName?: true
+    SchemaName?: true
+    ViewName?: true
+    SourceKey?: true
+    FieldName?: true
+    FieldLabel?: true
+    MappingType?: true
+    ReferenceSchemaName?: true
+    ReferenceObjectName?: true
+    ReferenceFieldName?: true
+    TargetCategoryIdFk?: true
+    MappingValue?: true
+    IsDefaultMapping?: true
+    ValideFkCorrespondance?: true
     SettingScope?: true
     ScopeValue?: true
+    DisplayOrder?: true
+    UpdatedAt?: true
+    UpdatedByUserFk?: true
+    ObsFkCorrespondance?: true
+  }
+
+  export type T_Fk_CorrespondanceCountAggregateInputType = {
+    IdFkCorrespondance?: true
+    ModuleName?: true
+    SchemaName?: true
+    ViewName?: true
+    SourceKey?: true
+    FieldName?: true
+    FieldLabel?: true
+    MappingType?: true
+    ReferenceSchemaName?: true
+    ReferenceObjectName?: true
+    ReferenceFieldName?: true
+    TargetCategoryIdFk?: true
+    MappingValue?: true
+    IsDefaultMapping?: true
+    ValideFkCorrespondance?: true
+    SettingScope?: true
+    ScopeValue?: true
+    DisplayOrder?: true
+    UpdatedAt?: true
+    UpdatedByUserFk?: true
+    ObsFkCorrespondance?: true
     _all?: true
   }
 
-  export type T_Admin_UI_SettingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which T_Admin_UI_Setting to aggregate.
+     * Filter which T_Fk_Correspondance to aggregate.
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of T_Admin_UI_Settings to fetch.
+     * Determine the order of T_Fk_Correspondances to fetch.
      */
-    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
      * Sets the start position
      */
-    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     * Take `±n` T_Fk_Correspondances from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` T_Admin_UI_Settings.
+     * Skip the first `n` T_Fk_Correspondances.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
-     * Count returned T_Admin_UI_Settings
+     * Count returned T_Fk_Correspondances
     **/
-    _count?: true | T_Admin_UI_SettingCountAggregateInputType
+    _count?: true | T_Fk_CorrespondanceCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to average
     **/
-    _avg?: T_Admin_UI_SettingAvgAggregateInputType
+    _avg?: T_Fk_CorrespondanceAvgAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to sum
     **/
-    _sum?: T_Admin_UI_SettingSumAggregateInputType
+    _sum?: T_Fk_CorrespondanceSumAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the minimum value
     **/
-    _min?: T_Admin_UI_SettingMinAggregateInputType
+    _min?: T_Fk_CorrespondanceMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the maximum value
     **/
-    _max?: T_Admin_UI_SettingMaxAggregateInputType
+    _max?: T_Fk_CorrespondanceMaxAggregateInputType
   }
 
-  export type GetT_Admin_UI_SettingAggregateType<T extends T_Admin_UI_SettingAggregateArgs> = {
-        [P in keyof T & keyof AggregateT_Admin_UI_Setting]: P extends '_count' | 'count'
+  export type GetT_Fk_CorrespondanceAggregateType<T extends T_Fk_CorrespondanceAggregateArgs> = {
+        [P in keyof T & keyof AggregateT_Fk_Correspondance]: P extends '_count' | 'count'
       ? T[P] extends true
         ? number
-        : GetScalarType<T[P], AggregateT_Admin_UI_Setting[P]>
-      : GetScalarType<T[P], AggregateT_Admin_UI_Setting[P]>
+        : GetScalarType<T[P], AggregateT_Fk_Correspondance[P]>
+      : GetScalarType<T[P], AggregateT_Fk_Correspondance[P]>
   }
 
 
 
 
-  export type T_Admin_UI_SettingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: T_Admin_UI_SettingWhereInput
-    orderBy?: T_Admin_UI_SettingOrderByWithAggregationInput | T_Admin_UI_SettingOrderByWithAggregationInput[]
-    by: T_Admin_UI_SettingScalarFieldEnum[] | T_Admin_UI_SettingScalarFieldEnum
-    having?: T_Admin_UI_SettingScalarWhereWithAggregatesInput
+  export type T_Fk_CorrespondanceGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_Fk_CorrespondanceWhereInput
+    orderBy?: T_Fk_CorrespondanceOrderByWithAggregationInput | T_Fk_CorrespondanceOrderByWithAggregationInput[]
+    by: T_Fk_CorrespondanceScalarFieldEnum[] | T_Fk_CorrespondanceScalarFieldEnum
+    having?: T_Fk_CorrespondanceScalarWhereWithAggregatesInput
     take?: number
     skip?: number
-    _count?: T_Admin_UI_SettingCountAggregateInputType | true
-    _avg?: T_Admin_UI_SettingAvgAggregateInputType
-    _sum?: T_Admin_UI_SettingSumAggregateInputType
-    _min?: T_Admin_UI_SettingMinAggregateInputType
-    _max?: T_Admin_UI_SettingMaxAggregateInputType
+    _count?: T_Fk_CorrespondanceCountAggregateInputType | true
+    _avg?: T_Fk_CorrespondanceAvgAggregateInputType
+    _sum?: T_Fk_CorrespondanceSumAggregateInputType
+    _min?: T_Fk_CorrespondanceMinAggregateInputType
+    _max?: T_Fk_CorrespondanceMaxAggregateInputType
   }
 
-  export type T_Admin_UI_SettingGroupByOutputType = {
-    IdAdminUiSetting: number
-    SettingKey: string
-    SettingValue: JsonValue
-    UpdatedAt: Date
-    UpdatedByUserFk: number | null
-    ObsAdminUiSetting: string | null
+  export type T_Fk_CorrespondanceGroupByOutputType = {
+    IdFkCorrespondance: number
+    ModuleName: string
+    SchemaName: string
+    ViewName: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel: string | null
+    MappingType: string
+    ReferenceSchemaName: string | null
+    ReferenceObjectName: string | null
+    ReferenceFieldName: string | null
+    TargetCategoryIdFk: number | null
+    MappingValue: string
+    IsDefaultMapping: boolean
+    ValideFkCorrespondance: boolean
     SettingScope: string
     ScopeValue: string | null
-    _count: T_Admin_UI_SettingCountAggregateOutputType | null
-    _avg: T_Admin_UI_SettingAvgAggregateOutputType | null
-    _sum: T_Admin_UI_SettingSumAggregateOutputType | null
-    _min: T_Admin_UI_SettingMinAggregateOutputType | null
-    _max: T_Admin_UI_SettingMaxAggregateOutputType | null
+    DisplayOrder: number
+    UpdatedAt: Date
+    UpdatedByUserFk: number | null
+    ObsFkCorrespondance: string | null
+    _count: T_Fk_CorrespondanceCountAggregateOutputType | null
+    _avg: T_Fk_CorrespondanceAvgAggregateOutputType | null
+    _sum: T_Fk_CorrespondanceSumAggregateOutputType | null
+    _min: T_Fk_CorrespondanceMinAggregateOutputType | null
+    _max: T_Fk_CorrespondanceMaxAggregateOutputType | null
   }
 
-  type GetT_Admin_UI_SettingGroupByPayload<T extends T_Admin_UI_SettingGroupByArgs> = Prisma.PrismaPromise<
+  type GetT_Fk_CorrespondanceGroupByPayload<T extends T_Fk_CorrespondanceGroupByArgs> = Prisma.PrismaPromise<
     Array<
-      PickEnumerable<T_Admin_UI_SettingGroupByOutputType, T['by']> &
+      PickEnumerable<T_Fk_CorrespondanceGroupByOutputType, T['by']> &
         {
-          [P in ((keyof T) & (keyof T_Admin_UI_SettingGroupByOutputType))]: P extends '_count'
+          [P in ((keyof T) & (keyof T_Fk_CorrespondanceGroupByOutputType))]: P extends '_count'
             ? T[P] extends boolean
               ? number
-              : GetScalarType<T[P], T_Admin_UI_SettingGroupByOutputType[P]>
-            : GetScalarType<T[P], T_Admin_UI_SettingGroupByOutputType[P]>
+              : GetScalarType<T[P], T_Fk_CorrespondanceGroupByOutputType[P]>
+            : GetScalarType<T[P], T_Fk_CorrespondanceGroupByOutputType[P]>
         }
       >
     >
 
 
-  export type T_Admin_UI_SettingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    IdAdminUiSetting?: boolean
-    SettingKey?: boolean
-    SettingValue?: boolean
-    UpdatedAt?: boolean
-    UpdatedByUserFk?: boolean
-    ObsAdminUiSetting?: boolean
+  export type T_Fk_CorrespondanceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdFkCorrespondance?: boolean
+    ModuleName?: boolean
+    SchemaName?: boolean
+    ViewName?: boolean
+    SourceKey?: boolean
+    FieldName?: boolean
+    FieldLabel?: boolean
+    MappingType?: boolean
+    ReferenceSchemaName?: boolean
+    ReferenceObjectName?: boolean
+    ReferenceFieldName?: boolean
+    TargetCategoryIdFk?: boolean
+    MappingValue?: boolean
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: boolean
     ScopeValue?: boolean
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
-  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
-
-  export type T_Admin_UI_SettingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    IdAdminUiSetting?: boolean
-    SettingKey?: boolean
-    SettingValue?: boolean
+    DisplayOrder?: boolean
     UpdatedAt?: boolean
     UpdatedByUserFk?: boolean
-    ObsAdminUiSetting?: boolean
+    ObsFkCorrespondance?: boolean
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Fk_Correspondance"]>
+
+  export type T_Fk_CorrespondanceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdFkCorrespondance?: boolean
+    ModuleName?: boolean
+    SchemaName?: boolean
+    ViewName?: boolean
+    SourceKey?: boolean
+    FieldName?: boolean
+    FieldLabel?: boolean
+    MappingType?: boolean
+    ReferenceSchemaName?: boolean
+    ReferenceObjectName?: boolean
+    ReferenceFieldName?: boolean
+    TargetCategoryIdFk?: boolean
+    MappingValue?: boolean
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: boolean
     ScopeValue?: boolean
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
-  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
-
-  export type T_Admin_UI_SettingSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    IdAdminUiSetting?: boolean
-    SettingKey?: boolean
-    SettingValue?: boolean
+    DisplayOrder?: boolean
     UpdatedAt?: boolean
     UpdatedByUserFk?: boolean
-    ObsAdminUiSetting?: boolean
+    ObsFkCorrespondance?: boolean
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Fk_Correspondance"]>
+
+  export type T_Fk_CorrespondanceSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdFkCorrespondance?: boolean
+    ModuleName?: boolean
+    SchemaName?: boolean
+    ViewName?: boolean
+    SourceKey?: boolean
+    FieldName?: boolean
+    FieldLabel?: boolean
+    MappingType?: boolean
+    ReferenceSchemaName?: boolean
+    ReferenceObjectName?: boolean
+    ReferenceFieldName?: boolean
+    TargetCategoryIdFk?: boolean
+    MappingValue?: boolean
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: boolean
     ScopeValue?: boolean
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
-  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
-
-  export type T_Admin_UI_SettingSelectScalar = {
-    IdAdminUiSetting?: boolean
-    SettingKey?: boolean
-    SettingValue?: boolean
+    DisplayOrder?: boolean
     UpdatedAt?: boolean
     UpdatedByUserFk?: boolean
-    ObsAdminUiSetting?: boolean
+    ObsFkCorrespondance?: boolean
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Fk_Correspondance"]>
+
+  export type T_Fk_CorrespondanceSelectScalar = {
+    IdFkCorrespondance?: boolean
+    ModuleName?: boolean
+    SchemaName?: boolean
+    ViewName?: boolean
+    SourceKey?: boolean
+    FieldName?: boolean
+    FieldLabel?: boolean
+    MappingType?: boolean
+    ReferenceSchemaName?: boolean
+    ReferenceObjectName?: boolean
+    ReferenceFieldName?: boolean
+    TargetCategoryIdFk?: boolean
+    MappingValue?: boolean
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: boolean
     ScopeValue?: boolean
+    DisplayOrder?: boolean
+    UpdatedAt?: boolean
+    UpdatedByUserFk?: boolean
+    ObsFkCorrespondance?: boolean
   }
 
-  export type T_Admin_UI_SettingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"IdAdminUiSetting" | "SettingKey" | "SettingValue" | "UpdatedAt" | "UpdatedByUserFk" | "ObsAdminUiSetting" | "SettingScope" | "ScopeValue", ExtArgs["result"]["t_Admin_UI_Setting"]>
-  export type T_Admin_UI_SettingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  export type T_Fk_CorrespondanceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"IdFkCorrespondance" | "ModuleName" | "SchemaName" | "ViewName" | "SourceKey" | "FieldName" | "FieldLabel" | "MappingType" | "ReferenceSchemaName" | "ReferenceObjectName" | "ReferenceFieldName" | "TargetCategoryIdFk" | "MappingValue" | "IsDefaultMapping" | "ValideFkCorrespondance" | "SettingScope" | "ScopeValue" | "DisplayOrder" | "UpdatedAt" | "UpdatedByUserFk" | "ObsFkCorrespondance", ExtArgs["result"]["t_Fk_Correspondance"]>
+  export type T_Fk_CorrespondanceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
   }
-  export type T_Admin_UI_SettingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  export type T_Fk_CorrespondanceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
   }
-  export type T_Admin_UI_SettingIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  export type T_Fk_CorrespondanceIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_CategorieGenerique?: boolean | T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>
+    T_Utilisateurs?: boolean | T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>
   }
 
-  export type $T_Admin_UI_SettingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "T_Admin_UI_Setting"
+  export type $T_Fk_CorrespondancePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "T_Fk_Correspondance"
     objects: {
+      T_CategorieGenerique: Prisma.$T_CategorieGeneriquePayload<ExtArgs> | null
       T_Utilisateurs: Prisma.$T_UtilisateursPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
-      IdAdminUiSetting: number
-      SettingKey: string
-      SettingValue: Prisma.JsonValue
-      UpdatedAt: Date
-      UpdatedByUserFk: number | null
-      ObsAdminUiSetting: string | null
+      IdFkCorrespondance: number
+      ModuleName: string
+      SchemaName: string
+      ViewName: string | null
+      SourceKey: string
+      FieldName: string
+      FieldLabel: string | null
+      MappingType: string
+      ReferenceSchemaName: string | null
+      ReferenceObjectName: string | null
+      ReferenceFieldName: string | null
+      TargetCategoryIdFk: number | null
+      MappingValue: string
+      IsDefaultMapping: boolean
+      ValideFkCorrespondance: boolean
       SettingScope: string
       ScopeValue: string | null
-    }, ExtArgs["result"]["t_Admin_UI_Setting"]>
+      DisplayOrder: number
+      UpdatedAt: Date
+      UpdatedByUserFk: number | null
+      ObsFkCorrespondance: string | null
+    }, ExtArgs["result"]["t_Fk_Correspondance"]>
     composites: {}
   }
 
-  type T_Admin_UI_SettingGetPayload<S extends boolean | null | undefined | T_Admin_UI_SettingDefaultArgs> = $Result.GetResult<Prisma.$T_Admin_UI_SettingPayload, S>
+  type T_Fk_CorrespondanceGetPayload<S extends boolean | null | undefined | T_Fk_CorrespondanceDefaultArgs> = $Result.GetResult<Prisma.$T_Fk_CorrespondancePayload, S>
 
-  type T_Admin_UI_SettingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<T_Admin_UI_SettingFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: T_Admin_UI_SettingCountAggregateInputType | true
+  type T_Fk_CorrespondanceCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<T_Fk_CorrespondanceFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: T_Fk_CorrespondanceCountAggregateInputType | true
     }
 
-  export interface T_Admin_UI_SettingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['T_Admin_UI_Setting'], meta: { name: 'T_Admin_UI_Setting' } }
+  export interface T_Fk_CorrespondanceDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['T_Fk_Correspondance'], meta: { name: 'T_Fk_Correspondance' } }
     /**
-     * Find zero or one T_Admin_UI_Setting that matches the filter.
-     * @param {T_Admin_UI_SettingFindUniqueArgs} args - Arguments to find a T_Admin_UI_Setting
+     * Find zero or one T_Fk_Correspondance that matches the filter.
+     * @param {T_Fk_CorrespondanceFindUniqueArgs} args - Arguments to find a T_Fk_Correspondance
      * @example
-     * // Get one T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findUnique({
+     * // Get one T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.findUnique({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUnique<T extends T_Admin_UI_SettingFindUniqueArgs>(args: SelectSubset<T, T_Admin_UI_SettingFindUniqueArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends T_Fk_CorrespondanceFindUniqueArgs>(args: SelectSubset<T, T_Fk_CorrespondanceFindUniqueArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Find one T_Admin_UI_Setting that matches the filter or throw an error with `error.code='P2025'`
+     * Find one T_Fk_Correspondance that matches the filter or throw an error with `error.code='P2025'`
      * if no matches were found.
-     * @param {T_Admin_UI_SettingFindUniqueOrThrowArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @param {T_Fk_CorrespondanceFindUniqueOrThrowArgs} args - Arguments to find a T_Fk_Correspondance
      * @example
-     * // Get one T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findUniqueOrThrow({
+     * // Get one T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.findUniqueOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUniqueOrThrow<T extends T_Admin_UI_SettingFindUniqueOrThrowArgs>(args: SelectSubset<T, T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends T_Fk_CorrespondanceFindUniqueOrThrowArgs>(args: SelectSubset<T, T_Fk_CorrespondanceFindUniqueOrThrowArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Find the first T_Admin_UI_Setting that matches the filter.
+     * Find the first T_Fk_Correspondance that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingFindFirstArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @param {T_Fk_CorrespondanceFindFirstArgs} args - Arguments to find a T_Fk_Correspondance
      * @example
-     * // Get one T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findFirst({
+     * // Get one T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.findFirst({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirst<T extends T_Admin_UI_SettingFindFirstArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindFirstArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends T_Fk_CorrespondanceFindFirstArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceFindFirstArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Find the first T_Admin_UI_Setting that matches the filter or
+     * Find the first T_Fk_Correspondance that matches the filter or
      * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingFindFirstOrThrowArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @param {T_Fk_CorrespondanceFindFirstOrThrowArgs} args - Arguments to find a T_Fk_Correspondance
      * @example
-     * // Get one T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findFirstOrThrow({
+     * // Get one T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.findFirstOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirstOrThrow<T extends T_Admin_UI_SettingFindFirstOrThrowArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends T_Fk_CorrespondanceFindFirstOrThrowArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceFindFirstOrThrowArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Find zero or more T_Admin_UI_Settings that matches the filter.
+     * Find zero or more T_Fk_Correspondances that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @param {T_Fk_CorrespondanceFindManyArgs} args - Arguments to filter and select certain fields only.
      * @example
-     * // Get all T_Admin_UI_Settings
-     * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany()
+     * // Get all T_Fk_Correspondances
+     * const t_Fk_Correspondances = await prisma.t_Fk_Correspondance.findMany()
      * 
-     * // Get first 10 T_Admin_UI_Settings
-     * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany({ take: 10 })
+     * // Get first 10 T_Fk_Correspondances
+     * const t_Fk_Correspondances = await prisma.t_Fk_Correspondance.findMany({ take: 10 })
      * 
-     * // Only select the `IdAdminUiSetting`
-     * const t_Admin_UI_SettingWithIdAdminUiSettingOnly = await prisma.t_Admin_UI_Setting.findMany({ select: { IdAdminUiSetting: true } })
+     * // Only select the `IdFkCorrespondance`
+     * const t_Fk_CorrespondanceWithIdFkCorrespondanceOnly = await prisma.t_Fk_Correspondance.findMany({ select: { IdFkCorrespondance: true } })
      * 
      */
-    findMany<T extends T_Admin_UI_SettingFindManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends T_Fk_CorrespondanceFindManyArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
 
     /**
-     * Create a T_Admin_UI_Setting.
-     * @param {T_Admin_UI_SettingCreateArgs} args - Arguments to create a T_Admin_UI_Setting.
+     * Create a T_Fk_Correspondance.
+     * @param {T_Fk_CorrespondanceCreateArgs} args - Arguments to create a T_Fk_Correspondance.
      * @example
-     * // Create one T_Admin_UI_Setting
-     * const T_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.create({
+     * // Create one T_Fk_Correspondance
+     * const T_Fk_Correspondance = await prisma.t_Fk_Correspondance.create({
      *   data: {
-     *     // ... data to create a T_Admin_UI_Setting
+     *     // ... data to create a T_Fk_Correspondance
      *   }
      * })
      * 
      */
-    create<T extends T_Admin_UI_SettingCreateArgs>(args: SelectSubset<T, T_Admin_UI_SettingCreateArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends T_Fk_CorrespondanceCreateArgs>(args: SelectSubset<T, T_Fk_CorrespondanceCreateArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Create many T_Admin_UI_Settings.
-     * @param {T_Admin_UI_SettingCreateManyArgs} args - Arguments to create many T_Admin_UI_Settings.
+     * Create many T_Fk_Correspondances.
+     * @param {T_Fk_CorrespondanceCreateManyArgs} args - Arguments to create many T_Fk_Correspondances.
      * @example
-     * // Create many T_Admin_UI_Settings
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.createMany({
+     * // Create many T_Fk_Correspondances
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.createMany({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      *     
      */
-    createMany<T extends T_Admin_UI_SettingCreateManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    createMany<T extends T_Fk_CorrespondanceCreateManyArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create many T_Admin_UI_Settings and returns the data saved in the database.
-     * @param {T_Admin_UI_SettingCreateManyAndReturnArgs} args - Arguments to create many T_Admin_UI_Settings.
+     * Create many T_Fk_Correspondances and returns the data saved in the database.
+     * @param {T_Fk_CorrespondanceCreateManyAndReturnArgs} args - Arguments to create many T_Fk_Correspondances.
      * @example
-     * // Create many T_Admin_UI_Settings
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.createManyAndReturn({
+     * // Create many T_Fk_Correspondances
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.createManyAndReturn({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      * 
-     * // Create many T_Admin_UI_Settings and only return the `IdAdminUiSetting`
-     * const t_Admin_UI_SettingWithIdAdminUiSettingOnly = await prisma.t_Admin_UI_Setting.createManyAndReturn({
-     *   select: { IdAdminUiSetting: true },
+     * // Create many T_Fk_Correspondances and only return the `IdFkCorrespondance`
+     * const t_Fk_CorrespondanceWithIdFkCorrespondanceOnly = await prisma.t_Fk_Correspondance.createManyAndReturn({
+     *   select: { IdFkCorrespondance: true },
      *   data: [
      *     // ... provide data here
      *   ]
@@ -35161,28 +35373,28 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends T_Admin_UI_SettingCreateManyAndReturnArgs>(args?: SelectSubset<T, T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends T_Fk_CorrespondanceCreateManyAndReturnArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
 
     /**
-     * Delete a T_Admin_UI_Setting.
-     * @param {T_Admin_UI_SettingDeleteArgs} args - Arguments to delete one T_Admin_UI_Setting.
+     * Delete a T_Fk_Correspondance.
+     * @param {T_Fk_CorrespondanceDeleteArgs} args - Arguments to delete one T_Fk_Correspondance.
      * @example
-     * // Delete one T_Admin_UI_Setting
-     * const T_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.delete({
+     * // Delete one T_Fk_Correspondance
+     * const T_Fk_Correspondance = await prisma.t_Fk_Correspondance.delete({
      *   where: {
-     *     // ... filter to delete one T_Admin_UI_Setting
+     *     // ... filter to delete one T_Fk_Correspondance
      *   }
      * })
      * 
      */
-    delete<T extends T_Admin_UI_SettingDeleteArgs>(args: SelectSubset<T, T_Admin_UI_SettingDeleteArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends T_Fk_CorrespondanceDeleteArgs>(args: SelectSubset<T, T_Fk_CorrespondanceDeleteArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Update one T_Admin_UI_Setting.
-     * @param {T_Admin_UI_SettingUpdateArgs} args - Arguments to update one T_Admin_UI_Setting.
+     * Update one T_Fk_Correspondance.
+     * @param {T_Fk_CorrespondanceUpdateArgs} args - Arguments to update one T_Fk_Correspondance.
      * @example
-     * // Update one T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.update({
+     * // Update one T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.update({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -35192,30 +35404,30 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends T_Admin_UI_SettingUpdateArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends T_Fk_CorrespondanceUpdateArgs>(args: SelectSubset<T, T_Fk_CorrespondanceUpdateArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
     /**
-     * Delete zero or more T_Admin_UI_Settings.
-     * @param {T_Admin_UI_SettingDeleteManyArgs} args - Arguments to filter T_Admin_UI_Settings to delete.
+     * Delete zero or more T_Fk_Correspondances.
+     * @param {T_Fk_CorrespondanceDeleteManyArgs} args - Arguments to filter T_Fk_Correspondances to delete.
      * @example
-     * // Delete a few T_Admin_UI_Settings
-     * const { count } = await prisma.t_Admin_UI_Setting.deleteMany({
+     * // Delete a few T_Fk_Correspondances
+     * const { count } = await prisma.t_Fk_Correspondance.deleteMany({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      * 
      */
-    deleteMany<T extends T_Admin_UI_SettingDeleteManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    deleteMany<T extends T_Fk_CorrespondanceDeleteManyArgs>(args?: SelectSubset<T, T_Fk_CorrespondanceDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more T_Admin_UI_Settings.
+     * Update zero or more T_Fk_Correspondances.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingUpdateManyArgs} args - Arguments to update one or more rows.
+     * @param {T_Fk_CorrespondanceUpdateManyArgs} args - Arguments to update one or more rows.
      * @example
-     * // Update many T_Admin_UI_Settings
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.updateMany({
+     * // Update many T_Fk_Correspondances
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.updateMany({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -35225,14 +35437,14 @@ export namespace Prisma {
      * })
      * 
      */
-    updateMany<T extends T_Admin_UI_SettingUpdateManyArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    updateMany<T extends T_Fk_CorrespondanceUpdateManyArgs>(args: SelectSubset<T, T_Fk_CorrespondanceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more T_Admin_UI_Settings and returns the data updated in the database.
-     * @param {T_Admin_UI_SettingUpdateManyAndReturnArgs} args - Arguments to update many T_Admin_UI_Settings.
+     * Update zero or more T_Fk_Correspondances and returns the data updated in the database.
+     * @param {T_Fk_CorrespondanceUpdateManyAndReturnArgs} args - Arguments to update many T_Fk_Correspondances.
      * @example
-     * // Update many T_Admin_UI_Settings
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.updateManyAndReturn({
+     * // Update many T_Fk_Correspondances
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.updateManyAndReturn({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -35241,9 +35453,9 @@ export namespace Prisma {
      *   ]
      * })
      * 
-     * // Update zero or more T_Admin_UI_Settings and only return the `IdAdminUiSetting`
-     * const t_Admin_UI_SettingWithIdAdminUiSettingOnly = await prisma.t_Admin_UI_Setting.updateManyAndReturn({
-     *   select: { IdAdminUiSetting: true },
+     * // Update zero or more T_Fk_Correspondances and only return the `IdFkCorrespondance`
+     * const t_Fk_CorrespondanceWithIdFkCorrespondanceOnly = await prisma.t_Fk_Correspondance.updateManyAndReturn({
+     *   select: { IdFkCorrespondance: true },
      *   where: {
      *     // ... provide filter here
      *   },
@@ -35255,56 +35467,56 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    updateManyAndReturn<T extends T_Admin_UI_SettingUpdateManyAndReturnArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+    updateManyAndReturn<T extends T_Fk_CorrespondanceUpdateManyAndReturnArgs>(args: SelectSubset<T, T_Fk_CorrespondanceUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
     /**
-     * Create or update one T_Admin_UI_Setting.
-     * @param {T_Admin_UI_SettingUpsertArgs} args - Arguments to update or create a T_Admin_UI_Setting.
+     * Create or update one T_Fk_Correspondance.
+     * @param {T_Fk_CorrespondanceUpsertArgs} args - Arguments to update or create a T_Fk_Correspondance.
      * @example
-     * // Update or create a T_Admin_UI_Setting
-     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.upsert({
+     * // Update or create a T_Fk_Correspondance
+     * const t_Fk_Correspondance = await prisma.t_Fk_Correspondance.upsert({
      *   create: {
-     *     // ... data to create a T_Admin_UI_Setting
+     *     // ... data to create a T_Fk_Correspondance
      *   },
      *   update: {
      *     // ... in case it already exists, update
      *   },
      *   where: {
-     *     // ... the filter for the T_Admin_UI_Setting we want to update
+     *     // ... the filter for the T_Fk_Correspondance we want to update
      *   }
      * })
      */
-    upsert<T extends T_Admin_UI_SettingUpsertArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpsertArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends T_Fk_CorrespondanceUpsertArgs>(args: SelectSubset<T, T_Fk_CorrespondanceUpsertArgs<ExtArgs>>): Prisma__T_Fk_CorrespondanceClient<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
 
 
     /**
-     * Count the number of T_Admin_UI_Settings.
+     * Count the number of T_Fk_Correspondances.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingCountArgs} args - Arguments to filter T_Admin_UI_Settings to count.
+     * @param {T_Fk_CorrespondanceCountArgs} args - Arguments to filter T_Fk_Correspondances to count.
      * @example
-     * // Count the number of T_Admin_UI_Settings
-     * const count = await prisma.t_Admin_UI_Setting.count({
+     * // Count the number of T_Fk_Correspondances
+     * const count = await prisma.t_Fk_Correspondance.count({
      *   where: {
-     *     // ... the filter for the T_Admin_UI_Settings we want to count
+     *     // ... the filter for the T_Fk_Correspondances we want to count
      *   }
      * })
     **/
-    count<T extends T_Admin_UI_SettingCountArgs>(
-      args?: Subset<T, T_Admin_UI_SettingCountArgs>,
+    count<T extends T_Fk_CorrespondanceCountArgs>(
+      args?: Subset<T, T_Fk_CorrespondanceCountArgs>,
     ): Prisma.PrismaPromise<
       T extends $Utils.Record<'select', any>
         ? T['select'] extends true
           ? number
-          : GetScalarType<T['select'], T_Admin_UI_SettingCountAggregateOutputType>
+          : GetScalarType<T['select'], T_Fk_CorrespondanceCountAggregateOutputType>
         : number
     >
 
     /**
-     * Allows you to perform aggregations operations on a T_Admin_UI_Setting.
+     * Allows you to perform aggregations operations on a T_Fk_Correspondance.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @param {T_Fk_CorrespondanceAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
      * @example
      * // Ordered by age ascending
      * // Where email contains prisma.io
@@ -35324,13 +35536,13 @@ export namespace Prisma {
      *   take: 10,
      * })
     **/
-    aggregate<T extends T_Admin_UI_SettingAggregateArgs>(args: Subset<T, T_Admin_UI_SettingAggregateArgs>): Prisma.PrismaPromise<GetT_Admin_UI_SettingAggregateType<T>>
+    aggregate<T extends T_Fk_CorrespondanceAggregateArgs>(args: Subset<T, T_Fk_CorrespondanceAggregateArgs>): Prisma.PrismaPromise<GetT_Fk_CorrespondanceAggregateType<T>>
 
     /**
-     * Group by T_Admin_UI_Setting.
+     * Group by T_Fk_Correspondance.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {T_Admin_UI_SettingGroupByArgs} args - Group by arguments.
+     * @param {T_Fk_CorrespondanceGroupByArgs} args - Group by arguments.
      * @example
      * // Group by city, order by createdAt, get count
      * const result = await prisma.user.groupBy({
@@ -35345,14 +35557,14 @@ export namespace Prisma {
      * 
     **/
     groupBy<
-      T extends T_Admin_UI_SettingGroupByArgs,
+      T extends T_Fk_CorrespondanceGroupByArgs,
       HasSelectOrTake extends Or<
         Extends<'skip', Keys<T>>,
         Extends<'take', Keys<T>>
       >,
       OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: T_Admin_UI_SettingGroupByArgs['orderBy'] }
-        : { orderBy?: T_Admin_UI_SettingGroupByArgs['orderBy'] },
+        ? { orderBy: T_Fk_CorrespondanceGroupByArgs['orderBy'] }
+        : { orderBy?: T_Fk_CorrespondanceGroupByArgs['orderBy'] },
       OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
       ByFields extends MaybeTupleToUnion<T['by']>,
       ByValid extends Has<ByFields, OrderFields>,
@@ -35401,22 +35613,23 @@ export namespace Prisma {
             ? never
             : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
         }[OrderFields]
-    >(args: SubsetIntersection<T, T_Admin_UI_SettingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetT_Admin_UI_SettingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+    >(args: SubsetIntersection<T, T_Fk_CorrespondanceGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetT_Fk_CorrespondanceGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
   /**
-   * Fields of the T_Admin_UI_Setting model
+   * Fields of the T_Fk_Correspondance model
    */
-  readonly fields: T_Admin_UI_SettingFieldRefs;
+  readonly fields: T_Fk_CorrespondanceFieldRefs;
   }
 
   /**
-   * The delegate class that acts as a "Promise-like" for T_Admin_UI_Setting.
+   * The delegate class that acts as a "Promise-like" for T_Fk_Correspondance.
    * Why is this prefixed with `Prisma__`?
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__T_Admin_UI_SettingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__T_Fk_CorrespondanceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    T_Utilisateurs<T extends T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs> = {}>(args?: Subset<T, T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>>): Prisma__T_UtilisateursClient<$Result.GetResult<Prisma.$T_UtilisateursPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_CategorieGenerique<T extends T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs>>): Prisma__T_CategorieGeneriqueClient<$Result.GetResult<Prisma.$T_CategorieGeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Utilisateurs<T extends T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs> = {}>(args?: Subset<T, T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs>>): Prisma__T_UtilisateursClient<$Result.GetResult<Prisma.$T_UtilisateursPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -35443,416 +35656,448 @@ export namespace Prisma {
 
 
   /**
-   * Fields of the T_Admin_UI_Setting model
+   * Fields of the T_Fk_Correspondance model
    */
-  interface T_Admin_UI_SettingFieldRefs {
-    readonly IdAdminUiSetting: FieldRef<"T_Admin_UI_Setting", 'Int'>
-    readonly SettingKey: FieldRef<"T_Admin_UI_Setting", 'String'>
-    readonly SettingValue: FieldRef<"T_Admin_UI_Setting", 'Json'>
-    readonly UpdatedAt: FieldRef<"T_Admin_UI_Setting", 'DateTime'>
-    readonly UpdatedByUserFk: FieldRef<"T_Admin_UI_Setting", 'Int'>
-    readonly ObsAdminUiSetting: FieldRef<"T_Admin_UI_Setting", 'String'>
-    readonly SettingScope: FieldRef<"T_Admin_UI_Setting", 'String'>
-    readonly ScopeValue: FieldRef<"T_Admin_UI_Setting", 'String'>
+  interface T_Fk_CorrespondanceFieldRefs {
+    readonly IdFkCorrespondance: FieldRef<"T_Fk_Correspondance", 'Int'>
+    readonly ModuleName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly SchemaName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly ViewName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly SourceKey: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly FieldName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly FieldLabel: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly MappingType: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly ReferenceSchemaName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly ReferenceObjectName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly ReferenceFieldName: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly TargetCategoryIdFk: FieldRef<"T_Fk_Correspondance", 'Int'>
+    readonly MappingValue: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly IsDefaultMapping: FieldRef<"T_Fk_Correspondance", 'Boolean'>
+    readonly ValideFkCorrespondance: FieldRef<"T_Fk_Correspondance", 'Boolean'>
+    readonly SettingScope: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly ScopeValue: FieldRef<"T_Fk_Correspondance", 'String'>
+    readonly DisplayOrder: FieldRef<"T_Fk_Correspondance", 'Int'>
+    readonly UpdatedAt: FieldRef<"T_Fk_Correspondance", 'DateTime'>
+    readonly UpdatedByUserFk: FieldRef<"T_Fk_Correspondance", 'Int'>
+    readonly ObsFkCorrespondance: FieldRef<"T_Fk_Correspondance", 'String'>
   }
     
 
   // Custom InputTypes
   /**
-   * T_Admin_UI_Setting findUnique
+   * T_Fk_Correspondance findUnique
    */
-  export type T_Admin_UI_SettingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter, which T_Admin_UI_Setting to fetch.
+     * Filter, which T_Fk_Correspondance to fetch.
      */
-    where: T_Admin_UI_SettingWhereUniqueInput
+    where: T_Fk_CorrespondanceWhereUniqueInput
   }
 
   /**
-   * T_Admin_UI_Setting findUniqueOrThrow
+   * T_Fk_Correspondance findUniqueOrThrow
    */
-  export type T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter, which T_Admin_UI_Setting to fetch.
+     * Filter, which T_Fk_Correspondance to fetch.
      */
-    where: T_Admin_UI_SettingWhereUniqueInput
+    where: T_Fk_CorrespondanceWhereUniqueInput
   }
 
   /**
-   * T_Admin_UI_Setting findFirst
+   * T_Fk_Correspondance findFirst
    */
-  export type T_Admin_UI_SettingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter, which T_Admin_UI_Setting to fetch.
+     * Filter, which T_Fk_Correspondance to fetch.
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of T_Admin_UI_Settings to fetch.
+     * Determine the order of T_Fk_Correspondances to fetch.
      */
-    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for T_Admin_UI_Settings.
+     * Sets the position for searching for T_Fk_Correspondances.
      */
-    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     * Take `±n` T_Fk_Correspondances from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` T_Admin_UI_Settings.
+     * Skip the first `n` T_Fk_Correspondances.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of T_Admin_UI_Settings.
+     * Filter by unique combinations of T_Fk_Correspondances.
      */
-    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+    distinct?: T_Fk_CorrespondanceScalarFieldEnum | T_Fk_CorrespondanceScalarFieldEnum[]
   }
 
   /**
-   * T_Admin_UI_Setting findFirstOrThrow
+   * T_Fk_Correspondance findFirstOrThrow
    */
-  export type T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter, which T_Admin_UI_Setting to fetch.
+     * Filter, which T_Fk_Correspondance to fetch.
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of T_Admin_UI_Settings to fetch.
+     * Determine the order of T_Fk_Correspondances to fetch.
      */
-    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for T_Admin_UI_Settings.
+     * Sets the position for searching for T_Fk_Correspondances.
      */
-    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     * Take `±n` T_Fk_Correspondances from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` T_Admin_UI_Settings.
+     * Skip the first `n` T_Fk_Correspondances.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of T_Admin_UI_Settings.
+     * Filter by unique combinations of T_Fk_Correspondances.
      */
-    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+    distinct?: T_Fk_CorrespondanceScalarFieldEnum | T_Fk_CorrespondanceScalarFieldEnum[]
   }
 
   /**
-   * T_Admin_UI_Setting findMany
+   * T_Fk_Correspondance findMany
    */
-  export type T_Admin_UI_SettingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter, which T_Admin_UI_Settings to fetch.
+     * Filter, which T_Fk_Correspondances to fetch.
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of T_Admin_UI_Settings to fetch.
+     * Determine the order of T_Fk_Correspondances to fetch.
      */
-    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for listing T_Admin_UI_Settings.
+     * Sets the position for listing T_Fk_Correspondances.
      */
-    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     * Take `±n` T_Fk_Correspondances from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` T_Admin_UI_Settings.
+     * Skip the first `n` T_Fk_Correspondances.
      */
     skip?: number
-    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+    distinct?: T_Fk_CorrespondanceScalarFieldEnum | T_Fk_CorrespondanceScalarFieldEnum[]
   }
 
   /**
-   * T_Admin_UI_Setting create
+   * T_Fk_Correspondance create
    */
-  export type T_Admin_UI_SettingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * The data needed to create a T_Admin_UI_Setting.
+     * The data needed to create a T_Fk_Correspondance.
      */
-    data: XOR<T_Admin_UI_SettingCreateInput, T_Admin_UI_SettingUncheckedCreateInput>
+    data: XOR<T_Fk_CorrespondanceCreateInput, T_Fk_CorrespondanceUncheckedCreateInput>
   }
 
   /**
-   * T_Admin_UI_Setting createMany
+   * T_Fk_Correspondance createMany
    */
-  export type T_Admin_UI_SettingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to create many T_Admin_UI_Settings.
+     * The data used to create many T_Fk_Correspondances.
      */
-    data: T_Admin_UI_SettingCreateManyInput | T_Admin_UI_SettingCreateManyInput[]
+    data: T_Fk_CorrespondanceCreateManyInput | T_Fk_CorrespondanceCreateManyInput[]
     skipDuplicates?: boolean
   }
 
   /**
-   * T_Admin_UI_Setting createManyAndReturn
+   * T_Fk_Correspondance createManyAndReturn
    */
-  export type T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelectCreateManyAndReturn<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
-     * The data used to create many T_Admin_UI_Settings.
+     * The data used to create many T_Fk_Correspondances.
      */
-    data: T_Admin_UI_SettingCreateManyInput | T_Admin_UI_SettingCreateManyInput[]
+    data: T_Fk_CorrespondanceCreateManyInput | T_Fk_CorrespondanceCreateManyInput[]
     skipDuplicates?: boolean
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingIncludeCreateManyAndReturn<ExtArgs> | null
+    include?: T_Fk_CorrespondanceIncludeCreateManyAndReturn<ExtArgs> | null
   }
 
   /**
-   * T_Admin_UI_Setting update
+   * T_Fk_Correspondance update
    */
-  export type T_Admin_UI_SettingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * The data needed to update a T_Admin_UI_Setting.
+     * The data needed to update a T_Fk_Correspondance.
      */
-    data: XOR<T_Admin_UI_SettingUpdateInput, T_Admin_UI_SettingUncheckedUpdateInput>
+    data: XOR<T_Fk_CorrespondanceUpdateInput, T_Fk_CorrespondanceUncheckedUpdateInput>
     /**
-     * Choose, which T_Admin_UI_Setting to update.
+     * Choose, which T_Fk_Correspondance to update.
      */
-    where: T_Admin_UI_SettingWhereUniqueInput
+    where: T_Fk_CorrespondanceWhereUniqueInput
   }
 
   /**
-   * T_Admin_UI_Setting updateMany
+   * T_Fk_Correspondance updateMany
    */
-  export type T_Admin_UI_SettingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to update T_Admin_UI_Settings.
+     * The data used to update T_Fk_Correspondances.
      */
-    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyInput>
+    data: XOR<T_Fk_CorrespondanceUpdateManyMutationInput, T_Fk_CorrespondanceUncheckedUpdateManyInput>
     /**
-     * Filter which T_Admin_UI_Settings to update
+     * Filter which T_Fk_Correspondances to update
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
-     * Limit how many T_Admin_UI_Settings to update.
+     * Limit how many T_Fk_Correspondances to update.
      */
     limit?: number
   }
 
   /**
-   * T_Admin_UI_Setting updateManyAndReturn
+   * T_Fk_Correspondance updateManyAndReturn
    */
-  export type T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelectUpdateManyAndReturn<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelectUpdateManyAndReturn<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
-     * The data used to update T_Admin_UI_Settings.
+     * The data used to update T_Fk_Correspondances.
      */
-    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyInput>
+    data: XOR<T_Fk_CorrespondanceUpdateManyMutationInput, T_Fk_CorrespondanceUncheckedUpdateManyInput>
     /**
-     * Filter which T_Admin_UI_Settings to update
+     * Filter which T_Fk_Correspondances to update
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
-     * Limit how many T_Admin_UI_Settings to update.
+     * Limit how many T_Fk_Correspondances to update.
      */
     limit?: number
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingIncludeUpdateManyAndReturn<ExtArgs> | null
+    include?: T_Fk_CorrespondanceIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
-   * T_Admin_UI_Setting upsert
+   * T_Fk_Correspondance upsert
    */
-  export type T_Admin_UI_SettingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * The filter to search for the T_Admin_UI_Setting to update in case it exists.
+     * The filter to search for the T_Fk_Correspondance to update in case it exists.
      */
-    where: T_Admin_UI_SettingWhereUniqueInput
+    where: T_Fk_CorrespondanceWhereUniqueInput
     /**
-     * In case the T_Admin_UI_Setting found by the `where` argument doesn't exist, create a new T_Admin_UI_Setting with this data.
+     * In case the T_Fk_Correspondance found by the `where` argument doesn't exist, create a new T_Fk_Correspondance with this data.
      */
-    create: XOR<T_Admin_UI_SettingCreateInput, T_Admin_UI_SettingUncheckedCreateInput>
+    create: XOR<T_Fk_CorrespondanceCreateInput, T_Fk_CorrespondanceUncheckedCreateInput>
     /**
-     * In case the T_Admin_UI_Setting was found with the provided `where` argument, update it with this data.
+     * In case the T_Fk_Correspondance was found with the provided `where` argument, update it with this data.
      */
-    update: XOR<T_Admin_UI_SettingUpdateInput, T_Admin_UI_SettingUncheckedUpdateInput>
+    update: XOR<T_Fk_CorrespondanceUpdateInput, T_Fk_CorrespondanceUncheckedUpdateInput>
   }
 
   /**
-   * T_Admin_UI_Setting delete
+   * T_Fk_Correspondance delete
    */
-  export type T_Admin_UI_SettingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
     /**
-     * Filter which T_Admin_UI_Setting to delete.
+     * Filter which T_Fk_Correspondance to delete.
      */
-    where: T_Admin_UI_SettingWhereUniqueInput
+    where: T_Fk_CorrespondanceWhereUniqueInput
   }
 
   /**
-   * T_Admin_UI_Setting deleteMany
+   * T_Fk_Correspondance deleteMany
    */
-  export type T_Admin_UI_SettingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which T_Admin_UI_Settings to delete
+     * Filter which T_Fk_Correspondances to delete
      */
-    where?: T_Admin_UI_SettingWhereInput
+    where?: T_Fk_CorrespondanceWhereInput
     /**
-     * Limit how many T_Admin_UI_Settings to delete.
+     * Limit how many T_Fk_Correspondances to delete.
      */
     limit?: number
   }
 
   /**
-   * T_Admin_UI_Setting.T_Utilisateurs
+   * T_Fk_Correspondance.T_CategorieGenerique
    */
-  export type T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_Correspondance$T_CategorieGeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_CategorieGenerique
+     */
+    select?: T_CategorieGeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_CategorieGenerique
+     */
+    omit?: T_CategorieGeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CategorieGeneriqueInclude<ExtArgs> | null
+    where?: T_CategorieGeneriqueWhereInput
+  }
+
+  /**
+   * T_Fk_Correspondance.T_Utilisateurs
+   */
+  export type T_Fk_Correspondance$T_UtilisateursArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
      * Select specific fields to fetch from the T_Utilisateurs
      */
@@ -35869,21 +36114,21 @@ export namespace Prisma {
   }
 
   /**
-   * T_Admin_UI_Setting without action
+   * T_Fk_Correspondance without action
    */
-  export type T_Admin_UI_SettingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Fk_CorrespondanceDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
   }
 
 
@@ -41209,7 +41454,7 @@ export namespace Prisma {
     T_Payeur?: boolean | T_Utilisateurs$T_PayeurArgs<ExtArgs>
     T_Paiement?: boolean | T_Utilisateurs$T_PaiementArgs<ExtArgs>
     T_Professionnel?: boolean | T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>
-    T_Admin_UI_Setting?: boolean | T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>
+    T_Fk_Correspondance?: boolean | T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>
     T_Login?: boolean | T_Utilisateurs$T_LoginArgs<ExtArgs>
     T_Entite?: boolean | T_Utilisateurs$T_EntiteArgs<ExtArgs>
     T_Generique?: boolean | T_Utilisateurs$T_GeneriqueArgs<ExtArgs>
@@ -41285,7 +41530,7 @@ export namespace Prisma {
     T_Payeur?: boolean | T_Utilisateurs$T_PayeurArgs<ExtArgs>
     T_Paiement?: boolean | T_Utilisateurs$T_PaiementArgs<ExtArgs>
     T_Professionnel?: boolean | T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>
-    T_Admin_UI_Setting?: boolean | T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>
+    T_Fk_Correspondance?: boolean | T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>
     T_Login?: boolean | T_Utilisateurs$T_LoginArgs<ExtArgs>
     T_Entite?: boolean | T_Utilisateurs$T_EntiteArgs<ExtArgs>
     T_Generique?: boolean | T_Utilisateurs$T_GeneriqueArgs<ExtArgs>
@@ -41312,7 +41557,7 @@ export namespace Prisma {
       T_Payeur: Prisma.$T_PaiementPayload<ExtArgs>[]
       T_Paiement: Prisma.$T_PaiementPayload<ExtArgs>[]
       T_Professionnel: Prisma.$T_ProfessionnelPayload<ExtArgs> | null
-      T_Admin_UI_Setting: Prisma.$T_Admin_UI_SettingPayload<ExtArgs>[]
+      T_Fk_Correspondance: Prisma.$T_Fk_CorrespondancePayload<ExtArgs>[]
       T_Login: Prisma.$T_LoginPayload<ExtArgs>[]
       T_Entite: Prisma.$T_EntitePayload<ExtArgs> | null
       T_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
@@ -41736,7 +41981,7 @@ export namespace Prisma {
     T_Payeur<T extends T_Utilisateurs$T_PayeurArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_PayeurArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_PaiementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Paiement<T extends T_Utilisateurs$T_PaiementArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_PaiementArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_PaiementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Professionnel<T extends T_Utilisateurs$T_ProfessionnelArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>>): Prisma__T_ProfessionnelClient<$Result.GetResult<Prisma.$T_ProfessionnelPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-    T_Admin_UI_Setting<T extends T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Fk_Correspondance<T extends T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Login<T extends T_Utilisateurs$T_LoginArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_LoginArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_LoginPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Entite<T extends T_Utilisateurs$T_EntiteArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_EntiteArgs<ExtArgs>>): Prisma__T_EntiteClient<$Result.GetResult<Prisma.$T_EntitePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Generique<T extends T_Utilisateurs$T_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
@@ -42391,27 +42636,27 @@ export namespace Prisma {
   }
 
   /**
-   * T_Utilisateurs.T_Admin_UI_Setting
+   * T_Utilisateurs.T_Fk_Correspondance
    */
-  export type T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the T_Admin_UI_Setting
+     * Select specific fields to fetch from the T_Fk_Correspondance
      */
-    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    select?: T_Fk_CorrespondanceSelect<ExtArgs> | null
     /**
-     * Omit specific fields from the T_Admin_UI_Setting
+     * Omit specific fields from the T_Fk_Correspondance
      */
-    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    omit?: T_Fk_CorrespondanceOmit<ExtArgs> | null
     /**
      * Choose, which related nodes to fetch as well
      */
-    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
-    where?: T_Admin_UI_SettingWhereInput
-    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
-    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    include?: T_Fk_CorrespondanceInclude<ExtArgs> | null
+    where?: T_Fk_CorrespondanceWhereInput
+    orderBy?: T_Fk_CorrespondanceOrderByWithRelationInput | T_Fk_CorrespondanceOrderByWithRelationInput[]
+    cursor?: T_Fk_CorrespondanceWhereUniqueInput
     take?: number
     skip?: number
-    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+    distinct?: T_Fk_CorrespondanceScalarFieldEnum | T_Fk_CorrespondanceScalarFieldEnum[]
   }
 
   /**
@@ -43995,7 +44240,7 @@ export namespace Prisma {
   export const T_CommandeScalarFieldEnum: {
     ID_Commande: 'ID_Commande',
     ID_TypeCmdFk: 'ID_TypeCmdFk',
-    ID_StatutCmd: 'ID_StatutCmd',
+    ID_StatutCmdFk: 'ID_StatutCmdFk',
     ID_ClientFk: 'ID_ClientFk',
     ID_UserFk: 'ID_UserFk',
     geolocalisationCmd: 'geolocalisationCmd',
@@ -44186,18 +44431,31 @@ export namespace Prisma {
   export type T_Audit_LogScalarFieldEnum = (typeof T_Audit_LogScalarFieldEnum)[keyof typeof T_Audit_LogScalarFieldEnum]
 
 
-  export const T_Admin_UI_SettingScalarFieldEnum: {
-    IdAdminUiSetting: 'IdAdminUiSetting',
-    SettingKey: 'SettingKey',
-    SettingValue: 'SettingValue',
+  export const T_Fk_CorrespondanceScalarFieldEnum: {
+    IdFkCorrespondance: 'IdFkCorrespondance',
+    ModuleName: 'ModuleName',
+    SchemaName: 'SchemaName',
+    ViewName: 'ViewName',
+    SourceKey: 'SourceKey',
+    FieldName: 'FieldName',
+    FieldLabel: 'FieldLabel',
+    MappingType: 'MappingType',
+    ReferenceSchemaName: 'ReferenceSchemaName',
+    ReferenceObjectName: 'ReferenceObjectName',
+    ReferenceFieldName: 'ReferenceFieldName',
+    TargetCategoryIdFk: 'TargetCategoryIdFk',
+    MappingValue: 'MappingValue',
+    IsDefaultMapping: 'IsDefaultMapping',
+    ValideFkCorrespondance: 'ValideFkCorrespondance',
+    SettingScope: 'SettingScope',
+    ScopeValue: 'ScopeValue',
+    DisplayOrder: 'DisplayOrder',
     UpdatedAt: 'UpdatedAt',
     UpdatedByUserFk: 'UpdatedByUserFk',
-    ObsAdminUiSetting: 'ObsAdminUiSetting',
-    SettingScope: 'SettingScope',
-    ScopeValue: 'ScopeValue'
+    ObsFkCorrespondance: 'ObsFkCorrespondance'
   };
 
-  export type T_Admin_UI_SettingScalarFieldEnum = (typeof T_Admin_UI_SettingScalarFieldEnum)[keyof typeof T_Admin_UI_SettingScalarFieldEnum]
+  export type T_Fk_CorrespondanceScalarFieldEnum = (typeof T_Fk_CorrespondanceScalarFieldEnum)[keyof typeof T_Fk_CorrespondanceScalarFieldEnum]
 
 
   export const T_EntiteScalarFieldEnum: {
@@ -44304,13 +44562,6 @@ export namespace Prisma {
   };
 
   export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
-
-
-  export const JsonNullValueInput: {
-    JsonNull: typeof JsonNull
-  };
-
-  export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
   export const QueryMode: {
@@ -45699,7 +45950,7 @@ export namespace Prisma {
     NOT?: T_CommandeWhereInput | T_CommandeWhereInput[]
     ID_Commande?: IntFilter<"T_Commande"> | number
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_StatutCmd?: IntNullableFilter<"T_Commande"> | number | null
+    ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
@@ -45731,7 +45982,7 @@ export namespace Prisma {
   export type T_CommandeOrderByWithRelationInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrderInput | SortOrder
-    ID_StatutCmd?: SortOrderInput | SortOrder
+    ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
@@ -45768,7 +46019,7 @@ export namespace Prisma {
     OR?: T_CommandeWhereInput[]
     NOT?: T_CommandeWhereInput | T_CommandeWhereInput[]
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_StatutCmd?: IntNullableFilter<"T_Commande"> | number | null
+    ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
@@ -45798,7 +46049,7 @@ export namespace Prisma {
   export type T_CommandeOrderByWithAggregationInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrderInput | SortOrder
-    ID_StatutCmd?: SortOrderInput | SortOrder
+    ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
@@ -45835,7 +46086,7 @@ export namespace Prisma {
     NOT?: T_CommandeScalarWhereWithAggregatesInput | T_CommandeScalarWhereWithAggregatesInput[]
     ID_Commande?: IntWithAggregatesFilter<"T_Commande"> | number
     ID_TypeCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
-    ID_StatutCmd?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
+    ID_StatutCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_UserFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
@@ -46513,6 +46764,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: StringNullableFilter<"T_CategorieGenerique"> | string | null
     ValideCategorieGenerique?: BoolNullableFilter<"T_CategorieGenerique"> | boolean | null
     T_Generique?: T_GeneriqueListRelationFilter
+    T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
   }
 
   export type T_CategorieGeneriqueOrderByWithRelationInput = {
@@ -46521,6 +46773,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: SortOrderInput | SortOrder
     ValideCategorieGenerique?: SortOrderInput | SortOrder
     T_Generique?: T_GeneriqueOrderByRelationAggregateInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceOrderByRelationAggregateInput
   }
 
   export type T_CategorieGeneriqueWhereUniqueInput = Prisma.AtLeast<{
@@ -46532,6 +46785,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: StringNullableFilter<"T_CategorieGenerique"> | string | null
     ValideCategorieGenerique?: BoolNullableFilter<"T_CategorieGenerique"> | boolean | null
     T_Generique?: T_GeneriqueListRelationFilter
+    T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
   }, "ID_CategorieGenerique">
 
   export type T_CategorieGeneriqueOrderByWithAggregationInput = {
@@ -46831,77 +47085,145 @@ export namespace Prisma {
     IdEntiteFk?: IntNullableWithAggregatesFilter<"T_Audit_Log"> | number | null
   }
 
-  export type T_Admin_UI_SettingWhereInput = {
-    AND?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
-    OR?: T_Admin_UI_SettingWhereInput[]
-    NOT?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
-    IdAdminUiSetting?: IntFilter<"T_Admin_UI_Setting"> | number
-    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
-    SettingValue?: JsonFilter<"T_Admin_UI_Setting">
-    UpdatedAt?: DateTimeFilter<"T_Admin_UI_Setting"> | Date | string
-    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
-    ObsAdminUiSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
-    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
-    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+  export type T_Fk_CorrespondanceWhereInput = {
+    AND?: T_Fk_CorrespondanceWhereInput | T_Fk_CorrespondanceWhereInput[]
+    OR?: T_Fk_CorrespondanceWhereInput[]
+    NOT?: T_Fk_CorrespondanceWhereInput | T_Fk_CorrespondanceWhereInput[]
+    IdFkCorrespondance?: IntFilter<"T_Fk_Correspondance"> | number
+    ModuleName?: StringFilter<"T_Fk_Correspondance"> | string
+    SchemaName?: StringFilter<"T_Fk_Correspondance"> | string
+    ViewName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    SourceKey?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldName?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldLabel?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    MappingType?: StringFilter<"T_Fk_Correspondance"> | string
+    ReferenceSchemaName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceObjectName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceFieldName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    TargetCategoryIdFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    MappingValue?: StringFilter<"T_Fk_Correspondance"> | string
+    IsDefaultMapping?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    ValideFkCorrespondance?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    SettingScope?: StringFilter<"T_Fk_Correspondance"> | string
+    ScopeValue?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    DisplayOrder?: IntFilter<"T_Fk_Correspondance"> | number
+    UpdatedAt?: DateTimeFilter<"T_Fk_Correspondance"> | Date | string
+    UpdatedByUserFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    ObsFkCorrespondance?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    T_CategorieGenerique?: XOR<T_CategorieGeneriqueNullableScalarRelationFilter, T_CategorieGeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
   }
 
-  export type T_Admin_UI_SettingOrderByWithRelationInput = {
-    IdAdminUiSetting?: SortOrder
-    SettingKey?: SortOrder
-    SettingValue?: SortOrder
-    UpdatedAt?: SortOrder
-    UpdatedByUserFk?: SortOrderInput | SortOrder
-    ObsAdminUiSetting?: SortOrderInput | SortOrder
+  export type T_Fk_CorrespondanceOrderByWithRelationInput = {
+    IdFkCorrespondance?: SortOrder
+    ModuleName?: SortOrder
+    SchemaName?: SortOrder
+    ViewName?: SortOrderInput | SortOrder
+    SourceKey?: SortOrder
+    FieldName?: SortOrder
+    FieldLabel?: SortOrderInput | SortOrder
+    MappingType?: SortOrder
+    ReferenceSchemaName?: SortOrderInput | SortOrder
+    ReferenceObjectName?: SortOrderInput | SortOrder
+    ReferenceFieldName?: SortOrderInput | SortOrder
+    TargetCategoryIdFk?: SortOrderInput | SortOrder
+    MappingValue?: SortOrder
+    IsDefaultMapping?: SortOrder
+    ValideFkCorrespondance?: SortOrder
     SettingScope?: SortOrder
     ScopeValue?: SortOrderInput | SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedAt?: SortOrder
+    UpdatedByUserFk?: SortOrderInput | SortOrder
+    ObsFkCorrespondance?: SortOrderInput | SortOrder
+    T_CategorieGenerique?: T_CategorieGeneriqueOrderByWithRelationInput
     T_Utilisateurs?: T_UtilisateursOrderByWithRelationInput
   }
 
-  export type T_Admin_UI_SettingWhereUniqueInput = Prisma.AtLeast<{
-    IdAdminUiSetting?: number
-    SettingKey_SettingScope_ScopeValue?: T_Admin_UI_SettingSettingKeySettingScopeScopeValueCompoundUniqueInput
-    AND?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
-    OR?: T_Admin_UI_SettingWhereInput[]
-    NOT?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
-    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
-    SettingValue?: JsonFilter<"T_Admin_UI_Setting">
-    UpdatedAt?: DateTimeFilter<"T_Admin_UI_Setting"> | Date | string
-    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
-    ObsAdminUiSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
-    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
-    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+  export type T_Fk_CorrespondanceWhereUniqueInput = Prisma.AtLeast<{
+    IdFkCorrespondance?: number
+    ModuleName_SchemaName_ViewName_SourceKey_FieldName_MappingType_MappingValue_SettingScope_ScopeValue?: T_Fk_CorrespondanceModuleNameSchemaNameViewNameSourceKeyFieldNameMappingTypeMappingValueSettingScopeScopeValueCompoundUniqueInput
+    AND?: T_Fk_CorrespondanceWhereInput | T_Fk_CorrespondanceWhereInput[]
+    OR?: T_Fk_CorrespondanceWhereInput[]
+    NOT?: T_Fk_CorrespondanceWhereInput | T_Fk_CorrespondanceWhereInput[]
+    ModuleName?: StringFilter<"T_Fk_Correspondance"> | string
+    SchemaName?: StringFilter<"T_Fk_Correspondance"> | string
+    ViewName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    SourceKey?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldName?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldLabel?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    MappingType?: StringFilter<"T_Fk_Correspondance"> | string
+    ReferenceSchemaName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceObjectName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceFieldName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    TargetCategoryIdFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    MappingValue?: StringFilter<"T_Fk_Correspondance"> | string
+    IsDefaultMapping?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    ValideFkCorrespondance?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    SettingScope?: StringFilter<"T_Fk_Correspondance"> | string
+    ScopeValue?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    DisplayOrder?: IntFilter<"T_Fk_Correspondance"> | number
+    UpdatedAt?: DateTimeFilter<"T_Fk_Correspondance"> | Date | string
+    UpdatedByUserFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    ObsFkCorrespondance?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    T_CategorieGenerique?: XOR<T_CategorieGeneriqueNullableScalarRelationFilter, T_CategorieGeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
-  }, "IdAdminUiSetting" | "SettingKey_SettingScope_ScopeValue">
+  }, "IdFkCorrespondance" | "ModuleName_SchemaName_ViewName_SourceKey_FieldName_MappingType_MappingValue_SettingScope_ScopeValue">
 
-  export type T_Admin_UI_SettingOrderByWithAggregationInput = {
-    IdAdminUiSetting?: SortOrder
-    SettingKey?: SortOrder
-    SettingValue?: SortOrder
-    UpdatedAt?: SortOrder
-    UpdatedByUserFk?: SortOrderInput | SortOrder
-    ObsAdminUiSetting?: SortOrderInput | SortOrder
+  export type T_Fk_CorrespondanceOrderByWithAggregationInput = {
+    IdFkCorrespondance?: SortOrder
+    ModuleName?: SortOrder
+    SchemaName?: SortOrder
+    ViewName?: SortOrderInput | SortOrder
+    SourceKey?: SortOrder
+    FieldName?: SortOrder
+    FieldLabel?: SortOrderInput | SortOrder
+    MappingType?: SortOrder
+    ReferenceSchemaName?: SortOrderInput | SortOrder
+    ReferenceObjectName?: SortOrderInput | SortOrder
+    ReferenceFieldName?: SortOrderInput | SortOrder
+    TargetCategoryIdFk?: SortOrderInput | SortOrder
+    MappingValue?: SortOrder
+    IsDefaultMapping?: SortOrder
+    ValideFkCorrespondance?: SortOrder
     SettingScope?: SortOrder
     ScopeValue?: SortOrderInput | SortOrder
-    _count?: T_Admin_UI_SettingCountOrderByAggregateInput
-    _avg?: T_Admin_UI_SettingAvgOrderByAggregateInput
-    _max?: T_Admin_UI_SettingMaxOrderByAggregateInput
-    _min?: T_Admin_UI_SettingMinOrderByAggregateInput
-    _sum?: T_Admin_UI_SettingSumOrderByAggregateInput
+    DisplayOrder?: SortOrder
+    UpdatedAt?: SortOrder
+    UpdatedByUserFk?: SortOrderInput | SortOrder
+    ObsFkCorrespondance?: SortOrderInput | SortOrder
+    _count?: T_Fk_CorrespondanceCountOrderByAggregateInput
+    _avg?: T_Fk_CorrespondanceAvgOrderByAggregateInput
+    _max?: T_Fk_CorrespondanceMaxOrderByAggregateInput
+    _min?: T_Fk_CorrespondanceMinOrderByAggregateInput
+    _sum?: T_Fk_CorrespondanceSumOrderByAggregateInput
   }
 
-  export type T_Admin_UI_SettingScalarWhereWithAggregatesInput = {
-    AND?: T_Admin_UI_SettingScalarWhereWithAggregatesInput | T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
-    OR?: T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
-    NOT?: T_Admin_UI_SettingScalarWhereWithAggregatesInput | T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
-    IdAdminUiSetting?: IntWithAggregatesFilter<"T_Admin_UI_Setting"> | number
-    SettingKey?: StringWithAggregatesFilter<"T_Admin_UI_Setting"> | string
-    SettingValue?: JsonWithAggregatesFilter<"T_Admin_UI_Setting">
-    UpdatedAt?: DateTimeWithAggregatesFilter<"T_Admin_UI_Setting"> | Date | string
-    UpdatedByUserFk?: IntNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | number | null
-    ObsAdminUiSetting?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
-    SettingScope?: StringWithAggregatesFilter<"T_Admin_UI_Setting"> | string
-    ScopeValue?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+  export type T_Fk_CorrespondanceScalarWhereWithAggregatesInput = {
+    AND?: T_Fk_CorrespondanceScalarWhereWithAggregatesInput | T_Fk_CorrespondanceScalarWhereWithAggregatesInput[]
+    OR?: T_Fk_CorrespondanceScalarWhereWithAggregatesInput[]
+    NOT?: T_Fk_CorrespondanceScalarWhereWithAggregatesInput | T_Fk_CorrespondanceScalarWhereWithAggregatesInput[]
+    IdFkCorrespondance?: IntWithAggregatesFilter<"T_Fk_Correspondance"> | number
+    ModuleName?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    SchemaName?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    ViewName?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    SourceKey?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    FieldName?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    FieldLabel?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    MappingType?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    ReferenceSchemaName?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceObjectName?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceFieldName?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    TargetCategoryIdFk?: IntNullableWithAggregatesFilter<"T_Fk_Correspondance"> | number | null
+    MappingValue?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    IsDefaultMapping?: BoolWithAggregatesFilter<"T_Fk_Correspondance"> | boolean
+    ValideFkCorrespondance?: BoolWithAggregatesFilter<"T_Fk_Correspondance"> | boolean
+    SettingScope?: StringWithAggregatesFilter<"T_Fk_Correspondance"> | string
+    ScopeValue?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
+    DisplayOrder?: IntWithAggregatesFilter<"T_Fk_Correspondance"> | number
+    UpdatedAt?: DateTimeWithAggregatesFilter<"T_Fk_Correspondance"> | Date | string
+    UpdatedByUserFk?: IntNullableWithAggregatesFilter<"T_Fk_Correspondance"> | number | null
+    ObsFkCorrespondance?: StringNullableWithAggregatesFilter<"T_Fk_Correspondance"> | string | null
   }
 
   export type T_EntiteWhereInput = {
@@ -47264,7 +47586,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementListRelationFilter
     T_Paiement?: T_PaiementListRelationFilter
     T_Professionnel?: XOR<T_ProfessionnelNullableScalarRelationFilter, T_ProfessionnelWhereInput> | null
-    T_Admin_UI_Setting?: T_Admin_UI_SettingListRelationFilter
+    T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
     T_Login?: T_LoginListRelationFilter
     T_Entite?: XOR<T_EntiteNullableScalarRelationFilter, T_EntiteWhereInput> | null
     T_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
@@ -47295,7 +47617,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementOrderByRelationAggregateInput
     T_Paiement?: T_PaiementOrderByRelationAggregateInput
     T_Professionnel?: T_ProfessionnelOrderByWithRelationInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingOrderByRelationAggregateInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceOrderByRelationAggregateInput
     T_Login?: T_LoginOrderByRelationAggregateInput
     T_Entite?: T_EntiteOrderByWithRelationInput
     T_Generique?: T_GeneriqueOrderByWithRelationInput
@@ -47329,7 +47651,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementListRelationFilter
     T_Paiement?: T_PaiementListRelationFilter
     T_Professionnel?: XOR<T_ProfessionnelNullableScalarRelationFilter, T_ProfessionnelWhereInput> | null
-    T_Admin_UI_Setting?: T_Admin_UI_SettingListRelationFilter
+    T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
     T_Login?: T_LoginListRelationFilter
     T_Entite?: XOR<T_EntiteNullableScalarRelationFilter, T_EntiteWhereInput> | null
     T_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
@@ -48787,7 +49109,7 @@ export namespace Prisma {
 
   export type T_CommandeCreateInput = {
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -48818,7 +49140,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedCreateInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
@@ -48848,7 +49170,7 @@ export namespace Prisma {
 
   export type T_CommandeUpdateInput = {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48879,7 +49201,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
@@ -48910,7 +49232,7 @@ export namespace Prisma {
   export type T_CommandeCreateManyInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
@@ -48938,7 +49260,7 @@ export namespace Prisma {
 
   export type T_CommandeUpdateManyMutationInput = {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48966,7 +49288,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateManyInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
@@ -49619,6 +49941,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: string | null
     ValideCategorieGenerique?: boolean | null
     T_Generique?: T_GeneriqueCreateNestedManyWithoutT_CategorieGeneriqueInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_CategorieGeneriqueInput
   }
 
   export type T_CategorieGeneriqueUncheckedCreateInput = {
@@ -49627,6 +49950,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: string | null
     ValideCategorieGenerique?: boolean | null
     T_Generique?: T_GeneriqueUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput
   }
 
   export type T_CategorieGeneriqueUpdateInput = {
@@ -49634,6 +49958,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
     T_Generique?: T_GeneriqueUpdateManyWithoutT_CategorieGeneriqueNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_CategorieGeneriqueNestedInput
   }
 
   export type T_CategorieGeneriqueUncheckedUpdateInput = {
@@ -49642,6 +49967,7 @@ export namespace Prisma {
     ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
     T_Generique?: T_GeneriqueUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput
   }
 
   export type T_CategorieGeneriqueCreateManyInput = {
@@ -49987,77 +50313,167 @@ export namespace Prisma {
     IdEntiteFk?: NullableIntFieldUpdateOperationsInput | number | null
   }
 
-  export type T_Admin_UI_SettingCreateInput = {
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: Date | string
-    ObsAdminUiSetting?: string | null
+  export type T_Fk_CorrespondanceCreateInput = {
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: string
     ScopeValue?: string | null
-    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_Admin_UI_SettingInput
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    ObsFkCorrespondance?: string | null
+    T_CategorieGenerique?: T_CategorieGeneriqueCreateNestedOneWithoutT_Fk_CorrespondanceInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_Fk_CorrespondanceInput
   }
 
-  export type T_Admin_UI_SettingUncheckedCreateInput = {
-    IdAdminUiSetting?: number
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: Date | string
-    UpdatedByUserFk?: number | null
-    ObsAdminUiSetting?: string | null
+  export type T_Fk_CorrespondanceUncheckedCreateInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    TargetCategoryIdFk?: number | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: string
     ScopeValue?: string | null
-  }
-
-  export type T_Admin_UI_SettingUpdateInput = {
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
-    SettingScope?: StringFieldUpdateOperationsInput | string
-    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
-    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_Admin_UI_SettingNestedInput
-  }
-
-  export type T_Admin_UI_SettingUncheckedUpdateInput = {
-    IdAdminUiSetting?: IntFieldUpdateOperationsInput | number
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
-    SettingScope?: StringFieldUpdateOperationsInput | string
-    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type T_Admin_UI_SettingCreateManyInput = {
-    IdAdminUiSetting?: number
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
+    DisplayOrder?: number
     UpdatedAt?: Date | string
     UpdatedByUserFk?: number | null
-    ObsAdminUiSetting?: string | null
-    SettingScope?: string
-    ScopeValue?: string | null
+    ObsFkCorrespondance?: string | null
   }
 
-  export type T_Admin_UI_SettingUpdateManyMutationInput = {
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  export type T_Fk_CorrespondanceUpdateInput = {
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
     SettingScope?: StringFieldUpdateOperationsInput | string
     ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneWithoutT_Fk_CorrespondanceNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_Fk_CorrespondanceNestedInput
   }
 
-  export type T_Admin_UI_SettingUncheckedUpdateManyInput = {
-    IdAdminUiSetting?: IntFieldUpdateOperationsInput | number
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
+  export type T_Fk_CorrespondanceUncheckedUpdateInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    TargetCategoryIdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
     UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Fk_CorrespondanceCreateManyInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    TargetCategoryIdFk?: number | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
+    SettingScope?: string
+    ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    UpdatedByUserFk?: number | null
+    ObsFkCorrespondance?: string | null
+  }
+
+  export type T_Fk_CorrespondanceUpdateManyMutationInput = {
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
     SettingScope?: StringFieldUpdateOperationsInput | string
     ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Fk_CorrespondanceUncheckedUpdateManyInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    TargetCategoryIdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_EntiteCreateInput = {
@@ -50405,7 +50821,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -50436,7 +50852,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -50462,7 +50878,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -50493,7 +50909,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -51838,7 +52254,7 @@ export namespace Prisma {
   export type T_CommandeCountOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
-    ID_StatutCmd?: SortOrder
+    ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
@@ -51867,7 +52283,7 @@ export namespace Prisma {
   export type T_CommandeAvgOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
-    ID_StatutCmd?: SortOrder
+    ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
     ID_UserFk?: SortOrder
     MontantHT?: SortOrder
@@ -51881,7 +52297,7 @@ export namespace Prisma {
   export type T_CommandeMaxOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
-    ID_StatutCmd?: SortOrder
+    ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
@@ -51910,7 +52326,7 @@ export namespace Prisma {
   export type T_CommandeMinOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
-    ID_StatutCmd?: SortOrder
+    ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
@@ -51939,7 +52355,7 @@ export namespace Prisma {
   export type T_CommandeSumOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
-    ID_StatutCmd?: SortOrder
+    ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
     ID_UserFk?: SortOrder
     MontantHT?: SortOrder
@@ -52445,7 +52861,17 @@ export namespace Prisma {
     none?: T_GeneriqueWhereInput
   }
 
+  export type T_Fk_CorrespondanceListRelationFilter = {
+    every?: T_Fk_CorrespondanceWhereInput
+    some?: T_Fk_CorrespondanceWhereInput
+    none?: T_Fk_CorrespondanceWhereInput
+  }
+
   export type T_GeneriqueOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type T_Fk_CorrespondanceOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -52724,101 +53150,108 @@ export namespace Prisma {
     _min?: NestedJsonNullableFilter<$PrismaModel>
     _max?: NestedJsonNullableFilter<$PrismaModel>
   }
-  export type JsonFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonFilterBase<$PrismaModel>>, 'path'>>
 
-  export type JsonFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  export type T_CategorieGeneriqueNullableScalarRelationFilter = {
+    is?: T_CategorieGeneriqueWhereInput | null
+    isNot?: T_CategorieGeneriqueWhereInput | null
   }
 
-  export type T_Admin_UI_SettingSettingKeySettingScopeScopeValueCompoundUniqueInput = {
-    SettingKey: string
+  export type T_Fk_CorrespondanceModuleNameSchemaNameViewNameSourceKeyFieldNameMappingTypeMappingValueSettingScopeScopeValueCompoundUniqueInput = {
+    ModuleName: string
+    SchemaName: string
+    ViewName: string
+    SourceKey: string
+    FieldName: string
+    MappingType: string
+    MappingValue: string
     SettingScope: string
     ScopeValue: string
   }
 
-  export type T_Admin_UI_SettingCountOrderByAggregateInput = {
-    IdAdminUiSetting?: SortOrder
-    SettingKey?: SortOrder
-    SettingValue?: SortOrder
-    UpdatedAt?: SortOrder
-    UpdatedByUserFk?: SortOrder
-    ObsAdminUiSetting?: SortOrder
+  export type T_Fk_CorrespondanceCountOrderByAggregateInput = {
+    IdFkCorrespondance?: SortOrder
+    ModuleName?: SortOrder
+    SchemaName?: SortOrder
+    ViewName?: SortOrder
+    SourceKey?: SortOrder
+    FieldName?: SortOrder
+    FieldLabel?: SortOrder
+    MappingType?: SortOrder
+    ReferenceSchemaName?: SortOrder
+    ReferenceObjectName?: SortOrder
+    ReferenceFieldName?: SortOrder
+    TargetCategoryIdFk?: SortOrder
+    MappingValue?: SortOrder
+    IsDefaultMapping?: SortOrder
+    ValideFkCorrespondance?: SortOrder
     SettingScope?: SortOrder
     ScopeValue?: SortOrder
-  }
-
-  export type T_Admin_UI_SettingAvgOrderByAggregateInput = {
-    IdAdminUiSetting?: SortOrder
-    UpdatedByUserFk?: SortOrder
-  }
-
-  export type T_Admin_UI_SettingMaxOrderByAggregateInput = {
-    IdAdminUiSetting?: SortOrder
-    SettingKey?: SortOrder
+    DisplayOrder?: SortOrder
     UpdatedAt?: SortOrder
     UpdatedByUserFk?: SortOrder
-    ObsAdminUiSetting?: SortOrder
-    SettingScope?: SortOrder
-    ScopeValue?: SortOrder
+    ObsFkCorrespondance?: SortOrder
   }
 
-  export type T_Admin_UI_SettingMinOrderByAggregateInput = {
-    IdAdminUiSetting?: SortOrder
-    SettingKey?: SortOrder
+  export type T_Fk_CorrespondanceAvgOrderByAggregateInput = {
+    IdFkCorrespondance?: SortOrder
+    TargetCategoryIdFk?: SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedByUserFk?: SortOrder
+  }
+
+  export type T_Fk_CorrespondanceMaxOrderByAggregateInput = {
+    IdFkCorrespondance?: SortOrder
+    ModuleName?: SortOrder
+    SchemaName?: SortOrder
+    ViewName?: SortOrder
+    SourceKey?: SortOrder
+    FieldName?: SortOrder
+    FieldLabel?: SortOrder
+    MappingType?: SortOrder
+    ReferenceSchemaName?: SortOrder
+    ReferenceObjectName?: SortOrder
+    ReferenceFieldName?: SortOrder
+    TargetCategoryIdFk?: SortOrder
+    MappingValue?: SortOrder
+    IsDefaultMapping?: SortOrder
+    ValideFkCorrespondance?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrder
+    DisplayOrder?: SortOrder
     UpdatedAt?: SortOrder
     UpdatedByUserFk?: SortOrder
-    ObsAdminUiSetting?: SortOrder
+    ObsFkCorrespondance?: SortOrder
+  }
+
+  export type T_Fk_CorrespondanceMinOrderByAggregateInput = {
+    IdFkCorrespondance?: SortOrder
+    ModuleName?: SortOrder
+    SchemaName?: SortOrder
+    ViewName?: SortOrder
+    SourceKey?: SortOrder
+    FieldName?: SortOrder
+    FieldLabel?: SortOrder
+    MappingType?: SortOrder
+    ReferenceSchemaName?: SortOrder
+    ReferenceObjectName?: SortOrder
+    ReferenceFieldName?: SortOrder
+    TargetCategoryIdFk?: SortOrder
+    MappingValue?: SortOrder
+    IsDefaultMapping?: SortOrder
+    ValideFkCorrespondance?: SortOrder
     SettingScope?: SortOrder
     ScopeValue?: SortOrder
-  }
-
-  export type T_Admin_UI_SettingSumOrderByAggregateInput = {
-    IdAdminUiSetting?: SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedAt?: SortOrder
     UpdatedByUserFk?: SortOrder
+    ObsFkCorrespondance?: SortOrder
   }
-  export type JsonWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
 
-  export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedJsonFilter<$PrismaModel>
-    _max?: NestedJsonFilter<$PrismaModel>
+  export type T_Fk_CorrespondanceSumOrderByAggregateInput = {
+    IdFkCorrespondance?: SortOrder
+    TargetCategoryIdFk?: SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedByUserFk?: SortOrder
   }
 
   export type T_Paiement_ArchiveListRelationFilter = {
@@ -53078,12 +53511,6 @@ export namespace Prisma {
     isNot?: T_ProfessionnelWhereInput | null
   }
 
-  export type T_Admin_UI_SettingListRelationFilter = {
-    every?: T_Admin_UI_SettingWhereInput
-    some?: T_Admin_UI_SettingWhereInput
-    none?: T_Admin_UI_SettingWhereInput
-  }
-
   export type T_ChatOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -53093,10 +53520,6 @@ export namespace Prisma {
   }
 
   export type T_CommandeOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type T_Admin_UI_SettingOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -54863,11 +55286,25 @@ export namespace Prisma {
     connect?: T_GeneriqueWhereUniqueInput | T_GeneriqueWhereUniqueInput[]
   }
 
+  export type T_Fk_CorrespondanceCreateNestedManyWithoutT_CategorieGeneriqueInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInputEnvelope
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+  }
+
   export type T_GeneriqueUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput = {
     create?: XOR<T_GeneriqueCreateWithoutT_CategorieGeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_GeneriqueCreateWithoutT_CategorieGeneriqueInput[] | T_GeneriqueUncheckedCreateWithoutT_CategorieGeneriqueInput[]
     connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_CategorieGeneriqueInput | T_GeneriqueCreateOrConnectWithoutT_CategorieGeneriqueInput[]
     createMany?: T_GeneriqueCreateManyT_CategorieGeneriqueInputEnvelope
     connect?: T_GeneriqueWhereUniqueInput | T_GeneriqueWhereUniqueInput[]
+  }
+
+  export type T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInputEnvelope
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
   }
 
   export type T_GeneriqueUpdateManyWithoutT_CategorieGeneriqueNestedInput = {
@@ -54884,6 +55321,20 @@ export namespace Prisma {
     deleteMany?: T_GeneriqueScalarWhereInput | T_GeneriqueScalarWhereInput[]
   }
 
+  export type T_Fk_CorrespondanceUpdateManyWithoutT_CategorieGeneriqueNestedInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput[]
+    upsert?: T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInputEnvelope
+    set?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    disconnect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    delete?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    update?: T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput[]
+    updateMany?: T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_CategorieGeneriqueInput[]
+    deleteMany?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
+  }
+
   export type T_GeneriqueUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput = {
     create?: XOR<T_GeneriqueCreateWithoutT_CategorieGeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_GeneriqueCreateWithoutT_CategorieGeneriqueInput[] | T_GeneriqueUncheckedCreateWithoutT_CategorieGeneriqueInput[]
     connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_CategorieGeneriqueInput | T_GeneriqueCreateOrConnectWithoutT_CategorieGeneriqueInput[]
@@ -54896,6 +55347,20 @@ export namespace Prisma {
     update?: T_GeneriqueUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput | T_GeneriqueUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput[]
     updateMany?: T_GeneriqueUpdateManyWithWhereWithoutT_CategorieGeneriqueInput | T_GeneriqueUpdateManyWithWhereWithoutT_CategorieGeneriqueInput[]
     deleteMany?: T_GeneriqueScalarWhereInput | T_GeneriqueScalarWhereInput[]
+  }
+
+  export type T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput> | T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput[]
+    upsert?: T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInputEnvelope
+    set?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    disconnect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    delete?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    update?: T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput[]
+    updateMany?: T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_CategorieGeneriqueInput | T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_CategorieGeneriqueInput[]
+    deleteMany?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
   }
 
   export type T_RechercheCreateNestedManyWithoutT_GeneriqueInput = {
@@ -56272,20 +56737,36 @@ export namespace Prisma {
     update?: XOR<XOR<T_EntiteUpdateToOneWithWhereWithoutT_Audit_LogInput, T_EntiteUpdateWithoutT_Audit_LogInput>, T_EntiteUncheckedUpdateWithoutT_Audit_LogInput>
   }
 
-  export type T_UtilisateursCreateNestedOneWithoutT_Admin_UI_SettingInput = {
-    create?: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
-    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput
+  export type T_CategorieGeneriqueCreateNestedOneWithoutT_Fk_CorrespondanceInput = {
+    create?: XOR<T_CategorieGeneriqueCreateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+    connectOrCreate?: T_CategorieGeneriqueCreateOrConnectWithoutT_Fk_CorrespondanceInput
+    connect?: T_CategorieGeneriqueWhereUniqueInput
+  }
+
+  export type T_UtilisateursCreateNestedOneWithoutT_Fk_CorrespondanceInput = {
+    create?: XOR<T_UtilisateursCreateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Fk_CorrespondanceInput
     connect?: T_UtilisateursWhereUniqueInput
   }
 
-  export type T_UtilisateursUpdateOneWithoutT_Admin_UI_SettingNestedInput = {
-    create?: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
-    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput
-    upsert?: T_UtilisateursUpsertWithoutT_Admin_UI_SettingInput
+  export type T_CategorieGeneriqueUpdateOneWithoutT_Fk_CorrespondanceNestedInput = {
+    create?: XOR<T_CategorieGeneriqueCreateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+    connectOrCreate?: T_CategorieGeneriqueCreateOrConnectWithoutT_Fk_CorrespondanceInput
+    upsert?: T_CategorieGeneriqueUpsertWithoutT_Fk_CorrespondanceInput
+    disconnect?: T_CategorieGeneriqueWhereInput | boolean
+    delete?: T_CategorieGeneriqueWhereInput | boolean
+    connect?: T_CategorieGeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_CategorieGeneriqueUpdateToOneWithWhereWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUpdateWithoutT_Fk_CorrespondanceInput>, T_CategorieGeneriqueUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
+  }
+
+  export type T_UtilisateursUpdateOneWithoutT_Fk_CorrespondanceNestedInput = {
+    create?: XOR<T_UtilisateursCreateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Fk_CorrespondanceInput
+    upsert?: T_UtilisateursUpsertWithoutT_Fk_CorrespondanceInput
     disconnect?: T_UtilisateursWhereInput | boolean
     delete?: T_UtilisateursWhereInput | boolean
     connect?: T_UtilisateursWhereUniqueInput
-    update?: XOR<XOR<T_UtilisateursUpdateToOneWithWhereWithoutT_Admin_UI_SettingInput, T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput>, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
+    update?: XOR<XOR<T_UtilisateursUpdateToOneWithWhereWithoutT_Fk_CorrespondanceInput, T_UtilisateursUpdateWithoutT_Fk_CorrespondanceInput>, T_UtilisateursUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
   }
 
   export type T_RechercheCreateNestedManyWithoutT_EntiteInput = {
@@ -57004,11 +57485,11 @@ export namespace Prisma {
     connect?: T_ProfessionnelWhereUniqueInput
   }
 
-  export type T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput = {
-    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
-    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
-    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
-    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+  export type T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_UtilisateursInputEnvelope
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
   }
 
   export type T_LoginCreateNestedManyWithoutT_UtilisateursInput = {
@@ -57092,11 +57573,11 @@ export namespace Prisma {
     connect?: T_ProfessionnelWhereUniqueInput
   }
 
-  export type T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput = {
-    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
-    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
-    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
-    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+  export type T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_UtilisateursInputEnvelope
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
   }
 
   export type T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput = {
@@ -57228,18 +57709,18 @@ export namespace Prisma {
     update?: XOR<XOR<T_ProfessionnelUpdateToOneWithWhereWithoutT_UtilisateursInput, T_ProfessionnelUpdateWithoutT_UtilisateursInput>, T_ProfessionnelUncheckedUpdateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput = {
-    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
-    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
-    upsert?: T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
-    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
-    set?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    disconnect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    delete?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    update?: T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
-    updateMany?: T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput[]
-    deleteMany?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
+  export type T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
+    upsert?: T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_UtilisateursInputEnvelope
+    set?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    disconnect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    delete?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    update?: T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
+    updateMany?: T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_UtilisateursInput[]
+    deleteMany?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
   }
 
   export type T_LoginUpdateManyWithoutT_UtilisateursNestedInput = {
@@ -57398,18 +57879,18 @@ export namespace Prisma {
     update?: XOR<XOR<T_ProfessionnelUpdateToOneWithWhereWithoutT_UtilisateursInput, T_ProfessionnelUpdateWithoutT_UtilisateursInput>, T_ProfessionnelUncheckedUpdateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput = {
-    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
-    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
-    upsert?: T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
-    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
-    set?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    disconnect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    delete?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
-    update?: T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
-    updateMany?: T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput[]
-    deleteMany?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
+  export type T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput = {
+    create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
+    upsert?: T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
+    createMany?: T_Fk_CorrespondanceCreateManyT_UtilisateursInputEnvelope
+    set?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    disconnect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    delete?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    connect?: T_Fk_CorrespondanceWhereUniqueInput | T_Fk_CorrespondanceWhereUniqueInput[]
+    update?: T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
+    updateMany?: T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_UtilisateursInput | T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_UtilisateursInput[]
+    deleteMany?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
   }
 
   export type T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput = {
@@ -57806,29 +58287,6 @@ export namespace Prisma {
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
-  export type NestedJsonFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
-        Required<NestedJsonFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>
-
-  export type NestedJsonFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
 
   export type NestedUuidNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
@@ -58082,7 +58540,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -58112,7 +58570,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -58377,7 +58835,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -58407,7 +58865,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -58432,7 +58890,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -58462,7 +58920,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -58531,7 +58989,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -58561,7 +59019,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -58772,7 +59230,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -58802,7 +59260,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -59007,7 +59465,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -59037,7 +59495,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -64613,7 +65071,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -64643,7 +65101,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -64775,7 +65233,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -64805,7 +65263,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -64890,7 +65348,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -64920,7 +65378,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -65020,7 +65478,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -65050,7 +65508,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -65088,7 +65546,7 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_CommandeDetailInput = {
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -65118,7 +65576,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedCreateWithoutT_CommandeDetailInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
@@ -65217,7 +65675,7 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_CommandeDetailInput = {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -65247,7 +65705,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateWithoutT_CommandeDetailInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65390,7 +65848,7 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_MouvementInput = {
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -65420,7 +65878,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedCreateWithoutT_MouvementInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
@@ -65525,7 +65983,7 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_MouvementInput = {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -65555,7 +66013,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateWithoutT_MouvementInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66285,7 +66743,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -66315,7 +66773,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -66449,7 +66907,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -66479,7 +66937,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -66684,7 +67142,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -66714,7 +67172,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -66860,7 +67318,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -66890,7 +67348,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -67258,7 +67716,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -67288,7 +67746,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -67608,7 +68066,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -67638,7 +68096,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -68158,6 +68616,61 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput = {
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
+    SettingScope?: string
+    ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    ObsFkCorrespondance?: string | null
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_Fk_CorrespondanceInput
+  }
+
+  export type T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
+    SettingScope?: string
+    ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    UpdatedByUserFk?: number | null
+    ObsFkCorrespondance?: string | null
+  }
+
+  export type T_Fk_CorrespondanceCreateOrConnectWithoutT_CategorieGeneriqueInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    create: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput>
+  }
+
+  export type T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInputEnvelope = {
+    data: T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInput | T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
   export type T_GeneriqueUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput = {
     where: T_GeneriqueWhereUniqueInput
     update: XOR<T_GeneriqueUpdateWithoutT_CategorieGeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_CategorieGeneriqueInput>
@@ -68194,6 +68707,49 @@ export namespace Prisma {
     VisibleAll?: BoolNullableFilter<"T_Generique"> | boolean | null
     ObsGenerique?: StringNullableFilter<"T_Generique"> | string | null
     ValideGenerique?: BoolFilter<"T_Generique"> | boolean
+  }
+
+  export type T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_CategorieGeneriqueInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    update: XOR<T_Fk_CorrespondanceUpdateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedUpdateWithoutT_CategorieGeneriqueInput>
+    create: XOR<T_Fk_CorrespondanceCreateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_CategorieGeneriqueInput>
+  }
+
+  export type T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_CategorieGeneriqueInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    data: XOR<T_Fk_CorrespondanceUpdateWithoutT_CategorieGeneriqueInput, T_Fk_CorrespondanceUncheckedUpdateWithoutT_CategorieGeneriqueInput>
+  }
+
+  export type T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_CategorieGeneriqueInput = {
+    where: T_Fk_CorrespondanceScalarWhereInput
+    data: XOR<T_Fk_CorrespondanceUpdateManyMutationInput, T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_CategorieGeneriqueInput>
+  }
+
+  export type T_Fk_CorrespondanceScalarWhereInput = {
+    AND?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
+    OR?: T_Fk_CorrespondanceScalarWhereInput[]
+    NOT?: T_Fk_CorrespondanceScalarWhereInput | T_Fk_CorrespondanceScalarWhereInput[]
+    IdFkCorrespondance?: IntFilter<"T_Fk_Correspondance"> | number
+    ModuleName?: StringFilter<"T_Fk_Correspondance"> | string
+    SchemaName?: StringFilter<"T_Fk_Correspondance"> | string
+    ViewName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    SourceKey?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldName?: StringFilter<"T_Fk_Correspondance"> | string
+    FieldLabel?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    MappingType?: StringFilter<"T_Fk_Correspondance"> | string
+    ReferenceSchemaName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceObjectName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    ReferenceFieldName?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    TargetCategoryIdFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    MappingValue?: StringFilter<"T_Fk_Correspondance"> | string
+    IsDefaultMapping?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    ValideFkCorrespondance?: BoolFilter<"T_Fk_Correspondance"> | boolean
+    SettingScope?: StringFilter<"T_Fk_Correspondance"> | string
+    ScopeValue?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
+    DisplayOrder?: IntFilter<"T_Fk_Correspondance"> | number
+    UpdatedAt?: DateTimeFilter<"T_Fk_Correspondance"> | Date | string
+    UpdatedByUserFk?: IntNullableFilter<"T_Fk_Correspondance"> | number | null
+    ObsFkCorrespondance?: StringNullableFilter<"T_Fk_Correspondance"> | string | null
   }
 
   export type T_RechercheCreateWithoutT_GeneriqueInput = {
@@ -69577,6 +70133,7 @@ export namespace Prisma {
     NomCategorieGenerique?: string | null
     ModuleCategorieGenerique?: string | null
     ValideCategorieGenerique?: boolean | null
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_CategorieGeneriqueInput
   }
 
   export type T_CategorieGeneriqueUncheckedCreateWithoutT_GeneriqueInput = {
@@ -69584,6 +70141,7 @@ export namespace Prisma {
     NomCategorieGenerique?: string | null
     ModuleCategorieGenerique?: string | null
     ValideCategorieGenerique?: boolean | null
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput
   }
 
   export type T_CategorieGeneriqueCreateOrConnectWithoutT_GeneriqueInput = {
@@ -69719,7 +70277,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
   }
@@ -69748,7 +70306,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -70295,6 +70853,7 @@ export namespace Prisma {
     NomCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_CategorieGeneriqueNestedInput
   }
 
   export type T_CategorieGeneriqueUncheckedUpdateWithoutT_GeneriqueInput = {
@@ -70302,6 +70861,7 @@ export namespace Prisma {
     NomCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput
   }
 
   export type T_EntiteUpsertWithWhereUniqueWithoutT_GeneriqueInput = {
@@ -70530,7 +71090,27 @@ export namespace Prisma {
     T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_EntiteNestedInput
   }
 
-  export type T_UtilisateursCreateWithoutT_Admin_UI_SettingInput = {
+  export type T_CategorieGeneriqueCreateWithoutT_Fk_CorrespondanceInput = {
+    NomCategorieGenerique?: string | null
+    ModuleCategorieGenerique?: string | null
+    ValideCategorieGenerique?: boolean | null
+    T_Generique?: T_GeneriqueCreateNestedManyWithoutT_CategorieGeneriqueInput
+  }
+
+  export type T_CategorieGeneriqueUncheckedCreateWithoutT_Fk_CorrespondanceInput = {
+    ID_CategorieGenerique?: number
+    NomCategorieGenerique?: string | null
+    ModuleCategorieGenerique?: string | null
+    ValideCategorieGenerique?: boolean | null
+    T_Generique?: T_GeneriqueUncheckedCreateNestedManyWithoutT_CategorieGeneriqueInput
+  }
+
+  export type T_CategorieGeneriqueCreateOrConnectWithoutT_Fk_CorrespondanceInput = {
+    where: T_CategorieGeneriqueWhereUniqueInput
+    create: XOR<T_CategorieGeneriqueCreateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+  }
+
+  export type T_UtilisateursCreateWithoutT_Fk_CorrespondanceInput = {
     NomUser: string
     PrenomUser: string
     EmailUser: string
@@ -70557,7 +71137,7 @@ export namespace Prisma {
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
   }
 
-  export type T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput = {
+  export type T_UtilisateursUncheckedCreateWithoutT_Fk_CorrespondanceInput = {
     IdUser?: number
     NomUser: string
     PrenomUser: string
@@ -70585,23 +71165,49 @@ export namespace Prisma {
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
-  export type T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput = {
+  export type T_UtilisateursCreateOrConnectWithoutT_Fk_CorrespondanceInput = {
     where: T_UtilisateursWhereUniqueInput
-    create: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+    create: XOR<T_UtilisateursCreateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedCreateWithoutT_Fk_CorrespondanceInput>
   }
 
-  export type T_UtilisateursUpsertWithoutT_Admin_UI_SettingInput = {
-    update: XOR<T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
-    create: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+  export type T_CategorieGeneriqueUpsertWithoutT_Fk_CorrespondanceInput = {
+    update: XOR<T_CategorieGeneriqueUpdateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
+    create: XOR<T_CategorieGeneriqueCreateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedCreateWithoutT_Fk_CorrespondanceInput>
+    where?: T_CategorieGeneriqueWhereInput
+  }
+
+  export type T_CategorieGeneriqueUpdateToOneWithWhereWithoutT_Fk_CorrespondanceInput = {
+    where?: T_CategorieGeneriqueWhereInput
+    data: XOR<T_CategorieGeneriqueUpdateWithoutT_Fk_CorrespondanceInput, T_CategorieGeneriqueUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
+  }
+
+  export type T_CategorieGeneriqueUpdateWithoutT_Fk_CorrespondanceInput = {
+    NomCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    T_Generique?: T_GeneriqueUpdateManyWithoutT_CategorieGeneriqueNestedInput
+  }
+
+  export type T_CategorieGeneriqueUncheckedUpdateWithoutT_Fk_CorrespondanceInput = {
+    ID_CategorieGenerique?: IntFieldUpdateOperationsInput | number
+    NomCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ModuleCategorieGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideCategorieGenerique?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    T_Generique?: T_GeneriqueUncheckedUpdateManyWithoutT_CategorieGeneriqueNestedInput
+  }
+
+  export type T_UtilisateursUpsertWithoutT_Fk_CorrespondanceInput = {
+    update: XOR<T_UtilisateursUpdateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
+    create: XOR<T_UtilisateursCreateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedCreateWithoutT_Fk_CorrespondanceInput>
     where?: T_UtilisateursWhereInput
   }
 
-  export type T_UtilisateursUpdateToOneWithWhereWithoutT_Admin_UI_SettingInput = {
+  export type T_UtilisateursUpdateToOneWithWhereWithoutT_Fk_CorrespondanceInput = {
     where?: T_UtilisateursWhereInput
-    data: XOR<T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
+    data: XOR<T_UtilisateursUpdateWithoutT_Fk_CorrespondanceInput, T_UtilisateursUncheckedUpdateWithoutT_Fk_CorrespondanceInput>
   }
 
-  export type T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput = {
+  export type T_UtilisateursUpdateWithoutT_Fk_CorrespondanceInput = {
     NomUser?: StringFieldUpdateOperationsInput | string
     PrenomUser?: StringFieldUpdateOperationsInput | string
     EmailUser?: StringFieldUpdateOperationsInput | string
@@ -70628,7 +71234,7 @@ export namespace Prisma {
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
   }
 
-  export type T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput = {
+  export type T_UtilisateursUncheckedUpdateWithoutT_Fk_CorrespondanceInput = {
     IdUser?: IntFieldUpdateOperationsInput | number
     NomUser?: StringFieldUpdateOperationsInput | string
     PrenomUser?: StringFieldUpdateOperationsInput | string
@@ -71121,7 +71727,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
   }
@@ -71150,7 +71756,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -72430,7 +73036,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
   }
@@ -72460,7 +73066,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
   export type T_UtilisateursCreateOrConnectWithoutT_LoginInput = {
@@ -72665,7 +73271,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
   }
@@ -72695,7 +73301,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
   export type T_RechercheCreateWithoutT_UtilisateursInput = {
@@ -72885,7 +73491,7 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_UtilisateursInput = {
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -72915,7 +73521,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedCreateWithoutT_UtilisateursInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -73058,32 +73664,58 @@ export namespace Prisma {
     create: XOR<T_ProfessionnelCreateWithoutT_UtilisateursInput, T_ProfessionnelUncheckedCreateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingCreateWithoutT_UtilisateursInput = {
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: Date | string
-    ObsAdminUiSetting?: string | null
+  export type T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput = {
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: string
     ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    ObsFkCorrespondance?: string | null
+    T_CategorieGenerique?: T_CategorieGeneriqueCreateNestedOneWithoutT_Fk_CorrespondanceInput
   }
 
-  export type T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput = {
-    IdAdminUiSetting?: number
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: Date | string
-    ObsAdminUiSetting?: string | null
+  export type T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    TargetCategoryIdFk?: number | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: string
     ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    ObsFkCorrespondance?: string | null
   }
 
-  export type T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput = {
-    where: T_Admin_UI_SettingWhereUniqueInput
-    create: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput>
+  export type T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    create: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope = {
-    data: T_Admin_UI_SettingCreateManyT_UtilisateursInput | T_Admin_UI_SettingCreateManyT_UtilisateursInput[]
+  export type T_Fk_CorrespondanceCreateManyT_UtilisateursInputEnvelope = {
+    data: T_Fk_CorrespondanceCreateManyT_UtilisateursInput | T_Fk_CorrespondanceCreateManyT_UtilisateursInput[]
     skipDuplicates?: boolean
   }
 
@@ -73404,7 +74036,7 @@ export namespace Prisma {
     NOT?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
     ID_Commande?: IntFilter<"T_Commande"> | number
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_StatutCmd?: IntNullableFilter<"T_Commande"> | number | null
+    ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
@@ -73496,34 +74128,20 @@ export namespace Prisma {
     T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_ProfessionnelNestedInput
   }
 
-  export type T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
-    where: T_Admin_UI_SettingWhereUniqueInput
-    update: XOR<T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput>
-    create: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput>
+  export type T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    update: XOR<T_Fk_CorrespondanceUpdateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedUpdateWithoutT_UtilisateursInput>
+    create: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput = {
-    where: T_Admin_UI_SettingWhereUniqueInput
-    data: XOR<T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput>
+  export type T_Fk_CorrespondanceUpdateWithWhereUniqueWithoutT_UtilisateursInput = {
+    where: T_Fk_CorrespondanceWhereUniqueInput
+    data: XOR<T_Fk_CorrespondanceUpdateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedUpdateWithoutT_UtilisateursInput>
   }
 
-  export type T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput = {
-    where: T_Admin_UI_SettingScalarWhereInput
-    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursInput>
-  }
-
-  export type T_Admin_UI_SettingScalarWhereInput = {
-    AND?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
-    OR?: T_Admin_UI_SettingScalarWhereInput[]
-    NOT?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
-    IdAdminUiSetting?: IntFilter<"T_Admin_UI_Setting"> | number
-    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
-    SettingValue?: JsonFilter<"T_Admin_UI_Setting">
-    UpdatedAt?: DateTimeFilter<"T_Admin_UI_Setting"> | Date | string
-    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
-    ObsAdminUiSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
-    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
-    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+  export type T_Fk_CorrespondanceUpdateManyWithWhereWithoutT_UtilisateursInput = {
+    where: T_Fk_CorrespondanceScalarWhereInput
+    data: XOR<T_Fk_CorrespondanceUpdateManyMutationInput, T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursInput>
   }
 
   export type T_LoginUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
@@ -73832,7 +74450,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -73862,7 +74480,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -74007,7 +74625,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -74037,7 +74655,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -75123,6 +75741,29 @@ export namespace Prisma {
     ValideGenerique?: boolean
   }
 
+  export type T_Fk_CorrespondanceCreateManyT_CategorieGeneriqueInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
+    SettingScope?: string
+    ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    UpdatedByUserFk?: number | null
+    ObsFkCorrespondance?: string | null
+  }
+
   export type T_GeneriqueUpdateWithoutT_CategorieGeneriqueInput = {
     NomGenerique?: StringFieldUpdateOperationsInput | string
     AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
@@ -75238,6 +75879,74 @@ export namespace Prisma {
     VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
     ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
     ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type T_Fk_CorrespondanceUpdateWithoutT_CategorieGeneriqueInput = {
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_Fk_CorrespondanceNestedInput
+  }
+
+  export type T_Fk_CorrespondanceUncheckedUpdateWithoutT_CategorieGeneriqueInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_CategorieGeneriqueInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_RechercheCreateManyT_GeneriqueInput = {
@@ -77554,7 +78263,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
   }
@@ -77583,7 +78292,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -78108,7 +78817,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
   }
@@ -78137,7 +78846,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
-    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -78227,7 +78936,7 @@ export namespace Prisma {
   export type T_CommandeCreateManyT_UtilisateursInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
-    ID_StatutCmd?: number | null
+    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -78282,14 +78991,27 @@ export namespace Prisma {
     IdEntiteFk: number
   }
 
-  export type T_Admin_UI_SettingCreateManyT_UtilisateursInput = {
-    IdAdminUiSetting?: number
-    SettingKey: string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: Date | string
-    ObsAdminUiSetting?: string | null
+  export type T_Fk_CorrespondanceCreateManyT_UtilisateursInput = {
+    IdFkCorrespondance?: number
+    ModuleName: string
+    SchemaName: string
+    ViewName?: string | null
+    SourceKey: string
+    FieldName: string
+    FieldLabel?: string | null
+    MappingType?: string
+    ReferenceSchemaName?: string | null
+    ReferenceObjectName?: string | null
+    ReferenceFieldName?: string | null
+    TargetCategoryIdFk?: number | null
+    MappingValue: string
+    IsDefaultMapping?: boolean
+    ValideFkCorrespondance?: boolean
     SettingScope?: string
     ScopeValue?: string | null
+    DisplayOrder?: number
+    UpdatedAt?: Date | string
+    ObsFkCorrespondance?: string | null
   }
 
   export type T_LoginCreateManyT_UtilisateursInput = {
@@ -78502,7 +79224,7 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_UtilisateursInput = {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -78532,7 +79254,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateWithoutT_UtilisateursInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -78562,7 +79284,7 @@ export namespace Prisma {
   export type T_CommandeUncheckedUpdateManyWithoutT_UtilisateursInput = {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmd?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -78675,33 +79397,72 @@ export namespace Prisma {
     IdEntiteFk?: IntFieldUpdateOperationsInput | number
   }
 
-  export type T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput = {
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  export type T_Fk_CorrespondanceUpdateWithoutT_UtilisateursInput = {
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
     SettingScope?: StringFieldUpdateOperationsInput | string
     ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneWithoutT_Fk_CorrespondanceNestedInput
   }
 
-  export type T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput = {
-    IdAdminUiSetting?: IntFieldUpdateOperationsInput | number
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  export type T_Fk_CorrespondanceUncheckedUpdateWithoutT_UtilisateursInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    TargetCategoryIdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
     SettingScope?: StringFieldUpdateOperationsInput | string
     ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
-  export type T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursInput = {
-    IdAdminUiSetting?: IntFieldUpdateOperationsInput | number
-    SettingKey?: StringFieldUpdateOperationsInput | string
-    SettingValue?: JsonNullValueInput | InputJsonValue
-    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    ObsAdminUiSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  export type T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursInput = {
+    IdFkCorrespondance?: IntFieldUpdateOperationsInput | number
+    ModuleName?: StringFieldUpdateOperationsInput | string
+    SchemaName?: StringFieldUpdateOperationsInput | string
+    ViewName?: NullableStringFieldUpdateOperationsInput | string | null
+    SourceKey?: StringFieldUpdateOperationsInput | string
+    FieldName?: StringFieldUpdateOperationsInput | string
+    FieldLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    MappingType?: StringFieldUpdateOperationsInput | string
+    ReferenceSchemaName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceObjectName?: NullableStringFieldUpdateOperationsInput | string | null
+    ReferenceFieldName?: NullableStringFieldUpdateOperationsInput | string | null
+    TargetCategoryIdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    MappingValue?: StringFieldUpdateOperationsInput | string
+    IsDefaultMapping?: BoolFieldUpdateOperationsInput | boolean
+    ValideFkCorrespondance?: BoolFieldUpdateOperationsInput | boolean
     SettingScope?: StringFieldUpdateOperationsInput | string
     ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: IntFieldUpdateOperationsInput | number
+    UpdatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ObsFkCorrespondance?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_LoginUpdateWithoutT_UtilisateursInput = {

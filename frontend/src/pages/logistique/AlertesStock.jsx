@@ -73,6 +73,9 @@ export default function AlertesStock({ refreshKey }) {
       {!loading && !error && rows.length > 0 ? (
         <SimpleTable
           rows={rows}
+          enableSelection
+          defaultPinnedColumns={["NomArticle"]}
+          defaultSortColumn="Marge"
           rowClassName={(row) => (Number(row.Marge) <= 0 ? "logistics-row-critical" : "logistics-row-warning")}
           columns={[
             { key: "NomArticle", label: "Article" },

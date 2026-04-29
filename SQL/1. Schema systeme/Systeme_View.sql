@@ -41,6 +41,118 @@ FROM systeme."T_Audit_Log" a
 WHERE a."TableName"::text = 'T_Admin_UI_Setting'::text
 ORDER BY a."ChangedAt" DESC;
 ALTER TABLE systeme."V_Admin_UI_Setting_Audit" OWNER TO postgres;
+-- View: systeme.V_Fk_Correspondance_Detail
+-- DROP VIEW systeme."V_Fk_Correspondance_Detail";
+CREATE OR REPLACE VIEW systeme."V_Fk_Correspondance_Detail" AS
+SELECT fc."IdFkCorrespondance",
+    fc."ModuleName",
+    fc."SchemaName",
+    fc."ViewName",
+    fc."SourceKey",
+    fc."FieldName",
+    fc."FieldLabel",
+    fc."MappingType",
+    fc."ReferenceSchemaName",
+    fc."ReferenceObjectName",
+    fc."ReferenceFieldName",
+    fc."TargetCategoryIdFk",
+    c."NomCategorieGenerique",
+    fc."MappingValue",
+    fc."IsDefaultMapping",
+    fc."ValideFkCorrespondance",
+    fc."SettingScope",
+    fc."ScopeValue",
+    fc."DisplayOrder",
+    fc."UpdatedAt",
+    fc."UpdatedByUserFk",
+    COALESCE(
+        NULLIF(
+            TRIM(
+                BOTH
+                FROM concat(
+                        COALESCE(u."PrenomUser", ''::character varying),
+                        ' ',
+                        COALESCE(u."NomUser", ''::character varying)
+                    )
+            ),
+            ''::text
+        ),
+        CASE
+            WHEN fc."UpdatedByUserFk" IS NOT NULL THEN 'Utilisateur #'::text || fc."UpdatedByUserFk"
+            ELSE NULL::text
+        END
+    ) AS "UpdatedByName",
+    fc."ObsFkCorrespondance"
+FROM systeme."T_Fk_Correspondance" fc
+    LEFT JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique" = fc."TargetCategoryIdFk"
+    LEFT JOIN systeme."T_Utilisateurs" u ON u."IdUser" = fc."UpdatedByUserFk";
+ALTER TABLE systeme."V_Fk_Correspondance_Detail" OWNER TO postgres;
+-- View: systeme.V_Fk_Correspondance
+-- DROP VIEW systeme."V_Fk_Correspondance";
+CREATE OR REPLACE VIEW systeme."V_Fk_Correspondance" AS
+SELECT fc."ModuleName",
+    fc."SchemaName",
+    fc."ViewName",
+    fc."SourceKey",
+    fc."FieldName",
+    max(fc."FieldLabel") AS "FieldLabel",
+    fc."MappingType",
+    max(fc."ReferenceSchemaName") AS "ReferenceSchemaName",
+    max(fc."ReferenceObjectName") AS "ReferenceObjectName",
+    max(fc."ReferenceFieldName") AS "ReferenceFieldName",
+    string_agg(DISTINCT fc."MappingValue"::text, ', '::text ORDER BY fc."MappingValue"::text) AS "MappingValues",
+    string_agg(DISTINCT c."NomCategorieGenerique"::text, ', '::text ORDER BY c."NomCategorieGenerique"::text) AS "CategoryLabels",
+    bool_or(fc."IsDefaultMapping") AS "HasDefaultMapping",
+    bool_or(fc."ValideFkCorrespondance") AS "HasActiveMapping",
+    fc."SettingScope",
+    fc."ScopeValue",
+    count(*) AS "NbCorrespondances",
+    max(fc."UpdatedAt") AS "UpdatedAt"
+FROM systeme."T_Fk_Correspondance" fc
+    LEFT JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique" = fc."TargetCategoryIdFk"
+GROUP BY fc."ModuleName",
+    fc."SchemaName",
+    fc."ViewName",
+    fc."SourceKey",
+    fc."FieldName",
+    fc."MappingType",
+    fc."SettingScope",
+    fc."ScopeValue";
+ALTER TABLE systeme."V_Fk_Correspondance" OWNER TO postgres;
+-- View: systeme.V_Fk_Correspondance_Audit
+-- DROP VIEW systeme."V_Fk_Correspondance_Audit";
+CREATE OR REPLACE VIEW systeme."V_Fk_Correspondance_Audit" AS
+SELECT a."IdLog",
+    a."TableName",
+    a."Operation",
+    a."ChangedAt",
+    COALESCE(
+        a."NewData"->>'settingScope'::text,
+        a."OldData"->>'settingScope'::text,
+        'global'::text
+    ) AS "SettingScope",
+    COALESCE(
+        a."NewData"->>'scopeValue'::text,
+        a."OldData"->>'scopeValue'::text
+    ) AS "ScopeValue",
+    COALESCE(
+        a."NewData"->>'updatedByName'::text,
+        a."OldData"->>'updatedByName'::text
+    ) AS "UpdatedByName",
+    COALESCE(
+        a."NewData"->>'updatedByUserId'::text,
+        a."OldData"->>'updatedByUserId'::text
+    ) AS "UpdatedByUserId",
+    COALESCE(
+        a."NewData"->>'updatedAt'::text,
+        a."OldData"->>'updatedAt'::text
+    ) AS "UpdatedSettingAt",
+    a."OldData",
+    a."NewData"
+FROM systeme."T_Audit_Log" a
+WHERE a."TableName"::text = 'T_Fk_Correspondance'::text
+ORDER BY a."ChangedAt" DESC;
+ALTER TABLE systeme."V_Fk_Correspondance_Audit" OWNER TO postgres;
 -- View: systeme.V_Entite_Localisation_Detail
 -- DROP VIEW systeme."V_Entite_Localisation_Detail";
 CREATE OR REPLACE VIEW systeme."V_Entite_Localisation_Detail" AS

@@ -47,6 +47,9 @@ export default function CouvertureStock({ refreshKey }) {
       {!loading && !error && rows.length > 0 ? (
         <SimpleTable
           rows={rows}
+          enableSelection
+          defaultPinnedColumns={["NomArticle"]}
+          defaultSortColumn="CouvertureMois"
           rowClassName={(row) => (Number(row.CouvertureMois || 0) <= 1 ? "logistics-row-critical" : "")}
           columns={[
             { key: "NomArticle", label: "Article" },

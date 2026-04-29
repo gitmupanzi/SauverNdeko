@@ -328,7 +328,7 @@ model T_Article {
 model T_Commande {
   ID_Commande            Int                @id @default(autoincrement())
   ID_TypeCmdFk           Int?
-  ID_StatutCmd           Int?
+  ID_StatutCmdFk         Int?
   ID_ClientFk            Int?
   ID_UserFk              Int?
   geolocalisationCmd     String?            @db.VarChar(255)
@@ -515,11 +515,12 @@ model T_Professionnel_Entite {
 }
 
 model T_CategorieGenerique {
-  ID_CategorieGenerique    Int           @id @default(autoincrement())
-  NomCategorieGenerique    String?       @db.VarChar(255)
+  ID_CategorieGenerique    Int                   @id @default(autoincrement())
+  NomCategorieGenerique    String?               @db.VarChar(255)
   ModuleCategorieGenerique String?
-  ValideCategorieGenerique Boolean?      @default(true)
+  ValideCategorieGenerique Boolean?              @default(true)
   T_Generique              T_Generique[]
+  T_Fk_Correspondance      T_Fk_Correspondance[] @relation("FkCorrespondanceCategory")
 
   @@schema("referentiel")
 }
@@ -594,19 +595,36 @@ model T_Audit_Log {
   @@schema("systeme")
 }
 
-model T_Admin_UI_Setting {
-  IdAdminUiSetting  Int             @id @default(autoincrement())
-  SettingKey        String          @db.VarChar(120)
-  SettingValue      Json            @default("{}")
-  UpdatedAt         DateTime        @default(now()) @db.Timestamp(6)
-  UpdatedByUserFk   Int?
-  ObsAdminUiSetting String?
-  SettingScope      String          @default("global") @db.VarChar(60)
-  ScopeValue        String?         @db.VarChar(120)
-  T_Utilisateurs    T_Utilisateurs? @relation("AdminUiSettingUpdatedBy", fields: [UpdatedByUserFk], references: [IdUser], map: "Fk_AdminUiSetting_User")
+model T_Fk_Correspondance {
+  IdFkCorrespondance     Int                   @id @default(autoincrement())
+  ModuleName             String                @db.VarChar(80)
+  SchemaName             String                @db.VarChar(80)
+  ViewName               String?               @db.VarChar(120)
+  SourceKey              String                @db.VarChar(120)
+  FieldName              String                @db.VarChar(120)
+  FieldLabel             String?               @db.VarChar(255)
+  MappingType            String                @default("generic_category") @db.VarChar(40)
+  ReferenceSchemaName    String?               @db.VarChar(80)
+  ReferenceObjectName    String?               @db.VarChar(120)
+  ReferenceFieldName     String?               @db.VarChar(120)
+  TargetCategoryIdFk     Int?
+  MappingValue           String                @db.VarChar(120)
+  IsDefaultMapping       Boolean               @default(false)
+  ValideFkCorrespondance Boolean               @default(true)
+  SettingScope           String                @default("global") @db.VarChar(60)
+  ScopeValue             String?               @db.VarChar(120)
+  DisplayOrder           Int                   @default(0)
+  UpdatedAt              DateTime              @default(now()) @db.Timestamp(6)
+  UpdatedByUserFk        Int?
+  ObsFkCorrespondance    String?
+  T_CategorieGenerique   T_CategorieGenerique? @relation("FkCorrespondanceCategory", fields: [TargetCategoryIdFk], references: [ID_CategorieGenerique], onUpdate: Cascade, onDelete: SetNull, map: "Fk_FkCorrespondance_Category")
+  T_Utilisateurs         T_Utilisateurs?       @relation("FkCorrespondanceUpdatedBy", fields: [UpdatedByUserFk], references: [IdUser], onUpdate: Cascade, onDelete: SetNull, map: "Fk_FkCorrespondance_User")
 
-  @@unique([SettingKey, SettingScope, ScopeValue], map: "UQ_AdminUiSetting_Scope")
-  @@index([UpdatedByUserFk], map: "idx_adminuisetting_updatedby")
+  @@unique([ModuleName, SchemaName, ViewName, SourceKey, FieldName, MappingType, MappingValue, SettingScope, ScopeValue], map: "UQ_FkCorrespondance_SourceValueScope")
+  @@index([SchemaName, ViewName, SourceKey], map: "idx_fkcorrespondance_source")
+  @@index([SettingScope, ScopeValue], map: "idx_fkcorrespondance_scope")
+  @@index([TargetCategoryIdFk], map: "idx_fkcorrespondance_category")
+  @@index([UpdatedByUserFk], map: "idx_fkcorrespondance_updatedby")
   @@schema("systeme")
 }
 
@@ -691,34 +709,34 @@ model T_Login {
 }
 
 model T_Utilisateurs {
-  IdUser               Int                  @id(map: "Pk_IdUser") @default(autoincrement())
-  NomUser              String               @db.VarChar(100)
-  PrenomUser           String               @db.VarChar(100)
-  EmailUser            String               @unique(map: "utilisateurs_emailuser_key") @db.VarChar(150)
+  IdUser               Int                   @id(map: "Pk_IdUser") @default(autoincrement())
+  NomUser              String                @db.VarChar(100)
+  PrenomUser           String                @db.VarChar(100)
+  EmailUser            String                @unique(map: "utilisateurs_emailuser_key") @db.VarChar(150)
   MotdepasseUser       String
-  PhoneUser            String?              @db.VarChar(20)
-  DatecreationUser     DateTime?            @default(now()) @db.Timestamp(6)
+  PhoneUser            String?               @db.VarChar(20)
+  DatecreationUser     DateTime?             @default(now()) @db.Timestamp(6)
   IdRoleFk             Int?
-  ValideUser           Boolean              @default(true)
-  SexeUser             String               @db.Char(1)
-  DateModificationUser DateTime             @default(now()) @db.Timestamp(6)
+  ValideUser           Boolean               @default(true)
+  SexeUser             String                @db.Char(1)
+  DateModificationUser DateTime              @default(now()) @db.Timestamp(6)
   UrlPhoto             String?
   IdEntiteFk           Int?
-  Is_staff             Boolean              @default(false)
-  Is_Admin             Boolean              @default(false)
-  T_Recherche          T_Recherche[]        @relation("RechercheUser")
-  T_Chat               T_Chat[]             @relation("ChatAuthor")
-  T_Communication      T_Communication[]    @relation("CommunicationUser")
+  Is_staff             Boolean               @default(false)
+  Is_Admin             Boolean               @default(false)
+  T_Recherche          T_Recherche[]         @relation("RechercheUser")
+  T_Chat               T_Chat[]              @relation("ChatAuthor")
+  T_Communication      T_Communication[]     @relation("CommunicationUser")
   T_Discussion         T_Discussion[]
-  T_Article            T_Article[]          @relation("ArticleUser")
-  T_Commande           T_Commande[]         @relation("CommandeUser")
-  T_Payeur             T_Paiement[]         @relation("PaiementPayeur")
-  T_Paiement           T_Paiement[]         @relation("PaiementUser")
-  T_Professionnel      T_Professionnel?     @relation("ProfessionnelUser")
-  T_Admin_UI_Setting   T_Admin_UI_Setting[] @relation("AdminUiSettingUpdatedBy")
-  T_Login              T_Login[]            @relation("UserLogins")
-  T_Entite             T_Entite?            @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
-  T_Generique          T_Generique?         @relation("UserRole", fields: [IdRoleFk], references: [ID_Generique], map: "Fk_RoleFk")
+  T_Article            T_Article[]           @relation("ArticleUser")
+  T_Commande           T_Commande[]          @relation("CommandeUser")
+  T_Payeur             T_Paiement[]          @relation("PaiementPayeur")
+  T_Paiement           T_Paiement[]          @relation("PaiementUser")
+  T_Professionnel      T_Professionnel?      @relation("ProfessionnelUser")
+  T_Fk_Correspondance  T_Fk_Correspondance[] @relation("FkCorrespondanceUpdatedBy")
+  T_Login              T_Login[]             @relation("UserLogins")
+  T_Entite             T_Entite?             @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
+  T_Generique          T_Generique?          @relation("UserRole", fields: [IdRoleFk], references: [ID_Generique], map: "Fk_RoleFk")
 
   @@index([IdEntiteFk], map: "idx_user_entite")
   @@index([DatecreationUser], map: "idx_utilisateur_date_creation")
