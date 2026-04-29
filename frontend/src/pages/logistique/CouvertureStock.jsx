@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { fetchLogistiqueCouverture } from "../../services/logistique";
 import { asArrayPayload, formatNumber, LoadingErrorEmpty, SectionCard, SimpleTable, ToneBadge } from "./logistiqueShared";
+import { getLogistiqueViewConfig } from "./views";
+
+const COUVERTURE_VIEW_CONFIG = getLogistiqueViewConfig("couverture");
 
 export default function CouvertureStock({ refreshKey }) {
   const [rows, setRows] = useState([]);
@@ -14,7 +16,7 @@ export default function CouvertureStock({ refreshKey }) {
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueCouverture({
+      const response = await COUVERTURE_VIEW_CONFIG.fetchRows({
         take: 120,
       });
 

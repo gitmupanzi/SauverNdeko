@@ -123,6 +123,10 @@ function getConfiguredCategoryIdsForSource(sourceKey, overrides) {
     return [];
   }
 
+  if (config.locked) {
+    return config.defaultCategoryIds;
+  }
+
   const overrideValue = overrides?.[sourceKey];
   const parsedOverride = parseCategoryOverrideInput(overrideValue);
   return parsedOverride && parsedOverride.length > 0 ? parsedOverride : config.defaultCategoryIds;
@@ -141,6 +145,10 @@ function buildGenericReferenceOptions(sourceKey, generics, overrides) {
     .sort((leftItem, rightItem) => leftItem.label.localeCompare(rightItem.label, "fr"));
 }
 
+function isLockedLogistiqueGenericSource(sourceKey) {
+  return Boolean(LOGISTIQUE_GENERIC_SOURCE_CONFIG[sourceKey]?.locked);
+}
+
 function buildLogistiqueReferences(baseReferences, generics, overrides) {
   if (!baseReferences) {
     return null;
@@ -153,7 +161,15 @@ function buildLogistiqueReferences(baseReferences, generics, overrides) {
   const nextReferences = { ...baseReferences };
 
   Object.entries(LOGISTIQUE_GENERIC_SOURCE_CONFIG).forEach(([sourceKey, config]) => {
-    nextReferences[config.referenceKey] = buildGenericReferenceOptions(sourceKey, generics, overrides);
+    const generatedOptions = buildGenericReferenceOptions(sourceKey, generics, overrides);
+    const backendOptions = Array.isArray(baseReferences[config.referenceKey]) ? baseReferences[config.referenceKey] : [];
+
+    if (config.locked && backendOptions.length > 0) {
+      nextReferences[config.referenceKey] = backendOptions;
+      return;
+    }
+
+    nextReferences[config.referenceKey] = generatedOptions.length > 0 ? generatedOptions : backendOptions;
   });
 
   return nextReferences;
@@ -619,7 +635,9 @@ export default function Logistique() {
 
         if (config && nextDrafts[mapping.sourceKey] == null) {
           nextDrafts[mapping.sourceKey] =
-            genericCategoryOverrides[mapping.sourceKey] ?? serializeCategoryIds(config.defaultCategoryIds);
+            config.locked
+              ? serializeCategoryIds(config.defaultCategoryIds)
+              : genericCategoryOverrides[mapping.sourceKey] ?? serializeCategoryIds(config.defaultCategoryIds);
         }
       });
 
@@ -643,12 +661,13 @@ export default function Logistique() {
       activeGenericMappings.map((mapping) => {
         const config = LOGISTIQUE_GENERIC_SOURCE_CONFIG[mapping.sourceKey];
         const defaultValue = serializeCategoryIds(config.defaultCategoryIds);
-        const storedOverride = genericCategoryOverrides[mapping.sourceKey];
-        const inputValue = genericCategoryDrafts[mapping.sourceKey] ?? storedOverride ?? defaultValue;
+        const isLocked = Boolean(config.locked);
+        const storedOverride = isLocked ? "" : genericCategoryOverrides[mapping.sourceKey];
+        const inputValue = isLocked ? defaultValue : genericCategoryDrafts[mapping.sourceKey] ?? storedOverride ?? defaultValue;
         const parsedInput = parseCategoryOverrideInput(inputValue);
         const isValid = Boolean(parsedInput && parsedInput.length > 0);
         const normalizedInput = isValid ? serializeCategoryIds(parsedInput) : String(inputValue ?? "").trim();
-        const isDirty = normalizedInput !== String(storedOverride ?? defaultValue);
+        const isDirty = isLocked ? false : normalizedInput !== String(storedOverride ?? defaultValue);
         const effectiveIds = getConfiguredCategoryIdsForSource(mapping.sourceKey, genericCategoryOverrides);
         const effectiveCategoryLabels = effectiveIds
           .map((categoryId) => categoryNameById.get(String(categoryId)) || `Categorie ${categoryId}`)
@@ -664,7 +683,8 @@ export default function Logistique() {
           parsedInput,
           isValid,
           isDirty,
-          isCustom: Boolean(storedOverride),
+          isCustom: isLocked ? false : Boolean(storedOverride),
+          isLocked,
           effectiveIds,
           effectiveCategoryLabels,
           optionsCount,
@@ -735,6 +755,10 @@ export default function Logistique() {
   }
 
   function handleGenericCategoryDraftChange(sourceKey, nextValue) {
+    if (isLockedLogistiqueGenericSource(sourceKey)) {
+      return;
+    }
+
     setGenericCategoryDrafts((current) => ({
       ...current,
       [sourceKey]: nextValue,
@@ -744,7 +768,7 @@ export default function Logistique() {
   async function handleApplyGenericCategoryOverride(sourceKey) {
     const config = LOGISTIQUE_GENERIC_SOURCE_CONFIG[sourceKey];
 
-    if (!config) {
+    if (!config || config.locked) {
       return;
     }
 
@@ -778,7 +802,7 @@ export default function Logistique() {
   async function handleResetGenericCategoryOverride(sourceKey) {
     const config = LOGISTIQUE_GENERIC_SOURCE_CONFIG[sourceKey];
 
-    if (!config) {
+    if (!config || config.locked) {
       return;
     }
 
@@ -802,6 +826,11 @@ export default function Logistique() {
     const nextDrafts = {};
 
     genericMappingStates.forEach((item) => {
+      if (item.isLocked) {
+        nextDrafts[item.sourceKey] = item.defaultValue;
+        return;
+      }
+
       const serializedValue = serializeCategoryIds(item.parsedInput);
       nextDrafts[item.sourceKey] = serializedValue;
 
@@ -1104,7 +1133,7 @@ export default function Logistique() {
                                   <strong>{mapping.labels.join(", ")}</strong>
                                   <div className="admin-fk-state-badges">
                                     <span className={`admin-fk-state-chip ${mapping.isCustom ? "is-custom" : "is-default"}`}>
-                                      {mapping.isCustom ? "Personnalise" : "Defaut"}
+                                      {mapping.isLocked ? "Verrouille" : mapping.isCustom ? "Personnalise" : "Defaut"}
                                     </span>
                                     {mapping.isDirty ? <span className="admin-fk-state-chip is-pending">Non applique</span> : null}
                                     {!mapping.isValid ? <span className="admin-fk-state-chip is-invalid">Invalide</span> : null}
@@ -1122,6 +1151,7 @@ export default function Logistique() {
                                   value={mapping.inputValue}
                                   onChange={(event) => handleGenericCategoryDraftChange(mapping.sourceKey, event.target.value)}
                                   placeholder={mapping.defaultValue}
+                                  disabled={mapping.isLocked}
                                 />
                               </label>
 
@@ -1129,6 +1159,9 @@ export default function Logistique() {
                                 <small>{`Defaut: ${mapping.defaultValue}`}</small>
                                 <small>{`Categorie active: ${mapping.effectiveCategoryLabels}`}</small>
                                 <small>{`${mapping.optionsCount} options chargees actuellement`}</small>
+                                {mapping.isLocked ? (
+                                  <small>Alignement metier verrouille pour garantir les listes deroulantes logistiques attendues.</small>
+                                ) : null}
                                 {!mapping.isValid ? (
                                   <small>Utilisez un ou plusieurs IDs entiers positifs separes par des virgules.</small>
                                 ) : null}
@@ -1139,7 +1172,13 @@ export default function Logistique() {
                                   className="secondary-action"
                                   type="button"
                                   onClick={() => handleApplyGenericCategoryOverride(mapping.sourceKey)}
-                                  disabled={!mapping.isValid || !mapping.isDirty || savingSharedFkSettings || loadingSharedFkSettings}
+                                  disabled={
+                                    mapping.isLocked ||
+                                    !mapping.isValid ||
+                                    !mapping.isDirty ||
+                                    savingSharedFkSettings ||
+                                    loadingSharedFkSettings
+                                  }
                                 >
                                   Appliquer
                                 </button>
@@ -1147,7 +1186,12 @@ export default function Logistique() {
                                   className="secondary-action"
                                   type="button"
                                   onClick={() => handleResetGenericCategoryOverride(mapping.sourceKey)}
-                                  disabled={(!mapping.isCustom && mapping.inputValue === mapping.defaultValue) || savingSharedFkSettings || loadingSharedFkSettings}
+                                  disabled={
+                                    mapping.isLocked ||
+                                    ((!mapping.isCustom && mapping.inputValue === mapping.defaultValue) ||
+                                      savingSharedFkSettings ||
+                                      loadingSharedFkSettings)
+                                  }
                                 >
                                   Reinitialiser
                                 </button>

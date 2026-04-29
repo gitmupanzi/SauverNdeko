@@ -1,10 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import {
-  createLogistiqueArticle,
-  deleteLogistiqueArticle,
-  fetchLogistiqueArticles,
-  updateLogistiqueArticle,
-} from "../../services/logistique";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   asArrayPayload,
   buildReferenceLabelMap,
@@ -21,48 +16,33 @@ import {
   StatusBanner,
   TableToolbar,
   ToneBadge,
-  toInputDateValue,
 } from "./logistiqueShared";
+import {
+  computeArticleAlertDate,
+  computeArticleAlertDays,
+  getLogistiqueCrudConfig,
+  getLogistiqueGenericSourceHint,
+  getLogistiqueViewConfig,
+} from "./views";
 
-function createArticleFormState() {
-  return {
-    NomArticle: "",
-    RefArticle: "",
-    CodeArticleInterne: "",
-    ID_TypeArticleFk: "",
-    ID_CategorieArticleFk: "",
-    ID_UserFK: "",
-    ID_UniteFk: "",
-    QteArticle: "0",
-    QteMinArticle: "",
-    PUArticle: "",
-    PVArticle: "",
-    DatePeremptionArticle: "",
-    ObsArticle: "",
-    ValideArticle: true,
-  };
+const ARTICLES_VIEW_CONFIG = getLogistiqueViewConfig("articles");
+const ARTICLES_CRUD_CONFIG = getLogistiqueCrudConfig("articles");
+
+function buildReferenceHelperText(sourceKey, options) {
+  const count = Array.isArray(options) ? options.length : 0;
+  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
 }
 
-function mapArticleToForm(article) {
-  return {
-    NomArticle: article.NomArticle || "",
-    RefArticle: article.RefArticle || "",
-    CodeArticleInterne: article.CodeArticleInterne || "",
-    ID_TypeArticleFk: article.ID_TypeArticleFk ? String(article.ID_TypeArticleFk) : "",
-    ID_CategorieArticleFk: article.ID_CategorieArticleFk ? String(article.ID_CategorieArticleFk) : "",
-    ID_UserFK: article.ID_UserFK ? String(article.ID_UserFK) : article.IdUser ? String(article.IdUser) : "",
-    ID_UniteFk: article.ID_UniteFk ? String(article.ID_UniteFk) : "",
-    QteArticle: article.QteArticle != null ? String(article.QteArticle) : "0",
-    QteMinArticle: article.QteMinArticle != null ? String(article.QteMinArticle) : "",
-    PUArticle: article.PUArticle != null ? String(article.PUArticle) : "",
-    PVArticle: article.PVArticle != null ? String(article.PVArticle) : "",
-    DatePeremptionArticle: toInputDateValue(article.DatePeremptionArticle),
-    ObsArticle: article.ObsArticle || "",
-    ValideArticle: article.ValideArticle !== false,
-  };
+function formatUserDisplayName(user) {
+  if (!user) {
+    return "";
+  }
+
+  return [user.NomUser, user.PrenomUser].filter(Boolean).join(" ").trim() || user.EmailUser || "Utilisateur connecte";
 }
 
 export default function Articles({ references, refreshKey, onDataChanged, sharedTable }) {
+  const { user: currentUser } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,9 +50,11 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const [statusFilter, setStatusFilter] = useState("all");
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(createArticleFormState());
+  const [formValues, setFormValues] = useState(() => ARTICLES_CRUD_CONFIG.createFormState());
   const deferredSearch = useDeferredValue(sharedTable?.searchValue || "");
   const selectedArticle = sharedTable?.selectedRow || null;
+  const currentUserId = currentUser?.IdUser != null ? String(currentUser.IdUser) : "";
+  const currentUserDisplayName = useMemo(() => formatUserDisplayName(currentUser), [currentUser]);
 
   const articleTypeOptions = useMemo(() => buildReferenceOptions(references?.articleTypes, "Type"), [references]);
   const articleCategoryOptions = useMemo(
@@ -81,14 +63,40 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   );
   const userOptions = useMemo(() => buildReferenceOptions(references?.users, "Utilisateur"), [references]);
   const articleUnitOptions = useMemo(() => buildReferenceOptions(references?.articleUnits, "Unite"), [references]);
+  const articleReferenceWarnings = useMemo(
+    () =>
+      [
+        articleTypeOptions.length === 0 ? "La liste Type d'article est vide." : "",
+        articleCategoryOptions.length === 0 ? "La liste Categorie d'article est vide." : "",
+        articleUnitOptions.length === 0 ? "La liste Unite est vide." : "",
+      ].filter(Boolean),
+    [articleCategoryOptions.length, articleTypeOptions.length, articleUnitOptions.length]
+  );
   const typeLabelMap = useMemo(() => buildReferenceLabelMap(articleTypeOptions), [articleTypeOptions]);
   const categoryLabelMap = useMemo(() => buildReferenceLabelMap(articleCategoryOptions), [articleCategoryOptions]);
   const unitLabelMap = useMemo(() => buildReferenceLabelMap(articleUnitOptions), [articleUnitOptions]);
   const userLabelMap = useMemo(() => buildReferenceLabelMap(userOptions), [userOptions]);
+  const computedAlertDate = useMemo(
+    () => computeArticleAlertDate(formValues.DatePeremptionArticle, formValues.NbreJoursAlerteArticle),
+    [formValues.DatePeremptionArticle, formValues.NbreJoursAlerteArticle]
+  );
+  const articleEditorUserLabel = useMemo(() => {
+    if (editorMode === "create") {
+      return currentUserDisplayName || "Utilisateur connecte indisponible";
+    }
+
+    return (
+      userLabelMap.get(String(formValues.ID_UserFK || "")) ||
+      selectedArticle?.NomComplet ||
+      currentUserDisplayName ||
+      "-"
+    );
+  }, [currentUserDisplayName, editorMode, formValues.ID_UserFK, selectedArticle, userLabelMap]);
   const tableColumns = useMemo(
     () => [
       { key: "NomArticle", label: "Article" },
       { key: "CodeArticleInterne", label: "Code" },
+      { key: "CodeArticleExterne", label: "Code externe", renderText: (row) => row.CodeArticleExterne || "-" },
       { key: "RefArticle", label: "Reference" },
       { key: "QteArticle", label: "Stock", render: (row) => formatNumber(row.QteArticle), renderText: (row) => formatNumber(row.QteArticle) },
       { key: "QteMinArticle", label: "Seuil", render: (row) => formatNumber(row.QteMinArticle), renderText: (row) => formatNumber(row.QteMinArticle) },
@@ -131,7 +139,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueArticles({
+      const response = await ARTICLES_VIEW_CONFIG.fetchRows({
         q: deferredSearch,
         statut: statusFilter === "all" ? "" : statusFilter,
         take: 100,
@@ -168,21 +176,56 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     };
   }, [deferredSearch, statusFilter, refreshKey]);
 
+  useEffect(() => {
+    if (editorMode !== "create" || !currentUserId) {
+      return;
+    }
+
+    setFormValues((current) =>
+      current.ID_UserFK === currentUserId
+        ? current
+        : {
+            ...current,
+            ID_UserFK: currentUserId,
+          }
+    );
+  }, [currentUserId, editorMode]);
+
+  useEffect(() => {
+    if (!editorMode) {
+      return;
+    }
+
+    const nextValue = computedAlertDate || "";
+
+    setFormValues((current) =>
+      current.DatePeremptionAlerteArticle === nextValue
+        ? current
+        : {
+            ...current,
+            DatePeremptionAlerteArticle: nextValue,
+          }
+    );
+  }, [computedAlertDate, editorMode]);
+
   function resetEditor() {
     setEditorMode("");
-    setFormValues(createArticleFormState());
+    setFormValues(ARTICLES_CRUD_CONFIG.createFormState());
   }
 
   function handleNewArticle() {
     sharedTable?.clearSelectedRow?.();
     setEditorMode("create");
-    setFormValues(createArticleFormState());
+    setFormValues({
+      ...ARTICLES_CRUD_CONFIG.createFormState(),
+      ID_UserFK: currentUserId,
+    });
   }
 
   function handleEditArticle(article) {
     sharedTable?.setSelectedRow?.(article);
     setEditorMode("edit");
-    setFormValues(mapArticleToForm(article));
+    setFormValues(ARTICLES_CRUD_CONFIG.mapRecordToForm(article));
   }
 
   async function handleDisableArticle(article) {
@@ -190,14 +233,14 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       return;
     }
 
-    const response = await deleteLogistiqueArticle(article.ID_Article);
+    const response = await ARTICLES_CRUD_CONFIG.deleteRecord({ record: article });
 
     if (!response?.success) {
       setFeedback({ type: "error", message: getApiMessage(response, "Impossible de desactiver l'article.") });
       return;
     }
 
-    setFeedback({ type: "success", message: "Article desactive avec succes." });
+    setFeedback({ type: "success", message: ARTICLES_CRUD_CONFIG.messages.deleteSuccess });
     onDataChanged?.();
   }
 
@@ -205,33 +248,15 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     event.preventDefault();
     setSubmitting(true);
 
-    const payload = {
-      ...formValues,
-      ID_TypeArticleFk: formValues.ID_TypeArticleFk || null,
-      ID_CategorieArticleFk: formValues.ID_CategorieArticleFk || null,
-      QteMinArticle: formValues.QteMinArticle || null,
-    };
-
-    if (editorMode === "create" || formValues.ID_UserFK || selectedArticle?.IdUser != null || selectedArticle?.ID_UserFK != null) {
-      payload.ID_UserFK = formValues.ID_UserFK || null;
-    }
-
-    if (editorMode === "create" || formValues.ID_UniteFk || selectedArticle?.ID_UniteFk != null) {
-      payload.ID_UniteFk = formValues.ID_UniteFk || null;
-    }
-
-    if (
-      editorMode === "create" ||
-      formValues.DatePeremptionArticle ||
-      selectedArticle?.DatePeremptionArticle != null
-    ) {
-      payload.DatePeremptionArticle = formValues.DatePeremptionArticle || null;
-    }
+    const payload = ARTICLES_CRUD_CONFIG.buildPayload(formValues, {
+      mode: editorMode,
+      record: selectedArticle,
+    });
 
     const response =
       editorMode === "edit" && selectedArticle
-        ? await updateLogistiqueArticle(selectedArticle.ID_Article, payload)
-        : await createLogistiqueArticle(payload);
+        ? await ARTICLES_CRUD_CONFIG.updateRecord({ record: selectedArticle, payload })
+        : await ARTICLES_CRUD_CONFIG.createRecord({ payload });
 
     setSubmitting(false);
 
@@ -242,7 +267,10 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
 
     setFeedback({
       type: "success",
-      message: editorMode === "edit" ? "Article mis a jour avec succes." : "Article cree avec succes.",
+      message:
+        editorMode === "edit"
+          ? ARTICLES_CRUD_CONFIG.messages.updateSuccess
+          : ARTICLES_CRUD_CONFIG.messages.createSuccess,
     });
     resetEditor();
     onDataChanged?.();
@@ -334,6 +362,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
             <article>
               <strong>{selectedArticle.NomArticle}</strong>
               <p>Code interne: {selectedArticle.CodeArticleInterne || "-"}</p>
+              <p>Code externe: {selectedArticle.CodeArticleExterne ?? "-"}</p>
               <p>Reference: {selectedArticle.RefArticle || "-"}</p>
               <p>Type: {typeLabelMap.get(String(selectedArticle.ID_TypeArticleFk)) || "-"}</p>
               <p>Categorie: {categoryLabelMap.get(String(selectedArticle.ID_CategorieArticleFk)) || "-"}</p>
@@ -346,6 +375,17 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
               <p>PU: {formatCurrency(selectedArticle.PUArticle)}</p>
               <p>PV: {formatCurrency(selectedArticle.PVArticle)}</p>
               <p>Peremption: {formatDate(selectedArticle.DatePeremptionArticle)}</p>
+              <p>Alerte peremption: {formatDate(selectedArticle.DatePeremptionAlerteArticle)}</p>
+              <p>
+                Jours d'alerte:{" "}
+                {(selectedArticle.NbreJoursAlerteArticle ??
+                  computeArticleAlertDays(
+                    selectedArticle.DatePeremptionArticle,
+                    selectedArticle.DatePeremptionAlerteArticle
+                  )) ||
+                  "-"}
+              </p>
+              <p>Photo: {selectedArticle.PhotoArticle || "-"}</p>
             </article>
           </div>
         </SectionCard>
@@ -356,6 +396,12 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
           title={editorMode === "edit" ? "Modifier l'article" : "Creer un article"}
           subtitle="Le formulaire ecrit directement dans T_Article sans toucher aux triggers existants."
         >
+          {articleReferenceWarnings.length > 0 ? (
+            <section className="table-empty-state">
+              {`References logistiques a completer: ${articleReferenceWarnings.join(" ")}`}
+            </section>
+          ) : null}
+
           <form className="admin-editor-form" onSubmit={handleSubmit}>
             <div className="admin-editor-grid">
               <label className="admin-form-field">
@@ -388,11 +434,27 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
                 />
               </label>
 
+              <label className="admin-form-field">
+                <span>Code externe</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formValues.CodeArticleExterne}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, CodeArticleExterne: event.target.value }))
+                  }
+                />
+              </label>
+
               <SelectField
                 label="Type article"
                 value={formValues.ID_TypeArticleFk}
                 onChange={(event) => setFormValues((current) => ({ ...current, ID_TypeArticleFk: event.target.value }))}
                 options={articleTypeOptions}
+                disabled={articleTypeOptions.length === 0}
+                emptyLabel={articleTypeOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.articleTypes", articleTypeOptions)}
               />
 
               <SelectField
@@ -402,20 +464,29 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
                   setFormValues((current) => ({ ...current, ID_CategorieArticleFk: event.target.value }))
                 }
                 options={articleCategoryOptions}
+                disabled={articleCategoryOptions.length === 0}
+                emptyLabel={articleCategoryOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.articleCategories", articleCategoryOptions)}
               />
 
-              <SelectField
-                label="Utilisateur"
-                value={formValues.ID_UserFK}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_UserFK: event.target.value }))}
-                options={userOptions}
-              />
+              <label className="admin-form-field">
+                <span>Utilisateur</span>
+                <input type="text" value={articleEditorUserLabel} disabled readOnly />
+                <small>
+                  {editorMode === "create"
+                    ? `Attribue automatiquement a l'utilisateur connecte${currentUserId ? ` (ID ${currentUserId})` : ""}.`
+                    : `Identifiant utilisateur: ${formValues.ID_UserFK || "-"}.`}
+                </small>
+              </label>
 
               <SelectField
                 label="Unite"
                 value={formValues.ID_UniteFk}
                 onChange={(event) => setFormValues((current) => ({ ...current, ID_UniteFk: event.target.value }))}
                 options={articleUnitOptions}
+                disabled={articleUnitOptions.length === 0}
+                emptyLabel={articleUnitOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.articleUnits", articleUnitOptions)}
               />
 
               <label className="admin-form-field">
@@ -472,6 +543,46 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
                   onChange={(event) =>
                     setFormValues((current) => ({ ...current, DatePeremptionArticle: event.target.value }))
                   }
+                />
+              </label>
+
+              <label className="admin-form-field">
+                <span>Date alerte peremption</span>
+                <input
+                  type="date"
+                  value={formValues.DatePeremptionAlerteArticle}
+                  disabled
+                  readOnly
+                />
+                <small>
+                  {computedAlertDate
+                    ? "Calculee automatiquement a partir de la date de peremption et du nombre de jours."
+                    : "Renseignez la date de peremption et le nombre de jours pour calculer automatiquement la date d'alerte."}
+                </small>
+              </label>
+
+              <label className="admin-form-field">
+                <span>Nb jours alerte</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formValues.NbreJoursAlerteArticle}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, NbreJoursAlerteArticle: event.target.value }))
+                  }
+                />
+                <small>
+                  La date d'alerte de peremption est calculee automatiquement a partir de cette valeur.
+                </small>
+              </label>
+
+              <label className="admin-form-field">
+                <span>Photo URL</span>
+                <input
+                  type="url"
+                  value={formValues.PhotoArticle}
+                  onChange={(event) => setFormValues((current) => ({ ...current, PhotoArticle: event.target.value }))}
                 />
               </label>
 

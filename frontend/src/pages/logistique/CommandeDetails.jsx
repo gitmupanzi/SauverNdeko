@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  createLogistiqueCommandeDetail,
-  deleteLogistiqueCommandeDetail,
-  fetchLogistiqueCommandeDetails,
-  updateLogistiqueCommandeDetail,
-} from "../../services/logistique";
-import {
   asArrayPayload,
-  buildReferenceOptions,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -15,34 +8,56 @@ import {
   LoadingErrorEmpty,
   SectionCard,
   SelectionStrip,
-  SelectField,
   SimpleTable,
   StatusBanner,
+  SummaryCard,
   TableToolbar,
+  ToneBadge,
 } from "./logistiqueShared";
+import { getLogistiqueCrudConfig, getLogistiqueViewConfig } from "./views";
 
-function createDetailFormState() {
-  return {
-    ID_ArticleFk: "",
-    QteCmdDetail: "",
-    PUCmdDetail: "",
-    ObsCmdDetail: "",
-    RemiseCmdDetail: false,
-    LieuCmdDetail: "",
-    SelectCmdDetail: false,
-  };
+const COMMANDE_DETAILS_VIEW_CONFIG = getLogistiqueViewConfig("details");
+const COMMANDE_DETAILS_CRUD_CONFIG = getLogistiqueCrudConfig("details");
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
-function mapDetailToForm(detail) {
-  return {
-    ID_ArticleFk: detail.ID_ArticleFk ? String(detail.ID_ArticleFk) : "",
-    QteCmdDetail: detail.QteCmdDetail != null ? String(detail.QteCmdDetail) : "",
-    PUCmdDetail: detail.PUCmdDetail != null ? String(detail.PUCmdDetail) : "",
-    ObsCmdDetail: detail.ObsCmdDetail || "",
-    RemiseCmdDetail: Boolean(detail.RemiseCmdDetail),
-    LieuCmdDetail: detail.LieuCmdDetail != null ? String(detail.LieuCmdDetail) : "",
-    SelectCmdDetail: Boolean(detail.SelectCmdDetail),
-  };
+function detectCommandeDirection(commande) {
+  const abr = normalizeSearchText(commande?.AbrTypeCmd);
+
+  if (commande?.EstCommandeSortie === true || abr.includes("sortie")) {
+    return "sortie";
+  }
+
+  if (commande?.EstCommandeEntree === true || abr.includes("entree")) {
+    return "entree";
+  }
+
+  return "indeterminee";
+}
+
+function getDefaultUnitPrice(article, commandeDirection) {
+  if (!article) {
+    return "";
+  }
+
+  if (commandeDirection === "sortie" && article.salePrice != null) {
+    return String(article.salePrice);
+  }
+
+  if (article.purchasePrice != null) {
+    return String(article.purchasePrice);
+  }
+
+  if (article.salePrice != null) {
+    return String(article.salePrice);
+  }
+
+  return "";
 }
 
 export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable }) {
@@ -52,9 +67,77 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const [feedback, setFeedback] = useState(null);
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(createDetailFormState());
-  const articleOptions = useMemo(() => buildReferenceOptions(references?.articles, "Article"), [references]);
+  const [formValues, setFormValues] = useState(() => COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+  const [articleSearch, setArticleSearch] = useState("");
   const selectedDetail = sharedTable?.selectedRow || null;
+  const commandeDirection = useMemo(() => detectCommandeDirection(selectedCommande), [selectedCommande]);
+  const articleCatalog = useMemo(
+    () =>
+      Array.isArray(references?.articles)
+        ? references.articles.map((article) => ({
+            ...article,
+            id: String(article.id),
+            searchText: normalizeSearchText(
+              [article.code, article.reference, article.label, article.id].filter(Boolean).join(" ")
+            ),
+          }))
+        : [],
+    [references]
+  );
+  const selectedArticle = useMemo(
+    () => articleCatalog.find((article) => article.id === String(formValues.ID_ArticleFk || "")) || null,
+    [articleCatalog, formValues.ID_ArticleFk]
+  );
+  const filteredArticles = useMemo(() => {
+    const normalizedSearch = normalizeSearchText(articleSearch).trim();
+
+    if (!normalizedSearch) {
+      return articleCatalog.slice(0, 18);
+    }
+
+    return articleCatalog.filter((article) => article.searchText.includes(normalizedSearch)).slice(0, 18);
+  }, [articleCatalog, articleSearch]);
+  const quantityNumber = Number(formValues.QteCmdDetail || 0);
+  const unitPriceNumber = Number(formValues.PUCmdDetail || 0);
+  const selectedArticleStock = Number(selectedArticle?.stock || 0);
+  const lineTotal = Number.isFinite(quantityNumber) && Number.isFinite(unitPriceNumber) ? quantityNumber * unitPriceNumber : 0;
+  const projectedStock =
+    commandeDirection === "sortie"
+      ? selectedArticleStock - quantityNumber
+      : commandeDirection === "entree"
+        ? selectedArticleStock + quantityNumber
+        : selectedArticleStock;
+  const stockError =
+    commandeDirection === "sortie" &&
+    selectedArticle &&
+    Number.isFinite(quantityNumber) &&
+    quantityNumber > 0 &&
+    quantityNumber > selectedArticleStock;
+  const duplicateArticleInCommande = useMemo(
+    () =>
+      selectedArticle
+        ? rows.some(
+            (row) =>
+              String(row.ID_ArticleFk) === selectedArticle.id &&
+              (!selectedDetail ||
+                String(row.ID_CmdFk) !== String(selectedDetail.ID_CmdFk) ||
+                String(row.ID_ArticleFk) !== String(selectedDetail.ID_ArticleFk))
+          )
+        : false,
+    [rows, selectedArticle, selectedDetail]
+  );
+
+  function selectArticle(article) {
+    setFormValues((current) => ({
+      ...current,
+      ID_ArticleFk: article.id,
+      PUCmdDetail:
+        current.ID_ArticleFk === article.id && current.PUCmdDetail
+          ? current.PUCmdDetail
+          : getDefaultUnitPrice(article, commandeDirection),
+    }));
+    setArticleSearch(article.label || article.code || "");
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -69,7 +152,10 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueCommandeDetails(selectedCommande.ID_Commande, { take: 150 });
+      const response = await COMMANDE_DETAILS_VIEW_CONFIG.fetchRows({
+        commandeId: selectedCommande.ID_Commande,
+        take: 150,
+      });
 
       if (!isMounted) {
         return;
@@ -107,19 +193,22 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   function resetEditor() {
     setEditorMode("");
     sharedTable?.clearSelectedRow?.();
-    setFormValues(createDetailFormState());
+    setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+    setArticleSearch("");
   }
 
   function handleNewLine() {
     setEditorMode("create");
     sharedTable?.clearSelectedRow?.();
-    setFormValues(createDetailFormState());
+    setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+    setArticleSearch("");
   }
 
   function handleEditLine(detail) {
     setEditorMode("edit");
     sharedTable?.setSelectedRow?.(detail);
-    setFormValues(mapDetailToForm(detail));
+    setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.mapRecordToForm(detail));
+    setArticleSearch(detail.NomArticle || "");
   }
 
   async function handleDeleteLine(detail) {
@@ -131,14 +220,17 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       return;
     }
 
-    const response = await deleteLogistiqueCommandeDetail(selectedCommande.ID_Commande, detail.ID_ArticleFk);
+    const response = await COMMANDE_DETAILS_CRUD_CONFIG.deleteRecord({
+      parentRecord: selectedCommande,
+      record: detail,
+    });
 
     if (!response?.success) {
       setFeedback({ type: "error", message: getApiMessage(response, "Suppression de la ligne impossible.") });
       return;
     }
 
-    setFeedback({ type: "success", message: "Ligne de commande supprimee avec succes." });
+    setFeedback({ type: "success", message: COMMANDE_DETAILS_CRUD_CONFIG.messages.deleteSuccess });
     onDataChanged?.();
   }
 
@@ -149,18 +241,43 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       return;
     }
 
+    if (!formValues.ID_ArticleFk) {
+      setFeedback({ type: "error", message: "Selectionnez d'abord un article pour cette ligne." });
+      return;
+    }
+
+    if (duplicateArticleInCommande) {
+      setFeedback({ type: "error", message: "Cet article existe deja dans la commande. Modifiez la ligne existante." });
+      return;
+    }
+
+    if (stockError) {
+      setFeedback({
+        type: "error",
+        message: "La quantite demandee depasse le stock disponible pour cette commande de sortie.",
+      });
+      return;
+    }
+
     setSubmitting(true);
 
-    const payload = {
-      ...formValues,
-      PUCmdDetail: formValues.PUCmdDetail || null,
-      LieuCmdDetail: formValues.LieuCmdDetail || null,
-    };
+    const payload = COMMANDE_DETAILS_CRUD_CONFIG.buildPayload(formValues, {
+      mode: editorMode,
+      record: selectedDetail,
+      parentRecord: selectedCommande,
+    });
 
     const response =
       editorMode === "edit" && selectedDetail
-        ? await updateLogistiqueCommandeDetail(selectedCommande.ID_Commande, selectedDetail.ID_ArticleFk, payload)
-        : await createLogistiqueCommandeDetail(selectedCommande.ID_Commande, payload);
+        ? await COMMANDE_DETAILS_CRUD_CONFIG.updateRecord({
+            parentRecord: selectedCommande,
+            record: selectedDetail,
+            payload,
+          })
+        : await COMMANDE_DETAILS_CRUD_CONFIG.createRecord({
+            parentRecord: selectedCommande,
+            payload,
+          });
 
     setSubmitting(false);
 
@@ -171,7 +288,10 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
     setFeedback({
       type: "success",
-      message: editorMode === "edit" ? "Detail de commande mis a jour." : "Ligne ajoutee a la commande.",
+      message:
+        editorMode === "edit"
+          ? COMMANDE_DETAILS_CRUD_CONFIG.messages.updateSuccess
+          : COMMANDE_DETAILS_CRUD_CONFIG.messages.createSuccess,
     });
     resetEditor();
     onDataChanged?.();
@@ -207,6 +327,26 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
             <p>Facture: {selectedCommande.CodeFacture || "-"}</p>
             <p>Montant TTC: {formatCurrency(selectedCommande.MontantTTC)}</p>
           </article>
+        </div>
+
+        <div className="logistics-summary-grid">
+          <SummaryCard
+            title="Type de flux"
+            value={
+              commandeDirection === "sortie"
+                ? "Sortie"
+                : commandeDirection === "entree"
+                  ? "Entree"
+                  : "A confirmer"
+            }
+            tone={commandeDirection === "sortie" ? "warning" : "success"}
+            caption="Le sens du stock vient du type de commande parent."
+          />
+          <SummaryCard
+            title="Articles deja ajoutes"
+            value={formatNumber(rows.length)}
+            caption="Une ligne par article dans la commande."
+          />
         </div>
 
         <SelectionStrip
@@ -305,18 +445,105 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       {editorMode ? (
         <SectionCard
           title={editorMode === "edit" ? "Modifier la ligne" : "Ajouter une ligne"}
-          subtitle="Le type de commande parent pilote la logique d'entree ou sortie de stock."
+          subtitle="Choisissez un article du stock, saisissez la quantite, puis laissez les triggers SQL appliquer le mouvement."
         >
+          <div className="logistics-command-builder">
+            <section className="logistics-command-builder-panel">
+              <div className="section-head">
+                <h4>Recherche article</h4>
+                <p>Recherchez par nom, code interne ou reference, puis selectionnez l'article a ajouter.</p>
+              </div>
+
+              <label className="admin-form-field">
+                <span>Recherche article</span>
+                <input
+                  type="search"
+                  value={articleSearch}
+                  onChange={(event) => setArticleSearch(event.target.value)}
+                  placeholder="Nom, code interne, reference..."
+                />
+              </label>
+
+              <div className="logistics-article-picker-list">
+                {filteredArticles.map((article) => {
+                  const isSelected = selectedArticle?.id === article.id;
+
+                  return (
+                    <button
+                      key={article.id}
+                      type="button"
+                      className={`logistics-article-picker-item ${isSelected ? "is-selected" : ""}`.trim()}
+                      onClick={() => selectArticle(article)}
+                    >
+                      <strong>{article.label}</strong>
+                      <small>{[article.code, article.reference].filter(Boolean).join(" | ") || `Article #${article.id}`}</small>
+                      <span>{`Stock ${formatNumber(article.stock)} | Achat ${formatCurrency(article.purchasePrice)} | Vente ${formatCurrency(article.salePrice)}`}</span>
+                    </button>
+                  );
+                })}
+
+                {filteredArticles.length === 0 ? (
+                  <section className="table-empty-state">Aucun article ne correspond a cette recherche.</section>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="logistics-command-builder-panel">
+              <div className="section-head">
+                <h4>Article selectionne</h4>
+                <p>Verifiez le stock disponible et l'effet de la ligne avant de l'enregistrer.</p>
+              </div>
+
+              {selectedArticle ? (
+                <>
+                  <div className="logistics-summary-grid">
+                    <SummaryCard title="Stock disponible" value={formatNumber(selectedArticle.stock)} caption="Quantite actuelle dans T_Article" />
+                    <SummaryCard title="Prix achat" value={formatCurrency(selectedArticle.purchasePrice)} caption="PU article" />
+                    <SummaryCard title="Prix vente" value={formatCurrency(selectedArticle.salePrice)} caption="PV article" />
+                    <SummaryCard title="Total ligne" value={formatCurrency(lineTotal)} caption="Quantite x prix unitaire" />
+                  </div>
+
+                  <div className="logistics-detail-grid">
+                    <article>
+                      <strong>{selectedArticle.label}</strong>
+                      <p>Code: {selectedArticle.code || "-"}</p>
+                      <p>Reference: {selectedArticle.reference || "-"}</p>
+                    </article>
+                    <article>
+                      <p>Seuil minimum: {selectedArticle.minStock != null ? formatNumber(selectedArticle.minStock) : "-"}</p>
+                      <p>
+                        Stock apres ligne:{" "}
+                        <strong>{formatNumber(projectedStock)}</strong>
+                      </p>
+                      <p>
+                        Sens du mouvement:{" "}
+                        <ToneBadge tone={commandeDirection === "sortie" ? "warning" : "success"}>
+                          {commandeDirection === "sortie" ? "Sortie" : commandeDirection === "entree" ? "Entree" : "Indetermine"}
+                        </ToneBadge>
+                      </p>
+                    </article>
+                  </div>
+
+                  {duplicateArticleInCommande ? (
+                    <section className="logistics-inline-alert is-warning">
+                      Cet article est deja present dans la commande. Modifiez plutot la ligne existante.
+                    </section>
+                  ) : null}
+
+                  {stockError ? (
+                    <section className="logistics-inline-alert is-error">
+                      Stock insuffisant pour cette sortie: disponible {formatNumber(selectedArticleStock)}, demande {formatNumber(quantityNumber)}.
+                    </section>
+                  ) : null}
+                </>
+              ) : (
+                <section className="table-empty-state">Selectionnez un article pour voir sa fiche et preparer la ligne.</section>
+              )}
+            </section>
+          </div>
+
           <form className="admin-editor-form" onSubmit={handleSubmit}>
             <div className="admin-editor-grid">
-              <SelectField
-                label="Article"
-                value={formValues.ID_ArticleFk}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_ArticleFk: event.target.value }))}
-                options={articleOptions}
-                allowEmpty={false}
-              />
-
               <label className="admin-form-field">
                 <span>Quantite</span>
                 <input
@@ -327,6 +554,11 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                   onChange={(event) => setFormValues((current) => ({ ...current, QteCmdDetail: event.target.value }))}
                   required
                 />
+              </label>
+
+              <label className="admin-form-field">
+                <span>Article retenu</span>
+                <input type="text" value={selectedArticle ? selectedArticle.label : ""} readOnly placeholder="Selectionnez un article ci-dessus" />
               </label>
 
               <label className="admin-form-field">

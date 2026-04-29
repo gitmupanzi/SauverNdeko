@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { fetchLogistiqueMouvements } from "../../services/logistique";
 import {
   asArrayPayload,
   buildReferenceLabelMap,
@@ -14,6 +13,14 @@ import {
   SimpleTable,
   TableToolbar,
 } from "./logistiqueShared";
+import { getLogistiqueGenericSourceHint, getLogistiqueViewConfig } from "./views";
+
+const MOUVEMENTS_VIEW_CONFIG = getLogistiqueViewConfig("mouvements");
+
+function buildReferenceHelperText(sourceKey, options) {
+  const count = Array.isArray(options) ? options.length : 0;
+  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
+}
 
 export default function Mouvements({ references, refreshKey, sharedTable }) {
   const [rows, setRows] = useState([]);
@@ -37,7 +44,7 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueMouvements({
+      const response = await MOUVEMENTS_VIEW_CONFIG.fetchRows({
         q: deferredSearch,
         article: articleFilter,
         typeId: typeFilter,
@@ -106,6 +113,9 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value)}
             options={mouvementTypeOptions}
+            disabled={mouvementTypeOptions.length === 0}
+            emptyLabel={mouvementTypeOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+            helperText={buildReferenceHelperText("logistique.commandeTypes", mouvementTypeOptions)}
           />
 
           <label className="admin-form-field">

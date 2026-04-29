@@ -9,10 +9,58 @@ const GENERIC_CATEGORY_IDS = {
   ARTICLE_CATEGORY: 40,
   ARTICLE_UNIT: 34,
   COMMANDE_STATUS: 28,
-  COMMANDE_TYPE: 41,
-  COMMANDE_TYPE_FALLBACK: 54,
+  COMMANDE_TYPE: 64,
   CONDITION_PAIEMENT: 37,
   MODE_PAIEMENT: 36,
+};
+
+const LOGISTIQUE_GENERIC_FIELD_RULES = {
+  article: {
+    ID_TypeArticleFk: {
+      categoryId: GENERIC_CATEGORY_IDS.ARTICLE_TYPE,
+      categoryLabel: 'Type produit',
+      fieldLabel: "Type d'article",
+    },
+    ID_CategorieArticleFk: {
+      categoryId: GENERIC_CATEGORY_IDS.ARTICLE_CATEGORY,
+      categoryLabel: 'Categorie produit',
+      fieldLabel: "Categorie d'article",
+    },
+    ID_UniteFk: {
+      categoryId: GENERIC_CATEGORY_IDS.ARTICLE_UNIT,
+      categoryLabel: 'Unites',
+      fieldLabel: 'Unite',
+    },
+  },
+  commande: {
+    ID_TypeCmdFk: {
+      categoryId: GENERIC_CATEGORY_IDS.COMMANDE_TYPE,
+      categoryLabel: 'Type de commande',
+      fieldLabel: 'Type de commande',
+    },
+    ID_StatutCmdFk: {
+      categoryId: GENERIC_CATEGORY_IDS.COMMANDE_STATUS,
+      categoryLabel: 'Statut',
+      fieldLabel: 'Statut de commande',
+    },
+    ID_ConditionPaiementFk: {
+      categoryId: GENERIC_CATEGORY_IDS.CONDITION_PAIEMENT,
+      categoryLabel: 'Condition de paiement',
+      fieldLabel: 'Condition de paiement',
+    },
+    ID_ModePaiementFk: {
+      categoryId: GENERIC_CATEGORY_IDS.MODE_PAIEMENT,
+      categoryLabel: 'Mode paiement',
+      fieldLabel: 'Mode de paiement',
+    },
+  },
+  reglement: {
+    ID_ModeReglementFk: {
+      categoryId: GENERIC_CATEGORY_IDS.MODE_PAIEMENT,
+      categoryLabel: 'Mode paiement',
+      fieldLabel: 'Mode de reglement',
+    },
+  },
 };
 
 const VIEW_DEFINITIONS = {
@@ -39,7 +87,7 @@ const VIEW_DEFINITIONS = {
     filters: [
       { query: 'commande', column: 'ID_Commande', type: 'int' },
       { query: 'typeId', column: 'ID_TypeCmdFk', type: 'int' },
-      { query: 'statutId', column: 'ID_StatutCmd', type: 'int' },
+      { query: 'statutId', column: 'ID_StatutCmdFk', type: 'int' },
       { query: 'client', column: 'ID_ClientFk', type: 'int' },
       { query: 'userId', column: 'ID_UserFk', type: 'int' },
       { query: 'code', column: 'CodeCmd', type: 'text' },
@@ -58,7 +106,7 @@ const VIEW_DEFINITIONS = {
       { query: 'commande', column: 'ID_CmdFk', type: 'int' },
       { query: 'article', column: 'ID_ArticleFk', type: 'int' },
       { query: 'typeId', column: 'ID_TypeCmdFk', type: 'int' },
-      { query: 'statutId', column: 'ID_StatutCmd', type: 'int' },
+      { query: 'statutId', column: 'ID_StatutCmdFk', type: 'int' },
       { query: 'dateFrom', column: 'DateCmd', type: 'dateFrom' },
       { query: 'dateTo', column: 'DateCmd', type: 'dateTo' },
     ],
@@ -287,6 +335,40 @@ const normalizeDate = (value, label) => {
   }
 
   return parsed;
+};
+
+const calculateAlertDays = (datePeremption, dateAlerte) => {
+  if (!datePeremption || !dateAlerte) {
+    return null;
+  }
+
+  const peremptionUtc = Date.UTC(
+    datePeremption.getUTCFullYear(),
+    datePeremption.getUTCMonth(),
+    datePeremption.getUTCDate()
+  );
+  const alerteUtc = Date.UTC(dateAlerte.getUTCFullYear(), dateAlerte.getUTCMonth(), dateAlerte.getUTCDate());
+  const diffDays = Math.round((peremptionUtc - alerteUtc) / 86400000);
+
+  if (diffDays < 0) {
+    const error = new Error("La date d'alerte de peremption doit etre anterieure ou egale a la date de peremption.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return diffDays;
+};
+
+const calculateAlertDateFromDays = (datePeremption, days) => {
+  if (!datePeremption || days == null) {
+    return null;
+  }
+
+  const alertDate = new Date(
+    Date.UTC(datePeremption.getUTCFullYear(), datePeremption.getUTCMonth(), datePeremption.getUTCDate())
+  );
+  alertDate.setUTCDate(alertDate.getUTCDate() - days);
+  return alertDate;
 };
 
 const normalizeTextForCompare = (value) =>
@@ -549,20 +631,6 @@ const fetchGenericReferencesByCategory = (categoryId) =>
     categoryId
   );
 
-const resolveCommandeTypeCategoryId = async () => {
-  const rows = await prisma.$queryRawUnsafe(`
-    SELECT g."ID_CategorieGeneriqueFk" AS id, COUNT(*)::int AS total
-    FROM logistique."T_Commande" c
-    JOIN referentiel."T_Generique" g ON g."ID_Generique" = c."ID_TypeCmdFk"
-    WHERE c."ID_TypeCmdFk" IS NOT NULL
-    GROUP BY g."ID_CategorieGeneriqueFk"
-    ORDER BY total DESC, id ASC
-    LIMIT 1
-  `);
-
-  return rows?.[0]?.id || GENERIC_CATEGORY_IDS.COMMANDE_TYPE;
-};
-
 const fetchClientReferences = async () => {
   const personneTableRows = await prisma.$queryRawUnsafe(`
     SELECT table_schema
@@ -611,25 +679,132 @@ const fetchClientReferences = async () => {
   `);
 };
 
+const buildGenericReferenceMeta = (referenceKey, sourceKey, rule) => ({
+  referenceKey,
+  sourceKey,
+  locked: true,
+  categoryIds: [rule.categoryId],
+  categoryLabel: rule.categoryLabel,
+  fieldLabel: rule.fieldLabel,
+});
+
+const ensureGenericValueMatchesCategory = async (value, rule) => {
+  if (value == null) {
+    return null;
+  }
+
+  const record = await prisma.t_Generique.findFirst({
+    where: {
+      ID_Generique: value,
+      ID_CategorieGeneriqueFk: rule.categoryId,
+    },
+    select: {
+      ID_Generique: true,
+      ID_CategorieGeneriqueFk: true,
+      NomGenerique: true,
+    },
+  });
+
+  if (record) {
+    return record;
+  }
+
+  const genericRecord = await prisma.t_Generique.findUnique({
+    where: { ID_Generique: value },
+    select: {
+      ID_Generique: true,
+      ID_CategorieGeneriqueFk: true,
+      NomGenerique: true,
+    },
+  });
+
+  if (!genericRecord) {
+    const error = new Error(`${rule.fieldLabel} introuvable.`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const error = new Error(
+    `${rule.fieldLabel} invalide: la valeur #${value} appartient a la categorie ${genericRecord.ID_CategorieGeneriqueFk} et non a la categorie ${rule.categoryId} (${rule.categoryLabel}).`
+  );
+  error.statusCode = 400;
+  throw error;
+};
+
+const ensureGenericPayloadMatchesRules = async (payload, rules = {}) => {
+  await Promise.all(
+    Object.entries(rules).map(async ([fieldName, rule]) => {
+      if (!Object.prototype.hasOwnProperty.call(payload, fieldName)) {
+        return;
+      }
+
+      await ensureGenericValueMatchesCategory(payload[fieldName], rule);
+    })
+  );
+};
+
 const getDashboardSummary = async () => {
   const [
     articleRows,
+    articleHealthRows,
     commandeRows,
+    commandeHealthRows,
     commandesSansDetailsRows,
     alertRows,
     factureRows,
     reglementRows,
     couvertureRows,
     consoRows,
+    mouvementRows,
     topAlerts,
     topConso,
     topReglements,
     topCommandesSansDetails,
     topAuditEcarts,
     recentCommandes,
+    expiringArticles,
+    overdueCommandes,
+    missingDocuments,
+    recentMouvements,
   ] = await Promise.all([
     prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM logistique."V_Article"`),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        COUNT(*) FILTER (WHERE COALESCE("ValideArticle", true) = true)::int AS "articlesActifs",
+        COUNT(*) FILTER (WHERE COALESCE("ValideArticle", true) = false)::int AS "articlesInactifs",
+        COUNT(*) FILTER (
+          WHERE "DatePeremptionArticle" IS NOT NULL
+            AND "DatePeremptionArticle" < CURRENT_TIMESTAMP
+        )::int AS "articlesExpires",
+        COUNT(*) FILTER (
+          WHERE "DatePeremptionArticle" IS NOT NULL
+            AND "DatePeremptionArticle" >= CURRENT_TIMESTAMP
+            AND "DatePeremptionArticle" < CURRENT_TIMESTAMP + INTERVAL '30 days'
+        )::int AS "articlesPeremption30j"
+      FROM logistique."T_Article"
+    `),
     prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM logistique."V_Commande"`),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        COUNT(*) FILTER (WHERE COALESCE("MontantResteFacture", 0) > 0)::int AS "commandesOuvertes",
+        COUNT(*) FILTER (
+          WHERE "CodeFacture" IS NOT NULL
+            AND COALESCE("MontantResteFacture", 0) <= 0
+        )::int AS "commandesSoldees",
+        COUNT(*) FILTER (
+          WHERE "DateEcheancePaiement" IS NOT NULL
+            AND "DateEcheancePaiement" < CURRENT_TIMESTAMP
+            AND COALESCE("MontantResteFacture", 0) > 0
+        )::int AS "facturesEnRetard",
+        COUNT(*) FILTER (
+          WHERE COALESCE(NULLIF(BTRIM("UrlBL"), ''), '') = ''
+        )::int AS "blManquants",
+        COUNT(*) FILTER (
+          WHERE "CodeFacture" IS NOT NULL
+            AND COALESCE(NULLIF(BTRIM("UrlFacture"), ''), '') = ''
+        )::int AS "facturesSansUrl"
+      FROM logistique."T_Commande"
+    `),
     prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM logistique."V_CommandesSansDetails"`),
     prisma.$queryRawUnsafe(`
       SELECT
@@ -658,6 +833,19 @@ const getDashboardSummary = async () => {
       SELECT COALESCE(SUM("ConsoMensuelle"), 0)::numeric AS "consommationMois"
       FROM logistique."V_ConsoMensuelle"
       WHERE date_trunc('month', "Mois") = date_trunc('month', CURRENT_DATE)
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE "DateMvt" >= date_trunc('month', CURRENT_DATE)
+        )::int AS "mouvementsMois",
+        COUNT(*) FILTER (
+          WHERE "DateMvt" >= CURRENT_DATE - INTERVAL '7 days'
+        )::int AS "mouvements7j",
+        COALESCE(SUM("QteMvt") FILTER (
+          WHERE "DateMvt" >= date_trunc('month', CURRENT_DATE)
+        ), 0)::numeric AS "quantiteMouvementsMois"
+      FROM logistique."T_Mouvement"
     `),
     prisma.$queryRawUnsafe(`
       SELECT *
@@ -698,12 +886,75 @@ const getDashboardSummary = async () => {
       ORDER BY "DateCmd" DESC NULLS LAST, "ID_Commande" DESC
       LIMIT 5
     `),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        "ID_Article",
+        "NomArticle",
+        "CodeArticleInterne",
+        "DatePeremptionArticle",
+        "QteArticle",
+        "QteMinArticle"
+      FROM logistique."T_Article"
+      WHERE "DatePeremptionArticle" IS NOT NULL
+        AND COALESCE("ValideArticle", true) = true
+      ORDER BY "DatePeremptionArticle" ASC, "ID_Article" ASC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        "ID_Commande",
+        "CodeCmd",
+        "CodeFacture",
+        "DateEcheancePaiement",
+        "MontantTTC",
+        "MontantResteFacture",
+        "StatusFacture"
+      FROM logistique."T_Commande"
+      WHERE "DateEcheancePaiement" IS NOT NULL
+        AND "DateEcheancePaiement" < CURRENT_TIMESTAMP
+        AND COALESCE("MontantResteFacture", 0) > 0
+      ORDER BY "DateEcheancePaiement" ASC, "MontantResteFacture" DESC, "ID_Commande" DESC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT
+        "ID_Commande",
+        "CodeCmd",
+        "CodeFacture",
+        "DateCmd",
+        "UrlBL",
+        "UrlFacture",
+        "StatusFacture"
+      FROM logistique."T_Commande"
+      WHERE COALESCE(NULLIF(BTRIM("UrlBL"), ''), '') = ''
+         OR (
+          "CodeFacture" IS NOT NULL
+          AND COALESCE(NULLIF(BTRIM("UrlFacture"), ''), '') = ''
+         )
+      ORDER BY "DateCmd" DESC NULLS LAST, "ID_Commande" DESC
+      LIMIT 5
+    `),
+    prisma.$queryRawUnsafe(`
+      SELECT *
+      FROM logistique."V_Mouvement"
+      ORDER BY "DateMvt" DESC NULLS LAST, "ID_Mvt" DESC
+      LIMIT 6
+    `),
   ]);
 
   return normalizeForJson({
     totals: {
       articles: articleRows?.[0]?.count || 0,
+      articlesActifs: articleHealthRows?.[0]?.articlesActifs || 0,
+      articlesInactifs: articleHealthRows?.[0]?.articlesInactifs || 0,
+      articlesExpires: articleHealthRows?.[0]?.articlesExpires || 0,
+      articlesPeremption30j: articleHealthRows?.[0]?.articlesPeremption30j || 0,
       commandes: commandeRows?.[0]?.count || 0,
+      commandesOuvertes: commandeHealthRows?.[0]?.commandesOuvertes || 0,
+      commandesSoldees: commandeHealthRows?.[0]?.commandesSoldees || 0,
+      facturesEnRetard: commandeHealthRows?.[0]?.facturesEnRetard || 0,
+      blManquants: commandeHealthRows?.[0]?.blManquants || 0,
+      facturesSansUrl: commandeHealthRows?.[0]?.facturesSansUrl || 0,
       commandesSansDetails: commandesSansDetailsRows?.[0]?.count || 0,
       alertesStock: alertRows?.[0]?.alertes || 0,
       prochesRupture: alertRows?.[0]?.prochesRupture || 0,
@@ -714,6 +965,9 @@ const getDashboardSummary = async () => {
       couvertureMinimale: couvertureRows?.[0]?.couvertureMin || 0,
       couvertureCritique: couvertureRows?.[0]?.couvertureCritique || 0,
       consommationMensuelle: consoRows?.[0]?.consommationMois || 0,
+      mouvementsMois: mouvementRows?.[0]?.mouvementsMois || 0,
+      mouvements7j: mouvementRows?.[0]?.mouvements7j || 0,
+      quantiteMouvementsMois: mouvementRows?.[0]?.quantiteMouvementsMois || 0,
     },
     highlights: {
       alertes: topAlerts,
@@ -722,15 +976,19 @@ const getDashboardSummary = async () => {
       commandesSansDetails: topCommandesSansDetails,
       audit: topAuditEcarts,
       commandesRecentes: recentCommandes,
+      peremption: expiringArticles,
+      echeances: overdueCommandes,
+      documentsManquants: missingDocuments,
+      mouvementsRecents: recentMouvements,
     },
     assumptions: {
       procheRuptureMargeMax: NEAR_RUPTURE_MARGIN,
+      peremptionWindowDays: 30,
     },
   });
 };
 
 const listReferences = async () => {
-  const commandeTypeCategoryId = await resolveCommandeTypeCategoryId();
   let [
     articleTypes,
     articleCategories,
@@ -748,7 +1006,7 @@ const listReferences = async () => {
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.ARTICLE_TYPE),
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.ARTICLE_CATEGORY),
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.ARTICLE_UNIT),
-    fetchGenericReferencesByCategory(commandeTypeCategoryId || GENERIC_CATEGORY_IDS.COMMANDE_TYPE_FALLBACK),
+    fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.COMMANDE_TYPE),
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.COMMANDE_STATUS),
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.CONDITION_PAIEMENT),
     fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.MODE_PAIEMENT),
@@ -769,9 +1027,13 @@ const listReferences = async () => {
         NomArticle: true,
         CodeArticleInterne: true,
         RefArticle: true,
+        QteArticle: true,
+        QteMinArticle: true,
+        PUArticle: true,
+        PVArticle: true,
       },
       orderBy: [{ NomArticle: 'asc' }],
-      take: 300,
+      take: 1000,
     }),
     prisma.$queryRawUnsafe(`
       SELECT DISTINCT "CodeFacture" AS code
@@ -780,13 +1042,6 @@ const listReferences = async () => {
       ORDER BY "CodeFacture" ASC
     `),
   ]);
-
-  if (
-    (!Array.isArray(commandeTypes) || commandeTypes.length === 0) &&
-    commandeTypeCategoryId !== GENERIC_CATEGORY_IDS.COMMANDE_TYPE_FALLBACK
-  ) {
-    commandeTypes = await fetchGenericReferencesByCategory(GENERIC_CATEGORY_IDS.COMMANDE_TYPE_FALLBACK);
-  }
 
   return {
     articleTypes,
@@ -809,11 +1064,58 @@ const listReferences = async () => {
       id: item.ID_Article,
       label: item.NomArticle,
       code: item.CodeArticleInterne || item.RefArticle || null,
+      reference: item.RefArticle || null,
+      stock: item.QteArticle,
+      minStock: item.QteMinArticle,
+      purchasePrice: item.PUArticle,
+      salePrice: item.PVArticle,
     })),
     factures: factures.map((item) => ({
       code: item.code,
       label: item.code,
     })),
+    referenceMeta: {
+      articleTypes: buildGenericReferenceMeta(
+        'articleTypes',
+        'logistique.articleTypes',
+        LOGISTIQUE_GENERIC_FIELD_RULES.article.ID_TypeArticleFk
+      ),
+      articleCategories: buildGenericReferenceMeta(
+        'articleCategories',
+        'logistique.articleCategories',
+        LOGISTIQUE_GENERIC_FIELD_RULES.article.ID_CategorieArticleFk
+      ),
+      articleUnits: buildGenericReferenceMeta(
+        'articleUnits',
+        'logistique.articleUnits',
+        LOGISTIQUE_GENERIC_FIELD_RULES.article.ID_UniteFk
+      ),
+      commandeTypes: buildGenericReferenceMeta(
+        'commandeTypes',
+        'logistique.commandeTypes',
+        LOGISTIQUE_GENERIC_FIELD_RULES.commande.ID_TypeCmdFk
+      ),
+      commandeStatuses: buildGenericReferenceMeta(
+        'commandeStatuses',
+        'logistique.commandeStatuses',
+        LOGISTIQUE_GENERIC_FIELD_RULES.commande.ID_StatutCmdFk
+      ),
+      commandeConditionPaiements: buildGenericReferenceMeta(
+        'commandeConditionPaiements',
+        'logistique.commandeConditionPaiements',
+        LOGISTIQUE_GENERIC_FIELD_RULES.commande.ID_ConditionPaiementFk
+      ),
+      commandeModesPaiement: buildGenericReferenceMeta(
+        'commandeModesPaiement',
+        'logistique.commandeModesPaiement',
+        LOGISTIQUE_GENERIC_FIELD_RULES.commande.ID_ModePaiementFk
+      ),
+      reglementModes: buildGenericReferenceMeta(
+        'reglementModes',
+        'logistique.reglementModes',
+        LOGISTIQUE_GENERIC_FIELD_RULES.reglement.ID_ModeReglementFk
+      ),
+    },
   };
 };
 
@@ -918,6 +1220,39 @@ const buildArticlePayload = (body, reqUserId, existingRecord = null) => {
     });
   }
 
+  const nextDatePeremption =
+    Object.prototype.hasOwnProperty.call(payload, 'DatePeremptionArticle')
+      ? payload.DatePeremptionArticle
+      : existingRecord?.DatePeremptionArticle ?? null;
+  const nextDateAlertePeremption =
+    Object.prototype.hasOwnProperty.call(payload, 'DatePeremptionAlerteArticle')
+      ? payload.DatePeremptionAlerteArticle
+      : existingRecord?.DatePeremptionAlerteArticle ?? null;
+  const nextAlertDays =
+    Object.prototype.hasOwnProperty.call(payload, 'NbreJoursAlerteArticle')
+      ? payload.NbreJoursAlerteArticle
+      : existingRecord?.NbreJoursAlerteArticle ?? null;
+
+  if (!nextDateAlertePeremption && nextDatePeremption && nextAlertDays != null) {
+    payload.DatePeremptionAlerteArticle = calculateAlertDateFromDays(nextDatePeremption, nextAlertDays);
+  }
+
+  const resolvedDateAlertePeremption =
+    Object.prototype.hasOwnProperty.call(payload, 'DatePeremptionAlerteArticle')
+      ? payload.DatePeremptionAlerteArticle
+      : nextDateAlertePeremption;
+
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'DatePeremptionArticle') ||
+    Object.prototype.hasOwnProperty.call(payload, 'DatePeremptionAlerteArticle') ||
+    body.NbreJoursAlerteArticle !== undefined
+  ) {
+    payload.NbreJoursAlerteArticle =
+      nextDatePeremption && resolvedDateAlertePeremption
+        ? calculateAlertDays(nextDatePeremption, resolvedDateAlertePeremption)
+        : null;
+  }
+
   if (body.CodeArticleInterne !== undefined) {
     payload.CodeArticleInterne = normalizeNullableString(body.CodeArticleInterne) || null;
   }
@@ -938,16 +1273,16 @@ const buildCommandePayload = (body, reqUserId, existingRecord = null) => {
     throw error;
   }
 
-  if (body.ID_StatutCmdFk !== undefined || body.ID_StatutCmd !== undefined) {
-    payload.ID_StatutCmdFk = normalizeInteger(
-      body.ID_StatutCmdFk !== undefined ? body.ID_StatutCmdFk : body.ID_StatutCmd,
-      'Statut de commande',
-      { allowNull: true }
-    );
+  if (body.ID_StatutCmdFk !== undefined) {
+    payload.ID_StatutCmdFk = normalizeInteger(body.ID_StatutCmdFk, 'Statut de commande', { allowNull: true });
   }
 
   if (body.ID_ClientFk !== undefined) {
     payload.ID_ClientFk = normalizeInteger(body.ID_ClientFk, 'Client', { allowNull: true });
+  }
+
+  if (body.NomClientSaisi !== undefined) {
+    payload.NomClientSaisi = normalizeNullableString(body.NomClientSaisi) || null;
   }
 
   if (body.ID_UserFk !== undefined) {
@@ -1143,8 +1478,111 @@ const buildReglementPayload = (body, existingRecord = null) => {
   return payload;
 };
 
-const listArticles = (query) => queryViewList('articles', query);
-const listCommandes = (query) => queryViewList('commandes', query);
+const enrichArticleRows = async (result) => {
+  const articleRows = Array.isArray(result?.data) ? result.data : [];
+
+  if (articleRows.length === 0) {
+    return result;
+  }
+
+  const articleIds = articleRows
+    .map((row) => row?.ID_Article)
+    .filter((value) => Number.isInteger(Number(value)))
+    .map((value) => Number(value));
+
+  if (articleIds.length === 0) {
+    return result;
+  }
+
+  const records = await prisma.t_Article.findMany({
+    where: {
+      ID_Article: {
+        in: articleIds,
+      },
+    },
+    select: {
+      ID_Article: true,
+      PhotoArticle: true,
+      DatePeremptionArticle: true,
+      DatePeremptionAlerteArticle: true,
+      NbreJoursAlerteArticle: true,
+      ID_UserFK: true,
+    },
+  });
+
+  const articleById = new Map(records.map((record) => [record.ID_Article, normalizeForJson(record)]));
+
+  return {
+    ...result,
+    data: articleRows.map((row) => {
+      const articleRecord = articleById.get(Number(row.ID_Article));
+
+      if (!articleRecord) {
+        return row;
+      }
+
+      return {
+        ...row,
+        PhotoArticle: articleRecord.PhotoArticle ?? row.PhotoArticle ?? null,
+        DatePeremptionArticle: articleRecord.DatePeremptionArticle ?? row.DatePeremptionArticle ?? null,
+        DatePeremptionAlerteArticle:
+          articleRecord.DatePeremptionAlerteArticle ?? row.DatePeremptionAlerteArticle ?? null,
+        NbreJoursAlerteArticle: articleRecord.NbreJoursAlerteArticle ?? row.NbreJoursAlerteArticle ?? null,
+        ID_UserFK: articleRecord.ID_UserFK ?? row.ID_UserFK ?? null,
+      };
+    }),
+  };
+};
+
+const enrichCommandeRows = async (result) => {
+  const commandeRows = Array.isArray(result?.data) ? result.data : [];
+
+  if (commandeRows.length === 0) {
+    return result;
+  }
+
+  const commandeIds = commandeRows
+    .map((row) => row?.ID_Commande)
+    .filter((value) => Number.isInteger(Number(value)))
+    .map((value) => Number(value));
+
+  if (commandeIds.length === 0) {
+    return result;
+  }
+
+  const records = await prisma.t_Commande.findMany({
+    where: {
+      ID_Commande: {
+        in: commandeIds,
+      },
+    },
+    select: {
+      ID_Commande: true,
+      NomClientSaisi: true,
+    },
+  });
+
+  const commandeById = new Map(records.map((record) => [record.ID_Commande, normalizeForJson(record)]));
+
+  return {
+    ...result,
+    data: commandeRows.map((row) => {
+      const fallbackRecord = commandeById.get(Number(row.ID_Commande));
+
+      if (!fallbackRecord) {
+        return row;
+      }
+
+      return {
+        ...fallbackRecord,
+        ...row,
+        NomClientSaisi: row.NomClientSaisi ?? fallbackRecord.NomClientSaisi ?? null,
+      };
+    }),
+  };
+};
+const listArticles = async (query) => enrichArticleRows(await queryViewList('articles', query));
+const listCommandes = async (query) => enrichCommandeRows(await queryViewList('commandes', query));
 const listCommandeDetails = async (commandeId, query) =>
   queryViewList('commandeDetails', {
     ...query,
@@ -1204,6 +1642,8 @@ const listReglementEntries = async (query = {}) => {
 
 const createArticle = async (body, reqUserId) => {
   const payload = buildArticlePayload(body, reqUserId);
+  payload.ID_UserFK = reqUserId;
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.article);
   const data = await prisma.t_Article.create({
     data: payload,
     include: ARTICLE_INCLUDE,
@@ -1228,6 +1668,7 @@ const updateArticle = async (articleId, body, reqUserId) => {
   );
 
   const payload = buildArticlePayload(body, reqUserId, existingRecord);
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.article);
   const data = await prisma.t_Article.update({
     where: { ID_Article: normalizedArticleId },
     data: payload,
@@ -1273,6 +1714,7 @@ const removeArticle = async (articleId) => {
 
 const createCommande = async (body, reqUserId) => {
   const payload = buildCommandePayload(body, reqUserId);
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.commande);
   const data = await prisma.t_Commande.create({
     data: payload,
     include: COMMANDE_INCLUDE,
@@ -1300,6 +1742,7 @@ const updateCommande = async (commandeId, body, reqUserId) => {
   );
 
   const payload = buildCommandePayload(body, reqUserId, existingRecord);
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.commande);
   const data = await prisma.t_Commande.update({
     where: { ID_Commande: normalizedCommandeId },
     data: payload,
@@ -1496,14 +1939,7 @@ const removeCommandeDetail = async (commandeId, articleId) => {
 
 const createReglement = async (body) => {
   const payload = buildReglementPayload(body);
-
-  await ensureRecordExists(
-    prisma.t_Generique.findUnique({
-      where: { ID_Generique: payload.ID_ModeReglementFk },
-      select: { ID_Generique: true },
-    }),
-    'Mode de reglement introuvable.'
-  );
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.reglement);
 
   const data = await prisma.t_Reglements.create({
     data: payload,
@@ -1530,16 +1966,7 @@ const updateReglement = async (reglementId, body) => {
   );
 
   const payload = buildReglementPayload(body, existingRecord);
-
-  if (payload.ID_ModeReglementFk != null) {
-    await ensureRecordExists(
-      prisma.t_Generique.findUnique({
-        where: { ID_Generique: payload.ID_ModeReglementFk },
-        select: { ID_Generique: true },
-      }),
-      'Mode de reglement introuvable.'
-    );
-  }
+  await ensureGenericPayloadMatchesRules(payload, LOGISTIQUE_GENERIC_FIELD_RULES.reglement);
 
   const data = await prisma.t_Reglements.update({
     where: { ID_Reglement: normalizedReglementId },

@@ -284,11 +284,114 @@ Cette règle protège l’historique logistique et évite la perte de traçabili
 
 ---
 
+### 4.6 Utilisateur auteur automatique
+
+Lors de la creation d'un article depuis l'application, le champ :
+
+```text
+T_Article.ID_UserFK
+```
+
+doit etre renseigne automatiquement avec l'identifiant de l'utilisateur actuellement authentifie dans le systeme.
+
+Regles attendues :
+
+```text
+Le frontend affiche le nom de l'utilisateur connecte.
+Le frontend ne doit pas laisser modifier manuellement ce champ lors de la creation.
+Le backend doit forcer la valeur finale avec l'identifiant issu de la session authentifiee.
+```
+
+En consequence :
+
+```text
+La valeur envoyee par le client n'est pas une source de verite suffisante.
+La source de verite est l'utilisateur authentifie sur la requete.
+```
+
+Critere d'acceptation :
+
+```text
+Un article cree depuis l'interface est toujours rattache a l'utilisateur connecte, meme si le client tente d'envoyer un autre ID utilisateur.
+```
+
+---
+
+### 4.7 Gestion de la peremption et de l'alerte
+
+Le module logistique doit gerer les champs suivants de `T_Article` :
+
+```text
+DatePeremptionArticle
+DatePeremptionAlerteArticle
+NbreJoursAlerteArticle
+```
+
+Le comportement metier attendu est le suivant :
+
+```text
+L'utilisateur saisit la date de peremption.
+L'utilisateur saisit le nombre de jours d'alerte.
+La date d'alerte de peremption est calculee automatiquement.
+```
+
+Formule officielle :
+
+```text
+DatePeremptionAlerteArticle = DatePeremptionArticle - NbreJoursAlerteArticle
+```
+
+Le calcul inverse doit aussi rester coherent :
+
+```text
+NbreJoursAlerteArticle = DatePeremptionArticle - DatePeremptionAlerteArticle
+```
+
+Contraintes metier :
+
+```text
+NbreJoursAlerteArticle doit etre un entier positif ou nul.
+DatePeremptionAlerteArticle doit etre anterieure ou egale a DatePeremptionArticle.
+Si la date de peremption est absente, l'alerte ne peut pas etre calculee.
+```
+
+Exemple :
+
+```text
+DatePeremptionArticle = 2026-07-31
+NbreJoursAlerteArticle = 93
+DatePeremptionAlerteArticle = 2026-04-29
+```
+
+Regles d'implementation attendues :
+
+```text
+Le frontend peut afficher le calcul en direct.
+Le backend doit recalculer ou verifier la valeur finale avant enregistrement.
+La coherence metier ne doit jamais dependre uniquement du navigateur.
+```
+
+---
+
 ## 5. Gestion des commandes — T_Commande
 
 ### 5.1 Création d’une commande
 
 Une commande est créée dans `T_Commande`.
+
+Pour l'identification du client, le module doit accepter un modele hybride :
+
+```text
+ID_ClientFk    = reference structuree quand le client existe deja
+NomClientSaisi = nom libre saisi au moment de la commande si aucun client n'est reference
+```
+
+Regles attendues :
+
+- `ID_ClientFk` reste prioritaire quand une reference fiable existe ;
+- `NomClientSaisi` permet de creer la commande meme si aucun identifiant client n'est disponible ;
+- le frontend doit afficher `NomClientSaisi` comme solution de secours quand `ID_ClientFk` est vide ;
+- la vue `V_Commande` doit exposer `NomClientSaisi` pour permettre la relecture applicative.
 
 Son type est défini par :
 
@@ -694,6 +797,179 @@ T_Reglements.ID_ModeReglementFk   -> categorie 36 = Mode paiement
 
 Les valeurs metier de stock `Entree` et `Sortie` doivent etre recherchees dans la categorie 64.
 
+### 13.1 Regle obligatoire pour les listes deroulantes
+
+Pour les formulaires de creation et de modification, une liste deroulante logistique ne doit jamais etre alimentee directement par :
+
+```text
+referentiel.T_CategorieGenerique
+```
+
+`T_CategorieGenerique` sert uniquement a identifier la categorie metier attendue.
+
+Les options visibles par l'utilisateur doivent toujours provenir de :
+
+```text
+referentiel.T_Generique
+filtre par T_Generique.ID_CategorieGeneriqueFk
+```
+
+En consequence :
+
+```text
+T_CategorieGenerique = table de definition des categories
+T_Generique          = table des valeurs a afficher dans les listes
+```
+
+Exemple :
+
+```text
+Pour "Type article", le frontend ne doit pas afficher la categorie 46 elle-meme.
+Le frontend doit afficher les lignes de T_Generique dont ID_CategorieGeneriqueFk = 46.
+```
+
+### 13.2 Contrat technique attendu pour le backend
+
+Pour chaque FK generique du module logistique :
+
+1. le backend identifie la categorie attendue ;
+2. le backend charge les options depuis `referentiel.T_Generique` ;
+3. le backend filtre ces options par `ID_CategorieGeneriqueFk` ;
+4. le backend renvoie au frontend la liste des valeurs deja exploitables ;
+5. le backend refuse tout enregistrement si la valeur choisie existe dans `T_Generique` mais appartient a une autre categorie.
+
+Requete type attendue :
+
+```sql
+SELECT
+  g."ID_Generique" AS id,
+  g."NomGenerique" AS label,
+  g."AbrGenerique" AS abbr,
+  g."ID_CategorieGeneriqueFk" AS "categoryId"
+FROM referentiel."T_Generique" g
+WHERE g."ID_CategorieGeneriqueFk" = :categorie_attendue
+ORDER BY COALESCE(NULLIF(trim(g."AbrGenerique"), ''), g."NomGenerique"), g."ID_Generique";
+```
+
+Le backend ne doit pas construire une liste deroulante a partir de `T_CategorieGenerique` seule.
+
+### 13.3 Contrat technique attendu pour le frontend
+
+Le frontend logistique doit respecter les regles suivantes :
+
+1. consommer en priorite les options renvoyees par l'API logistique ;
+2. considerer que ces options correspondent deja aux bonnes categories metier ;
+3. afficher les lignes de `T_Generique` comme choix utilisateur ;
+4. ne jamais remplacer une liste backend non vide par une reconstruction locale vide ;
+5. n'utiliser `T_CategorieGenerique` que pour afficher une information de contexte, jamais comme source directe des choix.
+
+Autrement dit :
+
+```text
+Categorie = contexte
+Generique = option selectionnable
+```
+
+### 13.4 Regle d'acceptation fonctionnelle des listes
+
+Le comportement est considere correct si :
+
+1. la creation d'un article affiche des options reelles pour `Type article`, `Categorie article` et `Unite` ;
+2. la creation d'une commande affiche des options reelles pour `Type commande`, `Statut`, `Condition de paiement` et `Mode de paiement` ;
+3. la creation d'un reglement affiche des options reelles pour `Mode de reglement` ;
+4. chaque option affichee correspond a une ligne de `referentiel.T_Generique` ;
+5. chaque option affichee appartient a la categorie attendue ;
+6. aucune liste n'est peuplee a partir de `referentiel.T_CategorieGenerique` seule ;
+7. si une categorie existe mais ne contient aucune ligne dans `T_Generique`, la liste est vide et l'etat est signale explicitement.
+
+### 13.5 Ergonomie attendue des listes deroulantes
+
+Les listes deroulantes volumineuses du module logistique doivent permettre une recherche de valeur sans obliger l'utilisateur a parcourir toute la liste manuellement.
+
+Le comportement attendu est :
+
+```text
+Le composant de selection ouvre un panneau de choix.
+La recherche de valeur se fait dans ce panneau de choix.
+La selection peut se faire a la souris ou au clavier.
+```
+
+Exigences minimales :
+
+1. recherche integree dans l'ouverture de la liste ;
+2. filtrage dynamique des options visibles ;
+3. conservation de la valeur deja selectionnee ;
+4. validation au clavier avec `Enter` ;
+5. navigation avec `Fleche haut` et `Fleche bas` ;
+6. fermeture avec `Escape`.
+
+Important :
+
+```text
+La recherche est une aide d'ergonomie.
+Elle ne remplace jamais la regle de filtrage metier par categorie.
+```
+
 ## 14. Alignement des vues
 
 Les vues de lecture doivent exposer le champ technique `ID_StatutCmdFk` et peuvent conserver l'alias `ID_StatutCmd` pour la compatibilite applicative.
+
+### 14.1 Regle de compatibilite pour les vues de lecture
+
+Pour `T_Commande`, les vues de lecture doivent suivre cet ordre de priorite :
+
+1. exposer `ID_StatutCmdFk` comme champ technique officiel ;
+2. conserver eventuellement `ID_StatutCmd` comme alias de compatibilite ;
+3. utiliser les deux uniquement pour la lecture ;
+4. utiliser `ID_StatutCmdFk` uniquement pour l'ecriture applicative.
+
+Exemple de projection attendue dans une vue :
+
+```sql
+SELECT
+  c."ID_StatutCmdFk",
+  c."ID_StatutCmdFk" AS "ID_StatutCmd"
+FROM logistique."T_Commande" c;
+```
+
+### 14.2 Champs attendus dans V_Article
+
+La vue `logistique.V_Article` doit exposer au minimum les champs necessaires a la lecture metier des articles et a l'affichage du formulaire apres enregistrement.
+
+Champs attendus :
+
+```text
+DateHeureAuto
+ID_Article
+ID_TypeArticleFk
+ID_CategorieArticleFk
+ID_UserFK
+CodeArticleInterne
+NomArticle
+ID_UniteFk
+RefArticle
+QteArticle
+QteMinArticle
+PUArticle
+PVArticle
+ObsArticle
+ValideArticle
+DatePeremptionArticle
+DatePeremptionAlerteArticle
+NbreJoursAlerteArticle
+IdUser
+NomComplet
+```
+
+Regle importante :
+
+```text
+Si T_Article contient un champ utile au formulaire ou a la fiche article, la vue V_Article doit aussi l'exposer lorsque ce champ fait partie du contrat de lecture du module.
+```
+
+Exemple critique :
+
+```text
+DatePeremptionAlerteArticle ne doit pas exister seulement dans T_Article.
+Ce champ doit aussi etre projete dans V_Article pour rester visible apres rechargement.
+```

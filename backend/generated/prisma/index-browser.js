@@ -317,6 +317,7 @@ exports.Prisma.T_CommandeScalarFieldEnum = {
   ID_TypeCmdFk: 'ID_TypeCmdFk',
   ID_StatutCmdFk: 'ID_StatutCmdFk',
   ID_ClientFk: 'ID_ClientFk',
+  NomClientSaisi: 'NomClientSaisi',
   ID_UserFk: 'ID_UserFk',
   geolocalisationCmd: 'geolocalisationCmd',
   DateHeureAutoCmd: 'DateHeureAutoCmd',

@@ -3795,11 +3795,13 @@ export namespace Prisma {
   export type T_CommandeCountOutputType = {
     T_CommandeDetail: number
     T_Mouvement: number
+    T_Reglements: number
   }
 
   export type T_CommandeCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_CommandeDetail?: boolean | T_CommandeCountOutputTypeCountT_CommandeDetailArgs
     T_Mouvement?: boolean | T_CommandeCountOutputTypeCountT_MouvementArgs
+    T_Reglements?: boolean | T_CommandeCountOutputTypeCountT_ReglementsArgs
   }
 
   // Custom InputTypes
@@ -3825,6 +3827,13 @@ export namespace Prisma {
    */
   export type T_CommandeCountOutputTypeCountT_MouvementArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: T_MouvementWhereInput
+  }
+
+  /**
+   * T_CommandeCountOutputType without action
+   */
+  export type T_CommandeCountOutputTypeCountT_ReglementsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_ReglementsWhereInput
   }
 
 
@@ -3934,6 +3943,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique: number
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique: number
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique: number
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique: number
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique: number
+    T_Article_T_Article_ID_UniteFkToT_Generique: number
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique: number
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique: number
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique: number
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique: number
+    T_Mouvement: number
     T_Reglements: number
     T_Caisse: number
     T_PaiementDevise: number
@@ -3969,6 +3986,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueArgs
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_GeneriqueArgs
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs
+    T_Article_T_Article_ID_UniteFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_UniteFkToT_GeneriqueArgs
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs
+    T_Mouvement?: boolean | T_GeneriqueCountOutputTypeCountT_MouvementArgs
     T_Reglements?: boolean | T_GeneriqueCountOutputTypeCountT_ReglementsArgs
     T_Caisse?: boolean | T_GeneriqueCountOutputTypeCountT_CaisseArgs
     T_PaiementDevise?: boolean | T_GeneriqueCountOutputTypeCountT_PaiementDeviseArgs
@@ -4138,6 +4163,62 @@ export namespace Prisma {
    */
   export type T_GeneriqueCountOutputTypeCountT_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: T_Niveau_5WhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_ArticleWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_ArticleWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_ArticleWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_CommandeWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_CommandeWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_CommandeWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_CommandeWhereInput
+  }
+
+  /**
+   * T_GeneriqueCountOutputType without action
+   */
+  export type T_GeneriqueCountOutputTypeCountT_MouvementArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_MouvementWhereInput
   }
 
   /**
@@ -18305,6 +18386,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: boolean
     CodeArticleInterne?: boolean
     T_Recherche?: boolean | T_Article$T_RechercheArgs<ExtArgs>
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
     T_CommandeDetail?: boolean | T_Article$T_CommandeDetailArgs<ExtArgs>
     T_Mouvement?: boolean | T_Article$T_MouvementArgs<ExtArgs>
@@ -18332,6 +18416,9 @@ export namespace Prisma {
     DatePeremptionAlerteArticle?: boolean
     NbreJoursAlerteArticle?: boolean
     CodeArticleInterne?: boolean
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
   }, ExtArgs["result"]["t_Article"]>
 
@@ -18356,6 +18443,9 @@ export namespace Prisma {
     DatePeremptionAlerteArticle?: boolean
     NbreJoursAlerteArticle?: boolean
     CodeArticleInterne?: boolean
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
   }, ExtArgs["result"]["t_Article"]>
 
@@ -18385,15 +18475,24 @@ export namespace Prisma {
   export type T_ArticleOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Article" | "ID_TypeArticleFk" | "ID_CategorieArticleFk" | "ID_UserFK" | "ID_UniteFk" | "DateHeureAuto" | "CodeArticleExterne" | "NomArticle" | "RefArticle" | "QteArticle" | "PUArticle" | "PVArticle" | "QteMinArticle" | "PhotoArticle" | "ObsArticle" | "ValideArticle" | "DatePeremptionArticle" | "DatePeremptionAlerteArticle" | "NbreJoursAlerteArticle" | "CodeArticleInterne", ExtArgs["result"]["t_Article"]>
   export type T_ArticleInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_Recherche?: boolean | T_Article$T_RechercheArgs<ExtArgs>
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
     T_CommandeDetail?: boolean | T_Article$T_CommandeDetailArgs<ExtArgs>
     T_Mouvement?: boolean | T_Article$T_MouvementArgs<ExtArgs>
     _count?: boolean | T_ArticleCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type T_ArticleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
   }
   export type T_ArticleIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: boolean | T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Article$T_UtilisateursArgs<ExtArgs>
   }
 
@@ -18401,6 +18500,9 @@ export namespace Prisma {
     name: "T_Article"
     objects: {
       T_Recherche: Prisma.$T_RecherchePayload<ExtArgs>[]
+      T_Generique_T_Article_ID_CategorieArticleFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
+      T_Generique_T_Article_ID_TypeArticleFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
+      T_Generique_T_Article_ID_UniteFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
       T_Utilisateurs: Prisma.$T_UtilisateursPayload<ExtArgs> | null
       T_CommandeDetail: Prisma.$T_CommandeDetailPayload<ExtArgs>[]
       T_Mouvement: Prisma.$T_MouvementPayload<ExtArgs>[]
@@ -18821,6 +18923,9 @@ export namespace Prisma {
   export interface Prisma__T_ArticleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     T_Recherche<T extends T_Article$T_RechercheArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_RechercheArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_RecherchePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique<T extends T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique<T extends T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Generique_T_Article_ID_UniteFkToT_Generique<T extends T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Utilisateurs<T extends T_Article$T_UtilisateursArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_UtilisateursArgs<ExtArgs>>): Prisma__T_UtilisateursClient<$Result.GetResult<Prisma.$T_UtilisateursPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_CommandeDetail<T extends T_Article$T_CommandeDetailArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_CommandeDetailArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandeDetailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Mouvement<T extends T_Article$T_MouvementArgs<ExtArgs> = {}>(args?: Subset<T, T_Article$T_MouvementArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_MouvementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -19293,6 +19398,63 @@ export namespace Prisma {
   }
 
   /**
+   * T_Article.T_Generique_T_Article_ID_CategorieArticleFkToT_Generique
+   */
+  export type T_Article$T_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_Article.T_Generique_T_Article_ID_TypeArticleFkToT_Generique
+   */
+  export type T_Article$T_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_Article.T_Generique_T_Article_ID_UniteFkToT_Generique
+   */
+  export type T_Article$T_Generique_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
    * T_Article.T_Utilisateurs
    */
   export type T_Article$T_UtilisateursArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -19423,6 +19585,7 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
+    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19452,6 +19615,7 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
+    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19481,6 +19645,7 @@ export namespace Prisma {
     ID_TypeCmdFk: number
     ID_StatutCmdFk: number
     ID_ClientFk: number
+    NomClientSaisi: number
     ID_UserFk: number
     geolocalisationCmd: number
     DateHeureAutoCmd: number
@@ -19540,6 +19705,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
+    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19569,6 +19735,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
+    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19598,6 +19765,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
+    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19714,6 +19882,7 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
+    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19762,6 +19931,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
+    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19784,9 +19954,14 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
     T_CommandeDetail?: boolean | T_Commande$T_CommandeDetailArgs<ExtArgs>
     T_Mouvement?: boolean | T_Commande$T_MouvementArgs<ExtArgs>
+    T_Reglements?: boolean | T_Commande$T_ReglementsArgs<ExtArgs>
     _count?: boolean | T_CommandeCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["t_Commande"]>
 
@@ -19795,6 +19970,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
+    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19817,6 +19993,10 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
   }, ExtArgs["result"]["t_Commande"]>
 
@@ -19825,6 +20005,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
+    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19847,6 +20028,10 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
   }, ExtArgs["result"]["t_Commande"]>
 
@@ -19855,6 +20040,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
+    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19879,32 +20065,51 @@ export namespace Prisma {
     ID_ModePaiementFk?: boolean
   }
 
-  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmdFk" | "ID_ClientFk" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk", ExtArgs["result"]["t_Commande"]>
+  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmdFk" | "ID_ClientFk" | "NomClientSaisi" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk", ExtArgs["result"]["t_Commande"]>
   export type T_CommandeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
     T_CommandeDetail?: boolean | T_Commande$T_CommandeDetailArgs<ExtArgs>
     T_Mouvement?: boolean | T_Commande$T_MouvementArgs<ExtArgs>
+    T_Reglements?: boolean | T_Commande$T_ReglementsArgs<ExtArgs>
     _count?: boolean | T_CommandeCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type T_CommandeIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
   }
   export type T_CommandeIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
     T_Utilisateurs?: boolean | T_Commande$T_UtilisateursArgs<ExtArgs>
   }
 
   export type $T_CommandePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "T_Commande"
     objects: {
+      T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
+      T_Generique_T_Commande_ID_ModePaiementFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
+      T_Generique_T_Commande_ID_StatutCmdFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
+      T_Generique_T_Commande_ID_TypeCmdFkToT_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
       T_Utilisateurs: Prisma.$T_UtilisateursPayload<ExtArgs> | null
       T_CommandeDetail: Prisma.$T_CommandeDetailPayload<ExtArgs>[]
       T_Mouvement: Prisma.$T_MouvementPayload<ExtArgs>[]
+      T_Reglements: Prisma.$T_ReglementsPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       ID_Commande: number
       ID_TypeCmdFk: number | null
       ID_StatutCmdFk: number | null
       ID_ClientFk: number | null
+      NomClientSaisi: string | null
       ID_UserFk: number | null
       geolocalisationCmd: string | null
       DateHeureAutoCmd: Date | null
@@ -20321,9 +20526,14 @@ export namespace Prisma {
    */
   export interface Prisma__T_CommandeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique<T extends T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique<T extends T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique<T extends T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique<T extends T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Utilisateurs<T extends T_Commande$T_UtilisateursArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_UtilisateursArgs<ExtArgs>>): Prisma__T_UtilisateursClient<$Result.GetResult<Prisma.$T_UtilisateursPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_CommandeDetail<T extends T_Commande$T_CommandeDetailArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_CommandeDetailArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandeDetailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Mouvement<T extends T_Commande$T_MouvementArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_MouvementArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_MouvementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Reglements<T extends T_Commande$T_ReglementsArgs<ExtArgs> = {}>(args?: Subset<T, T_Commande$T_ReglementsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_ReglementsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -20357,6 +20567,7 @@ export namespace Prisma {
     readonly ID_TypeCmdFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_StatutCmdFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_ClientFk: FieldRef<"T_Commande", 'Int'>
+    readonly NomClientSaisi: FieldRef<"T_Commande", 'String'>
     readonly ID_UserFk: FieldRef<"T_Commande", 'Int'>
     readonly geolocalisationCmd: FieldRef<"T_Commande", 'String'>
     readonly DateHeureAutoCmd: FieldRef<"T_Commande", 'DateTime'>
@@ -20775,6 +20986,82 @@ export namespace Prisma {
   }
 
   /**
+   * T_Commande.T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique
+   */
+  export type T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_Commande.T_Generique_T_Commande_ID_ModePaiementFkToT_Generique
+   */
+  export type T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_Commande.T_Generique_T_Commande_ID_StatutCmdFkToT_Generique
+   */
+  export type T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
+   * T_Commande.T_Generique_T_Commande_ID_TypeCmdFkToT_Generique
+   */
+  export type T_Commande$T_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
    * T_Commande.T_Utilisateurs
    */
   export type T_Commande$T_UtilisateursArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -20839,6 +21126,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: T_MouvementScalarFieldEnum | T_MouvementScalarFieldEnum[]
+  }
+
+  /**
+   * T_Commande.T_Reglements
+   */
+  export type T_Commande$T_ReglementsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Reglements
+     */
+    select?: T_ReglementsSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Reglements
+     */
+    omit?: T_ReglementsOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_ReglementsInclude<ExtArgs> | null
+    where?: T_ReglementsWhereInput
+    orderBy?: T_ReglementsOrderByWithRelationInput | T_ReglementsOrderByWithRelationInput[]
+    cursor?: T_ReglementsWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_ReglementsScalarFieldEnum | T_ReglementsScalarFieldEnum[]
   }
 
   /**
@@ -22257,6 +22568,7 @@ export namespace Prisma {
     DateMvt?: boolean
     QteMvt?: boolean
     PUMvt?: boolean
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }, ExtArgs["result"]["t_Mouvement"]>
@@ -22270,6 +22582,7 @@ export namespace Prisma {
     DateMvt?: boolean
     QteMvt?: boolean
     PUMvt?: boolean
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }, ExtArgs["result"]["t_Mouvement"]>
@@ -22283,6 +22596,7 @@ export namespace Prisma {
     DateMvt?: boolean
     QteMvt?: boolean
     PUMvt?: boolean
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }, ExtArgs["result"]["t_Mouvement"]>
@@ -22300,14 +22614,17 @@ export namespace Prisma {
 
   export type T_MouvementOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Mvt" | "ID_TypeMvtFk" | "ID_ArticleFk" | "ID_cmdFk" | "DateHeureAutoMvt" | "DateMvt" | "QteMvt" | "PUMvt", ExtArgs["result"]["t_Mouvement"]>
   export type T_MouvementInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }
   export type T_MouvementIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }
   export type T_MouvementIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Generique?: boolean | T_Mouvement$T_GeneriqueArgs<ExtArgs>
     T_Article?: boolean | T_Mouvement$T_ArticleArgs<ExtArgs>
     T_Commande?: boolean | T_Mouvement$T_CommandeArgs<ExtArgs>
   }
@@ -22315,6 +22632,7 @@ export namespace Prisma {
   export type $T_MouvementPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "T_Mouvement"
     objects: {
+      T_Generique: Prisma.$T_GeneriquePayload<ExtArgs> | null
       T_Article: Prisma.$T_ArticlePayload<ExtArgs> | null
       T_Commande: Prisma.$T_CommandePayload<ExtArgs> | null
     }
@@ -22721,6 +23039,7 @@ export namespace Prisma {
    */
   export interface Prisma__T_MouvementClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    T_Generique<T extends T_Mouvement$T_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Mouvement$T_GeneriqueArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Article<T extends T_Mouvement$T_ArticleArgs<ExtArgs> = {}>(args?: Subset<T, T_Mouvement$T_ArticleArgs<ExtArgs>>): Prisma__T_ArticleClient<$Result.GetResult<Prisma.$T_ArticlePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Commande<T extends T_Mouvement$T_CommandeArgs<ExtArgs> = {}>(args?: Subset<T, T_Mouvement$T_CommandeArgs<ExtArgs>>): Prisma__T_CommandeClient<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
@@ -23156,6 +23475,25 @@ export namespace Prisma {
   }
 
   /**
+   * T_Mouvement.T_Generique
+   */
+  export type T_Mouvement$T_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Generique
+     */
+    select?: T_GeneriqueSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Generique
+     */
+    omit?: T_GeneriqueOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_GeneriqueInclude<ExtArgs> | null
+    where?: T_GeneriqueWhereInput
+  }
+
+  /**
    * T_Mouvement.T_Article
    */
   export type T_Mouvement$T_ArticleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -23430,6 +23768,7 @@ export namespace Prisma {
     ID_ClientFk?: boolean
     DateReglement?: boolean
     MontantRegle?: boolean
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["t_Reglements"]>
 
@@ -23440,6 +23779,7 @@ export namespace Prisma {
     ID_ClientFk?: boolean
     DateReglement?: boolean
     MontantRegle?: boolean
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["t_Reglements"]>
 
@@ -23450,6 +23790,7 @@ export namespace Prisma {
     ID_ClientFk?: boolean
     DateReglement?: boolean
     MontantRegle?: boolean
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["t_Reglements"]>
 
@@ -23464,18 +23805,22 @@ export namespace Prisma {
 
   export type T_ReglementsOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Reglement" | "CodeFactureFk" | "ID_ModeReglementFk" | "ID_ClientFk" | "DateReglement" | "MontantRegle", ExtArgs["result"]["t_Reglements"]>
   export type T_ReglementsInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }
   export type T_ReglementsIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }
   export type T_ReglementsIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Commande?: boolean | T_Reglements$T_CommandeArgs<ExtArgs>
     T_Generique?: boolean | T_GeneriqueDefaultArgs<ExtArgs>
   }
 
   export type $T_ReglementsPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "T_Reglements"
     objects: {
+      T_Commande: Prisma.$T_CommandePayload<ExtArgs> | null
       T_Generique: Prisma.$T_GeneriquePayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -23879,6 +24224,7 @@ export namespace Prisma {
    */
   export interface Prisma__T_ReglementsClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    T_Commande<T extends T_Reglements$T_CommandeArgs<ExtArgs> = {}>(args?: Subset<T, T_Reglements$T_CommandeArgs<ExtArgs>>): Prisma__T_CommandeClient<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     T_Generique<T extends T_GeneriqueDefaultArgs<ExtArgs> = {}>(args?: Subset<T, T_GeneriqueDefaultArgs<ExtArgs>>): Prisma__T_GeneriqueClient<$Result.GetResult<Prisma.$T_GeneriquePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -24308,6 +24654,25 @@ export namespace Prisma {
      * Limit how many T_Reglements to delete.
      */
     limit?: number
+  }
+
+  /**
+   * T_Reglements.T_Commande
+   */
+  export type T_Reglements$T_CommandeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Commande
+     */
+    select?: T_CommandeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Commande
+     */
+    omit?: T_CommandeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CommandeInclude<ExtArgs> | null
+    where?: T_CommandeWhereInput
   }
 
   /**
@@ -31815,6 +32180,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueArgs<ExtArgs>
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_GeneriqueArgs<ExtArgs>
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_UniteFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Mouvement?: boolean | T_Generique$T_MouvementArgs<ExtArgs>
     T_Reglements?: boolean | T_Generique$T_ReglementsArgs<ExtArgs>
     T_Caisse?: boolean | T_Generique$T_CaisseArgs<ExtArgs>
     T_PaiementDevise?: boolean | T_Generique$T_PaiementDeviseArgs<ExtArgs>
@@ -31912,6 +32285,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueArgs<ExtArgs>
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_GeneriqueArgs<ExtArgs>
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: boolean | T_Generique$T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>
+    T_Article_T_Article_ID_UniteFkToT_Generique?: boolean | T_Generique$T_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: boolean | T_Generique$T_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>
+    T_Mouvement?: boolean | T_Generique$T_MouvementArgs<ExtArgs>
     T_Reglements?: boolean | T_Generique$T_ReglementsArgs<ExtArgs>
     T_Caisse?: boolean | T_Generique$T_CaisseArgs<ExtArgs>
     T_PaiementDevise?: boolean | T_Generique$T_PaiementDeviseArgs<ExtArgs>
@@ -31957,6 +32338,14 @@ export namespace Prisma {
       T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique: Prisma.$T_Niveau_5Payload<ExtArgs>[]
       T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique: Prisma.$T_Niveau_5Payload<ExtArgs>[]
       T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique: Prisma.$T_Niveau_5Payload<ExtArgs>[]
+      T_Article_T_Article_ID_CategorieArticleFkToT_Generique: Prisma.$T_ArticlePayload<ExtArgs>[]
+      T_Article_T_Article_ID_TypeArticleFkToT_Generique: Prisma.$T_ArticlePayload<ExtArgs>[]
+      T_Article_T_Article_ID_UniteFkToT_Generique: Prisma.$T_ArticlePayload<ExtArgs>[]
+      T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique: Prisma.$T_CommandePayload<ExtArgs>[]
+      T_Commande_T_Commande_ID_ModePaiementFkToT_Generique: Prisma.$T_CommandePayload<ExtArgs>[]
+      T_Commande_T_Commande_ID_StatutCmdFkToT_Generique: Prisma.$T_CommandePayload<ExtArgs>[]
+      T_Commande_T_Commande_ID_TypeCmdFkToT_Generique: Prisma.$T_CommandePayload<ExtArgs>[]
+      T_Mouvement: Prisma.$T_MouvementPayload<ExtArgs>[]
       T_Reglements: Prisma.$T_ReglementsPayload<ExtArgs>[]
       T_Caisse: Prisma.$T_CaissePayload<ExtArgs>[]
       T_PaiementDevise: Prisma.$T_PaiementPayload<ExtArgs>[]
@@ -32402,6 +32791,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique<T extends T_Generique$T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Niveau_5Payload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique<T extends T_Generique$T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Niveau_5Payload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique<T extends T_Generique$T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Niveau_5Payload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique<T extends T_Generique$T_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_ArticlePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique<T extends T_Generique$T_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_ArticlePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Article_T_Article_ID_UniteFkToT_Generique<T extends T_Generique$T_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_ArticlePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique<T extends T_Generique$T_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique<T extends T_Generique$T_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique<T extends T_Generique$T_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique<T extends T_Generique$T_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CommandePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    T_Mouvement<T extends T_Generique$T_MouvementArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_MouvementArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_MouvementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Reglements<T extends T_Generique$T_ReglementsArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_ReglementsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_ReglementsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Caisse<T extends T_Generique$T_CaisseArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_CaisseArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_CaissePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_PaiementDevise<T extends T_Generique$T_PaiementDeviseArgs<ExtArgs> = {}>(args?: Subset<T, T_Generique$T_PaiementDeviseArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_PaiementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -33356,6 +33753,198 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: T_Niveau_5ScalarFieldEnum | T_Niveau_5ScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Article_T_Article_ID_CategorieArticleFkToT_Generique
+   */
+  export type T_Generique$T_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Article
+     */
+    select?: T_ArticleSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Article
+     */
+    omit?: T_ArticleOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_ArticleInclude<ExtArgs> | null
+    where?: T_ArticleWhereInput
+    orderBy?: T_ArticleOrderByWithRelationInput | T_ArticleOrderByWithRelationInput[]
+    cursor?: T_ArticleWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_ArticleScalarFieldEnum | T_ArticleScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Article_T_Article_ID_TypeArticleFkToT_Generique
+   */
+  export type T_Generique$T_Article_T_Article_ID_TypeArticleFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Article
+     */
+    select?: T_ArticleSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Article
+     */
+    omit?: T_ArticleOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_ArticleInclude<ExtArgs> | null
+    where?: T_ArticleWhereInput
+    orderBy?: T_ArticleOrderByWithRelationInput | T_ArticleOrderByWithRelationInput[]
+    cursor?: T_ArticleWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_ArticleScalarFieldEnum | T_ArticleScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Article_T_Article_ID_UniteFkToT_Generique
+   */
+  export type T_Generique$T_Article_T_Article_ID_UniteFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Article
+     */
+    select?: T_ArticleSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Article
+     */
+    omit?: T_ArticleOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_ArticleInclude<ExtArgs> | null
+    where?: T_ArticleWhereInput
+    orderBy?: T_ArticleOrderByWithRelationInput | T_ArticleOrderByWithRelationInput[]
+    cursor?: T_ArticleWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_ArticleScalarFieldEnum | T_ArticleScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique
+   */
+  export type T_Generique$T_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Commande
+     */
+    select?: T_CommandeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Commande
+     */
+    omit?: T_CommandeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CommandeInclude<ExtArgs> | null
+    where?: T_CommandeWhereInput
+    orderBy?: T_CommandeOrderByWithRelationInput | T_CommandeOrderByWithRelationInput[]
+    cursor?: T_CommandeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_CommandeScalarFieldEnum | T_CommandeScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Commande_T_Commande_ID_ModePaiementFkToT_Generique
+   */
+  export type T_Generique$T_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Commande
+     */
+    select?: T_CommandeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Commande
+     */
+    omit?: T_CommandeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CommandeInclude<ExtArgs> | null
+    where?: T_CommandeWhereInput
+    orderBy?: T_CommandeOrderByWithRelationInput | T_CommandeOrderByWithRelationInput[]
+    cursor?: T_CommandeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_CommandeScalarFieldEnum | T_CommandeScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Commande_T_Commande_ID_StatutCmdFkToT_Generique
+   */
+  export type T_Generique$T_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Commande
+     */
+    select?: T_CommandeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Commande
+     */
+    omit?: T_CommandeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CommandeInclude<ExtArgs> | null
+    where?: T_CommandeWhereInput
+    orderBy?: T_CommandeOrderByWithRelationInput | T_CommandeOrderByWithRelationInput[]
+    cursor?: T_CommandeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_CommandeScalarFieldEnum | T_CommandeScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Commande_T_Commande_ID_TypeCmdFkToT_Generique
+   */
+  export type T_Generique$T_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Commande
+     */
+    select?: T_CommandeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Commande
+     */
+    omit?: T_CommandeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_CommandeInclude<ExtArgs> | null
+    where?: T_CommandeWhereInput
+    orderBy?: T_CommandeOrderByWithRelationInput | T_CommandeOrderByWithRelationInput[]
+    cursor?: T_CommandeWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_CommandeScalarFieldEnum | T_CommandeScalarFieldEnum[]
+  }
+
+  /**
+   * T_Generique.T_Mouvement
+   */
+  export type T_Generique$T_MouvementArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Mouvement
+     */
+    select?: T_MouvementSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Mouvement
+     */
+    omit?: T_MouvementOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_MouvementInclude<ExtArgs> | null
+    where?: T_MouvementWhereInput
+    orderBy?: T_MouvementOrderByWithRelationInput | T_MouvementOrderByWithRelationInput[]
+    cursor?: T_MouvementWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_MouvementScalarFieldEnum | T_MouvementScalarFieldEnum[]
   }
 
   /**
@@ -44242,6 +44831,7 @@ export namespace Prisma {
     ID_TypeCmdFk: 'ID_TypeCmdFk',
     ID_StatutCmdFk: 'ID_StatutCmdFk',
     ID_ClientFk: 'ID_ClientFk',
+    NomClientSaisi: 'NomClientSaisi',
     ID_UserFk: 'ID_UserFk',
     geolocalisationCmd: 'geolocalisationCmd',
     DateHeureAutoCmd: 'DateHeureAutoCmd',
@@ -45828,6 +46418,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: IntNullableFilter<"T_Article"> | number | null
     CodeArticleInterne?: StringNullableFilter<"T_Article"> | string | null
     T_Recherche?: T_RechercheListRelationFilter
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
     T_CommandeDetail?: T_CommandeDetailListRelationFilter
     T_Mouvement?: T_MouvementListRelationFilter
@@ -45855,6 +46448,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: SortOrderInput | SortOrder
     CodeArticleInterne?: SortOrderInput | SortOrder
     T_Recherche?: T_RechercheOrderByRelationAggregateInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
     T_Utilisateurs?: T_UtilisateursOrderByWithRelationInput
     T_CommandeDetail?: T_CommandeDetailOrderByRelationAggregateInput
     T_Mouvement?: T_MouvementOrderByRelationAggregateInput
@@ -45885,6 +46481,9 @@ export namespace Prisma {
     DatePeremptionAlerteArticle?: DateTimeNullableFilter<"T_Article"> | Date | string | null
     NbreJoursAlerteArticle?: IntNullableFilter<"T_Article"> | number | null
     T_Recherche?: T_RechercheListRelationFilter
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
     T_CommandeDetail?: T_CommandeDetailListRelationFilter
     T_Mouvement?: T_MouvementListRelationFilter
@@ -45952,6 +46551,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
@@ -45974,9 +46574,14 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
     T_CommandeDetail?: T_CommandeDetailListRelationFilter
     T_Mouvement?: T_MouvementListRelationFilter
+    T_Reglements?: T_ReglementsListRelationFilter
   }
 
   export type T_CommandeOrderByWithRelationInput = {
@@ -45984,6 +46589,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrderInput | SortOrder
     ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
+    NomClientSaisi?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
     DateHeureAutoCmd?: SortOrderInput | SortOrder
@@ -46006,9 +46612,14 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrderInput | SortOrder
     DateEcheancePaiement?: SortOrderInput | SortOrder
     ID_ModePaiementFk?: SortOrderInput | SortOrder
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
     T_Utilisateurs?: T_UtilisateursOrderByWithRelationInput
     T_CommandeDetail?: T_CommandeDetailOrderByRelationAggregateInput
     T_Mouvement?: T_MouvementOrderByRelationAggregateInput
+    T_Reglements?: T_ReglementsOrderByRelationAggregateInput
   }
 
   export type T_CommandeWhereUniqueInput = Prisma.AtLeast<{
@@ -46021,6 +46632,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
@@ -46041,9 +46653,14 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
     T_CommandeDetail?: T_CommandeDetailListRelationFilter
     T_Mouvement?: T_MouvementListRelationFilter
+    T_Reglements?: T_ReglementsListRelationFilter
   }, "ID_Commande" | "CodeCmd" | "CodeFacture">
 
   export type T_CommandeOrderByWithAggregationInput = {
@@ -46051,6 +46668,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrderInput | SortOrder
     ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
+    NomClientSaisi?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
     DateHeureAutoCmd?: SortOrderInput | SortOrder
@@ -46088,6 +46706,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableWithAggregatesFilter<"T_Commande"> | Date | string | null
@@ -46200,6 +46819,7 @@ export namespace Prisma {
     DateMvt?: DateTimeNullableFilter<"T_Mouvement"> | Date | string | null
     QteMvt?: IntNullableFilter<"T_Mouvement"> | number | null
     PUMvt?: DecimalNullableFilter<"T_Mouvement"> | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Article?: XOR<T_ArticleNullableScalarRelationFilter, T_ArticleWhereInput> | null
     T_Commande?: XOR<T_CommandeNullableScalarRelationFilter, T_CommandeWhereInput> | null
   }
@@ -46213,6 +46833,7 @@ export namespace Prisma {
     DateMvt?: SortOrderInput | SortOrder
     QteMvt?: SortOrderInput | SortOrder
     PUMvt?: SortOrderInput | SortOrder
+    T_Generique?: T_GeneriqueOrderByWithRelationInput
     T_Article?: T_ArticleOrderByWithRelationInput
     T_Commande?: T_CommandeOrderByWithRelationInput
   }
@@ -46229,6 +46850,7 @@ export namespace Prisma {
     DateMvt?: DateTimeNullableFilter<"T_Mouvement"> | Date | string | null
     QteMvt?: IntNullableFilter<"T_Mouvement"> | number | null
     PUMvt?: DecimalNullableFilter<"T_Mouvement"> | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Article?: XOR<T_ArticleNullableScalarRelationFilter, T_ArticleWhereInput> | null
     T_Commande?: XOR<T_CommandeNullableScalarRelationFilter, T_CommandeWhereInput> | null
   }, "ID_Mvt">
@@ -46273,6 +46895,7 @@ export namespace Prisma {
     ID_ClientFk?: IntNullableFilter<"T_Reglements"> | number | null
     DateReglement?: DateTimeNullableFilter<"T_Reglements"> | Date | string | null
     MontantRegle?: DecimalNullableFilter<"T_Reglements"> | Decimal | DecimalJsLike | number | string | null
+    T_Commande?: XOR<T_CommandeNullableScalarRelationFilter, T_CommandeWhereInput> | null
     T_Generique?: XOR<T_GeneriqueScalarRelationFilter, T_GeneriqueWhereInput>
   }
 
@@ -46283,6 +46906,7 @@ export namespace Prisma {
     ID_ClientFk?: SortOrderInput | SortOrder
     DateReglement?: SortOrderInput | SortOrder
     MontantRegle?: SortOrderInput | SortOrder
+    T_Commande?: T_CommandeOrderByWithRelationInput
     T_Generique?: T_GeneriqueOrderByWithRelationInput
   }
 
@@ -46296,6 +46920,7 @@ export namespace Prisma {
     ID_ClientFk?: IntNullableFilter<"T_Reglements"> | number | null
     DateReglement?: DateTimeNullableFilter<"T_Reglements"> | Date | string | null
     MontantRegle?: DecimalNullableFilter<"T_Reglements"> | Decimal | DecimalJsLike | number | string | null
+    T_Commande?: XOR<T_CommandeNullableScalarRelationFilter, T_CommandeWhereInput> | null
     T_Generique?: XOR<T_GeneriqueScalarRelationFilter, T_GeneriqueWhereInput>
   }, "ID_Reglement">
 
@@ -46851,6 +47476,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5ListRelationFilter
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5ListRelationFilter
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5ListRelationFilter
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleListRelationFilter
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleListRelationFilter
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleListRelationFilter
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeListRelationFilter
+    T_Mouvement?: T_MouvementListRelationFilter
     T_Reglements?: T_ReglementsListRelationFilter
     T_Caisse?: T_CaisseListRelationFilter
     T_PaiementDevise?: T_PaiementListRelationFilter
@@ -46903,6 +47536,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5OrderByRelationAggregateInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5OrderByRelationAggregateInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5OrderByRelationAggregateInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleOrderByRelationAggregateInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleOrderByRelationAggregateInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleOrderByRelationAggregateInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeOrderByRelationAggregateInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeOrderByRelationAggregateInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeOrderByRelationAggregateInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeOrderByRelationAggregateInput
+    T_Mouvement?: T_MouvementOrderByRelationAggregateInput
     T_Reglements?: T_ReglementsOrderByRelationAggregateInput
     T_Caisse?: T_CaisseOrderByRelationAggregateInput
     T_PaiementDevise?: T_PaiementOrderByRelationAggregateInput
@@ -46958,6 +47599,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5ListRelationFilter
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5ListRelationFilter
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5ListRelationFilter
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleListRelationFilter
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleListRelationFilter
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleListRelationFilter
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeListRelationFilter
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeListRelationFilter
+    T_Mouvement?: T_MouvementListRelationFilter
     T_Reglements?: T_ReglementsListRelationFilter
     T_Caisse?: T_CaisseListRelationFilter
     T_PaiementDevise?: T_PaiementListRelationFilter
@@ -48939,9 +49588,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleCreateInput = {
-    ID_TypeArticleFk?: number | null
-    ID_CategorieArticleFk?: number | null
-    ID_UniteFk?: number | null
     DateHeureAuto?: Date | string | null
     CodeArticleExterne?: number | null
     NomArticle: string
@@ -48958,6 +49604,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: number | null
     CodeArticleInterne?: string | null
     T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
@@ -48990,9 +49639,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -49009,6 +49655,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
     CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
     T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
@@ -49064,9 +49713,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateManyMutationInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -49108,9 +49754,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeCreateInput = {
-    ID_TypeCmdFk?: number | null
-    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -49129,12 +49774,15 @@ export namespace Prisma {
     StatusFacture?: string | null
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
-    ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
-    ID_ModePaiementFk?: number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeUncheckedCreateInput = {
@@ -49142,6 +49790,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -49166,12 +49815,12 @@ export namespace Prisma {
     ID_ModePaiementFk?: number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeUpdateInput = {
-    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49190,12 +49839,15 @@ export namespace Prisma {
     StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
-    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeUncheckedUpdateInput = {
@@ -49203,6 +49855,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49227,6 +49880,7 @@ export namespace Prisma {
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeCreateManyInput = {
@@ -49234,6 +49888,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -49259,9 +49914,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeUpdateManyMutationInput = {
-    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49280,9 +49934,7 @@ export namespace Prisma {
     StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
-    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
   }
 
   export type T_CommandeUncheckedUpdateManyInput = {
@@ -49290,6 +49942,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49390,11 +50043,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementCreateInput = {
-    ID_TypeMvtFk?: number | null
     DateHeureAutoMvt?: Date | string | null
     DateMvt?: Date | string | null
     QteMvt?: number | null
     PUMvt?: Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueCreateNestedOneWithoutT_MouvementInput
     T_Article?: T_ArticleCreateNestedOneWithoutT_MouvementInput
     T_Commande?: T_CommandeCreateNestedOneWithoutT_MouvementInput
   }
@@ -49411,11 +50064,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementUpdateInput = {
-    ID_TypeMvtFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
     PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueUpdateOneWithoutT_MouvementNestedInput
     T_Article?: T_ArticleUpdateOneWithoutT_MouvementNestedInput
     T_Commande?: T_CommandeUpdateOneWithoutT_MouvementNestedInput
   }
@@ -49443,7 +50096,6 @@ export namespace Prisma {
   }
 
   export type T_MouvementUpdateManyMutationInput = {
-    ID_TypeMvtFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
@@ -49462,10 +50114,10 @@ export namespace Prisma {
   }
 
   export type T_ReglementsCreateInput = {
-    CodeFactureFk?: string | null
     ID_ClientFk?: number | null
     DateReglement?: Date | string | null
     MontantRegle?: Decimal | DecimalJsLike | number | string | null
+    T_Commande?: T_CommandeCreateNestedOneWithoutT_ReglementsInput
     T_Generique: T_GeneriqueCreateNestedOneWithoutT_ReglementsInput
   }
 
@@ -49479,10 +50131,10 @@ export namespace Prisma {
   }
 
   export type T_ReglementsUpdateInput = {
-    CodeFactureFk?: NullableStringFieldUpdateOperationsInput | string | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Commande?: T_CommandeUpdateOneWithoutT_ReglementsNestedInput
     T_Generique?: T_GeneriqueUpdateOneRequiredWithoutT_ReglementsNestedInput
   }
 
@@ -49505,7 +50157,6 @@ export namespace Prisma {
   }
 
   export type T_ReglementsUpdateManyMutationInput = {
-    CodeFactureFk?: NullableStringFieldUpdateOperationsInput | string | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
@@ -50026,6 +50677,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -50078,6 +50737,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -50127,6 +50794,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -50179,6 +50854,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -52251,11 +52934,22 @@ export namespace Prisma {
     _max?: NestedDecimalFilter<$PrismaModel>
   }
 
+  export type T_ReglementsListRelationFilter = {
+    every?: T_ReglementsWhereInput
+    some?: T_ReglementsWhereInput
+    none?: T_ReglementsWhereInput
+  }
+
+  export type T_ReglementsOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type T_CommandeCountOrderByAggregateInput = {
     ID_Commande?: SortOrder
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
+    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -52299,6 +52993,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
+    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -52328,6 +53023,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
+    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -52910,10 +53606,16 @@ export namespace Prisma {
     none?: T_CommunicationWhereInput
   }
 
-  export type T_ReglementsListRelationFilter = {
-    every?: T_ReglementsWhereInput
-    some?: T_ReglementsWhereInput
-    none?: T_ReglementsWhereInput
+  export type T_ArticleListRelationFilter = {
+    every?: T_ArticleWhereInput
+    some?: T_ArticleWhereInput
+    none?: T_ArticleWhereInput
+  }
+
+  export type T_CommandeListRelationFilter = {
+    every?: T_CommandeWhereInput
+    some?: T_CommandeWhereInput
+    none?: T_CommandeWhereInput
   }
 
   export type T_CaisseListRelationFilter = {
@@ -52967,7 +53669,11 @@ export namespace Prisma {
     _count?: SortOrder
   }
 
-  export type T_ReglementsOrderByRelationAggregateInput = {
+  export type T_ArticleOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type T_CommandeOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -53494,32 +54200,12 @@ export namespace Prisma {
     none?: T_ChatWhereInput
   }
 
-  export type T_ArticleListRelationFilter = {
-    every?: T_ArticleWhereInput
-    some?: T_ArticleWhereInput
-    none?: T_ArticleWhereInput
-  }
-
-  export type T_CommandeListRelationFilter = {
-    every?: T_CommandeWhereInput
-    some?: T_CommandeWhereInput
-    none?: T_CommandeWhereInput
-  }
-
   export type T_ProfessionnelNullableScalarRelationFilter = {
     is?: T_ProfessionnelWhereInput | null
     isNot?: T_ProfessionnelWhereInput | null
   }
 
   export type T_ChatOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type T_ArticleOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type T_CommandeOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -54674,6 +55360,24 @@ export namespace Prisma {
     connect?: T_RechercheWhereUniqueInput | T_RechercheWhereUniqueInput[]
   }
 
+  export type T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
   export type T_UtilisateursCreateNestedOneWithoutT_ArticleInput = {
     create?: XOR<T_UtilisateursCreateWithoutT_ArticleInput, T_UtilisateursUncheckedCreateWithoutT_ArticleInput>
     connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_ArticleInput
@@ -54735,6 +55439,36 @@ export namespace Prisma {
     update?: T_RechercheUpdateWithWhereUniqueWithoutT_ArticleInput | T_RechercheUpdateWithWhereUniqueWithoutT_ArticleInput[]
     updateMany?: T_RechercheUpdateManyWithWhereWithoutT_ArticleInput | T_RechercheUpdateManyWithWhereWithoutT_ArticleInput[]
     deleteMany?: T_RechercheScalarWhereInput | T_RechercheScalarWhereInput[]
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
   }
 
   export type T_UtilisateursUpdateOneWithoutT_ArticleNestedInput = {
@@ -54817,6 +55551,30 @@ export namespace Prisma {
     deleteMany?: T_MouvementScalarWhereInput | T_MouvementScalarWhereInput[]
   }
 
+  export type T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
   export type T_UtilisateursCreateNestedOneWithoutT_CommandeInput = {
     create?: XOR<T_UtilisateursCreateWithoutT_CommandeInput, T_UtilisateursUncheckedCreateWithoutT_CommandeInput>
     connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_CommandeInput
@@ -54837,6 +55595,13 @@ export namespace Prisma {
     connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
   }
 
+  export type T_ReglementsCreateNestedManyWithoutT_CommandeInput = {
+    create?: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput> | T_ReglementsCreateWithoutT_CommandeInput[] | T_ReglementsUncheckedCreateWithoutT_CommandeInput[]
+    connectOrCreate?: T_ReglementsCreateOrConnectWithoutT_CommandeInput | T_ReglementsCreateOrConnectWithoutT_CommandeInput[]
+    createMany?: T_ReglementsCreateManyT_CommandeInputEnvelope
+    connect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+  }
+
   export type T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput = {
     create?: XOR<T_CommandeDetailCreateWithoutT_CommandeInput, T_CommandeDetailUncheckedCreateWithoutT_CommandeInput> | T_CommandeDetailCreateWithoutT_CommandeInput[] | T_CommandeDetailUncheckedCreateWithoutT_CommandeInput[]
     connectOrCreate?: T_CommandeDetailCreateOrConnectWithoutT_CommandeInput | T_CommandeDetailCreateOrConnectWithoutT_CommandeInput[]
@@ -54849,6 +55614,53 @@ export namespace Prisma {
     connectOrCreate?: T_MouvementCreateOrConnectWithoutT_CommandeInput | T_MouvementCreateOrConnectWithoutT_CommandeInput[]
     createMany?: T_MouvementCreateManyT_CommandeInputEnvelope
     connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+  }
+
+  export type T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput = {
+    create?: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput> | T_ReglementsCreateWithoutT_CommandeInput[] | T_ReglementsUncheckedCreateWithoutT_CommandeInput[]
+    connectOrCreate?: T_ReglementsCreateOrConnectWithoutT_CommandeInput | T_ReglementsCreateOrConnectWithoutT_CommandeInput[]
+    createMany?: T_ReglementsCreateManyT_CommandeInputEnvelope
+    connect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    upsert?: T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
   }
 
   export type T_UtilisateursUpdateOneWithoutT_CommandeNestedInput = {
@@ -54889,6 +55701,20 @@ export namespace Prisma {
     deleteMany?: T_MouvementScalarWhereInput | T_MouvementScalarWhereInput[]
   }
 
+  export type T_ReglementsUpdateManyWithoutT_CommandeNestedInput = {
+    create?: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput> | T_ReglementsCreateWithoutT_CommandeInput[] | T_ReglementsUncheckedCreateWithoutT_CommandeInput[]
+    connectOrCreate?: T_ReglementsCreateOrConnectWithoutT_CommandeInput | T_ReglementsCreateOrConnectWithoutT_CommandeInput[]
+    upsert?: T_ReglementsUpsertWithWhereUniqueWithoutT_CommandeInput | T_ReglementsUpsertWithWhereUniqueWithoutT_CommandeInput[]
+    createMany?: T_ReglementsCreateManyT_CommandeInputEnvelope
+    set?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    disconnect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    delete?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    connect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    update?: T_ReglementsUpdateWithWhereUniqueWithoutT_CommandeInput | T_ReglementsUpdateWithWhereUniqueWithoutT_CommandeInput[]
+    updateMany?: T_ReglementsUpdateManyWithWhereWithoutT_CommandeInput | T_ReglementsUpdateManyWithWhereWithoutT_CommandeInput[]
+    deleteMany?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
+  }
+
   export type T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput = {
     create?: XOR<T_CommandeDetailCreateWithoutT_CommandeInput, T_CommandeDetailUncheckedCreateWithoutT_CommandeInput> | T_CommandeDetailCreateWithoutT_CommandeInput[] | T_CommandeDetailUncheckedCreateWithoutT_CommandeInput[]
     connectOrCreate?: T_CommandeDetailCreateOrConnectWithoutT_CommandeInput | T_CommandeDetailCreateOrConnectWithoutT_CommandeInput[]
@@ -54915,6 +55741,20 @@ export namespace Prisma {
     update?: T_MouvementUpdateWithWhereUniqueWithoutT_CommandeInput | T_MouvementUpdateWithWhereUniqueWithoutT_CommandeInput[]
     updateMany?: T_MouvementUpdateManyWithWhereWithoutT_CommandeInput | T_MouvementUpdateManyWithWhereWithoutT_CommandeInput[]
     deleteMany?: T_MouvementScalarWhereInput | T_MouvementScalarWhereInput[]
+  }
+
+  export type T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput = {
+    create?: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput> | T_ReglementsCreateWithoutT_CommandeInput[] | T_ReglementsUncheckedCreateWithoutT_CommandeInput[]
+    connectOrCreate?: T_ReglementsCreateOrConnectWithoutT_CommandeInput | T_ReglementsCreateOrConnectWithoutT_CommandeInput[]
+    upsert?: T_ReglementsUpsertWithWhereUniqueWithoutT_CommandeInput | T_ReglementsUpsertWithWhereUniqueWithoutT_CommandeInput[]
+    createMany?: T_ReglementsCreateManyT_CommandeInputEnvelope
+    set?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    disconnect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    delete?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    connect?: T_ReglementsWhereUniqueInput | T_ReglementsWhereUniqueInput[]
+    update?: T_ReglementsUpdateWithWhereUniqueWithoutT_CommandeInput | T_ReglementsUpdateWithWhereUniqueWithoutT_CommandeInput[]
+    updateMany?: T_ReglementsUpdateManyWithWhereWithoutT_CommandeInput | T_ReglementsUpdateManyWithWhereWithoutT_CommandeInput[]
+    deleteMany?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
   }
 
   export type T_CommandeCreateNestedOneWithoutT_CommandeDetailInput = {
@@ -54945,6 +55785,12 @@ export namespace Prisma {
     update?: XOR<XOR<T_ArticleUpdateToOneWithWhereWithoutT_CommandeDetailInput, T_ArticleUpdateWithoutT_CommandeDetailInput>, T_ArticleUncheckedUpdateWithoutT_CommandeDetailInput>
   }
 
+  export type T_GeneriqueCreateNestedOneWithoutT_MouvementInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_MouvementInput, T_GeneriqueUncheckedCreateWithoutT_MouvementInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_MouvementInput
+    connect?: T_GeneriqueWhereUniqueInput
+  }
+
   export type T_ArticleCreateNestedOneWithoutT_MouvementInput = {
     create?: XOR<T_ArticleCreateWithoutT_MouvementInput, T_ArticleUncheckedCreateWithoutT_MouvementInput>
     connectOrCreate?: T_ArticleCreateOrConnectWithoutT_MouvementInput
@@ -54955,6 +55801,16 @@ export namespace Prisma {
     create?: XOR<T_CommandeCreateWithoutT_MouvementInput, T_CommandeUncheckedCreateWithoutT_MouvementInput>
     connectOrCreate?: T_CommandeCreateOrConnectWithoutT_MouvementInput
     connect?: T_CommandeWhereUniqueInput
+  }
+
+  export type T_GeneriqueUpdateOneWithoutT_MouvementNestedInput = {
+    create?: XOR<T_GeneriqueCreateWithoutT_MouvementInput, T_GeneriqueUncheckedCreateWithoutT_MouvementInput>
+    connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_MouvementInput
+    upsert?: T_GeneriqueUpsertWithoutT_MouvementInput
+    disconnect?: T_GeneriqueWhereInput | boolean
+    delete?: T_GeneriqueWhereInput | boolean
+    connect?: T_GeneriqueWhereUniqueInput
+    update?: XOR<XOR<T_GeneriqueUpdateToOneWithWhereWithoutT_MouvementInput, T_GeneriqueUpdateWithoutT_MouvementInput>, T_GeneriqueUncheckedUpdateWithoutT_MouvementInput>
   }
 
   export type T_ArticleUpdateOneWithoutT_MouvementNestedInput = {
@@ -54977,10 +55833,26 @@ export namespace Prisma {
     update?: XOR<XOR<T_CommandeUpdateToOneWithWhereWithoutT_MouvementInput, T_CommandeUpdateWithoutT_MouvementInput>, T_CommandeUncheckedUpdateWithoutT_MouvementInput>
   }
 
+  export type T_CommandeCreateNestedOneWithoutT_ReglementsInput = {
+    create?: XOR<T_CommandeCreateWithoutT_ReglementsInput, T_CommandeUncheckedCreateWithoutT_ReglementsInput>
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_ReglementsInput
+    connect?: T_CommandeWhereUniqueInput
+  }
+
   export type T_GeneriqueCreateNestedOneWithoutT_ReglementsInput = {
     create?: XOR<T_GeneriqueCreateWithoutT_ReglementsInput, T_GeneriqueUncheckedCreateWithoutT_ReglementsInput>
     connectOrCreate?: T_GeneriqueCreateOrConnectWithoutT_ReglementsInput
     connect?: T_GeneriqueWhereUniqueInput
+  }
+
+  export type T_CommandeUpdateOneWithoutT_ReglementsNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_ReglementsInput, T_CommandeUncheckedCreateWithoutT_ReglementsInput>
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_ReglementsInput
+    upsert?: T_CommandeUpsertWithoutT_ReglementsInput
+    disconnect?: T_CommandeWhereInput | boolean
+    delete?: T_CommandeWhereInput | boolean
+    connect?: T_CommandeWhereUniqueInput
+    update?: XOR<XOR<T_CommandeUpdateToOneWithWhereWithoutT_ReglementsInput, T_CommandeUpdateWithoutT_ReglementsInput>, T_CommandeUncheckedUpdateWithoutT_ReglementsInput>
   }
 
   export type T_GeneriqueUpdateOneRequiredWithoutT_ReglementsNestedInput = {
@@ -55510,6 +56382,62 @@ export namespace Prisma {
     connect?: T_Niveau_5WhereUniqueInput | T_Niveau_5WhereUniqueInput[]
   }
 
+  export type T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_MouvementCreateNestedManyWithoutT_GeneriqueInput = {
+    create?: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput> | T_MouvementCreateWithoutT_GeneriqueInput[] | T_MouvementUncheckedCreateWithoutT_GeneriqueInput[]
+    connectOrCreate?: T_MouvementCreateOrConnectWithoutT_GeneriqueInput | T_MouvementCreateOrConnectWithoutT_GeneriqueInput[]
+    createMany?: T_MouvementCreateManyT_GeneriqueInputEnvelope
+    connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+  }
+
   export type T_ReglementsCreateNestedManyWithoutT_GeneriqueInput = {
     create?: XOR<T_ReglementsCreateWithoutT_GeneriqueInput, T_ReglementsUncheckedCreateWithoutT_GeneriqueInput> | T_ReglementsCreateWithoutT_GeneriqueInput[] | T_ReglementsUncheckedCreateWithoutT_GeneriqueInput[]
     connectOrCreate?: T_ReglementsCreateOrConnectWithoutT_GeneriqueInput | T_ReglementsCreateOrConnectWithoutT_GeneriqueInput[]
@@ -55738,6 +56666,62 @@ export namespace Prisma {
     connectOrCreate?: T_Niveau_5CreateOrConnectWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput | T_Niveau_5CreateOrConnectWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput[]
     createMany?: T_Niveau_5CreateManyT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInputEnvelope
     connect?: T_Niveau_5WhereUniqueInput | T_Niveau_5WhereUniqueInput[]
+  }
+
+  export type T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInputEnvelope
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+  }
+
+  export type T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInputEnvelope
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+  }
+
+  export type T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput = {
+    create?: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput> | T_MouvementCreateWithoutT_GeneriqueInput[] | T_MouvementUncheckedCreateWithoutT_GeneriqueInput[]
+    connectOrCreate?: T_MouvementCreateOrConnectWithoutT_GeneriqueInput | T_MouvementCreateOrConnectWithoutT_GeneriqueInput[]
+    createMany?: T_MouvementCreateManyT_GeneriqueInputEnvelope
+    connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
   }
 
   export type T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput = {
@@ -56109,6 +57093,118 @@ export namespace Prisma {
     update?: T_Niveau_5UpdateWithWhereUniqueWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput | T_Niveau_5UpdateWithWhereUniqueWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput[]
     updateMany?: T_Niveau_5UpdateManyWithWhereWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput | T_Niveau_5UpdateManyWithWhereWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput[]
     deleteMany?: T_Niveau_5ScalarWhereInput | T_Niveau_5ScalarWhereInput[]
+  }
+
+  export type T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_MouvementUpdateManyWithoutT_GeneriqueNestedInput = {
+    create?: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput> | T_MouvementCreateWithoutT_GeneriqueInput[] | T_MouvementUncheckedCreateWithoutT_GeneriqueInput[]
+    connectOrCreate?: T_MouvementCreateOrConnectWithoutT_GeneriqueInput | T_MouvementCreateOrConnectWithoutT_GeneriqueInput[]
+    upsert?: T_MouvementUpsertWithWhereUniqueWithoutT_GeneriqueInput | T_MouvementUpsertWithWhereUniqueWithoutT_GeneriqueInput[]
+    createMany?: T_MouvementCreateManyT_GeneriqueInputEnvelope
+    set?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    disconnect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    delete?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    update?: T_MouvementUpdateWithWhereUniqueWithoutT_GeneriqueInput | T_MouvementUpdateWithWhereUniqueWithoutT_GeneriqueInput[]
+    updateMany?: T_MouvementUpdateManyWithWhereWithoutT_GeneriqueInput | T_MouvementUpdateManyWithWhereWithoutT_GeneriqueInput[]
+    deleteMany?: T_MouvementScalarWhereInput | T_MouvementScalarWhereInput[]
   }
 
   export type T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput = {
@@ -56565,6 +57661,118 @@ export namespace Prisma {
     update?: T_Niveau_5UpdateWithWhereUniqueWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput | T_Niveau_5UpdateWithWhereUniqueWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput[]
     updateMany?: T_Niveau_5UpdateManyWithWhereWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput | T_Niveau_5UpdateManyWithWhereWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput[]
     deleteMany?: T_Niveau_5ScalarWhereInput | T_Niveau_5ScalarWhereInput[]
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput> | T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[] | T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    connectOrCreate?: T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    upsert?: T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    createMany?: T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInputEnvelope
+    set?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    disconnect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    delete?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    connect?: T_ArticleWhereUniqueInput | T_ArticleWhereUniqueInput[]
+    update?: T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    updateMany?: T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    deleteMany?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput = {
+    create?: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput> | T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[] | T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    connectOrCreate?: T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    upsert?: T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    createMany?: T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInputEnvelope
+    set?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    disconnect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    delete?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    connect?: T_CommandeWhereUniqueInput | T_CommandeWhereUniqueInput[]
+    update?: T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    updateMany?: T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    deleteMany?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+  }
+
+  export type T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput = {
+    create?: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput> | T_MouvementCreateWithoutT_GeneriqueInput[] | T_MouvementUncheckedCreateWithoutT_GeneriqueInput[]
+    connectOrCreate?: T_MouvementCreateOrConnectWithoutT_GeneriqueInput | T_MouvementCreateOrConnectWithoutT_GeneriqueInput[]
+    upsert?: T_MouvementUpsertWithWhereUniqueWithoutT_GeneriqueInput | T_MouvementUpsertWithWhereUniqueWithoutT_GeneriqueInput[]
+    createMany?: T_MouvementCreateManyT_GeneriqueInputEnvelope
+    set?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    disconnect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    delete?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    connect?: T_MouvementWhereUniqueInput | T_MouvementWhereUniqueInput[]
+    update?: T_MouvementUpdateWithWhereUniqueWithoutT_GeneriqueInput | T_MouvementUpdateWithWhereUniqueWithoutT_GeneriqueInput[]
+    updateMany?: T_MouvementUpdateManyWithWhereWithoutT_GeneriqueInput | T_MouvementUpdateManyWithWhereWithoutT_GeneriqueInput[]
+    deleteMany?: T_MouvementScalarWhereInput | T_MouvementScalarWhereInput[]
   }
 
   export type T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput = {
@@ -58314,9 +59522,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleCreateWithoutT_RechercheInput = {
-    ID_TypeArticleFk?: number | null
-    ID_CategorieArticleFk?: number | null
-    ID_UniteFk?: number | null
     DateHeureAuto?: Date | string | null
     CodeArticleExterne?: number | null
     NomArticle: string
@@ -58332,6 +59537,9 @@ export namespace Prisma {
     DatePeremptionAlerteArticle?: Date | string | null
     NbreJoursAlerteArticle?: number | null
     CodeArticleInterne?: string | null
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
@@ -58450,6 +59658,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -58501,6 +59717,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -58591,9 +59815,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateWithoutT_RechercheInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -58609,6 +59830,9 @@ export namespace Prisma {
     DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
     CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
@@ -58739,6 +59963,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -58790,6 +60022,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -59140,6 +60380,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -59191,6 +60439,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -59369,6 +60625,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -59420,6 +60684,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -59940,6 +61212,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -59991,6 +61271,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60044,6 +61332,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60095,6 +61391,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60148,6 +61452,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60199,6 +61511,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60252,6 +61572,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60303,6 +61631,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -60488,6 +61824,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60539,6 +61883,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60598,6 +61950,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60649,6 +62009,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60708,6 +62076,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60759,6 +62135,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60818,6 +62202,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -60869,6 +62261,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -61011,6 +62411,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61062,6 +62470,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61115,6 +62531,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61166,6 +62590,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61219,6 +62651,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61270,6 +62710,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61323,6 +62771,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61374,6 +62830,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61427,6 +62891,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61478,6 +62950,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -61741,6 +63221,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -61792,6 +63280,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -61851,6 +63347,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -61902,6 +63406,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -61961,6 +63473,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62012,6 +63532,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62071,6 +63599,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62122,6 +63658,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62181,6 +63725,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62232,6 +63784,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -62395,6 +63955,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62446,6 +64014,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62557,6 +64133,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62608,6 +64192,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62661,6 +64253,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62712,6 +64312,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62765,6 +64373,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62816,6 +64432,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62869,6 +64493,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -62920,6 +64552,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -63072,6 +64712,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63123,6 +64771,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63246,6 +64902,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63297,6 +64961,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63356,6 +65028,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63407,6 +65087,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63466,6 +65154,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63517,6 +65213,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63576,6 +65280,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63627,6 +65339,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -63707,6 +65427,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -63758,6 +65486,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -63919,6 +65655,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -63970,6 +65714,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64023,6 +65775,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64074,6 +65834,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64127,6 +65895,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64178,6 +65954,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64231,6 +66015,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64282,6 +66074,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -64377,6 +66177,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64428,6 +66236,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64607,6 +66423,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64658,6 +66482,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64717,6 +66549,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64768,6 +66608,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64827,6 +66675,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64878,6 +66734,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64937,6 +66801,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -64988,6 +66860,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -65048,6 +66928,366 @@ export namespace Prisma {
   export type T_RechercheCreateManyT_ArticleInputEnvelope = {
     data: T_RechercheCreateManyT_ArticleInput | T_RechercheCreateManyT_ArticleInput[]
     skipDuplicates?: boolean
+  }
+
+  export type T_GeneriqueCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
   }
 
   export type T_UtilisateursCreateWithoutT_ArticleInput = {
@@ -65141,11 +67381,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementCreateWithoutT_ArticleInput = {
-    ID_TypeMvtFk?: number | null
     DateHeureAutoMvt?: Date | string | null
     DateMvt?: Date | string | null
     QteMvt?: number | null
     PUMvt?: Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueCreateNestedOneWithoutT_MouvementInput
     T_Commande?: T_CommandeCreateNestedOneWithoutT_MouvementInput
   }
 
@@ -65199,6 +67439,384 @@ export namespace Prisma {
     LatitudeUser?: DecimalNullableFilter<"T_Recherche"> | Decimal | DecimalJsLike | number | string | null
     LongitudeUser?: DecimalNullableFilter<"T_Recherche"> | Decimal | DecimalJsLike | number | string | null
     DateRecherche?: DateTimeNullableFilter<"T_Recherche"> | Date | string | null
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
   }
 
   export type T_UtilisateursUpsertWithoutT_ArticleInput = {
@@ -65327,6 +67945,486 @@ export namespace Prisma {
     PUMvt?: DecimalNullableFilter<"T_Mouvement"> | Decimal | DecimalJsLike | number | string | null
   }
 
+  export type T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
   export type T_UtilisateursCreateWithoutT_CommandeInput = {
     NomUser: string
     PrenomUser: string
@@ -65418,11 +68516,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementCreateWithoutT_CommandeInput = {
-    ID_TypeMvtFk?: number | null
     DateHeureAutoMvt?: Date | string | null
     DateMvt?: Date | string | null
     QteMvt?: number | null
     PUMvt?: Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueCreateNestedOneWithoutT_MouvementInput
     T_Article?: T_ArticleCreateNestedOneWithoutT_MouvementInput
   }
 
@@ -65444,6 +68542,535 @@ export namespace Prisma {
   export type T_MouvementCreateManyT_CommandeInputEnvelope = {
     data: T_MouvementCreateManyT_CommandeInput | T_MouvementCreateManyT_CommandeInput[]
     skipDuplicates?: boolean
+  }
+
+  export type T_ReglementsCreateWithoutT_CommandeInput = {
+    ID_ClientFk?: number | null
+    DateReglement?: Date | string | null
+    MontantRegle?: Decimal | DecimalJsLike | number | string | null
+    T_Generique: T_GeneriqueCreateNestedOneWithoutT_ReglementsInput
+  }
+
+  export type T_ReglementsUncheckedCreateWithoutT_CommandeInput = {
+    ID_Reglement?: number
+    ID_ModeReglementFk: number
+    ID_ClientFk?: number | null
+    DateReglement?: Date | string | null
+    MontantRegle?: Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_ReglementsCreateOrConnectWithoutT_CommandeInput = {
+    where: T_ReglementsWhereUniqueInput
+    create: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput>
+  }
+
+  export type T_ReglementsCreateManyT_CommandeInputEnvelope = {
+    data: T_ReglementsCreateManyT_CommandeInput | T_ReglementsCreateManyT_CommandeInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUpsertWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+    create: XOR<T_GeneriqueCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedCreateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
   }
 
   export type T_UtilisateursUpsertWithoutT_CommandeInput = {
@@ -65544,10 +69171,37 @@ export namespace Prisma {
     data: XOR<T_MouvementUpdateManyMutationInput, T_MouvementUncheckedUpdateManyWithoutT_CommandeInput>
   }
 
+  export type T_ReglementsUpsertWithWhereUniqueWithoutT_CommandeInput = {
+    where: T_ReglementsWhereUniqueInput
+    update: XOR<T_ReglementsUpdateWithoutT_CommandeInput, T_ReglementsUncheckedUpdateWithoutT_CommandeInput>
+    create: XOR<T_ReglementsCreateWithoutT_CommandeInput, T_ReglementsUncheckedCreateWithoutT_CommandeInput>
+  }
+
+  export type T_ReglementsUpdateWithWhereUniqueWithoutT_CommandeInput = {
+    where: T_ReglementsWhereUniqueInput
+    data: XOR<T_ReglementsUpdateWithoutT_CommandeInput, T_ReglementsUncheckedUpdateWithoutT_CommandeInput>
+  }
+
+  export type T_ReglementsUpdateManyWithWhereWithoutT_CommandeInput = {
+    where: T_ReglementsScalarWhereInput
+    data: XOR<T_ReglementsUpdateManyMutationInput, T_ReglementsUncheckedUpdateManyWithoutT_CommandeInput>
+  }
+
+  export type T_ReglementsScalarWhereInput = {
+    AND?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
+    OR?: T_ReglementsScalarWhereInput[]
+    NOT?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
+    ID_Reglement?: IntFilter<"T_Reglements"> | number
+    CodeFactureFk?: StringNullableFilter<"T_Reglements"> | string | null
+    ID_ModeReglementFk?: IntFilter<"T_Reglements"> | number
+    ID_ClientFk?: IntNullableFilter<"T_Reglements"> | number | null
+    DateReglement?: DateTimeNullableFilter<"T_Reglements"> | Date | string | null
+    MontantRegle?: DecimalNullableFilter<"T_Reglements"> | Decimal | DecimalJsLike | number | string | null
+  }
+
   export type T_CommandeCreateWithoutT_CommandeDetailInput = {
-    ID_TypeCmdFk?: number | null
-    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -65566,11 +69220,14 @@ export namespace Prisma {
     StatusFacture?: string | null
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
-    ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
-    ID_ModePaiementFk?: number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeUncheckedCreateWithoutT_CommandeDetailInput = {
@@ -65578,6 +69235,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -65601,6 +69259,7 @@ export namespace Prisma {
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeCreateOrConnectWithoutT_CommandeDetailInput = {
@@ -65609,9 +69268,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleCreateWithoutT_CommandeDetailInput = {
-    ID_TypeArticleFk?: number | null
-    ID_CategorieArticleFk?: number | null
-    ID_UniteFk?: number | null
     DateHeureAuto?: Date | string | null
     CodeArticleExterne?: number | null
     NomArticle: string
@@ -65628,6 +69284,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: number | null
     CodeArticleInterne?: string | null
     T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
   }
@@ -65674,9 +69333,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeUpdateWithoutT_CommandeDetailInput = {
-    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -65695,11 +69353,14 @@ export namespace Prisma {
     StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
-    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeUncheckedUpdateWithoutT_CommandeDetailInput = {
@@ -65707,6 +69368,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -65730,6 +69392,7 @@ export namespace Prisma {
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_ArticleUpsertWithoutT_CommandeDetailInput = {
@@ -65744,9 +69407,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateWithoutT_CommandeDetailInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -65763,6 +69423,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
     CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
     T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
   }
@@ -65792,10 +69455,127 @@ export namespace Prisma {
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_ArticleNestedInput
   }
 
+  export type T_GeneriqueCreateWithoutT_MouvementInput = {
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2CreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3CreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4CreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4CreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_CategorieGenerique: T_CategorieGeneriqueCreateNestedOneWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueUncheckedCreateWithoutT_MouvementInput = {
+    ID_Generique?: number
+    ID_CategorieGeneriqueFk: number
+    NomGenerique: string
+    AbrGenerique?: string | null
+    VisibleNiveau_2?: boolean | null
+    VisibleNiveau_3?: boolean | null
+    VisibleNiveau_4?: boolean | null
+    VisibleNiveau_5?: boolean | null
+    VisibleArticle?: boolean | null
+    VisibleCmd?: boolean | null
+    VisibleFacture?: boolean | null
+    VisibleUsers?: boolean | null
+    VisibleVoie?: boolean | null
+    VisibleAll?: boolean | null
+    ObsGenerique?: string | null
+    ValideGenerique?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_TypeInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
+    T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueSpecialiteInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Entite?: T_EntiteUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Licence?: T_LicenceUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursUncheckedCreateNestedManyWithoutT_GeneriqueInput
+  }
+
+  export type T_GeneriqueCreateOrConnectWithoutT_MouvementInput = {
+    where: T_GeneriqueWhereUniqueInput
+    create: XOR<T_GeneriqueCreateWithoutT_MouvementInput, T_GeneriqueUncheckedCreateWithoutT_MouvementInput>
+  }
+
   export type T_ArticleCreateWithoutT_MouvementInput = {
-    ID_TypeArticleFk?: number | null
-    ID_CategorieArticleFk?: number | null
-    ID_UniteFk?: number | null
     DateHeureAuto?: Date | string | null
     CodeArticleExterne?: number | null
     NomArticle: string
@@ -65812,6 +69592,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: number | null
     CodeArticleInterne?: string | null
     T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
   }
@@ -65847,9 +69630,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeCreateWithoutT_MouvementInput = {
-    ID_TypeCmdFk?: number | null
-    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -65868,11 +69650,14 @@ export namespace Prisma {
     StatusFacture?: string | null
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
-    ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
-    ID_ModePaiementFk?: number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
     T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeUncheckedCreateWithoutT_MouvementInput = {
@@ -65880,6 +69665,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -65903,11 +69689,138 @@ export namespace Prisma {
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeCreateOrConnectWithoutT_MouvementInput = {
     where: T_CommandeWhereUniqueInput
     create: XOR<T_CommandeCreateWithoutT_MouvementInput, T_CommandeUncheckedCreateWithoutT_MouvementInput>
+  }
+
+  export type T_GeneriqueUpsertWithoutT_MouvementInput = {
+    update: XOR<T_GeneriqueUpdateWithoutT_MouvementInput, T_GeneriqueUncheckedUpdateWithoutT_MouvementInput>
+    create: XOR<T_GeneriqueCreateWithoutT_MouvementInput, T_GeneriqueUncheckedCreateWithoutT_MouvementInput>
+    where?: T_GeneriqueWhereInput
+  }
+
+  export type T_GeneriqueUpdateToOneWithWhereWithoutT_MouvementInput = {
+    where?: T_GeneriqueWhereInput
+    data: XOR<T_GeneriqueUpdateWithoutT_MouvementInput, T_GeneriqueUncheckedUpdateWithoutT_MouvementInput>
+  }
+
+  export type T_GeneriqueUpdateWithoutT_MouvementInput = {
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_CategorieGenerique?: T_CategorieGeneriqueUpdateOneRequiredWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateManyWithoutT_GeneriqueNestedInput
+  }
+
+  export type T_GeneriqueUncheckedUpdateWithoutT_MouvementInput = {
+    ID_Generique?: IntFieldUpdateOperationsInput | number
+    ID_CategorieGeneriqueFk?: IntFieldUpdateOperationsInput | number
+    NomGenerique?: StringFieldUpdateOperationsInput | string
+    AbrGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    VisibleNiveau_2?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_3?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_4?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleNiveau_5?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleArticle?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleUsers?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleVoie?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    VisibleAll?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ObsGenerique?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideGenerique?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatusDeploiFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatusDeploiFkToT_GeneriqueNestedInput
+    T_Niveau_2_T_Niveau_2_ID_StatutNiveau_2ToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_StatutNiveau_2ToT_GeneriqueNestedInput
+    T_Niveau_2_Type?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_2_T_Niveau_2_ID_VoieAccesDPSANTFkToT_Generique?: T_Niveau_2UncheckedUpdateManyWithoutT_Generique_T_Niveau_2_ID_VoieAccesDPSANTFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutDeploieFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutDeploieFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_StatutNiveau_3_FkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_StatutNiveau_3_FkToT_GeneriqueNestedInput
+    T_Niveau_3_Type?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesANTBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesANTBCZFkToT_GeneriqueNestedInput
+    T_Niveau_3_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_Generique?: T_Niveau_3UncheckedUpdateManyWithoutT_Generique_T_Niveau_3_ID_VoieAccesDPSBCZFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_DispoReseauNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_DispoReseauNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutDeploiementFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_4_T_Niveau_4_ID_StatutNiveau_4ToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_StatutNiveau_4ToT_GeneriqueNestedInput
+    T_Niveau_4_Type?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_TypeNestedInput
+    T_Niveau_4_T_Niveau_4_ID_VoieAccesZsASFkToT_Generique?: T_Niveau_4UncheckedUpdateManyWithoutT_Generique_T_Niveau_4_ID_VoieAccesZsASFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_DispoReseauNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_DispoReseauNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutDeploiementFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutDeploiementFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
+    T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
+    T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_ProfessionnelSpecialite?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueSpecialiteNestedInput
+    T_ProfessionnelType?: T_ProfessionnelUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
+    T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Entite?: T_EntiteUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Licence?: T_LicenceUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUncheckedUpdateManyWithoutT_GeneriqueNestedInput
   }
 
   export type T_ArticleUpsertWithoutT_MouvementInput = {
@@ -65922,9 +69835,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateWithoutT_MouvementInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -65941,6 +69851,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
     CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
     T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
   }
@@ -65982,9 +69895,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeUpdateWithoutT_MouvementInput = {
-    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -66003,11 +69915,14 @@ export namespace Prisma {
     StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
-    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
     T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeUncheckedUpdateWithoutT_MouvementInput = {
@@ -66015,6 +69930,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -66038,6 +69954,75 @@ export namespace Prisma {
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeCreateWithoutT_ReglementsInput = {
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeUncheckedCreateWithoutT_ReglementsInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeCreateOrConnectWithoutT_ReglementsInput = {
+    where: T_CommandeWhereUniqueInput
+    create: XOR<T_CommandeCreateWithoutT_ReglementsInput, T_CommandeUncheckedCreateWithoutT_ReglementsInput>
   }
 
   export type T_GeneriqueCreateWithoutT_ReglementsInput = {
@@ -66076,6 +70061,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
     T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66127,6 +70120,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
     T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66142,6 +70143,80 @@ export namespace Prisma {
   export type T_GeneriqueCreateOrConnectWithoutT_ReglementsInput = {
     where: T_GeneriqueWhereUniqueInput
     create: XOR<T_GeneriqueCreateWithoutT_ReglementsInput, T_GeneriqueUncheckedCreateWithoutT_ReglementsInput>
+  }
+
+  export type T_CommandeUpsertWithoutT_ReglementsInput = {
+    update: XOR<T_CommandeUpdateWithoutT_ReglementsInput, T_CommandeUncheckedUpdateWithoutT_ReglementsInput>
+    create: XOR<T_CommandeCreateWithoutT_ReglementsInput, T_CommandeUncheckedCreateWithoutT_ReglementsInput>
+    where?: T_CommandeWhereInput
+  }
+
+  export type T_CommandeUpdateToOneWithWhereWithoutT_ReglementsInput = {
+    where?: T_CommandeWhereInput
+    data: XOR<T_CommandeUpdateWithoutT_ReglementsInput, T_CommandeUncheckedUpdateWithoutT_ReglementsInput>
+  }
+
+  export type T_CommandeUpdateWithoutT_ReglementsInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateWithoutT_ReglementsInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_GeneriqueUpsertWithoutT_ReglementsInput = {
@@ -66191,6 +70266,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
     T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -66242,6 +70325,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
     T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -66290,6 +70381,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
     T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66341,6 +70440,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
     T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66453,6 +70560,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
     T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -66504,6 +70619,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
     T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -66606,6 +70729,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementType?: T_PaiementCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66657,6 +70788,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementType?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueTypeInput
@@ -66818,6 +70957,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -66869,6 +71016,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -66993,6 +71148,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementType?: T_PaiementUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -67044,6 +71207,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementType?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueTypeNestedInput
@@ -67223,6 +71394,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -67274,6 +71453,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -67523,6 +71710,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -67574,6 +71769,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -67627,6 +71830,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -67678,6 +71889,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -67861,6 +72080,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -67912,6 +72139,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -67971,6 +72206,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -68022,6 +72265,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -68241,6 +72492,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -68292,6 +72551,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -68444,6 +72711,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -68495,6 +72770,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -68543,6 +72826,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -68593,6 +72884,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -69911,11 +74210,509 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_TypeArticleFk?: number | null
+    ID_UserFK?: number | null
+    ID_UniteFk?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInputEnvelope = {
+    data: T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput | T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_CategorieArticleFk?: number | null
+    ID_UserFK?: number | null
+    ID_UniteFk?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInputEnvelope = {
+    data: T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput | T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_TypeArticleFk?: number | null
+    ID_CategorieArticleFk?: number | null
+    ID_UserFK?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_ArticleInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_ArticleInput
+  }
+
+  export type T_ArticleCreateOrConnectWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInputEnvelope = {
+    data: T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput | T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInputEnvelope = {
+    data: T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput | T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInputEnvelope = {
+    data: T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput | T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInputEnvelope = {
+    data: T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput | T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_CommandeInput
+    T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
+  }
+
+  export type T_CommandeCreateOrConnectWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInputEnvelope = {
+    data: T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput | T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type T_MouvementCreateWithoutT_GeneriqueInput = {
+    DateHeureAutoMvt?: Date | string | null
+    DateMvt?: Date | string | null
+    QteMvt?: number | null
+    PUMvt?: Decimal | DecimalJsLike | number | string | null
+    T_Article?: T_ArticleCreateNestedOneWithoutT_MouvementInput
+    T_Commande?: T_CommandeCreateNestedOneWithoutT_MouvementInput
+  }
+
+  export type T_MouvementUncheckedCreateWithoutT_GeneriqueInput = {
+    ID_Mvt?: number
+    ID_ArticleFk?: number | null
+    ID_cmdFk?: number | null
+    DateHeureAutoMvt?: Date | string | null
+    DateMvt?: Date | string | null
+    QteMvt?: number | null
+    PUMvt?: Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_MouvementCreateOrConnectWithoutT_GeneriqueInput = {
+    where: T_MouvementWhereUniqueInput
+    create: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput>
+  }
+
+  export type T_MouvementCreateManyT_GeneriqueInputEnvelope = {
+    data: T_MouvementCreateManyT_GeneriqueInput | T_MouvementCreateManyT_GeneriqueInput[]
+    skipDuplicates?: boolean
+  }
+
   export type T_ReglementsCreateWithoutT_GeneriqueInput = {
-    CodeFactureFk?: string | null
     ID_ClientFk?: number | null
     DateReglement?: Date | string | null
     MontantRegle?: Decimal | DecimalJsLike | number | string | null
+    T_Commande?: T_CommandeCreateNestedOneWithoutT_ReglementsInput
   }
 
   export type T_ReglementsUncheckedCreateWithoutT_GeneriqueInput = {
@@ -70671,6 +75468,193 @@ export namespace Prisma {
     data: XOR<T_Niveau_5UpdateManyMutationInput, T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput>
   }
 
+  export type T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    update: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    data: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    where: T_ArticleScalarWhereInput
+    data: XOR<T_ArticleUpdateManyMutationInput, T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleScalarWhereInput = {
+    AND?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+    OR?: T_ArticleScalarWhereInput[]
+    NOT?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
+    ID_Article?: IntFilter<"T_Article"> | number
+    ID_TypeArticleFk?: IntNullableFilter<"T_Article"> | number | null
+    ID_CategorieArticleFk?: IntNullableFilter<"T_Article"> | number | null
+    ID_UserFK?: IntNullableFilter<"T_Article"> | number | null
+    ID_UniteFk?: IntNullableFilter<"T_Article"> | number | null
+    DateHeureAuto?: DateTimeNullableFilter<"T_Article"> | Date | string | null
+    CodeArticleExterne?: IntNullableFilter<"T_Article"> | number | null
+    NomArticle?: StringFilter<"T_Article"> | string
+    RefArticle?: StringNullableFilter<"T_Article"> | string | null
+    QteArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: IntNullableFilter<"T_Article"> | number | null
+    PhotoArticle?: StringNullableFilter<"T_Article"> | string | null
+    ObsArticle?: StringNullableFilter<"T_Article"> | string | null
+    ValideArticle?: BoolFilter<"T_Article"> | boolean
+    DatePeremptionArticle?: DateTimeNullableFilter<"T_Article"> | Date | string | null
+    DatePeremptionAlerteArticle?: DateTimeNullableFilter<"T_Article"> | Date | string | null
+    NbreJoursAlerteArticle?: IntNullableFilter<"T_Article"> | number | null
+    CodeArticleInterne?: StringNullableFilter<"T_Article"> | string | null
+  }
+
+  export type T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    update: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    data: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    where: T_ArticleScalarWhereInput
+    data: XOR<T_ArticleUpdateManyMutationInput, T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpsertWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    update: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput>
+    create: XOR<T_ArticleCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedCreateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateWithWhereUniqueWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where: T_ArticleWhereUniqueInput
+    data: XOR<T_ArticleUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput, T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput>
+  }
+
+  export type T_ArticleUpdateManyWithWhereWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    where: T_ArticleScalarWhereInput
+    data: XOR<T_ArticleUpdateManyMutationInput, T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    update: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    data: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    where: T_CommandeScalarWhereInput
+    data: XOR<T_CommandeUpdateManyMutationInput, T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeScalarWhereInput = {
+    AND?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+    OR?: T_CommandeScalarWhereInput[]
+    NOT?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
+    ID_Commande?: IntFilter<"T_Commande"> | number
+    ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
+    ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
+    ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
+    ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
+    geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
+    DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
+    DateCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
+    CodeCmd?: StringNullableFilter<"T_Commande"> | string | null
+    RefCmd?: StringNullableFilter<"T_Commande"> | string | null
+    MontantHT?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: StringNullableFilter<"T_Commande"> | string | null
+    ObsCmd?: StringNullableFilter<"T_Commande"> | string | null
+    SelectCmd?: BoolNullableFilter<"T_Commande"> | boolean | null
+    DateHeureAutoFacture?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
+    DateFacture?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
+    CodeFacture?: StringNullableFilter<"T_Commande"> | string | null
+    MontantRegleFacture?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: StringNullableFilter<"T_Commande"> | string | null
+    ValideRemiseFacture?: BoolNullableFilter<"T_Commande"> | boolean | null
+    UrlFacture?: StringNullableFilter<"T_Commande"> | string | null
+    ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
+    ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+  }
+
+  export type T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    update: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    data: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    where: T_CommandeScalarWhereInput
+    data: XOR<T_CommandeUpdateManyMutationInput, T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    update: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    data: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    where: T_CommandeScalarWhereInput
+    data: XOR<T_CommandeUpdateManyMutationInput, T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    update: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+    create: XOR<T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateWithWhereUniqueWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where: T_CommandeWhereUniqueInput
+    data: XOR<T_CommandeUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput, T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_CommandeUpdateManyWithWhereWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    where: T_CommandeScalarWhereInput
+    data: XOR<T_CommandeUpdateManyMutationInput, T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput>
+  }
+
+  export type T_MouvementUpsertWithWhereUniqueWithoutT_GeneriqueInput = {
+    where: T_MouvementWhereUniqueInput
+    update: XOR<T_MouvementUpdateWithoutT_GeneriqueInput, T_MouvementUncheckedUpdateWithoutT_GeneriqueInput>
+    create: XOR<T_MouvementCreateWithoutT_GeneriqueInput, T_MouvementUncheckedCreateWithoutT_GeneriqueInput>
+  }
+
+  export type T_MouvementUpdateWithWhereUniqueWithoutT_GeneriqueInput = {
+    where: T_MouvementWhereUniqueInput
+    data: XOR<T_MouvementUpdateWithoutT_GeneriqueInput, T_MouvementUncheckedUpdateWithoutT_GeneriqueInput>
+  }
+
+  export type T_MouvementUpdateManyWithWhereWithoutT_GeneriqueInput = {
+    where: T_MouvementScalarWhereInput
+    data: XOR<T_MouvementUpdateManyMutationInput, T_MouvementUncheckedUpdateManyWithoutT_GeneriqueInput>
+  }
+
   export type T_ReglementsUpsertWithWhereUniqueWithoutT_GeneriqueInput = {
     where: T_ReglementsWhereUniqueInput
     update: XOR<T_ReglementsUpdateWithoutT_GeneriqueInput, T_ReglementsUncheckedUpdateWithoutT_GeneriqueInput>
@@ -70685,18 +75669,6 @@ export namespace Prisma {
   export type T_ReglementsUpdateManyWithWhereWithoutT_GeneriqueInput = {
     where: T_ReglementsScalarWhereInput
     data: XOR<T_ReglementsUpdateManyMutationInput, T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueInput>
-  }
-
-  export type T_ReglementsScalarWhereInput = {
-    AND?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
-    OR?: T_ReglementsScalarWhereInput[]
-    NOT?: T_ReglementsScalarWhereInput | T_ReglementsScalarWhereInput[]
-    ID_Reglement?: IntFilter<"T_Reglements"> | number
-    CodeFactureFk?: StringNullableFilter<"T_Reglements"> | string | null
-    ID_ModeReglementFk?: IntFilter<"T_Reglements"> | number
-    ID_ClientFk?: IntNullableFilter<"T_Reglements"> | number | null
-    DateReglement?: DateTimeNullableFilter<"T_Reglements"> | Date | string | null
-    MontantRegle?: DecimalNullableFilter<"T_Reglements"> | Decimal | DecimalJsLike | number | string | null
   }
 
   export type T_CaisseUpsertWithWhereUniqueWithoutT_GeneriqueInput = {
@@ -71553,6 +76525,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -71604,6 +76584,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -71979,6 +76967,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -72030,6 +77026,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -72630,6 +77634,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -72681,6 +77693,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -72799,6 +77819,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -72850,6 +77878,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -72946,6 +77982,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -72997,6 +78041,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -73175,6 +78227,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -73226,6 +78286,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -73431,9 +78499,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleCreateWithoutT_UtilisateursInput = {
-    ID_TypeArticleFk?: number | null
-    ID_CategorieArticleFk?: number | null
-    ID_UniteFk?: number | null
     DateHeureAuto?: Date | string | null
     CodeArticleExterne?: number | null
     NomArticle: string
@@ -73450,6 +78515,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: number | null
     CodeArticleInterne?: string | null
     T_Recherche?: T_RechercheCreateNestedManyWithoutT_ArticleInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_ArticleInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_ArticleInput
   }
@@ -73490,9 +78558,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeCreateWithoutT_UtilisateursInput = {
-    ID_TypeCmdFk?: number | null
-    ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -73511,11 +78578,14 @@ export namespace Prisma {
     StatusFacture?: string | null
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
-    ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
-    ID_ModePaiementFk?: number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
     T_CommandeDetail?: T_CommandeDetailCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeUncheckedCreateWithoutT_UtilisateursInput = {
@@ -73523,6 +78593,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -73546,6 +78617,7 @@ export namespace Prisma {
     ID_ModePaiementFk?: number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
+    T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
 
   export type T_CommandeCreateOrConnectWithoutT_UtilisateursInput = {
@@ -73826,6 +78898,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5CreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -73877,6 +78957,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedCreateNestedManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedCreateNestedManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedCreateNestedManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
+    T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_Caisse?: T_CaisseUncheckedCreateNestedManyWithoutT_GeneriqueInput
     T_PaiementDevise?: T_PaiementUncheckedCreateNestedManyWithoutT_GeneriqueDeviseInput
@@ -73988,32 +79076,6 @@ export namespace Prisma {
     data: XOR<T_ArticleUpdateManyMutationInput, T_ArticleUncheckedUpdateManyWithoutT_UtilisateursInput>
   }
 
-  export type T_ArticleScalarWhereInput = {
-    AND?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
-    OR?: T_ArticleScalarWhereInput[]
-    NOT?: T_ArticleScalarWhereInput | T_ArticleScalarWhereInput[]
-    ID_Article?: IntFilter<"T_Article"> | number
-    ID_TypeArticleFk?: IntNullableFilter<"T_Article"> | number | null
-    ID_CategorieArticleFk?: IntNullableFilter<"T_Article"> | number | null
-    ID_UserFK?: IntNullableFilter<"T_Article"> | number | null
-    ID_UniteFk?: IntNullableFilter<"T_Article"> | number | null
-    DateHeureAuto?: DateTimeNullableFilter<"T_Article"> | Date | string | null
-    CodeArticleExterne?: IntNullableFilter<"T_Article"> | number | null
-    NomArticle?: StringFilter<"T_Article"> | string
-    RefArticle?: StringNullableFilter<"T_Article"> | string | null
-    QteArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
-    PUArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
-    PVArticle?: DecimalFilter<"T_Article"> | Decimal | DecimalJsLike | number | string
-    QteMinArticle?: IntNullableFilter<"T_Article"> | number | null
-    PhotoArticle?: StringNullableFilter<"T_Article"> | string | null
-    ObsArticle?: StringNullableFilter<"T_Article"> | string | null
-    ValideArticle?: BoolFilter<"T_Article"> | boolean
-    DatePeremptionArticle?: DateTimeNullableFilter<"T_Article"> | Date | string | null
-    DatePeremptionAlerteArticle?: DateTimeNullableFilter<"T_Article"> | Date | string | null
-    NbreJoursAlerteArticle?: IntNullableFilter<"T_Article"> | number | null
-    CodeArticleInterne?: StringNullableFilter<"T_Article"> | string | null
-  }
-
   export type T_CommandeUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
     where: T_CommandeWhereUniqueInput
     update: XOR<T_CommandeUpdateWithoutT_UtilisateursInput, T_CommandeUncheckedUpdateWithoutT_UtilisateursInput>
@@ -74028,38 +79090,6 @@ export namespace Prisma {
   export type T_CommandeUpdateManyWithWhereWithoutT_UtilisateursInput = {
     where: T_CommandeScalarWhereInput
     data: XOR<T_CommandeUpdateManyMutationInput, T_CommandeUncheckedUpdateManyWithoutT_UtilisateursInput>
-  }
-
-  export type T_CommandeScalarWhereInput = {
-    AND?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
-    OR?: T_CommandeScalarWhereInput[]
-    NOT?: T_CommandeScalarWhereInput | T_CommandeScalarWhereInput[]
-    ID_Commande?: IntFilter<"T_Commande"> | number
-    ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
-    ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
-    geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
-    DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
-    DateCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
-    CodeCmd?: StringNullableFilter<"T_Commande"> | string | null
-    RefCmd?: StringNullableFilter<"T_Commande"> | string | null
-    MontantHT?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
-    MontantTTC?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
-    UrlBL?: StringNullableFilter<"T_Commande"> | string | null
-    ObsCmd?: StringNullableFilter<"T_Commande"> | string | null
-    SelectCmd?: BoolNullableFilter<"T_Commande"> | boolean | null
-    DateHeureAutoFacture?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
-    DateFacture?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
-    CodeFacture?: StringNullableFilter<"T_Commande"> | string | null
-    MontantRegleFacture?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
-    MontantResteFacture?: DecimalNullableFilter<"T_Commande"> | Decimal | DecimalJsLike | number | string | null
-    StatusFacture?: StringNullableFilter<"T_Commande"> | string | null
-    ValideRemiseFacture?: BoolNullableFilter<"T_Commande"> | boolean | null
-    UrlFacture?: StringNullableFilter<"T_Commande"> | string | null
-    ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
-    DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
-    ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
   }
 
   export type T_PaiementUpsertWithWhereUniqueWithoutT_PayeurInput = {
@@ -74261,6 +79291,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -74312,6 +79350,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -75535,11 +80581,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementUpdateWithoutT_ArticleInput = {
-    ID_TypeMvtFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
     PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueUpdateOneWithoutT_MouvementNestedInput
     T_Commande?: T_CommandeUpdateOneWithoutT_MouvementNestedInput
   }
 
@@ -75583,6 +80629,14 @@ export namespace Prisma {
     PUMvt?: Decimal | DecimalJsLike | number | string | null
   }
 
+  export type T_ReglementsCreateManyT_CommandeInput = {
+    ID_Reglement?: number
+    ID_ModeReglementFk: number
+    ID_ClientFk?: number | null
+    DateReglement?: Date | string | null
+    MontantRegle?: Decimal | DecimalJsLike | number | string | null
+  }
+
   export type T_CommandeDetailUpdateWithoutT_CommandeInput = {
     QteCmdDetail?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
     PUCmdDetail?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
@@ -75614,11 +80668,11 @@ export namespace Prisma {
   }
 
   export type T_MouvementUpdateWithoutT_CommandeInput = {
-    ID_TypeMvtFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
     PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueUpdateOneWithoutT_MouvementNestedInput
     T_Article?: T_ArticleUpdateOneWithoutT_MouvementNestedInput
   }
 
@@ -75640,6 +80694,29 @@ export namespace Prisma {
     DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
     PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_ReglementsUpdateWithoutT_CommandeInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Generique?: T_GeneriqueUpdateOneRequiredWithoutT_ReglementsNestedInput
+  }
+
+  export type T_ReglementsUncheckedUpdateWithoutT_CommandeInput = {
+    ID_Reglement?: IntFieldUpdateOperationsInput | number
+    ID_ModeReglementFk?: IntFieldUpdateOperationsInput | number
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_ReglementsUncheckedUpdateManyWithoutT_CommandeInput = {
+    ID_Reglement?: IntFieldUpdateOperationsInput | number
+    ID_ModeReglementFk?: IntFieldUpdateOperationsInput | number
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
   }
 
   export type T_DiscussionCreateManyT_ProfessionnelInput = {
@@ -75800,6 +80877,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -75850,6 +80935,14 @@ export namespace Prisma {
     T_Niveau_5_T_Niveau_5_ID_StatutNiveau_5ToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_StatutNiveau_5ToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_TypeToitFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_TypeToitFkToT_GeneriqueNestedInput
     T_Niveau_5_T_Niveau_5_ID_VoieAccesZsSiteFkToT_Generique?: T_Niveau_5UncheckedUpdateManyWithoutT_Generique_T_Niveau_5_ID_VoieAccesZsSiteFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_CategorieArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_TypeArticleFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Article_T_Article_ID_UniteFkToT_Generique?: T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_ModePaiementFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_StatutCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Commande_T_Commande_ID_TypeCmdFkToT_Generique?: T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_Caisse?: T_CaisseUncheckedUpdateManyWithoutT_GeneriqueNestedInput
     T_PaiementDevise?: T_PaiementUncheckedUpdateManyWithoutT_GeneriqueDeviseNestedInput
@@ -76398,6 +81491,198 @@ export namespace Prisma {
     LatitudeNiveau_5?: Decimal | DecimalJsLike | number | string | null
     LongitudeNiveau_5?: Decimal | DecimalJsLike | number | string | null
     AltitudeNiveau_5?: Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_TypeArticleFk?: number | null
+    ID_UserFK?: number | null
+    ID_UniteFk?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_CategorieArticleFk?: number | null
+    ID_UserFK?: number | null
+    ID_UniteFk?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+  }
+
+  export type T_ArticleCreateManyT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Article?: number
+    ID_TypeArticleFk?: number | null
+    ID_CategorieArticleFk?: number | null
+    ID_UserFK?: number | null
+    DateHeureAuto?: Date | string | null
+    CodeArticleExterne?: number | null
+    NomArticle: string
+    RefArticle?: string | null
+    QteArticle?: Decimal | DecimalJsLike | number | string
+    PUArticle: Decimal | DecimalJsLike | number | string
+    PVArticle: Decimal | DecimalJsLike | number | string
+    QteMinArticle?: number | null
+    PhotoArticle?: string | null
+    ObsArticle?: string | null
+    ValideArticle?: boolean
+    DatePeremptionArticle?: Date | string | null
+    DatePeremptionAlerteArticle?: Date | string | null
+    NbreJoursAlerteArticle?: number | null
+    CodeArticleInterne?: string | null
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_TypeCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+  }
+
+  export type T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Commande?: number
+    ID_StatutCmdFk?: number | null
+    ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
+    ID_UserFk?: number | null
+    geolocalisationCmd?: string | null
+    DateHeureAutoCmd?: Date | string | null
+    DateCmd?: Date | string | null
+    CodeCmd?: string | null
+    RefCmd?: string | null
+    MontantHT?: Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: Decimal | DecimalJsLike | number | string | null
+    UrlBL?: string | null
+    ObsCmd?: string | null
+    SelectCmd?: boolean | null
+    DateHeureAutoFacture?: Date | string | null
+    DateFacture?: Date | string | null
+    CodeFacture?: string | null
+    MontantRegleFacture?: Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: string | null
+    ValideRemiseFacture?: boolean | null
+    UrlFacture?: string | null
+    ID_ConditionPaiementFk?: number | null
+    DateEcheancePaiement?: Date | string | null
+    ID_ModePaiementFk?: number | null
+  }
+
+  export type T_MouvementCreateManyT_GeneriqueInput = {
+    ID_Mvt?: number
+    ID_ArticleFk?: number | null
+    ID_cmdFk?: number | null
+    DateHeureAutoMvt?: Date | string | null
+    DateMvt?: Date | string | null
+    QteMvt?: number | null
+    PUMvt?: Decimal | DecimalJsLike | number | string | null
   }
 
   export type T_ReglementsCreateManyT_GeneriqueInput = {
@@ -77917,11 +83202,621 @@ export namespace Prisma {
     AltitudeNiveau_5?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
   }
 
+  export type T_ArticleUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_CategorieArticleFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_ArticleUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_TypeArticleFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_ArticleUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_ArticleNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_ArticleNestedInput
+  }
+
+  export type T_ArticleUncheckedUpdateManyWithoutT_Generique_T_Article_ID_UniteFkToT_GeneriqueInput = {
+    ID_Article?: IntFieldUpdateOperationsInput | number
+    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_UserFK?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
+    NomArticle?: StringFieldUpdateOperationsInput | string
+    RefArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    QteArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PUArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    PVArticle?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    QteMinArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    PhotoArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsArticle?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideArticle?: BoolFieldUpdateOperationsInput | boolean
+    DatePeremptionArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DatePeremptionAlerteArticle?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
+    CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+  }
+
+  export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+  }
+
+  export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_CommandeNestedInput
+    T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
+  }
+
+  export type T_CommandeUncheckedUpdateManyWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
+    ID_Commande?: IntFieldUpdateOperationsInput | number
+    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    RefCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantHT?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantTTC?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    UrlBL?: NullableStringFieldUpdateOperationsInput | string | null
+    ObsCmd?: NullableStringFieldUpdateOperationsInput | string | null
+    SelectCmd?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    DateHeureAutoFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateFacture?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    CodeFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    MontantRegleFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    MontantResteFacture?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
+    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+  }
+
+  export type T_MouvementUpdateWithoutT_GeneriqueInput = {
+    DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
+    PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Article?: T_ArticleUpdateOneWithoutT_MouvementNestedInput
+    T_Commande?: T_CommandeUpdateOneWithoutT_MouvementNestedInput
+  }
+
+  export type T_MouvementUncheckedUpdateWithoutT_GeneriqueInput = {
+    ID_Mvt?: IntFieldUpdateOperationsInput | number
+    ID_ArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_cmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
+    PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+  }
+
+  export type T_MouvementUncheckedUpdateManyWithoutT_GeneriqueInput = {
+    ID_Mvt?: IntFieldUpdateOperationsInput | number
+    ID_ArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ID_cmdFk?: NullableIntFieldUpdateOperationsInput | number | null
+    DateHeureAutoMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    DateMvt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    QteMvt?: NullableIntFieldUpdateOperationsInput | number | null
+    PUMvt?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+  }
+
   export type T_ReglementsUpdateWithoutT_GeneriqueInput = {
-    CodeFactureFk?: NullableStringFieldUpdateOperationsInput | string | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateReglement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     MontantRegle?: NullableDecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string | null
+    T_Commande?: T_CommandeUpdateOneWithoutT_ReglementsNestedInput
   }
 
   export type T_ReglementsUncheckedUpdateWithoutT_GeneriqueInput = {
@@ -78938,6 +84833,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
+    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -79152,9 +85048,6 @@ export namespace Prisma {
   }
 
   export type T_ArticleUpdateWithoutT_UtilisateursInput = {
-    ID_TypeArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_CategorieArticleFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_UniteFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateHeureAuto?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     CodeArticleExterne?: NullableIntFieldUpdateOperationsInput | number | null
     NomArticle?: StringFieldUpdateOperationsInput | string
@@ -79171,6 +85064,9 @@ export namespace Prisma {
     NbreJoursAlerteArticle?: NullableIntFieldUpdateOperationsInput | number | null
     CodeArticleInterne?: NullableStringFieldUpdateOperationsInput | string | null
     T_Recherche?: T_RechercheUpdateManyWithoutT_ArticleNestedInput
+    T_Generique_T_Article_ID_CategorieArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_CategorieArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_TypeArticleFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_TypeArticleFkToT_GeneriqueNestedInput
+    T_Generique_T_Article_ID_UniteFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Article_T_Article_ID_UniteFkToT_GeneriqueNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_ArticleNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_ArticleNestedInput
   }
@@ -79223,9 +85119,8 @@ export namespace Prisma {
   }
 
   export type T_CommandeUpdateWithoutT_UtilisateursInput = {
-    ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
-    ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -79244,11 +85139,14 @@ export namespace Prisma {
     StatusFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
-    ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
+    T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
     T_CommandeDetail?: T_CommandeDetailUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeUncheckedUpdateWithoutT_UtilisateursInput = {
@@ -79256,6 +85154,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -79279,6 +85178,7 @@ export namespace Prisma {
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
+    T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeUncheckedUpdateManyWithoutT_UtilisateursInput = {
@@ -79286,6 +85186,7 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null

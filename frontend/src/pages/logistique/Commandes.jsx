@@ -1,10 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
-  createLogistiqueCommande,
-  fetchLogistiqueCommandes,
-  updateLogistiqueCommande,
-} from "../../services/logistique";
-import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
@@ -20,49 +15,37 @@ import {
   StatusBanner,
   TableToolbar,
   ToneBadge,
-  toInputDateTimeValue,
 } from "./logistiqueShared";
+import {
+  getLogistiqueCrudConfig,
+  getLogistiqueGenericSourceHint,
+  getLogistiqueViewConfig,
+} from "./views";
 
-function createCommandeFormState() {
-  return {
-    ID_TypeCmdFk: "",
-    ID_StatutCmd: "",
-    ID_ClientFk: "",
-    ID_UserFk: "",
-    ID_ConditionPaiementFk: "",
-    ID_ModePaiementFk: "",
-    DateCmd: "",
-    CodeCmd: "",
-    RefCmd: "",
-    MontantHT: "",
-    MontantTTC: "",
-    ObsCmd: "",
-    CodeFacture: "",
-    DateFacture: "",
-    StatusFacture: "",
-    DateEcheancePaiement: "",
-  };
+const COMMANDES_VIEW_CONFIG = getLogistiqueViewConfig("commandes");
+const COMMANDES_CRUD_CONFIG = getLogistiqueCrudConfig("commandes");
+
+function buildReferenceHelperText(sourceKey, options) {
+  const count = Array.isArray(options) ? options.length : 0;
+  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
 }
 
-function mapCommandeToForm(commande) {
-  return {
-    ID_TypeCmdFk: commande.ID_TypeCmdFk ? String(commande.ID_TypeCmdFk) : "",
-    ID_StatutCmd: commande.ID_StatutCmd ? String(commande.ID_StatutCmd) : "",
-    ID_ClientFk: commande.ID_ClientFk ? String(commande.ID_ClientFk) : "",
-    ID_UserFk: commande.ID_UserFk ? String(commande.ID_UserFk) : "",
-    ID_ConditionPaiementFk: commande.ID_ConditionPaiementFk ? String(commande.ID_ConditionPaiementFk) : "",
-    ID_ModePaiementFk: commande.ID_ModePaiementFk ? String(commande.ID_ModePaiementFk) : "",
-    DateCmd: toInputDateTimeValue(commande.DateCmd),
-    CodeCmd: commande.CodeCmd || "",
-    RefCmd: commande.RefCmd || "",
-    MontantHT: commande.MontantHT != null ? String(commande.MontantHT) : "",
-    MontantTTC: commande.MontantTTC != null ? String(commande.MontantTTC) : "",
-    ObsCmd: commande.ObsCmd || "",
-    CodeFacture: commande.CodeFacture || "",
-    DateFacture: toInputDateTimeValue(commande.DateFacture),
-    StatusFacture: commande.StatusFacture || "",
-    DateEcheancePaiement: toInputDateTimeValue(commande.DateEcheancePaiement),
-  };
+function getCommandeClientLabel(commande, clientLabelMap) {
+  if (!commande) {
+    return "-";
+  }
+
+  const mappedLabel = commande.ID_ClientFk ? clientLabelMap.get(String(commande.ID_ClientFk)) : "";
+
+  if (mappedLabel) {
+    return mappedLabel;
+  }
+
+  if (commande.NomClientSaisi) {
+    return commande.NomClientSaisi;
+  }
+
+  return commande.ID_ClientFk ? `#${commande.ID_ClientFk}` : "-";
 }
 
 export default function Commandes({ references, refreshKey, onDataChanged, onOpenDetails, sharedTable }) {
@@ -76,7 +59,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const [dateTo, setDateTo] = useState("");
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(createCommandeFormState());
+  const [formValues, setFormValues] = useState(() => COMMANDES_CRUD_CONFIG.createFormState());
   const deferredSearch = useDeferredValue(sharedTable?.searchValue || "");
   const selectedCommande = sharedTable?.selectedRow || null;
 
@@ -95,6 +78,22 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     () => buildReferenceOptions(references?.commandeModesPaiement, "Mode"),
     [references]
   );
+  const commandeReferenceWarnings = useMemo(
+    () =>
+      [
+        commandeTypeOptions.length === 0 ? "La liste Type de commande est vide." : "",
+        commandeStatusOptions.length === 0 ? "La liste Statut commande est vide." : "",
+        conditionPaiementOptions.length === 0 ? "La liste Condition de paiement est vide." : "",
+        modePaiementOptions.length === 0 ? "La liste Mode de paiement est vide." : "",
+      ].filter(Boolean),
+    [
+      commandeStatusOptions.length,
+      commandeTypeOptions.length,
+      conditionPaiementOptions.length,
+      modePaiementOptions.length,
+    ]
+  );
+  const isCommandeFormBlocked = commandeTypeOptions.length === 0;
   const typeLabelMap = useMemo(() => buildReferenceLabelMap(commandeTypeOptions), [commandeTypeOptions]);
   const statusLabelMap = useMemo(() => buildReferenceLabelMap(commandeStatusOptions), [commandeStatusOptions]);
   const clientLabelMap = useMemo(() => buildReferenceLabelMap(clientOptions), [clientOptions]);
@@ -102,6 +101,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const tableColumns = useMemo(
     () => [
       { key: "CodeCmd", label: "Code" },
+      { key: "CodeFacture", label: "Facture", renderText: (row) => row.CodeFacture || "-" },
       {
         key: "DateCmd",
         label: "Date",
@@ -117,8 +117,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       {
         key: "ID_ClientFk",
         label: "Client",
-        render: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || (row.ID_ClientFk ? `#${row.ID_ClientFk}` : "-"),
-        renderText: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || (row.ID_ClientFk ? `#${row.ID_ClientFk}` : "-"),
+        render: (row) => getCommandeClientLabel(row, clientLabelMap),
+        renderText: (row) => getCommandeClientLabel(row, clientLabelMap),
       },
       { key: "NomUser", label: "Utilisateur" },
       { key: "MontantHT", label: "HT", render: (row) => formatCurrency(row.MontantHT), renderText: (row) => formatCurrency(row.MontantHT) },
@@ -129,6 +129,20 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         render: (row) =>
           row.StatusFacture ? <ToneBadge tone="info">{row.StatusFacture}</ToneBadge> : <ToneBadge tone="warning">Non renseigne</ToneBadge>,
         renderText: (row) => row.StatusFacture || "Non renseigne",
+      },
+      {
+        key: "documents",
+        label: "Docs",
+        render: (row) => (
+          <>
+            <ToneBadge tone={row.UrlBL ? "success" : "warning"}>{row.UrlBL ? "BL" : "BL manquant"}</ToneBadge>{" "}
+            {row.CodeFacture ? (
+              <ToneBadge tone={row.UrlFacture ? "success" : "warning"}>{row.UrlFacture ? "Facture" : "Facture manquante"}</ToneBadge>
+            ) : null}
+          </>
+        ),
+        renderText: (row) =>
+          `${row.UrlBL ? "BL present" : "BL manquant"}${row.CodeFacture ? ` | ${row.UrlFacture ? "Facture presente" : "Facture manquante"}` : ""}`,
       },
       {
         key: "actions",
@@ -159,7 +173,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueCommandes({
+      const response = await COMMANDES_VIEW_CONFIG.fetchRows({
         q: deferredSearch,
         statut: statusFilter,
         client: clientFilter,
@@ -201,66 +215,34 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
   function resetEditor() {
     setEditorMode("");
-    setFormValues(createCommandeFormState());
+    setFormValues(COMMANDES_CRUD_CONFIG.createFormState());
   }
 
   function handleNewCommande() {
     sharedTable?.clearSelectedRow?.();
     setEditorMode("create");
-    setFormValues(createCommandeFormState());
+    setFormValues(COMMANDES_CRUD_CONFIG.createFormState());
   }
 
   function handleEditCommande(commande) {
     sharedTable?.setSelectedRow?.(commande);
     setEditorMode("edit");
-    setFormValues(mapCommandeToForm(commande));
+    setFormValues(COMMANDES_CRUD_CONFIG.mapRecordToForm(commande));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitting(true);
 
-    const payload = {
-      ...formValues,
-      ID_StatutCmd: formValues.ID_StatutCmd || null,
-      ID_ClientFk: formValues.ID_ClientFk || null,
-      DateCmd: formValues.DateCmd || null,
-      MontantHT: formValues.MontantHT || null,
-      MontantTTC: formValues.MontantTTC || null,
-    };
-
-    if (editorMode === "create" || formValues.ID_UserFk || selectedCommande?.ID_UserFk != null) {
-      payload.ID_UserFk = formValues.ID_UserFk || null;
-    }
-
-    if (
-      editorMode === "create" ||
-      formValues.ID_ConditionPaiementFk ||
-      selectedCommande?.ID_ConditionPaiementFk != null
-    ) {
-      payload.ID_ConditionPaiementFk = formValues.ID_ConditionPaiementFk || null;
-    }
-
-    if (editorMode === "create" || formValues.ID_ModePaiementFk || selectedCommande?.ID_ModePaiementFk != null) {
-      payload.ID_ModePaiementFk = formValues.ID_ModePaiementFk || null;
-    }
-
-    if (editorMode === "create" || formValues.DateFacture || selectedCommande?.DateFacture != null) {
-      payload.DateFacture = formValues.DateFacture || null;
-    }
-
-    if (
-      editorMode === "create" ||
-      formValues.DateEcheancePaiement ||
-      selectedCommande?.DateEcheancePaiement != null
-    ) {
-      payload.DateEcheancePaiement = formValues.DateEcheancePaiement || null;
-    }
+    const payload = COMMANDES_CRUD_CONFIG.buildPayload(formValues, {
+      mode: editorMode,
+      record: selectedCommande,
+    });
 
     const response =
       editorMode === "edit" && selectedCommande
-        ? await updateLogistiqueCommande(selectedCommande.ID_Commande, payload)
-        : await createLogistiqueCommande(payload);
+        ? await COMMANDES_CRUD_CONFIG.updateRecord({ record: selectedCommande, payload })
+        : await COMMANDES_CRUD_CONFIG.createRecord({ payload });
 
     setSubmitting(false);
 
@@ -271,7 +253,10 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
     setFeedback({
       type: "success",
-      message: editorMode === "edit" ? "Commande mise a jour avec succes." : "Commande creee avec succes.",
+      message:
+        editorMode === "edit"
+          ? COMMANDES_CRUD_CONFIG.messages.updateSuccess
+          : COMMANDES_CRUD_CONFIG.messages.createSuccess,
     });
     resetEditor();
     onDataChanged?.();
@@ -329,7 +314,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           label={selectedCommande ? `Ligne selectionnee: commande #${selectedCommande.ID_Commande}` : "Aucune ligne selectionnee"}
           description={
             selectedCommande
-              ? `${selectedCommande.CodeCmd || "-"} | ${clientLabelMap.get(String(selectedCommande.ID_ClientFk)) || "Sans client"}`
+              ? `${selectedCommande.CodeCmd || "-"} | ${getCommandeClientLabel(selectedCommande, clientLabelMap)}`
               : "Selectionnez une commande pour agir dessus plus rapidement."
           }
           actions={
@@ -375,13 +360,23 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               <strong>{selectedCommande.CodeCmd || `Commande #${selectedCommande.ID_Commande}`}</strong>
               <p>Date: {formatDate(selectedCommande.DateCmd, { withTime: true })}</p>
               <p>Type: {typeLabelMap.get(String(selectedCommande.ID_TypeCmdFk)) || `#${selectedCommande.ID_TypeCmdFk ?? "-"}`}</p>
-              <p>Statut commande: {statusLabelMap.get(String(selectedCommande.ID_StatutCmd)) || `#${selectedCommande.ID_StatutCmd ?? "-"}`}</p>
+              <p>
+                Statut commande:{" "}
+                {statusLabelMap.get(String(selectedCommande.ID_StatutCmdFk)) ||
+                  `#${selectedCommande.ID_StatutCmdFk ?? "-"}`}
+              </p>
+              <p>Geolocalisation: {selectedCommande.geolocalisationCmd || "-"}</p>
             </article>
             <article>
-              <p>Client: {clientLabelMap.get(String(selectedCommande.ID_ClientFk)) || (selectedCommande.ID_ClientFk ? `#${selectedCommande.ID_ClientFk}` : "-")}</p>
+              <p>Client: {getCommandeClientLabel(selectedCommande, clientLabelMap)}</p>
+              <p>Client saisi: {selectedCommande.NomClientSaisi || "-"}</p>
               <p>Utilisateur: {selectedCommande.NomComplet || userLabelMap.get(String(selectedCommande.ID_UserFk)) || "-"}</p>
               <p>Facture: {selectedCommande.CodeFacture || "-"}</p>
               <p>TTC: {formatCurrency(selectedCommande.MontantTTC)}</p>
+              <p>Regle: {formatCurrency(selectedCommande.MontantRegleFacture)}</p>
+              <p>Reste: {formatCurrency(selectedCommande.MontantResteFacture)}</p>
+              <p>BL URL: {selectedCommande.UrlBL || "-"}</p>
+              <p>Facture URL: {selectedCommande.UrlFacture || "-"}</p>
               <p>Observation: {selectedCommande.ObsCmd || "-"}</p>
             </article>
           </div>
@@ -393,6 +388,12 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           title={editorMode === "edit" ? "Modifier la commande" : "Creer une commande"}
           subtitle="Le type de commande doit correspondre a la logique SQL existante pour les mouvements de stock."
         >
+          {commandeReferenceWarnings.length > 0 ? (
+            <section className="table-empty-state">
+              {`References logistiques a completer: ${commandeReferenceWarnings.join(" ")}`}
+            </section>
+          ) : null}
+
           <form className="admin-editor-form" onSubmit={handleSubmit}>
             <div className="admin-editor-grid">
               <SelectField
@@ -401,13 +402,18 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                 onChange={(event) => setFormValues((current) => ({ ...current, ID_TypeCmdFk: event.target.value }))}
                 options={commandeTypeOptions}
                 allowEmpty={false}
+                disabled={commandeTypeOptions.length === 0}
+                helperText={buildReferenceHelperText("logistique.commandeTypes", commandeTypeOptions)}
               />
 
               <SelectField
                 label="Statut commande"
-                value={formValues.ID_StatutCmd}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_StatutCmd: event.target.value }))}
+                value={formValues.ID_StatutCmdFk}
+                onChange={(event) => setFormValues((current) => ({ ...current, ID_StatutCmdFk: event.target.value }))}
                 options={commandeStatusOptions}
+                disabled={commandeStatusOptions.length === 0}
+                emptyLabel={commandeStatusOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.commandeStatuses", commandeStatusOptions)}
               />
 
               <SelectField
@@ -417,12 +423,35 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                 options={clientOptions}
               />
 
+              <label className="admin-form-field">
+                <span>Nom client saisi</span>
+                <input
+                  type="text"
+                  value={formValues.NomClientSaisi}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, NomClientSaisi: event.target.value }))
+                  }
+                  placeholder="A renseigner si le client n'existe pas encore dans la liste"
+                />
+              </label>
+
               <SelectField
                 label="Utilisateur"
                 value={formValues.ID_UserFk}
                 onChange={(event) => setFormValues((current) => ({ ...current, ID_UserFk: event.target.value }))}
                 options={userOptions}
               />
+
+              <label className="admin-form-field">
+                <span>Geolocalisation</span>
+                <input
+                  type="text"
+                  value={formValues.geolocalisationCmd}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, geolocalisationCmd: event.target.value }))
+                  }
+                />
+              </label>
 
               <label className="admin-form-field">
                 <span>Date commande</span>
@@ -482,6 +511,15 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                 />
               </label>
 
+              <label className="admin-form-field">
+                <span>Bon de livraison URL</span>
+                <input
+                  type="url"
+                  value={formValues.UrlBL}
+                  onChange={(event) => setFormValues((current) => ({ ...current, UrlBL: event.target.value }))}
+                />
+              </label>
+
               <SelectField
                 label="Condition paiement"
                 value={formValues.ID_ConditionPaiementFk}
@@ -489,6 +527,9 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                   setFormValues((current) => ({ ...current, ID_ConditionPaiementFk: event.target.value }))
                 }
                 options={conditionPaiementOptions}
+                disabled={conditionPaiementOptions.length === 0}
+                emptyLabel={conditionPaiementOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.commandeConditionPaiements", conditionPaiementOptions)}
               />
 
               <SelectField
@@ -498,6 +539,9 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                   setFormValues((current) => ({ ...current, ID_ModePaiementFk: event.target.value }))
                 }
                 options={modePaiementOptions}
+                disabled={modePaiementOptions.length === 0}
+                emptyLabel={modePaiementOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
+                helperText={buildReferenceHelperText("logistique.commandeModesPaiement", modePaiementOptions)}
               />
 
               <label className="admin-form-field">
@@ -519,6 +563,41 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               </label>
 
               <label className="admin-form-field">
+                <span>Montant regle facture</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formValues.MontantRegleFacture}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, MontantRegleFacture: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="admin-form-field">
+                <span>Montant reste facture</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formValues.MontantResteFacture}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, MontantResteFacture: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="admin-form-field">
+                <span>Facture URL</span>
+                <input
+                  type="url"
+                  value={formValues.UrlFacture}
+                  onChange={(event) => setFormValues((current) => ({ ...current, UrlFacture: event.target.value }))}
+                />
+              </label>
+
+              <label className="admin-form-field">
                 <span>Date echeance paiement</span>
                 <input
                   type="datetime-local"
@@ -527,6 +606,26 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                     setFormValues((current) => ({ ...current, DateEcheancePaiement: event.target.value }))
                   }
                 />
+              </label>
+
+              <label className="admin-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={formValues.SelectCmd}
+                  onChange={(event) => setFormValues((current) => ({ ...current, SelectCmd: event.target.checked }))}
+                />
+                <span>Commande selectionnee</span>
+              </label>
+
+              <label className="admin-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={formValues.ValideRemiseFacture}
+                  onChange={(event) =>
+                    setFormValues((current) => ({ ...current, ValideRemiseFacture: event.target.checked }))
+                  }
+                />
+                <span>Remise facture validee</span>
               </label>
 
               <label className="admin-form-field admin-form-field-wide">
@@ -542,8 +641,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
                 Annuler
               </button>
-              <button type="submit" className="primary-action" disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Enregistrer"}
+              <button type="submit" className="primary-action" disabled={submitting || isCommandeFormBlocked}>
+                {isCommandeFormBlocked ? "Type de commande indisponible" : submitting ? "Enregistrement..." : "Enregistrer"}
               </button>
             </div>
           </form>

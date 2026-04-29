@@ -64,6 +64,9 @@ BEGIN
     END IF;
 END $$;
 
+ALTER TABLE logistique."T_Commande"
+ADD COLUMN IF NOT EXISTS "NomClientSaisi" character varying(255);
+
 DROP FUNCTION IF EXISTS logistique.fn_assert_generique_category(integer, integer, text, text) CASCADE;
 
 CREATE OR REPLACE FUNCTION logistique.fn_assert_generique_category(
@@ -1281,6 +1284,7 @@ SELECT c."DateHeureAutoCmd",
     c."ID_StatutCmdFk",
     c."ID_StatutCmdFk" AS "ID_StatutCmd",
     c."ID_ClientFk",
+    c."NomClientSaisi",
     c."ID_UserFk",
     u."NomUser",
     u."PrenomUser",

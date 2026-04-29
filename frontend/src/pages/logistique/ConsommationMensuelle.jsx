@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchLogistiqueConsommation } from "../../services/logistique";
 import {
   asArrayPayload,
   buildReferenceOptions,
@@ -10,6 +9,9 @@ import {
   SelectField,
   SimpleTable,
 } from "./logistiqueShared";
+import { getLogistiqueViewConfig } from "./views";
+
+const CONSOMMATION_VIEW_CONFIG = getLogistiqueViewConfig("consommation");
 
 export default function ConsommationMensuelle({ references, refreshKey }) {
   const [rows, setRows] = useState([]);
@@ -27,7 +29,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueConsommation({
+      const response = await CONSOMMATION_VIEW_CONFIG.fetchRows({
         article: articleFilter,
         dateFrom,
         dateTo,

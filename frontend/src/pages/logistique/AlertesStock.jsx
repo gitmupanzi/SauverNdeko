@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchLogistiqueAlertesStock } from "../../services/logistique";
 import { asArrayPayload, formatNumber, LoadingErrorEmpty, SectionCard, SimpleTable, SummaryCard, ToneBadge } from "./logistiqueShared";
+import { getLogistiqueViewConfig } from "./views";
+
+const ALERTES_VIEW_CONFIG = getLogistiqueViewConfig("alertes");
 
 export default function AlertesStock({ refreshKey }) {
   const [rows, setRows] = useState([]);
@@ -15,7 +17,7 @@ export default function AlertesStock({ refreshKey }) {
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueAlertesStock({
+      const response = await ALERTES_VIEW_CONFIG.fetchRows({
         criticalOnly,
         take: 120,
       });

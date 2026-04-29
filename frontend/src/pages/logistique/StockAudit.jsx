@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { fetchLogistiqueStockAudit } from "../../services/logistique";
 import { asArrayPayload, formatNumber, LoadingErrorEmpty, SectionCard, SimpleTable, ToneBadge } from "./logistiqueShared";
+import { getLogistiqueViewConfig } from "./views";
+
+const STOCK_AUDIT_VIEW_CONFIG = getLogistiqueViewConfig("audit");
 
 export default function StockAudit({ refreshKey }) {
   const [rows, setRows] = useState([]);
@@ -15,7 +17,7 @@ export default function StockAudit({ refreshKey }) {
       setLoading(true);
       setError("");
 
-      const response = await fetchLogistiqueStockAudit({
+      const response = await STOCK_AUDIT_VIEW_CONFIG.fetchRows({
         q: search,
         take: 120,
       });

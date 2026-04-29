@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  createLogistiqueReglement,
-  fetchLogistiqueReglementEntries,
-  fetchLogistiqueReglements,
-  updateLogistiqueReglement,
-} from "../../services/logistique";
-import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
@@ -20,27 +14,19 @@ import {
   StatusBanner,
   TableToolbar,
   ToneBadge,
-  toInputDateValue,
 } from "./logistiqueShared";
+import {
+  getLogistiqueCrudConfig,
+  getLogistiqueGenericSourceHint,
+  getLogistiqueViewConfig,
+} from "./views";
 
-function createReglementFormState() {
-  return {
-    CodeFactureFk: "",
-    ID_ModeReglementFk: "",
-    ID_ClientFk: "",
-    DateReglement: "",
-    MontantRegle: "",
-  };
-}
+const REGLEMENTS_VIEW_CONFIG = getLogistiqueViewConfig("reglements");
+const REGLEMENTS_CRUD_CONFIG = getLogistiqueCrudConfig("reglements");
 
-function mapReglementToForm(reglement) {
-  return {
-    CodeFactureFk: reglement.CodeFactureFk || "",
-    ID_ModeReglementFk: reglement.ID_ModeReglementFk ? String(reglement.ID_ModeReglementFk) : "",
-    ID_ClientFk: reglement.ID_ClientFk ? String(reglement.ID_ClientFk) : "",
-    DateReglement: toInputDateValue(reglement.DateReglement),
-    MontantRegle: reglement.MontantRegle != null ? String(reglement.MontantRegle) : "",
-  };
+function buildReferenceHelperText(sourceKey, options) {
+  const count = Array.isArray(options) ? options.length : 0;
+  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
 }
 
 export default function Reglements({ references, refreshKey, onDataChanged, sharedTable }) {
@@ -52,7 +38,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const [codeFactureFilter, setCodeFactureFilter] = useState("");
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(createReglementFormState());
+  const [formValues, setFormValues] = useState(() => REGLEMENTS_CRUD_CONFIG.createFormState());
   const selectedEntry = sharedTable?.selectedRow || null;
 
   const modeOptions = useMemo(() => buildReferenceOptions(references?.reglementModes, "Mode"), [references]);
@@ -78,11 +64,11 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       setError("");
 
       const [summaryResponse, entriesResponse] = await Promise.all([
-        fetchLogistiqueReglements({
+        REGLEMENTS_VIEW_CONFIG.fetchRows({
           codeFacture: codeFactureFilter,
           take: 120,
         }),
-        fetchLogistiqueReglementEntries({
+        REGLEMENTS_VIEW_CONFIG.fetchEntries({
           codeFacture: codeFactureFilter,
           take: 120,
         }),
@@ -125,35 +111,34 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   function resetEditor() {
     setEditorMode("");
     sharedTable?.clearSelectedRow?.();
-    setFormValues(createReglementFormState());
+    setFormValues(REGLEMENTS_CRUD_CONFIG.createFormState());
   }
 
   function handleNewReglement() {
     sharedTable?.clearSelectedRow?.();
     setEditorMode("create");
-    setFormValues(createReglementFormState());
+    setFormValues(REGLEMENTS_CRUD_CONFIG.createFormState());
   }
 
   function handleEditReglement(entry) {
     sharedTable?.setSelectedRow?.(entry);
     setEditorMode("edit");
-    setFormValues(mapReglementToForm(entry));
+    setFormValues(REGLEMENTS_CRUD_CONFIG.mapRecordToForm(entry));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitting(true);
 
-    const payload = {
-      ...formValues,
-      ID_ClientFk: formValues.ID_ClientFk || null,
-      DateReglement: formValues.DateReglement || null,
-    };
+    const payload = REGLEMENTS_CRUD_CONFIG.buildPayload(formValues, {
+      mode: editorMode,
+      record: selectedEntry,
+    });
 
     const response =
       editorMode === "edit" && selectedEntry
-        ? await updateLogistiqueReglement(selectedEntry.ID_Reglement, payload)
-        : await createLogistiqueReglement(payload);
+        ? await REGLEMENTS_CRUD_CONFIG.updateRecord({ record: selectedEntry, payload })
+        : await REGLEMENTS_CRUD_CONFIG.createRecord({ payload });
 
     setSubmitting(false);
 
@@ -164,7 +149,10 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
 
     setFeedback({
       type: "success",
-      message: editorMode === "edit" ? "Reglement mis a jour avec succes." : "Reglement cree avec succes.",
+      message:
+        editorMode === "edit"
+          ? REGLEMENTS_CRUD_CONFIG.messages.updateSuccess
+          : REGLEMENTS_CRUD_CONFIG.messages.createSuccess,
     });
     resetEditor();
     onDataChanged?.();
@@ -354,6 +342,8 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
                 }
                 options={modeOptions}
                 allowEmpty={false}
+                disabled={modeOptions.length === 0}
+                helperText={buildReferenceHelperText("logistique.reglementModes", modeOptions)}
               />
 
               <SelectField

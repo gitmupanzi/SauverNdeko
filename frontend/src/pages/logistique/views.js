@@ -1,3 +1,20 @@
+import { fetchViewData } from "../../services/api";
+import {
+  createLogistiqueArticle,
+  createLogistiqueCommande,
+  createLogistiqueCommandeDetail,
+  createLogistiqueReglement,
+  deleteLogistiqueArticle,
+  deleteLogistiqueCommandeDetail,
+  fetchLogistiqueCommandeDetails,
+  fetchLogistiqueDashboard,
+  fetchLogistiqueReglementEntries,
+  updateLogistiqueArticle,
+  updateLogistiqueCommande,
+  updateLogistiqueCommandeDetail,
+  updateLogistiqueReglement,
+} from "../../services/logistique";
+
 const SCHEMA_NAME = "logistique";
 
 export const LOGISTIQUE_GENERIC_SOURCE_CONFIG = {
@@ -5,43 +22,76 @@ export const LOGISTIQUE_GENERIC_SOURCE_CONFIG = {
     label: "Type d'article",
     referenceKey: "articleTypes",
     defaultCategoryIds: [46],
+    categoryLabel: "Type produit",
+    locked: true,
   },
   "logistique.articleCategories": {
     label: "Categorie d'article",
     referenceKey: "articleCategories",
     defaultCategoryIds: [40],
+    categoryLabel: "Categorie produit",
+    locked: true,
   },
   "logistique.articleUnits": {
     label: "Unite",
     referenceKey: "articleUnits",
     defaultCategoryIds: [34],
+    categoryLabel: "Unites",
+    locked: true,
   },
   "logistique.commandeTypes": {
     label: "Type de commande",
     referenceKey: "commandeTypes",
     defaultCategoryIds: [64],
+    categoryLabel: "Type de commande",
+    locked: true,
   },
   "logistique.commandeStatuses": {
     label: "Statut commande",
     referenceKey: "commandeStatuses",
     defaultCategoryIds: [28],
+    categoryLabel: "Statut",
+    locked: true,
   },
   "logistique.commandeConditionPaiements": {
     label: "Condition de paiement",
     referenceKey: "commandeConditionPaiements",
     defaultCategoryIds: [37],
+    categoryLabel: "Condition de paiement",
+    locked: true,
   },
   "logistique.commandeModesPaiement": {
     label: "Mode de paiement",
     referenceKey: "commandeModesPaiement",
     defaultCategoryIds: [36],
+    categoryLabel: "Mode paiement",
+    locked: true,
   },
   "logistique.reglementModes": {
     label: "Mode de reglement",
     referenceKey: "reglementModes",
     defaultCategoryIds: [36],
+    categoryLabel: "Mode paiement",
+    locked: true,
   },
 };
+
+export function getLogistiqueGenericSourceConfig(sourceKey) {
+  return LOGISTIQUE_GENERIC_SOURCE_CONFIG[sourceKey] || null;
+}
+
+export function getLogistiqueGenericSourceHint(sourceKey) {
+  const config = getLogistiqueGenericSourceConfig(sourceKey);
+
+  if (!config) {
+    return "";
+  }
+
+  const categoryIds = Array.isArray(config.defaultCategoryIds) ? config.defaultCategoryIds.join(", ") : "";
+  const categoryLabel = config.categoryLabel || "Categorie generique";
+
+  return `Referentiel: categorie ${categoryIds} - ${categoryLabel}`;
+}
 
 const LOGISTIQUE_VIEWS = [
   {
@@ -255,6 +305,382 @@ function buildViewLabel(view) {
   return `${view.schema}.${view.name}`;
 }
 
+function createViewRowsFetcher(viewName, defaultOptions = {}) {
+  return (options = {}) => fetchViewData(SCHEMA_NAME, viewName, { ...defaultOptions, ...options });
+}
+
+function stringifyNullableValue(value) {
+  return value == null ? "" : String(value);
+}
+
+function normalizeDateValueForDiff(value) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+}
+
+export function computeArticleAlertDays(datePeremption, dateAlerte) {
+  const peremptionDate = normalizeDateValueForDiff(datePeremption);
+  const alertDate = normalizeDateValueForDiff(dateAlerte);
+
+  if (!peremptionDate || !alertDate) {
+    return "";
+  }
+
+  const diffMs = peremptionDate.getTime() - alertDate.getTime();
+  const diffDays = Math.round(diffMs / 86400000);
+
+  return diffDays >= 0 ? String(diffDays) : "";
+}
+
+export function computeArticleAlertDate(datePeremption, alertDays) {
+  const peremptionDate = normalizeDateValueForDiff(datePeremption);
+  const parsedDays = Number(alertDays);
+
+  if (!peremptionDate || !Number.isInteger(parsedDays) || parsedDays < 0) {
+    return "";
+  }
+
+  const alertDate = new Date(peremptionDate);
+  alertDate.setUTCDate(alertDate.getUTCDate() - parsedDays);
+
+  return alertDate.toISOString().slice(0, 10);
+}
+
+const LOGISTIQUE_CRUD_CONFIGS = {
+  articles: {
+    primaryKey: "ID_Article",
+    resourceLabel: "article",
+    createLabel: "Nouveau article",
+    messages: {
+      createSuccess: "Article cree avec succes.",
+      updateSuccess: "Article mis a jour avec succes.",
+      deleteSuccess: "Article desactive avec succes.",
+    },
+    createFormState: () => ({
+      NomArticle: "",
+      RefArticle: "",
+      CodeArticleInterne: "",
+      CodeArticleExterne: "",
+      ID_TypeArticleFk: "",
+      ID_CategorieArticleFk: "",
+      ID_UserFK: "",
+      ID_UniteFk: "",
+      QteArticle: "0",
+      QteMinArticle: "",
+      PUArticle: "",
+      PVArticle: "",
+      PhotoArticle: "",
+      DatePeremptionArticle: "",
+      DatePeremptionAlerteArticle: "",
+      NbreJoursAlerteArticle: "",
+      ObsArticle: "",
+      ValideArticle: true,
+    }),
+    mapRecordToForm: (article) => ({
+      NomArticle: article.NomArticle || "",
+      RefArticle: article.RefArticle || "",
+      CodeArticleInterne: article.CodeArticleInterne || "",
+      CodeArticleExterne: stringifyNullableValue(article.CodeArticleExterne),
+      ID_TypeArticleFk: article.ID_TypeArticleFk ? String(article.ID_TypeArticleFk) : "",
+      ID_CategorieArticleFk: article.ID_CategorieArticleFk ? String(article.ID_CategorieArticleFk) : "",
+      ID_UserFK: article.ID_UserFK ? String(article.ID_UserFK) : article.IdUser ? String(article.IdUser) : "",
+      ID_UniteFk: article.ID_UniteFk ? String(article.ID_UniteFk) : "",
+      QteArticle: article.QteArticle != null ? String(article.QteArticle) : "0",
+      QteMinArticle: article.QteMinArticle != null ? String(article.QteMinArticle) : "",
+      PUArticle: article.PUArticle != null ? String(article.PUArticle) : "",
+      PVArticle: article.PVArticle != null ? String(article.PVArticle) : "",
+      PhotoArticle: article.PhotoArticle || "",
+      DatePeremptionArticle: article.DatePeremptionArticle ? new Date(article.DatePeremptionArticle).toISOString().slice(0, 10) : "",
+      NbreJoursAlerteArticle:
+        stringifyNullableValue(article.NbreJoursAlerteArticle) ||
+        computeArticleAlertDays(article.DatePeremptionArticle, article.DatePeremptionAlerteArticle),
+      DatePeremptionAlerteArticle: article.DatePeremptionAlerteArticle
+        ? new Date(article.DatePeremptionAlerteArticle).toISOString().slice(0, 10)
+        : computeArticleAlertDate(
+            article.DatePeremptionArticle,
+            article.NbreJoursAlerteArticle ||
+              computeArticleAlertDays(article.DatePeremptionArticle, article.DatePeremptionAlerteArticle)
+          ),
+      ObsArticle: article.ObsArticle || "",
+      ValideArticle: article.ValideArticle !== false,
+    }),
+    buildPayload: (values, { mode, record } = {}) => {
+      const computedAlertDate = computeArticleAlertDate(
+        values.DatePeremptionArticle,
+        values.NbreJoursAlerteArticle
+      );
+      const computedAlertDays = computeArticleAlertDays(values.DatePeremptionArticle, computedAlertDate);
+
+      const payload = {
+        ...values,
+        ID_TypeArticleFk: values.ID_TypeArticleFk || null,
+        ID_CategorieArticleFk: values.ID_CategorieArticleFk || null,
+        QteMinArticle: values.QteMinArticle || null,
+        CodeArticleExterne: values.CodeArticleExterne || null,
+        PhotoArticle: values.PhotoArticle || null,
+        DatePeremptionAlerteArticle: computedAlertDate || null,
+        NbreJoursAlerteArticle: computedAlertDays || null,
+      };
+
+      if (mode === "create" || values.ID_UserFK || record?.IdUser != null || record?.ID_UserFK != null) {
+        payload.ID_UserFK = values.ID_UserFK || null;
+      }
+
+      if (mode === "create" || values.ID_UniteFk || record?.ID_UniteFk != null) {
+        payload.ID_UniteFk = values.ID_UniteFk || null;
+      }
+
+      if (mode === "create" || values.DatePeremptionArticle || record?.DatePeremptionArticle != null) {
+        payload.DatePeremptionArticle = values.DatePeremptionArticle || null;
+      }
+
+      if (
+        mode === "create" ||
+        computedAlertDate ||
+        record?.DatePeremptionAlerteArticle != null
+      ) {
+        payload.DatePeremptionAlerteArticle = computedAlertDate || null;
+      }
+
+      return payload;
+    },
+    createRecord: ({ payload }) => createLogistiqueArticle(payload),
+    updateRecord: ({ record, payload }) => updateLogistiqueArticle(record.ID_Article, payload),
+    deleteRecord: ({ record }) => deleteLogistiqueArticle(record.ID_Article),
+  },
+  commandes: {
+    primaryKey: "ID_Commande",
+    resourceLabel: "commande",
+    createLabel: "Nouvelle commande",
+    messages: {
+      createSuccess: "Commande creee avec succes.",
+      updateSuccess: "Commande mise a jour avec succes.",
+    },
+    createFormState: () => ({
+      ID_TypeCmdFk: "",
+      ID_StatutCmdFk: "",
+      ID_ClientFk: "",
+      NomClientSaisi: "",
+      ID_UserFk: "",
+      geolocalisationCmd: "",
+      ID_ConditionPaiementFk: "",
+      ID_ModePaiementFk: "",
+      DateCmd: "",
+      CodeCmd: "",
+      RefCmd: "",
+      MontantHT: "",
+      MontantTTC: "",
+      UrlBL: "",
+      ObsCmd: "",
+      SelectCmd: false,
+      CodeFacture: "",
+      DateFacture: "",
+      MontantRegleFacture: "",
+      MontantResteFacture: "",
+      StatusFacture: "",
+      ValideRemiseFacture: false,
+      UrlFacture: "",
+      DateEcheancePaiement: "",
+    }),
+    mapRecordToForm: (commande) => ({
+      ID_TypeCmdFk: commande.ID_TypeCmdFk ? String(commande.ID_TypeCmdFk) : "",
+      ID_StatutCmdFk: commande.ID_StatutCmdFk ? String(commande.ID_StatutCmdFk) : "",
+      ID_ClientFk: commande.ID_ClientFk ? String(commande.ID_ClientFk) : "",
+      NomClientSaisi: commande.NomClientSaisi || "",
+      ID_UserFk: commande.ID_UserFk ? String(commande.ID_UserFk) : "",
+      geolocalisationCmd: commande.geolocalisationCmd || "",
+      ID_ConditionPaiementFk: commande.ID_ConditionPaiementFk ? String(commande.ID_ConditionPaiementFk) : "",
+      ID_ModePaiementFk: commande.ID_ModePaiementFk ? String(commande.ID_ModePaiementFk) : "",
+      DateCmd: commande.DateCmd ? new Date(new Date(commande.DateCmd).getTime() - new Date(commande.DateCmd).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "",
+      CodeCmd: commande.CodeCmd || "",
+      RefCmd: commande.RefCmd || "",
+      MontantHT: commande.MontantHT != null ? String(commande.MontantHT) : "",
+      MontantTTC: commande.MontantTTC != null ? String(commande.MontantTTC) : "",
+      UrlBL: commande.UrlBL || "",
+      ObsCmd: commande.ObsCmd || "",
+      SelectCmd: Boolean(commande.SelectCmd),
+      CodeFacture: commande.CodeFacture || "",
+      DateFacture: commande.DateFacture
+        ? new Date(new Date(commande.DateFacture).getTime() - new Date(commande.DateFacture).getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16)
+        : "",
+      MontantRegleFacture: stringifyNullableValue(commande.MontantRegleFacture),
+      MontantResteFacture: stringifyNullableValue(commande.MontantResteFacture),
+      StatusFacture: commande.StatusFacture || "",
+      ValideRemiseFacture: Boolean(commande.ValideRemiseFacture),
+      UrlFacture: commande.UrlFacture || "",
+      DateEcheancePaiement: commande.DateEcheancePaiement
+        ? new Date(
+            new Date(commande.DateEcheancePaiement).getTime() -
+              new Date(commande.DateEcheancePaiement).getTimezoneOffset() * 60000
+          )
+            .toISOString()
+            .slice(0, 16)
+        : "",
+    }),
+    buildPayload: (values, { mode, record } = {}) => {
+      const payload = {
+        ...values,
+        ID_StatutCmdFk: values.ID_StatutCmdFk || null,
+        ID_ClientFk: values.ID_ClientFk || null,
+        NomClientSaisi: values.NomClientSaisi || null,
+        DateCmd: values.DateCmd || null,
+        MontantHT: values.MontantHT || null,
+        MontantTTC: values.MontantTTC || null,
+      };
+
+      if (mode === "create" || values.ID_UserFk || record?.ID_UserFk != null) {
+        payload.ID_UserFk = values.ID_UserFk || null;
+      }
+
+      if (mode === "create" || values.ID_ConditionPaiementFk || record?.ID_ConditionPaiementFk != null) {
+        payload.ID_ConditionPaiementFk = values.ID_ConditionPaiementFk || null;
+      }
+
+      if (mode === "create" || values.ID_ModePaiementFk || record?.ID_ModePaiementFk != null) {
+        payload.ID_ModePaiementFk = values.ID_ModePaiementFk || null;
+      }
+
+      if (mode === "create" || values.DateFacture || record?.DateFacture != null) {
+        payload.DateFacture = values.DateFacture || null;
+      }
+
+      if (mode === "create" || values.DateEcheancePaiement || record?.DateEcheancePaiement != null) {
+        payload.DateEcheancePaiement = values.DateEcheancePaiement || null;
+      }
+
+      return payload;
+    },
+    createRecord: ({ payload }) => createLogistiqueCommande(payload),
+    updateRecord: ({ record, payload }) => updateLogistiqueCommande(record.ID_Commande, payload),
+  },
+  details: {
+    primaryKey: ["ID_CmdFk", "ID_ArticleFk"],
+    resourceLabel: "ligne de commande",
+    createLabel: "Ajouter une ligne",
+    messages: {
+      createSuccess: "Ligne ajoutee a la commande.",
+      updateSuccess: "Detail de commande mis a jour.",
+      deleteSuccess: "Ligne de commande supprimee avec succes.",
+    },
+    createFormState: () => ({
+      ID_ArticleFk: "",
+      QteCmdDetail: "",
+      PUCmdDetail: "",
+      ObsCmdDetail: "",
+      RemiseCmdDetail: false,
+      LieuCmdDetail: "",
+      SelectCmdDetail: false,
+    }),
+    mapRecordToForm: (detail) => ({
+      ID_ArticleFk: detail.ID_ArticleFk ? String(detail.ID_ArticleFk) : "",
+      QteCmdDetail: stringifyNullableValue(detail.QteCmdDetail),
+      PUCmdDetail: stringifyNullableValue(detail.PUCmdDetail),
+      ObsCmdDetail: detail.ObsCmdDetail || "",
+      RemiseCmdDetail: Boolean(detail.RemiseCmdDetail),
+      LieuCmdDetail: stringifyNullableValue(detail.LieuCmdDetail),
+      SelectCmdDetail: Boolean(detail.SelectCmdDetail),
+    }),
+    buildPayload: (values) => ({
+      ...values,
+      PUCmdDetail: values.PUCmdDetail || null,
+      LieuCmdDetail: values.LieuCmdDetail || null,
+    }),
+    createRecord: ({ parentRecord, payload }) => createLogistiqueCommandeDetail(parentRecord.ID_Commande, payload),
+    updateRecord: ({ parentRecord, record, payload }) =>
+      updateLogistiqueCommandeDetail(parentRecord.ID_Commande, record.ID_ArticleFk, payload),
+    deleteRecord: ({ parentRecord, record }) => deleteLogistiqueCommandeDetail(parentRecord.ID_Commande, record.ID_ArticleFk),
+  },
+  reglements: {
+    primaryKey: "ID_Reglement",
+    resourceLabel: "reglement",
+    createLabel: "Nouveau reglement",
+    messages: {
+      createSuccess: "Reglement cree avec succes.",
+      updateSuccess: "Reglement mis a jour avec succes.",
+    },
+    createFormState: () => ({
+      CodeFactureFk: "",
+      ID_ModeReglementFk: "",
+      ID_ClientFk: "",
+      DateReglement: "",
+      MontantRegle: "",
+    }),
+    mapRecordToForm: (reglement) => ({
+      CodeFactureFk: reglement.CodeFactureFk || "",
+      ID_ModeReglementFk: reglement.ID_ModeReglementFk ? String(reglement.ID_ModeReglementFk) : "",
+      ID_ClientFk: reglement.ID_ClientFk ? String(reglement.ID_ClientFk) : "",
+      DateReglement: reglement.DateReglement ? new Date(reglement.DateReglement).toISOString().slice(0, 10) : "",
+      MontantRegle: stringifyNullableValue(reglement.MontantRegle),
+    }),
+    buildPayload: (values) => ({
+      ...values,
+      ID_ClientFk: values.ID_ClientFk || null,
+      DateReglement: values.DateReglement || null,
+    }),
+    createRecord: ({ payload }) => createLogistiqueReglement(payload),
+    updateRecord: ({ record, payload }) => updateLogistiqueReglement(record.ID_Reglement, payload),
+  },
+};
+
+const LOGISTIQUE_VIEW_FETCHERS = {
+  dashboard: {
+    fetchSummary: () => fetchLogistiqueDashboard(),
+  },
+  articles: {
+    fetchRows: createViewRowsFetcher("V_Article"),
+  },
+  commandes: {
+    fetchRows: createViewRowsFetcher("V_Commande"),
+  },
+  details: {
+    fetchRows: ({ commandeId, ...options } = {}) => {
+      if (!commandeId) {
+        return Promise.resolve({ success: true, data: [] });
+      }
+
+      return fetchLogistiqueCommandeDetails(commandeId, options);
+    },
+  },
+  mouvements: {
+    fetchRows: createViewRowsFetcher("V_Mouvement"),
+  },
+  reglements: {
+    fetchRows: createViewRowsFetcher("V_SuiviReglements"),
+    fetchEntries: (options = {}) => fetchLogistiqueReglementEntries(options),
+  },
+  audit: {
+    fetchRows: createViewRowsFetcher("V_AuditStock"),
+  },
+  alertes: {
+    fetchRows: createViewRowsFetcher("V_AlertStock"),
+  },
+  consommation: {
+    fetchRows: createViewRowsFetcher("V_ConsoMensuelle"),
+  },
+  couverture: {
+    fetchRows: createViewRowsFetcher("V_CouvertureStock"),
+  },
+};
+
+export function getLogistiqueViewConfig(viewKey) {
+  return LOGISTIQUE_VIEW_FETCHERS[viewKey] || null;
+}
+
+export function getLogistiqueCrudConfig(viewKey) {
+  return LOGISTIQUE_CRUD_CONFIGS[viewKey] || null;
+}
+
 export const LOGISTIQUE_MODULE_SCHEMA = {
   schema: SCHEMA_NAME,
   title: "Catalogue logistique",
@@ -265,4 +691,6 @@ export const LOGISTIQUE_MODULE_SCHEMA = {
   })),
   tabGroups: LOGISTIQUE_TAB_GROUPS,
   tableFeatures: LOGISTIQUE_TABLE_FEATURES,
+  viewConfigs: LOGISTIQUE_VIEW_FETCHERS,
+  crudConfigs: LOGISTIQUE_CRUD_CONFIGS,
 };

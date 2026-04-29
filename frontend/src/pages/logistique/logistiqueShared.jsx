@@ -1211,31 +1211,317 @@ export function ToneBadge({ children, tone = "info" }) {
   return <span className={`logistics-badge is-${tone}`}>{children}</span>;
 }
 
-export function SelectField({ label, value, onChange, options, allowEmpty = true, emptyLabel = "Choisir" }) {
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  allowEmpty = true,
+  emptyLabel = "Choisir",
+  disabled = false,
+  required = false,
+  helperText = "",
+  searchable = true,
+  searchPlaceholder = "Rechercher une valeur",
+}) {
+  const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const optionRefs = useRef([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const normalizedSearch = normalizeSearchText(searchTerm).trim();
+  const hasManyOptions = Array.isArray(options) && options.length > 6;
+  const selectedOption = useMemo(
+    () => (Array.isArray(options) ? options.find((option) => String(option.value) === String(value ?? "")) || null : null),
+    [options, value]
+  );
+  const filteredOptions = useMemo(() => {
+    if (!Array.isArray(options)) {
+      return [];
+    }
+
+    if (!normalizedSearch) {
+      return options;
+    }
+
+    const nextOptions = options.filter((option) =>
+      normalizeSearchText(option.label).includes(normalizedSearch)
+    );
+
+    if (
+      selectedOption &&
+      !nextOptions.some((option) => String(option.value) === String(selectedOption.value))
+    ) {
+      return [selectedOption, ...nextOptions];
+    }
+
+    return nextOptions;
+  }, [normalizedSearch, options, selectedOption]);
+  const visibleOptions = useMemo(() => {
+    const nextOptions = filteredOptions.map((option) => ({
+      value: option.value,
+      label: option.label,
+    }));
+
+    if (allowEmpty) {
+      return [{ value: "", label: emptyLabel }, ...nextOptions];
+    }
+
+    return nextOptions;
+  }, [allowEmpty, emptyLabel, filteredOptions]);
+
+  useEffect(() => {
+    if (disabled) {
+      setSearchTerm("");
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+    }
+  }, [disabled]);
+
+  useEffect(() => {
+    if (!isOpen || !searchable || !hasManyOptions) {
+      return;
+    }
+
+    searchInputRef.current?.focus();
+  }, [hasManyOptions, isOpen, searchable]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    const selectedIndex = visibleOptions.findIndex((option) => String(option.value) === String(value ?? ""));
+    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : visibleOptions.length > 0 ? 0 : -1);
+  }, [isOpen, value, visibleOptions]);
+
+  useEffect(() => {
+    if (!isOpen || highlightedIndex < 0) {
+      return;
+    }
+
+    optionRefs.current[highlightedIndex]?.scrollIntoView({
+      block: "nearest",
+    });
+  }, [highlightedIndex, isOpen]);
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, []);
+
+  const currentLabel = selectedOption?.label || (allowEmpty ? emptyLabel : "Selectionner");
+
+  function emitValue(nextValue) {
+    onChange?.({
+      target: {
+        value: nextValue,
+      },
+    });
+  }
+
+  function handleSelectOption(nextValue) {
+    emitValue(nextValue);
+    setIsOpen(false);
+    setSearchTerm("");
+  }
+
+  function moveHighlight(direction) {
+    if (visibleOptions.length === 0) {
+      return;
+    }
+
+    setHighlightedIndex((current) => {
+      if (current < 0) {
+        return 0;
+      }
+
+      if (direction === "down") {
+        return current >= visibleOptions.length - 1 ? 0 : current + 1;
+      }
+
+      return current <= 0 ? visibleOptions.length - 1 : current - 1;
+    });
+  }
+
+  function handleComboboxKeyDown(event) {
+    if (disabled) {
+      return;
+    }
+
+    if (!isOpen && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter")) {
+      event.preventDefault();
+      setIsOpen(true);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsOpen(false);
+      setSearchTerm("");
+      return;
+    }
+
+    if (!isOpen) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveHighlight("down");
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveHighlight("up");
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+
+      if (highlightedIndex >= 0 && visibleOptions[highlightedIndex]) {
+        handleSelectOption(visibleOptions[highlightedIndex].value);
+      }
+    }
+  }
+
+  if (searchable && !disabled) {
+    return (
+      <div className="admin-form-field">
+        <span>{label}</span>
+        <div ref={containerRef} className="admin-multiselect admin-single-select">
+          <button
+            type="button"
+            className={`admin-multiselect-trigger ${isOpen ? "is-open" : ""}`}
+            onClick={() => setIsOpen((current) => !current)}
+            onKeyDown={handleComboboxKeyDown}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
+          >
+            <strong>{currentLabel || emptyLabel}</strong>
+            <small>{isOpen ? "Fermer" : "Choisir"}</small>
+          </button>
+
+          {isOpen ? (
+            <div className="admin-multiselect-panel" role="listbox" aria-label={label}>
+              {hasManyOptions ? (
+                <input
+                  ref={searchInputRef}
+                  className="admin-multiselect-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onKeyDown={handleComboboxKeyDown}
+                  placeholder={searchPlaceholder}
+                />
+              ) : null}
+
+              <div className="admin-multiselect-options admin-single-select-options">
+                {filteredOptions.length > 0 ? (
+                  visibleOptions.map((option, index) => (
+                    <button
+                      key={option.value}
+                      ref={(element) => {
+                        optionRefs.current[index] = element;
+                      }}
+                      type="button"
+                      className={`admin-multiselect-option admin-single-select-option ${
+                        String(option.value) === String(value ?? "") ? "is-selected" : ""
+                      } ${index === highlightedIndex ? "is-highlighted" : ""}`}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      onKeyDown={handleComboboxKeyDown}
+                      onClick={() => handleSelectOption(option.value)}
+                    >
+                      <span>{option.label}</span>
+                    </button>
+                  ))
+                ) : allowEmpty ? (
+                  <button
+                    ref={(element) => {
+                      optionRefs.current[0] = element;
+                    }}
+                    type="button"
+                    className={`admin-multiselect-option admin-single-select-option ${
+                      String(value ?? "") === "" ? "is-selected" : ""
+                    } ${highlightedIndex === 0 ? "is-highlighted" : ""}`}
+                    onMouseEnter={() => setHighlightedIndex(0)}
+                    onKeyDown={handleComboboxKeyDown}
+                    onClick={() => handleSelectOption("")}
+                  >
+                    <span>{emptyLabel}</span>
+                  </button>
+                ) : (
+                  <div className="admin-multiselect-empty">Aucune valeur ne correspond a la recherche.</div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        {normalizedSearch && isOpen ? <small>{`${filteredOptions.length} option(s) correspond(ent) a la recherche.`}</small> : null}
+        {helperText ? <small>{helperText}</small> : null}
+      </div>
+    );
+  }
+
   return (
     <label className="admin-form-field">
       <span>{label}</span>
-      <select value={value} onChange={onChange}>
+      <select value={value} onChange={onChange} disabled={disabled} required={required}>
         {allowEmpty ? <option value="">{emptyLabel}</option> : null}
-        {options.map((option) => (
+        {Array.isArray(options) ? options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
-        ))}
+        )) : null}
       </select>
+      {helperText ? <small>{helperText}</small> : null}
     </label>
   );
 }
 
 export function buildReferenceOptions(items, fallbackPrefix = "Option") {
-  return Array.isArray(items)
-    ? items.map((item) => ({
-        value: String(item.id ?? item.code ?? ""),
-        label:
-          item.label ||
-          [item.code, item.abbr, item.id != null ? `${fallbackPrefix} #${item.id}` : ""].filter(Boolean).join(" - "),
-      }))
-    : [];
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const uniqueOptions = new Map();
+
+  items.forEach((item) => {
+    const rawValue = item?.id ?? item?.code ?? "";
+    const value = String(rawValue);
+
+    if (!value) {
+      return;
+    }
+
+    const label =
+      item.label ||
+      [item.code, item.abbr, item.id != null ? `${fallbackPrefix} #${item.id}` : ""].filter(Boolean).join(" - ");
+
+    if (!uniqueOptions.has(value)) {
+      uniqueOptions.set(value, {
+        value,
+        label: String(label || `${fallbackPrefix} ${value}`),
+      });
+    }
+  });
+
+  return Array.from(uniqueOptions.values()).sort((leftOption, rightOption) =>
+    leftOption.label.localeCompare(rightOption.label, "fr")
+  );
 }
 
 export function buildReferenceLabelMap(items) {
