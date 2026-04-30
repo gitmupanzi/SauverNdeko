@@ -373,21 +373,25 @@ export function SelectionStrip({
   actionLabel = "Actions de la ligne selectionnee",
   actionDescription = "Selectionnez une seule ligne pour voir ses actions metier.",
 }) {
+  const hasSelection = Boolean(selectedRow);
+
   return (
-    <div className="logistics-selection-grid">
-      <section className="logistics-selection-strip">
+    <div className={`logistics-selection-grid ${hasSelection ? "is-active" : "is-idle"}`}>
+      <section className={`logistics-selection-strip ${hasSelection ? "" : "is-idle"}`.trim()}>
         <div className="logistics-selection-copy">
           <strong>{label}</strong>
           <span>{description}</span>
         </div>
       </section>
-      <section className="logistics-selection-strip logistics-selection-strip-actions">
-        <div className="logistics-selection-copy">
-          <strong>{actionLabel}</strong>
-          <span>{actionDescription}</span>
-        </div>
-        {selectedRow && actions ? <div className="logistics-selection-actions">{actions}</div> : null}
-      </section>
+      {hasSelection && actions ? (
+        <section className="logistics-selection-strip logistics-selection-strip-actions">
+          <div className="logistics-selection-copy">
+            <strong>{actionLabel}</strong>
+            <span>{actionDescription}</span>
+          </div>
+          <div className="logistics-selection-actions">{actions}</div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -788,36 +792,39 @@ export function SimpleTable({
   return (
     <div className="logistics-advanced-table">
       {showControls ? (
-        <section className="admin-search-card logistics-table-search-card">
-          <label className="admin-form-field">
-            <span>Recherche dans le tableau</span>
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => {
-                setSearchTerm(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Filtrer toutes les colonnes visibles"
-            />
-          </label>
-        </section>
-      ) : null}
+        <section className="admin-search-card logistics-table-controls logistics-table-toolbar-card">
+          <div className="logistics-table-control-row">
+            <label className="admin-form-field logistics-table-search-field">
+              <span>Recherche rapide</span>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Filtrer toutes les colonnes visibles"
+              />
+            </label>
 
-      {showControls ? (
-        <section className="admin-search-card logistics-table-controls">
-          <div className="admin-search-head">
-            <div className="section-head">
-              <h3>Outils</h3>
-              <p>Filtres rapides, export et pilotage des colonnes sans surcharger l'ecran.</p>
-            </div>
             <div className="admin-toolbar-actions">
+              <label className="admin-form-field logistics-inline-select">
+                <span>Lignes</span>
+                <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
+                  {rowsPerPageOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <button
                 type="button"
                 className="secondary-action"
                 onClick={() => setControlsOpen((current) => !current)}
               >
-                {controlsOpen ? "Masquer filtres" : "Filtres"}
+                {controlsOpen ? "Masquer colonnes" : "Colonnes"}
               </button>
 
               <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export logistique">
@@ -939,27 +946,25 @@ export function SimpleTable({
             </div>
           </div>
 
-          <div className="logistics-table-pills">
-            <span className="status-pill is-muted">{`${sortedRows.length}/${rows.length} lignes`}</span>
-            <span className="status-pill is-muted">{`${effectiveVisibleColumns.length} colonnes visibles`}</span>
-            <span className="status-pill is-muted">{`${pinnedColumns.length} colonnes gelees`}</span>
-            {enableSelection ? <span className="status-pill is-muted">{`${selectedRowIds.length} selectionnees`}</span> : null}
-            {scrollState.overflow ? <span className="status-pill is-muted">Defilement horizontal actif</span> : null}
+          <div className="logistics-table-meta-row">
+            <div className="logistics-table-pills">
+              <span className="status-pill is-muted">{`${sortedRows.length}/${rows.length} lignes`}</span>
+              <span className="status-pill is-muted">{`${effectiveVisibleColumns.length} colonnes visibles`}</span>
+              <span className="status-pill is-muted">{`${pinnedColumns.length} colonnes gelees`}</span>
+              {enableSelection ? (
+                <span className="status-pill is-muted">{`${selectedRowIds.length} selectionnees`}</span>
+              ) : null}
+              {scrollState.overflow ? <span className="status-pill is-muted">Defilement horizontal actif</span> : null}
+            </div>
+            {controlsOpen ? (
+              <span className="logistics-table-meta-hint">
+                Cochez, gelez ou reinitialisez les colonnes sans surcharger la zone de lecture.
+              </span>
+            ) : null}
           </div>
 
           {controlsOpen ? (
             <div className="admin-search-grid">
-              <label className="admin-form-field">
-                <span>Lignes par page</span>
-                <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
-                  {rowsPerPageOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div className="admin-visibility-card admin-form-field-wide logistics-visibility-card">
                 <div className="admin-visibility-head">
                   <span>Colonnes visibles, gelees et largeur</span>
@@ -1061,39 +1066,30 @@ export function SimpleTable({
                   >
                     <div className="admin-header-cell">
                       <div className="admin-header-content">
-                        <div className="admin-header-tools">
+                        <button
+                          type="button"
+                          className={`admin-header-trigger ${isSortable ? "is-sortable" : ""} ${
+                            sortConfig.column === column.key ? "is-active" : ""
+                          } ${isPinned ? "is-pinned" : ""}`.trim()}
+                          onClick={isSortable ? () => handleSortColumn(column.key) : undefined}
+                          disabled={!isSortable}
+                          title={isSortable ? `Trier par ${column.label}` : column.label}
+                        >
+                          <div className="admin-header-label" title={column.label}>
+                            {column.label}
+                          </div>
                           {isSortable ? (
-                            <button
-                              type="button"
-                              className={`admin-sort-button ${sortConfig.column === column.key ? "is-active" : ""} ${
-                                sortConfig.column === column.key && sortConfig.direction ? `is-${sortConfig.direction}` : ""
-                              }`}
-                              onClick={() => handleSortColumn(column.key)}
-                            >
-                              <small>
-                                {sortConfig.column === column.key
-                                  ? sortConfig.direction === "asc"
-                                    ? "Asc"
-                                    : sortConfig.direction === "desc"
-                                      ? "Desc"
-                                      : "Tri"
-                                  : "Tri"}
-                              </small>
-                            </button>
+                            <small className="admin-header-indicator" aria-hidden="true">
+                              {sortConfig.column === column.key
+                                ? sortConfig.direction === "asc"
+                                  ? "^"
+                                  : sortConfig.direction === "desc"
+                                    ? "v"
+                                    : "<>"
+                                : "<>"}
+                            </small>
                           ) : null}
-
-                          <button
-                            type="button"
-                            className={`admin-pin-button ${isPinned ? "is-active" : ""}`}
-                            onClick={() => handleTogglePinnedColumn(column.key)}
-                          >
-                            {isPinned ? "Degeler" : "Geler"}
-                          </button>
-                        </div>
-
-                        <div className="admin-header-label" title={column.label}>
-                          {column.label}
-                        </div>
+                        </button>
                       </div>
 
                       <div

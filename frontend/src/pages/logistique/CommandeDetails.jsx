@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   asArrayPayload,
+  buildReferenceLabelMap,
   formatCurrency,
   formatDate,
   formatNumber,
@@ -70,19 +71,44 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const [formValues, setFormValues] = useState(() => COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
   const [articleSearch, setArticleSearch] = useState("");
   const selectedDetail = sharedTable?.selectedRow || null;
+  const composerMode = sharedTable?.composerMode || "view";
   const commandeDirection = useMemo(() => detectCommandeDirection(selectedCommande), [selectedCommande]);
+  const articleTypeLabelMap = useMemo(
+    () => buildReferenceLabelMap(Array.isArray(references?.articleTypes) ? references.articleTypes : []),
+    [references]
+  );
+  const articleCategoryLabelMap = useMemo(
+    () => buildReferenceLabelMap(Array.isArray(references?.articleCategories) ? references.articleCategories : []),
+    [references]
+  );
+  const articleUnitLabelMap = useMemo(
+    () => buildReferenceLabelMap(Array.isArray(references?.articleUnits) ? references.articleUnits : []),
+    [references]
+  );
   const articleCatalog = useMemo(
     () =>
       Array.isArray(references?.articles)
         ? references.articles.map((article) => ({
             ...article,
             id: String(article.id),
+            typeLabel: articleTypeLabelMap.get(String(article.typeId || "")) || "-",
+            categoryLabel: articleCategoryLabelMap.get(String(article.categoryId || "")) || "-",
+            unitLabel: articleUnitLabelMap.get(String(article.unitId || "")) || "-",
             searchText: normalizeSearchText(
-              [article.code, article.reference, article.label, article.id].filter(Boolean).join(" ")
+              [
+                article.code,
+                article.reference,
+                article.label,
+                articleTypeLabelMap.get(String(article.typeId || "")),
+                articleCategoryLabelMap.get(String(article.categoryId || "")),
+                article.id,
+              ]
+                .filter(Boolean)
+                .join(" ")
             ),
           }))
         : [],
-    [references]
+    [articleCategoryLabelMap, articleTypeLabelMap, articleUnitLabelMap, references]
   );
   const selectedArticle = useMemo(
     () => articleCatalog.find((article) => article.id === String(formValues.ID_ArticleFk || "")) || null,
@@ -92,10 +118,10 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     const normalizedSearch = normalizeSearchText(articleSearch).trim();
 
     if (!normalizedSearch) {
-      return articleCatalog.slice(0, 18);
+      return articleCatalog.slice(0, 24);
     }
 
-    return articleCatalog.filter((article) => article.searchText.includes(normalizedSearch)).slice(0, 18);
+    return articleCatalog.filter((article) => article.searchText.includes(normalizedSearch)).slice(0, 24);
   }, [articleCatalog, articleSearch]);
   const quantityNumber = Number(formValues.QteCmdDetail || 0);
   const unitPriceNumber = Number(formValues.PUCmdDetail || 0);
@@ -126,6 +152,35 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
         : false,
     [rows, selectedArticle, selectedDetail]
   );
+  const articleCatalogColumns = useMemo(
+    () => [
+      { key: "typeLabel", label: "Type" },
+      { key: "label", label: "Article" },
+      { key: "categoryLabel", label: "Categorie" },
+      { key: "reference", label: "Reference", renderText: (row) => row.reference || "-" },
+      { key: "stock", label: "Stock", renderText: (row) => formatNumber(row.stock) },
+      {
+        key: "unitPrice",
+        label: commandeDirection === "sortie" ? "PV" : "PU",
+        render: (row) =>
+          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice),
+        renderText: (row) =>
+          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice),
+      },
+      {
+        key: "actions",
+        label: "Action",
+        render: (row) => (
+          <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="secondary-action" onClick={() => selectArticle(row)}>
+              Choisir
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [commandeDirection]
+  );
 
   function selectArticle(article) {
     setFormValues((current) => ({
@@ -136,7 +191,6 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           ? current.PUCmdDetail
           : getDefaultUnitPrice(article, commandeDirection),
     }));
-    setArticleSearch(article.label || article.code || "");
   }
 
   useEffect(() => {
@@ -190,7 +244,28 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     };
   }, [refreshKey, selectedCommande]);
 
+  useEffect(() => {
+    if (!selectedCommande?.ID_Commande) {
+      return;
+    }
+
+    if (composerMode === "create") {
+      sharedTable?.clearSelectedRow?.();
+      setEditorMode("create");
+      setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+      setArticleSearch("");
+      return;
+    }
+
+    if (composerMode === "view") {
+      setEditorMode("");
+      setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+      setArticleSearch("");
+    }
+  }, [composerMode, selectedCommande?.ID_Commande]);
+
   function resetEditor() {
+    sharedTable?.setComposerMode?.("view");
     setEditorMode("");
     sharedTable?.clearSelectedRow?.();
     setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
@@ -198,6 +273,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   }
 
   function handleNewLine() {
+    sharedTable?.setComposerMode?.("create");
     setEditorMode("create");
     sharedTable?.clearSelectedRow?.();
     setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
@@ -205,6 +281,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   }
 
   function handleEditLine(detail) {
+    sharedTable?.setComposerMode?.("edit");
     setEditorMode("edit");
     sharedTable?.setSelectedRow?.(detail);
     setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.mapRecordToForm(detail));
@@ -293,7 +370,16 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           ? COMMANDE_DETAILS_CRUD_CONFIG.messages.updateSuccess
           : COMMANDE_DETAILS_CRUD_CONFIG.messages.createSuccess,
     });
-    resetEditor();
+
+    if (editorMode === "edit") {
+      resetEditor();
+    } else {
+      sharedTable?.clearSelectedRow?.();
+      setEditorMode("create");
+      setFormValues(COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+      setArticleSearch("");
+    }
+
     onDataChanged?.();
   }
 
@@ -313,9 +399,16 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
         title={`Details de ${selectedCommande.CodeCmd || `commande #${selectedCommande.ID_Commande}`}`}
         subtitle="Les ajouts, modifications et suppressions laissent les triggers SQL mettre a jour T_Mouvement et le stock."
         actions={
-          <button type="button" className="secondary-action" onClick={handleNewLine}>
-            Ajouter une ligne
-          </button>
+          <div className="logistics-inline-actions">
+            <button type="button" className="secondary-action" onClick={handleNewLine}>
+              Ajouter un produit
+            </button>
+            {editorMode ? (
+              <button type="button" className="secondary-action" onClick={resetEditor}>
+                Fermer le compositeur
+              </button>
+            ) : null}
+          </div>
         }
       >
         <div className="logistics-detail-grid">
@@ -444,14 +537,14 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
       {editorMode ? (
         <SectionCard
-          title={editorMode === "edit" ? "Modifier la ligne" : "Ajouter une ligne"}
-          subtitle="Choisissez un article du stock, saisissez la quantite, puis laissez les triggers SQL appliquer le mouvement."
+          title={editorMode === "edit" ? "Modifier la ligne produit" : "Ajouter un produit a la commande"}
+          subtitle="Selectionnez un article deja present dans T_Article, renseignez la quantite voulue, puis validez la ligne."
         >
           <div className="logistics-command-builder">
             <section className="logistics-command-builder-panel">
               <div className="section-head">
-                <h4>Recherche article</h4>
-                <p>Recherchez par nom, code interne ou reference, puis selectionnez l'article a ajouter.</p>
+                <h4>Catalogue disponible</h4>
+                <p>Filtrez les articles disponibles, choisissez-en un, puis saisissez directement la quantite d'entree ou de sortie.</p>
               </div>
 
               <label className="admin-form-field">
@@ -460,44 +553,44 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                   type="search"
                   value={articleSearch}
                   onChange={(event) => setArticleSearch(event.target.value)}
-                  placeholder="Nom, code interne, reference..."
+                  placeholder="Type, designation, code, reference..."
                 />
               </label>
 
-              <div className="logistics-article-picker-list">
-                {filteredArticles.map((article) => {
-                  const isSelected = selectedArticle?.id === article.id;
+              <div className="logistics-command-builder-meta">
+                <span className="status-pill is-muted">{`${formatNumber(filteredArticles.length)} article(s) visible(s)`}</span>
+                <span className="status-pill is-muted">
+                  {commandeDirection === "sortie" ? "Flux sortie" : commandeDirection === "entree" ? "Flux entree" : "Flux a confirmer"}
+                </span>
+              </div>
 
-                  return (
-                    <button
-                      key={article.id}
-                      type="button"
-                      className={`logistics-article-picker-item ${isSelected ? "is-selected" : ""}`.trim()}
-                      onClick={() => selectArticle(article)}
-                    >
-                      <strong>{article.label}</strong>
-                      <small>{[article.code, article.reference].filter(Boolean).join(" | ") || `Article #${article.id}`}</small>
-                      <span>{`Stock ${formatNumber(article.stock)} | Achat ${formatCurrency(article.purchasePrice)} | Vente ${formatCurrency(article.salePrice)}`}</span>
-                    </button>
-                  );
-                })}
-
-                {filteredArticles.length === 0 ? (
-                  <section className="table-empty-state">Aucun article ne correspond a cette recherche.</section>
-                ) : null}
+              <div className="logistics-command-builder-table">
+                <SimpleTable
+                  rows={filteredArticles}
+                  columns={articleCatalogColumns}
+                  selectedRowId={selectedArticle?.id || null}
+                  getRowId={(row) => row.id}
+                  onRowSelect={selectArticle}
+                  enableSelection={false}
+                  showControls={false}
+                  defaultPinnedColumns={["label", "stock"]}
+                  defaultSortColumn="label"
+                  defaultRowsPerPage={12}
+                  exportFilename="logistique-articles-disponibles.csv"
+                />
               </div>
             </section>
 
-            <section className="logistics-command-builder-panel">
+            <section className="logistics-command-builder-panel logistics-command-builder-panel-accent">
               <div className="section-head">
-                <h4>Article selectionne</h4>
-                <p>Verifiez le stock disponible et l'effet de la ligne avant de l'enregistrer.</p>
+                <h4>Preparation de la ligne</h4>
+                <p>Le produit selectionne pilote la quantite, le prix applique et le controle de stock.</p>
               </div>
 
               {selectedArticle ? (
-                <>
+                <form className="admin-editor-form logistics-command-line-form" onSubmit={handleSubmit}>
                   <div className="logistics-summary-grid">
-                    <SummaryCard title="Stock disponible" value={formatNumber(selectedArticle.stock)} caption="Quantite actuelle dans T_Article" />
+                    <SummaryCard title="Stock actuel" value={formatNumber(selectedArticle.stock)} caption="Quantite disponible dans T_Article" />
                     <SummaryCard title="Prix achat" value={formatCurrency(selectedArticle.purchasePrice)} caption="PU article" />
                     <SummaryCard title="Prix vente" value={formatCurrency(selectedArticle.salePrice)} caption="PV article" />
                     <SummaryCard title="Total ligne" value={formatCurrency(lineTotal)} caption="Quantite x prix unitaire" />
@@ -506,6 +599,9 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                   <div className="logistics-detail-grid">
                     <article>
                       <strong>{selectedArticle.label}</strong>
+                      <p>Type: {selectedArticle.typeLabel}</p>
+                      <p>Categorie: {selectedArticle.categoryLabel}</p>
+                      <p>Unite: {selectedArticle.unitLabel}</p>
                       <p>Code: {selectedArticle.code || "-"}</p>
                       <p>Reference: {selectedArticle.reference || "-"}</p>
                     </article>
@@ -535,94 +631,98 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                       Stock insuffisant pour cette sortie: disponible {formatNumber(selectedArticleStock)}, demande {formatNumber(quantityNumber)}.
                     </section>
                   ) : null}
-                </>
+
+                  <div className="admin-editor-grid">
+                    <label className="admin-form-field">
+                      <span>Article retenu</span>
+                      <input type="text" value={selectedArticle.label} readOnly />
+                    </label>
+
+                    <label className="admin-form-field">
+                      <span>Quantite</span>
+                      <input
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        value={formValues.QteCmdDetail}
+                        onChange={(event) => setFormValues((current) => ({ ...current, QteCmdDetail: event.target.value }))}
+                        required
+                      />
+                    </label>
+
+                    <label className="admin-form-field">
+                      <span>Prix unitaire</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formValues.PUCmdDetail}
+                        onChange={(event) => setFormValues((current) => ({ ...current, PUCmdDetail: event.target.value }))}
+                      />
+                    </label>
+
+                    <label className="admin-form-field">
+                      <span>Lieu</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={formValues.LieuCmdDetail}
+                        onChange={(event) => setFormValues((current) => ({ ...current, LieuCmdDetail: event.target.value }))}
+                      />
+                    </label>
+
+                    <label className="admin-checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={formValues.RemiseCmdDetail}
+                        onChange={(event) =>
+                          setFormValues((current) => ({ ...current, RemiseCmdDetail: event.target.checked }))
+                        }
+                      />
+                      <span>Remise appliquee</span>
+                    </label>
+
+                    <label className="admin-checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={formValues.SelectCmdDetail}
+                        onChange={(event) =>
+                          setFormValues((current) => ({ ...current, SelectCmdDetail: event.target.checked }))
+                        }
+                      />
+                      <span>Ligne selectionnee</span>
+                    </label>
+
+                    <label className="admin-form-field admin-form-field-wide">
+                      <span>Observation</span>
+                      <textarea
+                        value={formValues.ObsCmdDetail}
+                        onChange={(event) => setFormValues((current) => ({ ...current, ObsCmdDetail: event.target.value }))}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="admin-editor-actions">
+                    <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
+                      Annuler
+                    </button>
+                    <button type="submit" className="primary-action" disabled={submitting || stockError || duplicateArticleInCommande}>
+                      {submitting
+                        ? "Enregistrement..."
+                        : editorMode === "edit"
+                          ? "Mettre a jour la ligne"
+                          : "Ajouter la ligne"}
+                    </button>
+                  </div>
+                </form>
               ) : (
-                <section className="table-empty-state">Selectionnez un article pour voir sa fiche et preparer la ligne.</section>
+                <section className="table-empty-state">
+                  Selectionnez un article dans la liste de gauche pour preparer la ligne de commande.
+                </section>
               )}
             </section>
           </div>
-
-          <form className="admin-editor-form" onSubmit={handleSubmit}>
-            <div className="admin-editor-grid">
-              <label className="admin-form-field">
-                <span>Quantite</span>
-                <input
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  value={formValues.QteCmdDetail}
-                  onChange={(event) => setFormValues((current) => ({ ...current, QteCmdDetail: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Article retenu</span>
-                <input type="text" value={selectedArticle ? selectedArticle.label : ""} readOnly placeholder="Selectionnez un article ci-dessus" />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Prix unitaire</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formValues.PUCmdDetail}
-                  onChange={(event) => setFormValues((current) => ({ ...current, PUCmdDetail: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Lieu</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={formValues.LieuCmdDetail}
-                  onChange={(event) => setFormValues((current) => ({ ...current, LieuCmdDetail: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={formValues.RemiseCmdDetail}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, RemiseCmdDetail: event.target.checked }))
-                  }
-                />
-                <span>Remise appliquee</span>
-              </label>
-
-              <label className="admin-checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={formValues.SelectCmdDetail}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, SelectCmdDetail: event.target.checked }))
-                  }
-                />
-                <span>Ligne selectionnee</span>
-              </label>
-
-              <label className="admin-form-field admin-form-field-wide">
-                <span>Observation</span>
-                <textarea
-                  value={formValues.ObsCmdDetail}
-                  onChange={(event) => setFormValues((current) => ({ ...current, ObsCmdDetail: event.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className="admin-editor-actions">
-              <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
-                Annuler
-              </button>
-              <button type="submit" className="primary-action" disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Enregistrer"}
-              </button>
-            </div>
-          </form>
         </SectionCard>
       ) : null}
     </div>

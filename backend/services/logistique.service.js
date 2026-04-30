@@ -432,6 +432,105 @@ const ensureCommandeEditable = (commande, actionLabel = 'Cette commande') => {
   return commande;
 };
 
+const resolveCommandeStockDirection = async (commandeTypeId) => {
+  if (!commandeTypeId) {
+    return 'autre';
+  }
+
+  const typeRecord = await prisma.t_Generique.findUnique({
+    where: { ID_Generique: commandeTypeId },
+    select: {
+      AbrGenerique: true,
+      NomGenerique: true,
+    },
+  });
+
+  const normalizedLabel = normalizeTextForCompare(typeRecord?.AbrGenerique || typeRecord?.NomGenerique);
+
+  if (normalizedLabel.includes('sort')) {
+    return 'sortie';
+  }
+
+  if (normalizedLabel.includes('entr')) {
+    return 'entree';
+  }
+
+  return 'autre';
+};
+
+const assertStockCanSupportCommandeDetailMutation = ({
+  direction,
+  operation,
+  currentArticle,
+  nextArticle,
+  existingQuantity = 0,
+  nextQuantity = 0,
+}) => {
+  const currentStock = Number(currentArticle?.QteArticle || 0);
+  const nextStock = Number(nextArticle?.QteArticle || 0);
+  const previousQuantity = Number(existingQuantity || 0);
+  const requestedQuantity = Number(nextQuantity || 0);
+
+  if (direction === 'sortie') {
+    if (operation === 'create' && requestedQuantity > nextStock) {
+      const error = new Error(
+        `Stock insuffisant pour ${nextArticle?.NomArticle || "l'article"} : disponible ${nextStock}, demande ${requestedQuantity}.`
+      );
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (operation === 'update') {
+      const isSameArticle = currentArticle?.ID_Article === nextArticle?.ID_Article;
+      const availableAfterRollback = isSameArticle ? currentStock + previousQuantity : nextStock;
+
+      if (requestedQuantity > availableAfterRollback) {
+        const error = new Error(
+          `Stock insuffisant pour ${nextArticle?.NomArticle || "l'article"} : disponible ${availableAfterRollback}, demande ${requestedQuantity}.`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+    }
+
+    return;
+  }
+
+  if (direction === 'entree') {
+    if (operation === 'delete' && previousQuantity > currentStock) {
+      const error = new Error(
+        `Suppression impossible : retirer ${previousQuantity} de ${currentArticle?.NomArticle || "l'article"} rendrait le stock negatif.`
+      );
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (operation === 'update') {
+      const isSameArticle = currentArticle?.ID_Article === nextArticle?.ID_Article;
+
+      if (isSameArticle && requestedQuantity < previousQuantity) {
+        const quantityToRemove = previousQuantity - requestedQuantity;
+
+        if (quantityToRemove > currentStock) {
+          const error = new Error(
+            `Reduction impossible : retirer ${quantityToRemove} de ${currentArticle?.NomArticle || "l'article"} rendrait le stock negatif.`
+          );
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      if (!isSameArticle && previousQuantity > currentStock) {
+        const error = new Error(
+          `Changement impossible : retirer ${previousQuantity} de ${currentArticle?.NomArticle || "l'article"} rendrait le stock negatif.`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+    }
+  }
+};
+
 const buildListMeta = ({ data, take, skip, totalCount, filteredCount, sortBy, sortDir }) => ({
   count: data.length,
   take,
@@ -1065,6 +1164,9 @@ const listReferences = async () => {
       label: item.NomArticle,
       code: item.CodeArticleInterne || item.RefArticle || null,
       reference: item.RefArticle || null,
+      typeId: item.ID_TypeArticleFk || null,
+      categoryId: item.ID_CategorieArticleFk || null,
+      unitId: item.ID_UniteFk || null,
       stock: item.QteArticle,
       minStock: item.QteMinArticle,
       purchasePrice: item.PUArticle,
@@ -1685,14 +1787,53 @@ const updateArticle = async (articleId, body, reqUserId) => {
   return data;
 };
 
-const removeArticle = async (articleId) => {
+const removeArticle = async (articleId, { hardDelete = false } = {}) => {
   const normalizedArticleId = parseId(articleId, 'article');
   const existingRecord = await ensureRecordExists(
     prisma.t_Article.findUnique({
       where: { ID_Article: normalizedArticleId },
+      include: ARTICLE_INCLUDE,
     }),
     'Article introuvable.'
   );
+
+  if (hardDelete) {
+    const [commandeDetailCount, mouvementCount] = await Promise.all([
+      prisma.t_CommandeDetail.count({
+        where: { ID_ArticleFk: normalizedArticleId },
+      }),
+      prisma.t_Mouvement.count({
+        where: { ID_ArticleFk: normalizedArticleId },
+      }),
+    ]);
+
+    if (commandeDetailCount > 0 || mouvementCount > 0) {
+      const dependencies = [
+        commandeDetailCount > 0 ? `${commandeDetailCount} ligne(s) de commande` : '',
+        mouvementCount > 0 ? `${mouvementCount} mouvement(s)` : '',
+      ].filter(Boolean);
+      const error = new Error(
+        `Suppression impossible: l'article est deja utilise dans ${dependencies.join(' et ')}.`
+      );
+      error.statusCode = 409;
+      throw error;
+    }
+
+    await prisma.t_Article.delete({
+      where: { ID_Article: normalizedArticleId },
+    });
+
+    await recordAdminAuditLog({
+      tableName: 'logistique.T_Article',
+      operation: 'DELETE',
+      oldData: existingRecord,
+    });
+
+    return {
+      ...existingRecord,
+      _deleted: true,
+    };
+  }
 
   const data = await prisma.t_Article.update({
     where: { ID_Article: normalizedArticleId },
@@ -1710,6 +1851,50 @@ const removeArticle = async (articleId) => {
   });
 
   return data;
+};
+
+const removeCommande = async (commandeId) => {
+  const normalizedCommandeId = parseId(commandeId, 'commande');
+  const existingRecord = ensureCommandeEditable(
+    await ensureRecordExists(
+      prisma.t_Commande.findUnique({
+        where: { ID_Commande: normalizedCommandeId },
+        include: COMMANDE_INCLUDE,
+      }),
+      'Commande introuvable.'
+    ),
+    'Cette commande'
+  );
+
+  const details = await prisma.t_CommandeDetail.findMany({
+    where: { ID_CmdFk: normalizedCommandeId },
+    include: COMMANDE_DETAIL_INCLUDE,
+  });
+
+  const commandeDirection = await resolveCommandeStockDirection(existingRecord.ID_TypeCmdFk);
+
+  details.forEach((detail) => {
+    assertStockCanSupportCommandeDetailMutation({
+      direction: commandeDirection,
+      operation: 'delete',
+      currentArticle: {
+        ID_Article: detail.ID_ArticleFk,
+        NomArticle: detail.T_Article?.NomArticle,
+        QteArticle: detail.T_Article?.QteArticle,
+      },
+      existingQuantity: detail.QteCmdDetail,
+    });
+  });
+
+  await prisma.t_Commande.delete({
+    where: { ID_Commande: normalizedCommandeId },
+  });
+
+  await recordAdminAuditLog({
+    tableName: 'logistique.T_Commande',
+    operation: 'DELETE',
+    oldData: existingRecord,
+  });
 };
 
 const createCommande = async (body, reqUserId) => {
@@ -1765,7 +1950,7 @@ const createCommandeDetail = async (commandeId, body) => {
     await ensureRecordExists(
     prisma.t_Commande.findUnique({
       where: { ID_Commande: normalizedCommandeId },
-      select: { ID_Commande: true, StatusFacture: true },
+      select: { ID_Commande: true, ID_TypeCmdFk: true, StatusFacture: true },
     }),
     'Commande introuvable.'
     ),
@@ -1777,13 +1962,21 @@ const createCommandeDetail = async (commandeId, body) => {
     requireQuantity: true,
   });
 
-  await ensureRecordExists(
+  const article = await ensureRecordExists(
     prisma.t_Article.findUnique({
       where: { ID_Article: payload.ID_ArticleFk },
-      select: { ID_Article: true },
+      select: { ID_Article: true, NomArticle: true, QteArticle: true },
     }),
     'Article introuvable.'
   );
+
+  const commandeDirection = await resolveCommandeStockDirection(commande.ID_TypeCmdFk);
+  assertStockCanSupportCommandeDetailMutation({
+    direction: commandeDirection,
+    operation: 'create',
+    nextArticle: article,
+    nextQuantity: payload.QteCmdDetail,
+  });
 
   const data = await prisma.t_CommandeDetail.create({
     data: {
@@ -1805,16 +1998,17 @@ const createCommandeDetail = async (commandeId, body) => {
 const updateCommandeDetail = async (commandeId, articleId, body) => {
   const normalizedCommandeId = parseId(commandeId, 'commande');
   const normalizedArticleId = parseId(articleId, 'article');
-  ensureCommandeEditable(
+  const commande = ensureCommandeEditable(
     await ensureRecordExists(
       prisma.t_Commande.findUnique({
         where: { ID_Commande: normalizedCommandeId },
-        select: { ID_Commande: true, StatusFacture: true },
+        select: { ID_Commande: true, ID_TypeCmdFk: true, StatusFacture: true },
       }),
       'Commande introuvable.'
     ),
     'Cette commande'
   );
+
   const existingRecord = await ensureRecordExists(
     prisma.t_CommandeDetail.findUnique({
       where: {
@@ -1831,13 +2025,26 @@ const updateCommandeDetail = async (commandeId, articleId, body) => {
   const payload = buildCommandeDetailPayload(body);
   const nextArticleId = payload.ID_ArticleFk ?? normalizedArticleId;
 
-  await ensureRecordExists(
+  const nextArticle = await ensureRecordExists(
     prisma.t_Article.findUnique({
       where: { ID_Article: nextArticleId },
-      select: { ID_Article: true },
+      select: { ID_Article: true, NomArticle: true, QteArticle: true },
     }),
     'Article introuvable.'
   );
+  const commandeDirection = await resolveCommandeStockDirection(commande.ID_TypeCmdFk);
+  assertStockCanSupportCommandeDetailMutation({
+    direction: commandeDirection,
+    operation: 'update',
+    currentArticle: {
+      ID_Article: normalizedArticleId,
+      NomArticle: existingRecord.T_Article?.NomArticle,
+      QteArticle: existingRecord.T_Article?.QteArticle,
+    },
+    nextArticle,
+    existingQuantity: existingRecord.QteCmdDetail,
+    nextQuantity: payload.QteCmdDetail ?? existingRecord.QteCmdDetail,
+  });
 
   const data = await prisma.$transaction(async (tx) => {
     if (nextArticleId !== normalizedArticleId) {
@@ -1898,11 +2105,11 @@ const updateCommandeDetail = async (commandeId, articleId, body) => {
 const removeCommandeDetail = async (commandeId, articleId) => {
   const normalizedCommandeId = parseId(commandeId, 'commande');
   const normalizedArticleId = parseId(articleId, 'article');
-  ensureCommandeEditable(
+  const commande = ensureCommandeEditable(
     await ensureRecordExists(
       prisma.t_Commande.findUnique({
         where: { ID_Commande: normalizedCommandeId },
-        select: { ID_Commande: true, StatusFacture: true },
+        select: { ID_Commande: true, ID_TypeCmdFk: true, StatusFacture: true },
       }),
       'Commande introuvable.'
     ),
@@ -1920,6 +2127,18 @@ const removeCommandeDetail = async (commandeId, articleId) => {
     }),
     'Ligne de commande introuvable.'
   );
+
+  const commandeDirection = await resolveCommandeStockDirection(commande.ID_TypeCmdFk);
+  assertStockCanSupportCommandeDetailMutation({
+    direction: commandeDirection,
+    operation: 'delete',
+    currentArticle: {
+      ID_Article: existingRecord.ID_ArticleFk,
+      NomArticle: existingRecord.T_Article?.NomArticle,
+      QteArticle: existingRecord.T_Article?.QteArticle,
+    },
+    existingQuantity: existingRecord.QteCmdDetail,
+  });
 
   await prisma.t_CommandeDetail.delete({
     where: {
@@ -2003,6 +2222,7 @@ module.exports = {
   listReglementEntries,
   listReglements,
   removeArticle,
+  removeCommande,
   removeCommandeDetail,
   updateArticle,
   updateCommande,

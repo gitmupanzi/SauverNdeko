@@ -353,7 +353,6 @@ function LogistiqueTabButton({ tab, isActive, onSelect }) {
           {tab.accessMode}
         </small>
       </div>
-      <span>{tab.title}</span>
       <small>{tab.viewLabel}</small>
     </button>
   );
@@ -370,7 +369,7 @@ export default function Logistique() {
   const [sharedTableState, setSharedTableState] = useState({
     articles: { search: "", selectedRow: null },
     commandes: { search: "", selectedRow: null },
-    details: { search: "", selectedRow: null },
+    details: { search: "", selectedRow: null, composerMode: "view" },
     mouvements: { search: "", selectedRow: null },
     reglements: { search: "", selectedRow: null },
   });
@@ -554,13 +553,18 @@ export default function Logistique() {
     });
   }
 
-  function handleOpenDetails(commande) {
+  function handleOpenDetails(commande, composerMode = "view") {
     setSelectedCommande(commande);
     setSharedTableState((current) => ({
       ...current,
       commandes: {
         ...current.commandes,
         selectedRow: commande,
+      },
+      details: {
+        ...current.details,
+        selectedRow: null,
+        composerMode,
       },
     }));
     handleNavigate("details");
@@ -912,6 +916,8 @@ export default function Logistique() {
             selectedRow: sharedTableState[tabKey]?.selectedRow || null,
             setSelectedRow: (row) => updateSharedTableState(tabKey, { selectedRow: row }),
             clearSelectedRow: () => updateSharedTableState(tabKey, { selectedRow: null }),
+            composerMode: sharedTableState[tabKey]?.composerMode || "view",
+            setComposerMode: (value) => updateSharedTableState(tabKey, { composerMode: value }),
           },
         ])
       ),
@@ -950,32 +956,39 @@ export default function Logistique() {
         <div className="admin-main-column logistics-main-column">
           <section className="page-hero-card admin-hero-card logistics-hero-card">
             <div>
-              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">
-                Module logistique
-              </span>
-              <h2>Fenetre de logistique</h2>
+              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Module logistique</span>
+              <h2>Logistique</h2>
               <p>
-                Cet espace centralise les vues de stock, commandes, mouvements et reglements avec un niveau
-                de pilotage comparable a l'administration.
+                Vue de gestion compacte pour les articles, commandes, mouvements et reglements.
               </p>
             </div>
-            <span className="status-pill">Acces logistique</span>
+            <div className="logistics-hero-side">
+              <span className="status-pill">Acces logistique</span>
+              <small>{activeTabConfig.viewLabel}</small>
+            </div>
           </section>
 
-          <section className="admin-summary-grid">
-            {headerStats.map((item) => (
-              <LogistiqueSummaryCard key={item.label} title={item.label} value={String(item.value)} tone={item.tone || "primary"} />
-            ))}
-          </section>
+          {activeTab === "dashboard" ? (
+            <section className="admin-summary-grid">
+              {headerStats.map((item) => (
+                <LogistiqueSummaryCard
+                  key={item.label}
+                  title={item.label}
+                  value={String(item.value)}
+                  tone={item.tone || "primary"}
+                />
+              ))}
+            </section>
+          ) : null}
 
           <section className="admin-content-card logistics-content-card">
             <div className="admin-sticky-panel logistics-sticky-panel">
               <div className="admin-content-head">
                 <div className="section-head">
-                  <h3>{activeTabConfig.title}</h3>
-                  <p>{activeTabConfig.description}</p>
+                  <h3>{activeTabConfig.label || activeTabConfig.title}</h3>
+                  <p>{activeTabConfig.viewLabel}</p>
                 </div>
-                <span className="status-pill">{activeTabConfig.viewLabel}</span>
+                <span className="status-pill">{activeTabConfig.accessMode}</span>
               </div>
 
               <div className="admin-toolbar">
@@ -1010,10 +1023,7 @@ export default function Logistique() {
                 <div className="admin-fk-mapping-head">
                   <div>
                     <strong>Correspondances FK et comportement des listes</strong>
-                    <p>
-                      Ajustez ici les categories generiques des listes logistiques. Le tableau et le detail de ligne restent
-                      juste en dessous pour une lecture plus rapide.
-                    </p>
+                    <p>Parametrage optionnel des listes logistiques.</p>
                   </div>
                   <div className="admin-fk-mapping-head-side">
                     <span className="status-pill is-muted">
@@ -1032,9 +1042,7 @@ export default function Logistique() {
                 </div>
 
                 {!showFkMappingPanel ? (
-                  <div className="admin-fk-history-empty">
-                    Ouvrez le panneau pour afficher les correspondances FK, l'historique compact et les categories actives.
-                  </div>
+                  <div className="admin-fk-history-empty">Panneau masque pour garder la lecture du tableau prioritaire.</div>
                 ) : (
                   <>
                     <div className={`admin-fk-mapping-note is-${sharedFkSyncStatus.tone}`}>

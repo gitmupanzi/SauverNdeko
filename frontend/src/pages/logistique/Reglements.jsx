@@ -3,6 +3,8 @@ import {
   asArrayPayload,
   buildReferenceLabelMap,
   buildReferenceOptions,
+  exportRowsToCsv,
+  exportRowsToPdf,
   formatCurrency,
   formatDate,
   getApiMessage,
@@ -11,6 +13,7 @@ import {
   SelectionStrip,
   SelectField,
   SimpleTable,
+  SummaryCard,
   StatusBanner,
   TableToolbar,
   ToneBadge,
@@ -36,6 +39,10 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [codeFactureFilter, setCodeFactureFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [paymentStateFilter, setPaymentStateFilter] = useState("all");
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(() => REGLEMENTS_CRUD_CONFIG.createFormState());
@@ -55,6 +62,55 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         : [],
     [references]
   );
+  const summaryVisibleRows = useMemo(
+    () =>
+      summaryRows.filter((row) => {
+        if (paymentStateFilter === "paye") {
+          return Number(row.Reste || 0) <= 0;
+        }
+
+        if (paymentStateFilter === "impaye") {
+          return Number(row.Reste || 0) > 0;
+        }
+
+        return true;
+      }),
+    [paymentStateFilter, summaryRows]
+  );
+  const summaryByFacture = useMemo(
+    () => new Map(summaryRows.map((row) => [String(row.CodeFacture || ""), row])),
+    [summaryRows]
+  );
+  const summaryMetrics = useMemo(
+    () =>
+      summaryVisibleRows.reduce(
+        (accumulator, row) => {
+          accumulator.total += 1;
+          accumulator.totalFacture += Number(row.MontantTTC || 0);
+          accumulator.totalRegle += Number(row.TotalRegle || 0);
+
+          if (Number(row.Reste || 0) > 0) {
+            accumulator.impayes += 1;
+          } else {
+            accumulator.payes += 1;
+          }
+
+          return accumulator;
+        },
+        { total: 0, totalFacture: 0, totalRegle: 0, payes: 0, impayes: 0 }
+      ),
+    [summaryVisibleRows]
+  );
+  const summaryColumns = useMemo(
+    () => [
+      { key: "ID_Commande", label: "Commande", exportValue: (row) => `#${row.ID_Commande}` },
+      { key: "CodeFacture", label: "Facture" },
+      { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC) },
+      { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle) },
+      { key: "Reste", label: "Reste", renderText: (row) => formatCurrency(row.Reste) },
+    ],
+    []
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -66,11 +122,15 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       const [summaryResponse, entriesResponse] = await Promise.all([
         REGLEMENTS_VIEW_CONFIG.fetchRows({
           codeFacture: codeFactureFilter,
-          take: 120,
+          resteOnly: paymentStateFilter === "impaye" ? "true" : "",
+          take: 200,
         }),
         REGLEMENTS_VIEW_CONFIG.fetchEntries({
           codeFacture: codeFactureFilter,
-          take: 120,
+          client: clientFilter,
+          dateFrom,
+          dateTo,
+          take: 200,
         }),
       ]);
 
@@ -106,7 +166,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
     return () => {
       isMounted = false;
     };
-  }, [codeFactureFilter, refreshKey]);
+  }, [clientFilter, codeFactureFilter, dateFrom, dateTo, paymentStateFilter, refreshKey]);
 
   function resetEditor() {
     setEditorMode("");
@@ -164,40 +224,86 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
 
       <SectionCard
         title="Suivi des reglements"
-        subtitle="Vue V_SuiviReglements pour la synthese et T_Reglements pour la saisie."
+        subtitle="Lecture compacte des factures reglees et des ecritures de T_Reglements."
         actions={
-          <button type="button" className="secondary-action" onClick={handleNewReglement}>
-            Nouveau reglement
-          </button>
+          <div className="logistics-inline-actions">
+            <button type="button" className="secondary-action" onClick={handleNewReglement}>
+              Nouveau reglement
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => exportRowsToCsv("logistique-reglements-synthese.csv", summaryColumns, summaryVisibleRows)}
+              disabled={summaryVisibleRows.length === 0}
+            >
+              Exporter
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => exportRowsToPdf("logistique-reglements-synthese", summaryColumns, summaryVisibleRows)}
+              disabled={summaryVisibleRows.length === 0}
+            >
+              Imprimer
+            </button>
+          </div>
         }
       >
-        <div className="logistics-filter-grid">
+        <div className="logistics-summary-grid">
+          <SummaryCard title="Factures visibles" value={summaryMetrics.total} />
+          <SummaryCard title="Payees" value={summaryMetrics.payes} tone="success" />
+          <SummaryCard title="Impayees" value={summaryMetrics.impayes} tone="warning" />
+          <SummaryCard title="Montant facture" value={formatCurrency(summaryMetrics.totalFacture)} tone="info" />
+          <SummaryCard title="Montant regle" value={formatCurrency(summaryMetrics.totalRegle)} tone="success" />
+        </div>
+
+        <div className="logistics-filter-grid logistics-filter-grid-wide">
           <SelectField
             label={sharedTable?.searchLabel || "Code facture"}
             value={codeFactureFilter}
             onChange={(event) => setCodeFactureFilter(event.target.value)}
             options={factureOptions}
           />
+
+          <SelectField
+            label="Client"
+            value={clientFilter}
+            onChange={(event) => setClientFilter(event.target.value)}
+            options={clientOptions}
+          />
+
+          <label className="admin-form-field">
+            <span>Du</span>
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          </label>
+
+          <label className="admin-form-field">
+            <span>Au</span>
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </label>
+
+          <label className="admin-form-field">
+            <span>Etat paiement</span>
+            <select value={paymentStateFilter} onChange={(event) => setPaymentStateFilter(event.target.value)}>
+              <option value="all">Tous</option>
+              <option value="paye">Paye</option>
+              <option value="impaye">Impaye</option>
+            </select>
+          </label>
         </div>
 
         <TableToolbar
           title={sharedTable?.toolbarTitle || "Tableau V_SuiviReglements"}
-          rows={summaryRows}
-          columns={[
-            { key: "ID_Commande", label: "Commande", exportValue: (row) => `#${row.ID_Commande}` },
-            { key: "CodeFacture", label: "Facture" },
-            { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC) },
-            { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle) },
-            { key: "Reste", label: "Reste", renderText: (row) => formatCurrency(row.Reste) },
-          ]}
+          rows={summaryVisibleRows}
+          columns={summaryColumns}
           exportFilename={sharedTable?.exportFilename || "logistique-v_suivi_reglements.csv"}
         />
 
-        <LoadingErrorEmpty loading={loading} error={error} rows={summaryRows} emptyMessage="Aucun suivi de reglement disponible." />
+        <LoadingErrorEmpty loading={loading} error={error} rows={summaryVisibleRows} emptyMessage="Aucun suivi de reglement disponible." />
 
-        {!loading && !error && summaryRows.length > 0 ? (
+        {!loading && !error && summaryVisibleRows.length > 0 ? (
           <SimpleTable
-            rows={summaryRows}
+            rows={summaryVisibleRows}
             enableSelection
             defaultPinnedColumns={["ID_Commande", "CodeFacture"]}
             defaultSortColumn="Reste"
@@ -280,6 +386,16 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               },
               { key: "MontantRegle", label: "Montant", render: (row) => formatCurrency(row.MontantRegle) },
               {
+                key: "EtatPaiement",
+                label: "Etat",
+                render: (row) =>
+                  Number(summaryByFacture.get(String(row.CodeFactureFk || ""))?.Reste || 0) > 0 ? (
+                    <ToneBadge tone="warning">Impaye</ToneBadge>
+                  ) : (
+                    <ToneBadge tone="success">Paye</ToneBadge>
+                  ),
+              },
+              {
                 key: "actions",
                 label: "Actions",
                 render: (row) => (
@@ -314,6 +430,12 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
                   `#${selectedEntry.ID_ModeReglementFk}`}
               </p>
               <p>Client: {clientLabelMap.get(String(selectedEntry.ID_ClientFk)) || (selectedEntry.ID_ClientFk ? `#${selectedEntry.ID_ClientFk}` : "-")}</p>
+              <p>
+                Etat:{" "}
+                {Number(summaryByFacture.get(String(selectedEntry.CodeFactureFk || ""))?.Reste || 0) > 0
+                  ? "Impaye"
+                  : "Paye"}
+              </p>
             </article>
           </div>
         </SectionCard>

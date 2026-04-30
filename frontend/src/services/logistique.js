@@ -56,6 +56,13 @@ export function deleteLogistiqueArticle(id) {
   });
 }
 
+export function hardDeleteLogistiqueArticle(id) {
+  return requestJson(`/api/logistique/articles/${id}${buildQueryString({ mode: "hard" })}`, {
+    method: "DELETE",
+    requiresAuth: true,
+  });
+}
+
 export function fetchLogistiqueCommandes(options = {}) {
   return logistiqueGet("/commandes", options);
 }
@@ -66,6 +73,13 @@ export function createLogistiqueCommande(payload) {
 
 export function updateLogistiqueCommande(id, payload) {
   return logistiqueWrite(`/commandes/${id}`, "PUT", payload);
+}
+
+export function deleteLogistiqueCommande(id) {
+  return requestJson(`/api/logistique/commandes/${id}`, {
+    method: "DELETE",
+    requiresAuth: true,
+  });
 }
 
 export function fetchLogistiqueCommandeDetails(commandeId, options = {}) {

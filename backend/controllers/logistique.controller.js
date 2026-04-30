@@ -77,11 +77,12 @@ const updateArticle = catchAsync(async (req, res) => {
 });
 
 const removeArticle = catchAsync(async (req, res) => {
-  const data = await logistiqueService.removeArticle(Number(req.params.id));
+  const hardDelete = String(req.query.mode || '').toLowerCase() === 'hard';
+  const data = await logistiqueService.removeArticle(Number(req.params.id), { hardDelete });
   res.json({
     success: true,
     data,
-    message: 'Article desactive avec succes.',
+    message: hardDelete ? 'Article supprime avec succes.' : 'Article desactive avec succes.',
   });
 });
 
@@ -93,6 +94,14 @@ const createCommande = catchAsync(async (req, res) => {
 const updateCommande = catchAsync(async (req, res) => {
   const data = await logistiqueService.updateCommande(Number(req.params.id), req.body, req.userId);
   res.json({ success: true, data });
+});
+
+const removeCommande = catchAsync(async (req, res) => {
+  await logistiqueService.removeCommande(Number(req.params.id));
+  res.json({
+    success: true,
+    message: 'Commande supprimee avec succes.',
+  });
 });
 
 const createCommandeDetail = catchAsync(async (req, res) => {
@@ -146,6 +155,7 @@ module.exports = {
   listReglementEntries,
   listReglements,
   removeArticle,
+  removeCommande,
   removeCommandeDetail,
   updateArticle,
   updateCommande,

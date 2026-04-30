@@ -19,6 +19,7 @@ router.delete('/articles/:id', logistiqueController.removeArticle);
 router.get('/commandes', logistiqueController.listCommandes);
 router.post('/commandes', logistiqueController.createCommande);
 router.put('/commandes/:id', logistiqueController.updateCommande);
+router.delete('/commandes/:id', logistiqueController.removeCommande);
 router.get('/commandes/:id/details', logistiqueController.listCommandeDetails);
 router.get('/mouvements', logistiqueController.listMouvements);
 router.post('/commandes/:id/details', logistiqueController.createCommandeDetail);
