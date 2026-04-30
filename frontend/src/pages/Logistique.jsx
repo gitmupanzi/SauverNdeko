@@ -344,9 +344,139 @@ function LogistiqueSummaryCard({ title, value, tone = "primary" }) {
   );
 }
 
+function LogistiqueResponsiveStyles() {
+  return (
+    <style>{`
+      .logistics-page-shell {
+        overflow-x: hidden;
+      }
+
+      .logistics-workspace,
+      .logistics-main-column,
+      .logistics-content-card,
+      .logistics-shell-view {
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .logistics-workspace {
+        display: block !important;
+        width: 100%;
+      }
+
+      .logistics-main-column {
+        width: 100% !important;
+      }
+
+      .logistics-catalogue-hero-card {
+        display: grid;
+        grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+        align-items: start;
+        gap: 16px;
+        padding: 18px;
+        overflow: hidden;
+      }
+
+      .logistics-catalogue-hero-head {
+        min-width: 0;
+      }
+
+      .logistics-catalogue-hero-head .section-head h2 {
+        margin-bottom: 6px;
+      }
+
+      .logistics-catalogue-hero-head .section-head p {
+        margin-bottom: 10px;
+      }
+
+      .logistics-catalogue-current-view {
+        display: inline-flex;
+        max-width: 100%;
+      }
+
+      .logistics-catalogue-groups {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .logistics-catalogue-horizontal-group {
+        min-width: 0 !important;
+      }
+
+      .logistics-catalogue-horizontal-tabs {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .logistics-catalogue-horizontal-tabs .admin-view-button {
+        width: 100%;
+        min-width: 0;
+        min-height: 64px;
+        padding: 10px 12px;
+        text-align: left;
+      }
+
+      .logistics-catalogue-horizontal-tabs .logistics-catalogue-item-head {
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .logistics-catalogue-horizontal-tabs .logistics-catalogue-badge {
+        flex: 0 0 auto;
+        font-size: 10px;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .logistics-catalogue-horizontal-tabs .admin-view-button strong {
+        display: block;
+        font-size: 12px;
+        line-height: 1.12;
+      }
+
+      .logistics-catalogue-horizontal-tabs .admin-view-button > small {
+        display: block;
+        margin-top: 5px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10px;
+        line-height: 1.2;
+      }
+
+      .logistics-content-card {
+        overflow: hidden;
+      }
+
+      .logistics-shell-view > * {
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      @media (max-width: 1180px) {
+        .logistics-catalogue-hero-card {
+          grid-template-columns: 1fr;
+        }
+      }
+    `}</style>
+  );
+}
+
 function LogistiqueTabButton({ tab, isActive, onSelect }) {
   return (
-    <button className={`admin-view-button ${isActive ? "is-active" : ""}`} type="button" onClick={onSelect}>
+    <button
+      className={`admin-view-button ${isActive ? "is-active" : ""}`}
+      type="button"
+      onClick={onSelect}
+      role="tab"
+      aria-selected={isActive}
+      title={`${tab.label || tab.title} - ${tab.viewLabel}`}
+    >
       <div className="logistics-catalogue-item-head">
         <strong>{tab.label || tab.title}</strong>
         <small className={`logistics-catalogue-badge ${tab.accessMode === "Lecture seule" ? "is-muted" : ""}`}>
@@ -355,6 +485,44 @@ function LogistiqueTabButton({ tab, isActive, onSelect }) {
       </div>
       <small>{tab.viewLabel}</small>
     </button>
+  );
+}
+
+function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavigate }) {
+  return (
+    <section className="page-hero-card admin-hero-card logistics-catalogue-hero-card" aria-label="Catalogue logistique">
+      <div className="logistics-catalogue-hero-head">
+        <div className="section-head">
+          <h2>Catalogue logistique</h2>
+          <p>Ouvrez vite une vue metier ou un ecran de controle.</p>
+        </div>
+        <div className="logistics-hero-side logistics-catalogue-current-view">
+          <span className="status-pill">{activeTabConfig.accessMode}</span>
+          <small>{activeTabConfig.viewLabel}</small>
+        </div>
+      </div>
+
+      <div className="logistics-catalogue-groups" role="tablist" aria-label="Navigation interne logistique">
+        {tabGroups.map((group) => (
+          <section key={group.key} className="admin-view-group logistics-catalogue-horizontal-group">
+            <div className="admin-view-group-head">
+              <strong>{group.title}</strong>
+              <span>{group.tabs.length}</span>
+            </div>
+            <div className="logistics-catalogue-horizontal-tabs">
+              {group.tabs.map((tab) => (
+                <LogistiqueTabButton
+                  key={tab.key}
+                  tab={tab}
+                  isActive={activeTab === tab.key}
+                  onSelect={() => onNavigate(tab.key)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -925,48 +1093,17 @@ export default function Logistique() {
   );
 
   return (
-    <div className="page-shell admin-page-shell logistics-page-shell">
-      <section className="admin-workspace logistics-workspace">
-        <aside className="admin-sidebar-card logistics-sidebar-card">
-          <div className="section-head">
-            <h3>Catalogue logistique</h3>
-            <p>Ouvrez vite une vue metier ou un ecran de controle.</p>
-          </div>
-
-          <div className="admin-view-list" role="tablist" aria-label="Navigation interne logistique">
-            {tabGroups.map((group) => (
-              <section key={group.key} className="admin-view-group">
-                <div className="admin-view-group-head">
-                  <strong>{group.title}</strong>
-                  <span>{group.tabs.length}</span>
-                </div>
-                {group.tabs.map((tab) => (
-                  <LogistiqueTabButton
-                    key={tab.key}
-                    tab={tab}
-                    isActive={activeTab === tab.key}
-                    onSelect={() => handleNavigate(tab.key)}
-                  />
-                ))}
-              </section>
-            ))}
-          </div>
-        </aside>
-
-        <div className="admin-main-column logistics-main-column">
-          <section className="page-hero-card admin-hero-card logistics-hero-card">
-            <div>
-              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Module logistique</span>
-              <h2>Logistique</h2>
-              <p>
-                Vue de gestion compacte pour les articles, commandes, mouvements et reglements.
-              </p>
-            </div>
-            <div className="logistics-hero-side">
-              <span className="status-pill">Acces logistique</span>
-              <small>{activeTabConfig.viewLabel}</small>
-            </div>
-          </section>
+    <>
+      <LogistiqueResponsiveStyles />
+      <div className="page-shell admin-page-shell logistics-page-shell">
+        <section className="admin-workspace logistics-workspace">
+          <div className="admin-main-column logistics-main-column">
+          <LogistiqueCatalogueBar
+            tabGroups={tabGroups}
+            activeTab={activeTab}
+            activeTabConfig={activeTabConfig}
+            onNavigate={handleNavigate}
+          />
 
           {activeTab === "dashboard" ? (
             <section className="admin-summary-grid">
@@ -1292,9 +1429,10 @@ export default function Logistique() {
               </div>
             ) : null}
           </section>
-        </div>
-      </section>
-    </div>
+          </div>
+        </section>
+      </div>
+    </>
   );
 }
 
