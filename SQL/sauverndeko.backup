@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict XmXtgzsmwE3DvTuqi130qhQgS1CHZavy4IKYYFw2ejeH1wu0wYecsrYLsjapGog
+\restrict sEi72iHnyfRuuThTAvil43tANshg39ZDRqzkJ3EEgoE2EzlQMSuM1KdydAb7RL4
 
 -- Dumped from database version 17.4
--- Dumped by pg_dump version 18.0
+-- Dumped by pg_dump version 18.2
 
--- Started on 2026-04-30 16:47:54
+-- Started on 2026-05-05 01:33:11
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -110,7 +110,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 
 --
--- TOC entry 5632 (class 0 OID 0)
+-- TOC entry 5672 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: 
 --
@@ -119,7 +119,7 @@ COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching
 
 
 --
--- TOC entry 402 (class 1255 OID 63925)
+-- TOC entry 407 (class 1255 OID 63925)
 -- Name: fn_assert_generique_category(integer, integer, text, text); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -162,7 +162,7 @@ $$;
 ALTER FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) OWNER TO postgres;
 
 --
--- TOC entry 408 (class 1255 OID 63954)
+-- TOC entry 413 (class 1255 OID 63954)
 -- Name: fn_audit_stock(integer, timestamp without time zone); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -215,7 +215,7 @@ $$;
 ALTER FUNCTION logistique.fn_audit_stock(p_id_article integer, p_date_max timestamp without time zone) OWNER TO postgres;
 
 --
--- TOC entry 404 (class 1255 OID 63927)
+-- TOC entry 409 (class 1255 OID 63927)
 -- Name: ps_crud_article(integer, integer, integer, integer, numeric, numeric, character varying); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -257,7 +257,7 @@ $$;
 ALTER PROCEDURE logistique.ps_crud_article(IN p_id_article integer, IN p_id_type_article integer, IN p_id_categorie_article integer, IN p_id_unite integer, IN p_old_qte numeric, IN p_new_qte numeric, IN p_operation character varying) OWNER TO postgres;
 
 --
--- TOC entry 407 (class 1255 OID 63932)
+-- TOC entry 412 (class 1255 OID 63932)
 -- Name: ps_crud_commande(integer, integer, integer, integer, integer, integer, character varying); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -386,7 +386,7 @@ $$;
 ALTER PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) OWNER TO postgres;
 
 --
--- TOC entry 349 (class 1255 OID 63935)
+-- TOC entry 353 (class 1255 OID 63935)
 -- Name: ps_crud_commandedetail(integer, integer, numeric, numeric, integer, integer, numeric, numeric, character varying); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -645,7 +645,7 @@ $$;
 ALTER PROCEDURE logistique.ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying) OWNER TO postgres;
 
 --
--- TOC entry 355 (class 1255 OID 63946)
+-- TOC entry 359 (class 1255 OID 63946)
 -- Name: ps_crud_reglement(integer, integer, character varying); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -668,7 +668,7 @@ $$;
 ALTER PROCEDURE logistique.ps_crud_reglement(IN p_id_reglement integer, IN p_id_mode_reglement integer, IN p_operation character varying) OWNER TO postgres;
 
 --
--- TOC entry 403 (class 1255 OID 63926)
+-- TOC entry 408 (class 1255 OID 63926)
 -- Name: ps_update_qte_article(integer, numeric, character varying); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -708,7 +708,7 @@ $$;
 ALTER PROCEDURE logistique.ps_update_qte_article(IN p_id_article_fk integer, IN p_qte numeric, IN p_operateur character varying) OWNER TO postgres;
 
 --
--- TOC entry 351 (class 1255 OID 63939)
+-- TOC entry 355 (class 1255 OID 63939)
 -- Name: ps_update_totaux_commande(integer); Type: PROCEDURE; Schema: logistique; Owner: postgres
 --
 
@@ -736,7 +736,7 @@ $$;
 ALTER PROCEDURE logistique.ps_update_totaux_commande(IN p_id_commande integer) OWNER TO postgres;
 
 --
--- TOC entry 406 (class 1255 OID 63929)
+-- TOC entry 411 (class 1255 OID 63929)
 -- Name: tr_crud_article_after(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -833,7 +833,7 @@ $$;
 ALTER FUNCTION logistique.tr_crud_article_after() OWNER TO postgres;
 
 --
--- TOC entry 405 (class 1255 OID 63928)
+-- TOC entry 410 (class 1255 OID 63928)
 -- Name: tr_crud_article_before(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -890,7 +890,7 @@ $$;
 ALTER FUNCTION logistique.tr_crud_article_before() OWNER TO postgres;
 
 --
--- TOC entry 348 (class 1255 OID 63933)
+-- TOC entry 352 (class 1255 OID 63933)
 -- Name: tr_crud_commande(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -926,7 +926,7 @@ $$;
 ALTER FUNCTION logistique.tr_crud_commande() OWNER TO postgres;
 
 --
--- TOC entry 350 (class 1255 OID 63936)
+-- TOC entry 354 (class 1255 OID 63936)
 -- Name: tr_crud_commandedetail(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -979,7 +979,7 @@ $$;
 ALTER FUNCTION logistique.tr_crud_commandedetail() OWNER TO postgres;
 
 --
--- TOC entry 356 (class 1255 OID 63947)
+-- TOC entry 360 (class 1255 OID 63947)
 -- Name: tr_crud_reglement(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -1001,7 +1001,7 @@ $$;
 ALTER FUNCTION logistique.tr_crud_reglement() OWNER TO postgres;
 
 --
--- TOC entry 401 (class 1255 OID 63413)
+-- TOC entry 406 (class 1255 OID 63413)
 -- Name: tr_delete_commande(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -1018,7 +1018,7 @@ $$;
 ALTER FUNCTION logistique.tr_delete_commande() OWNER TO postgres;
 
 --
--- TOC entry 354 (class 1255 OID 63944)
+-- TOC entry 358 (class 1255 OID 63944)
 -- Name: tr_lock_commande_cloturee(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -1037,7 +1037,7 @@ $$;
 ALTER FUNCTION logistique.tr_lock_commande_cloturee() OWNER TO postgres;
 
 --
--- TOC entry 353 (class 1255 OID 63942)
+-- TOC entry 357 (class 1255 OID 63942)
 -- Name: tr_lock_mouvement_direct(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -1064,7 +1064,7 @@ $$;
 ALTER FUNCTION logistique.tr_lock_mouvement_direct() OWNER TO postgres;
 
 --
--- TOC entry 352 (class 1255 OID 63940)
+-- TOC entry 356 (class 1255 OID 63940)
 -- Name: tr_totaux_commande(); Type: FUNCTION; Schema: logistique; Owner: postgres
 --
 
@@ -1091,7 +1091,7 @@ $$;
 ALTER FUNCTION logistique.tr_totaux_commande() OWNER TO postgres;
 
 --
--- TOC entry 359 (class 1255 OID 55468)
+-- TOC entry 364 (class 1255 OID 55468)
 -- Name: archive_paiements(); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1144,8 +1144,8 @@ $$;
 ALTER FUNCTION operations.archive_paiements() OWNER TO postgres;
 
 --
--- TOC entry 5633 (class 0 OID 0)
--- Dependencies: 359
+-- TOC entry 5673 (class 0 OID 0)
+-- Dependencies: 364
 -- Name: FUNCTION archive_paiements(); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1153,7 +1153,7 @@ COMMENT ON FUNCTION operations.archive_paiements() IS 'Archiver dans T_Paiement_
 
 
 --
--- TOC entry 372 (class 1255 OID 55452)
+-- TOC entry 377 (class 1255 OID 55452)
 -- Name: fn_audit_caisse(integer, integer, timestamp without time zone); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1263,8 +1263,8 @@ $$;
 ALTER FUNCTION operations.fn_audit_caisse(p_id_entite integer, p_id_devise integer, p_date_max timestamp without time zone) OWNER TO postgres;
 
 --
--- TOC entry 5634 (class 0 OID 0)
--- Dependencies: 372
+-- TOC entry 5674 (class 0 OID 0)
+-- Dependencies: 377
 -- Name: FUNCTION fn_audit_caisse(p_id_entite integer, p_id_devise integer, p_date_max timestamp without time zone); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1272,7 +1272,7 @@ COMMENT ON FUNCTION operations.fn_audit_caisse(p_id_entite integer, p_id_devise 
 
 
 --
--- TOC entry 357 (class 1255 OID 55453)
+-- TOC entry 362 (class 1255 OID 55453)
 -- Name: fn_audit_flux_caisse(integer, integer, timestamp without time zone, timestamp without time zone); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1344,8 +1344,8 @@ $$;
 ALTER FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer, p_id_devise integer, p_date_min timestamp without time zone, p_date_max timestamp without time zone) OWNER TO postgres;
 
 --
--- TOC entry 5635 (class 0 OID 0)
--- Dependencies: 357
+-- TOC entry 5675 (class 0 OID 0)
+-- Dependencies: 362
 -- Name: FUNCTION fn_audit_flux_caisse(p_id_entite integer, p_id_devise integer, p_date_min timestamp without time zone, p_date_max timestamp without time zone); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1353,7 +1353,7 @@ COMMENT ON FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer, p_id_de
 
 
 --
--- TOC entry 360 (class 1255 OID 55588)
+-- TOC entry 365 (class 1255 OID 55588)
 -- Name: gestion_caisse_on_paiement(); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1533,8 +1533,8 @@ $$;
 ALTER FUNCTION operations.gestion_caisse_on_paiement() OWNER TO postgres;
 
 --
--- TOC entry 5636 (class 0 OID 0)
--- Dependencies: 360
+-- TOC entry 5676 (class 0 OID 0)
+-- Dependencies: 365
 -- Name: FUNCTION gestion_caisse_on_paiement(); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1542,7 +1542,7 @@ COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Met à jour oper
 
 
 --
--- TOC entry 358 (class 1255 OID 55472)
+-- TOC entry 363 (class 1255 OID 55472)
 -- Name: notification_payment_success(); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1614,8 +1614,8 @@ $$;
 ALTER FUNCTION operations.notification_payment_success() OWNER TO postgres;
 
 --
--- TOC entry 5637 (class 0 OID 0)
--- Dependencies: 358
+-- TOC entry 5677 (class 0 OID 0)
+-- Dependencies: 363
 -- Name: FUNCTION notification_payment_success(); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1623,7 +1623,7 @@ COMMENT ON FUNCTION operations.notification_payment_success() IS 'Insère une no
 
 
 --
--- TOC entry 400 (class 1255 OID 55591)
+-- TOC entry 405 (class 1255 OID 55591)
 -- Name: prevent_delete_caisse_if_dependent(); Type: FUNCTION; Schema: operations; Owner: postgres
 --
 
@@ -1672,8 +1672,8 @@ $$;
 ALTER FUNCTION operations.prevent_delete_caisse_if_dependent() OWNER TO postgres;
 
 --
--- TOC entry 5638 (class 0 OID 0)
--- Dependencies: 400
+-- TOC entry 5678 (class 0 OID 0)
+-- Dependencies: 405
 -- Name: FUNCTION prevent_delete_caisse_if_dependent(); Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -1681,7 +1681,7 @@ COMMENT ON FUNCTION operations.prevent_delete_caisse_if_dependent() IS 'Empêche
 
 
 --
--- TOC entry 393 (class 1255 OID 55502)
+-- TOC entry 398 (class 1255 OID 55502)
 -- Name: audit_log_function(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1731,8 +1731,8 @@ $$;
 ALTER FUNCTION systeme.audit_log_function() OWNER TO postgres;
 
 --
--- TOC entry 5639 (class 0 OID 0)
--- Dependencies: 393
+-- TOC entry 5679 (class 0 OID 0)
+-- Dependencies: 398
 -- Name: FUNCTION audit_log_function(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1740,7 +1740,24 @@ COMMENT ON FUNCTION systeme.audit_log_function() IS 'Capture les modifications d
 
 
 --
--- TOC entry 394 (class 1255 OID 55506)
+-- TOC entry 361 (class 1255 OID 70903)
+-- Name: fn_admin_ui_setting_set_updated_at(); Type: FUNCTION; Schema: systeme; Owner: postgres
+--
+
+CREATE FUNCTION systeme.fn_admin_ui_setting_set_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW."UpdatedAt" = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION systeme.fn_admin_ui_setting_set_updated_at() OWNER TO postgres;
+
+--
+-- TOC entry 399 (class 1255 OID 55506)
 -- Name: format_phone_number(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1757,8 +1774,8 @@ $$;
 ALTER FUNCTION systeme.format_phone_number() OWNER TO postgres;
 
 --
--- TOC entry 5640 (class 0 OID 0)
--- Dependencies: 394
+-- TOC entry 5680 (class 0 OID 0)
+-- Dependencies: 399
 -- Name: FUNCTION format_phone_number(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1766,7 +1783,7 @@ COMMENT ON FUNCTION systeme.format_phone_number() IS 'Nettoie le numéro de tél
 
 
 --
--- TOC entry 398 (class 1255 OID 55516)
+-- TOC entry 403 (class 1255 OID 55516)
 -- Name: notify_licence_expiry(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1834,8 +1851,8 @@ $$;
 ALTER FUNCTION systeme.notify_licence_expiry() OWNER TO postgres;
 
 --
--- TOC entry 5641 (class 0 OID 0)
--- Dependencies: 398
+-- TOC entry 5681 (class 0 OID 0)
+-- Dependencies: 403
 -- Name: FUNCTION notify_licence_expiry(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1843,7 +1860,7 @@ COMMENT ON FUNCTION systeme.notify_licence_expiry() IS 'Envoie une notification 
 
 
 --
--- TOC entry 397 (class 1255 OID 55514)
+-- TOC entry 402 (class 1255 OID 55514)
 -- Name: prevent_multiple_active_licenses(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1870,8 +1887,8 @@ $$;
 ALTER FUNCTION systeme.prevent_multiple_active_licenses() OWNER TO postgres;
 
 --
--- TOC entry 5642 (class 0 OID 0)
--- Dependencies: 397
+-- TOC entry 5682 (class 0 OID 0)
+-- Dependencies: 402
 -- Name: FUNCTION prevent_multiple_active_licenses(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1879,7 +1896,7 @@ COMMENT ON FUNCTION systeme.prevent_multiple_active_licenses() IS 'Empêche l’
 
 
 --
--- TOC entry 399 (class 1255 OID 55510)
+-- TOC entry 404 (class 1255 OID 55510)
 -- Name: prevention_delete_if_dependent(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1951,8 +1968,8 @@ $$;
 ALTER FUNCTION systeme.prevention_delete_if_dependent() OWNER TO postgres;
 
 --
--- TOC entry 5643 (class 0 OID 0)
--- Dependencies: 399
+-- TOC entry 5683 (class 0 OID 0)
+-- Dependencies: 404
 -- Name: FUNCTION prevention_delete_if_dependent(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1960,7 +1977,7 @@ COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Empêche la sup
 
 
 --
--- TOC entry 395 (class 1255 OID 55508)
+-- TOC entry 400 (class 1255 OID 55508)
 -- Name: update_date_modification(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -1977,8 +1994,8 @@ $$;
 ALTER FUNCTION systeme.update_date_modification() OWNER TO postgres;
 
 --
--- TOC entry 5644 (class 0 OID 0)
--- Dependencies: 395
+-- TOC entry 5684 (class 0 OID 0)
+-- Dependencies: 400
 -- Name: FUNCTION update_date_modification(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -1986,7 +2003,7 @@ COMMENT ON FUNCTION systeme.update_date_modification() IS 'Met à jour automatiq
 
 
 --
--- TOC entry 396 (class 1255 OID 55512)
+-- TOC entry 401 (class 1255 OID 55512)
 -- Name: update_licence_status(); Type: FUNCTION; Schema: systeme; Owner: postgres
 --
 
@@ -2008,8 +2025,8 @@ $$;
 ALTER FUNCTION systeme.update_licence_status() OWNER TO postgres;
 
 --
--- TOC entry 5645 (class 0 OID 0)
--- Dependencies: 396
+-- TOC entry 5685 (class 0 OID 0)
+-- Dependencies: 401
 -- Name: FUNCTION update_licence_status(); Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -2485,7 +2502,7 @@ CREATE VIEW geolocalisation."V_AS_sans_Site" AS
 ALTER VIEW geolocalisation."V_AS_sans_Site" OWNER TO postgres;
 
 --
--- TOC entry 5646 (class 0 OID 0)
+-- TOC entry 5686 (class 0 OID 0)
 -- Dependencies: 305
 -- Name: VIEW "V_AS_sans_Site"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2509,7 +2526,7 @@ CREATE VIEW geolocalisation."V_Niveau_0" AS
 ALTER VIEW geolocalisation."V_Niveau_0" OWNER TO postgres;
 
 --
--- TOC entry 5647 (class 0 OID 0)
+-- TOC entry 5687 (class 0 OID 0)
 -- Dependencies: 306
 -- Name: VIEW "V_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2554,7 +2571,7 @@ CREATE VIEW geolocalisation."V_Niveau_1" AS
 ALTER VIEW geolocalisation."V_Niveau_1" OWNER TO postgres;
 
 --
--- TOC entry 5648 (class 0 OID 0)
+-- TOC entry 5688 (class 0 OID 0)
 -- Dependencies: 308
 -- Name: VIEW "V_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2578,7 +2595,7 @@ CREATE VIEW geolocalisation."V_Niveau_1_Old" AS
 ALTER VIEW geolocalisation."V_Niveau_1_Old" OWNER TO postgres;
 
 --
--- TOC entry 5649 (class 0 OID 0)
+-- TOC entry 5689 (class 0 OID 0)
 -- Dependencies: 307
 -- Name: VIEW "V_Niveau_1_Old"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2659,7 +2676,7 @@ CREATE VIEW geolocalisation."V_Niveau_2" AS
 ALTER VIEW geolocalisation."V_Niveau_2" OWNER TO postgres;
 
 --
--- TOC entry 5650 (class 0 OID 0)
+-- TOC entry 5690 (class 0 OID 0)
 -- Dependencies: 309
 -- Name: VIEW "V_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2714,7 +2731,7 @@ CREATE VIEW geolocalisation."V_Niveau_3" AS
 ALTER VIEW geolocalisation."V_Niveau_3" OWNER TO postgres;
 
 --
--- TOC entry 5651 (class 0 OID 0)
+-- TOC entry 5691 (class 0 OID 0)
 -- Dependencies: 310
 -- Name: VIEW "V_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2779,7 +2796,7 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
 ALTER VIEW geolocalisation."V_Niveau_4" OWNER TO postgres;
 
 --
--- TOC entry 5652 (class 0 OID 0)
+-- TOC entry 5692 (class 0 OID 0)
 -- Dependencies: 311
 -- Name: VIEW "V_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2848,7 +2865,7 @@ CREATE VIEW geolocalisation."V_Niveau_5" AS
 ALTER VIEW geolocalisation."V_Niveau_5" OWNER TO postgres;
 
 --
--- TOC entry 5653 (class 0 OID 0)
+-- TOC entry 5693 (class 0 OID 0)
 -- Dependencies: 312
 -- Name: VIEW "V_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2886,7 +2903,7 @@ CREATE VIEW geolocalisation."V_Pop_N3_Couverte_Sites" AS
 ALTER VIEW geolocalisation."V_Pop_N3_Couverte_Sites" OWNER TO postgres;
 
 --
--- TOC entry 5654 (class 0 OID 0)
+-- TOC entry 5694 (class 0 OID 0)
 -- Dependencies: 313
 -- Name: VIEW "V_Pop_N3_Couverte_Sites"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2931,7 +2948,7 @@ CREATE VIEW geolocalisation."V_RESEAU_AS_par_ZS" AS
 ALTER VIEW geolocalisation."V_RESEAU_AS_par_ZS" OWNER TO postgres;
 
 --
--- TOC entry 5655 (class 0 OID 0)
+-- TOC entry 5695 (class 0 OID 0)
 -- Dependencies: 314
 -- Name: VIEW "V_RESEAU_AS_par_ZS"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -2963,7 +2980,7 @@ CREATE VIEW geolocalisation."V_Stats_N1_N2" AS
 ALTER VIEW geolocalisation."V_Stats_N1_N2" OWNER TO postgres;
 
 --
--- TOC entry 5656 (class 0 OID 0)
+-- TOC entry 5696 (class 0 OID 0)
 -- Dependencies: 315
 -- Name: VIEW "V_Stats_N1_N2"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -3005,7 +3022,7 @@ CREATE VIEW geolocalisation."V_Stats_N3_Structures" AS
 ALTER VIEW geolocalisation."V_Stats_N3_Structures" OWNER TO postgres;
 
 --
--- TOC entry 5657 (class 0 OID 0)
+-- TOC entry 5697 (class 0 OID 0)
 -- Dependencies: 316
 -- Name: VIEW "V_Stats_N3_Structures"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -3039,7 +3056,7 @@ CREATE VIEW geolocalisation."V_ZS_sans_AS" AS
 ALTER VIEW geolocalisation."V_ZS_sans_AS" OWNER TO postgres;
 
 --
--- TOC entry 5658 (class 0 OID 0)
+-- TOC entry 5698 (class 0 OID 0)
 -- Dependencies: 317
 -- Name: VIEW "V_ZS_sans_AS"; Type: COMMENT; Schema: geolocalisation; Owner: postgres
 --
@@ -4105,6 +4122,51 @@ CREATE VIEW referentiel."V_Generique" AS
 ALTER VIEW referentiel."V_Generique" OWNER TO postgres;
 
 --
+-- TOC entry 338 (class 1259 OID 70873)
+-- Name: T_Admin_UI_Setting; Type: TABLE; Schema: systeme; Owner: postgres
+--
+
+CREATE TABLE systeme."T_Admin_UI_Setting" (
+    "IdAdminUISetting" integer NOT NULL,
+    "SettingScope" character varying(50) DEFAULT 'global'::character varying NOT NULL,
+    "ScopeValue" character varying(100),
+    "SettingKey" character varying(100) NOT NULL,
+    "SettingLabel" character varying(150),
+    "SettingGroup" character varying(100) DEFAULT 'general'::character varying,
+    "SettingValue" text,
+    "SettingValueJson" jsonb,
+    "SettingType" character varying(50) DEFAULT 'text'::character varying,
+    "DisplayOrder" integer DEFAULT 0,
+    "IsEditable" boolean DEFAULT true,
+    "IsSystem" boolean DEFAULT false,
+    "ValideSetting" boolean DEFAULT true,
+    "CreatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedByUserFk" integer,
+    "ObsSetting" text,
+    CONSTRAINT "Ck_Admin_UI_Setting_Scope" CHECK ((("SettingScope")::text = ANY ((ARRAY['global'::character varying, 'entite'::character varying, 'user'::character varying, 'module'::character varying])::text[]))),
+    CONSTRAINT "Ck_Admin_UI_Setting_Type" CHECK ((("SettingType")::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'boolean'::character varying, 'select'::character varying, 'json'::character varying, 'color'::character varying, 'file'::character varying, 'email'::character varying, 'phone'::character varying, 'url'::character varying, 'textarea'::character varying])::text[])))
+);
+
+
+ALTER TABLE systeme."T_Admin_UI_Setting" OWNER TO postgres;
+
+--
+-- TOC entry 337 (class 1259 OID 70872)
+-- Name: T_Admin_UI_Setting_IdAdminUISetting_seq; Type: SEQUENCE; Schema: systeme; Owner: postgres
+--
+
+ALTER TABLE systeme."T_Admin_UI_Setting" ALTER COLUMN "IdAdminUISetting" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME systeme."T_Admin_UI_Setting_IdAdminUISetting_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- TOC entry 256 (class 1259 OID 49997)
 -- Name: T_Audit_Log; Type: TABLE; Schema: systeme; Owner: postgres
 --
@@ -4320,6 +4382,61 @@ ALTER TABLE systeme."T_Utilisateurs" ALTER COLUMN "IdUser" ADD GENERATED ALWAYS 
     CACHE 1
 );
 
+
+--
+-- TOC entry 339 (class 1259 OID 70905)
+-- Name: V_Admin_UI_Setting; Type: VIEW; Schema: systeme; Owner: postgres
+--
+
+CREATE VIEW systeme."V_Admin_UI_Setting" AS
+ SELECT s."IdAdminUISetting",
+    s."SettingScope",
+    s."ScopeValue",
+    s."SettingKey",
+    s."SettingLabel",
+    s."SettingGroup",
+    s."SettingValue",
+    s."SettingValueJson",
+    s."SettingType",
+    s."DisplayOrder",
+    s."IsEditable",
+    s."IsSystem",
+    s."ValideSetting",
+    s."CreatedAt",
+    s."UpdatedAt",
+    s."UpdatedByUserFk",
+    COALESCE(NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text),
+        CASE
+            WHEN (s."UpdatedByUserFk" IS NOT NULL) THEN ('Utilisateur #'::text || s."UpdatedByUserFk")
+            ELSE NULL::text
+        END) AS "UpdatedByName",
+    s."ObsSetting"
+   FROM (systeme."T_Admin_UI_Setting" s
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = s."UpdatedByUserFk")))
+  WHERE (s."ValideSetting" = true)
+  ORDER BY s."SettingGroup", s."DisplayOrder", s."SettingLabel";
+
+
+ALTER VIEW systeme."V_Admin_UI_Setting" OWNER TO postgres;
+
+--
+-- TOC entry 340 (class 1259 OID 70910)
+-- Name: V_Admin_UI_Setting_Group; Type: VIEW; Schema: systeme; Owner: postgres
+--
+
+CREATE VIEW systeme."V_Admin_UI_Setting_Group" AS
+ SELECT "SettingGroup",
+    count(*) AS "NbParametres",
+    count(*) FILTER (WHERE ("IsEditable" = true)) AS "NbEditables",
+    count(*) FILTER (WHERE ("IsSystem" = true)) AS "NbSysteme",
+    max("UpdatedAt") AS "DerniereModification"
+   FROM systeme."T_Admin_UI_Setting"
+  WHERE ("ValideSetting" = true)
+  GROUP BY "SettingGroup"
+  ORDER BY "SettingGroup";
+
+
+ALTER VIEW systeme."V_Admin_UI_Setting_Group" OWNER TO postgres;
 
 --
 -- TOC entry 300 (class 1259 OID 62721)
@@ -4544,7 +4661,7 @@ CREATE VIEW systeme."V_User_profil" AS
 ALTER VIEW systeme."V_User_profil" OWNER TO postgres;
 
 --
--- TOC entry 5619 (class 0 OID 55678)
+-- TOC entry 5657 (class 0 OID 55678)
 -- Dependencies: 293
 -- Data for Name: T_Recherche; Type: TABLE DATA; Schema: analytics; Owner: postgres
 --
@@ -4554,7 +4671,7 @@ COPY analytics."T_Recherche" ("IdRecherche", "IdUserFk", "TexteRecherche", "Type
 
 
 --
--- TOC entry 5588 (class 0 OID 50277)
+-- TOC entry 5626 (class 0 OID 50277)
 -- Dependencies: 262
 -- Data for Name: T_Chat; Type: TABLE DATA; Schema: communication; Owner: postgres
 --
@@ -4564,7 +4681,7 @@ COPY communication."T_Chat" ("IdChat", "TextChat", "ChatFile", "ChatLink", "Auth
 
 
 --
--- TOC entry 5590 (class 0 OID 50290)
+-- TOC entry 5628 (class 0 OID 50290)
 -- Dependencies: 264
 -- Data for Name: T_Communication; Type: TABLE DATA; Schema: communication; Owner: postgres
 --
@@ -4574,7 +4691,7 @@ COPY communication."T_Communication" ("IdCommunication", "IdUserFk", "IdTypeComm
 
 
 --
--- TOC entry 5624 (class 0 OID 62681)
+-- TOC entry 5662 (class 0 OID 62681)
 -- Dependencies: 299
 -- Data for Name: T_Discussion; Type: TABLE DATA; Schema: communication; Owner: postgres
 --
@@ -4584,7 +4701,7 @@ COPY communication."T_Discussion" ("IdDiscussion", "IdUserClientFk", "IdProfessi
 
 
 --
--- TOC entry 5572 (class 0 OID 48472)
+-- TOC entry 5610 (class 0 OID 48472)
 -- Dependencies: 246
 -- Data for Name: T_Niveau_0; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -4845,7 +4962,7 @@ COPY geolocalisation."T_Niveau_0" ("ID_Niveau_0", "NomNiveau_0", "CodeNiveau_0",
 
 
 --
--- TOC entry 5574 (class 0 OID 48482)
+-- TOC entry 5612 (class 0 OID 48482)
 -- Dependencies: 248
 -- Data for Name: T_Niveau_1; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -4881,7 +4998,7 @@ COPY geolocalisation."T_Niveau_1" ("ID_Niveau_1", "ID_Niveau_0_Fk", "ID_Niveau_1
 
 
 --
--- TOC entry 5573 (class 0 OID 48477)
+-- TOC entry 5611 (class 0 OID 48477)
 -- Dependencies: 247
 -- Data for Name: T_Niveau_1_Old; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -4903,7 +5020,7 @@ COPY geolocalisation."T_Niveau_1_Old" ("ID_Niveau_1_Old", "NomNiveau_1_Old", "ge
 
 
 --
--- TOC entry 5575 (class 0 OID 48539)
+-- TOC entry 5613 (class 0 OID 48539)
 -- Dependencies: 249
 -- Data for Name: T_Niveau_2; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -5228,7 +5345,7 @@ COPY geolocalisation."T_Niveau_2" ("ID_Niveau_2", "ID_Niveau_1_FK", "ID_TypeNive
 
 
 --
--- TOC entry 5576 (class 0 OID 48692)
+-- TOC entry 5614 (class 0 OID 48692)
 -- Dependencies: 250
 -- Data for Name: T_Niveau_3; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -7707,7 +7824,7 @@ COPY geolocalisation."T_Niveau_3" ("ID_Niveau_3", "ID_Niveau_2_FK", "ID_TypeNive
 
 
 --
--- TOC entry 5577 (class 0 OID 49773)
+-- TOC entry 5615 (class 0 OID 49773)
 -- Dependencies: 251
 -- Data for Name: T_Niveau_4; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -8728,7 +8845,7 @@ COPY geolocalisation."T_Niveau_4" ("ID_Niveau_4", "ID_Niveau_3_Fk", "ID_TypeNive
 
 
 --
--- TOC entry 5578 (class 0 OID 49789)
+-- TOC entry 5616 (class 0 OID 49789)
 -- Dependencies: 252
 -- Data for Name: T_Niveau_5; Type: TABLE DATA; Schema: geolocalisation; Owner: postgres
 --
@@ -30687,7 +30804,7 @@ COPY geolocalisation."T_Niveau_5" ("ID_Niveau_5", "ID_Niveau_4_Fk", "ID_Niveau_3
 
 
 --
--- TOC entry 5607 (class 0 OID 50742)
+-- TOC entry 5645 (class 0 OID 50742)
 -- Dependencies: 281
 -- Data for Name: T_Article; Type: TABLE DATA; Schema: logistique; Owner: postgres
 --
@@ -30698,7 +30815,7 @@ COPY logistique."T_Article" ("ID_Article", "ID_TypeArticleFk", "ID_CategorieArti
 
 
 --
--- TOC entry 5611 (class 0 OID 50764)
+-- TOC entry 5649 (class 0 OID 50764)
 -- Dependencies: 285
 -- Data for Name: T_Commande; Type: TABLE DATA; Schema: logistique; Owner: postgres
 --
@@ -30709,7 +30826,7 @@ COPY logistique."T_Commande" ("ID_Commande", "ID_TypeCmdFk", "ID_StatutCmdFk", "
 
 
 --
--- TOC entry 5612 (class 0 OID 50773)
+-- TOC entry 5650 (class 0 OID 50773)
 -- Dependencies: 286
 -- Data for Name: T_CommandeDetail; Type: TABLE DATA; Schema: logistique; Owner: postgres
 --
@@ -30720,7 +30837,7 @@ COPY logistique."T_CommandeDetail" ("ID_CmdFk", "ID_ArticleFk", "QteCmdDetail", 
 
 
 --
--- TOC entry 5609 (class 0 OID 50760)
+-- TOC entry 5647 (class 0 OID 50760)
 -- Dependencies: 283
 -- Data for Name: T_Mouvement; Type: TABLE DATA; Schema: logistique; Owner: postgres
 --
@@ -30733,7 +30850,7 @@ COPY logistique."T_Mouvement" ("ID_Mvt", "ID_TypeMvtFk", "ID_ArticleFk", "ID_cmd
 
 
 --
--- TOC entry 5613 (class 0 OID 50778)
+-- TOC entry 5651 (class 0 OID 50778)
 -- Dependencies: 287
 -- Data for Name: T_Reglements; Type: TABLE DATA; Schema: logistique; Owner: postgres
 --
@@ -30743,7 +30860,7 @@ COPY logistique."T_Reglements" ("ID_Reglement", "CodeFactureFk", "ID_ModeRegleme
 
 
 --
--- TOC entry 5593 (class 0 OID 50395)
+-- TOC entry 5631 (class 0 OID 50395)
 -- Dependencies: 267
 -- Data for Name: T_Caisse; Type: TABLE DATA; Schema: operations; Owner: postgres
 --
@@ -30753,7 +30870,7 @@ COPY operations."T_Caisse" ("IdCaisse", "IdDeviseFk", "MontantCaisse", "IdEntite
 
 
 --
--- TOC entry 5595 (class 0 OID 50578)
+-- TOC entry 5633 (class 0 OID 50578)
 -- Dependencies: 269
 -- Data for Name: T_Paiement; Type: TABLE DATA; Schema: operations; Owner: postgres
 --
@@ -30763,7 +30880,7 @@ COPY operations."T_Paiement" ("IdPaiement", "CodePaiement", "IdUserFk", "IdTypeP
 
 
 --
--- TOC entry 5606 (class 0 OID 50650)
+-- TOC entry 5644 (class 0 OID 50650)
 -- Dependencies: 280
 -- Data for Name: T_Paiement_Archive; Type: TABLE DATA; Schema: operations; Owner: postgres
 --
@@ -30773,7 +30890,7 @@ COPY operations."T_Paiement_Archive" ("IdPaiement", "CodePaiement", "IdUserFk", 
 
 
 --
--- TOC entry 5621 (class 0 OID 55872)
+-- TOC entry 5659 (class 0 OID 55872)
 -- Dependencies: 295
 -- Data for Name: T_Professionnel; Type: TABLE DATA; Schema: professionnel; Owner: postgres
 --
@@ -30783,7 +30900,7 @@ COPY professionnel."T_Professionnel" ("IdProfessionnel", "IdUserFk", "IdTypeProf
 
 
 --
--- TOC entry 5622 (class 0 OID 55898)
+-- TOC entry 5660 (class 0 OID 55898)
 -- Dependencies: 296
 -- Data for Name: T_Professionnel_Entite; Type: TABLE DATA; Schema: professionnel; Owner: postgres
 --
@@ -30793,7 +30910,7 @@ COPY professionnel."T_Professionnel_Entite" ("IdProfessionnelFk", "IdEntiteFk", 
 
 
 --
--- TOC entry 5570 (class 0 OID 48453)
+-- TOC entry 5608 (class 0 OID 48453)
 -- Dependencies: 244
 -- Data for Name: T_CategorieGenerique; Type: TABLE DATA; Schema: referentiel; Owner: postgres
 --
@@ -30864,7 +30981,7 @@ COPY referentiel."T_CategorieGenerique" ("ID_CategorieGenerique", "NomCategorieG
 
 
 --
--- TOC entry 5571 (class 0 OID 48458)
+-- TOC entry 5609 (class 0 OID 48458)
 -- Dependencies: 245
 -- Data for Name: T_Generique; Type: TABLE DATA; Schema: referentiel; Owner: postgres
 --
@@ -31670,7 +31787,29 @@ COPY referentiel."T_Generique" ("ID_Generique", "ID_CategorieGeneriqueFk", "NomG
 
 
 --
--- TOC entry 5582 (class 0 OID 49997)
+-- TOC entry 5666 (class 0 OID 70873)
+-- Dependencies: 338
+-- Data for Name: T_Admin_UI_Setting; Type: TABLE DATA; Schema: systeme; Owner: postgres
+--
+
+COPY systeme."T_Admin_UI_Setting" ("IdAdminUISetting", "SettingScope", "ScopeValue", "SettingKey", "SettingLabel", "SettingGroup", "SettingValue", "SettingValueJson", "SettingType", "DisplayOrder", "IsEditable", "IsSystem", "ValideSetting", "CreatedAt", "UpdatedAt", "UpdatedByUserFk", "ObsSetting") FROM stdin;
+1	global	\N	app_name	Nom de l’application	general	SauverNdeko	\N	text	1	t	t	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+2	global	\N	default_language	Langue par défaut	general	fr	\N	select	2	t	t	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+3	global	\N	timezone	Fuseau horaire	general	Africa/Kinshasa	\N	select	3	t	t	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+4	global	\N	date_format	Format de date	general	DD/MM/YYYY	\N	select	4	t	t	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+5	global	\N	theme	Thème	theme	light	\N	select	5	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+6	global	\N	accent_color	Couleur principale	theme	#0d6efd	\N	color	6	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+7	global	\N	logo_path	Logo de l’application	theme	/assets/logo.png	\N	file	7	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+8	global	\N	admin_email	Email administrateur	contact	admin@sauverndeko.cd	\N	email	8	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+9	global	\N	admin_phone	Téléphone administrateur	contact	+243 000 000 000	\N	phone	9	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+10	global	\N	admin_address	Adresse	contact	Kinshasa, RDC	\N	textarea	10	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+11	global	\N	items_per_page	Nombre de lignes par page	display	10	\N	number	11	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+12	global	\N	sidebar_collapsed	Menu latéral réduit par défaut	display	false	\N	boolean	12	t	f	t	2026-05-05 01:18:38.518056+02	2026-05-05 01:18:38.518056+02	\N	\N
+\.
+
+
+--
+-- TOC entry 5620 (class 0 OID 49997)
 -- Dependencies: 256
 -- Data for Name: T_Audit_Log; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31732,7 +31871,7 @@ COPY systeme."T_Audit_Log" ("IdLog", "TableName", "Operation", "OldData", "NewDa
 
 
 --
--- TOC entry 5580 (class 0 OID 49885)
+-- TOC entry 5618 (class 0 OID 49885)
 -- Dependencies: 254
 -- Data for Name: T_Entite; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31743,7 +31882,7 @@ COPY systeme."T_Entite" ("IdEntite", "NomEntite", "PhoneEntite", "EmailEntite", 
 
 
 --
--- TOC entry 5617 (class 0 OID 55622)
+-- TOC entry 5655 (class 0 OID 55622)
 -- Dependencies: 291
 -- Data for Name: T_Entite_Localisation; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31753,7 +31892,7 @@ COPY systeme."T_Entite_Localisation" ("IdEntiteLocalisation", "IdEntiteFk", "IdN
 
 
 --
--- TOC entry 5626 (class 0 OID 63766)
+-- TOC entry 5664 (class 0 OID 63766)
 -- Dependencies: 320
 -- Data for Name: T_Fk_Correspondance; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31831,7 +31970,7 @@ COPY systeme."T_Fk_Correspondance" ("IdFkCorrespondance", "ModuleName", "SchemaN
 
 
 --
--- TOC entry 5591 (class 0 OID 50368)
+-- TOC entry 5629 (class 0 OID 50368)
 -- Dependencies: 265
 -- Data for Name: T_Licence; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31842,7 +31981,7 @@ COPY systeme."T_Licence" ("IdLicence", "IdEntiteFk", "CleLicence", "DateDebut", 
 
 
 --
--- TOC entry 5586 (class 0 OID 50200)
+-- TOC entry 5624 (class 0 OID 50200)
 -- Dependencies: 260
 -- Data for Name: T_Login; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31873,7 +32012,7 @@ COPY systeme."T_Login" ("IdLogin", "IdUserFk", "IdTypeLoginFk", "DateLogin", "Id
 
 
 --
--- TOC entry 5584 (class 0 OID 50152)
+-- TOC entry 5622 (class 0 OID 50152)
 -- Dependencies: 258
 -- Data for Name: T_Utilisateurs; Type: TABLE DATA; Schema: systeme; Owner: postgres
 --
@@ -31886,7 +32025,7 @@ COPY systeme."T_Utilisateurs" ("IdUser", "NomUser", "PrenomUser", "EmailUser", "
 
 
 --
--- TOC entry 5659 (class 0 OID 0)
+-- TOC entry 5699 (class 0 OID 0)
 -- Dependencies: 292
 -- Name: T_Recherche_IdRecherche_seq; Type: SEQUENCE SET; Schema: analytics; Owner: postgres
 --
@@ -31895,7 +32034,7 @@ SELECT pg_catalog.setval('analytics."T_Recherche_IdRecherche_seq"', 1, true);
 
 
 --
--- TOC entry 5660 (class 0 OID 0)
+-- TOC entry 5700 (class 0 OID 0)
 -- Dependencies: 261
 -- Name: T_Chat_IdChat_seq; Type: SEQUENCE SET; Schema: communication; Owner: postgres
 --
@@ -31904,7 +32043,7 @@ SELECT pg_catalog.setval('communication."T_Chat_IdChat_seq"', 1, false);
 
 
 --
--- TOC entry 5661 (class 0 OID 0)
+-- TOC entry 5701 (class 0 OID 0)
 -- Dependencies: 263
 -- Name: T_Communication_IdCommunication_seq; Type: SEQUENCE SET; Schema: communication; Owner: postgres
 --
@@ -31913,7 +32052,7 @@ SELECT pg_catalog.setval('communication."T_Communication_IdCommunication_seq"', 
 
 
 --
--- TOC entry 5662 (class 0 OID 0)
+-- TOC entry 5702 (class 0 OID 0)
 -- Dependencies: 298
 -- Name: T_Discussion_IdDiscussion_seq; Type: SEQUENCE SET; Schema: communication; Owner: postgres
 --
@@ -31922,7 +32061,7 @@ SELECT pg_catalog.setval('communication."T_Discussion_IdDiscussion_seq"', 1, fal
 
 
 --
--- TOC entry 5663 (class 0 OID 0)
+-- TOC entry 5703 (class 0 OID 0)
 -- Dependencies: 270
 -- Name: T_Niveau_0_ID_Niveau_0_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31931,7 +32070,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_0_ID_Niveau_0_seq"', 1, fals
 
 
 --
--- TOC entry 5664 (class 0 OID 0)
+-- TOC entry 5704 (class 0 OID 0)
 -- Dependencies: 271
 -- Name: T_Niveau_1_ID_Niveau_1_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31940,7 +32079,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_1_ID_Niveau_1_seq"', 1, fals
 
 
 --
--- TOC entry 5665 (class 0 OID 0)
+-- TOC entry 5705 (class 0 OID 0)
 -- Dependencies: 272
 -- Name: T_Niveau_1_Old_ID_Niveau_1_Old_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31949,7 +32088,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_1_Old_ID_Niveau_1_Old_seq"',
 
 
 --
--- TOC entry 5666 (class 0 OID 0)
+-- TOC entry 5706 (class 0 OID 0)
 -- Dependencies: 273
 -- Name: T_Niveau_2_ID_Niveau_2_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31958,7 +32097,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_2_ID_Niveau_2_seq"', 1, fals
 
 
 --
--- TOC entry 5667 (class 0 OID 0)
+-- TOC entry 5707 (class 0 OID 0)
 -- Dependencies: 274
 -- Name: T_Niveau_3_ID_Niveau_3_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31967,7 +32106,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_3_ID_Niveau_3_seq"', 1, fals
 
 
 --
--- TOC entry 5668 (class 0 OID 0)
+-- TOC entry 5708 (class 0 OID 0)
 -- Dependencies: 275
 -- Name: T_Niveau_4_ID_Niveau_4_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31976,7 +32115,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_4_ID_Niveau_4_seq"', 1, fals
 
 
 --
--- TOC entry 5669 (class 0 OID 0)
+-- TOC entry 5709 (class 0 OID 0)
 -- Dependencies: 276
 -- Name: T_Niveau_5_ID_Niveau_5_seq; Type: SEQUENCE SET; Schema: geolocalisation; Owner: postgres
 --
@@ -31985,7 +32124,7 @@ SELECT pg_catalog.setval('geolocalisation."T_Niveau_5_ID_Niveau_5_seq"', 1, fals
 
 
 --
--- TOC entry 5670 (class 0 OID 0)
+-- TOC entry 5710 (class 0 OID 0)
 -- Dependencies: 282
 -- Name: T_Article_ID_Article_seq; Type: SEQUENCE SET; Schema: logistique; Owner: postgres
 --
@@ -31994,7 +32133,7 @@ SELECT pg_catalog.setval('logistique."T_Article_ID_Article_seq"', 70, true);
 
 
 --
--- TOC entry 5671 (class 0 OID 0)
+-- TOC entry 5711 (class 0 OID 0)
 -- Dependencies: 288
 -- Name: T_Commande_ID_Commande_seq; Type: SEQUENCE SET; Schema: logistique; Owner: postgres
 --
@@ -32003,7 +32142,7 @@ SELECT pg_catalog.setval('logistique."T_Commande_ID_Commande_seq"', 103, true);
 
 
 --
--- TOC entry 5672 (class 0 OID 0)
+-- TOC entry 5712 (class 0 OID 0)
 -- Dependencies: 284
 -- Name: T_Mouvement_ID_Mvt_seq; Type: SEQUENCE SET; Schema: logistique; Owner: postgres
 --
@@ -32012,7 +32151,7 @@ SELECT pg_catalog.setval('logistique."T_Mouvement_ID_Mvt_seq"', 320, true);
 
 
 --
--- TOC entry 5673 (class 0 OID 0)
+-- TOC entry 5713 (class 0 OID 0)
 -- Dependencies: 289
 -- Name: T_Reglements_ID_Reglement_seq; Type: SEQUENCE SET; Schema: logistique; Owner: postgres
 --
@@ -32021,7 +32160,7 @@ SELECT pg_catalog.setval('logistique."T_Reglements_ID_Reglement_seq"', 1, true);
 
 
 --
--- TOC entry 5674 (class 0 OID 0)
+-- TOC entry 5714 (class 0 OID 0)
 -- Dependencies: 266
 -- Name: T_Caisse_IdCaisse_seq; Type: SEQUENCE SET; Schema: operations; Owner: postgres
 --
@@ -32030,7 +32169,7 @@ SELECT pg_catalog.setval('operations."T_Caisse_IdCaisse_seq"', 13, true);
 
 
 --
--- TOC entry 5675 (class 0 OID 0)
+-- TOC entry 5715 (class 0 OID 0)
 -- Dependencies: 279
 -- Name: T_Paiement_Archive_IdPaiementArchive_seq; Type: SEQUENCE SET; Schema: operations; Owner: postgres
 --
@@ -32039,7 +32178,7 @@ SELECT pg_catalog.setval('operations."T_Paiement_Archive_IdPaiementArchive_seq"'
 
 
 --
--- TOC entry 5676 (class 0 OID 0)
+-- TOC entry 5716 (class 0 OID 0)
 -- Dependencies: 268
 -- Name: T_Paiement_IdPaiement_seq; Type: SEQUENCE SET; Schema: operations; Owner: postgres
 --
@@ -32048,7 +32187,7 @@ SELECT pg_catalog.setval('operations."T_Paiement_IdPaiement_seq"', 23, true);
 
 
 --
--- TOC entry 5677 (class 0 OID 0)
+-- TOC entry 5717 (class 0 OID 0)
 -- Dependencies: 294
 -- Name: T_Professionnel_IdProfessionnel_seq; Type: SEQUENCE SET; Schema: professionnel; Owner: postgres
 --
@@ -32057,7 +32196,7 @@ SELECT pg_catalog.setval('professionnel."T_Professionnel_IdProfessionnel_seq"', 
 
 
 --
--- TOC entry 5678 (class 0 OID 0)
+-- TOC entry 5718 (class 0 OID 0)
 -- Dependencies: 277
 -- Name: T_CategorieGenerique_ID_CategorieGenerique_seq; Type: SEQUENCE SET; Schema: referentiel; Owner: postgres
 --
@@ -32066,7 +32205,7 @@ SELECT pg_catalog.setval('referentiel."T_CategorieGenerique_ID_CategorieGeneriqu
 
 
 --
--- TOC entry 5679 (class 0 OID 0)
+-- TOC entry 5719 (class 0 OID 0)
 -- Dependencies: 278
 -- Name: T_Generique_ID_Generique_seq; Type: SEQUENCE SET; Schema: referentiel; Owner: postgres
 --
@@ -32075,7 +32214,16 @@ SELECT pg_catalog.setval('referentiel."T_Generique_ID_Generique_seq"', 803, true
 
 
 --
--- TOC entry 5680 (class 0 OID 0)
+-- TOC entry 5720 (class 0 OID 0)
+-- Dependencies: 337
+-- Name: T_Admin_UI_Setting_IdAdminUISetting_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
+--
+
+SELECT pg_catalog.setval('systeme."T_Admin_UI_Setting_IdAdminUISetting_seq"', 12, true);
+
+
+--
+-- TOC entry 5721 (class 0 OID 0)
 -- Dependencies: 255
 -- Name: T_Audit_Log_IdLog_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32084,7 +32232,7 @@ SELECT pg_catalog.setval('systeme."T_Audit_Log_IdLog_seq"', 85, true);
 
 
 --
--- TOC entry 5681 (class 0 OID 0)
+-- TOC entry 5722 (class 0 OID 0)
 -- Dependencies: 253
 -- Name: T_Entite_IdEntite_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32093,7 +32241,7 @@ SELECT pg_catalog.setval('systeme."T_Entite_IdEntite_seq"', 9, true);
 
 
 --
--- TOC entry 5682 (class 0 OID 0)
+-- TOC entry 5723 (class 0 OID 0)
 -- Dependencies: 290
 -- Name: T_Entite_Localisation_IdEntiteLocalisation_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32102,7 +32250,7 @@ SELECT pg_catalog.setval('systeme."T_Entite_Localisation_IdEntiteLocalisation_se
 
 
 --
--- TOC entry 5683 (class 0 OID 0)
+-- TOC entry 5724 (class 0 OID 0)
 -- Dependencies: 319
 -- Name: T_Fk_Correspondance_IdFkCorrespondance_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32111,7 +32259,7 @@ SELECT pg_catalog.setval('systeme."T_Fk_Correspondance_IdFkCorrespondance_seq"',
 
 
 --
--- TOC entry 5684 (class 0 OID 0)
+-- TOC entry 5725 (class 0 OID 0)
 -- Dependencies: 259
 -- Name: T_Login_IdLogin_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32120,7 +32268,7 @@ SELECT pg_catalog.setval('systeme."T_Login_IdLogin_seq"', 23, true);
 
 
 --
--- TOC entry 5685 (class 0 OID 0)
+-- TOC entry 5726 (class 0 OID 0)
 -- Dependencies: 257
 -- Name: T_Utilisateurs_IdUser_seq; Type: SEQUENCE SET; Schema: systeme; Owner: postgres
 --
@@ -32129,7 +32277,7 @@ SELECT pg_catalog.setval('systeme."T_Utilisateurs_IdUser_seq"', 15, true);
 
 
 --
--- TOC entry 5243 (class 2606 OID 55685)
+-- TOC entry 5268 (class 2606 OID 55685)
 -- Name: T_Recherche Pk_IdRecherche; Type: CONSTRAINT; Schema: analytics; Owner: postgres
 --
 
@@ -32138,7 +32286,7 @@ ALTER TABLE ONLY analytics."T_Recherche"
 
 
 --
--- TOC entry 5181 (class 2606 OID 50299)
+-- TOC entry 5206 (class 2606 OID 50299)
 -- Name: T_Communication Pk_IdCommunication; Type: CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -32147,7 +32295,7 @@ ALTER TABLE ONLY communication."T_Communication"
 
 
 --
--- TOC entry 5175 (class 2606 OID 50283)
+-- TOC entry 5200 (class 2606 OID 50283)
 -- Name: T_Chat T_Chat_pkey; Type: CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -32156,7 +32304,7 @@ ALTER TABLE ONLY communication."T_Chat"
 
 
 --
--- TOC entry 5267 (class 2606 OID 62689)
+-- TOC entry 5292 (class 2606 OID 62689)
 -- Name: T_Discussion T_Discussion_pkey; Type: CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -32165,7 +32313,7 @@ ALTER TABLE ONLY communication."T_Discussion"
 
 
 --
--- TOC entry 5104 (class 2606 OID 49871)
+-- TOC entry 5129 (class 2606 OID 49871)
 -- Name: T_Niveau_0 T_Niveau_0_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32174,7 +32322,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_0"
 
 
 --
--- TOC entry 5106 (class 2606 OID 49875)
+-- TOC entry 5131 (class 2606 OID 49875)
 -- Name: T_Niveau_1_Old T_Niveau_1_Old_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32183,7 +32331,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_1_Old"
 
 
 --
--- TOC entry 5109 (class 2606 OID 49873)
+-- TOC entry 5134 (class 2606 OID 49873)
 -- Name: T_Niveau_1 T_Niveau_1_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32192,7 +32340,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_1"
 
 
 --
--- TOC entry 5114 (class 2606 OID 49877)
+-- TOC entry 5139 (class 2606 OID 49877)
 -- Name: T_Niveau_2 T_Niveau_2_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32201,7 +32349,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5122 (class 2606 OID 49879)
+-- TOC entry 5147 (class 2606 OID 49879)
 -- Name: T_Niveau_3 T_Niveau_3_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32210,7 +32358,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5131 (class 2606 OID 49881)
+-- TOC entry 5156 (class 2606 OID 49881)
 -- Name: T_Niveau_4 T_Niveau_4_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32219,7 +32367,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5141 (class 2606 OID 49883)
+-- TOC entry 5166 (class 2606 OID 49883)
 -- Name: T_Niveau_5 T_Niveau_5_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32228,7 +32376,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5208 (class 2606 OID 50748)
+-- TOC entry 5233 (class 2606 OID 50748)
 -- Name: T_Article T_Article_pkey; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32237,7 +32385,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5231 (class 2606 OID 50782)
+-- TOC entry 5256 (class 2606 OID 50782)
 -- Name: T_CommandeDetail T_CommandeDetail_pkey; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32246,7 +32394,7 @@ ALTER TABLE ONLY logistique."T_CommandeDetail"
 
 
 --
--- TOC entry 5221 (class 2606 OID 50772)
+-- TOC entry 5246 (class 2606 OID 50772)
 -- Name: T_Commande T_Commande_pkey; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32255,7 +32403,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5217 (class 2606 OID 50770)
+-- TOC entry 5242 (class 2606 OID 50770)
 -- Name: T_Mouvement T_Mouvement_pkey; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32264,7 +32412,7 @@ ALTER TABLE ONLY logistique."T_Mouvement"
 
 
 --
--- TOC entry 5235 (class 2606 OID 50784)
+-- TOC entry 5260 (class 2606 OID 50784)
 -- Name: T_Reglements T_Reglements_pkey; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32273,7 +32421,7 @@ ALTER TABLE ONLY logistique."T_Reglements"
 
 
 --
--- TOC entry 5215 (class 2606 OID 56005)
+-- TOC entry 5240 (class 2606 OID 56005)
 -- Name: T_Article uq_article_codeinterne; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32282,7 +32430,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5227 (class 2606 OID 56001)
+-- TOC entry 5252 (class 2606 OID 56001)
 -- Name: T_Commande uq_commande_codecmd; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32291,7 +32439,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5229 (class 2606 OID 56003)
+-- TOC entry 5254 (class 2606 OID 56003)
 -- Name: T_Commande uq_commande_codefacture; Type: CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -32300,7 +32448,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5196 (class 2606 OID 50587)
+-- TOC entry 5221 (class 2606 OID 50587)
 -- Name: T_Paiement Pk_IdPaiement; Type: CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -32309,7 +32457,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5192 (class 2606 OID 50400)
+-- TOC entry 5217 (class 2606 OID 50400)
 -- Name: T_Caisse T_Caisse_pkey; Type: CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -32318,7 +32466,7 @@ ALTER TABLE ONLY operations."T_Caisse"
 
 
 --
--- TOC entry 5203 (class 2606 OID 50657)
+-- TOC entry 5228 (class 2606 OID 50657)
 -- Name: T_Paiement_Archive T_Paiement_Archive_pkey; Type: CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -32327,7 +32475,7 @@ ALTER TABLE ONLY operations."T_Paiement_Archive"
 
 
 --
--- TOC entry 5194 (class 2606 OID 55477)
+-- TOC entry 5219 (class 2606 OID 55477)
 -- Name: T_Caisse UQ_Entite_Devise; Type: CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -32336,7 +32484,7 @@ ALTER TABLE ONLY operations."T_Caisse"
 
 
 --
--- TOC entry 5253 (class 2606 OID 55879)
+-- TOC entry 5278 (class 2606 OID 55879)
 -- Name: T_Professionnel Pk_IdProfessionnel; Type: CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -32345,7 +32493,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5261 (class 2606 OID 55905)
+-- TOC entry 5286 (class 2606 OID 55905)
 -- Name: T_Professionnel_Entite Pk_Professionnel_Entite; Type: CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -32354,7 +32502,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel_Entite"
 
 
 --
--- TOC entry 5255 (class 2606 OID 56246)
+-- TOC entry 5280 (class 2606 OID 56246)
 -- Name: T_Professionnel Uq_Prof_IdUser; Type: CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -32363,7 +32511,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5257 (class 2606 OID 56248)
+-- TOC entry 5282 (class 2606 OID 56248)
 -- Name: T_Professionnel Uq_Prof_NumeroIdentification; Type: CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -32372,7 +32520,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5101 (class 2606 OID 49867)
+-- TOC entry 5126 (class 2606 OID 49867)
 -- Name: T_Generique Pk_T_Generique; Type: CONSTRAINT; Schema: referentiel; Owner: postgres
 --
 
@@ -32381,7 +32529,7 @@ ALTER TABLE ONLY referentiel."T_Generique"
 
 
 --
--- TOC entry 5099 (class 2606 OID 49869)
+-- TOC entry 5124 (class 2606 OID 49869)
 -- Name: T_CategorieGenerique T_CategorieGenerique_pkey; Type: CONSTRAINT; Schema: referentiel; Owner: postgres
 --
 
@@ -32390,7 +32538,16 @@ ALTER TABLE ONLY referentiel."T_CategorieGenerique"
 
 
 --
--- TOC entry 5150 (class 2606 OID 49893)
+-- TOC entry 5313 (class 2606 OID 70890)
+-- Name: T_Admin_UI_Setting Pk_Admin_UI_Setting; Type: CONSTRAINT; Schema: systeme; Owner: postgres
+--
+
+ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
+    ADD CONSTRAINT "Pk_Admin_UI_Setting" PRIMARY KEY ("IdAdminUISetting");
+
+
+--
+-- TOC entry 5175 (class 2606 OID 49893)
 -- Name: T_Entite Pk_IdEntite; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32399,7 +32556,7 @@ ALTER TABLE ONLY systeme."T_Entite"
 
 
 --
--- TOC entry 5239 (class 2606 OID 55629)
+-- TOC entry 5264 (class 2606 OID 55629)
 -- Name: T_Entite_Localisation Pk_IdEntiteLocalisation; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32408,7 +32565,7 @@ ALTER TABLE ONLY systeme."T_Entite_Localisation"
 
 
 --
--- TOC entry 5188 (class 2606 OID 50377)
+-- TOC entry 5213 (class 2606 OID 50377)
 -- Name: T_Licence Pk_IdLicence; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32417,7 +32574,7 @@ ALTER TABLE ONLY systeme."T_Licence"
 
 
 --
--- TOC entry 5170 (class 2606 OID 50205)
+-- TOC entry 5195 (class 2606 OID 50205)
 -- Name: T_Login Pk_IdLogin; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32426,7 +32583,7 @@ ALTER TABLE ONLY systeme."T_Login"
 
 
 --
--- TOC entry 5161 (class 2606 OID 50164)
+-- TOC entry 5186 (class 2606 OID 50164)
 -- Name: T_Utilisateurs Pk_IdUser; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32435,7 +32592,7 @@ ALTER TABLE ONLY systeme."T_Utilisateurs"
 
 
 --
--- TOC entry 5157 (class 2606 OID 50004)
+-- TOC entry 5182 (class 2606 OID 50004)
 -- Name: T_Audit_Log T_Audit_Log_pkey; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32444,7 +32601,7 @@ ALTER TABLE ONLY systeme."T_Audit_Log"
 
 
 --
--- TOC entry 5152 (class 2606 OID 49895)
+-- TOC entry 5177 (class 2606 OID 49895)
 -- Name: T_Entite T_Entite_EmailEntite_key; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32453,7 +32610,7 @@ ALTER TABLE ONLY systeme."T_Entite"
 
 
 --
--- TOC entry 5154 (class 2606 OID 56470)
+-- TOC entry 5179 (class 2606 OID 56470)
 -- Name: T_Entite T_Entite_PhoneEntite_key; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32462,7 +32619,7 @@ ALTER TABLE ONLY systeme."T_Entite"
 
 
 --
--- TOC entry 5275 (class 2606 OID 63780)
+-- TOC entry 5300 (class 2606 OID 63780)
 -- Name: T_Fk_Correspondance T_Fk_Correspondance_pkey; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32471,7 +32628,7 @@ ALTER TABLE ONLY systeme."T_Fk_Correspondance"
 
 
 --
--- TOC entry 5277 (class 2606 OID 63782)
+-- TOC entry 5302 (class 2606 OID 63782)
 -- Name: T_Fk_Correspondance UQ_FkCorrespondance_SourceValueScope; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32480,7 +32637,16 @@ ALTER TABLE ONLY systeme."T_Fk_Correspondance"
 
 
 --
--- TOC entry 5168 (class 2606 OID 50166)
+-- TOC entry 5315 (class 2606 OID 70892)
+-- Name: T_Admin_UI_Setting Uq_Admin_UI_Setting_Key_Scope; Type: CONSTRAINT; Schema: systeme; Owner: postgres
+--
+
+ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
+    ADD CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" UNIQUE ("SettingScope", "ScopeValue", "SettingKey");
+
+
+--
+-- TOC entry 5193 (class 2606 OID 50166)
 -- Name: T_Utilisateurs utilisateurs_emailuser_key; Type: CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -32489,7 +32655,7 @@ ALTER TABLE ONLY systeme."T_Utilisateurs"
 
 
 --
--- TOC entry 5244 (class 1259 OID 55987)
+-- TOC entry 5269 (class 1259 OID 55987)
 -- Name: idx_recherche_date; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32497,7 +32663,7 @@ CREATE INDEX idx_recherche_date ON analytics."T_Recherche" USING btree ("DateRec
 
 
 --
--- TOC entry 5245 (class 1259 OID 55985)
+-- TOC entry 5270 (class 1259 OID 55985)
 -- Name: idx_recherche_entite; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32505,7 +32671,7 @@ CREATE INDEX idx_recherche_entite ON analytics."T_Recherche" USING btree ("IdEnt
 
 
 --
--- TOC entry 5246 (class 1259 OID 60540)
+-- TOC entry 5271 (class 1259 OID 60540)
 -- Name: idx_recherche_fts; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32513,7 +32679,7 @@ CREATE INDEX idx_recherche_fts ON analytics."T_Recherche" USING gin ("TexteReche
 
 
 --
--- TOC entry 5247 (class 1259 OID 55986)
+-- TOC entry 5272 (class 1259 OID 55986)
 -- Name: idx_recherche_specialite; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32521,7 +32687,7 @@ CREATE INDEX idx_recherche_specialite ON analytics."T_Recherche" USING btree ("I
 
 
 --
--- TOC entry 5248 (class 1259 OID 60542)
+-- TOC entry 5273 (class 1259 OID 60542)
 -- Name: idx_recherche_specialite_date; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32529,7 +32695,7 @@ CREATE INDEX idx_recherche_specialite_date ON analytics."T_Recherche" USING btre
 
 
 --
--- TOC entry 5249 (class 1259 OID 60527)
+-- TOC entry 5274 (class 1259 OID 60527)
 -- Name: idx_recherche_texte_trgm; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32537,7 +32703,7 @@ CREATE INDEX idx_recherche_texte_trgm ON analytics."T_Recherche" USING gin ("Tex
 
 
 --
--- TOC entry 5250 (class 1259 OID 55984)
+-- TOC entry 5275 (class 1259 OID 55984)
 -- Name: idx_recherche_user; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32545,7 +32711,7 @@ CREATE INDEX idx_recherche_user ON analytics."T_Recherche" USING btree ("IdUserF
 
 
 --
--- TOC entry 5251 (class 1259 OID 60541)
+-- TOC entry 5276 (class 1259 OID 60541)
 -- Name: idx_recherche_user_date; Type: INDEX; Schema: analytics; Owner: postgres
 --
 
@@ -32553,7 +32719,7 @@ CREATE INDEX idx_recherche_user_date ON analytics."T_Recherche" USING btree ("Id
 
 
 --
--- TOC entry 5176 (class 1259 OID 56331)
+-- TOC entry 5201 (class 1259 OID 56331)
 -- Name: idx_chat_author; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32561,7 +32727,7 @@ CREATE INDEX idx_chat_author ON communication."T_Chat" USING btree ("AuthorIdFk"
 
 
 --
--- TOC entry 5177 (class 1259 OID 60543)
+-- TOC entry 5202 (class 1259 OID 60543)
 -- Name: idx_chat_author_idchat_desc; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32569,7 +32735,7 @@ CREATE INDEX idx_chat_author_idchat_desc ON communication."T_Chat" USING btree (
 
 
 --
--- TOC entry 5178 (class 1259 OID 62716)
+-- TOC entry 5203 (class 1259 OID 62716)
 -- Name: idx_chat_discussion_date; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32577,7 +32743,7 @@ CREATE INDEX idx_chat_discussion_date ON communication."T_Chat" USING btree ("Id
 
 
 --
--- TOC entry 5179 (class 1259 OID 62717)
+-- TOC entry 5204 (class 1259 OID 62717)
 -- Name: idx_chat_discussion_idchat; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32585,7 +32751,7 @@ CREATE INDEX idx_chat_discussion_idchat ON communication."T_Chat" USING btree ("
 
 
 --
--- TOC entry 5182 (class 1259 OID 60545)
+-- TOC entry 5207 (class 1259 OID 60545)
 -- Name: idx_comm_date; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32593,7 +32759,7 @@ CREATE INDEX idx_comm_date ON communication."T_Communication" USING btree ("Date
 
 
 --
--- TOC entry 5183 (class 1259 OID 56334)
+-- TOC entry 5208 (class 1259 OID 56334)
 -- Name: idx_comm_entite; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32601,7 +32767,7 @@ CREATE INDEX idx_comm_entite ON communication."T_Communication" USING btree ("Id
 
 
 --
--- TOC entry 5184 (class 1259 OID 56333)
+-- TOC entry 5209 (class 1259 OID 56333)
 -- Name: idx_comm_type; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32609,7 +32775,7 @@ CREATE INDEX idx_comm_type ON communication."T_Communication" USING btree ("IdTy
 
 
 --
--- TOC entry 5185 (class 1259 OID 56332)
+-- TOC entry 5210 (class 1259 OID 56332)
 -- Name: idx_comm_user; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32617,7 +32783,7 @@ CREATE INDEX idx_comm_user ON communication."T_Communication" USING btree ("IdUs
 
 
 --
--- TOC entry 5186 (class 1259 OID 60544)
+-- TOC entry 5211 (class 1259 OID 60544)
 -- Name: idx_comm_user_unread; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32625,7 +32791,7 @@ CREATE INDEX idx_comm_user_unread ON communication."T_Communication" USING btree
 
 
 --
--- TOC entry 5268 (class 1259 OID 62715)
+-- TOC entry 5293 (class 1259 OID 62715)
 -- Name: idx_discussion_dernier_message; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32633,7 +32799,7 @@ CREATE INDEX idx_discussion_dernier_message ON communication."T_Discussion" USIN
 
 
 --
--- TOC entry 5269 (class 1259 OID 62714)
+-- TOC entry 5294 (class 1259 OID 62714)
 -- Name: idx_discussion_entite; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32641,7 +32807,7 @@ CREATE INDEX idx_discussion_entite ON communication."T_Discussion" USING btree (
 
 
 --
--- TOC entry 5270 (class 1259 OID 62713)
+-- TOC entry 5295 (class 1259 OID 62713)
 -- Name: idx_discussion_professionnel; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32649,7 +32815,7 @@ CREATE INDEX idx_discussion_professionnel ON communication."T_Discussion" USING 
 
 
 --
--- TOC entry 5271 (class 1259 OID 62712)
+-- TOC entry 5296 (class 1259 OID 62712)
 -- Name: idx_discussion_user_client; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32657,7 +32823,7 @@ CREATE INDEX idx_discussion_user_client ON communication."T_Discussion" USING bt
 
 
 --
--- TOC entry 5272 (class 1259 OID 62719)
+-- TOC entry 5297 (class 1259 OID 62719)
 -- Name: uq_discussion_client_entite; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32665,7 +32831,7 @@ CREATE UNIQUE INDEX uq_discussion_client_entite ON communication."T_Discussion" 
 
 
 --
--- TOC entry 5273 (class 1259 OID 62718)
+-- TOC entry 5298 (class 1259 OID 62718)
 -- Name: uq_discussion_client_expert; Type: INDEX; Schema: communication; Owner: postgres
 --
 
@@ -32673,7 +32839,7 @@ CREATE UNIQUE INDEX uq_discussion_client_expert ON communication."T_Discussion" 
 
 
 --
--- TOC entry 5107 (class 1259 OID 49824)
+-- TOC entry 5132 (class 1259 OID 49824)
 -- Name: T_Niveau_1_ID_Niveau_0_Fk_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32681,7 +32847,7 @@ CREATE INDEX "T_Niveau_1_ID_Niveau_0_Fk_idx" ON geolocalisation."T_Niveau_1" USI
 
 
 --
--- TOC entry 5112 (class 1259 OID 49825)
+-- TOC entry 5137 (class 1259 OID 49825)
 -- Name: T_Niveau_2_ID_Niveau_1_FK_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32689,7 +32855,7 @@ CREATE INDEX "T_Niveau_2_ID_Niveau_1_FK_idx" ON geolocalisation."T_Niveau_2" USI
 
 
 --
--- TOC entry 5120 (class 1259 OID 49826)
+-- TOC entry 5145 (class 1259 OID 49826)
 -- Name: T_Niveau_3_ID_Niveau_2_FK_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32697,7 +32863,7 @@ CREATE INDEX "T_Niveau_3_ID_Niveau_2_FK_idx" ON geolocalisation."T_Niveau_3" USI
 
 
 --
--- TOC entry 5129 (class 1259 OID 49827)
+-- TOC entry 5154 (class 1259 OID 49827)
 -- Name: T_Niveau_4_ID_Niveau_3_Fk_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32705,7 +32871,7 @@ CREATE INDEX "T_Niveau_4_ID_Niveau_3_Fk_idx" ON geolocalisation."T_Niveau_4" USI
 
 
 --
--- TOC entry 5138 (class 1259 OID 56037)
+-- TOC entry 5163 (class 1259 OID 56037)
 -- Name: T_Niveau_5_ID_Niveau_3_Fk_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32713,7 +32879,7 @@ CREATE INDEX "T_Niveau_5_ID_Niveau_3_Fk_idx" ON geolocalisation."T_Niveau_5" USI
 
 
 --
--- TOC entry 5139 (class 1259 OID 49828)
+-- TOC entry 5164 (class 1259 OID 49828)
 -- Name: T_Niveau_5_ID_Niveau_4_Fk_idx; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32721,7 +32887,7 @@ CREATE INDEX "T_Niveau_5_ID_Niveau_4_Fk_idx" ON geolocalisation."T_Niveau_5" USI
 
 
 --
--- TOC entry 5110 (class 1259 OID 49830)
+-- TOC entry 5135 (class 1259 OID 49830)
 -- Name: idx_n1_id_niveau0_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32729,7 +32895,7 @@ CREATE INDEX idx_n1_id_niveau0_fk ON geolocalisation."T_Niveau_1" USING btree ("
 
 
 --
--- TOC entry 5111 (class 1259 OID 49831)
+-- TOC entry 5136 (class 1259 OID 49831)
 -- Name: idx_n1_id_niveau1_old_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32737,7 +32903,7 @@ CREATE INDEX idx_n1_id_niveau1_old_fk ON geolocalisation."T_Niveau_1" USING btre
 
 
 --
--- TOC entry 5115 (class 1259 OID 49832)
+-- TOC entry 5140 (class 1259 OID 49832)
 -- Name: idx_n2_id_niveau1_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32745,7 +32911,7 @@ CREATE INDEX idx_n2_id_niveau1_fk ON geolocalisation."T_Niveau_2" USING btree ("
 
 
 --
--- TOC entry 5116 (class 1259 OID 62965)
+-- TOC entry 5141 (class 1259 OID 62965)
 -- Name: idx_n2_id_statusdeploi_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32753,7 +32919,7 @@ CREATE INDEX idx_n2_id_statusdeploi_fk_ref ON geolocalisation."T_Niveau_2" USING
 
 
 --
--- TOC entry 5117 (class 1259 OID 62964)
+-- TOC entry 5142 (class 1259 OID 62964)
 -- Name: idx_n2_id_statutniveau2_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32761,7 +32927,7 @@ CREATE INDEX idx_n2_id_statutniveau2_fk_ref ON geolocalisation."T_Niveau_2" USIN
 
 
 --
--- TOC entry 5118 (class 1259 OID 62963)
+-- TOC entry 5143 (class 1259 OID 62963)
 -- Name: idx_n2_id_typeniveau2_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32769,7 +32935,7 @@ CREATE INDEX idx_n2_id_typeniveau2_fk_ref ON geolocalisation."T_Niveau_2" USING 
 
 
 --
--- TOC entry 5119 (class 1259 OID 62966)
+-- TOC entry 5144 (class 1259 OID 62966)
 -- Name: idx_n2_id_voieaccesdpsant_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32777,7 +32943,7 @@ CREATE INDEX idx_n2_id_voieaccesdpsant_fk_ref ON geolocalisation."T_Niveau_2" US
 
 
 --
--- TOC entry 5123 (class 1259 OID 49833)
+-- TOC entry 5148 (class 1259 OID 49833)
 -- Name: idx_n3_id_niveau2_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32785,7 +32951,7 @@ CREATE INDEX idx_n3_id_niveau2_fk ON geolocalisation."T_Niveau_3" USING btree ("
 
 
 --
--- TOC entry 5124 (class 1259 OID 62969)
+-- TOC entry 5149 (class 1259 OID 62969)
 -- Name: idx_n3_id_statutdeploie_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32793,7 +32959,7 @@ CREATE INDEX idx_n3_id_statutdeploie_fk_ref ON geolocalisation."T_Niveau_3" USIN
 
 
 --
--- TOC entry 5125 (class 1259 OID 62968)
+-- TOC entry 5150 (class 1259 OID 62968)
 -- Name: idx_n3_id_statutniveau3_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32801,7 +32967,7 @@ CREATE INDEX idx_n3_id_statutniveau3_fk_ref ON geolocalisation."T_Niveau_3" USIN
 
 
 --
--- TOC entry 5126 (class 1259 OID 62967)
+-- TOC entry 5151 (class 1259 OID 62967)
 -- Name: idx_n3_id_typeniveau2_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32809,7 +32975,7 @@ CREATE INDEX idx_n3_id_typeniveau2_fk_ref ON geolocalisation."T_Niveau_3" USING 
 
 
 --
--- TOC entry 5127 (class 1259 OID 62970)
+-- TOC entry 5152 (class 1259 OID 62970)
 -- Name: idx_n3_id_voieaccesantbcz_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32817,7 +32983,7 @@ CREATE INDEX idx_n3_id_voieaccesantbcz_fk_ref ON geolocalisation."T_Niveau_3" US
 
 
 --
--- TOC entry 5128 (class 1259 OID 62971)
+-- TOC entry 5153 (class 1259 OID 62971)
 -- Name: idx_n3_id_voieaccesdpsbcz_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32825,7 +32991,7 @@ CREATE INDEX idx_n3_id_voieaccesdpsbcz_fk_ref ON geolocalisation."T_Niveau_3" US
 
 
 --
--- TOC entry 5132 (class 1259 OID 62973)
+-- TOC entry 5157 (class 1259 OID 62973)
 -- Name: idx_n4_id_disporeseau_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32833,7 +32999,7 @@ CREATE INDEX idx_n4_id_disporeseau_fk_ref ON geolocalisation."T_Niveau_4" USING 
 
 
 --
--- TOC entry 5133 (class 1259 OID 49834)
+-- TOC entry 5158 (class 1259 OID 49834)
 -- Name: idx_n4_id_niveau3_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32841,7 +33007,7 @@ CREATE INDEX idx_n4_id_niveau3_fk ON geolocalisation."T_Niveau_4" USING btree ("
 
 
 --
--- TOC entry 5134 (class 1259 OID 62976)
+-- TOC entry 5159 (class 1259 OID 62976)
 -- Name: idx_n4_id_statutdeploiement_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32849,7 +33015,7 @@ CREATE INDEX idx_n4_id_statutdeploiement_fk_ref ON geolocalisation."T_Niveau_4" 
 
 
 --
--- TOC entry 5135 (class 1259 OID 62975)
+-- TOC entry 5160 (class 1259 OID 62975)
 -- Name: idx_n4_id_statutniveau4_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32857,7 +33023,7 @@ CREATE INDEX idx_n4_id_statutniveau4_fk_ref ON geolocalisation."T_Niveau_4" USIN
 
 
 --
--- TOC entry 5136 (class 1259 OID 62972)
+-- TOC entry 5161 (class 1259 OID 62972)
 -- Name: idx_n4_id_typeniveau4_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32865,7 +33031,7 @@ CREATE INDEX idx_n4_id_typeniveau4_fk_ref ON geolocalisation."T_Niveau_4" USING 
 
 
 --
--- TOC entry 5137 (class 1259 OID 62974)
+-- TOC entry 5162 (class 1259 OID 62974)
 -- Name: idx_n4_id_voieacceszsa_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32873,7 +33039,7 @@ CREATE INDEX idx_n4_id_voieacceszsa_fk_ref ON geolocalisation."T_Niveau_4" USING
 
 
 --
--- TOC entry 5142 (class 1259 OID 62978)
+-- TOC entry 5167 (class 1259 OID 62978)
 -- Name: idx_n5_id_disporeseau_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32881,7 +33047,7 @@ CREATE INDEX idx_n5_id_disporeseau_fk_ref ON geolocalisation."T_Niveau_5" USING 
 
 
 --
--- TOC entry 5143 (class 1259 OID 49835)
+-- TOC entry 5168 (class 1259 OID 49835)
 -- Name: idx_n5_id_niveau4_fk; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32889,7 +33055,7 @@ CREATE INDEX idx_n5_id_niveau4_fk ON geolocalisation."T_Niveau_5" USING btree ("
 
 
 --
--- TOC entry 5144 (class 1259 OID 62981)
+-- TOC entry 5169 (class 1259 OID 62981)
 -- Name: idx_n5_id_statutdeploiement_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32897,7 +33063,7 @@ CREATE INDEX idx_n5_id_statutdeploiement_fk_ref ON geolocalisation."T_Niveau_5" 
 
 
 --
--- TOC entry 5145 (class 1259 OID 62980)
+-- TOC entry 5170 (class 1259 OID 62980)
 -- Name: idx_n5_id_statutniveau5_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32905,7 +33071,7 @@ CREATE INDEX idx_n5_id_statutniveau5_fk_ref ON geolocalisation."T_Niveau_5" USIN
 
 
 --
--- TOC entry 5146 (class 1259 OID 62977)
+-- TOC entry 5171 (class 1259 OID 62977)
 -- Name: idx_n5_id_typeniveau5_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32913,7 +33079,7 @@ CREATE INDEX idx_n5_id_typeniveau5_fk_ref ON geolocalisation."T_Niveau_5" USING 
 
 
 --
--- TOC entry 5147 (class 1259 OID 62982)
+-- TOC entry 5172 (class 1259 OID 62982)
 -- Name: idx_n5_id_typetoit_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32921,7 +33087,7 @@ CREATE INDEX idx_n5_id_typetoit_fk_ref ON geolocalisation."T_Niveau_5" USING btr
 
 
 --
--- TOC entry 5148 (class 1259 OID 62979)
+-- TOC entry 5173 (class 1259 OID 62979)
 -- Name: idx_n5_id_voieaccessite_fk_ref; Type: INDEX; Schema: geolocalisation; Owner: postgres
 --
 
@@ -32929,7 +33095,7 @@ CREATE INDEX idx_n5_id_voieaccessite_fk_ref ON geolocalisation."T_Niveau_5" USIN
 
 
 --
--- TOC entry 5209 (class 1259 OID 56348)
+-- TOC entry 5234 (class 1259 OID 56348)
 -- Name: idx_article_categorie; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32937,7 +33103,7 @@ CREATE INDEX idx_article_categorie ON logistique."T_Article" USING btree ("ID_Ca
 
 
 --
--- TOC entry 5210 (class 1259 OID 56009)
+-- TOC entry 5235 (class 1259 OID 56009)
 -- Name: idx_article_nom; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32945,7 +33111,7 @@ CREATE INDEX idx_article_nom ON logistique."T_Article" USING btree ("NomArticle"
 
 
 --
--- TOC entry 5211 (class 1259 OID 56430)
+-- TOC entry 5236 (class 1259 OID 56430)
 -- Name: idx_article_nom_trgm; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32953,7 +33119,7 @@ CREATE INDEX idx_article_nom_trgm ON logistique."T_Article" USING gin ("NomArtic
 
 
 --
--- TOC entry 5212 (class 1259 OID 56347)
+-- TOC entry 5237 (class 1259 OID 56347)
 -- Name: idx_article_type; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32961,7 +33127,7 @@ CREATE INDEX idx_article_type ON logistique."T_Article" USING btree ("ID_TypeArt
 
 
 --
--- TOC entry 5213 (class 1259 OID 56655)
+-- TOC entry 5238 (class 1259 OID 56655)
 -- Name: idx_article_unite; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32969,7 +33135,7 @@ CREATE INDEX idx_article_unite ON logistique."T_Article" USING btree ("ID_UniteF
 
 
 --
--- TOC entry 5222 (class 1259 OID 55989)
+-- TOC entry 5247 (class 1259 OID 55989)
 -- Name: idx_cmd_client; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32977,7 +33143,7 @@ CREATE INDEX idx_cmd_client ON logistique."T_Commande" USING btree ("ID_ClientFk
 
 
 --
--- TOC entry 5223 (class 1259 OID 56656)
+-- TOC entry 5248 (class 1259 OID 56656)
 -- Name: idx_cmd_date; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32985,7 +33151,7 @@ CREATE INDEX idx_cmd_date ON logistique."T_Commande" USING btree ("DateCmd");
 
 
 --
--- TOC entry 5224 (class 1259 OID 55990)
+-- TOC entry 5249 (class 1259 OID 55990)
 -- Name: idx_cmd_type; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -32993,7 +33159,7 @@ CREATE INDEX idx_cmd_type ON logistique."T_Commande" USING btree ("ID_TypeCmdFk"
 
 
 --
--- TOC entry 5225 (class 1259 OID 55988)
+-- TOC entry 5250 (class 1259 OID 55988)
 -- Name: idx_cmd_user; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33001,7 +33167,7 @@ CREATE INDEX idx_cmd_user ON logistique."T_Commande" USING btree ("ID_UserFk");
 
 
 --
--- TOC entry 5232 (class 1259 OID 56672)
+-- TOC entry 5257 (class 1259 OID 56672)
 -- Name: idx_cmddetail_article; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33009,7 +33175,7 @@ CREATE INDEX idx_cmddetail_article ON logistique."T_CommandeDetail" USING btree 
 
 
 --
--- TOC entry 5233 (class 1259 OID 55991)
+-- TOC entry 5258 (class 1259 OID 55991)
 -- Name: idx_cmddetail_cmd; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33017,7 +33183,7 @@ CREATE INDEX idx_cmddetail_cmd ON logistique."T_CommandeDetail" USING btree ("ID
 
 
 --
--- TOC entry 5218 (class 1259 OID 55992)
+-- TOC entry 5243 (class 1259 OID 55992)
 -- Name: idx_mvt_article; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33025,7 +33191,7 @@ CREATE INDEX idx_mvt_article ON logistique."T_Mouvement" USING btree ("ID_Articl
 
 
 --
--- TOC entry 5219 (class 1259 OID 55993)
+-- TOC entry 5244 (class 1259 OID 55993)
 -- Name: idx_mvt_cmd; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33033,7 +33199,7 @@ CREATE INDEX idx_mvt_cmd ON logistique."T_Mouvement" USING btree ("ID_cmdFk");
 
 
 --
--- TOC entry 5236 (class 1259 OID 55994)
+-- TOC entry 5261 (class 1259 OID 55994)
 -- Name: idx_reglement_client; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33041,7 +33207,7 @@ CREATE INDEX idx_reglement_client ON logistique."T_Reglements" USING btree ("ID_
 
 
 --
--- TOC entry 5237 (class 1259 OID 56690)
+-- TOC entry 5262 (class 1259 OID 56690)
 -- Name: idx_reglement_date; Type: INDEX; Schema: logistique; Owner: postgres
 --
 
@@ -33049,7 +33215,7 @@ CREATE INDEX idx_reglement_date ON logistique."T_Reglements" USING btree ("DateR
 
 
 --
--- TOC entry 5197 (class 1259 OID 50624)
+-- TOC entry 5222 (class 1259 OID 50624)
 -- Name: idx_fk_paiement_user; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33057,7 +33223,7 @@ CREATE INDEX idx_fk_paiement_user ON operations."T_Paiement" USING btree ("IdUse
 
 
 --
--- TOC entry 5204 (class 1259 OID 56578)
+-- TOC entry 5229 (class 1259 OID 56578)
 -- Name: idx_paiement_archive_date; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33065,7 +33231,7 @@ CREATE INDEX idx_paiement_archive_date ON operations."T_Paiement_Archive" USING 
 
 
 --
--- TOC entry 5205 (class 1259 OID 56497)
+-- TOC entry 5230 (class 1259 OID 56497)
 -- Name: idx_paiement_archive_entite; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33073,7 +33239,7 @@ CREATE INDEX idx_paiement_archive_entite ON operations."T_Paiement_Archive" USIN
 
 
 --
--- TOC entry 5206 (class 1259 OID 56498)
+-- TOC entry 5231 (class 1259 OID 56498)
 -- Name: idx_paiement_archive_idpaiement; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33081,7 +33247,7 @@ CREATE INDEX idx_paiement_archive_idpaiement ON operations."T_Paiement_Archive" 
 
 
 --
--- TOC entry 5198 (class 1259 OID 56565)
+-- TOC entry 5223 (class 1259 OID 56565)
 -- Name: idx_paiement_date; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33089,7 +33255,7 @@ CREATE INDEX idx_paiement_date ON operations."T_Paiement" USING btree ("DatePaie
 
 
 --
--- TOC entry 5199 (class 1259 OID 50626)
+-- TOC entry 5224 (class 1259 OID 50626)
 -- Name: idx_paiement_devise; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33097,7 +33263,7 @@ CREATE INDEX idx_paiement_devise ON operations."T_Paiement" USING btree ("IdDevi
 
 
 --
--- TOC entry 5200 (class 1259 OID 56566)
+-- TOC entry 5225 (class 1259 OID 56566)
 -- Name: idx_paiement_entite_date; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33105,7 +33271,7 @@ CREATE INDEX idx_paiement_entite_date ON operations."T_Paiement" USING btree ("I
 
 
 --
--- TOC entry 5201 (class 1259 OID 50627)
+-- TOC entry 5226 (class 1259 OID 50627)
 -- Name: idx_paiement_statut; Type: INDEX; Schema: operations; Owner: postgres
 --
 
@@ -33113,7 +33279,7 @@ CREATE INDEX idx_paiement_statut ON operations."T_Paiement" USING btree ("IdStat
 
 
 --
--- TOC entry 5262 (class 1259 OID 56262)
+-- TOC entry 5287 (class 1259 OID 56262)
 -- Name: Uq_ProfEnt_Principal_Par_Prof; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33121,7 +33287,7 @@ CREATE UNIQUE INDEX "Uq_ProfEnt_Principal_Par_Prof" ON professionnel."T_Professi
 
 
 --
--- TOC entry 5258 (class 1259 OID 55897)
+-- TOC entry 5283 (class 1259 OID 55897)
 -- Name: idx_prof_specialite; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33129,7 +33295,7 @@ CREATE INDEX idx_prof_specialite ON professionnel."T_Professionnel" USING btree 
 
 
 --
--- TOC entry 5259 (class 1259 OID 55896)
+-- TOC entry 5284 (class 1259 OID 55896)
 -- Name: idx_prof_type; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33137,7 +33303,7 @@ CREATE INDEX idx_prof_type ON professionnel."T_Professionnel" USING btree ("IdTy
 
 
 --
--- TOC entry 5263 (class 1259 OID 56264)
+-- TOC entry 5288 (class 1259 OID 56264)
 -- Name: idx_profent_datedebut; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33145,7 +33311,7 @@ CREATE INDEX idx_profent_datedebut ON professionnel."T_Professionnel_Entite" USI
 
 
 --
--- TOC entry 5264 (class 1259 OID 55922)
+-- TOC entry 5289 (class 1259 OID 55922)
 -- Name: idx_profent_entite; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33153,7 +33319,7 @@ CREATE INDEX idx_profent_entite ON professionnel."T_Professionnel_Entite" USING 
 
 
 --
--- TOC entry 5265 (class 1259 OID 56449)
+-- TOC entry 5290 (class 1259 OID 56449)
 -- Name: idx_profession_principal; Type: INDEX; Schema: professionnel; Owner: postgres
 --
 
@@ -33161,7 +33327,7 @@ CREATE INDEX idx_profession_principal ON professionnel."T_Professionnel_Entite" 
 
 
 --
--- TOC entry 5102 (class 1259 OID 56471)
+-- TOC entry 5127 (class 1259 OID 56471)
 -- Name: idx_generique_id_categorie; Type: INDEX; Schema: referentiel; Owner: postgres
 --
 
@@ -33169,7 +33335,47 @@ CREATE INDEX idx_generique_id_categorie ON referentiel."T_Generique" USING btree
 
 
 --
--- TOC entry 5158 (class 1259 OID 56448)
+-- TOC entry 5307 (class 1259 OID 70899)
+-- Name: Idx_Admin_UI_Setting_Group; Type: INDEX; Schema: systeme; Owner: postgres
+--
+
+CREATE INDEX "Idx_Admin_UI_Setting_Group" ON systeme."T_Admin_UI_Setting" USING btree ("SettingGroup");
+
+
+--
+-- TOC entry 5308 (class 1259 OID 70898)
+-- Name: Idx_Admin_UI_Setting_Key; Type: INDEX; Schema: systeme; Owner: postgres
+--
+
+CREATE INDEX "Idx_Admin_UI_Setting_Key" ON systeme."T_Admin_UI_Setting" USING btree ("SettingKey");
+
+
+--
+-- TOC entry 5309 (class 1259 OID 70900)
+-- Name: Idx_Admin_UI_Setting_Scope; Type: INDEX; Schema: systeme; Owner: postgres
+--
+
+CREATE INDEX "Idx_Admin_UI_Setting_Scope" ON systeme."T_Admin_UI_Setting" USING btree ("SettingScope", "ScopeValue");
+
+
+--
+-- TOC entry 5310 (class 1259 OID 70902)
+-- Name: Idx_Admin_UI_Setting_UpdatedAt; Type: INDEX; Schema: systeme; Owner: postgres
+--
+
+CREATE INDEX "Idx_Admin_UI_Setting_UpdatedAt" ON systeme."T_Admin_UI_Setting" USING btree ("UpdatedAt");
+
+
+--
+-- TOC entry 5311 (class 1259 OID 70901)
+-- Name: Idx_Admin_UI_Setting_Valide; Type: INDEX; Schema: systeme; Owner: postgres
+--
+
+CREATE INDEX "Idx_Admin_UI_Setting_Valide" ON systeme."T_Admin_UI_Setting" USING btree ("ValideSetting");
+
+
+--
+-- TOC entry 5183 (class 1259 OID 56448)
 -- Name: idx_audit_changedat; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33177,7 +33383,7 @@ CREATE INDEX idx_audit_changedat ON systeme."T_Audit_Log" USING btree ("ChangedA
 
 
 --
--- TOC entry 5159 (class 1259 OID 50011)
+-- TOC entry 5184 (class 1259 OID 50011)
 -- Name: idx_audit_log_entite; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33185,7 +33391,7 @@ CREATE INDEX idx_audit_log_entite ON systeme."T_Audit_Log" USING btree ("IdEntit
 
 
 --
--- TOC entry 5240 (class 1259 OID 55650)
+-- TOC entry 5265 (class 1259 OID 55650)
 -- Name: idx_entite_loc_coords; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33193,7 +33399,7 @@ CREATE INDEX idx_entite_loc_coords ON systeme."T_Entite_Localisation" USING btre
 
 
 --
--- TOC entry 5241 (class 1259 OID 56467)
+-- TOC entry 5266 (class 1259 OID 56467)
 -- Name: idx_entite_loc_entite; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33201,7 +33407,7 @@ CREATE INDEX idx_entite_loc_entite ON systeme."T_Entite_Localisation" USING btre
 
 
 --
--- TOC entry 5155 (class 1259 OID 56010)
+-- TOC entry 5180 (class 1259 OID 56010)
 -- Name: idx_entite_nom; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33209,7 +33415,7 @@ CREATE INDEX idx_entite_nom ON systeme."T_Entite" USING btree ("NomEntite");
 
 
 --
--- TOC entry 5189 (class 1259 OID 50388)
+-- TOC entry 5214 (class 1259 OID 50388)
 -- Name: idx_fk_licence_entite; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33217,7 +33423,7 @@ CREATE INDEX idx_fk_licence_entite ON systeme."T_Licence" USING btree ("IdEntite
 
 
 --
--- TOC entry 5190 (class 1259 OID 50389)
+-- TOC entry 5215 (class 1259 OID 50389)
 -- Name: idx_fk_licence_statut; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33225,7 +33431,7 @@ CREATE INDEX idx_fk_licence_statut ON systeme."T_Licence" USING btree ("IdStatut
 
 
 --
--- TOC entry 5278 (class 1259 OID 63795)
+-- TOC entry 5303 (class 1259 OID 63795)
 -- Name: idx_fkcorrespondance_category; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33233,7 +33439,7 @@ CREATE INDEX idx_fkcorrespondance_category ON systeme."T_Fk_Correspondance" USIN
 
 
 --
--- TOC entry 5279 (class 1259 OID 63794)
+-- TOC entry 5304 (class 1259 OID 63794)
 -- Name: idx_fkcorrespondance_scope; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33241,7 +33447,7 @@ CREATE INDEX idx_fkcorrespondance_scope ON systeme."T_Fk_Correspondance" USING b
 
 
 --
--- TOC entry 5280 (class 1259 OID 63793)
+-- TOC entry 5305 (class 1259 OID 63793)
 -- Name: idx_fkcorrespondance_source; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33249,7 +33455,7 @@ CREATE INDEX idx_fkcorrespondance_source ON systeme."T_Fk_Correspondance" USING 
 
 
 --
--- TOC entry 5281 (class 1259 OID 63796)
+-- TOC entry 5306 (class 1259 OID 63796)
 -- Name: idx_fkcorrespondance_updatedby; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33257,7 +33463,7 @@ CREATE INDEX idx_fkcorrespondance_updatedby ON systeme."T_Fk_Correspondance" USI
 
 
 --
--- TOC entry 5171 (class 1259 OID 56468)
+-- TOC entry 5196 (class 1259 OID 56468)
 -- Name: idx_login_entite; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33265,7 +33471,7 @@ CREATE INDEX idx_login_entite ON systeme."T_Login" USING btree ("IdEntiteFk");
 
 
 --
--- TOC entry 5172 (class 1259 OID 56315)
+-- TOC entry 5197 (class 1259 OID 56315)
 -- Name: idx_login_type; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33273,7 +33479,7 @@ CREATE INDEX idx_login_type ON systeme."T_Login" USING btree ("IdTypeLoginFk");
 
 
 --
--- TOC entry 5173 (class 1259 OID 56314)
+-- TOC entry 5198 (class 1259 OID 56314)
 -- Name: idx_login_user_date; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33281,7 +33487,7 @@ CREATE INDEX idx_login_user_date ON systeme."T_Login" USING btree ("IdUserFk", "
 
 
 --
--- TOC entry 5162 (class 1259 OID 56447)
+-- TOC entry 5187 (class 1259 OID 56447)
 -- Name: idx_user_entite; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33289,7 +33495,7 @@ CREATE INDEX idx_user_entite ON systeme."T_Utilisateurs" USING btree ("IdEntiteF
 
 
 --
--- TOC entry 5163 (class 1259 OID 50179)
+-- TOC entry 5188 (class 1259 OID 50179)
 -- Name: idx_utilisateur_date_creation; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33297,7 +33503,7 @@ CREATE INDEX idx_utilisateur_date_creation ON systeme."T_Utilisateurs" USING btr
 
 
 --
--- TOC entry 5164 (class 1259 OID 50180)
+-- TOC entry 5189 (class 1259 OID 50180)
 -- Name: idx_utilisateur_nom; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33305,7 +33511,7 @@ CREATE INDEX idx_utilisateur_nom ON systeme."T_Utilisateurs" USING btree ("NomUs
 
 
 --
--- TOC entry 5165 (class 1259 OID 50181)
+-- TOC entry 5190 (class 1259 OID 50181)
 -- Name: idx_utilisateur_phone; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33313,7 +33519,7 @@ CREATE INDEX idx_utilisateur_phone ON systeme."T_Utilisateurs" USING btree ("Pho
 
 
 --
--- TOC entry 5166 (class 1259 OID 50182)
+-- TOC entry 5191 (class 1259 OID 50182)
 -- Name: idx_utilisateur_role; Type: INDEX; Schema: systeme; Owner: postgres
 --
 
@@ -33321,7 +33527,7 @@ CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRo
 
 
 --
--- TOC entry 5380 (class 2620 OID 63931)
+-- TOC entry 5415 (class 2620 OID 63931)
 -- Name: T_Article tr_crud_article_after; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33329,7 +33535,7 @@ CREATE TRIGGER tr_crud_article_after AFTER INSERT OR UPDATE ON logistique."T_Art
 
 
 --
--- TOC entry 5381 (class 2620 OID 63930)
+-- TOC entry 5416 (class 2620 OID 63930)
 -- Name: T_Article tr_crud_article_before; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33337,7 +33543,7 @@ CREATE TRIGGER tr_crud_article_before BEFORE INSERT OR DELETE OR UPDATE ON logis
 
 
 --
--- TOC entry 5383 (class 2620 OID 63934)
+-- TOC entry 5418 (class 2620 OID 63934)
 -- Name: T_Commande tr_crud_commande; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33345,7 +33551,7 @@ CREATE TRIGGER tr_crud_commande AFTER INSERT OR UPDATE ON logistique."T_Commande
 
 
 --
--- TOC entry 5385 (class 2620 OID 63937)
+-- TOC entry 5420 (class 2620 OID 63937)
 -- Name: T_CommandeDetail tr_crud_commandedetail; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33353,7 +33559,7 @@ CREATE TRIGGER tr_crud_commandedetail AFTER INSERT OR UPDATE ON logistique."T_Co
 
 
 --
--- TOC entry 5388 (class 2620 OID 63948)
+-- TOC entry 5423 (class 2620 OID 63948)
 -- Name: T_Reglements tr_crud_reglement; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33361,7 +33567,7 @@ CREATE TRIGGER tr_crud_reglement BEFORE INSERT OR UPDATE ON logistique."T_Reglem
 
 
 --
--- TOC entry 5386 (class 2620 OID 63938)
+-- TOC entry 5421 (class 2620 OID 63938)
 -- Name: T_CommandeDetail tr_delete_commandedetail; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33369,7 +33575,7 @@ CREATE TRIGGER tr_delete_commandedetail BEFORE DELETE ON logistique."T_CommandeD
 
 
 --
--- TOC entry 5384 (class 2620 OID 63945)
+-- TOC entry 5419 (class 2620 OID 63945)
 -- Name: T_Commande tr_lock_commande_cloturee; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33377,7 +33583,7 @@ CREATE TRIGGER tr_lock_commande_cloturee BEFORE DELETE OR UPDATE ON logistique."
 
 
 --
--- TOC entry 5382 (class 2620 OID 63943)
+-- TOC entry 5417 (class 2620 OID 63943)
 -- Name: T_Mouvement tr_lock_mouvement_direct; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33385,7 +33591,7 @@ CREATE TRIGGER tr_lock_mouvement_direct BEFORE INSERT OR DELETE OR UPDATE ON log
 
 
 --
--- TOC entry 5387 (class 2620 OID 63941)
+-- TOC entry 5422 (class 2620 OID 63941)
 -- Name: T_CommandeDetail tr_totaux_commande; Type: TRIGGER; Schema: logistique; Owner: postgres
 --
 
@@ -33393,7 +33599,7 @@ CREATE TRIGGER tr_totaux_commande AFTER INSERT OR DELETE OR UPDATE ON logistique
 
 
 --
--- TOC entry 5376 (class 2620 OID 55469)
+-- TOC entry 5411 (class 2620 OID 55469)
 -- Name: T_Paiement trigger_archive_paiements; Type: TRIGGER; Schema: operations; Owner: postgres
 --
 
@@ -33403,8 +33609,8 @@ ALTER TABLE operations."T_Paiement" DISABLE TRIGGER trigger_archive_paiements;
 
 
 --
--- TOC entry 5686 (class 0 OID 0)
--- Dependencies: 5376
+-- TOC entry 5727 (class 0 OID 0)
+-- Dependencies: 5411
 -- Name: TRIGGER trigger_archive_paiements ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -33412,7 +33618,7 @@ COMMENT ON TRIGGER trigger_archive_paiements ON operations."T_Paiement" IS 'Apr�
 
 
 --
--- TOC entry 5377 (class 2620 OID 55590)
+-- TOC entry 5412 (class 2620 OID 55590)
 -- Name: T_Paiement trigger_audit_T_Paiement; Type: TRIGGER; Schema: operations; Owner: postgres
 --
 
@@ -33420,7 +33626,7 @@ CREATE TRIGGER "trigger_audit_T_Paiement" AFTER INSERT OR DELETE OR UPDATE ON op
 
 
 --
--- TOC entry 5378 (class 2620 OID 55589)
+-- TOC entry 5413 (class 2620 OID 55589)
 -- Name: T_Paiement trigger_gestion_caisse_on_paiement; Type: TRIGGER; Schema: operations; Owner: postgres
 --
 
@@ -33428,7 +33634,7 @@ CREATE TRIGGER trigger_gestion_caisse_on_paiement AFTER INSERT OR DELETE OR UPDA
 
 
 --
--- TOC entry 5379 (class 2620 OID 55473)
+-- TOC entry 5414 (class 2620 OID 55473)
 -- Name: T_Paiement trigger_notification_payment_success; Type: TRIGGER; Schema: operations; Owner: postgres
 --
 
@@ -33436,8 +33642,8 @@ CREATE TRIGGER trigger_notification_payment_success AFTER INSERT OR UPDATE ON op
 
 
 --
--- TOC entry 5687 (class 0 OID 0)
--- Dependencies: 5379
+-- TOC entry 5728 (class 0 OID 0)
+-- Dependencies: 5414
 -- Name: TRIGGER trigger_notification_payment_success ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -33445,7 +33651,7 @@ COMMENT ON TRIGGER trigger_notification_payment_success ON operations."T_Paiemen
 
 
 --
--- TOC entry 5375 (class 2620 OID 55592)
+-- TOC entry 5410 (class 2620 OID 55592)
 -- Name: T_Caisse trigger_prevention_delete_caisse; Type: TRIGGER; Schema: operations; Owner: postgres
 --
 
@@ -33453,8 +33659,8 @@ CREATE TRIGGER trigger_prevention_delete_caisse BEFORE DELETE ON operations."T_C
 
 
 --
--- TOC entry 5688 (class 0 OID 0)
--- Dependencies: 5375
+-- TOC entry 5729 (class 0 OID 0)
+-- Dependencies: 5410
 -- Name: TRIGGER trigger_prevention_delete_caisse ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: postgres
 --
 
@@ -33462,7 +33668,15 @@ COMMENT ON TRIGGER trigger_prevention_delete_caisse ON operations."T_Caisse" IS 
 
 
 --
--- TOC entry 5370 (class 2620 OID 55504)
+-- TOC entry 5424 (class 2620 OID 70904)
+-- Name: T_Admin_UI_Setting tr_admin_ui_setting_set_updated_at; Type: TRIGGER; Schema: systeme; Owner: postgres
+--
+
+CREATE TRIGGER tr_admin_ui_setting_set_updated_at BEFORE UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_set_updated_at();
+
+
+--
+-- TOC entry 5405 (class 2620 OID 55504)
 -- Name: T_Login trigger_audit_T_Login; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33470,8 +33684,8 @@ CREATE TRIGGER "trigger_audit_T_Login" AFTER INSERT OR DELETE OR UPDATE ON syste
 
 
 --
--- TOC entry 5689 (class 0 OID 0)
--- Dependencies: 5370
+-- TOC entry 5730 (class 0 OID 0)
+-- Dependencies: 5405
 -- Name: TRIGGER "trigger_audit_T_Login" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33479,7 +33693,7 @@ COMMENT ON TRIGGER "trigger_audit_T_Login" ON systeme."T_Login" IS 'Audit INSERT
 
 
 --
--- TOC entry 5366 (class 2620 OID 55505)
+-- TOC entry 5401 (class 2620 OID 55505)
 -- Name: T_Utilisateurs trigger_audit_T_Utilisateurs; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33487,8 +33701,8 @@ CREATE TRIGGER "trigger_audit_T_Utilisateurs" AFTER INSERT OR DELETE OR UPDATE O
 
 
 --
--- TOC entry 5690 (class 0 OID 0)
--- Dependencies: 5366
+-- TOC entry 5731 (class 0 OID 0)
+-- Dependencies: 5401
 -- Name: TRIGGER "trigger_audit_T_Utilisateurs" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33496,7 +33710,7 @@ COMMENT ON TRIGGER "trigger_audit_T_Utilisateurs" ON systeme."T_Utilisateurs" IS
 
 
 --
--- TOC entry 5371 (class 2620 OID 55503)
+-- TOC entry 5406 (class 2620 OID 55503)
 -- Name: T_Licence trigger_audit_log_T_Licence; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33504,8 +33718,8 @@ CREATE TRIGGER "trigger_audit_log_T_Licence" AFTER INSERT OR DELETE OR UPDATE ON
 
 
 --
--- TOC entry 5691 (class 0 OID 0)
--- Dependencies: 5371
+-- TOC entry 5732 (class 0 OID 0)
+-- Dependencies: 5406
 -- Name: TRIGGER "trigger_audit_log_T_Licence" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33513,7 +33727,7 @@ COMMENT ON TRIGGER "trigger_audit_log_T_Licence" ON systeme."T_Licence" IS 'Audi
 
 
 --
--- TOC entry 5367 (class 2620 OID 55507)
+-- TOC entry 5402 (class 2620 OID 55507)
 -- Name: T_Utilisateurs trigger_format_phone_number; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33521,8 +33735,8 @@ CREATE TRIGGER trigger_format_phone_number BEFORE INSERT OR UPDATE ON systeme."T
 
 
 --
--- TOC entry 5692 (class 0 OID 0)
--- Dependencies: 5367
+-- TOC entry 5733 (class 0 OID 0)
+-- Dependencies: 5402
 -- Name: TRIGGER trigger_format_phone_number ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33530,7 +33744,7 @@ COMMENT ON TRIGGER trigger_format_phone_number ON systeme."T_Utilisateurs" IS 'N
 
 
 --
--- TOC entry 5372 (class 2620 OID 55517)
+-- TOC entry 5407 (class 2620 OID 55517)
 -- Name: T_Licence trigger_notify_licence_expiry; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33538,8 +33752,8 @@ CREATE TRIGGER trigger_notify_licence_expiry AFTER INSERT OR UPDATE ON systeme."
 
 
 --
--- TOC entry 5693 (class 0 OID 0)
--- Dependencies: 5372
+-- TOC entry 5734 (class 0 OID 0)
+-- Dependencies: 5407
 -- Name: TRIGGER trigger_notify_licence_expiry ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33547,7 +33761,7 @@ COMMENT ON TRIGGER trigger_notify_licence_expiry ON systeme."T_Licence" IS 'Noti
 
 
 --
--- TOC entry 5373 (class 2620 OID 55515)
+-- TOC entry 5408 (class 2620 OID 55515)
 -- Name: T_Licence trigger_prevent_multiple_licenses; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33555,8 +33769,8 @@ CREATE TRIGGER trigger_prevent_multiple_licenses BEFORE INSERT ON systeme."T_Lic
 
 
 --
--- TOC entry 5694 (class 0 OID 0)
--- Dependencies: 5373
+-- TOC entry 5735 (class 0 OID 0)
+-- Dependencies: 5408
 -- Name: TRIGGER trigger_prevent_multiple_licenses ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33564,7 +33778,7 @@ COMMENT ON TRIGGER trigger_prevent_multiple_licenses ON systeme."T_Licence" IS '
 
 
 --
--- TOC entry 5368 (class 2620 OID 55511)
+-- TOC entry 5403 (class 2620 OID 55511)
 -- Name: T_Utilisateurs trigger_prevention_delete_utilisateur; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33572,8 +33786,8 @@ CREATE TRIGGER trigger_prevention_delete_utilisateur BEFORE DELETE ON systeme."T
 
 
 --
--- TOC entry 5695 (class 0 OID 0)
--- Dependencies: 5368
+-- TOC entry 5736 (class 0 OID 0)
+-- Dependencies: 5403
 -- Name: TRIGGER trigger_prevention_delete_utilisateur ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33581,7 +33795,7 @@ COMMENT ON TRIGGER trigger_prevention_delete_utilisateur ON systeme."T_Utilisate
 
 
 --
--- TOC entry 5369 (class 2620 OID 55509)
+-- TOC entry 5404 (class 2620 OID 55509)
 -- Name: T_Utilisateurs trigger_update_date_modification; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33589,8 +33803,8 @@ CREATE TRIGGER trigger_update_date_modification BEFORE UPDATE ON systeme."T_Util
 
 
 --
--- TOC entry 5696 (class 0 OID 0)
--- Dependencies: 5369
+-- TOC entry 5737 (class 0 OID 0)
+-- Dependencies: 5404
 -- Name: TRIGGER trigger_update_date_modification ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33598,7 +33812,7 @@ COMMENT ON TRIGGER trigger_update_date_modification ON systeme."T_Utilisateurs" 
 
 
 --
--- TOC entry 5374 (class 2620 OID 55513)
+-- TOC entry 5409 (class 2620 OID 55513)
 -- Name: T_Licence trigger_update_licence_status; Type: TRIGGER; Schema: systeme; Owner: postgres
 --
 
@@ -33606,8 +33820,8 @@ CREATE TRIGGER trigger_update_licence_status BEFORE INSERT OR UPDATE ON systeme.
 
 
 --
--- TOC entry 5697 (class 0 OID 0)
--- Dependencies: 5374
+-- TOC entry 5738 (class 0 OID 0)
+-- Dependencies: 5409
 -- Name: TRIGGER trigger_update_licence_status ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: postgres
 --
 
@@ -33615,7 +33829,7 @@ COMMENT ON TRIGGER trigger_update_licence_status ON systeme."T_Licence" IS 'Met 
 
 
 --
--- TOC entry 5351 (class 2606 OID 55691)
+-- TOC entry 5385 (class 2606 OID 55691)
 -- Name: T_Recherche Fk_Recherche_Article; Type: FK CONSTRAINT; Schema: analytics; Owner: postgres
 --
 
@@ -33624,7 +33838,7 @@ ALTER TABLE ONLY analytics."T_Recherche"
 
 
 --
--- TOC entry 5352 (class 2606 OID 55696)
+-- TOC entry 5386 (class 2606 OID 55696)
 -- Name: T_Recherche Fk_Recherche_Entite; Type: FK CONSTRAINT; Schema: analytics; Owner: postgres
 --
 
@@ -33633,7 +33847,7 @@ ALTER TABLE ONLY analytics."T_Recherche"
 
 
 --
--- TOC entry 5353 (class 2606 OID 55701)
+-- TOC entry 5387 (class 2606 OID 55701)
 -- Name: T_Recherche Fk_Recherche_Specialite; Type: FK CONSTRAINT; Schema: analytics; Owner: postgres
 --
 
@@ -33642,7 +33856,7 @@ ALTER TABLE ONLY analytics."T_Recherche"
 
 
 --
--- TOC entry 5354 (class 2606 OID 55686)
+-- TOC entry 5388 (class 2606 OID 55686)
 -- Name: T_Recherche Fk_Recherche_User; Type: FK CONSTRAINT; Schema: analytics; Owner: postgres
 --
 
@@ -33651,7 +33865,7 @@ ALTER TABLE ONLY analytics."T_Recherche"
 
 
 --
--- TOC entry 5316 (class 2606 OID 50284)
+-- TOC entry 5350 (class 2606 OID 50284)
 -- Name: T_Chat AuthorIdFk; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33660,7 +33874,7 @@ ALTER TABLE ONLY communication."T_Chat"
 
 
 --
--- TOC entry 5317 (class 2606 OID 62707)
+-- TOC entry 5351 (class 2606 OID 62707)
 -- Name: T_Chat Fk_Chat_Discussion; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33669,7 +33883,7 @@ ALTER TABLE ONLY communication."T_Chat"
 
 
 --
--- TOC entry 5361 (class 2606 OID 62700)
+-- TOC entry 5395 (class 2606 OID 62700)
 -- Name: T_Discussion Fk_Discussion_Entite; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33678,7 +33892,7 @@ ALTER TABLE ONLY communication."T_Discussion"
 
 
 --
--- TOC entry 5362 (class 2606 OID 62695)
+-- TOC entry 5396 (class 2606 OID 62695)
 -- Name: T_Discussion Fk_Discussion_Professionnel; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33687,7 +33901,7 @@ ALTER TABLE ONLY communication."T_Discussion"
 
 
 --
--- TOC entry 5363 (class 2606 OID 62690)
+-- TOC entry 5397 (class 2606 OID 62690)
 -- Name: T_Discussion Fk_Discussion_UserClient; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33696,7 +33910,7 @@ ALTER TABLE ONLY communication."T_Discussion"
 
 
 --
--- TOC entry 5318 (class 2606 OID 50300)
+-- TOC entry 5352 (class 2606 OID 50300)
 -- Name: T_Communication Fk_IdEntite; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33705,7 +33919,7 @@ ALTER TABLE ONLY communication."T_Communication"
 
 
 --
--- TOC entry 5319 (class 2606 OID 50305)
+-- TOC entry 5353 (class 2606 OID 50305)
 -- Name: T_Communication Fk_IdTypeCommunication; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33714,7 +33928,7 @@ ALTER TABLE ONLY communication."T_Communication"
 
 
 --
--- TOC entry 5320 (class 2606 OID 50310)
+-- TOC entry 5354 (class 2606 OID 50310)
 -- Name: T_Communication Fk_IdUser; Type: FK CONSTRAINT; Schema: communication; Owner: postgres
 --
 
@@ -33723,7 +33937,7 @@ ALTER TABLE ONLY communication."T_Communication"
 
 
 --
--- TOC entry 5296 (class 2606 OID 63018)
+-- TOC entry 5330 (class 2606 OID 63018)
 -- Name: T_Niveau_4 Fk_ID_DispoReseauNiveau_4; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33732,7 +33946,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5302 (class 2606 OID 63038)
+-- TOC entry 5336 (class 2606 OID 63038)
 -- Name: T_Niveau_5 Fk_ID_DispoReseauNiveau_5; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33741,7 +33955,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5283 (class 2606 OID 50664)
+-- TOC entry 5317 (class 2606 OID 50664)
 -- Name: T_Niveau_1 Fk_ID_Niveau_0; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33750,7 +33964,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_1"
 
 
 --
--- TOC entry 5285 (class 2606 OID 50674)
+-- TOC entry 5319 (class 2606 OID 50674)
 -- Name: T_Niveau_2 Fk_ID_Niveau_1; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33759,7 +33973,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5284 (class 2606 OID 50669)
+-- TOC entry 5318 (class 2606 OID 50669)
 -- Name: T_Niveau_1 Fk_ID_Niveau_1_Old; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33768,7 +33982,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_1"
 
 
 --
--- TOC entry 5290 (class 2606 OID 50699)
+-- TOC entry 5324 (class 2606 OID 50699)
 -- Name: T_Niveau_3 Fk_ID_Niveau_2; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33777,7 +33991,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5297 (class 2606 OID 50729)
+-- TOC entry 5331 (class 2606 OID 50729)
 -- Name: T_Niveau_4 Fk_ID_Niveau_3; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33786,7 +34000,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5303 (class 2606 OID 56032)
+-- TOC entry 5337 (class 2606 OID 56032)
 -- Name: T_Niveau_5 Fk_ID_Niveau_3_N5; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33795,7 +34009,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5304 (class 2606 OID 56027)
+-- TOC entry 5338 (class 2606 OID 56027)
 -- Name: T_Niveau_5 Fk_ID_Niveau_4; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33804,7 +34018,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5286 (class 2606 OID 62988)
+-- TOC entry 5320 (class 2606 OID 62988)
 -- Name: T_Niveau_2 Fk_ID_StatusDeploiFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33813,7 +34027,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5291 (class 2606 OID 63003)
+-- TOC entry 5325 (class 2606 OID 63003)
 -- Name: T_Niveau_3 Fk_ID_StatutDeploieFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33822,7 +34036,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5298 (class 2606 OID 63033)
+-- TOC entry 5332 (class 2606 OID 63033)
 -- Name: T_Niveau_4 Fk_ID_StatutDeploiementNiveau_4; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33831,7 +34045,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5305 (class 2606 OID 63053)
+-- TOC entry 5339 (class 2606 OID 63053)
 -- Name: T_Niveau_5 Fk_ID_StatutDeploiementNiveau_5; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33840,7 +34054,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5287 (class 2606 OID 62983)
+-- TOC entry 5321 (class 2606 OID 62983)
 -- Name: T_Niveau_2 Fk_ID_StatutNiveau_2; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33849,7 +34063,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5292 (class 2606 OID 62998)
+-- TOC entry 5326 (class 2606 OID 62998)
 -- Name: T_Niveau_3 Fk_ID_StatutNiveau_3; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33858,7 +34072,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5299 (class 2606 OID 63028)
+-- TOC entry 5333 (class 2606 OID 63028)
 -- Name: T_Niveau_4 Fk_ID_StatutNiveau_4; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33867,7 +34081,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5306 (class 2606 OID 63048)
+-- TOC entry 5340 (class 2606 OID 63048)
 -- Name: T_Niveau_5 Fk_ID_StatutNiveau_5; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33876,7 +34090,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5288 (class 2606 OID 50679)
+-- TOC entry 5322 (class 2606 OID 50679)
 -- Name: T_Niveau_2 Fk_ID_TypeNiveau_2; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33885,7 +34099,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5293 (class 2606 OID 50704)
+-- TOC entry 5327 (class 2606 OID 50704)
 -- Name: T_Niveau_3 Fk_ID_TypeNiveau_2; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33894,7 +34108,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5300 (class 2606 OID 50734)
+-- TOC entry 5334 (class 2606 OID 50734)
 -- Name: T_Niveau_4 Fk_ID_TypeNiveau_4; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33903,7 +34117,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5307 (class 2606 OID 63058)
+-- TOC entry 5341 (class 2606 OID 63058)
 -- Name: T_Niveau_5 Fk_ID_TypeToitFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33912,7 +34126,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5294 (class 2606 OID 63008)
+-- TOC entry 5328 (class 2606 OID 63008)
 -- Name: T_Niveau_3 Fk_ID_VoieAccesANTBCZFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33921,7 +34135,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5289 (class 2606 OID 62993)
+-- TOC entry 5323 (class 2606 OID 62993)
 -- Name: T_Niveau_2 Fk_ID_VoieAccesDPSANTFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33930,7 +34144,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_2"
 
 
 --
--- TOC entry 5295 (class 2606 OID 63013)
+-- TOC entry 5329 (class 2606 OID 63013)
 -- Name: T_Niveau_3 Fk_ID_VoieAccesDPSBCZFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33939,7 +34153,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_3"
 
 
 --
--- TOC entry 5301 (class 2606 OID 63023)
+-- TOC entry 5335 (class 2606 OID 63023)
 -- Name: T_Niveau_4 Fk_ID_VoieAccesZsASFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33948,7 +34162,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_4"
 
 
 --
--- TOC entry 5308 (class 2606 OID 63043)
+-- TOC entry 5342 (class 2606 OID 63043)
 -- Name: T_Niveau_5 Fk_ID_VoieAccesZsSiteFk; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: postgres
 --
 
@@ -33957,7 +34171,7 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 
 
 --
--- TOC entry 5343 (class 2606 OID 56340)
+-- TOC entry 5377 (class 2606 OID 56340)
 -- Name: T_CommandeDetail Fk_CmdDetail_Commande; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -33966,7 +34180,7 @@ ALTER TABLE ONLY logistique."T_CommandeDetail"
 
 
 --
--- TOC entry 5345 (class 2606 OID 63654)
+-- TOC entry 5379 (class 2606 OID 63654)
 -- Name: T_Reglements Fk_CodeFacture; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -33975,7 +34189,7 @@ ALTER TABLE ONLY logistique."T_Reglements"
 
 
 --
--- TOC entry 5344 (class 2606 OID 50791)
+-- TOC entry 5378 (class 2606 OID 50791)
 -- Name: T_CommandeDetail Fk_ID_Article; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -33984,7 +34198,7 @@ ALTER TABLE ONLY logistique."T_CommandeDetail"
 
 
 --
--- TOC entry 5331 (class 2606 OID 63608)
+-- TOC entry 5365 (class 2606 OID 63608)
 -- Name: T_Article Fk_ID_CategorieArticle; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -33993,7 +34207,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5338 (class 2606 OID 63633)
+-- TOC entry 5372 (class 2606 OID 63633)
 -- Name: T_Commande Fk_ID_ConditionPaiement; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34002,7 +34216,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5339 (class 2606 OID 63638)
+-- TOC entry 5373 (class 2606 OID 63638)
 -- Name: T_Commande Fk_ID_ModePaiement; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34011,7 +34225,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5340 (class 2606 OID 63628)
+-- TOC entry 5374 (class 2606 OID 63628)
 -- Name: T_Commande Fk_ID_StatutCmd; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34020,7 +34234,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5332 (class 2606 OID 63603)
+-- TOC entry 5366 (class 2606 OID 63603)
 -- Name: T_Article Fk_ID_TypeArticle; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34029,7 +34243,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5341 (class 2606 OID 63623)
+-- TOC entry 5375 (class 2606 OID 63623)
 -- Name: T_Commande Fk_ID_TypeCmd; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34038,7 +34252,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5335 (class 2606 OID 63648)
+-- TOC entry 5369 (class 2606 OID 63648)
 -- Name: T_Mouvement Fk_ID_TypeMvt; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34047,7 +34261,7 @@ ALTER TABLE ONLY logistique."T_Mouvement"
 
 
 --
--- TOC entry 5333 (class 2606 OID 63613)
+-- TOC entry 5367 (class 2606 OID 63613)
 -- Name: T_Article Fk_ID_Unite; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34056,7 +34270,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5334 (class 2606 OID 50749)
+-- TOC entry 5368 (class 2606 OID 50749)
 -- Name: T_Article Fk_ID_User; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34065,7 +34279,7 @@ ALTER TABLE ONLY logistique."T_Article"
 
 
 --
--- TOC entry 5342 (class 2606 OID 50785)
+-- TOC entry 5376 (class 2606 OID 50785)
 -- Name: T_Commande Fk_ID_User; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34074,7 +34288,7 @@ ALTER TABLE ONLY logistique."T_Commande"
 
 
 --
--- TOC entry 5336 (class 2606 OID 56673)
+-- TOC entry 5370 (class 2606 OID 56673)
 -- Name: T_Mouvement Fk_Mvt_Article; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34083,7 +34297,7 @@ ALTER TABLE ONLY logistique."T_Mouvement"
 
 
 --
--- TOC entry 5337 (class 2606 OID 56678)
+-- TOC entry 5371 (class 2606 OID 56678)
 -- Name: T_Mouvement Fk_Mvt_Cmd; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34092,7 +34306,7 @@ ALTER TABLE ONLY logistique."T_Mouvement"
 
 
 --
--- TOC entry 5346 (class 2606 OID 56684)
+-- TOC entry 5380 (class 2606 OID 56684)
 -- Name: T_Reglements Fk_Reg_Mode; Type: FK CONSTRAINT; Schema: logistique; Owner: postgres
 --
 
@@ -34101,7 +34315,7 @@ ALTER TABLE ONLY logistique."T_Reglements"
 
 
 --
--- TOC entry 5323 (class 2606 OID 55929)
+-- TOC entry 5357 (class 2606 OID 55929)
 -- Name: T_Caisse Fk_IdDevise; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34110,7 +34324,7 @@ ALTER TABLE ONLY operations."T_Caisse"
 
 
 --
--- TOC entry 5325 (class 2606 OID 55934)
+-- TOC entry 5359 (class 2606 OID 55934)
 -- Name: T_Paiement Fk_IdDevise; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34119,7 +34333,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5324 (class 2606 OID 50408)
+-- TOC entry 5358 (class 2606 OID 50408)
 -- Name: T_Caisse Fk_IdEntite; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34128,7 +34342,7 @@ ALTER TABLE ONLY operations."T_Caisse"
 
 
 --
--- TOC entry 5326 (class 2606 OID 50593)
+-- TOC entry 5360 (class 2606 OID 50593)
 -- Name: T_Paiement Fk_IdEntite; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34137,7 +34351,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5330 (class 2606 OID 50658)
+-- TOC entry 5364 (class 2606 OID 50658)
 -- Name: T_Paiement_Archive Fk_IdEntite; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34146,7 +34360,7 @@ ALTER TABLE ONLY operations."T_Paiement_Archive"
 
 
 --
--- TOC entry 5327 (class 2606 OID 50598)
+-- TOC entry 5361 (class 2606 OID 50598)
 -- Name: T_Paiement Fk_IdPayeurFk; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34155,7 +34369,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5328 (class 2606 OID 55939)
+-- TOC entry 5362 (class 2606 OID 55939)
 -- Name: T_Paiement Fk_IdTypePaiement; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34164,7 +34378,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5329 (class 2606 OID 55944)
+-- TOC entry 5363 (class 2606 OID 55944)
 -- Name: T_Paiement Fk_IdUserFk; Type: FK CONSTRAINT; Schema: operations; Owner: postgres
 --
 
@@ -34173,7 +34387,7 @@ ALTER TABLE ONLY operations."T_Paiement"
 
 
 --
--- TOC entry 5358 (class 2606 OID 56251)
+-- TOC entry 5392 (class 2606 OID 56251)
 -- Name: T_Professionnel_Entite Fk_ProfEnt_Entite; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34182,7 +34396,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel_Entite"
 
 
 --
--- TOC entry 5359 (class 2606 OID 55906)
+-- TOC entry 5393 (class 2606 OID 55906)
 -- Name: T_Professionnel_Entite Fk_ProfEnt_Prof; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34191,7 +34405,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel_Entite"
 
 
 --
--- TOC entry 5360 (class 2606 OID 56256)
+-- TOC entry 5394 (class 2606 OID 56256)
 -- Name: T_Professionnel_Entite Fk_ProfEnt_TypeLien; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34200,7 +34414,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel_Entite"
 
 
 --
--- TOC entry 5355 (class 2606 OID 56240)
+-- TOC entry 5389 (class 2606 OID 56240)
 -- Name: T_Professionnel Fk_Prof_Specialite; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34209,7 +34423,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5356 (class 2606 OID 56235)
+-- TOC entry 5390 (class 2606 OID 56235)
 -- Name: T_Professionnel Fk_Prof_TypeProfessionnel; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34218,7 +34432,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5357 (class 2606 OID 56230)
+-- TOC entry 5391 (class 2606 OID 56230)
 -- Name: T_Professionnel Fk_Prof_User; Type: FK CONSTRAINT; Schema: professionnel; Owner: postgres
 --
 
@@ -34227,7 +34441,7 @@ ALTER TABLE ONLY professionnel."T_Professionnel"
 
 
 --
--- TOC entry 5282 (class 2606 OID 50634)
+-- TOC entry 5316 (class 2606 OID 50634)
 -- Name: T_Generique Fk_ID_CategorieGenerique; Type: FK CONSTRAINT; Schema: referentiel; Owner: postgres
 --
 
@@ -34236,7 +34450,16 @@ ALTER TABLE ONLY referentiel."T_Generique"
 
 
 --
--- TOC entry 5347 (class 2606 OID 55630)
+-- TOC entry 5400 (class 2606 OID 70893)
+-- Name: T_Admin_UI_Setting Fk_Admin_UI_Setting_User; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
+--
+
+ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
+    ADD CONSTRAINT "Fk_Admin_UI_Setting_User" FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- TOC entry 5381 (class 2606 OID 55630)
 -- Name: T_Entite_Localisation Fk_EL_Entite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34245,7 +34468,7 @@ ALTER TABLE ONLY systeme."T_Entite_Localisation"
 
 
 --
--- TOC entry 5348 (class 2606 OID 55635)
+-- TOC entry 5382 (class 2606 OID 55635)
 -- Name: T_Entite_Localisation Fk_EL_N3; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34254,7 +34477,7 @@ ALTER TABLE ONLY systeme."T_Entite_Localisation"
 
 
 --
--- TOC entry 5349 (class 2606 OID 55640)
+-- TOC entry 5383 (class 2606 OID 55640)
 -- Name: T_Entite_Localisation Fk_EL_N4; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34263,7 +34486,7 @@ ALTER TABLE ONLY systeme."T_Entite_Localisation"
 
 
 --
--- TOC entry 5350 (class 2606 OID 55645)
+-- TOC entry 5384 (class 2606 OID 55645)
 -- Name: T_Entite_Localisation Fk_EL_N5; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34272,7 +34495,7 @@ ALTER TABLE ONLY systeme."T_Entite_Localisation"
 
 
 --
--- TOC entry 5321 (class 2606 OID 55949)
+-- TOC entry 5355 (class 2606 OID 55949)
 -- Name: T_Licence Fk_Entite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34281,7 +34504,7 @@ ALTER TABLE ONLY systeme."T_Licence"
 
 
 --
--- TOC entry 5364 (class 2606 OID 63783)
+-- TOC entry 5398 (class 2606 OID 63783)
 -- Name: T_Fk_Correspondance Fk_FkCorrespondance_Category; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34290,7 +34513,7 @@ ALTER TABLE ONLY systeme."T_Fk_Correspondance"
 
 
 --
--- TOC entry 5365 (class 2606 OID 63788)
+-- TOC entry 5399 (class 2606 OID 63788)
 -- Name: T_Fk_Correspondance Fk_FkCorrespondance_User; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34299,7 +34522,7 @@ ALTER TABLE ONLY systeme."T_Fk_Correspondance"
 
 
 --
--- TOC entry 5310 (class 2606 OID 50005)
+-- TOC entry 5344 (class 2606 OID 50005)
 -- Name: T_Audit_Log Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34308,16 +34531,7 @@ ALTER TABLE ONLY systeme."T_Audit_Log"
 
 
 --
--- TOC entry 5311 (class 2606 OID 50167)
--- Name: T_Utilisateurs Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
---
-
-ALTER TABLE ONLY systeme."T_Utilisateurs"
-    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
-
-
---
--- TOC entry 5313 (class 2606 OID 50206)
+-- TOC entry 5347 (class 2606 OID 50206)
 -- Name: T_Login Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34326,7 +34540,16 @@ ALTER TABLE ONLY systeme."T_Login"
 
 
 --
--- TOC entry 5314 (class 2606 OID 55969)
+-- TOC entry 5345 (class 2606 OID 50167)
+-- Name: T_Utilisateurs Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
+--
+
+ALTER TABLE ONLY systeme."T_Utilisateurs"
+    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- TOC entry 5348 (class 2606 OID 55969)
 -- Name: T_Login Fk_IdTypeLogin; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34335,7 +34558,7 @@ ALTER TABLE ONLY systeme."T_Login"
 
 
 --
--- TOC entry 5315 (class 2606 OID 55974)
+-- TOC entry 5349 (class 2606 OID 55974)
 -- Name: T_Login Fk_IdUserFk; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34344,7 +34567,7 @@ ALTER TABLE ONLY systeme."T_Login"
 
 
 --
--- TOC entry 5312 (class 2606 OID 50172)
+-- TOC entry 5346 (class 2606 OID 50172)
 -- Name: T_Utilisateurs Fk_RoleFk; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34353,7 +34576,7 @@ ALTER TABLE ONLY systeme."T_Utilisateurs"
 
 
 --
--- TOC entry 5322 (class 2606 OID 55954)
+-- TOC entry 5356 (class 2606 OID 55954)
 -- Name: T_Licence Fk_StatutLicence; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34362,7 +34585,7 @@ ALTER TABLE ONLY systeme."T_Licence"
 
 
 --
--- TOC entry 5309 (class 2606 OID 49898)
+-- TOC entry 5343 (class 2606 OID 49898)
 -- Name: T_Entite Fk_TypeEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: postgres
 --
 
@@ -34370,11 +34593,11 @@ ALTER TABLE ONLY systeme."T_Entite"
     ADD CONSTRAINT "Fk_TypeEntite" FOREIGN KEY ("IdTypeEntiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL;
 
 
--- Completed on 2026-04-30 16:47:56
+-- Completed on 2026-05-05 01:33:12
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XmXtgzsmwE3DvTuqi130qhQgS1CHZavy4IKYYFw2ejeH1wu0wYecsrYLsjapGog
+\unrestrict sEi72iHnyfRuuThTAvil43tANshg39ZDRqzkJ3EEgoE2EzlQMSuM1KdydAb7RL4
 

@@ -100,8 +100,16 @@ SELECT fc."ModuleName",
     max(fc."ReferenceSchemaName") AS "ReferenceSchemaName",
     max(fc."ReferenceObjectName") AS "ReferenceObjectName",
     max(fc."ReferenceFieldName") AS "ReferenceFieldName",
-    string_agg(DISTINCT fc."MappingValue"::text, ', '::text ORDER BY fc."MappingValue"::text) AS "MappingValues",
-    string_agg(DISTINCT c."NomCategorieGenerique"::text, ', '::text ORDER BY c."NomCategorieGenerique"::text) AS "CategoryLabels",
+    string_agg(
+        DISTINCT fc."MappingValue"::text,
+        ', '::text
+        ORDER BY fc."MappingValue"::text
+    ) AS "MappingValues",
+    string_agg(
+        DISTINCT c."NomCategorieGenerique"::text,
+        ', '::text
+        ORDER BY c."NomCategorieGenerique"::text
+    ) AS "CategoryLabels",
     bool_or(fc."IsDefaultMapping") AS "HasDefaultMapping",
     bool_or(fc."ValideFkCorrespondance") AS "HasActiveMapping",
     fc."SettingScope",
@@ -237,3 +245,64 @@ SELECT u."IdUser",
 FROM systeme."T_Utilisateurs" u
     LEFT JOIN systeme."T_Entite" e ON e."IdEntite" = u."IdEntiteFk";
 ALTER TABLE systeme."V_User_profil" OWNER TO postgres;
+-- View: systeme.V_Admin_UI_Setting
+-- DROP VIEW systeme."V_Admin_UI_Setting";
+CREATE OR REPLACE VIEW systeme."V_Admin_UI_Setting" AS
+SELECT s."IdAdminUISetting",
+    s."SettingScope",
+    s."ScopeValue",
+    s."SettingKey",
+    s."SettingLabel",
+    s."SettingGroup",
+    s."SettingValue",
+    s."SettingValueJson",
+    s."SettingType",
+    s."DisplayOrder",
+    s."IsEditable",
+    s."IsSystem",
+    s."ValideSetting",
+    s."CreatedAt",
+    s."UpdatedAt",
+    s."UpdatedByUserFk",
+    COALESCE(
+        NULLIF(
+            TRIM(
+                BOTH
+                FROM concat(
+                        COALESCE(u."PrenomUser", ''::character varying),
+                        ' ',
+                        COALESCE(u."NomUser", ''::character varying)
+                    )
+            ),
+            ''::text
+        ),
+        CASE
+            WHEN s."UpdatedByUserFk" IS NOT NULL THEN 'Utilisateur #'::text || s."UpdatedByUserFk"
+            ELSE NULL::text
+        END
+    ) AS "UpdatedByName",
+    s."ObsSetting"
+FROM systeme."T_Admin_UI_Setting" s
+    LEFT JOIN systeme."T_Utilisateurs" u ON u."IdUser" = s."UpdatedByUserFk"
+WHERE s."ValideSetting" = true
+ORDER BY s."SettingGroup",
+    s."DisplayOrder",
+    s."SettingLabel";
+ALTER TABLE systeme."V_Admin_UI_Setting" OWNER TO postgres;
+-- View: systeme.V_Admin_UI_Setting_Group
+-- DROP VIEW systeme."V_Admin_UI_Setting_Group";
+CREATE OR REPLACE VIEW systeme."V_Admin_UI_Setting_Group" AS
+SELECT "SettingGroup",
+    count(*) AS "NbParametres",
+    count(*) FILTER (
+        WHERE "IsEditable" = true
+    ) AS "NbEditables",
+    count(*) FILTER (
+        WHERE "IsSystem" = true
+    ) AS "NbSysteme",
+    max("UpdatedAt") AS "DerniereModification"
+FROM systeme."T_Admin_UI_Setting"
+WHERE "ValideSetting" = true
+GROUP BY "SettingGroup"
+ORDER BY "SettingGroup";
+ALTER TABLE systeme."V_Admin_UI_Setting_Group" OWNER TO postgres;
