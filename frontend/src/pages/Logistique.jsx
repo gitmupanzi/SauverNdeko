@@ -1264,6 +1264,104 @@ export default function Logistique() {
 
             {!referencesLoading && !referencesError ? (
               <div className="logistics-shell-view">
+                {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 ? (
+                  <section className="logistics-screen-filter-card">
+                    <div className="logistics-card-head">
+                      <div className="section-head">
+                        <h3>Correspondances FK</h3>
+                        <p>Parametrez ici les liens des champs secondaires vers `T_Generique` pour la vue active.</p>
+                      </div>
+                      <div className="logistics-card-actions">
+                        <button
+                          type="button"
+                          className="secondary-action"
+                          onClick={() => setShowFkMappingPanel((current) => !current)}
+                        >
+                          {showFkMappingPanel ? "Masquer FK" : "Correspondances FK"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {showFkMappingPanel ? (
+                      <div className="logistics-fk-grid">
+                        {genericMappingStates.map((item) => (
+                          <article key={item.sourceKey} className="logistics-fk-item">
+                            <strong>{item.labels.join(", ")}</strong>
+                            <p>{item.fieldNames.join(", ")}</p>
+                            <small>{item.source}</small>
+                            <small>{`Categorie(s) actives: ${item.effectiveCategoryLabels || "Aucune"}`}</small>
+                            <small>{`${item.optionsCount} option(s) disponible(s)`}</small>
+                            <label className="admin-form-field">
+                              <span>IDs categorie</span>
+                              <input
+                                type="text"
+                                value={item.inputValue}
+                                onChange={(event) => handleGenericCategoryDraftChange(item.sourceKey, event.target.value)}
+                                disabled={item.isLocked}
+                              />
+                            </label>
+                            <div className="admin-editor-actions">
+                              <button
+                                type="button"
+                                className="secondary-action"
+                                onClick={() => handleResetGenericCategoryOverride(item.sourceKey)}
+                                disabled={item.isLocked}
+                              >
+                                Reinitialiser
+                              </button>
+                              <button
+                                type="button"
+                                className="primary-action"
+                                onClick={() => handleApplyGenericCategoryOverride(item.sourceKey)}
+                                disabled={item.isLocked || !item.isValid}
+                              >
+                                Appliquer
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+
+                        {activeDirectMappings.map((mapping) => (
+                          <article key={`${mapping.field}-${mapping.label}`} className="logistics-fk-item">
+                            <strong>{mapping.label}</strong>
+                            <p>{mapping.field}</p>
+                            <small>{mapping.source}</small>
+                          </article>
+                        ))}
+
+                        <article className="logistics-fk-item">
+                          <strong>{sharedFkSyncStatus.title}</strong>
+                          {sharedFkSyncStatus.details.map((detail, index) => (
+                            <small key={`${detail.text}-${index}`}>{detail.text}</small>
+                          ))}
+                          <div className="admin-editor-actions">
+                            <button
+                              type="button"
+                              className="secondary-action"
+                              onClick={handleResetAllFkSettings}
+                              disabled={!hasCustomFkSettings && !hasDirtyGenericDrafts}
+                            >
+                              Tout reinitialiser
+                            </button>
+                            <button
+                              type="button"
+                              className="primary-action"
+                              onClick={handleApplyAllGenericCategoryOverrides}
+                              disabled={hasInvalidGenericDrafts || !hasDirtyGenericDrafts}
+                            >
+                              Tout appliquer
+                            </button>
+                          </div>
+                        </article>
+                      </div>
+                    ) : (
+                      <section className="table-empty-state logistics-collapsed-state">
+                        Ouvrez le panneau pour gerer les correspondances FK de la vue active.
+                      </section>
+                    )}
+                  </section>
+                ) : null}
+
                 {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
                 {activeTab === "articles" ? (
                   <Articles
@@ -1271,6 +1369,7 @@ export default function Logistique() {
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
                     sharedTable={sharedTableFeatures.articles}
+                    onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
                 {activeTab === "commandes" ? (
@@ -1280,6 +1379,7 @@ export default function Logistique() {
                     onDataChanged={bumpRefresh}
                     onOpenDetails={handleOpenDetails}
                     sharedTable={sharedTableFeatures.commandes}
+                    onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
                 {activeTab === "details" ? (
@@ -1289,10 +1389,16 @@ export default function Logistique() {
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
                     sharedTable={sharedTableFeatures.details}
+                    onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
                 {activeTab === "mouvements" ? (
-                  <Mouvements references={references} refreshKey={refreshKey} sharedTable={sharedTableFeatures.mouvements} />
+                  <Mouvements
+                    references={references}
+                    refreshKey={refreshKey}
+                    sharedTable={sharedTableFeatures.mouvements}
+                    onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
+                  />
                 ) : null}
                 {activeTab === "audit" ? <StockAudit refreshKey={refreshKey} /> : null}
                 {activeTab === "alertes" ? <AlertesStock refreshKey={refreshKey} /> : null}
@@ -1307,6 +1413,7 @@ export default function Logistique() {
                     onDataChanged={bumpRefresh}
                     sharedTable={sharedTableFeatures.reglements}
                     onOpenCommande={handleOpenCommande}
+                    onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
               </div>

@@ -95,7 +95,7 @@ function getArticleRecordState(article) {
     : { key: "inactif", label: "Inactif", tone: "info" };
 }
 
-export default function Articles({ references, refreshKey, onDataChanged, sharedTable }) {
+export default function Articles({ references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
   const { user: currentUser } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -489,7 +489,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         >
           Imprimer
         </button>
-        <button type="button" className="logistics-top-action is-sky" disabled>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
           Correspondance FK
         </button>
         <button type="button" className="logistics-top-action is-muted" disabled>
@@ -561,7 +561,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
             columns={tableColumns}
             selectedRowId={selectedArticle?.ID_Article || null}
             onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection={false}
+            enableSelection
             showControls={false}
             defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
             defaultSortColumn="NomArticle"

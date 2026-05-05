@@ -40,7 +40,7 @@ function getMovementTone(row) {
   return "info";
 }
 
-export default function Mouvements({ references, refreshKey, sharedTable }) {
+export default function Mouvements({ references, refreshKey, sharedTable, onToggleFkMappings }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -208,6 +208,9 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
         <button type="button" className="logistics-top-action is-purple" onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>
           Imprimer
         </button>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
+          Correspondance FK
+        </button>
         <button type="button" className="logistics-top-action is-muted" disabled>
           Autres filtres
         </button>
@@ -239,7 +242,20 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
           </label>
           <label className="admin-form-field">
             <span>Periode</span>
-            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+            <div className="logistics-period-range">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                aria-label="Date de debut mouvement"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                aria-label="Date de fin mouvement"
+              />
+            </div>
           </label>
         </div>
       </section>
@@ -252,7 +268,7 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
             rows={visibleRows}
             selectedRowId={selectedMouvement?.ID_Mvt || null}
             onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection={false}
+            enableSelection
             showControls={false}
             defaultPinnedColumns={["DateMvt", "NomArticle"]}
             defaultSortColumn="DateMvt"

@@ -1,87 +1,33 @@
-/* ============================================================================
- VUES LOGISTIQUES AMELIOREES
- SauverNdeko - module logistique
- 
- Objectifs :
- - rendre les vues plus utiles pour le frontend ;
- - fiabiliser les calculs stock, paiement et montants ;
- - aligner les vues analytiques sur le scenario metier valide ;
- - utiliser T_Mouvement.ID_TypeMvtFk comme verite historique du mouvement ;
- - garder les noms de vues existants.
- ============================================================================ */
-BEGIN;
-/* ============================================================================
- 0. SUPPRESSION DES VUES EXISTANTES
- ============================================================================ */
-DROP VIEW IF EXISTS logistique."V_AuditStock";
-DROP VIEW IF EXISTS logistique."V_AuditStock_Theorique";
-DROP VIEW IF EXISTS logistique."V_AlertStock";
-DROP VIEW IF EXISTS logistique."V_Article";
-DROP VIEW IF EXISTS logistique."V_CommandeDetail";
-DROP VIEW IF EXISTS logistique."V_CommandeOverview";
-DROP VIEW IF EXISTS logistique."V_CommandesSansDetails";
-DROP VIEW IF EXISTS logistique."V_ConsoMensuelle";
-DROP VIEW IF EXISTS logistique."V_CouvertureStock";
-DROP VIEW IF EXISTS logistique."V_Mouvement";
-DROP VIEW IF EXISTS logistique."V_SuiviReglements";
-DROP VIEW IF EXISTS logistique."V_Commande";
-DROP VIEW IF EXISTS logistique."V_MouvementStock";
-/* ============================================================================
- 1. V_MOUVEMENTSTOCK
- Verite historique : T_Mouvement.ID_TypeMvtFk.
- La commande est jointe uniquement pour contexte, pas pour determiner le signe.
- ============================================================================ */
-CREATE OR REPLACE VIEW logistique."V_MouvementStock" AS
-SELECT m."ID_Mvt",
-    m."ID_ArticleFk",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    m."ID_cmdFk",
-    c."CodeCmd",
-    c."DateCmd",
-    c."ID_TypeCmdFk" AS "ID_TypeCmdActuel",
-    m."DateHeureAutoMvt",
-    m."DateMvt",
-    m."ID_TypeMvtFk"::integer AS "ID_TypeMvt",
-    g."AbrGenerique" AS "AbrTypeMvt",
-    g."NomGenerique" AS "TypeMvt",
-    COALESCE(m."QteMvt", 0)::integer AS "QteMvt",
-    COALESCE(m."PUMvt", 0)::numeric(12, 2) AS "PUMvt",
-    CASE
-        WHEN g."AbrGenerique" ILIKE 'entr%' THEN 1
-        WHEN g."AbrGenerique" ILIKE 'sort%' THEN -1
-        ELSE 0
-    END::integer AS "SigneStock",
+-- View: logistique.V_AlertStock
+-- DROP VIEW logistique."V_AlertStock";
+CREATE OR REPLACE VIEW logistique."V_AlertStock" AS
+SELECT "ID_Article",
+    "CodeArticleInterne",
+    "NomArticle",
+    "AbrUnite",
+    "QteArticle",
+    "QteMinArticle",
+    "QteACommander",
     (
-        COALESCE(m."QteMvt", 0) * CASE
-            WHEN g."AbrGenerique" ILIKE 'entr%' THEN 1
-            WHEN g."AbrGenerique" ILIKE 'sort%' THEN -1
-            ELSE 0
-        END
-    )::numeric AS "QteMvtSigned",
-    (
-        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0)::numeric
-    )::numeric(14, 2) AS "MontantMvt",
-    (
-        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0)::numeric * CASE
-            WHEN g."AbrGenerique" ILIKE 'entr%' THEN 1
-            WHEN g."AbrGenerique" ILIKE 'sort%' THEN -1
-            ELSE 0
-        END
-    )::numeric(14, 2) AS "MontantMvtSigned",
-    CASE
-        WHEN m."ID_cmdFk" IS NULL THEN 'Ajustement direct article'::text
-        ELSE 'Commande'::text
-    END AS "OrigineMouvement"
-FROM logistique."T_Mouvement" m
-    LEFT JOIN logistique."T_Article" a ON a."ID_Article" = m."ID_ArticleFk"
-    LEFT JOIN logistique."T_Commande" c ON c."ID_Commande" = m."ID_cmdFk"
-    LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = m."ID_TypeMvtFk"
-    AND g."ID_CategorieGeneriqueFk" = 64;
-/* ============================================================================
- 2. V_ARTICLE
- Vue complete pour catalogue, stock, valorisation et peremption.
- ============================================================================ */
+        COALESCE("QteArticle", 0::numeric) - COALESCE("QteMinArticle", 0)::numeric
+    )::numeric(14, 3) AS "Marge",
+    "EtatStock",
+    "EstRupture",
+    "EstAlerteStock",
+    "PrioriteStock",
+    "EtatPeremption",
+    "JoursAvantPeremption",
+    "EstPerime",
+    "EstAlertePeremption"
+FROM logistique."V_Article" a
+WHERE "QteMinArticle" IS NOT NULL
+    AND (
+        "EstRupture" = true
+        OR "EstAlerteStock" = true
+    );
+ALTER TABLE logistique."V_AlertStock" OWNER TO postgres;
+-- View: logistique.V_Article
+-- DROP VIEW logistique."V_Article";
 CREATE OR REPLACE VIEW logistique."V_Article" AS
 SELECT a."ID_Article",
     a."DateHeureAuto",
@@ -101,10 +47,10 @@ SELECT a."ID_Article",
     a."ID_UniteFk",
     unite."AbrGenerique" AS "AbrUnite",
     unite."NomGenerique" AS "Unite",
-    COALESCE(a."QteArticle", 0)::numeric(14, 3) AS "QteArticle",
+    COALESCE(a."QteArticle", 0::numeric)::numeric(14, 3) AS "QteArticle",
     a."QteMinArticle",
     GREATEST(
-        COALESCE(a."QteMinArticle", 0)::numeric - COALESCE(a."QteArticle", 0)::numeric,
+        COALESCE(a."QteMinArticle", 0)::numeric - COALESCE(a."QteArticle", 0::numeric),
         0::numeric
     )::numeric(14, 3) AS "QteACommander",
     CASE
@@ -113,21 +59,17 @@ SELECT a."ID_Article",
         AND COALESCE(a."QteArticle", 0::numeric) <= a."QteMinArticle"::numeric THEN 'Stock faible'::text
         ELSE 'Disponible'::text
     END AS "EtatStock",
-    (
-        COALESCE(a."QteArticle", 0::numeric) <= 0::numeric
-    ) AS "EstRupture",
-    (
-        a."QteMinArticle" IS NOT NULL
-        AND COALESCE(a."QteArticle", 0::numeric) <= a."QteMinArticle"::numeric
-    ) AS "EstAlerteStock",
+    COALESCE(a."QteArticle", 0::numeric) <= 0::numeric AS "EstRupture",
+    a."QteMinArticle" IS NOT NULL
+    AND COALESCE(a."QteArticle", 0::numeric) <= a."QteMinArticle"::numeric AS "EstAlerteStock",
     CASE
         WHEN COALESCE(a."QteArticle", 0::numeric) <= 0::numeric THEN 1
         WHEN a."QteMinArticle" IS NOT NULL
         AND COALESCE(a."QteArticle", 0::numeric) <= a."QteMinArticle"::numeric THEN 2
         ELSE 3
     END AS "PrioriteStock",
-    COALESCE(a."PUArticle", 0)::numeric(12, 2) AS "PUArticle",
-    COALESCE(a."PVArticle", 0)::numeric(12, 2) AS "PVArticle",
+    COALESCE(a."PUArticle", 0::numeric)::numeric(12, 2) AS "PUArticle",
+    COALESCE(a."PVArticle", 0::numeric)::numeric(12, 2) AS "PVArticle",
     (
         COALESCE(a."QteArticle", 0::numeric) * COALESCE(a."PUArticle", 0::numeric)
     )::numeric(14, 2) AS "ValeurStockAchat",
@@ -139,7 +81,7 @@ SELECT a."ID_Article",
     )::numeric(12, 2) AS "MargeUnitaire",
     CASE
         WHEN COALESCE(a."PUArticle", 0::numeric) = 0::numeric THEN NULL::numeric
-        ELSE ROUND(
+        ELSE round(
             (
                 COALESCE(a."PVArticle", 0::numeric) - COALESCE(a."PUArticle", 0::numeric)
             ) / NULLIF(a."PUArticle", 0::numeric) * 100::numeric,
@@ -155,42 +97,30 @@ SELECT a."ID_Article",
         WHEN a."DatePeremptionAlerteArticle" IS NOT NULL
         AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE THEN 'Alerte péremption'::text
         WHEN a."NbreJoursAlerteArticle" IS NOT NULL
-        AND a."DatePeremptionArticle"::date <= CURRENT_DATE + a."NbreJoursAlerteArticle" THEN 'Alerte péremption'::text
+        AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle") THEN 'Alerte péremption'::text
         ELSE 'Valide'::text
     END AS "EtatPeremption",
     CASE
-        WHEN a."DatePeremptionArticle" IS NOT NULL THEN (a."DatePeremptionArticle"::date - CURRENT_DATE)::integer
+        WHEN a."DatePeremptionArticle" IS NOT NULL THEN a."DatePeremptionArticle"::date - CURRENT_DATE
         ELSE NULL::integer
     END AS "JoursAvantPeremption",
-    (
-        a."DatePeremptionArticle" IS NOT NULL
-        AND a."DatePeremptionArticle"::date < CURRENT_DATE
-    ) AS "EstPerime",
-    (
-        a."DatePeremptionArticle" IS NOT NULL
-        AND a."DatePeremptionArticle"::date >= CURRENT_DATE
-        AND (
-            (
-                a."DatePeremptionAlerteArticle" IS NOT NULL
-                AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE
-            )
-            OR (
-                a."NbreJoursAlerteArticle" IS NOT NULL
-                AND a."DatePeremptionArticle"::date <= CURRENT_DATE + a."NbreJoursAlerteArticle"
-            )
-        )
+    a."DatePeremptionArticle" IS NOT NULL
+    AND a."DatePeremptionArticle"::date < CURRENT_DATE AS "EstPerime",
+    a."DatePeremptionArticle" IS NOT NULL
+    AND a."DatePeremptionArticle"::date >= CURRENT_DATE
+    AND (
+        a."DatePeremptionAlerteArticle" IS NOT NULL
+        AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE
+        OR a."NbreJoursAlerteArticle" IS NOT NULL
+        AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")
     ) AS "EstAlertePeremption",
     CASE
         WHEN a."DatePeremptionArticle" IS NULL THEN 4
         WHEN a."DatePeremptionArticle"::date < CURRENT_DATE THEN 1
-        WHEN (
-            a."DatePeremptionAlerteArticle" IS NOT NULL
-            AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE
-        )
-        OR (
-            a."NbreJoursAlerteArticle" IS NOT NULL
-            AND a."DatePeremptionArticle"::date <= CURRENT_DATE + a."NbreJoursAlerteArticle"
-        ) THEN 2
+        WHEN a."DatePeremptionAlerteArticle" IS NOT NULL
+        AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE
+        OR a."NbreJoursAlerteArticle" IS NOT NULL
+        AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle") THEN 2
         ELSE 3
     END AS "PrioritePeremption",
     a."ID_UserFK",
@@ -199,12 +129,12 @@ SELECT a."ID_Article",
         TRIM(
             BOTH
             FROM concat(
-                    COALESCE(u."PrenomUser", ''),
+                    COALESCE(u."PrenomUser", ''::character varying),
                     ' ',
-                    COALESCE(u."NomUser", '')
+                    COALESCE(u."NomUser", ''::character varying)
                 )
         ),
-        ''
+        ''::text
     ) AS "NomComplet",
     CASE
         WHEN COALESCE(a."ValideArticle", true) = false THEN 'Inactif'::text
@@ -218,22 +148,71 @@ FROM logistique."T_Article" a
     LEFT JOIN referentiel."T_Generique" unite ON a."ID_UniteFk" = unite."ID_Generique"
     AND unite."ID_CategorieGeneriqueFk" = 34
     LEFT JOIN systeme."T_Utilisateurs" u ON a."ID_UserFK" = u."IdUser";
-/* ============================================================================
- 3. V_COMMANDE
- Vue principale pour liste de commandes, paiement, details et controle montant.
- ============================================================================ */
+ALTER TABLE logistique."V_Article" OWNER TO postgres;
+-- View: logistique.V_AuditStock
+-- DROP VIEW logistique."V_AuditStock";
+CREATE OR REPLACE VIEW logistique."V_AuditStock" AS
+SELECT "ID_Article",
+    "CodeArticleInterne",
+    "NomArticle",
+    "StockArticle",
+    "StockMouvements",
+    "Ecart",
+    "N_Mouvements",
+    "QteEntree",
+    "QteSortie",
+    "Ecart" = 0::numeric AS "EstStockCoherent",
+    CASE
+        WHEN "Ecart" = 0::numeric THEN 'Cohérent'::text
+        WHEN "Ecart" > 0::numeric THEN 'Stock article supérieur aux mouvements'::text
+        ELSE 'Stock article inférieur aux mouvements'::text
+    END AS "EtatAuditStock"
+FROM logistique.fn_audit_stock(NULL::integer, NULL::timestamp without time zone) fn_audit_stock(
+        "ID_Article",
+        "CodeArticleInterne",
+        "NomArticle",
+        "StockArticle",
+        "StockMouvements",
+        "Ecart",
+        "N_Mouvements",
+        "QteEntree",
+        "QteSortie"
+    );
+ALTER TABLE logistique."V_AuditStock" OWNER TO postgres;
+-- View: logistique.V_AuditStock_Theorique
+-- DROP VIEW logistique."V_AuditStock_Theorique";
+CREATE OR REPLACE VIEW logistique."V_AuditStock_Theorique" AS WITH mvt AS (
+        SELECT v."ID_ArticleFk",
+            sum(v."QteMvtSigned") AS stock_mouvement
+        FROM logistique."V_MouvementStock" v
+        GROUP BY v."ID_ArticleFk"
+    )
+SELECT a."ID_Article",
+    a."CodeArticleInterne",
+    a."NomArticle",
+    COALESCE(a."QteArticle", 0::numeric) AS "StockEnregistre",
+    COALESCE(mvt.stock_mouvement, 0::numeric) AS "StockCalcule",
+    COALESCE(a."QteArticle", 0::numeric) - COALESCE(mvt.stock_mouvement, 0::numeric) AS "Ecart",
+    (
+        COALESCE(a."QteArticle", 0::numeric) - COALESCE(mvt.stock_mouvement, 0::numeric)
+    ) = 0::numeric AS "EstStockCoherent"
+FROM logistique."T_Article" a
+    LEFT JOIN mvt ON mvt."ID_ArticleFk" = a."ID_Article";
+ALTER TABLE logistique."V_AuditStock_Theorique" OWNER TO postgres;
+-- View: logistique.V_Commande
+-- DROP VIEW logistique."V_Commande";
 CREATE OR REPLACE VIEW logistique."V_Commande" AS WITH cd_stats AS (
         SELECT cd."ID_CmdFk",
-            COUNT(*) AS "NbLignes",
-            COUNT(DISTINCT cd."ID_ArticleFk") AS "NbArticlesDistincts",
-            SUM(COALESCE(cd."QteCmdDetail", 0::numeric)) AS "QteTotale",
-            SUM(
+            count(*) AS "NbLignes",
+            count(DISTINCT cd."ID_ArticleFk") AS "NbArticlesDistincts",
+            sum(COALESCE(cd."QteCmdDetail", 0::numeric)) AS "QteTotale",
+            sum(
                 COALESCE(cd."QteCmdDetail", 0::numeric) * COALESCE(cd."PUCmdDetail", 0::numeric)
             ) AS "MontantDetails",
             string_agg(
                 DISTINCT a."NomArticle"::text,
                 ', '::text
-                ORDER BY a."NomArticle"::text
+                ORDER BY (a."NomArticle"::text)
             ) AS "ListeArticles"
         FROM logistique."T_CommandeDetail" cd
             LEFT JOIN logistique."T_Article" a ON a."ID_Article" = cd."ID_ArticleFk"
@@ -241,9 +220,9 @@ CREATE OR REPLACE VIEW logistique."V_Commande" AS WITH cd_stats AS (
     ),
     reg_stats AS (
         SELECT r."CodeFactureFk",
-            SUM(COALESCE(r."MontantRegle", 0::numeric)) AS "TotalRegleReel",
-            COUNT(*) AS "NbReglements",
-            MAX(r."DateReglement") AS "DernierReglement"
+            sum(COALESCE(r."MontantRegle", 0::numeric)) AS "TotalRegleReel",
+            count(*) AS "NbReglements",
+            max(r."DateReglement") AS "DernierReglement"
         FROM logistique."T_Reglements" r
         GROUP BY r."CodeFactureFk"
     )
@@ -254,12 +233,12 @@ SELECT c."ID_Commande",
     type_cmd."AbrGenerique" AS "AbrTypeCmd",
     type_cmd."NomGenerique" AS "TypeCmd",
     CASE
-        WHEN type_cmd."AbrGenerique" ILIKE 'entr%' THEN 1
-        WHEN type_cmd."AbrGenerique" ILIKE 'sort%' THEN -1
+        WHEN type_cmd."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+        WHEN type_cmd."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
         ELSE 0
-    END::integer AS "SigneCommande",
-    (type_cmd."AbrGenerique" ILIKE 'entr%') AS "EstCommandeEntree",
-    (type_cmd."AbrGenerique" ILIKE 'sort%') AS "EstCommandeSortie",
+    END AS "SigneCommande",
+    type_cmd."AbrGenerique"::text ~~* 'entr%'::text AS "EstCommandeEntree",
+    type_cmd."AbrGenerique"::text ~~* 'sort%'::text AS "EstCommandeSortie",
     c."ID_StatutCmdFk",
     c."ID_StatutCmdFk" AS "ID_StatutCmd",
     statut_cmd."AbrGenerique" AS "AbrStatutCmd",
@@ -273,12 +252,12 @@ SELECT c."ID_Commande",
         TRIM(
             BOTH
             FROM concat(
-                    COALESCE(u."PrenomUser", ''),
+                    COALESCE(u."PrenomUser", ''::character varying),
                     ' ',
-                    COALESCE(u."NomUser", '')
+                    COALESCE(u."NomUser", ''::character varying)
                 )
         ),
-        ''
+        ''::text
     ) AS "NomComplet",
     c."CodeCmd",
     c."RefCmd",
@@ -297,7 +276,7 @@ SELECT c."ID_Commande",
     (
         COALESCE(c."MontantTTC", 0::numeric) - COALESCE(reg_stats."TotalRegleReel", 0::numeric)
     )::numeric(12, 2) AS "ResteReel",
-    COALESCE(reg_stats."NbReglements", 0)::bigint AS "NbReglements",
+    COALESCE(reg_stats."NbReglements", 0::bigint) AS "NbReglements",
     reg_stats."DernierReglement",
     c."StatusFacture",
     c."ValideRemiseFacture",
@@ -329,38 +308,34 @@ SELECT c."ID_Commande",
         ) >= COALESCE(c."MontantTTC", 0::numeric) THEN 'Réglée'::text
         ELSE 'Indéterminé'::text
     END AS "EtatPaiement",
-    (
-        c."DateEcheancePaiement" IS NOT NULL
-        AND c."DateEcheancePaiement"::date < CURRENT_DATE
-        AND (
-            COALESCE(c."MontantTTC", 0::numeric) - COALESCE(
-                reg_stats."TotalRegleReel",
-                COALESCE(c."MontantRegleFacture", 0::numeric),
-                0::numeric
-            )
-        ) > 0::numeric
-    ) AS "EstPaiementEnRetard",
+    c."DateEcheancePaiement" IS NOT NULL
+    AND c."DateEcheancePaiement"::date < CURRENT_DATE
+    AND (
+        COALESCE(c."MontantTTC", 0::numeric) - COALESCE(
+            reg_stats."TotalRegleReel",
+            COALESCE(c."MontantRegleFacture", 0::numeric),
+            0::numeric
+        )
+    ) > 0::numeric AS "EstPaiementEnRetard",
     CASE
-        WHEN c."DateEcheancePaiement" IS NOT NULL THEN (c."DateEcheancePaiement"::date - CURRENT_DATE)::integer
+        WHEN c."DateEcheancePaiement" IS NOT NULL THEN c."DateEcheancePaiement"::date - CURRENT_DATE
         ELSE NULL::integer
     END AS "JoursAvantEcheance",
-    COALESCE(cd_stats."NbLignes", 0)::bigint AS "NbLignes",
-    COALESCE(cd_stats."NbArticlesDistincts", 0)::bigint AS "NbArticlesDistincts",
+    COALESCE(cd_stats."NbLignes", 0::bigint) AS "NbLignes",
+    COALESCE(cd_stats."NbArticlesDistincts", 0::bigint) AS "NbArticlesDistincts",
     COALESCE(cd_stats."QteTotale", 0::numeric)::numeric(14, 3) AS "QteTotale",
     COALESCE(cd_stats."MontantDetails", 0::numeric)::numeric(12, 2) AS "MontantDetails",
     cd_stats."ListeArticles",
-    (COALESCE(cd_stats."NbLignes", 0) = 0) AS "EstCommandeSansDetails",
+    COALESCE(cd_stats."NbLignes", 0::bigint) = 0 AS "EstCommandeSansDetails",
     (
         COALESCE(c."MontantHT", 0::numeric) - COALESCE(cd_stats."MontantDetails", 0::numeric)
     )::numeric(12, 2) AS "EcartMontantDetails",
-    (
-        ABS(
-            COALESCE(c."MontantHT", 0::numeric) - COALESCE(cd_stats."MontantDetails", 0::numeric)
-        ) > 0.01
-    ) AS "EstMontantIncoherent",
+    abs(
+        COALESCE(c."MontantHT", 0::numeric) - COALESCE(cd_stats."MontantDetails", 0::numeric)
+    ) > 0.01 AS "EstMontantIncoherent",
     CASE
-        WHEN COALESCE(cd_stats."NbLignes", 0) = 0 THEN 'Sans détails'::text
-        WHEN ABS(
+        WHEN COALESCE(cd_stats."NbLignes", 0::bigint) = 0 THEN 'Sans détails'::text
+        WHEN abs(
             COALESCE(c."MontantHT", 0::numeric) - COALESCE(cd_stats."MontantDetails", 0::numeric)
         ) > 0.01 THEN 'Montant incohérent'::text
         ELSE 'Cohérente'::text
@@ -377,10 +352,9 @@ FROM logistique."T_Commande" c
     AND mode_paiement."ID_CategorieGeneriqueFk" = 36
     LEFT JOIN cd_stats ON cd_stats."ID_CmdFk" = c."ID_Commande"
     LEFT JOIN reg_stats ON reg_stats."CodeFactureFk"::text = c."CodeFacture"::text;
-/* ============================================================================
- 4. V_COMMANDEDETAIL
- Vue detaillee pour lignes de commande.
- ============================================================================ */
+ALTER TABLE logistique."V_Commande" OWNER TO postgres;
+-- View: logistique.V_CommandeDetail
+-- DROP VIEW logistique."V_CommandeDetail";
 CREATE OR REPLACE VIEW logistique."V_CommandeDetail" AS
 SELECT d."ID_CmdFk",
     c."ID_Commande",
@@ -391,10 +365,10 @@ SELECT d."ID_CmdFk",
     type_cmd."AbrGenerique" AS "AbrTypeCmd",
     type_cmd."NomGenerique" AS "TypeCmd",
     CASE
-        WHEN type_cmd."AbrGenerique" ILIKE 'entr%' THEN 1
-        WHEN type_cmd."AbrGenerique" ILIKE 'sort%' THEN -1
+        WHEN type_cmd."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+        WHEN type_cmd."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
         ELSE 0
-    END::integer AS "SigneCommande",
+    END AS "SigneCommande",
     c."ID_StatutCmdFk",
     c."ID_StatutCmdFk" AS "ID_StatutCmd",
     statut_cmd."AbrGenerique" AS "AbrStatutCmd",
@@ -404,18 +378,18 @@ SELECT d."ID_CmdFk",
     a."NomArticle",
     a."ID_UniteFk",
     unite."AbrGenerique" AS "AbrUnite",
-    COALESCE(a."QteArticle", 0)::numeric(14, 3) AS "StockActuel",
+    COALESCE(a."QteArticle", 0::numeric)::numeric(14, 3) AS "StockActuel",
     CASE
-        WHEN type_cmd."AbrGenerique" ILIKE 'sort%' THEN (
+        WHEN type_cmd."AbrGenerique"::text ~~* 'sort%'::text THEN (
             COALESCE(a."QteArticle", 0::numeric) + COALESCE(d."QteCmdDetail", 0::numeric)
         )::numeric(14, 3)
-        WHEN type_cmd."AbrGenerique" ILIKE 'entr%' THEN (
+        WHEN type_cmd."AbrGenerique"::text ~~* 'entr%'::text THEN (
             COALESCE(a."QteArticle", 0::numeric) - COALESCE(d."QteCmdDetail", 0::numeric)
         )::numeric(14, 3)
         ELSE COALESCE(a."QteArticle", 0::numeric)::numeric(14, 3)
     END AS "StockAvantLigneTheorique",
-    COALESCE(d."QteCmdDetail", 0)::numeric(14, 3) AS "QteCmdDetail",
-    COALESCE(d."PUCmdDetail", 0)::numeric(12, 2) AS "PUCmdDetail",
+    COALESCE(d."QteCmdDetail", 0::numeric)::numeric(14, 3) AS "QteCmdDetail",
+    COALESCE(d."PUCmdDetail", 0::numeric)::numeric(12, 2) AS "PUCmdDetail",
     (
         COALESCE(d."QteCmdDetail", 0::numeric) * COALESCE(d."PUCmdDetail", 0::numeric)
     )::numeric(12, 2) AS "MontantLigne",
@@ -425,7 +399,7 @@ SELECT d."ID_CmdFk",
     d."SelectCmdDetail",
     CASE
         WHEN d."QteCmdDetail" IS NULL
-        OR d."QteCmdDetail" <= 0 THEN 'Quantité invalide'::text
+        OR d."QteCmdDetail" <= 0::numeric THEN 'Quantité invalide'::text
         WHEN d."PUCmdDetail" IS NULL THEN 'Prix non renseigné'::text
         ELSE 'Valide'::text
     END AS "EtatLigne"
@@ -438,151 +412,33 @@ FROM logistique."T_CommandeDetail" d
     AND statut_cmd."ID_CategorieGeneriqueFk" = 28
     LEFT JOIN referentiel."T_Generique" unite ON a."ID_UniteFk" = unite."ID_Generique"
     AND unite."ID_CategorieGeneriqueFk" = 34;
-/* ============================================================================
- 5. V_MOUVEMENT
- Vue de lecture des mouvements avec article, commande, signe et montant.
- ============================================================================ */
-CREATE OR REPLACE VIEW logistique."V_Mouvement" AS
-SELECT m."DateHeureAutoMvt",
-    m."DateMvt",
-    m."ID_Mvt",
-    m."ID_TypeMvtFk",
-    g_typemvt."AbrGenerique" AS "TypeMvt",
-    g_typemvt."NomGenerique" AS "NomTypeMvt",
-    m."ID_ArticleFk",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    m."ID_cmdFk",
-    c."CodeCmd",
-    c."DateCmd",
-    COALESCE(m."QteMvt", 0)::integer AS "QteMvt",
-    COALESCE(m."PUMvt", 0)::numeric(12, 2) AS "PUMvt",
-    CASE
-        WHEN g_typemvt."AbrGenerique" ILIKE 'entr%' THEN 1
-        WHEN g_typemvt."AbrGenerique" ILIKE 'sort%' THEN -1
-        ELSE 0
-    END::integer AS "SigneStock",
-    (
-        COALESCE(m."QteMvt", 0) * CASE
-            WHEN g_typemvt."AbrGenerique" ILIKE 'entr%' THEN 1
-            WHEN g_typemvt."AbrGenerique" ILIKE 'sort%' THEN -1
-            ELSE 0
-        END
-    )::numeric AS "QteMvtSigned",
-    (
-        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0)::numeric
-    )::numeric(14, 2) AS "MontantMvt",
-    CASE
-        WHEN m."ID_cmdFk" IS NULL THEN 'Ajustement direct article'::text
-        ELSE 'Commande'::text
-    END AS "OrigineMouvement"
-FROM logistique."T_Mouvement" m
-    LEFT JOIN logistique."T_Article" a ON m."ID_ArticleFk" = a."ID_Article"
-    LEFT JOIN logistique."T_Commande" c ON m."ID_cmdFk" = c."ID_Commande"
-    LEFT JOIN referentiel."T_Generique" g_typemvt ON m."ID_TypeMvtFk" = g_typemvt."ID_Generique"
-    AND g_typemvt."ID_CategorieGeneriqueFk" = 64;
-/* ============================================================================
- 6. V_AUDITSTOCK
- Audit base sur la fonction officielle existante.
- ============================================================================ */
-CREATE OR REPLACE VIEW logistique."V_AuditStock" AS
-SELECT "ID_Article",
-    "CodeArticleInterne",
-    "NomArticle",
-    "StockArticle",
-    "StockMouvements",
-    "Ecart",
-    "N_Mouvements",
-    "QteEntree",
-    "QteSortie",
-    ("Ecart" = 0) AS "EstStockCoherent",
-    CASE
-        WHEN "Ecart" = 0 THEN 'Cohérent'::text
-        WHEN "Ecart" > 0 THEN 'Stock article supérieur aux mouvements'::text
-        ELSE 'Stock article inférieur aux mouvements'::text
-    END AS "EtatAuditStock"
-FROM logistique.fn_audit_stock(NULL::integer, NULL::timestamp without time zone);
-/* ============================================================================
- 7. V_AUDITSTOCK_THEORIQUE
- Audit direct base sur V_MouvementStock.
- ============================================================================ */
-CREATE OR REPLACE VIEW logistique."V_AuditStock_Theorique" AS WITH mvt AS (
-        SELECT v."ID_ArticleFk",
-            SUM(v."QteMvtSigned") AS stock_mouvement
-        FROM logistique."V_MouvementStock" v
-        GROUP BY v."ID_ArticleFk"
-    )
-SELECT a."ID_Article",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    COALESCE(a."QteArticle", 0)::numeric AS "StockEnregistre",
-    COALESCE(mvt.stock_mouvement, 0)::numeric AS "StockCalcule",
-    (
-        COALESCE(a."QteArticle", 0)::numeric - COALESCE(mvt.stock_mouvement, 0)::numeric
-    ) AS "Ecart",
-    (
-        COALESCE(a."QteArticle", 0)::numeric - COALESCE(mvt.stock_mouvement, 0)::numeric = 0
-    ) AS "EstStockCoherent"
-FROM logistique."T_Article" a
-    LEFT JOIN mvt ON mvt."ID_ArticleFk" = a."ID_Article";
-/* ============================================================================
- 8. V_ALERTSTOCK
- Articles en rupture ou en stock faible uniquement.
- ============================================================================ */
-CREATE OR REPLACE VIEW logistique."V_AlertStock" AS
-SELECT a."ID_Article",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    a."AbrUnite",
-    a."QteArticle",
-    a."QteMinArticle",
-    a."QteACommander",
-    (
-        COALESCE(a."QteArticle", 0::numeric) - COALESCE(a."QteMinArticle", 0)::numeric
-    )::numeric(14, 3) AS "Marge",
-    a."EtatStock",
-    a."EstRupture",
-    a."EstAlerteStock",
-    a."PrioriteStock",
-    a."EtatPeremption",
-    a."JoursAvantPeremption",
-    a."EstPerime",
-    a."EstAlertePeremption"
-FROM logistique."V_Article" a
-WHERE a."QteMinArticle" IS NOT NULL
-    AND (
-        a."EstRupture" = true
-        OR a."EstAlerteStock" = true
-    );
-/* ============================================================================
- 9. V_COMMANDEOVERVIEW
- Vue compacte pour cards/tableaux.
- ============================================================================ */
+ALTER TABLE logistique."V_CommandeDetail" OWNER TO postgres;
+-- View: logistique.V_CommandeOverview
+-- DROP VIEW logistique."V_CommandeOverview";
 CREATE OR REPLACE VIEW logistique."V_CommandeOverview" AS
-SELECT c."ID_Commande",
-    c."DateCmd",
-    c."CodeCmd",
-    c."AbrTypeCmd",
-    c."TypeCmd",
-    c."AbrStatutCmd",
-    c."StatutCmd",
-    c."NomClientSaisi",
-    c."MontantHT",
-    c."MontantTTC",
-    c."EtatPaiement",
-    c."StatusFacture",
-    c."NbLignes",
-    c."NbArticlesDistincts",
-    c."QteTotale",
-    c."MontantDetails",
-    c."EstCommandeSansDetails",
-    c."EstMontantIncoherent",
-    c."EtatControleCommande"
+SELECT "ID_Commande",
+    "DateCmd",
+    "CodeCmd",
+    "AbrTypeCmd",
+    "TypeCmd",
+    "AbrStatutCmd",
+    "StatutCmd",
+    "NomClientSaisi",
+    "MontantHT",
+    "MontantTTC",
+    "EtatPaiement",
+    "StatusFacture",
+    "NbLignes",
+    "NbArticlesDistincts",
+    "QteTotale",
+    "MontantDetails",
+    "EstCommandeSansDetails",
+    "EstMontantIncoherent",
+    "EtatControleCommande"
 FROM logistique."V_Commande" c;
-/* ============================================================================
- 10. V_COMMANDESSANSDETAILS
- Commandes vides a traiter.
- ============================================================================ */
+ALTER TABLE logistique."V_CommandeOverview" OWNER TO postgres;
+-- View: logistique.V_CommandesSansDetails
+-- DROP VIEW logistique."V_CommandesSansDetails";
 CREATE OR REPLACE VIEW logistique."V_CommandesSansDetails" AS
 SELECT c."ID_Commande",
     c."DateCmd",
@@ -597,46 +453,48 @@ FROM logistique."T_Commande" c
     LEFT JOIN referentiel."T_Generique" type_cmd ON c."ID_TypeCmdFk" = type_cmd."ID_Generique"
     AND type_cmd."ID_CategorieGeneriqueFk" = 64
 WHERE d."ID_CmdFk" IS NULL
-    AND COALESCE(c."CodeCmd", '') NOT IN ('C_000E', 'C_000S');
-/* ============================================================================
- 11. V_CONSOMENSUELLE
- Consommation mensuelle basee uniquement sur les sorties historiques.
- ============================================================================ */
+    AND (
+        COALESCE(c."CodeCmd", ''::character varying)::text <> ALL (
+            ARRAY ['C_000E'::character varying, 'C_000S'::character varying]::text []
+        )
+    );
+ALTER TABLE logistique."V_CommandesSansDetails" OWNER TO postgres;
+-- View: logistique.V_ConsoMensuelle
+-- DROP VIEW logistique."V_ConsoMensuelle";
 CREATE OR REPLACE VIEW logistique."V_ConsoMensuelle" AS
-SELECT v."ID_ArticleFk" AS "ID_Article",
-    v."NomArticle",
-    date_trunc('month', v."DateMvt")::date AS "Mois",
-    SUM(
+SELECT "ID_ArticleFk" AS "ID_Article",
+    "NomArticle",
+    date_trunc('month'::text, "DateMvt")::date AS "Mois",
+    sum(
         CASE
-            WHEN v."SigneStock" = -1 THEN COALESCE(v."QteMvt", 0)
+            WHEN "SigneStock" = '-1'::integer THEN COALESCE("QteMvt", 0)
             ELSE 0
         END
     )::numeric AS "ConsoMensuelle",
-    SUM(
+    sum(
         CASE
-            WHEN v."SigneStock" = -1 THEN COALESCE(v."MontantMvt", 0)
-            ELSE 0
+            WHEN "SigneStock" = '-1'::integer THEN COALESCE("MontantMvt", 0::numeric)
+            ELSE 0::numeric
         END
     )::numeric(14, 2) AS "ValeurConsoMensuelle"
 FROM logistique."V_MouvementStock" v
-WHERE v."DateMvt" IS NOT NULL
-GROUP BY v."ID_ArticleFk",
-    v."NomArticle",
-    date_trunc('month', v."DateMvt")::date;
-/* ============================================================================
- 12. V_COUVERTURESTOCK
- Couverture basee sur les sorties des 6 derniers mois.
- ============================================================================ */
+WHERE "DateMvt" IS NOT NULL
+GROUP BY "ID_ArticleFk",
+    "NomArticle",
+    (date_trunc('month'::text, "DateMvt")::date);
+ALTER TABLE logistique."V_ConsoMensuelle" OWNER TO postgres;
+-- View: logistique.V_CouvertureStock
+-- DROP VIEW logistique."V_CouvertureStock";
 CREATE OR REPLACE VIEW logistique."V_CouvertureStock" AS WITH conso AS (
         SELECT v."ID_ArticleFk",
-            SUM(
+            sum(
                 CASE
-                    WHEN v."SigneStock" = -1 THEN COALESCE(v."QteMvt", 0)
+                    WHEN v."SigneStock" = '-1'::integer THEN COALESCE(v."QteMvt", 0)
                     ELSE 0
                 END
             )::numeric AS conso_6m
         FROM logistique."V_MouvementStock" v
-        WHERE v."DateMvt" >= (CURRENT_DATE - INTERVAL '6 months')
+        WHERE v."DateMvt" >= (CURRENT_DATE - '6 mons'::interval)
         GROUP BY v."ID_ArticleFk"
     )
 SELECT a."ID_Article",
@@ -644,33 +502,124 @@ SELECT a."ID_Article",
     a."NomArticle",
     a."AbrUnite",
     a."QteArticle" AS "StockActuel",
-    COALESCE(conso.conso_6m, 0)::numeric AS "Conso6Mois",
-    ROUND(COALESCE(conso.conso_6m, 0)::numeric / 6.0, 2) AS "ConsoMoyMensuelle",
+    COALESCE(conso.conso_6m, 0::numeric) AS "Conso6Mois",
+    round(COALESCE(conso.conso_6m, 0::numeric) / 6.0, 2) AS "ConsoMoyMensuelle",
     CASE
-        WHEN COALESCE(conso.conso_6m, 0) = 0 THEN NULL::numeric
-        ELSE ROUND(
-            a."QteArticle" / NULLIF((conso.conso_6m / 6.0), 0),
+        WHEN COALESCE(conso.conso_6m, 0::numeric) = 0::numeric THEN NULL::numeric
+        ELSE round(
+            a."QteArticle" / NULLIF(conso.conso_6m / 6.0, 0::numeric),
             1
         )
     END AS "CouvertureMois",
     CASE
-        WHEN COALESCE(conso.conso_6m, 0) = 0 THEN 'Aucune consommation récente'::text
-        WHEN ROUND(
-            a."QteArticle" / NULLIF((conso.conso_6m / 6.0), 0),
+        WHEN COALESCE(conso.conso_6m, 0::numeric) = 0::numeric THEN 'Aucune consommation récente'::text
+        WHEN round(
+            a."QteArticle" / NULLIF(conso.conso_6m / 6.0, 0::numeric),
             1
-        ) < 1 THEN 'Critique'::text
-        WHEN ROUND(
-            a."QteArticle" / NULLIF((conso.conso_6m / 6.0), 0),
+        ) < 1::numeric THEN 'Critique'::text
+        WHEN round(
+            a."QteArticle" / NULLIF(conso.conso_6m / 6.0, 0::numeric),
             1
-        ) < 3 THEN 'Faible'::text
+        ) < 3::numeric THEN 'Faible'::text
         ELSE 'Correcte'::text
     END AS "EtatCouverture"
 FROM logistique."V_Article" a
     LEFT JOIN conso ON conso."ID_ArticleFk" = a."ID_Article";
-/* ============================================================================
- 13. V_SUIVIREGLEMENTS
- Suivi des reglements par facture.
- ============================================================================ */
+ALTER TABLE logistique."V_CouvertureStock" OWNER TO postgres;
+-- View: logistique.V_Mouvement
+-- DROP VIEW logistique."V_Mouvement";
+CREATE OR REPLACE VIEW logistique."V_Mouvement" AS
+SELECT m."DateHeureAutoMvt",
+    m."DateMvt",
+    m."ID_Mvt",
+    m."ID_TypeMvtFk",
+    g_typemvt."AbrGenerique" AS "TypeMvt",
+    g_typemvt."NomGenerique" AS "NomTypeMvt",
+    m."ID_ArticleFk",
+    a."CodeArticleInterne",
+    a."NomArticle",
+    m."ID_cmdFk",
+    c."CodeCmd",
+    c."DateCmd",
+    COALESCE(m."QteMvt", 0) AS "QteMvt",
+    COALESCE(m."PUMvt", 0::numeric)::numeric(12, 2) AS "PUMvt",
+    CASE
+        WHEN g_typemvt."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+        WHEN g_typemvt."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
+        ELSE 0
+    END AS "SigneStock",
+    (
+        COALESCE(m."QteMvt", 0) * CASE
+            WHEN g_typemvt."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+            WHEN g_typemvt."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
+            ELSE 0
+        END
+    )::numeric AS "QteMvtSigned",
+    (
+        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0::numeric)
+    )::numeric(14, 2) AS "MontantMvt",
+    CASE
+        WHEN m."ID_cmdFk" IS NULL THEN 'Ajustement direct article'::text
+        ELSE 'Commande'::text
+    END AS "OrigineMouvement"
+FROM logistique."T_Mouvement" m
+    LEFT JOIN logistique."T_Article" a ON m."ID_ArticleFk" = a."ID_Article"
+    LEFT JOIN logistique."T_Commande" c ON m."ID_cmdFk" = c."ID_Commande"
+    LEFT JOIN referentiel."T_Generique" g_typemvt ON m."ID_TypeMvtFk" = g_typemvt."ID_Generique"
+    AND g_typemvt."ID_CategorieGeneriqueFk" = 64;
+ALTER TABLE logistique."V_Mouvement" OWNER TO postgres;
+-- View: logistique.V_MouvementStock
+-- DROP VIEW logistique."V_MouvementStock";
+CREATE OR REPLACE VIEW logistique."V_MouvementStock" AS
+SELECT m."ID_Mvt",
+    m."ID_ArticleFk",
+    a."CodeArticleInterne",
+    a."NomArticle",
+    m."ID_cmdFk",
+    c."CodeCmd",
+    c."DateCmd",
+    c."ID_TypeCmdFk" AS "ID_TypeCmdActuel",
+    m."DateHeureAutoMvt",
+    m."DateMvt",
+    m."ID_TypeMvtFk" AS "ID_TypeMvt",
+    g."AbrGenerique" AS "AbrTypeMvt",
+    g."NomGenerique" AS "TypeMvt",
+    COALESCE(m."QteMvt", 0) AS "QteMvt",
+    COALESCE(m."PUMvt", 0::numeric)::numeric(12, 2) AS "PUMvt",
+    CASE
+        WHEN g."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+        WHEN g."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
+        ELSE 0
+    END AS "SigneStock",
+    (
+        COALESCE(m."QteMvt", 0) * CASE
+            WHEN g."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+            WHEN g."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
+            ELSE 0
+        END
+    )::numeric AS "QteMvtSigned",
+    (
+        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0::numeric)
+    )::numeric(14, 2) AS "MontantMvt",
+    (
+        COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0::numeric) * CASE
+            WHEN g."AbrGenerique"::text ~~* 'entr%'::text THEN 1
+            WHEN g."AbrGenerique"::text ~~* 'sort%'::text THEN '-1'::integer
+            ELSE 0
+        END::numeric
+    )::numeric(14, 2) AS "MontantMvtSigned",
+    CASE
+        WHEN m."ID_cmdFk" IS NULL THEN 'Ajustement direct article'::text
+        ELSE 'Commande'::text
+    END AS "OrigineMouvement"
+FROM logistique."T_Mouvement" m
+    LEFT JOIN logistique."T_Article" a ON a."ID_Article" = m."ID_ArticleFk"
+    LEFT JOIN logistique."T_Commande" c ON c."ID_Commande" = m."ID_cmdFk"
+    LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique" = m."ID_TypeMvtFk"
+    AND g."ID_CategorieGeneriqueFk" = 64;
+ALTER TABLE logistique."V_MouvementStock" OWNER TO postgres;
+-- View: logistique.V_SuiviReglements
+-- DROP VIEW logistique."V_SuiviReglements";
 CREATE OR REPLACE VIEW logistique."V_SuiviReglements" AS
 SELECT c."ID_Commande",
     c."CodeCmd",
@@ -679,28 +628,26 @@ SELECT c."ID_Commande",
     c."DateEcheancePaiement",
     c."NomClientSaisi",
     COALESCE(c."MontantTTC", 0::numeric)::numeric(12, 2) AS "MontantTTC",
-    COALESCE(SUM(r."MontantRegle"), 0::numeric)::numeric(12, 2) AS "TotalRegle",
+    COALESCE(sum(r."MontantRegle"), 0::numeric)::numeric(12, 2) AS "TotalRegle",
     (
-        COALESCE(c."MontantTTC", 0::numeric) - COALESCE(SUM(r."MontantRegle"), 0::numeric)
+        COALESCE(c."MontantTTC", 0::numeric) - COALESCE(sum(r."MontantRegle"), 0::numeric)
     )::numeric(12, 2) AS "Reste",
-    COUNT(r."ID_Reglement")::bigint AS "NbReglements",
-    MAX(r."DateReglement") AS "DernierReglement",
+    count(r."ID_Reglement") AS "NbReglements",
+    max(r."DateReglement") AS "DernierReglement",
     CASE
         WHEN c."CodeFacture" IS NULL THEN 'Non facturée'::text
-        WHEN COALESCE(c."MontantTTC", 0::numeric) = 0 THEN 'Montant nul'::text
-        WHEN COALESCE(SUM(r."MontantRegle"), 0::numeric) <= 0 THEN 'Non réglée'::text
-        WHEN COALESCE(SUM(r."MontantRegle"), 0::numeric) < COALESCE(c."MontantTTC", 0::numeric) THEN 'Partiellement réglée'::text
+        WHEN COALESCE(c."MontantTTC", 0::numeric) = 0::numeric THEN 'Montant nul'::text
+        WHEN COALESCE(sum(r."MontantRegle"), 0::numeric) <= 0::numeric THEN 'Non réglée'::text
+        WHEN COALESCE(sum(r."MontantRegle"), 0::numeric) < COALESCE(c."MontantTTC", 0::numeric) THEN 'Partiellement réglée'::text
         ELSE 'Réglée'::text
     END AS "EtatReglement",
-    (
-        c."DateEcheancePaiement" IS NOT NULL
-        AND c."DateEcheancePaiement"::date < CURRENT_DATE
-        AND (
-            COALESCE(c."MontantTTC", 0::numeric) - COALESCE(SUM(r."MontantRegle"), 0::numeric)
-        ) > 0
-    ) AS "EstEnRetard",
+    c."DateEcheancePaiement" IS NOT NULL
+    AND c."DateEcheancePaiement"::date < CURRENT_DATE
+    AND (
+        COALESCE(c."MontantTTC", 0::numeric) - COALESCE(sum(r."MontantRegle"), 0::numeric)
+    ) > 0::numeric AS "EstEnRetard",
     CASE
-        WHEN c."DateEcheancePaiement" IS NOT NULL THEN (c."DateEcheancePaiement"::date - CURRENT_DATE)::integer
+        WHEN c."DateEcheancePaiement" IS NOT NULL THEN c."DateEcheancePaiement"::date - CURRENT_DATE
         ELSE NULL::integer
     END AS "JoursAvantEcheance"
 FROM logistique."T_Commande" c
@@ -712,11 +659,4 @@ GROUP BY c."ID_Commande",
     c."DateEcheancePaiement",
     c."NomClientSaisi",
     c."MontantTTC";
-/* ============================================================================
- 14. VERIFICATION RAPIDE
- ============================================================================ */
-DO $$ BEGIN RAISE NOTICE 'Vues logistiques ameliorees creees avec succes.';
-RAISE NOTICE 'Correction cle : V_MouvementStock utilise uniquement T_Mouvement.ID_TypeMvtFk pour le signe.';
-RAISE NOTICE 'Conseil : executer les SELECT de controle apres ce script.';
-END $$;
-COMMIT;
+ALTER TABLE logistique."V_SuiviReglements" OWNER TO postgres;

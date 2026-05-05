@@ -76,7 +76,7 @@ function getDetailLineState(detail) {
   return { key: "valide", label: label || "Valide", tone: "success" };
 }
 
-export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable }) {
+export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -499,6 +499,9 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
         <button type="button" className="logistics-top-action is-purple" disabled={visibleRows.length === 0}>
           Imprimer
         </button>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
+          Correspondance FK
+        </button>
         <button type="button" className="logistics-top-action is-muted" disabled>
           Autres filtres
         </button>
@@ -559,7 +562,20 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
           <label className="admin-form-field">
             <span>Periode</span>
-            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+            <div className="logistics-period-range">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                aria-label="Date de debut detail commande"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                aria-label="Date de fin detail commande"
+              />
+            </div>
           </label>
         </div>
       </section>
@@ -579,7 +595,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
             selectedRowId={selectedDetail ? `${selectedDetail.ID_CmdFk}-${selectedDetail.ID_ArticleFk}` : null}
             getRowId={(row) => `${row.ID_CmdFk}-${row.ID_ArticleFk}`}
             onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection={false}
+            enableSelection
             showControls={false}
             defaultPinnedColumns={["CodeCmd", "NomArticle"]}
             defaultSortColumn="DateCmd"
@@ -691,7 +707,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                   selectedRowId={selectedArticle?.id || null}
                   getRowId={(row) => row.id}
                   onRowSelect={selectArticle}
-                  enableSelection={false}
+                  enableSelection
                   showControls={false}
                   defaultPinnedColumns={["label", "stock"]}
                   defaultSortColumn="label"

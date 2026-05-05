@@ -159,7 +159,7 @@ function getCommandeQteTotale(row) {
   return Number(row?.QteTotale ?? 0);
 }
 
-export default function Commandes({ references, refreshKey, onDataChanged, onOpenDetails, sharedTable }) {
+export default function Commandes({ references, refreshKey, onDataChanged, onOpenDetails, sharedTable, onToggleFkMappings }) {
   const { user: currentUser } = useAuth();
   const editorRef = useRef(null);
   const [rows, setRows] = useState([]);
@@ -590,7 +590,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         >
           Imprimer
         </button>
-        <button type="button" className="logistics-top-action is-sky" disabled>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
           Correspondance FK
         </button>
         <button type="button" className="logistics-top-action is-muted" disabled>
@@ -634,7 +634,20 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
           <label className="admin-form-field">
             <span>Periode</span>
-            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+            <div className="logistics-period-range">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                aria-label="Date de debut commande"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                aria-label="Date de fin commande"
+              />
+            </div>
           </label>
         </div>
       </section>
@@ -648,7 +661,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
             columns={tableColumns}
             selectedRowId={selectedCommande?.ID_Commande || null}
             onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection={false}
+            enableSelection
             showControls={false}
             defaultPinnedColumns={["CodeCmd", "DateCmd"]}
             defaultSortColumn="DateCmd"

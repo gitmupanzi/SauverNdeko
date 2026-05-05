@@ -54,7 +54,7 @@ function getReglementState(row) {
   return { key: "reglee", label: label || "Reglee", tone: "success" };
 }
 
-export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande }) {
+export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande, onToggleFkMappings }) {
   const [summaryRows, setSummaryRows] = useState([]);
   const [entryRows, setEntryRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -351,7 +351,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         >
           Imprimer
         </button>
-        <button type="button" className="logistics-top-action is-sky" disabled>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
           Correspondance FK
         </button>
         <button type="button" className="logistics-top-action is-muted" disabled>
@@ -408,7 +408,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
             rows={summaryVisibleRows}
             selectedRowId={selectedSummary?.ID_Commande || null}
             onRowSelect={setSelectedSummary}
-            enableSelection={false}
+            enableSelection
             showControls={false}
             defaultPinnedColumns={["CodeFacture", "DateFacture"]}
             defaultSortColumn="Reste"

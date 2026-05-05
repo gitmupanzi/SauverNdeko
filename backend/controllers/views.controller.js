@@ -3,7 +3,7 @@ const catchAsync = require('../middlewares/catchAsync');
 const { getViewByName, listViews } = require('../utils/getPrismaViews');
 
 const DEFAULT_TAKE = 25;
-const MAX_TAKE = 200;
+const MAX_TAKE = 500;
 
 const parseTake = (value) => {
   const parsed = Number(value);
@@ -40,6 +40,33 @@ const parseFilters = (value) => {
   } catch (error) {
     return {};
   }
+};
+
+const normalizeViewValue = (value) => {
+  if (typeof value === 'bigint') {
+    const asNumber = Number(value);
+    return Number.isSafeInteger(asNumber) ? asNumber : value.toString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeViewValue);
+  }
+
+  if (value && typeof value === 'object') {
+    if (typeof value.toJSON === 'function') {
+      return value.toJSON();
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, normalizeViewValue(entryValue)])
+    );
+  }
+
+  return value;
 };
 
 const getViewColumns = async (schema, viewName) => {
@@ -159,12 +186,14 @@ const getView = catchAsync(async (req, res) => {
     ...params
   );
 
+  const normalizedData = normalizeViewValue(data);
+
   return res.json({
     success: true,
-    data,
+    data: normalizedData,
     meta: {
       columns,
-      count: data.length,
+      count: normalizedData.length,
       filteredCount: filteredCountRows?.[0]?.count || 0,
       totalCount: totalCountRows?.[0]?.count || 0,
       take,

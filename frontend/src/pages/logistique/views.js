@@ -307,8 +307,47 @@ function buildViewLabel(view) {
   return `${view.schema}.${view.name}`;
 }
 
-function createViewRowsFetcher(viewName, defaultOptions = {}) {
-  return (options = {}) => fetchViewData(SCHEMA_NAME, viewName, { ...defaultOptions, ...options });
+function createGenericViewRequestOptions(options = {}, filterMap = {}) {
+  const requestOptions = {
+    take: options.take || 500,
+  };
+  const filters = {};
+
+  if (options.q) {
+    requestOptions.q = options.q;
+  }
+
+  if (options.sortBy) {
+    requestOptions.sortBy = options.sortBy;
+  }
+
+  if (options.sortDir) {
+    requestOptions.sortDir = options.sortDir;
+  }
+
+  Object.entries(filterMap).forEach(([optionKey, columnName]) => {
+    const rawValue = options?.[optionKey];
+
+    if (rawValue == null || rawValue === "") {
+      return;
+    }
+
+    filters[columnName] = rawValue;
+  });
+
+  if (Object.keys(filters).length > 0) {
+    requestOptions.filters = JSON.stringify(filters);
+  }
+
+  return requestOptions;
+}
+
+function createViewRowsFetcher(viewName, { filterMap = {}, defaultOptions = {} } = {}) {
+  return (options = {}) =>
+    fetchViewData(SCHEMA_NAME, viewName, {
+      ...defaultOptions,
+      ...createGenericViewRequestOptions(options, filterMap),
+    });
 }
 
 function stringifyNullableValue(value) {
@@ -642,22 +681,37 @@ const LOGISTIQUE_VIEW_FETCHERS = {
     fetchSummary: () => fetchLogistiqueDashboard(),
   },
   articles: {
-    fetchRows: createViewRowsFetcher("V_Article"),
+    fetchRows: createViewRowsFetcher("V_Article", {
+      filterMap: {
+        typeId: "ID_TypeArticleFk",
+        categorieId: "ID_CategorieArticleFk",
+        statut: "ValideArticle",
+      },
+    }),
   },
   commandes: {
-    fetchRows: createViewRowsFetcher("V_Commande"),
+    fetchRows: createViewRowsFetcher("V_Commande", {
+      filterMap: {
+        typeId: "ID_TypeCmdFk",
+        statutId: "ID_StatutCmdFk",
+        client: "ID_ClientFk",
+      },
+    }),
   },
   details: {
-    fetchRows: ({ commandeId, ...options } = {}) => {
-      if (!commandeId) {
-        return fetchViewData(SCHEMA_NAME, "V_CommandeDetail", options);
-      }
-
-      return fetchLogistiqueCommandeDetails(commandeId, options);
-    },
+    fetchRows: createViewRowsFetcher("V_CommandeDetail", {
+      filterMap: {
+        commandeId: "ID_CmdFk",
+      },
+    }),
   },
   mouvements: {
-    fetchRows: createViewRowsFetcher("V_Mouvement"),
+    fetchRows: createViewRowsFetcher("V_Mouvement", {
+      filterMap: {
+        article: "ID_ArticleFk",
+        typeId: "ID_TypeMvtFk",
+      },
+    }),
   },
   reglements: {
     fetchRows: createViewRowsFetcher("V_SuiviReglements"),
