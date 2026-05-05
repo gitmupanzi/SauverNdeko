@@ -795,6 +795,36 @@ function getSchemaTitle(schema) {
 }
 
 const COLUMN_LABEL_OVERRIDES = {
+  IdUser: "ID utilisateur",
+  PrenomUser: "Prenom",
+  DatecreationUser: "Date creation",
+  ValideGenerique: "Actif",
+  NomGenerique: "Libelle",
+  AbrGenerique: "Code",
+  IdLogin: "ID login",
+  IdLog: "ID log",
+  IdEntite: "ID entite",
+  IdEntiteLocalisation: "ID localisation",
+  IdLicence: "ID licence",
+  statut_licence: "Statut licence",
+  SettingGroup: "Groupe",
+  SettingKey: "Cle",
+  SettingLabel: "Libelle",
+  SettingType: "Type",
+  SettingScope: "Scope",
+  ScopeValue: "Valeur scope",
+  UpdatedByName: "Mis a jour par",
+  UpdatedAt: "Mis a jour le",
+  ModuleName: "Module",
+  SchemaName: "Schema",
+  ViewName: "Vue",
+  SourceKey: "Cle source",
+  FieldName: "Champ",
+  FieldLabel: "Libelle champ",
+  MappingType: "Type mapping",
+  NomCategorieGenerique: "Categorie",
+  MappingValue: "Valeur mapping",
+  ValideFkCorrespondance: "Actif",
   OldData: "Anciennes donnees",
   NewData: "Nouvelles donnees",
   TableName: "Table",
@@ -1306,8 +1336,62 @@ function ensureCurrentSelectOptionWithLabel(options, value, fallbackLabel) {
 }
 
 const DEFAULT_ADMIN_VIEW_KEY =
-  ADMIN_VIEWS.map((view) => normalizeViewKey(view.schema, view.name)).find((viewKey) => Boolean(CRUD_CONFIGS[viewKey])) ||
+  ADMIN_VIEWS.find((view) => view.renderMode === "dashboard")
+    ? normalizeViewKey(
+        ADMIN_VIEWS.find((view) => view.renderMode === "dashboard").schema,
+        ADMIN_VIEWS.find((view) => view.renderMode === "dashboard").name
+      )
+    : ADMIN_VIEWS.map((view) => normalizeViewKey(view.schema, view.name)).find((viewKey) => Boolean(CRUD_CONFIGS[viewKey])) ||
   (ADMIN_VIEWS[0] ? normalizeViewKey(ADMIN_VIEWS[0].schema, ADMIN_VIEWS[0].name) : "");
+
+function DashboardMetricCard({ title, value, detail, tone = "primary", icon = "bi-grid-1x2" }) {
+  return (
+    <article className={`admin-dashboard-metric is-${tone}`}>
+      <span className="admin-dashboard-metric-icon">
+        <i className={`bi ${icon}`} aria-hidden="true" />
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <b>{value}</b>
+        {detail ? <small>{detail}</small> : null}
+      </div>
+    </article>
+  );
+}
+
+function DashboardMiniTable({ title, rows, columns, emptyLabel = "Aucune donnee recente." }) {
+  return (
+    <section className="admin-dashboard-panel">
+      <div className="section-head">
+        <h3>{title}</h3>
+      </div>
+      {rows.length === 0 ? (
+        <div className="table-empty-state">{emptyLabel}</div>
+      ) : (
+        <div className="admin-dashboard-table-wrap">
+          <table className="admin-dashboard-table">
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={`${title}-${column.key}`}>{column.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`${title}-${index}`}>
+                  {columns.map((column) => (
+                    <td key={`${title}-${index}-${column.key}`}>{column.render ? column.render(row) : row[column.key] ?? "-"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function AdminMultiSelectFilter({
   definition,
@@ -1489,6 +1573,9 @@ export default function Admin() {
   const [sharedFkAuditRows, setSharedFkAuditRows] = useState([]);
   const [loadingSharedFkAudit, setLoadingSharedFkAudit] = useState(false);
   const [sharedFkAuditError, setSharedFkAuditError] = useState("");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
   const resizingRef = useRef(null);
   const tableWrapRef = useRef(null);
   const tableFooterRef = useRef(null);
@@ -1503,8 +1590,24 @@ export default function Admin() {
 
   const adminViews = useMemo(() => {
     const availableKeys = new Set(availableViews.map((view) => normalizeViewKey(view.schema, view.name)));
-    return ADMIN_VIEWS.filter((view) => availableKeys.has(normalizeViewKey(view.schema, view.name)));
+    return ADMIN_VIEWS.filter((view) => {
+      if (view.virtual) {
+        if (view.renderMode === "dashboard" || view.renderMode === "empty") {
+          return true;
+        }
+
+        const dataView = view.dataView || view;
+        return availableKeys.has(normalizeViewKey(dataView.schema, dataView.name));
+      }
+
+      return availableKeys.has(normalizeViewKey(view.schema, view.name));
+    });
   }, [availableViews]);
+
+  const navigationViews = useMemo(
+    () => adminViews.filter((view) => view.showInNavigation !== false),
+    [adminViews]
+  );
 
   const storedAuthUser = useMemo(() => getStoredAuth()?.user || null, []);
   const adminUiScopeCandidates = useMemo(() => buildAdminUiScopeCandidates(storedAuthUser), [storedAuthUser]);
@@ -1514,7 +1617,9 @@ export default function Admin() {
     [adminViews, selectedViewKey]
   );
 
-  const selectedCrudConfig = selectedView ? CRUD_CONFIGS[normalizeViewKey(selectedView.schema, selectedView.name)] || null : null;
+  const selectedCrudConfig = selectedView
+    ? CRUD_CONFIGS[selectedView.crudConfigKey || normalizeViewKey(selectedView.schema, selectedView.name)] || null
+    : null;
 
   const editorFields =
     selectedCrudConfig && editorMode
@@ -1988,9 +2093,13 @@ export default function Admin() {
 
     return schemaOrder
       .map((schema) => {
-        const views = adminViews.filter((view) => view.schema === schema);
-        const crudViews = views.filter((view) => Boolean(CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)]));
-        const readOnlyViews = views.filter((view) => !CRUD_CONFIGS[normalizeViewKey(view.schema, view.name)]);
+        const views = navigationViews.filter((view) => view.schema === schema);
+        const crudViews = views.filter((view) =>
+          Boolean(CRUD_CONFIGS[view.crudConfigKey || normalizeViewKey(view.schema, view.name)])
+        );
+        const readOnlyViews = views.filter(
+          (view) => !CRUD_CONFIGS[view.crudConfigKey || normalizeViewKey(view.schema, view.name)]
+        );
 
         return {
           schema,
@@ -2000,7 +2109,7 @@ export default function Admin() {
         };
       })
       .filter((group) => group.crudViews.length > 0 || group.readOnlyViews.length > 0);
-  }, [adminViews]);
+  }, [navigationViews]);
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -2384,6 +2493,18 @@ export default function Admin() {
       return;
     }
 
+    if (view.renderMode === "dashboard" || view.renderMode === "empty") {
+      setRows([]);
+      setViewMeta((current) => ({
+        ...current,
+        columns: [],
+        totalCount: 0,
+        filteredCount: 0,
+      }));
+      setLoadingData(false);
+      return;
+    }
+
     setLoadingData(true);
     setErrorMessage("");
 
@@ -2396,13 +2517,19 @@ export default function Admin() {
     const effectiveRowsPerPage = overrides.rowsPerPage || rowsPerPage;
     const effectiveCurrentPage = overrides.currentPage || currentPage;
 
-    const payload = await fetchViewData(view.schema, view.name, {
+    const targetView = view.dataView || view;
+    const serverFilters = {
+      ...(view.defaultFilters || {}),
+      ...buildServerFilters(effectiveFilters),
+    };
+
+    const payload = await fetchViewData(targetView.schema, targetView.name, {
       take: effectiveRowsPerPage,
       skip: (effectiveCurrentPage - 1) * effectiveRowsPerPage,
       q: effectiveSearchTerm.trim() || undefined,
       sortBy: effectiveSortColumn || undefined,
       sortDir: effectiveSortDirection || undefined,
-      filters: JSON.stringify(buildServerFilters(effectiveFilters)),
+      filters: JSON.stringify(serverFilters),
     });
 
     if (payload?.success && Array.isArray(payload.data)) {
@@ -2645,6 +2772,93 @@ export default function Admin() {
   }, [selectedView, searchTerm, columnFilters, sortConfig, rowsPerPage, currentPage]);
 
   useEffect(() => {
+    let active = true;
+
+    async function loadDashboardData() {
+      if (selectedView?.renderMode !== "dashboard") {
+        return;
+      }
+
+      setLoadingDashboard(true);
+      setDashboardError("");
+
+      const [
+        usersPayload,
+        entitiesPayload,
+        licencesPayload,
+        loginPayload,
+        auditPayload,
+        fkPayload,
+        settingsPayload,
+      ] = await Promise.all([
+        fetchViewData("systeme", "V_User_profil", { take: 1000 }),
+        fetchAdminEntities({ take: 1000 }),
+        fetchViewData("systeme", "V_Licence_active", { take: 1000 }),
+        fetchViewData("systeme", "V_Login_history", { take: 300 }),
+        fetchViewData("systeme", "V_Audit_log", { take: 300 }),
+        fetchViewData("systeme", "V_Fk_Correspondance", { take: 300 }),
+        fetchViewData("systeme", "V_Admin_UI_Setting", { take: 300 }),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      const users = Array.isArray(usersPayload?.data) ? usersPayload.data : [];
+      const entities = Array.isArray(entitiesPayload?.data) ? entitiesPayload.data : [];
+      const licences = Array.isArray(licencesPayload?.data) ? licencesPayload.data : [];
+      const logins = Array.isArray(loginPayload?.data) ? loginPayload.data : [];
+      const auditRows = Array.isArray(auditPayload?.data) ? auditPayload.data : [];
+      const fkRows = Array.isArray(fkPayload?.data) ? fkPayload.data : [];
+      const settingsRows = Array.isArray(settingsPayload?.data) ? settingsPayload.data : [];
+
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const activeUsers = users.filter((row) => row.ValideUser !== false).length;
+      const adminUsers = users.filter((row) => Boolean(row.Is_Admin)).length;
+      const activeLicences = licences.filter((row) => String(row.statut_licence || "").toLowerCase() === "active").length;
+      const expiredLicences = licences.filter((row) => /expir/i.test(String(row.statut_licence || ""))).length;
+      const todayLogins = logins.filter((row) => String(row.DateLogin || "").slice(0, 10) === todayKey).length;
+      const activeMappings = fkRows.filter((row) => row.HasActiveMapping !== false).length;
+
+      setDashboardData({
+        metrics: [
+          { title: "Utilisateurs", value: users.length, detail: `${activeUsers} actifs`, tone: "primary", icon: "bi-people" },
+          { title: "Entites", value: entities.length, detail: "Structures rattachees", tone: "info", icon: "bi-building" },
+          { title: "Licences actives", value: activeLicences, detail: `${expiredLicences} expirees`, tone: "success", icon: "bi-shield-check" },
+          { title: "Licences expirees", value: expiredLicences, detail: "A surveiller", tone: "danger", icon: "bi-shield-x" },
+          { title: "Connexions du jour", value: todayLogins, detail: "Historique recent", tone: "primary", icon: "bi-person-check" },
+          { title: "Journaux d'audit", value: Number(auditPayload?.meta?.totalCount || auditRows.length), detail: "Activites tracees", tone: "info", icon: "bi-journal-text" },
+          { title: "Correspondances FK", value: activeMappings, detail: "Mappings actifs", tone: "primary", icon: "bi-link-45deg" },
+          { title: "Parametres modifies", value: settingsRows.length, detail: `${adminUsers} administrateurs`, tone: "soft", icon: "bi-sliders" },
+        ],
+        recentAudit: auditRows.slice(0, 6),
+        recentLogins: logins.slice(0, 6),
+        recentLicences: licences
+          .slice()
+          .sort((leftItem, rightItem) => String(leftItem.DateFin || "").localeCompare(String(rightItem.DateFin || "")))
+          .slice(0, 6),
+        recentMappings: fkRows.slice(0, 6),
+        recentSettings: settingsRows.slice(0, 6),
+      });
+      setLoadingDashboard(false);
+    }
+
+    loadDashboardData().catch((error) => {
+      if (!active) {
+        return;
+      }
+
+      console.warn("Impossible de charger le dashboard administration", error);
+      setDashboardError("Impossible de charger le tableau de bord Administration.");
+      setLoadingDashboard(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedView]);
+
+  useEffect(() => {
     const storedState = loadStoredAdminViewState(selectedViewKey);
 
     setEditorMode(null);
@@ -2698,7 +2912,10 @@ export default function Admin() {
       }
 
       if (!Array.isArray(current) || current.length === 0) {
-        return columns;
+        const preferredColumns = Array.isArray(selectedView?.preferredColumns)
+          ? selectedView.preferredColumns.filter((column) => columns.includes(column))
+          : [];
+        return preferredColumns.length > 0 ? preferredColumns : columns;
       }
 
       const nextVisibleColumns = current.filter((column) => columns.includes(column));
@@ -2723,7 +2940,7 @@ export default function Admin() {
 
       return columns[0] ? [columns[0]] : [];
     });
-  }, [columns]);
+  }, [columns, selectedView]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -3514,15 +3731,34 @@ export default function Admin() {
 
       <section className="admin-workspace">
         <aside className="admin-sidebar-card">
-          <div className="section-head">
-            <h3>Sources d'administration</h3>
-            <p>Choisissez la vue a consulter.</p>
+          <div className="admin-module-brand">
+            <strong>SauverNdeko</strong>
+            <span>Administration</span>
           </div>
 
           {loadingViews ? (
             <div className="table-empty-state">Chargement des vues...</div>
           ) : schemaGroups.length > 0 ? (
             <div className="admin-view-list">
+              <label className="admin-form-field admin-sidebar-select">
+                <span>Vue active</span>
+                <select value={selectedViewKey} onChange={(event) => setSelectedViewKey(event.target.value)}>
+                  {schemaGroups.map((group) => (
+                    <optgroup key={group.schema} label={group.title}>
+                      {[...group.crudViews, ...group.readOnlyViews].map((view) => {
+                        const viewKey = normalizeViewKey(view.schema, view.name);
+
+                        return (
+                          <option key={viewKey} value={viewKey}>
+                            {view.title}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+
               {schemaGroups.map((group) => (
                 <section key={group.schema} className="admin-schema-group">
                   <div className="admin-schema-group-head">
@@ -3553,12 +3789,17 @@ export default function Admin() {
                             const viewKey = normalizeViewKey(view.schema, view.name);
 
                             return (
-                              <AdminViewButton
+                              <button
                                 key={viewKey}
-                                view={view}
-                                isActive={selectedViewKey === viewKey}
-                                onSelect={() => setSelectedViewKey(viewKey)}
-                              />
+                                type="button"
+                                className={`admin-module-nav-item ${selectedViewKey === viewKey ? "is-active" : ""}`}
+                                onClick={() => setSelectedViewKey(viewKey)}
+                              >
+                                <span className="admin-module-nav-icon">
+                                  <i className={`bi ${view.icon || "bi-circle"}`} aria-hidden="true" />
+                                </span>
+                                <span>{view.title}</span>
+                              </button>
                             );
                           })}
                         </div>
@@ -3575,12 +3816,17 @@ export default function Admin() {
                             const viewKey = normalizeViewKey(view.schema, view.name);
 
                             return (
-                              <AdminViewButton
+                              <button
                                 key={viewKey}
-                                view={view}
-                                isActive={selectedViewKey === viewKey}
-                                onSelect={() => setSelectedViewKey(viewKey)}
-                              />
+                                type="button"
+                                className={`admin-module-nav-item ${selectedViewKey === viewKey ? "is-active" : ""}`}
+                                onClick={() => setSelectedViewKey(viewKey)}
+                              >
+                                <span className="admin-module-nav-icon">
+                                  <i className={`bi ${view.icon || "bi-circle"}`} aria-hidden="true" />
+                                </span>
+                                <span>{view.title}</span>
+                              </button>
                             );
                           })}
                         </div>
@@ -3589,6 +3835,11 @@ export default function Admin() {
                   ) : null}
                 </section>
               ))}
+
+              <div className="admin-module-sidebar-footer">
+                <strong>Admin</strong>
+                <span>Administrateur</span>
+              </div>
             </div>
           ) : (
             <div className="table-empty-state">Aucune vue d'administration cible n'est disponible.</div>
@@ -3598,25 +3849,26 @@ export default function Admin() {
         <div className="admin-main-column">
           <section className="page-hero-card admin-hero-card">
             <div>
-              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Administration</span>
-              <h2>Fenetre d'administration</h2>
+              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Module administration</span>
+              <h2>{selectedView?.title || "Administration"}</h2>
               <p>
-                Cet espace est reserve aux administrateurs et consomme directement les vues du backend
-                pour suivre les activites systeme.
+                {selectedView?.description || "Cet espace regroupe les ecrans d'administration du systeme."}
               </p>
             </div>
             <span className="status-pill">Acces admin</span>
           </section>
 
-          <section className="admin-summary-grid">
-            <AdminSummaryCard title="Vues admin disponibles" value={String(adminViews.length)} />
-            <AdminSummaryCard title="Vue selectionnee" value={selectedView ? selectedView.title : "Aucune"} tone="soft" />
-            <AdminSummaryCard
-              title="Lignes visibles"
-              value={loadingData ? "..." : `${rows.length}/${viewMeta.filteredCount || rows.length}`}
-              tone="soft"
-            />
-          </section>
+          {selectedView?.renderMode !== "dashboard" ? (
+            <section className="admin-summary-grid">
+              <AdminSummaryCard title="Vues disponibles" value={String(navigationViews.length)} />
+              <AdminSummaryCard title="Vue selectionnee" value={selectedView ? selectedView.title : "Aucune"} tone="soft" />
+              <AdminSummaryCard
+                title="Lignes visibles"
+                value={loadingData ? "..." : `${rows.length}/${viewMeta.filteredCount || rows.length}`}
+                tone="soft"
+              />
+            </section>
+          ) : null}
 
           <section className="admin-content-card">
           <div className="admin-sticky-panel">
@@ -3628,6 +3880,8 @@ export default function Admin() {
               {selectedView ? <span className="status-pill">{buildViewLabel(selectedView)}</span> : null}
             </div>
 
+            {selectedView?.renderMode !== "dashboard" && selectedView?.renderMode !== "empty" ? (
+            <>
             <div className="admin-toolbar">
               <div className="admin-toolbar-meta">
                 <span className={`status-pill ${selectedCrudConfig ? "" : "is-muted"}`}>
@@ -4081,6 +4335,8 @@ export default function Admin() {
                 />
               </label>
             </div>
+            </>
+            ) : null}
           </div>
 
           {showSearchPanel ? (
@@ -4218,12 +4474,93 @@ export default function Admin() {
             </section>
           ) : null}
 
+          {selectedView?.renderMode === "dashboard" ? (
+            <section className="admin-dashboard-layout">
+              {dashboardError ? <section className="table-empty-state">{dashboardError}</section> : null}
+              {loadingDashboard ? <section className="table-empty-state">Chargement du tableau de bord...</section> : null}
+
+              {!dashboardError && !loadingDashboard && dashboardData ? (
+                <>
+                  <div className="admin-dashboard-metrics">
+                    {dashboardData.metrics.map((metric) => (
+                      <DashboardMetricCard
+                        key={metric.title}
+                        title={metric.title}
+                        value={metric.value}
+                        detail={metric.detail}
+                        tone={metric.tone}
+                        icon={metric.icon}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="admin-dashboard-grid">
+                    <DashboardMiniTable
+                      title="Derniers journaux d'audit"
+                      rows={dashboardData.recentAudit}
+                      columns={[
+                        { key: "ChangedAt", label: "Date", render: (row) => formatCellValue(row.ChangedAt) },
+                        { key: "TableName", label: "Table" },
+                        { key: "Operation", label: "Operation", render: (row) => formatCellValue(row.Operation) },
+                      ]}
+                    />
+                    <DashboardMiniTable
+                      title="Historique de connexion recent"
+                      rows={dashboardData.recentLogins}
+                      columns={[
+                        { key: "DateLogin", label: "Date", render: (row) => formatCellValue(row.DateLogin) },
+                        { key: "NomUser", label: "Utilisateur", render: (row) => `${row.PrenomUser || ""} ${row.NomUser || ""}`.trim() || row.EmailUser || "-" },
+                        { key: "TypeLogin", label: "Type" },
+                      ]}
+                    />
+                    <DashboardMiniTable
+                      title="Licences proches expiration"
+                      rows={dashboardData.recentLicences}
+                      columns={[
+                        { key: "NomEntite", label: "Entite" },
+                        { key: "DateFin", label: "Date fin", render: (row) => formatCellValue(row.DateFin) },
+                        { key: "statut_licence", label: "Statut", render: (row) => formatCellValue(row.statut_licence) },
+                      ]}
+                    />
+                    <DashboardMiniTable
+                      title="Correspondances FK recentes"
+                      rows={dashboardData.recentMappings}
+                      columns={[
+                        { key: "ViewName", label: "Vue" },
+                        { key: "FieldName", label: "Champ" },
+                        { key: "SettingScope", label: "Scope" },
+                      ]}
+                    />
+                    <DashboardMiniTable
+                      title="Parametres UI modifies"
+                      rows={dashboardData.recentSettings}
+                      columns={[
+                        { key: "SettingGroup", label: "Groupe" },
+                        { key: "SettingKey", label: "Cle" },
+                        { key: "UpdatedAt", label: "Mis a jour", render: (row) => formatCellValue(row.UpdatedAt) },
+                      ]}
+                    />
+                  </div>
+                </>
+              ) : null}
+            </section>
+          ) : null}
+
+          {selectedView?.renderMode === "empty" ? (
+            <section className="table-empty-state">
+              <strong>{selectedView.emptyTitle || "Vue indisponible"}</strong>
+              <p>{selectedView.emptyMessage || "Aucune source de donnees n'est encore disponible pour cet ecran."}</p>
+            </section>
+          ) : null}
+
           {actionFeedback ? (
             <section className={`profile-feedback ${actionFeedback.type === "success" ? "is-success" : "is-error"}`}>
               {actionFeedback.message}
             </section>
           ) : null}
 
+          {selectedView?.renderMode !== "dashboard" && selectedView?.renderMode !== "empty" ? (
+            <>
           {selectedCrudConfig && editorMode ? (
             <section className="admin-editor-card">
               <div className="admin-editor-head">
@@ -4468,6 +4805,8 @@ export default function Admin() {
                 : "Aucune donnee disponible pour cette vue."}
             </section>
           )}
+            </>
+          ) : null}
           </section>
         </div>
       </section>
