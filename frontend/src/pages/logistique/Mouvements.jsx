@@ -15,6 +15,7 @@ import {
   SimpleTable,
   SummaryCard,
   TableToolbar,
+  ToneBadge,
 } from "./logistiqueShared";
 import { getLogistiqueGenericSourceHint, getLogistiqueViewConfig } from "./views";
 
@@ -25,6 +26,20 @@ function buildReferenceHelperText(sourceKey, options) {
   return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
 }
 
+function getMovementTone(row) {
+  const label = String(row?.NomTypeMvt || row?.TypeMvt || "").toLowerCase();
+
+  if (label.includes("sort")) {
+    return "warning";
+  }
+
+  if (label.includes("entr")) {
+    return "success";
+  }
+
+  return "info";
+}
+
 export default function Mouvements({ references, refreshKey, sharedTable }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +47,8 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
   const [articleFilter, setArticleFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [commandeFilter, setCommandeFilter] = useState("");
+  const [originFilter, setOriginFilter] = useState("all");
+  const [stockDirectionFilter, setStockDirectionFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const selectedMouvement = sharedTable?.selectedRow || null;
@@ -40,19 +57,28 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
   const articleOptions = useMemo(() => buildReferenceOptions(references?.articles, "Article"), [references]);
   const mouvementTypeOptions = useMemo(() => buildReferenceOptions(references?.commandeTypes, "Type"), [references]);
   const typeLabelMap = useMemo(() => buildReferenceLabelMap(mouvementTypeOptions), [mouvementTypeOptions]);
-  const articleMetaMap = useMemo(
-    () =>
-      new Map(
-        (Array.isArray(references?.articles) ? references.articles : []).map((article) => [String(article.id), article])
-      ),
-    [references]
-  );
   const visibleRows = useMemo(
     () =>
-      rows.filter((row) =>
-        commandeFilter ? String(row.CodeCmd || "").toLowerCase().includes(String(commandeFilter).toLowerCase()) : true
-      ),
-    [commandeFilter, rows]
+      rows.filter((row) => {
+        if (commandeFilter && !String(row.CodeCmd || "").toLowerCase().includes(String(commandeFilter).toLowerCase())) {
+          return false;
+        }
+
+        if (originFilter !== "all" && String(row.OrigineMouvement || "") !== originFilter) {
+          return false;
+        }
+
+        if (stockDirectionFilter === "entree" && Number(row.SigneStock || 0) <= 0) {
+          return false;
+        }
+
+        if (stockDirectionFilter === "sortie" && Number(row.SigneStock || 0) >= 0) {
+          return false;
+        }
+
+        return true;
+      }),
+    [commandeFilter, originFilter, rows, stockDirectionFilter]
   );
   const summary = useMemo(
     () =>
@@ -61,7 +87,7 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
           accumulator.total += 1;
           accumulator.quantite += Number(row.QteMvt || 0);
 
-          const label = String(row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || "").toLowerCase();
+          const label = String(row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || "").toLowerCase();
 
           if (label.includes("sort")) {
             accumulator.sorties += Number(row.QteMvt || 0);
@@ -77,28 +103,33 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
   );
   const compactColumns = useMemo(
     () => [
-      { key: "DateMvt", label: "Date", renderText: (row) => formatDate(row.DateMvt, { withTime: true }) },
+      { key: "ID_Mvt", label: "ID mouvement", renderText: (row) => String(row.ID_Mvt || "-") },
+      { key: "DateMvt", label: "Date mouvement", renderText: (row) => formatDate(row.DateMvt, { withTime: true }) },
+      { key: "CodeArticleInterne", label: "Code article", renderText: (row) => row.CodeArticleInterne || "-" },
+      { key: "NomArticle", label: "Article" },
+      { key: "CodeCmd", label: "Code commande", renderText: (row) => row.CodeCmd || "-" },
       {
         key: "ID_TypeMvtFk",
-        label: "Type",
-        renderText: (row) => row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`,
+        label: "Type mouvement",
+        renderText: (row) =>
+          row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`,
       },
-      { key: "NomArticle", label: "Designation" },
+      { key: "QteMvt", label: "Quantite", renderText: (row) => formatNumber(row.QteMvt) },
+      { key: "QteMvtSigned", label: "Quantite signee", renderText: (row) => formatNumber(row.QteMvtSigned) },
+      { key: "PUMvt", label: "PU mouvement", renderText: (row) => formatCurrency(row.PUMvt) },
+      { key: "MontantMvt", label: "Montant mouvement", renderText: (row) => formatCurrency(row.MontantMvt) },
       {
-        key: "Reference",
-        label: "Reference",
-        renderText: (row) => articleMetaMap.get(String(row.ID_ArticleFk))?.reference || "-",
+        key: "MontantMvtSigned",
+        label: "Montant signe",
+        renderText: (row) =>
+          formatCurrency(
+            row.MontantMvtSigned != null ? row.MontantMvtSigned : Number(row.MontantMvt || 0) * Number(row.SigneStock || 0)
+          ),
       },
-      { key: "CodeCmd", label: "Commande", renderText: (row) => row.CodeCmd || "-" },
-      { key: "QteMvt", label: "Qte", renderText: (row) => formatNumber(row.QteMvt) },
-      {
-        key: "StockActuel",
-        label: "Stock actuel",
-        renderText: (row) => formatNumber(articleMetaMap.get(String(row.ID_ArticleFk))?.stock),
-      },
-      { key: "PUMvt", label: "PU", renderText: (row) => formatCurrency(row.PUMvt) },
+      { key: "OrigineMouvement", label: "Origine mouvement", renderText: (row) => row.OrigineMouvement || "-" },
+      { key: "actions", label: "Actions", renderText: () => "" },
     ],
-    [articleMetaMap, typeLabelMap]
+    [typeLabelMap]
   );
 
   useEffect(() => {
@@ -149,157 +180,156 @@ export default function Mouvements({ references, refreshKey, sharedTable }) {
   }, [articleFilter, dateFrom, dateTo, deferredSearch, refreshKey, typeFilter]);
 
   return (
-    <div className="logistics-workbench">
-      <div className="logistics-primary-pane">
-        <SectionCard
-          title="Historique des mouvements"
-          subtitle="Lecture compacte de l'inventaire de mouvements, sans CRUD direct sur T_Mouvement."
-          actions={
-            <div className="logistics-inline-actions">
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => exportRowsToCsv("logistique-mouvements.csv", compactColumns, visibleRows)}
-                disabled={visibleRows.length === 0}
-              >
-                Exporter
-              </button>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)}
-                disabled={visibleRows.length === 0}
-              >
-                Imprimer
-              </button>
-            </div>
-          }
-        >
-          <div className="logistics-summary-grid">
-            <SummaryCard title="Mouvements visibles" value={formatNumber(summary.total)} />
-            <SummaryCard title="Quantite totale" value={formatNumber(summary.quantite)} tone="info" />
-            <SummaryCard title="Entrees" value={formatNumber(summary.entrees)} tone="success" />
-            <SummaryCard title="Sorties" value={formatNumber(summary.sorties)} tone="warning" />
-          </div>
+    <div className="logistics-screen">
+      <header className="logistics-screen-copy">
+        <h1>Historique des mouvements</h1>
+        <p>Trace les entrees et sorties de stock issues de la logique metier existante</p>
+      </header>
 
-          <div className="logistics-filter-grid logistics-filter-grid-wide">
-            <label className="admin-form-field">
-              <span>{sharedTable?.searchLabel || "Recherche globale"}</span>
-              <input
-                type="search"
-                value={sharedTable?.searchValue || ""}
-                onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-                placeholder="Type, article, code commande..."
-              />
-            </label>
-
-            <SelectField
-              label="Article"
-              value={articleFilter}
-              onChange={(event) => setArticleFilter(event.target.value)}
-              options={articleOptions}
-            />
-
-            <SelectField
-              label="Type mouvement"
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              options={mouvementTypeOptions}
-              disabled={mouvementTypeOptions.length === 0}
-              emptyLabel={mouvementTypeOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
-              helperText={buildReferenceHelperText("logistique.commandeTypes", mouvementTypeOptions)}
-            />
-
-            <label className="admin-form-field">
-              <span>Commande</span>
-              <input
-                type="search"
-                value={commandeFilter}
-                onChange={(event) => setCommandeFilter(event.target.value)}
-                placeholder="Code commande..."
-              />
-            </label>
-
-            <label className="admin-form-field">
-              <span>Date debut</span>
-              <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-            </label>
-
-            <label className="admin-form-field">
-              <span>Date fin</span>
-              <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
-            </label>
-          </div>
-
-          <SelectionStrip
-            selectedRow={selectedMouvement}
-            label={selectedMouvement ? `Ligne selectionnee: mouvement #${selectedMouvement.ID_Mvt}` : "Aucune ligne selectionnee"}
-            description={
-              selectedMouvement
-                ? `${selectedMouvement.TypeMvt || "-"} | ${selectedMouvement.NomArticle || "-"} | ${formatNumber(selectedMouvement.QteMvt)}`
-                : "Selectionnez un mouvement pour le lire plus facilement."
-            }
+      <section className="logistics-screen-search-card">
+        <label className="admin-form-field logistics-screen-search-field">
+          <span>{sharedTable?.searchLabel || "Recherche"}</span>
+          <input
+            type="search"
+            value={sharedTable?.searchValue || ""}
+            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
+            placeholder="Rechercher un mouvement, article ou commande..."
           />
+        </label>
+      </section>
 
-          <TableToolbar
-            title={sharedTable?.toolbarTitle || "Inventaire / mouvements"}
+      <section className="logistics-top-actions">
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedMouvement && sharedTable?.setSelectedRow?.(selectedMouvement)} disabled={!selectedMouvement}>
+          Voir
+        </button>
+        <button type="button" className="logistics-top-action is-green" onClick={() => exportRowsToCsv("logistique-mouvements.csv", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>
+          Exporter
+        </button>
+        <button type="button" className="logistics-top-action is-purple" onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>
+          Imprimer
+        </button>
+        <button type="button" className="logistics-top-action is-muted" disabled>
+          Autres filtres
+        </button>
+      </section>
+
+      <section className="logistics-screen-filter-card">
+        <div className="logistics-mockup-filter-grid">
+          <SelectField label="Type mouvement" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} options={mouvementTypeOptions} />
+          <label className="admin-form-field">
+            <span>Origine mouvement</span>
+            <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="Commande">Commande</option>
+              <option value="Ajustement direct article">Ajustement direct article</option>
+            </select>
+          </label>
+          <SelectField label="Article" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} options={articleOptions} />
+          <label className="admin-form-field">
+            <span>Commande</span>
+            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="Code commande..." />
+          </label>
+          <label className="admin-form-field">
+            <span>Sens stock</span>
+            <select value={stockDirectionFilter} onChange={(event) => setStockDirectionFilter(event.target.value)}>
+              <option value="all">Tous</option>
+              <option value="entree">Entree</option>
+              <option value="sortie">Sortie</option>
+            </select>
+          </label>
+          <label className="admin-form-field">
+            <span>Periode</span>
+            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+          </label>
+        </div>
+      </section>
+
+      <section className="logistics-screen-table-card">
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun mouvement a afficher." />
+
+        {!loading && !error && visibleRows.length > 0 ? (
+          <SimpleTable
             rows={visibleRows}
-            columns={compactColumns}
+            selectedRowId={selectedMouvement?.ID_Mvt || null}
+            onRowSelect={sharedTable?.setSelectedRow}
+            enableSelection={false}
+            showControls={false}
+            defaultPinnedColumns={["DateMvt", "NomArticle"]}
+            defaultSortColumn="DateMvt"
+            defaultRowsPerPage={10}
             exportFilename={sharedTable?.exportFilename || "logistique-v_mouvement.csv"}
+            columns={compactColumns.map((column) => ({
+              ...column,
+              render: (row) => {
+                if (column.key === "ID_Mvt") {
+                  return row.ID_Mvt;
+                }
+
+                if (column.key === "DateMvt") {
+                  return formatDate(row.DateMvt, { withTime: true });
+                }
+
+                if (column.key === "ID_TypeMvtFk") {
+                  return (
+                    <ToneBadge tone={getMovementTone(row)}>
+                      {row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`}
+                    </ToneBadge>
+                  );
+                }
+
+                if (column.key === "CodeArticleInterne") {
+                  return row.CodeArticleInterne || "-";
+                }
+
+                if (column.key === "CodeCmd") {
+                  return row.CodeCmd || "-";
+                }
+
+                if (column.key === "QteMvt" || column.key === "QteMvtSigned") {
+                  return formatNumber(row[column.key]);
+                }
+
+                if (column.key === "PUMvt" || column.key === "MontantMvt") {
+                  return formatCurrency(row[column.key]);
+                }
+
+                if (column.key === "MontantMvtSigned") {
+                  return formatCurrency(
+                    row.MontantMvtSigned != null
+                      ? row.MontantMvtSigned
+                      : Number(row.MontantMvt || 0) * Number(row.SigneStock || 0)
+                  );
+                }
+
+                if (column.key === "OrigineMouvement") {
+                  return (
+                    <ToneBadge tone={row.OrigineMouvement === "Commande" ? "info" : "warning"}>
+                      {row.OrigineMouvement || "-"}
+                    </ToneBadge>
+                  );
+                }
+
+                if (column.key === "actions") {
+                  return (
+                    <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="logistics-kebab-button"
+                        onClick={() => sharedTable?.setSelectedRow?.(row)}
+                        aria-label={`Actions ${row.CodeArticleInterne || "mouvement"}`}
+                      >
+                        &#8942;
+                      </button>
+                    </div>
+                  );
+                }
+
+                return row[column.key] ?? "-";
+              },
+            }))}
           />
-
-          <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun mouvement a afficher." />
-
-          {!loading && !error && visibleRows.length > 0 ? (
-            <SimpleTable
-              rows={visibleRows}
-              selectedRowId={selectedMouvement?.ID_Mvt || null}
-              onRowSelect={sharedTable?.setSelectedRow}
-              defaultPinnedColumns={["DateMvt", "NomArticle"]}
-              defaultSortColumn="DateMvt"
-              exportFilename={sharedTable?.exportFilename || "logistique-v_mouvement.csv"}
-              columns={compactColumns.map((column) => ({
-                ...column,
-                render:
-                  column.key === "DateMvt"
-                    ? (row) => formatDate(row.DateMvt, { withTime: true })
-                    : column.key === "ID_TypeMvtFk"
-                      ? (row) => row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`
-                      : column.key === "Reference"
-                        ? (row) => articleMetaMap.get(String(row.ID_ArticleFk))?.reference || "-"
-                        : column.key === "StockActuel"
-                          ? (row) => formatNumber(articleMetaMap.get(String(row.ID_ArticleFk))?.stock)
-                          : column.key === "QteMvt"
-                            ? (row) => formatNumber(row.QteMvt)
-                            : column.key === "PUMvt"
-                              ? (row) => formatCurrency(row.PUMvt)
-                              : undefined,
-              }))}
-            />
-          ) : null}
-        </SectionCard>
-      </div>
-
-      {selectedMouvement ? (
-        <aside className="logistics-side-pane">
-          <SectionCard title="Detail mouvement" subtitle="Lecture rapide du mouvement selectionne.">
-            <div className="logistics-detail-grid">
-              <article>
-                <strong>{selectedMouvement.NomArticle || `Article #${selectedMouvement.ID_ArticleFk}`}</strong>
-                <p>Date: {formatDate(selectedMouvement.DateMvt, { withTime: true })}</p>
-                <p>Type: {selectedMouvement.TypeMvt || typeLabelMap.get(String(selectedMouvement.ID_TypeMvtFk)) || "-"}</p>
-                <p>Reference: {articleMetaMap.get(String(selectedMouvement.ID_ArticleFk))?.reference || "-"}</p>
-              </article>
-              <article>
-                <p>Commande: {selectedMouvement.CodeCmd || "-"}</p>
-                <p>Quantite: {formatNumber(selectedMouvement.QteMvt)}</p>
-                <p>PU: {formatCurrency(selectedMouvement.PUMvt)}</p>
-                <p>Stock actuel: {formatNumber(articleMetaMap.get(String(selectedMouvement.ID_ArticleFk))?.stock)}</p>
-              </article>
-            </div>
-          </SectionCard>
-        </aside>
-      ) : null}
+        ) : null}
+      </section>
     </div>
   );
 }

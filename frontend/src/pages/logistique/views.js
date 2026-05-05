@@ -650,7 +650,7 @@ const LOGISTIQUE_VIEW_FETCHERS = {
   details: {
     fetchRows: ({ commandeId, ...options } = {}) => {
       if (!commandeId) {
-        return Promise.resolve({ success: true, data: [] });
+        return fetchViewData(SCHEMA_NAME, "V_CommandeDetail", options);
       }
 
       return fetchLogistiqueCommandeDetails(commandeId, options);

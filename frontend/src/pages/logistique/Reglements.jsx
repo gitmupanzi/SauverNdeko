@@ -32,7 +32,29 @@ function buildReferenceHelperText(sourceKey, options) {
   return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
 }
 
-export default function Reglements({ references, refreshKey, onDataChanged, sharedTable }) {
+function getReglementState(row) {
+  const label = String(row?.EtatReglement || "");
+  const normalized = label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (normalized.includes("part")) {
+    return { key: "partielle", label: label || "Partiellement reglee", tone: "warning" };
+  }
+
+  if (normalized.includes("non facture")) {
+    return { key: "non-facturee", label: label || "Non facturee", tone: "info" };
+  }
+
+  if (normalized.includes("non reglee")) {
+    return { key: "non-reglee", label: label || "Non reglee", tone: "danger" };
+  }
+
+  return { key: "reglee", label: label || "Reglee", tone: "success" };
+}
+
+export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande }) {
   const [summaryRows, setSummaryRows] = useState([]);
   const [entryRows, setEntryRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +62,9 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const [feedback, setFeedback] = useState(null);
   const [codeFactureFilter, setCodeFactureFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
+  const [lateFilter, setLateFilter] = useState("all");
+  const [factureDateFilter, setFactureDateFilter] = useState("");
+  const [echeanceFilter, setEcheanceFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [paymentStateFilter, setPaymentStateFilter] = useState("all");
@@ -47,6 +72,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(() => REGLEMENTS_CRUD_CONFIG.createFormState());
   const selectedEntry = sharedTable?.selectedRow || null;
+  const [selectedSummary, setSelectedSummary] = useState(null);
 
   const modeOptions = useMemo(() => buildReferenceOptions(references?.reglementModes, "Mode"), [references]);
   const clientOptions = useMemo(() => buildReferenceOptions(references?.clients, "Client"), [references]);
@@ -65,17 +91,66 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const summaryVisibleRows = useMemo(
     () =>
       summaryRows.filter((row) => {
-        if (paymentStateFilter === "paye") {
-          return Number(row.Reste || 0) <= 0;
+        const paymentState = getReglementState(row);
+        const normalizedSearch = String(codeFactureFilter || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        const rowSearch = [row.CodeCmd, row.CodeFacture, row.NomClientSaisi]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+
+        if (normalizedSearch && !rowSearch.includes(normalizedSearch)) {
+          return false;
         }
 
-        if (paymentStateFilter === "impaye") {
-          return Number(row.Reste || 0) > 0;
+        if (paymentStateFilter !== "all" && paymentState.key !== paymentStateFilter) {
+          return false;
+        }
+
+        if (lateFilter === "oui" && !row.EstEnRetard) {
+          return false;
+        }
+
+        if (lateFilter === "non" && row.EstEnRetard) {
+          return false;
+        }
+
+        if (factureDateFilter && row.DateFacture) {
+          const currentDate = new Date(row.DateFacture).toISOString().slice(0, 10);
+          if (currentDate !== factureDateFilter) {
+            return false;
+          }
+        }
+
+        if (echeanceFilter && row.DateEcheancePaiement) {
+          const currentDate = new Date(row.DateEcheancePaiement).toISOString().slice(0, 10);
+          if (currentDate !== echeanceFilter) {
+            return false;
+          }
+        }
+
+        if (
+          clientFilter &&
+          String(row.NomClientSaisi || "") !== String(clientLabelMap.get(String(clientFilter)) || clientFilter)
+        ) {
+          return false;
+        }
+
+        if (dateFrom && row.DateFacture && new Date(row.DateFacture) < new Date(dateFrom)) {
+          return false;
+        }
+
+        if (dateTo && row.DateFacture && new Date(row.DateFacture) > new Date(`${dateTo}T23:59:59`)) {
+          return false;
         }
 
         return true;
       }),
-    [paymentStateFilter, summaryRows]
+    [clientFilter, clientLabelMap, codeFactureFilter, dateFrom, dateTo, echeanceFilter, factureDateFilter, lateFilter, paymentStateFilter, summaryRows]
   );
   const summaryByFacture = useMemo(
     () => new Map(summaryRows.map((row) => [String(row.CodeFacture || ""), row])),
@@ -122,7 +197,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       const [summaryResponse, entriesResponse] = await Promise.all([
         REGLEMENTS_VIEW_CONFIG.fetchRows({
           codeFacture: codeFactureFilter,
-          resteOnly: paymentStateFilter === "impaye" ? "true" : "",
+          resteOnly: paymentStateFilter === "non-reglee" || paymentStateFilter === "partielle" ? "true" : "",
           take: 200,
         }),
         REGLEMENTS_VIEW_CONFIG.fetchEntries({
@@ -150,6 +225,10 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       const nextEntryRows = asArrayPayload(entriesResponse);
       setSummaryRows(nextSummaryRows);
       setEntryRows(nextEntryRows);
+      if (selectedSummary?.ID_Commande != null) {
+        const matchedSummary = nextSummaryRows.find((row) => row.ID_Commande === selectedSummary.ID_Commande);
+        setSelectedSummary(matchedSummary || null);
+      }
       if (selectedEntry?.ID_Reglement != null) {
         const matchedEntry = nextEntryRows.find((row) => row.ID_Reglement === selectedEntry.ID_Reglement);
         if (matchedEntry) {
@@ -177,7 +256,10 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   function handleNewReglement() {
     sharedTable?.clearSelectedRow?.();
     setEditorMode("create");
-    setFormValues(REGLEMENTS_CRUD_CONFIG.createFormState());
+    setFormValues({
+      ...REGLEMENTS_CRUD_CONFIG.createFormState(),
+      CodeFactureFk: selectedSummary?.CodeFacture || "",
+    });
   }
 
   function handleEditReglement(entry) {
@@ -219,109 +301,151 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   }
 
   return (
-    <div className="logistics-stack">
+    <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
+      <header className="logistics-screen-copy">
+        <h1>Reglements</h1>
+        <p>Suivi des factures, paiements, restes a payer et retards</p>
+      </header>
 
-      <SectionCard
-        title="Suivi des reglements"
-        subtitle="Lecture compacte des factures reglees et des ecritures de T_Reglements."
-        actions={
-          <div className="logistics-inline-actions">
-            <button type="button" className="secondary-action" onClick={handleNewReglement}>
-              Nouveau reglement
-            </button>
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => exportRowsToCsv("logistique-reglements-synthese.csv", summaryColumns, summaryVisibleRows)}
-              disabled={summaryVisibleRows.length === 0}
-            >
-              Exporter
-            </button>
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => exportRowsToPdf("logistique-reglements-synthese", summaryColumns, summaryVisibleRows)}
-              disabled={summaryVisibleRows.length === 0}
-            >
-              Imprimer
-            </button>
-          </div>
-        }
-      >
-        <div className="logistics-summary-grid">
-          <SummaryCard title="Factures visibles" value={summaryMetrics.total} />
-          <SummaryCard title="Payees" value={summaryMetrics.payes} tone="success" />
-          <SummaryCard title="Impayees" value={summaryMetrics.impayes} tone="warning" />
-          <SummaryCard title="Montant facture" value={formatCurrency(summaryMetrics.totalFacture)} tone="info" />
-          <SummaryCard title="Montant regle" value={formatCurrency(summaryMetrics.totalRegle)} tone="success" />
-        </div>
-
-        <div className="logistics-filter-grid logistics-filter-grid-wide">
-          <SelectField
-            label={sharedTable?.searchLabel || "Code facture"}
+      <section className="logistics-screen-search-card">
+        <label className="admin-form-field logistics-screen-search-field">
+          <span>{sharedTable?.searchLabel || "Recherche"}</span>
+          <input
+            type="search"
             value={codeFactureFilter}
             onChange={(event) => setCodeFactureFilter(event.target.value)}
-            options={factureOptions}
+            placeholder="Rechercher une facture, commande ou client..."
           />
+        </label>
+      </section>
 
-          <SelectField
-            label="Client"
-            value={clientFilter}
-            onChange={(event) => setClientFilter(event.target.value)}
-            options={clientOptions}
-          />
+      <section className="logistics-top-actions">
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewReglement}>
+          Ajouter reglement
+        </button>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedEntry && handleEditReglement(selectedEntry)} disabled={!selectedEntry}>
+          Modifier reglement
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-cyan"
+          onClick={() => selectedSummary && onOpenCommande?.({ ID_Commande: selectedSummary.ID_Commande, CodeCmd: selectedSummary.CodeCmd }, "view")}
+          disabled={!selectedSummary || !onOpenCommande}
+        >
+          Voir commande
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-green"
+          onClick={() => exportRowsToCsv("logistique-reglements-synthese.csv", summaryColumns, summaryVisibleRows)}
+          disabled={summaryVisibleRows.length === 0}
+        >
+          Exporter
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-purple"
+          onClick={() => exportRowsToPdf("logistique-reglements-synthese", summaryColumns, summaryVisibleRows)}
+          disabled={summaryVisibleRows.length === 0}
+        >
+          Imprimer
+        </button>
+        <button type="button" className="logistics-top-action is-sky" disabled>
+          Correspondance FK
+        </button>
+        <button type="button" className="logistics-top-action is-muted" disabled>
+          Autres filtres
+        </button>
+      </section>
 
+      <section className="logistics-screen-filter-card">
+        <div className="logistics-mockup-filter-grid">
           <label className="admin-form-field">
-            <span>Du</span>
-            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-          </label>
-
-          <label className="admin-form-field">
-            <span>Au</span>
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
-          </label>
-
-          <label className="admin-form-field">
-            <span>Etat paiement</span>
+            <span>Etat reglement</span>
             <select value={paymentStateFilter} onChange={(event) => setPaymentStateFilter(event.target.value)}>
-              <option value="all">Tous</option>
-              <option value="paye">Paye</option>
-              <option value="impaye">Impaye</option>
+              <option value="all">Toutes</option>
+              <option value="reglee">Reglee</option>
+              <option value="partielle">Partiellement reglee</option>
+              <option value="non-reglee">Non reglee</option>
+              <option value="non-facturee">Non facturee</option>
             </select>
           </label>
+
+          <label className="admin-form-field">
+            <span>Retard paiement</span>
+            <select value={lateFilter} onChange={(event) => setLateFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="oui">Oui</option>
+              <option value="non">Non</option>
+            </select>
+          </label>
+
+          <SelectField label="Client" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
+
+          <label className="admin-form-field">
+            <span>Date facture</span>
+            <input type="date" value={factureDateFilter} onChange={(event) => setFactureDateFilter(event.target.value)} />
+          </label>
+
+          <label className="admin-form-field">
+            <span>Echeance</span>
+            <input type="date" value={echeanceFilter} onChange={(event) => setEcheanceFilter(event.target.value)} />
+          </label>
+
+          <label className="admin-form-field">
+            <span>Periode</span>
+            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Selectionner"} />
+          </label>
         </div>
+      </section>
 
-        <TableToolbar
-          title={sharedTable?.toolbarTitle || "Tableau V_SuiviReglements"}
-          rows={summaryVisibleRows}
-          columns={summaryColumns}
-          exportFilename={sharedTable?.exportFilename || "logistique-v_suivi_reglements.csv"}
-        />
-
+      <section className="logistics-screen-table-card">
         <LoadingErrorEmpty loading={loading} error={error} rows={summaryVisibleRows} emptyMessage="Aucun suivi de reglement disponible." />
 
         {!loading && !error && summaryVisibleRows.length > 0 ? (
           <SimpleTable
             rows={summaryVisibleRows}
-            enableSelection
-            defaultPinnedColumns={["ID_Commande", "CodeFacture"]}
+            selectedRowId={selectedSummary?.ID_Commande || null}
+            onRowSelect={setSelectedSummary}
+            enableSelection={false}
+            showControls={false}
+            defaultPinnedColumns={["CodeFacture", "DateFacture"]}
             defaultSortColumn="Reste"
+            defaultRowsPerPage={10}
             columns={[
-              { key: "ID_Commande", label: "Commande", render: (row) => `#${row.ID_Commande}` },
-              { key: "CodeFacture", label: "Facture" },
-              { key: "MontantTTC", label: "Facture TTC", render: (row) => formatCurrency(row.MontantTTC) },
-              { key: "TotalRegle", label: "Regle", render: (row) => formatCurrency(row.TotalRegle) },
+              { key: "CodeCmd", label: "Code commande", render: (row) => row.CodeCmd || `#${row.ID_Commande}` },
+              { key: "CodeFacture", label: "Code facture", render: (row) => row.CodeFacture || "-" },
+              { key: "DateFacture", label: "Date facture", render: (row) => formatDate(row.DateFacture) },
+              { key: "DateEcheancePaiement", label: "Echeance", render: (row) => formatDate(row.DateEcheancePaiement) },
+              { key: "NomClientSaisi", label: "Client", render: (row) => row.NomClientSaisi || "-" },
+              { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC) },
+              { key: "TotalRegle", label: "Total regle", render: (row) => formatCurrency(row.TotalRegle) },
               {
                 key: "Reste",
                 label: "Reste",
-                render: (row) =>
-                  Number(row.Reste || 0) > 0 ? <ToneBadge tone="danger">{formatCurrency(row.Reste)}</ToneBadge> : <ToneBadge tone="success">Solde</ToneBadge>,
+                render: (row) => <ToneBadge tone={Number(row.Reste || 0) > 0 ? "danger" : "success"}>{formatCurrency(row.Reste)}</ToneBadge>,
+              },
+              { key: "NbReglements", label: "Nombre reglements", render: (row) => row.NbReglements ?? 0 },
+              { key: "DernierReglement", label: "Dernier reglement", render: (row) => formatDate(row.DernierReglement) },
+              { key: "JoursAvantEcheance", label: "Jours avant echeance", render: (row) => row.JoursAvantEcheance ?? "-" },
+              {
+                key: "EtatReglement",
+                label: "Etat reglement",
+                render: (row) => {
+                  const state = getReglementState(row);
+                  return <ToneBadge tone={state.tone}>{state.label}</ToneBadge>;
+                },
+              },
+              {
+                key: "Retard",
+                label: "Retard",
+                render: (row) => <ToneBadge tone={row.EstEnRetard ? "danger" : "success"}>{row.EstEnRetard ? "Oui" : "Non"}</ToneBadge>,
               },
             ]}
           />
         ) : null}
-      </SectionCard>
+      </section>
 
       <SectionCard title="Ecritures de reglement" subtitle="Historique modifiable des lignes de T_Reglements.">
         <SelectionStrip

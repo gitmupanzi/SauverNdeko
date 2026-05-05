@@ -355,6 +355,7 @@ model T_Commande {
   ID_ConditionPaiementFk                                     Int?
   DateEcheancePaiement                                       DateTime?          @db.Timestamptz(6)
   ID_ModePaiementFk                                          Int?
+  NomClientSaisi                                             String?            @db.VarChar(255)
   T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique T_Generique?       @relation("T_Commande_ID_ConditionPaiementFkToT_Generique", fields: [ID_ConditionPaiementFk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_ConditionPaiement")
   T_Generique_T_Commande_ID_ModePaiementFkToT_Generique      T_Generique?       @relation("T_Commande_ID_ModePaiementFkToT_Generique", fields: [ID_ModePaiementFk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_ModePaiement")
   T_Generique_T_Commande_ID_StatutCmdFkToT_Generique         T_Generique?       @relation("T_Commande_ID_StatutCmdFkToT_Generique", fields: [ID_StatutCmdFk], references: [ID_Generique], onDelete: NoAction, onUpdate: NoAction, map: "Fk_ID_StatutCmd")
@@ -751,6 +752,7 @@ model T_Utilisateurs {
   T_Payeur             T_Paiement[]          @relation("PaiementPayeur")
   T_Paiement           T_Paiement[]          @relation("PaiementUser")
   T_Professionnel      T_Professionnel?      @relation("ProfessionnelUser")
+  T_Admin_UI_Setting   T_Admin_UI_Setting[]
   T_Fk_Correspondance  T_Fk_Correspondance[] @relation("FkCorrespondanceUpdatedBy")
   T_Login              T_Login[]             @relation("UserLogins")
   T_Entite             T_Entite?             @relation("EntiteUsers", fields: [IdEntiteFk], references: [IdEntite], map: "Fk_IdEntite")
@@ -785,4 +787,34 @@ model T_Discussion {
   @@index([IdProfessionnelFk], map: "idx_discussion_professionnel")
   @@index([IdUserClientFk], map: "idx_discussion_user_client")
   @@schema("communication")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model T_Admin_UI_Setting {
+  IdAdminUISetting Int             @id(map: "Pk_Admin_UI_Setting") @default(autoincrement())
+  SettingScope     String          @default("global") @db.VarChar(50)
+  ScopeValue       String?         @db.VarChar(100)
+  SettingKey       String          @db.VarChar(100)
+  SettingLabel     String?         @db.VarChar(150)
+  SettingGroup     String?         @default("general") @db.VarChar(100)
+  SettingValue     String?
+  SettingValueJson Json?
+  SettingType      String?         @default("text") @db.VarChar(50)
+  DisplayOrder     Int?            @default(0)
+  IsEditable       Boolean?        @default(true)
+  IsSystem         Boolean?        @default(false)
+  ValideSetting    Boolean?        @default(true)
+  CreatedAt        DateTime?       @default(now()) @db.Timestamptz(6)
+  UpdatedAt        DateTime?       @default(now()) @db.Timestamptz(6)
+  UpdatedByUserFk  Int?
+  ObsSetting       String?
+  T_Utilisateurs   T_Utilisateurs? @relation(fields: [UpdatedByUserFk], references: [IdUser], map: "Fk_Admin_UI_Setting_User")
+
+  @@unique([SettingScope, ScopeValue, SettingKey], map: "Uq_Admin_UI_Setting_Key_Scope")
+  @@index([SettingGroup], map: "Idx_Admin_UI_Setting_Group")
+  @@index([SettingKey], map: "Idx_Admin_UI_Setting_Key")
+  @@index([SettingScope, ScopeValue], map: "Idx_Admin_UI_Setting_Scope")
+  @@index([UpdatedAt], map: "Idx_Admin_UI_Setting_UpdatedAt")
+  @@index([ValideSetting], map: "Idx_Admin_UI_Setting_Valide")
+  @@schema("systeme")
 }

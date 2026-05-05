@@ -61,6 +61,21 @@ function getDefaultUnitPrice(article, commandeDirection) {
   return "";
 }
 
+function getDetailLineState(detail) {
+  const label = String(detail?.EtatLigne || "");
+  const normalized = normalizeSearchText(label);
+
+  if (normalized.includes("quantite invalide")) {
+    return { key: "quantite-invalide", label: label || "Quantite invalide", tone: "danger" };
+  }
+
+  if (normalized.includes("prix")) {
+    return { key: "prix-manquant", label: label || "Prix non renseigne", tone: "warning" };
+  }
+
+  return { key: "valide", label: label || "Valide", tone: "success" };
+}
+
 export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -70,8 +85,16 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(() => COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
   const [articleSearch, setArticleSearch] = useState("");
+  const [commandeFilter, setCommandeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [articleFilter, setArticleFilter] = useState("");
+  const [lineStateFilter, setLineStateFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const selectedDetail = sharedTable?.selectedRow || null;
   const composerMode = sharedTable?.composerMode || "view";
+  const sharedSearchTerm = normalizeSearchText(sharedTable?.searchValue || "").trim();
   const commandeDirection = useMemo(() => detectCommandeDirection(selectedCommande), [selectedCommande]);
   const articleTypeLabelMap = useMemo(
     () => buildReferenceLabelMap(Array.isArray(references?.articleTypes) ? references.articleTypes : []),
@@ -83,6 +106,14 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   );
   const articleUnitLabelMap = useMemo(
     () => buildReferenceLabelMap(Array.isArray(references?.articleUnits) ? references.articleUnits : []),
+    [references]
+  );
+  const commandeTypeLabelMap = useMemo(
+    () => buildReferenceLabelMap(Array.isArray(references?.commandeTypes) ? references.commandeTypes : []),
+    [references]
+  );
+  const commandeStatusLabelMap = useMemo(
+    () => buildReferenceLabelMap(Array.isArray(references?.commandeStatuses) ? references.commandeStatuses : []),
     [references]
   );
   const articleCatalog = useMemo(
@@ -152,6 +183,58 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
         : false,
     [rows, selectedArticle, selectedDetail]
   );
+  const visibleRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (
+          sharedSearchTerm &&
+          !normalizeSearchText(
+            [row.CodeCmd, row.CodeFacture, row.CodeArticleInterne, row.NomArticle, row.TypeCmd, row.StatutCmd]
+              .filter(Boolean)
+              .join(" ")
+          ).includes(sharedSearchTerm)
+        ) {
+          return false;
+        }
+
+        if (commandeFilter && !String(row.CodeCmd || "").toLowerCase().includes(String(commandeFilter).toLowerCase())) {
+          return false;
+        }
+
+        if (typeFilter !== "all") {
+          const rowType = String(row.TypeCmd || commandeTypeLabelMap.get(String(row.ID_TypeCmdFk)) || "");
+          if (normalizeSearchText(rowType) !== normalizeSearchText(typeFilter)) {
+            return false;
+          }
+        }
+
+        if (statusFilter !== "all") {
+          const rowStatus = String(row.StatutCmd || commandeStatusLabelMap.get(String(row.ID_StatutCmdFk)) || "");
+          if (normalizeSearchText(rowStatus) !== normalizeSearchText(statusFilter)) {
+            return false;
+          }
+        }
+
+        if (articleFilter && String(row.ID_ArticleFk || "") !== String(articleFilter)) {
+          return false;
+        }
+
+        if (lineStateFilter !== "all" && getDetailLineState(row).key !== lineStateFilter) {
+          return false;
+        }
+
+        if (dateFrom && row.DateCmd && new Date(row.DateCmd) < new Date(dateFrom)) {
+          return false;
+        }
+
+        if (dateTo && row.DateCmd && new Date(row.DateCmd) > new Date(`${dateTo}T23:59:59`)) {
+          return false;
+        }
+
+        return true;
+      }),
+    [articleFilter, commandeFilter, commandeStatusLabelMap, commandeTypeLabelMap, dateFrom, dateTo, lineStateFilter, rows, sharedSearchTerm, statusFilter, typeFilter]
+  );
   const articleCatalogColumns = useMemo(
     () => [
       { key: "typeLabel", label: "Type" },
@@ -197,17 +280,11 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     let isMounted = true;
 
     async function loadDetails() {
-      if (!selectedCommande?.ID_Commande) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       setError("");
 
       const response = await COMMANDE_DETAILS_VIEW_CONFIG.fetchRows({
-        commandeId: selectedCommande.ID_Commande,
+        commandeId: selectedCommande?.ID_Commande,
         take: 150,
       });
 
@@ -242,7 +319,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     return () => {
       isMounted = false;
     };
-  }, [refreshKey, selectedCommande]);
+  }, [refreshKey, selectedCommande?.ID_Commande]);
 
   useEffect(() => {
     if (!selectedCommande?.ID_Commande) {
@@ -383,134 +460,177 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     onDataChanged?.();
   }
 
-  if (!selectedCommande) {
-    return (
-      <SectionCard title="Details de commande" subtitle="Selectionnez d'abord une commande depuis l'onglet Commandes.">
-        <section className="table-empty-state">Aucune commande selectionnee pour afficher les details.</section>
-      </SectionCard>
-    );
-  }
-
   return (
-    <div className="logistics-stack">
+    <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
+      <header className="logistics-screen-copy">
+        <h1>Commande detail</h1>
+        <p>Lignes de commande, quantites, prix et controle du stock</p>
+      </header>
 
-      <SectionCard
-        title={`Details de ${selectedCommande.CodeCmd || `commande #${selectedCommande.ID_Commande}`}`}
-        subtitle="Les ajouts, modifications et suppressions laissent les triggers SQL mettre a jour T_Mouvement et le stock."
-        actions={
-          <div className="logistics-inline-actions">
-            <button type="button" className="secondary-action" onClick={handleNewLine}>
-              Ajouter un produit
-            </button>
-            {editorMode ? (
-              <button type="button" className="secondary-action" onClick={resetEditor}>
-                Fermer le compositeur
-              </button>
-            ) : null}
-          </div>
-        }
-      >
-        <div className="logistics-detail-grid">
-          <article>
-            <strong>{selectedCommande.CodeCmd || `Commande #${selectedCommande.ID_Commande}`}</strong>
-            <p>Date: {formatDate(selectedCommande.DateCmd, { withTime: true })}</p>
-          </article>
-          <article>
-            <p>Facture: {selectedCommande.CodeFacture || "-"}</p>
-            <p>Montant TTC: {formatCurrency(selectedCommande.MontantTTC)}</p>
-          </article>
-        </div>
-
-        <div className="logistics-summary-grid">
-          <SummaryCard
-            title="Type de flux"
-            value={
-              commandeDirection === "sortie"
-                ? "Sortie"
-                : commandeDirection === "entree"
-                  ? "Entree"
-                  : "A confirmer"
-            }
-            tone={commandeDirection === "sortie" ? "warning" : "success"}
-            caption="Le sens du stock vient du type de commande parent."
+      <section className="logistics-screen-search-card">
+        <label className="admin-form-field logistics-screen-search-field">
+          <span>{sharedTable?.searchLabel || "Recherche"}</span>
+          <input
+            type="search"
+            value={sharedTable?.searchValue || ""}
+            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
+            placeholder="Rechercher une ligne, commande, article ou facture..."
           />
-          <SummaryCard
-            title="Articles deja ajoutes"
-            value={formatNumber(rows.length)}
-            caption="Une ligne par article dans la commande."
-          />
+        </label>
+      </section>
+
+      <section className="logistics-top-actions">
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewLine} disabled={!selectedCommande}>
+          Ajouter ligne
+        </button>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedDetail && handleEditLine(selectedDetail)} disabled={!selectedCommande || !selectedDetail}>
+          Modifier ligne
+        </button>
+        <button type="button" className="logistics-top-action is-red" onClick={() => selectedDetail && handleDeleteLine(selectedDetail)} disabled={!selectedCommande || !selectedDetail}>
+          Supprimer ligne
+        </button>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedDetail && sharedTable?.setSelectedRow?.(selectedDetail)} disabled={!selectedDetail}>
+          Voir
+        </button>
+        <button type="button" className="logistics-top-action is-green" disabled={visibleRows.length === 0}>
+          Exporter
+        </button>
+        <button type="button" className="logistics-top-action is-purple" disabled={visibleRows.length === 0}>
+          Imprimer
+        </button>
+        <button type="button" className="logistics-top-action is-muted" disabled>
+          Autres filtres
+        </button>
+      </section>
+
+      <section className="logistics-screen-filter-card">
+        <div className="logistics-mockup-filter-grid">
+          <label className="admin-form-field">
+            <span>Commande</span>
+            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="Code commande..." />
+          </label>
+
+          <label className="admin-form-field">
+            <span>Type commande</span>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              {Array.from(new Set(rows.map((row) => row.TypeCmd).filter(Boolean))).map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="admin-form-field">
+            <span>Statut commande</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              {Array.from(new Set(rows.map((row) => row.StatutCmd).filter(Boolean))).map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="admin-form-field">
+            <span>Article</span>
+            <select value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)}>
+              <option value="">Toutes</option>
+              {articleCatalog.map((article) => (
+                <option key={article.id} value={article.id}>
+                  {article.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="admin-form-field">
+            <span>Etat ligne</span>
+            <select value={lineStateFilter} onChange={(event) => setLineStateFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="valide">Valide</option>
+              <option value="quantite-invalide">Quantite invalide</option>
+              <option value="prix-manquant">Prix non renseigne</option>
+            </select>
+          </label>
+
+          <label className="admin-form-field">
+            <span>Periode</span>
+            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+          </label>
         </div>
+      </section>
 
-        <SelectionStrip
-          selectedRow={selectedDetail}
-          label={
-            selectedDetail
-              ? `Ligne selectionnee: commande #${selectedDetail.ID_CmdFk} / article #${selectedDetail.ID_ArticleFk}`
-              : "Aucune ligne selectionnee"
-          }
-          description={
-            selectedDetail
-              ? `${selectedDetail.NomArticle || "-"} | ${formatNumber(selectedDetail.QteCmdDetail)}`
-              : "Selectionnez une ligne du detail pour la modifier plus rapidement."
-          }
-          actions={
-            selectedDetail ? (
-              <>
-                <button type="button" className="secondary-action" onClick={() => handleEditLine(selectedDetail)}>
-                  Modifier
-                </button>
-                <button type="button" className="admin-danger-button" onClick={() => handleDeleteLine(selectedDetail)}>
-                  Supprimer
-                </button>
-              </>
-            ) : null
-          }
-        />
+      <section className="logistics-screen-table-card">
+        {!selectedCommande ? (
+          <section className="table-empty-state">
+            Selectionnez une commande depuis l'onglet Commandes pour ajouter ou modifier des lignes. La vue reste consultable globalement.
+          </section>
+        ) : null}
 
-        <TableToolbar
-          title={sharedTable?.toolbarTitle || "Tableau V_CommandeDetail"}
-          rows={rows}
-          columns={[
-            { key: "NomArticle", label: "Article" },
-            { key: "QteCmdDetail", label: "Quantite", renderText: (row) => formatNumber(row.QteCmdDetail) },
-            { key: "PUCmdDetail", label: "Prix", renderText: (row) => formatCurrency(row.PUCmdDetail) },
-            { key: "RemiseCmdDetail", label: "Remise", renderText: (row) => (row.RemiseCmdDetail ? "Oui" : "Non") },
-            { key: "LieuCmdDetail", label: "Lieu", renderText: (row) => row.LieuCmdDetail ?? "-" },
-          ]}
-          exportFilename={sharedTable?.exportFilename || "logistique-v_commandedetail.csv"}
-        />
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune ligne de commande a afficher." />
 
-        <LoadingErrorEmpty loading={loading} error={error} rows={rows} emptyMessage="Aucune ligne de commande a afficher." />
-
-        {!loading && !error && rows.length > 0 ? (
+        {!loading && !error && visibleRows.length > 0 ? (
           <SimpleTable
-            rows={rows}
+            rows={visibleRows}
             selectedRowId={selectedDetail ? `${selectedDetail.ID_CmdFk}-${selectedDetail.ID_ArticleFk}` : null}
             getRowId={(row) => `${row.ID_CmdFk}-${row.ID_ArticleFk}`}
             onRowSelect={sharedTable?.setSelectedRow}
-            defaultPinnedColumns={["NomArticle", "QteCmdDetail"]}
-            defaultSortColumn="NomArticle"
+            enableSelection={false}
+            showControls={false}
+            defaultPinnedColumns={["CodeCmd", "NomArticle"]}
+            defaultSortColumn="DateCmd"
+            defaultRowsPerPage={10}
             exportFilename={sharedTable?.exportFilename || "logistique-v_commandedetail.csv"}
             columns={[
+              { key: "CodeCmd", label: "Code commande" },
+              { key: "CodeFacture", label: "Facture", render: (row) => row.CodeFacture || "-" },
+              { key: "DateCmd", label: "Date commande", render: (row) => formatDate(row.DateCmd, { withTime: true }) },
+              {
+                key: "TypeCmd",
+                label: "Type commande",
+                render: (row) => <ToneBadge tone={normalizeSearchText(row.TypeCmd).includes("sort") ? "warning" : "success"}>{row.TypeCmd || "-"}</ToneBadge>,
+              },
+              {
+                key: "StatutCmd",
+                label: "Statut commande",
+                render: (row) => <ToneBadge tone="info">{row.StatutCmd || "-"}</ToneBadge>,
+              },
+              { key: "CodeArticleInterne", label: "Code article", render: (row) => row.CodeArticleInterne || "-" },
               { key: "NomArticle", label: "Article" },
+              { key: "AbrUnite", label: "Unite", render: (row) => row.AbrUnite || "-" },
+              {
+                key: "StockAvantLigneTheorique",
+                label: "Stock avant theorique",
+                render: (row) => formatNumber(row.StockAvantLigneTheorique),
+              },
+              { key: "StockActuel", label: "Stock actuel", render: (row) => formatNumber(row.StockActuel) },
               { key: "QteCmdDetail", label: "Quantite", render: (row) => formatNumber(row.QteCmdDetail) },
-              { key: "PUCmdDetail", label: "Prix", render: (row) => formatCurrency(row.PUCmdDetail) },
-              { key: "RemiseCmdDetail", label: "Remise", render: (row) => (row.RemiseCmdDetail ? "Oui" : "Non") },
+              { key: "PUCmdDetail", label: "PU", render: (row) => formatCurrency(row.PUCmdDetail) },
+              {
+                key: "MontantLigne",
+                label: "Montant ligne",
+                render: (row) => formatCurrency(row.MontantLigne ?? Number(row.QteCmdDetail || 0) * Number(row.PUCmdDetail || 0)),
+              },
               { key: "LieuCmdDetail", label: "Lieu", render: (row) => row.LieuCmdDetail ?? "-" },
+              {
+                key: "EtatLigne",
+                label: "Etat ligne",
+                render: (row) => {
+                  const lineState = getDetailLineState(row);
+                  return <ToneBadge tone={lineState.tone}>{lineState.label}</ToneBadge>;
+                },
+              },
               {
                 key: "actions",
                 label: "Actions",
                 render: (row) => (
                   <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
-                      Voir
-                    </button>
-                    <button type="button" className="secondary-action" onClick={() => handleEditLine(row)}>
-                      Modifier
-                    </button>
-                    <button type="button" className="admin-danger-button" onClick={() => handleDeleteLine(row)}>
-                      Supprimer
+                    <button type="button" className="logistics-kebab-button" onClick={() => sharedTable?.setSelectedRow?.(row)} aria-label={`Actions ${row.NomArticle || "ligne"}`}>
+                      ⋮
                     </button>
                   </div>
                 ),
@@ -518,7 +638,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
             ]}
           />
         ) : null}
-      </SectionCard>
+      </section>
 
       {selectedDetail ? (
         <SectionCard title="Ligne selectionnee" subtitle="Controle rapide avant modification.">
@@ -664,9 +784,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                     <label className="admin-form-field">
                       <span>Lieu</span>
                       <input
-                        type="number"
-                        min="1"
-                        step="1"
+                        type="text"
                         value={formValues.LieuCmdDetail}
                         onChange={(event) => setFormValues((current) => ({ ...current, LieuCmdDetail: event.target.value }))}
                       />

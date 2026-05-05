@@ -317,7 +317,6 @@ exports.Prisma.T_CommandeScalarFieldEnum = {
   ID_TypeCmdFk: 'ID_TypeCmdFk',
   ID_StatutCmdFk: 'ID_StatutCmdFk',
   ID_ClientFk: 'ID_ClientFk',
-  NomClientSaisi: 'NomClientSaisi',
   ID_UserFk: 'ID_UserFk',
   geolocalisationCmd: 'geolocalisationCmd',
   DateHeureAutoCmd: 'DateHeureAutoCmd',
@@ -339,7 +338,8 @@ exports.Prisma.T_CommandeScalarFieldEnum = {
   UrlFacture: 'UrlFacture',
   ID_ConditionPaiementFk: 'ID_ConditionPaiementFk',
   DateEcheancePaiement: 'DateEcheancePaiement',
-  ID_ModePaiementFk: 'ID_ModePaiementFk'
+  ID_ModePaiementFk: 'ID_ModePaiementFk',
+  NomClientSaisi: 'NomClientSaisi'
 };
 
 exports.Prisma.T_CommandeDetailScalarFieldEnum = {
@@ -567,6 +567,26 @@ exports.Prisma.T_DiscussionScalarFieldEnum = {
   ValideDiscussion: 'ValideDiscussion'
 };
 
+exports.Prisma.T_Admin_UI_SettingScalarFieldEnum = {
+  IdAdminUISetting: 'IdAdminUISetting',
+  SettingScope: 'SettingScope',
+  ScopeValue: 'ScopeValue',
+  SettingKey: 'SettingKey',
+  SettingLabel: 'SettingLabel',
+  SettingGroup: 'SettingGroup',
+  SettingValue: 'SettingValue',
+  SettingValueJson: 'SettingValueJson',
+  SettingType: 'SettingType',
+  DisplayOrder: 'DisplayOrder',
+  IsEditable: 'IsEditable',
+  IsSystem: 'IsSystem',
+  ValideSetting: 'ValideSetting',
+  CreatedAt: 'CreatedAt',
+  UpdatedAt: 'UpdatedAt',
+  UpdatedByUserFk: 'UpdatedByUserFk',
+  ObsSetting: 'ObsSetting'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -624,7 +644,8 @@ exports.Prisma.ModelName = {
   T_Licence: 'T_Licence',
   T_Login: 'T_Login',
   T_Utilisateurs: 'T_Utilisateurs',
-  T_Discussion: 'T_Discussion'
+  T_Discussion: 'T_Discussion',
+  T_Admin_UI_Setting: 'T_Admin_UI_Setting'
 };
 
 /**

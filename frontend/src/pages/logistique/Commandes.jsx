@@ -69,6 +69,75 @@ function getCommandeStatusTone(label) {
   return "warning";
 }
 
+function getCommandeFlowState(commande, typeLabelMap) {
+  if (commande?.EstCommandeEntree || Number(commande?.SigneCommande) > 0) {
+    return { label: commande.TypeCmd || typeLabelMap.get(String(commande.ID_TypeCmdFk)) || "Entree", tone: "success" };
+  }
+
+  if (commande?.EstCommandeSortie || Number(commande?.SigneCommande) < 0) {
+    return { label: commande.TypeCmd || typeLabelMap.get(String(commande.ID_TypeCmdFk)) || "Sortie", tone: "warning" };
+  }
+
+  return { label: commande?.TypeCmd || typeLabelMap.get(String(commande?.ID_TypeCmdFk)) || "-", tone: "info" };
+}
+
+function getCommandePaymentState(commande) {
+  const label = String(commande?.EtatPaiement || commande?.StatusFacture || "");
+  const normalized = label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (normalized.includes("part")) {
+    return { key: "partielle", label: label || "Partiellement reglee", tone: "warning" };
+  }
+
+  if (normalized.includes("non facture")) {
+    return { key: "non-facturee", label: label || "Non facturee", tone: "info" };
+  }
+
+  if (normalized.includes("non reglee") || normalized.includes("retard")) {
+    return { key: "non-reglee", label: label || "Non reglee", tone: "danger" };
+  }
+
+  if (normalized.includes("reglee")) {
+    return { key: "reglee", label: label || "Reglee", tone: "success" };
+  }
+
+  return { key: "autre", label: label || "A confirmer", tone: "info" };
+}
+
+function getCommandeControlState(commande) {
+  const label = String(commande?.EtatControleCommande || "");
+  const normalized = label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (normalized.includes("sans")) {
+    return { key: "sans-details", label: label || "Sans details", tone: "warning" };
+  }
+
+  if (normalized.includes("incoher")) {
+    return { key: "incoherente", label: label || "Montant incoherent", tone: "danger" };
+  }
+
+  if (normalized.includes("coher")) {
+    return { key: "coherente", label: label || "Coherente", tone: "success" };
+  }
+
+  return { key: "autre", label: label || "A controler", tone: "info" };
+}
+
+function isCommandeLockedForUi(commande) {
+  const normalized = String(commande?.StatusFacture || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return normalized === "cloturee" || normalized === "facturee";
+}
+
 function formatUserDisplayName(user) {
   if (!user) {
     return "";
@@ -83,7 +152,7 @@ function buildDefaultCommandeDateTime() {
 }
 
 function getCommandeProduitsCount(row) {
-  return Number(row?.Produits ?? 0);
+  return Number(row?.NbLignes ?? row?.Produits ?? 0);
 }
 
 function getCommandeQteTotale(row) {
@@ -99,6 +168,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const [feedback, setFeedback] = useState(null);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [controlFilter, setControlFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -159,9 +230,24 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       "-"
     );
   }, [currentUserDisplayName, editorMode, formValues.ID_UserFk, selectedCommande, userLabelMap]);
+  const visibleRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (paymentFilter !== "all" && getCommandePaymentState(row).key !== paymentFilter) {
+          return false;
+        }
+
+        if (controlFilter !== "all" && getCommandeControlState(row).key !== controlFilter) {
+          return false;
+        }
+
+        return true;
+      }),
+    [controlFilter, paymentFilter, rows]
+  );
   const summary = useMemo(
     () =>
-      rows.reduce(
+      visibleRows.reduce(
         (accumulator, row) => {
           accumulator.total += 1;
           accumulator.totalLignes += getCommandeProduitsCount(row);
@@ -185,32 +271,35 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           enRetard: 0,
         }
       ),
-    [rows]
+    [visibleRows]
   );
   const tableColumns = useMemo(
     () => [
+      { key: "CodeCmd", label: "Code commande" },
+      { key: "RefCmd", label: "Reference", renderText: (row) => row.RefCmd || "-" },
       {
         key: "DateCmd",
-        label: "Date",
+        label: "Date commande",
         render: (row) => formatDate(row.DateCmd, { withTime: true }),
         renderText: (row) => formatDate(row.DateCmd, { withTime: true }),
       },
-      { key: "CodeCmd", label: "Code" },
-      { key: "RefCmd", label: "Reference", renderText: (row) => row.RefCmd || "-" },
       {
         key: "ID_TypeCmdFk",
         label: "Type",
-        render: (row) => typeLabelMap.get(String(row.ID_TypeCmdFk)) || `#${row.ID_TypeCmdFk ?? "-"}`,
-        renderText: (row) => typeLabelMap.get(String(row.ID_TypeCmdFk)) || `#${row.ID_TypeCmdFk ?? "-"}`,
+        render: (row) => {
+          const flow = getCommandeFlowState(row, typeLabelMap);
+          return <ToneBadge tone={flow.tone}>{flow.label}</ToneBadge>;
+        },
+        renderText: (row) => getCommandeFlowState(row, typeLabelMap).label,
       },
       {
         key: "ID_StatutCmdFk",
-        label: "Statut commande",
+        label: "Statut",
         render: (row) => {
-          const label = statusLabelMap.get(String(row.ID_StatutCmdFk)) || `#${row.ID_StatutCmdFk ?? "-"}`;
+          const label = row.StatutCmd || statusLabelMap.get(String(row.ID_StatutCmdFk)) || `#${row.ID_StatutCmdFk ?? "-"}`;
           return <ToneBadge tone={getCommandeStatusTone(label)}>{label}</ToneBadge>;
         },
-        renderText: (row) => statusLabelMap.get(String(row.ID_StatutCmdFk)) || `#${row.ID_StatutCmdFk ?? "-"}`,
+        renderText: (row) => row.StatutCmd || statusLabelMap.get(String(row.ID_StatutCmdFk)) || `#${row.ID_StatutCmdFk ?? "-"}`,
       },
       {
         key: "ID_ClientFk",
@@ -218,70 +307,70 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         render: (row) => getCommandeClientLabel(row, clientLabelMap),
         renderText: (row) => getCommandeClientLabel(row, clientLabelMap),
       },
-      { key: "NomComplet", label: "Utilisateur", renderText: (row) => row.NomComplet || row.NomUser || "-" },
-      { key: "geolocalisationCmd", label: "Localisation", renderText: (row) => row.geolocalisationCmd || "-" },
-      { key: "MontantHT", label: "HT", render: (row) => formatCurrency(row.MontantHT), renderText: (row) => formatCurrency(row.MontantHT) },
-      { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC), renderText: (row) => formatCurrency(row.MontantTTC) },
       {
-        key: "Produits",
-        label: "Produits",
-        render: (row) => formatNumber(getCommandeProduitsCount(row)),
-        renderText: (row) => formatNumber(getCommandeProduitsCount(row)),
+        key: "NbLignes",
+        label: "Nb lignes",
+        render: (row) => formatNumber(row.NbLignes ?? getCommandeProduitsCount(row)),
+        renderText: (row) => formatNumber(row.NbLignes ?? getCommandeProduitsCount(row)),
+      },
+      {
+        key: "NbArticlesDistincts",
+        label: "Articles distincts",
+        render: (row) => formatNumber(row.NbArticlesDistincts),
+        renderText: (row) => formatNumber(row.NbArticlesDistincts),
       },
       {
         key: "QteTotale",
-        label: "Qte totale",
-        render: (row) => formatNumber(getCommandeQteTotale(row)),
-        renderText: (row) => formatNumber(getCommandeQteTotale(row)),
+        label: "Quantite totale",
+        render: (row) => formatNumber(row.QteTotale ?? getCommandeQteTotale(row)),
+        renderText: (row) => formatNumber(row.QteTotale ?? getCommandeQteTotale(row)),
       },
-      { key: "ObsCmd", label: "Obs", renderText: (row) => row.ObsCmd || "-" },
+      { key: "MontantHT", label: "HT", render: (row) => formatCurrency(row.MontantHT), renderText: (row) => formatCurrency(row.MontantHT) },
+      { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC), renderText: (row) => formatCurrency(row.MontantTTC) },
       {
-        key: "StatusFacture",
-        label: "Facture",
-        render: (row) =>
-          row.StatusFacture ? <ToneBadge tone="info">{row.StatusFacture}</ToneBadge> : <ToneBadge tone="warning">Non renseigne</ToneBadge>,
-        renderText: (row) => row.StatusFacture || "Non renseigne",
+        key: "TotalRegleReel",
+        label: "Total regle",
+        render: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture),
+        renderText: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture),
       },
       {
-        key: "documents",
-        label: "Docs",
-        render: (row) => (
-          <>
-            <ToneBadge tone={row.UrlBL ? "success" : "warning"}>{row.UrlBL ? "BL" : "BL manquant"}</ToneBadge>{" "}
-            {row.CodeFacture ? (
-              <ToneBadge tone={row.UrlFacture ? "success" : "warning"}>{row.UrlFacture ? "Facture" : "Facture manquante"}</ToneBadge>
-            ) : null}
-          </>
-        ),
-        renderText: (row) =>
-          `${row.UrlBL ? "BL present" : "BL manquant"}${row.CodeFacture ? ` | ${row.UrlFacture ? "Facture presente" : "Facture manquante"}` : ""}`,
+        key: "ResteReel",
+        label: "Reste reel",
+        render: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture),
+        renderText: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture),
+      },
+      {
+        key: "EtatPaiement",
+        label: "Etat paiement",
+        render: (row) => {
+          const paymentState = getCommandePaymentState(row);
+          return <ToneBadge tone={paymentState.tone}>{paymentState.label}</ToneBadge>;
+        },
+        renderText: (row) => getCommandePaymentState(row).label,
+      },
+      {
+        key: "EtatControleCommande",
+        label: "Controle commande",
+        render: (row) => {
+          const controlState = getCommandeControlState(row);
+          return <ToneBadge tone={controlState.tone}>{controlState.label}</ToneBadge>;
+        },
+        renderText: (row) => getCommandeControlState(row).label,
       },
       {
         key: "actions",
         label: "Actions",
         render: (row) => (
           <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
-              Voir
-            </button>
-            <button type="button" className="secondary-action" onClick={() => handleEditCommande(row)}>
-              Modifier
-            </button>
-            <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(row, "view")}>
-              Voir produits
-            </button>
-            <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(row, "create")}>
-              Ajouter produits
-            </button>
-            <button type="button" className="admin-danger-button" onClick={() => handleDeleteCommande(row)}>
-              Supprimer
+            <button type="button" className="logistics-kebab-button" onClick={() => sharedTable?.setSelectedRow?.(row)} aria-label={`Actions ${row.CodeCmd || "commande"}`}>
+              ⋮
             </button>
           </div>
         ),
         exportValue: () => "",
       },
     ],
-    [clientLabelMap, handleDeleteCommande, handleEditCommande, onOpenDetails, sharedTable, statusLabelMap, typeLabelMap]
+    [clientLabelMap, sharedTable, statusLabelMap, typeLabelMap]
   );
 
   useEffect(() => {
@@ -450,162 +539,127 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   }
 
   return (
-    <div className="logistics-stack">
+    <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
-      <div className="logistics-workbench">
-        <div className="logistics-primary-pane">
-          <SectionCard
-            title="Suivi des commandes"
-            subtitle="Liste compacte de commandes avec lecture rapide, filtres metier et acces direct aux produits."
-            actions={
-              <div className="logistics-inline-actions">
-                <button type="button" className="secondary-action" onClick={handleNewCommande}>
-                  Ajouter commande
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() =>
-                    exportRowsToCsv("logistique-commandes.csv", tableColumns.filter((column) => column.key !== "actions"), rows)
-                  }
-                  disabled={rows.length === 0}
-                >
-                  Exporter
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() =>
-                    exportRowsToPdf("logistique-commandes", tableColumns.filter((column) => column.key !== "actions"), rows)
-                  }
-                  disabled={rows.length === 0}
-                >
-                  Imprimer
-                </button>
-              </div>
-            }
-          >
-            <div className="logistics-summary-grid">
-              <SummaryCard title="Commandes visibles" value={formatNumber(summary.total)} caption="Filtre courant" />
-              <SummaryCard title="Produits lies" value={formatNumber(summary.totalLignes)} caption="Nombre total de lignes" />
-              <SummaryCard title="Quantite totale" value={formatNumber(summary.totalQuantite)} tone="success" />
-              <SummaryCard title="Sans details" value={formatNumber(summary.sansDetails)} tone="warning" />
-              <SummaryCard title="Paiements en retard" value={formatNumber(summary.enRetard)} tone="danger" />
-            </div>
+      <header className="logistics-screen-copy">
+        <h1>Commandes</h1>
+        <p>Liste des commandes, facturation, reglement et controle des montants</p>
+      </header>
 
-            {createdCommandeAction ? (
-              <SelectionStrip
-                selectedRow={createdCommandeAction}
-                label={`Commande creee: ${createdCommandeAction.CodeCmd || `#${createdCommandeAction.ID_Commande}`}`}
-                description="Vous pouvez enchainer directement avec l'ajout des produits sans rechercher la commande."
-                actionLabel="Suite immediate"
-                actionDescription="Ouvrez maintenant l'ecran d'ajout des produits pour cette commande."
-                actions={
-                  <button type="button" className="primary-action" onClick={() => onOpenDetails?.(createdCommandeAction, "create")}>
-                    Ajouter les produits
-                  </button>
-                }
-              />
-            ) : null}
+      <section className="logistics-screen-search-card">
+        <label className="admin-form-field logistics-screen-search-field">
+          <span>{sharedTable?.searchLabel || "Recherche"}</span>
+          <input
+            type="search"
+            value={sharedTable?.searchValue || ""}
+            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
+            placeholder="Rechercher une commande, facture, client ou reference..."
+          />
+        </label>
+      </section>
 
-            <div className="logistics-filter-grid logistics-filter-grid-wide">
-              <label className="admin-form-field">
-                <span>{sharedTable?.searchLabel || "Recherche globale"}</span>
-                <input
-                  type="search"
-                  value={sharedTable?.searchValue || ""}
-                  onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-                  placeholder="Code, reference, utilisateur, statut facture..."
-                />
-              </label>
+      <section className="logistics-top-actions">
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewCommande}>
+          Ajouter
+        </button>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedCommande && handleEditCommande(selectedCommande)} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+          Modifier
+        </button>
+        <button type="button" className="logistics-top-action is-red" onClick={() => selectedCommande && handleDeleteCommande(selectedCommande)} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+          Supprimer
+        </button>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedCommande && sharedTable?.setSelectedRow?.(selectedCommande)} disabled={!selectedCommande}>
+          Voir
+        </button>
+        <button type="button" className="logistics-top-action is-blue" onClick={() => selectedCommande && onOpenDetails?.(selectedCommande, "create")} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+          Ajouter produits
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-green"
+          onClick={() => exportRowsToCsv("logistique-commandes.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
+          disabled={visibleRows.length === 0}
+        >
+          Exporter
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-purple"
+          onClick={() => exportRowsToPdf("logistique-commandes", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
+          disabled={visibleRows.length === 0}
+        >
+          Imprimer
+        </button>
+        <button type="button" className="logistics-top-action is-sky" disabled>
+          Correspondance FK
+        </button>
+        <button type="button" className="logistics-top-action is-muted" disabled>
+          Autres filtres
+        </button>
+      </section>
 
-              <SelectField
-                label="Type commande"
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-                options={commandeTypeOptions}
-              />
+      {createdCommandeAction ? (
+        <section className="logistics-inline-alert is-success">
+          {`Commande creee: ${createdCommandeAction.CodeCmd || `#${createdCommandeAction.ID_Commande}`}. Vous pouvez maintenant ajouter les produits.`}
+        </section>
+      ) : null}
 
-              <SelectField
-                label="Statut commande"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                options={commandeStatusOptions}
-              />
+      <section className="logistics-screen-filter-card">
+        <div className="logistics-mockup-filter-grid">
+          <SelectField label="Type commande" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} options={commandeTypeOptions} />
+          <SelectField label="Statut commande" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} options={commandeStatusOptions} />
 
-              <SelectField
-                label="Client"
-                value={clientFilter}
-                onChange={(event) => setClientFilter(event.target.value)}
-                options={clientOptions}
-              />
+          <label className="admin-form-field">
+            <span>Etat paiement</span>
+            <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="reglee">Reglee</option>
+              <option value="partielle">Partiellement reglee</option>
+              <option value="non-reglee">Non reglee</option>
+              <option value="non-facturee">Non facturee</option>
+            </select>
+          </label>
 
-              <label className="admin-form-field">
-                <span>Date debut</span>
-                <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-              </label>
+          <label className="admin-form-field">
+            <span>Controle commande</span>
+            <select value={controlFilter} onChange={(event) => setControlFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="coherente">Coherente</option>
+              <option value="sans-details">Sans details</option>
+              <option value="incoherente">Montant incoherent</option>
+            </select>
+          </label>
 
-              <label className="admin-form-field">
-                <span>Date fin</span>
-                <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
-              </label>
-            </div>
+          <SelectField label="Client" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
 
-            <SelectionStrip
-              selectedRow={selectedCommande}
-              label={selectedCommande ? `Ligne selectionnee: commande #${selectedCommande.ID_Commande}` : "Aucune ligne selectionnee"}
-              description={
-                selectedCommande
-                  ? `${selectedCommande.CodeCmd || "-"} | ${getCommandeClientLabel(selectedCommande, clientLabelMap)} | ${formatNumber(getCommandeProduitsCount(selectedCommande))} produit(s)`
-                  : "Selectionnez une commande pour agir dessus plus rapidement."
-              }
-              actions={
-                selectedCommande ? (
-                  <>
-                    <button type="button" className="secondary-action" onClick={() => handleEditCommande(selectedCommande)}>
-                      Modifier
-                    </button>
-                    <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(selectedCommande, "view")}>
-                      Voir produits
-                    </button>
-                    <button type="button" className="secondary-action" onClick={() => onOpenDetails?.(selectedCommande, "create")}>
-                      Ajouter produits
-                    </button>
-                    <button type="button" className="admin-danger-button" onClick={() => handleDeleteCommande(selectedCommande)}>
-                      Supprimer
-                    </button>
-                  </>
-                ) : null
-              }
-            />
-
-            <TableToolbar
-              title={sharedTable?.toolbarTitle || "Tableau V_Commande"}
-              rows={rows}
-              columns={tableColumns.filter((column) => column.key !== "actions")}
-              exportFilename={sharedTable?.exportFilename || "logistique-v_commande.csv"}
-            />
-
-            <LoadingErrorEmpty loading={loading} error={error} rows={rows} emptyMessage="Aucune commande a afficher." />
-
-            {!loading && !error && rows.length > 0 ? (
-              <SimpleTable
-                rows={rows}
-                columns={tableColumns}
-                selectedRowId={selectedCommande?.ID_Commande || null}
-                onRowSelect={sharedTable?.setSelectedRow}
-                defaultPinnedColumns={["CodeCmd", "DateCmd"]}
-                defaultSortColumn="DateCmd"
-                exportFilename={sharedTable?.exportFilename || "logistique-v_commande.csv"}
-              />
-            ) : null}
-          </SectionCard>
+          <label className="admin-form-field">
+            <span>Periode</span>
+            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Toutes"} />
+          </label>
         </div>
+      </section>
 
-        {selectedCommande || editorMode ? (
-          <aside className="logistics-side-pane">
-            {selectedCommande ? (
-              <SectionCard title="Fiche commande" subtitle="Synthese de la commande selectionnee.">
+      <section className="logistics-screen-table-card">
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune commande a afficher." />
+
+        {!loading && !error && visibleRows.length > 0 ? (
+          <SimpleTable
+            rows={visibleRows}
+            columns={tableColumns}
+            selectedRowId={selectedCommande?.ID_Commande || null}
+            onRowSelect={sharedTable?.setSelectedRow}
+            enableSelection={false}
+            showControls={false}
+            defaultPinnedColumns={["CodeCmd", "DateCmd"]}
+            defaultSortColumn="DateCmd"
+            defaultRowsPerPage={10}
+            exportFilename={sharedTable?.exportFilename || "logistique-v_commande.csv"}
+          />
+        ) : null}
+      </section>
+
+      {selectedCommande ? (
+        <SectionCard title="Fiche commande" subtitle="Synthese de la commande selectionnee.">
                 <div className="logistics-detail-grid">
                   <article>
                     <strong>{selectedCommande.CodeCmd || `Commande #${selectedCommande.ID_Commande}`}</strong>
@@ -633,14 +687,14 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                     <p>Observation: {selectedCommande.ObsCmd || "-"}</p>
                   </article>
                 </div>
-              </SectionCard>
-            ) : null}
+        </SectionCard>
+      ) : null}
 
-            {editorMode ? (
-              <SectionCard
-                title={editorMode === "edit" ? "Modifier la commande" : "Creer une commande"}
-                subtitle="Renseignez d'abord l'entete de la commande, puis enchainez avec l'ajout des produits."
-              >
+      {editorMode ? (
+        <SectionCard
+          title={editorMode === "edit" ? "Modifier la commande" : "Creer une commande"}
+          subtitle="Renseignez d'abord l'entete de la commande, puis enchainez avec l'ajout des produits."
+        >
           {commandeReferenceWarnings.length > 0 ? (
             <section className="table-empty-state">
               {`References logistiques a completer: ${commandeReferenceWarnings.join(" ")}`}
@@ -965,11 +1019,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               </button>
             </div>
           </form>
-              </SectionCard>
-            ) : null}
-          </aside>
-        ) : null}
-      </div>
+        </SectionCard>
+      ) : null}
     </div>
   );
 }

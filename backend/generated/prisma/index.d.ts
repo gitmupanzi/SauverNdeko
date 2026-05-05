@@ -163,6 +163,11 @@ export type T_Utilisateurs = $Result.DefaultSelection<Prisma.$T_UtilisateursPayl
  * This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
  */
 export type T_Discussion = $Result.DefaultSelection<Prisma.$T_DiscussionPayload>
+/**
+ * Model T_Admin_UI_Setting
+ * This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+ */
+export type T_Admin_UI_Setting = $Result.DefaultSelection<Prisma.$T_Admin_UI_SettingPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -581,6 +586,16 @@ export class PrismaClient<
     * ```
     */
   get t_Discussion(): Prisma.T_DiscussionDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.t_Admin_UI_Setting`: Exposes CRUD operations for the **T_Admin_UI_Setting** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more T_Admin_UI_Settings
+    * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany()
+    * ```
+    */
+  get t_Admin_UI_Setting(): Prisma.T_Admin_UI_SettingDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1051,7 +1066,8 @@ export namespace Prisma {
     T_Licence: 'T_Licence',
     T_Login: 'T_Login',
     T_Utilisateurs: 'T_Utilisateurs',
-    T_Discussion: 'T_Discussion'
+    T_Discussion: 'T_Discussion',
+    T_Admin_UI_Setting: 'T_Admin_UI_Setting'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1070,7 +1086,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "t_Recherche" | "t_Chat" | "t_Communication" | "t_Niveau_0" | "t_Niveau_1_Old" | "t_Niveau_1" | "t_Niveau_2" | "t_Niveau_3" | "t_Niveau_4" | "t_Niveau_5" | "t_Article" | "t_Commande" | "t_CommandeDetail" | "t_Mouvement" | "t_Reglements" | "t_Caisse" | "t_Paiement" | "t_Paiement_Archive" | "t_Professionnel" | "t_Professionnel_Entite" | "t_CategorieGenerique" | "t_Generique" | "t_Audit_Log" | "t_Fk_Correspondance" | "t_Entite" | "t_Entite_Localisation" | "t_Licence" | "t_Login" | "t_Utilisateurs" | "t_Discussion"
+      modelProps: "t_Recherche" | "t_Chat" | "t_Communication" | "t_Niveau_0" | "t_Niveau_1_Old" | "t_Niveau_1" | "t_Niveau_2" | "t_Niveau_3" | "t_Niveau_4" | "t_Niveau_5" | "t_Article" | "t_Commande" | "t_CommandeDetail" | "t_Mouvement" | "t_Reglements" | "t_Caisse" | "t_Paiement" | "t_Paiement_Archive" | "t_Professionnel" | "t_Professionnel_Entite" | "t_CategorieGenerique" | "t_Generique" | "t_Audit_Log" | "t_Fk_Correspondance" | "t_Entite" | "t_Entite_Localisation" | "t_Licence" | "t_Login" | "t_Utilisateurs" | "t_Discussion" | "t_Admin_UI_Setting"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -3294,6 +3310,80 @@ export namespace Prisma {
           }
         }
       }
+      T_Admin_UI_Setting: {
+        payload: Prisma.$T_Admin_UI_SettingPayload<ExtArgs>
+        fields: Prisma.T_Admin_UI_SettingFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.T_Admin_UI_SettingFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          findFirst: {
+            args: Prisma.T_Admin_UI_SettingFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          findMany: {
+            args: Prisma.T_Admin_UI_SettingFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+          }
+          create: {
+            args: Prisma.T_Admin_UI_SettingCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          createMany: {
+            args: Prisma.T_Admin_UI_SettingCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+          }
+          delete: {
+            args: Prisma.T_Admin_UI_SettingDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          update: {
+            args: Prisma.T_Admin_UI_SettingUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          deleteMany: {
+            args: Prisma.T_Admin_UI_SettingDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.T_Admin_UI_SettingUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>[]
+          }
+          upsert: {
+            args: Prisma.T_Admin_UI_SettingUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$T_Admin_UI_SettingPayload>
+          }
+          aggregate: {
+            args: Prisma.T_Admin_UI_SettingAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateT_Admin_UI_Setting>
+          }
+          groupBy: {
+            args: Prisma.T_Admin_UI_SettingGroupByArgs<ExtArgs>
+            result: $Utils.Optional<T_Admin_UI_SettingGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.T_Admin_UI_SettingCountArgs<ExtArgs>
+            result: $Utils.Optional<T_Admin_UI_SettingCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -3420,6 +3510,7 @@ export namespace Prisma {
     t_Login?: T_LoginOmit
     t_Utilisateurs?: T_UtilisateursOmit
     t_Discussion?: T_DiscussionOmit
+    t_Admin_UI_Setting?: T_Admin_UI_SettingOmit
   }
 
   /* Types for Logging */
@@ -4442,6 +4533,7 @@ export namespace Prisma {
     T_Commande: number
     T_Payeur: number
     T_Paiement: number
+    T_Admin_UI_Setting: number
     T_Fk_Correspondance: number
     T_Login: number
   }
@@ -4455,6 +4547,7 @@ export namespace Prisma {
     T_Commande?: boolean | T_UtilisateursCountOutputTypeCountT_CommandeArgs
     T_Payeur?: boolean | T_UtilisateursCountOutputTypeCountT_PayeurArgs
     T_Paiement?: boolean | T_UtilisateursCountOutputTypeCountT_PaiementArgs
+    T_Admin_UI_Setting?: boolean | T_UtilisateursCountOutputTypeCountT_Admin_UI_SettingArgs
     T_Fk_Correspondance?: boolean | T_UtilisateursCountOutputTypeCountT_Fk_CorrespondanceArgs
     T_Login?: boolean | T_UtilisateursCountOutputTypeCountT_LoginArgs
   }
@@ -4524,6 +4617,13 @@ export namespace Prisma {
    */
   export type T_UtilisateursCountOutputTypeCountT_PaiementArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: T_PaiementWhereInput
+  }
+
+  /**
+   * T_UtilisateursCountOutputType without action
+   */
+  export type T_UtilisateursCountOutputTypeCountT_Admin_UI_SettingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_Admin_UI_SettingWhereInput
   }
 
   /**
@@ -19585,7 +19685,6 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
-    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19608,6 +19707,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk: number | null
     DateEcheancePaiement: Date | null
     ID_ModePaiementFk: number | null
+    NomClientSaisi: string | null
   }
 
   export type T_CommandeMaxAggregateOutputType = {
@@ -19615,7 +19715,6 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
-    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19638,6 +19737,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk: number | null
     DateEcheancePaiement: Date | null
     ID_ModePaiementFk: number | null
+    NomClientSaisi: string | null
   }
 
   export type T_CommandeCountAggregateOutputType = {
@@ -19645,7 +19745,6 @@ export namespace Prisma {
     ID_TypeCmdFk: number
     ID_StatutCmdFk: number
     ID_ClientFk: number
-    NomClientSaisi: number
     ID_UserFk: number
     geolocalisationCmd: number
     DateHeureAutoCmd: number
@@ -19668,6 +19767,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk: number
     DateEcheancePaiement: number
     ID_ModePaiementFk: number
+    NomClientSaisi: number
     _all: number
   }
 
@@ -19705,7 +19805,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
-    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19728,6 +19827,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: true
     DateEcheancePaiement?: true
     ID_ModePaiementFk?: true
+    NomClientSaisi?: true
   }
 
   export type T_CommandeMaxAggregateInputType = {
@@ -19735,7 +19835,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
-    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19758,6 +19857,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: true
     DateEcheancePaiement?: true
     ID_ModePaiementFk?: true
+    NomClientSaisi?: true
   }
 
   export type T_CommandeCountAggregateInputType = {
@@ -19765,7 +19865,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: true
     ID_StatutCmdFk?: true
     ID_ClientFk?: true
-    NomClientSaisi?: true
     ID_UserFk?: true
     geolocalisationCmd?: true
     DateHeureAutoCmd?: true
@@ -19788,6 +19887,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: true
     DateEcheancePaiement?: true
     ID_ModePaiementFk?: true
+    NomClientSaisi?: true
     _all?: true
   }
 
@@ -19882,7 +19982,6 @@ export namespace Prisma {
     ID_TypeCmdFk: number | null
     ID_StatutCmdFk: number | null
     ID_ClientFk: number | null
-    NomClientSaisi: string | null
     ID_UserFk: number | null
     geolocalisationCmd: string | null
     DateHeureAutoCmd: Date | null
@@ -19905,6 +20004,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk: number | null
     DateEcheancePaiement: Date | null
     ID_ModePaiementFk: number | null
+    NomClientSaisi: string | null
     _count: T_CommandeCountAggregateOutputType | null
     _avg: T_CommandeAvgAggregateOutputType | null
     _sum: T_CommandeSumAggregateOutputType | null
@@ -19931,7 +20031,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
-    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19954,6 +20053,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    NomClientSaisi?: boolean
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
@@ -19970,7 +20070,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
-    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -19993,6 +20092,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    NomClientSaisi?: boolean
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
@@ -20005,7 +20105,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
-    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -20028,6 +20127,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    NomClientSaisi?: boolean
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueArgs<ExtArgs>
@@ -20040,7 +20140,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: boolean
     ID_StatutCmdFk?: boolean
     ID_ClientFk?: boolean
-    NomClientSaisi?: boolean
     ID_UserFk?: boolean
     geolocalisationCmd?: boolean
     DateHeureAutoCmd?: boolean
@@ -20063,9 +20162,10 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: boolean
     DateEcheancePaiement?: boolean
     ID_ModePaiementFk?: boolean
+    NomClientSaisi?: boolean
   }
 
-  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmdFk" | "ID_ClientFk" | "NomClientSaisi" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk", ExtArgs["result"]["t_Commande"]>
+  export type T_CommandeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"ID_Commande" | "ID_TypeCmdFk" | "ID_StatutCmdFk" | "ID_ClientFk" | "ID_UserFk" | "geolocalisationCmd" | "DateHeureAutoCmd" | "DateCmd" | "CodeCmd" | "RefCmd" | "MontantHT" | "MontantTTC" | "UrlBL" | "ObsCmd" | "SelectCmd" | "DateHeureAutoFacture" | "DateFacture" | "CodeFacture" | "MontantRegleFacture" | "MontantResteFacture" | "StatusFacture" | "ValideRemiseFacture" | "UrlFacture" | "ID_ConditionPaiementFk" | "DateEcheancePaiement" | "ID_ModePaiementFk" | "NomClientSaisi", ExtArgs["result"]["t_Commande"]>
   export type T_CommandeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueArgs<ExtArgs>
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: boolean | T_Commande$T_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueArgs<ExtArgs>
@@ -20109,7 +20209,6 @@ export namespace Prisma {
       ID_TypeCmdFk: number | null
       ID_StatutCmdFk: number | null
       ID_ClientFk: number | null
-      NomClientSaisi: string | null
       ID_UserFk: number | null
       geolocalisationCmd: string | null
       DateHeureAutoCmd: Date | null
@@ -20132,6 +20231,7 @@ export namespace Prisma {
       ID_ConditionPaiementFk: number | null
       DateEcheancePaiement: Date | null
       ID_ModePaiementFk: number | null
+      NomClientSaisi: string | null
     }, ExtArgs["result"]["t_Commande"]>
     composites: {}
   }
@@ -20567,7 +20667,6 @@ export namespace Prisma {
     readonly ID_TypeCmdFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_StatutCmdFk: FieldRef<"T_Commande", 'Int'>
     readonly ID_ClientFk: FieldRef<"T_Commande", 'Int'>
-    readonly NomClientSaisi: FieldRef<"T_Commande", 'String'>
     readonly ID_UserFk: FieldRef<"T_Commande", 'Int'>
     readonly geolocalisationCmd: FieldRef<"T_Commande", 'String'>
     readonly DateHeureAutoCmd: FieldRef<"T_Commande", 'DateTime'>
@@ -20590,6 +20689,7 @@ export namespace Prisma {
     readonly ID_ConditionPaiementFk: FieldRef<"T_Commande", 'Int'>
     readonly DateEcheancePaiement: FieldRef<"T_Commande", 'DateTime'>
     readonly ID_ModePaiementFk: FieldRef<"T_Commande", 'Int'>
+    readonly NomClientSaisi: FieldRef<"T_Commande", 'String'>
   }
     
 
@@ -42043,6 +42143,7 @@ export namespace Prisma {
     T_Payeur?: boolean | T_Utilisateurs$T_PayeurArgs<ExtArgs>
     T_Paiement?: boolean | T_Utilisateurs$T_PaiementArgs<ExtArgs>
     T_Professionnel?: boolean | T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>
+    T_Admin_UI_Setting?: boolean | T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>
     T_Fk_Correspondance?: boolean | T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>
     T_Login?: boolean | T_Utilisateurs$T_LoginArgs<ExtArgs>
     T_Entite?: boolean | T_Utilisateurs$T_EntiteArgs<ExtArgs>
@@ -42119,6 +42220,7 @@ export namespace Prisma {
     T_Payeur?: boolean | T_Utilisateurs$T_PayeurArgs<ExtArgs>
     T_Paiement?: boolean | T_Utilisateurs$T_PaiementArgs<ExtArgs>
     T_Professionnel?: boolean | T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>
+    T_Admin_UI_Setting?: boolean | T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>
     T_Fk_Correspondance?: boolean | T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>
     T_Login?: boolean | T_Utilisateurs$T_LoginArgs<ExtArgs>
     T_Entite?: boolean | T_Utilisateurs$T_EntiteArgs<ExtArgs>
@@ -42146,6 +42248,7 @@ export namespace Prisma {
       T_Payeur: Prisma.$T_PaiementPayload<ExtArgs>[]
       T_Paiement: Prisma.$T_PaiementPayload<ExtArgs>[]
       T_Professionnel: Prisma.$T_ProfessionnelPayload<ExtArgs> | null
+      T_Admin_UI_Setting: Prisma.$T_Admin_UI_SettingPayload<ExtArgs>[]
       T_Fk_Correspondance: Prisma.$T_Fk_CorrespondancePayload<ExtArgs>[]
       T_Login: Prisma.$T_LoginPayload<ExtArgs>[]
       T_Entite: Prisma.$T_EntitePayload<ExtArgs> | null
@@ -42570,6 +42673,7 @@ export namespace Prisma {
     T_Payeur<T extends T_Utilisateurs$T_PayeurArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_PayeurArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_PaiementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Paiement<T extends T_Utilisateurs$T_PaiementArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_PaiementArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_PaiementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Professionnel<T extends T_Utilisateurs$T_ProfessionnelArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_ProfessionnelArgs<ExtArgs>>): Prisma__T_ProfessionnelClient<$Result.GetResult<Prisma.$T_ProfessionnelPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    T_Admin_UI_Setting<T extends T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Fk_Correspondance<T extends T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_Fk_CorrespondanceArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Fk_CorrespondancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Login<T extends T_Utilisateurs$T_LoginArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_LoginArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_LoginPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     T_Entite<T extends T_Utilisateurs$T_EntiteArgs<ExtArgs> = {}>(args?: Subset<T, T_Utilisateurs$T_EntiteArgs<ExtArgs>>): Prisma__T_EntiteClient<$Result.GetResult<Prisma.$T_EntitePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
@@ -43222,6 +43326,30 @@ export namespace Prisma {
      */
     include?: T_ProfessionnelInclude<ExtArgs> | null
     where?: T_ProfessionnelWhereInput
+  }
+
+  /**
+   * T_Utilisateurs.T_Admin_UI_Setting
+   */
+  export type T_Utilisateurs$T_Admin_UI_SettingArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    where?: T_Admin_UI_SettingWhereInput
+    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
   }
 
   /**
@@ -44589,6 +44717,1277 @@ export namespace Prisma {
 
 
   /**
+   * Model T_Admin_UI_Setting
+   */
+
+  export type AggregateT_Admin_UI_Setting = {
+    _count: T_Admin_UI_SettingCountAggregateOutputType | null
+    _avg: T_Admin_UI_SettingAvgAggregateOutputType | null
+    _sum: T_Admin_UI_SettingSumAggregateOutputType | null
+    _min: T_Admin_UI_SettingMinAggregateOutputType | null
+    _max: T_Admin_UI_SettingMaxAggregateOutputType | null
+  }
+
+  export type T_Admin_UI_SettingAvgAggregateOutputType = {
+    IdAdminUISetting: number | null
+    DisplayOrder: number | null
+    UpdatedByUserFk: number | null
+  }
+
+  export type T_Admin_UI_SettingSumAggregateOutputType = {
+    IdAdminUISetting: number | null
+    DisplayOrder: number | null
+    UpdatedByUserFk: number | null
+  }
+
+  export type T_Admin_UI_SettingMinAggregateOutputType = {
+    IdAdminUISetting: number | null
+    SettingScope: string | null
+    ScopeValue: string | null
+    SettingKey: string | null
+    SettingLabel: string | null
+    SettingGroup: string | null
+    SettingValue: string | null
+    SettingType: string | null
+    DisplayOrder: number | null
+    IsEditable: boolean | null
+    IsSystem: boolean | null
+    ValideSetting: boolean | null
+    CreatedAt: Date | null
+    UpdatedAt: Date | null
+    UpdatedByUserFk: number | null
+    ObsSetting: string | null
+  }
+
+  export type T_Admin_UI_SettingMaxAggregateOutputType = {
+    IdAdminUISetting: number | null
+    SettingScope: string | null
+    ScopeValue: string | null
+    SettingKey: string | null
+    SettingLabel: string | null
+    SettingGroup: string | null
+    SettingValue: string | null
+    SettingType: string | null
+    DisplayOrder: number | null
+    IsEditable: boolean | null
+    IsSystem: boolean | null
+    ValideSetting: boolean | null
+    CreatedAt: Date | null
+    UpdatedAt: Date | null
+    UpdatedByUserFk: number | null
+    ObsSetting: string | null
+  }
+
+  export type T_Admin_UI_SettingCountAggregateOutputType = {
+    IdAdminUISetting: number
+    SettingScope: number
+    ScopeValue: number
+    SettingKey: number
+    SettingLabel: number
+    SettingGroup: number
+    SettingValue: number
+    SettingValueJson: number
+    SettingType: number
+    DisplayOrder: number
+    IsEditable: number
+    IsSystem: number
+    ValideSetting: number
+    CreatedAt: number
+    UpdatedAt: number
+    UpdatedByUserFk: number
+    ObsSetting: number
+    _all: number
+  }
+
+
+  export type T_Admin_UI_SettingAvgAggregateInputType = {
+    IdAdminUISetting?: true
+    DisplayOrder?: true
+    UpdatedByUserFk?: true
+  }
+
+  export type T_Admin_UI_SettingSumAggregateInputType = {
+    IdAdminUISetting?: true
+    DisplayOrder?: true
+    UpdatedByUserFk?: true
+  }
+
+  export type T_Admin_UI_SettingMinAggregateInputType = {
+    IdAdminUISetting?: true
+    SettingScope?: true
+    ScopeValue?: true
+    SettingKey?: true
+    SettingLabel?: true
+    SettingGroup?: true
+    SettingValue?: true
+    SettingType?: true
+    DisplayOrder?: true
+    IsEditable?: true
+    IsSystem?: true
+    ValideSetting?: true
+    CreatedAt?: true
+    UpdatedAt?: true
+    UpdatedByUserFk?: true
+    ObsSetting?: true
+  }
+
+  export type T_Admin_UI_SettingMaxAggregateInputType = {
+    IdAdminUISetting?: true
+    SettingScope?: true
+    ScopeValue?: true
+    SettingKey?: true
+    SettingLabel?: true
+    SettingGroup?: true
+    SettingValue?: true
+    SettingType?: true
+    DisplayOrder?: true
+    IsEditable?: true
+    IsSystem?: true
+    ValideSetting?: true
+    CreatedAt?: true
+    UpdatedAt?: true
+    UpdatedByUserFk?: true
+    ObsSetting?: true
+  }
+
+  export type T_Admin_UI_SettingCountAggregateInputType = {
+    IdAdminUISetting?: true
+    SettingScope?: true
+    ScopeValue?: true
+    SettingKey?: true
+    SettingLabel?: true
+    SettingGroup?: true
+    SettingValue?: true
+    SettingValueJson?: true
+    SettingType?: true
+    DisplayOrder?: true
+    IsEditable?: true
+    IsSystem?: true
+    ValideSetting?: true
+    CreatedAt?: true
+    UpdatedAt?: true
+    UpdatedByUserFk?: true
+    ObsSetting?: true
+    _all?: true
+  }
+
+  export type T_Admin_UI_SettingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which T_Admin_UI_Setting to aggregate.
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of T_Admin_UI_Settings to fetch.
+     */
+    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` T_Admin_UI_Settings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned T_Admin_UI_Settings
+    **/
+    _count?: true | T_Admin_UI_SettingCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: T_Admin_UI_SettingAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: T_Admin_UI_SettingSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: T_Admin_UI_SettingMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: T_Admin_UI_SettingMaxAggregateInputType
+  }
+
+  export type GetT_Admin_UI_SettingAggregateType<T extends T_Admin_UI_SettingAggregateArgs> = {
+        [P in keyof T & keyof AggregateT_Admin_UI_Setting]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateT_Admin_UI_Setting[P]>
+      : GetScalarType<T[P], AggregateT_Admin_UI_Setting[P]>
+  }
+
+
+
+
+  export type T_Admin_UI_SettingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: T_Admin_UI_SettingWhereInput
+    orderBy?: T_Admin_UI_SettingOrderByWithAggregationInput | T_Admin_UI_SettingOrderByWithAggregationInput[]
+    by: T_Admin_UI_SettingScalarFieldEnum[] | T_Admin_UI_SettingScalarFieldEnum
+    having?: T_Admin_UI_SettingScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: T_Admin_UI_SettingCountAggregateInputType | true
+    _avg?: T_Admin_UI_SettingAvgAggregateInputType
+    _sum?: T_Admin_UI_SettingSumAggregateInputType
+    _min?: T_Admin_UI_SettingMinAggregateInputType
+    _max?: T_Admin_UI_SettingMaxAggregateInputType
+  }
+
+  export type T_Admin_UI_SettingGroupByOutputType = {
+    IdAdminUISetting: number
+    SettingScope: string
+    ScopeValue: string | null
+    SettingKey: string
+    SettingLabel: string | null
+    SettingGroup: string | null
+    SettingValue: string | null
+    SettingValueJson: JsonValue | null
+    SettingType: string | null
+    DisplayOrder: number | null
+    IsEditable: boolean | null
+    IsSystem: boolean | null
+    ValideSetting: boolean | null
+    CreatedAt: Date | null
+    UpdatedAt: Date | null
+    UpdatedByUserFk: number | null
+    ObsSetting: string | null
+    _count: T_Admin_UI_SettingCountAggregateOutputType | null
+    _avg: T_Admin_UI_SettingAvgAggregateOutputType | null
+    _sum: T_Admin_UI_SettingSumAggregateOutputType | null
+    _min: T_Admin_UI_SettingMinAggregateOutputType | null
+    _max: T_Admin_UI_SettingMaxAggregateOutputType | null
+  }
+
+  type GetT_Admin_UI_SettingGroupByPayload<T extends T_Admin_UI_SettingGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<T_Admin_UI_SettingGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof T_Admin_UI_SettingGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], T_Admin_UI_SettingGroupByOutputType[P]>
+            : GetScalarType<T[P], T_Admin_UI_SettingGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type T_Admin_UI_SettingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdAdminUISetting?: boolean
+    SettingScope?: boolean
+    ScopeValue?: boolean
+    SettingKey?: boolean
+    SettingLabel?: boolean
+    SettingGroup?: boolean
+    SettingValue?: boolean
+    SettingValueJson?: boolean
+    SettingType?: boolean
+    DisplayOrder?: boolean
+    IsEditable?: boolean
+    IsSystem?: boolean
+    ValideSetting?: boolean
+    CreatedAt?: boolean
+    UpdatedAt?: boolean
+    UpdatedByUserFk?: boolean
+    ObsSetting?: boolean
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
+
+  export type T_Admin_UI_SettingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdAdminUISetting?: boolean
+    SettingScope?: boolean
+    ScopeValue?: boolean
+    SettingKey?: boolean
+    SettingLabel?: boolean
+    SettingGroup?: boolean
+    SettingValue?: boolean
+    SettingValueJson?: boolean
+    SettingType?: boolean
+    DisplayOrder?: boolean
+    IsEditable?: boolean
+    IsSystem?: boolean
+    ValideSetting?: boolean
+    CreatedAt?: boolean
+    UpdatedAt?: boolean
+    UpdatedByUserFk?: boolean
+    ObsSetting?: boolean
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
+
+  export type T_Admin_UI_SettingSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    IdAdminUISetting?: boolean
+    SettingScope?: boolean
+    ScopeValue?: boolean
+    SettingKey?: boolean
+    SettingLabel?: boolean
+    SettingGroup?: boolean
+    SettingValue?: boolean
+    SettingValueJson?: boolean
+    SettingType?: boolean
+    DisplayOrder?: boolean
+    IsEditable?: boolean
+    IsSystem?: boolean
+    ValideSetting?: boolean
+    CreatedAt?: boolean
+    UpdatedAt?: boolean
+    UpdatedByUserFk?: boolean
+    ObsSetting?: boolean
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }, ExtArgs["result"]["t_Admin_UI_Setting"]>
+
+  export type T_Admin_UI_SettingSelectScalar = {
+    IdAdminUISetting?: boolean
+    SettingScope?: boolean
+    ScopeValue?: boolean
+    SettingKey?: boolean
+    SettingLabel?: boolean
+    SettingGroup?: boolean
+    SettingValue?: boolean
+    SettingValueJson?: boolean
+    SettingType?: boolean
+    DisplayOrder?: boolean
+    IsEditable?: boolean
+    IsSystem?: boolean
+    ValideSetting?: boolean
+    CreatedAt?: boolean
+    UpdatedAt?: boolean
+    UpdatedByUserFk?: boolean
+    ObsSetting?: boolean
+  }
+
+  export type T_Admin_UI_SettingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"IdAdminUISetting" | "SettingScope" | "ScopeValue" | "SettingKey" | "SettingLabel" | "SettingGroup" | "SettingValue" | "SettingValueJson" | "SettingType" | "DisplayOrder" | "IsEditable" | "IsSystem" | "ValideSetting" | "CreatedAt" | "UpdatedAt" | "UpdatedByUserFk" | "ObsSetting", ExtArgs["result"]["t_Admin_UI_Setting"]>
+  export type T_Admin_UI_SettingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }
+  export type T_Admin_UI_SettingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }
+  export type T_Admin_UI_SettingIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    T_Utilisateurs?: boolean | T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>
+  }
+
+  export type $T_Admin_UI_SettingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "T_Admin_UI_Setting"
+    objects: {
+      T_Utilisateurs: Prisma.$T_UtilisateursPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      IdAdminUISetting: number
+      SettingScope: string
+      ScopeValue: string | null
+      SettingKey: string
+      SettingLabel: string | null
+      SettingGroup: string | null
+      SettingValue: string | null
+      SettingValueJson: Prisma.JsonValue | null
+      SettingType: string | null
+      DisplayOrder: number | null
+      IsEditable: boolean | null
+      IsSystem: boolean | null
+      ValideSetting: boolean | null
+      CreatedAt: Date | null
+      UpdatedAt: Date | null
+      UpdatedByUserFk: number | null
+      ObsSetting: string | null
+    }, ExtArgs["result"]["t_Admin_UI_Setting"]>
+    composites: {}
+  }
+
+  type T_Admin_UI_SettingGetPayload<S extends boolean | null | undefined | T_Admin_UI_SettingDefaultArgs> = $Result.GetResult<Prisma.$T_Admin_UI_SettingPayload, S>
+
+  type T_Admin_UI_SettingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<T_Admin_UI_SettingFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: T_Admin_UI_SettingCountAggregateInputType | true
+    }
+
+  export interface T_Admin_UI_SettingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['T_Admin_UI_Setting'], meta: { name: 'T_Admin_UI_Setting' } }
+    /**
+     * Find zero or one T_Admin_UI_Setting that matches the filter.
+     * @param {T_Admin_UI_SettingFindUniqueArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @example
+     * // Get one T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends T_Admin_UI_SettingFindUniqueArgs>(args: SelectSubset<T, T_Admin_UI_SettingFindUniqueArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one T_Admin_UI_Setting that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {T_Admin_UI_SettingFindUniqueOrThrowArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @example
+     * // Get one T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends T_Admin_UI_SettingFindUniqueOrThrowArgs>(args: SelectSubset<T, T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first T_Admin_UI_Setting that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingFindFirstArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @example
+     * // Get one T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends T_Admin_UI_SettingFindFirstArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindFirstArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first T_Admin_UI_Setting that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingFindFirstOrThrowArgs} args - Arguments to find a T_Admin_UI_Setting
+     * @example
+     * // Get one T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends T_Admin_UI_SettingFindFirstOrThrowArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more T_Admin_UI_Settings that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all T_Admin_UI_Settings
+     * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany()
+     * 
+     * // Get first 10 T_Admin_UI_Settings
+     * const t_Admin_UI_Settings = await prisma.t_Admin_UI_Setting.findMany({ take: 10 })
+     * 
+     * // Only select the `IdAdminUISetting`
+     * const t_Admin_UI_SettingWithIdAdminUISettingOnly = await prisma.t_Admin_UI_Setting.findMany({ select: { IdAdminUISetting: true } })
+     * 
+     */
+    findMany<T extends T_Admin_UI_SettingFindManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a T_Admin_UI_Setting.
+     * @param {T_Admin_UI_SettingCreateArgs} args - Arguments to create a T_Admin_UI_Setting.
+     * @example
+     * // Create one T_Admin_UI_Setting
+     * const T_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.create({
+     *   data: {
+     *     // ... data to create a T_Admin_UI_Setting
+     *   }
+     * })
+     * 
+     */
+    create<T extends T_Admin_UI_SettingCreateArgs>(args: SelectSubset<T, T_Admin_UI_SettingCreateArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many T_Admin_UI_Settings.
+     * @param {T_Admin_UI_SettingCreateManyArgs} args - Arguments to create many T_Admin_UI_Settings.
+     * @example
+     * // Create many T_Admin_UI_Settings
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends T_Admin_UI_SettingCreateManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many T_Admin_UI_Settings and returns the data saved in the database.
+     * @param {T_Admin_UI_SettingCreateManyAndReturnArgs} args - Arguments to create many T_Admin_UI_Settings.
+     * @example
+     * // Create many T_Admin_UI_Settings
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many T_Admin_UI_Settings and only return the `IdAdminUISetting`
+     * const t_Admin_UI_SettingWithIdAdminUISettingOnly = await prisma.t_Admin_UI_Setting.createManyAndReturn({
+     *   select: { IdAdminUISetting: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends T_Admin_UI_SettingCreateManyAndReturnArgs>(args?: SelectSubset<T, T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a T_Admin_UI_Setting.
+     * @param {T_Admin_UI_SettingDeleteArgs} args - Arguments to delete one T_Admin_UI_Setting.
+     * @example
+     * // Delete one T_Admin_UI_Setting
+     * const T_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.delete({
+     *   where: {
+     *     // ... filter to delete one T_Admin_UI_Setting
+     *   }
+     * })
+     * 
+     */
+    delete<T extends T_Admin_UI_SettingDeleteArgs>(args: SelectSubset<T, T_Admin_UI_SettingDeleteArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one T_Admin_UI_Setting.
+     * @param {T_Admin_UI_SettingUpdateArgs} args - Arguments to update one T_Admin_UI_Setting.
+     * @example
+     * // Update one T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends T_Admin_UI_SettingUpdateArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more T_Admin_UI_Settings.
+     * @param {T_Admin_UI_SettingDeleteManyArgs} args - Arguments to filter T_Admin_UI_Settings to delete.
+     * @example
+     * // Delete a few T_Admin_UI_Settings
+     * const { count } = await prisma.t_Admin_UI_Setting.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends T_Admin_UI_SettingDeleteManyArgs>(args?: SelectSubset<T, T_Admin_UI_SettingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more T_Admin_UI_Settings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many T_Admin_UI_Settings
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends T_Admin_UI_SettingUpdateManyArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more T_Admin_UI_Settings and returns the data updated in the database.
+     * @param {T_Admin_UI_SettingUpdateManyAndReturnArgs} args - Arguments to update many T_Admin_UI_Settings.
+     * @example
+     * // Update many T_Admin_UI_Settings
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more T_Admin_UI_Settings and only return the `IdAdminUISetting`
+     * const t_Admin_UI_SettingWithIdAdminUISettingOnly = await prisma.t_Admin_UI_Setting.updateManyAndReturn({
+     *   select: { IdAdminUISetting: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends T_Admin_UI_SettingUpdateManyAndReturnArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one T_Admin_UI_Setting.
+     * @param {T_Admin_UI_SettingUpsertArgs} args - Arguments to update or create a T_Admin_UI_Setting.
+     * @example
+     * // Update or create a T_Admin_UI_Setting
+     * const t_Admin_UI_Setting = await prisma.t_Admin_UI_Setting.upsert({
+     *   create: {
+     *     // ... data to create a T_Admin_UI_Setting
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the T_Admin_UI_Setting we want to update
+     *   }
+     * })
+     */
+    upsert<T extends T_Admin_UI_SettingUpsertArgs>(args: SelectSubset<T, T_Admin_UI_SettingUpsertArgs<ExtArgs>>): Prisma__T_Admin_UI_SettingClient<$Result.GetResult<Prisma.$T_Admin_UI_SettingPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of T_Admin_UI_Settings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingCountArgs} args - Arguments to filter T_Admin_UI_Settings to count.
+     * @example
+     * // Count the number of T_Admin_UI_Settings
+     * const count = await prisma.t_Admin_UI_Setting.count({
+     *   where: {
+     *     // ... the filter for the T_Admin_UI_Settings we want to count
+     *   }
+     * })
+    **/
+    count<T extends T_Admin_UI_SettingCountArgs>(
+      args?: Subset<T, T_Admin_UI_SettingCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], T_Admin_UI_SettingCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a T_Admin_UI_Setting.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends T_Admin_UI_SettingAggregateArgs>(args: Subset<T, T_Admin_UI_SettingAggregateArgs>): Prisma.PrismaPromise<GetT_Admin_UI_SettingAggregateType<T>>
+
+    /**
+     * Group by T_Admin_UI_Setting.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {T_Admin_UI_SettingGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends T_Admin_UI_SettingGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: T_Admin_UI_SettingGroupByArgs['orderBy'] }
+        : { orderBy?: T_Admin_UI_SettingGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, T_Admin_UI_SettingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetT_Admin_UI_SettingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the T_Admin_UI_Setting model
+   */
+  readonly fields: T_Admin_UI_SettingFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for T_Admin_UI_Setting.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__T_Admin_UI_SettingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    T_Utilisateurs<T extends T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs> = {}>(args?: Subset<T, T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs>>): Prisma__T_UtilisateursClient<$Result.GetResult<Prisma.$T_UtilisateursPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the T_Admin_UI_Setting model
+   */
+  interface T_Admin_UI_SettingFieldRefs {
+    readonly IdAdminUISetting: FieldRef<"T_Admin_UI_Setting", 'Int'>
+    readonly SettingScope: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly ScopeValue: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly SettingKey: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly SettingLabel: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly SettingGroup: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly SettingValue: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly SettingValueJson: FieldRef<"T_Admin_UI_Setting", 'Json'>
+    readonly SettingType: FieldRef<"T_Admin_UI_Setting", 'String'>
+    readonly DisplayOrder: FieldRef<"T_Admin_UI_Setting", 'Int'>
+    readonly IsEditable: FieldRef<"T_Admin_UI_Setting", 'Boolean'>
+    readonly IsSystem: FieldRef<"T_Admin_UI_Setting", 'Boolean'>
+    readonly ValideSetting: FieldRef<"T_Admin_UI_Setting", 'Boolean'>
+    readonly CreatedAt: FieldRef<"T_Admin_UI_Setting", 'DateTime'>
+    readonly UpdatedAt: FieldRef<"T_Admin_UI_Setting", 'DateTime'>
+    readonly UpdatedByUserFk: FieldRef<"T_Admin_UI_Setting", 'Int'>
+    readonly ObsSetting: FieldRef<"T_Admin_UI_Setting", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * T_Admin_UI_Setting findUnique
+   */
+  export type T_Admin_UI_SettingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter, which T_Admin_UI_Setting to fetch.
+     */
+    where: T_Admin_UI_SettingWhereUniqueInput
+  }
+
+  /**
+   * T_Admin_UI_Setting findUniqueOrThrow
+   */
+  export type T_Admin_UI_SettingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter, which T_Admin_UI_Setting to fetch.
+     */
+    where: T_Admin_UI_SettingWhereUniqueInput
+  }
+
+  /**
+   * T_Admin_UI_Setting findFirst
+   */
+  export type T_Admin_UI_SettingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter, which T_Admin_UI_Setting to fetch.
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of T_Admin_UI_Settings to fetch.
+     */
+    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for T_Admin_UI_Settings.
+     */
+    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` T_Admin_UI_Settings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of T_Admin_UI_Settings.
+     */
+    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+  }
+
+  /**
+   * T_Admin_UI_Setting findFirstOrThrow
+   */
+  export type T_Admin_UI_SettingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter, which T_Admin_UI_Setting to fetch.
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of T_Admin_UI_Settings to fetch.
+     */
+    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for T_Admin_UI_Settings.
+     */
+    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` T_Admin_UI_Settings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of T_Admin_UI_Settings.
+     */
+    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+  }
+
+  /**
+   * T_Admin_UI_Setting findMany
+   */
+  export type T_Admin_UI_SettingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter, which T_Admin_UI_Settings to fetch.
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of T_Admin_UI_Settings to fetch.
+     */
+    orderBy?: T_Admin_UI_SettingOrderByWithRelationInput | T_Admin_UI_SettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing T_Admin_UI_Settings.
+     */
+    cursor?: T_Admin_UI_SettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` T_Admin_UI_Settings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` T_Admin_UI_Settings.
+     */
+    skip?: number
+    distinct?: T_Admin_UI_SettingScalarFieldEnum | T_Admin_UI_SettingScalarFieldEnum[]
+  }
+
+  /**
+   * T_Admin_UI_Setting create
+   */
+  export type T_Admin_UI_SettingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * The data needed to create a T_Admin_UI_Setting.
+     */
+    data: XOR<T_Admin_UI_SettingCreateInput, T_Admin_UI_SettingUncheckedCreateInput>
+  }
+
+  /**
+   * T_Admin_UI_Setting createMany
+   */
+  export type T_Admin_UI_SettingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many T_Admin_UI_Settings.
+     */
+    data: T_Admin_UI_SettingCreateManyInput | T_Admin_UI_SettingCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * T_Admin_UI_Setting createManyAndReturn
+   */
+  export type T_Admin_UI_SettingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * The data used to create many T_Admin_UI_Settings.
+     */
+    data: T_Admin_UI_SettingCreateManyInput | T_Admin_UI_SettingCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * T_Admin_UI_Setting update
+   */
+  export type T_Admin_UI_SettingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * The data needed to update a T_Admin_UI_Setting.
+     */
+    data: XOR<T_Admin_UI_SettingUpdateInput, T_Admin_UI_SettingUncheckedUpdateInput>
+    /**
+     * Choose, which T_Admin_UI_Setting to update.
+     */
+    where: T_Admin_UI_SettingWhereUniqueInput
+  }
+
+  /**
+   * T_Admin_UI_Setting updateMany
+   */
+  export type T_Admin_UI_SettingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update T_Admin_UI_Settings.
+     */
+    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyInput>
+    /**
+     * Filter which T_Admin_UI_Settings to update
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * Limit how many T_Admin_UI_Settings to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * T_Admin_UI_Setting updateManyAndReturn
+   */
+  export type T_Admin_UI_SettingUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * The data used to update T_Admin_UI_Settings.
+     */
+    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyInput>
+    /**
+     * Filter which T_Admin_UI_Settings to update
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * Limit how many T_Admin_UI_Settings to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * T_Admin_UI_Setting upsert
+   */
+  export type T_Admin_UI_SettingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * The filter to search for the T_Admin_UI_Setting to update in case it exists.
+     */
+    where: T_Admin_UI_SettingWhereUniqueInput
+    /**
+     * In case the T_Admin_UI_Setting found by the `where` argument doesn't exist, create a new T_Admin_UI_Setting with this data.
+     */
+    create: XOR<T_Admin_UI_SettingCreateInput, T_Admin_UI_SettingUncheckedCreateInput>
+    /**
+     * In case the T_Admin_UI_Setting was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<T_Admin_UI_SettingUpdateInput, T_Admin_UI_SettingUncheckedUpdateInput>
+  }
+
+  /**
+   * T_Admin_UI_Setting delete
+   */
+  export type T_Admin_UI_SettingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+    /**
+     * Filter which T_Admin_UI_Setting to delete.
+     */
+    where: T_Admin_UI_SettingWhereUniqueInput
+  }
+
+  /**
+   * T_Admin_UI_Setting deleteMany
+   */
+  export type T_Admin_UI_SettingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which T_Admin_UI_Settings to delete
+     */
+    where?: T_Admin_UI_SettingWhereInput
+    /**
+     * Limit how many T_Admin_UI_Settings to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * T_Admin_UI_Setting.T_Utilisateurs
+   */
+  export type T_Admin_UI_Setting$T_UtilisateursArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Utilisateurs
+     */
+    select?: T_UtilisateursSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Utilisateurs
+     */
+    omit?: T_UtilisateursOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_UtilisateursInclude<ExtArgs> | null
+    where?: T_UtilisateursWhereInput
+  }
+
+  /**
+   * T_Admin_UI_Setting without action
+   */
+  export type T_Admin_UI_SettingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the T_Admin_UI_Setting
+     */
+    select?: T_Admin_UI_SettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the T_Admin_UI_Setting
+     */
+    omit?: T_Admin_UI_SettingOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: T_Admin_UI_SettingInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -44831,7 +46230,6 @@ export namespace Prisma {
     ID_TypeCmdFk: 'ID_TypeCmdFk',
     ID_StatutCmdFk: 'ID_StatutCmdFk',
     ID_ClientFk: 'ID_ClientFk',
-    NomClientSaisi: 'NomClientSaisi',
     ID_UserFk: 'ID_UserFk',
     geolocalisationCmd: 'geolocalisationCmd',
     DateHeureAutoCmd: 'DateHeureAutoCmd',
@@ -44853,7 +46251,8 @@ export namespace Prisma {
     UrlFacture: 'UrlFacture',
     ID_ConditionPaiementFk: 'ID_ConditionPaiementFk',
     DateEcheancePaiement: 'DateEcheancePaiement',
-    ID_ModePaiementFk: 'ID_ModePaiementFk'
+    ID_ModePaiementFk: 'ID_ModePaiementFk',
+    NomClientSaisi: 'NomClientSaisi'
   };
 
   export type T_CommandeScalarFieldEnum = (typeof T_CommandeScalarFieldEnum)[keyof typeof T_CommandeScalarFieldEnum]
@@ -45136,6 +46535,29 @@ export namespace Prisma {
   };
 
   export type T_DiscussionScalarFieldEnum = (typeof T_DiscussionScalarFieldEnum)[keyof typeof T_DiscussionScalarFieldEnum]
+
+
+  export const T_Admin_UI_SettingScalarFieldEnum: {
+    IdAdminUISetting: 'IdAdminUISetting',
+    SettingScope: 'SettingScope',
+    ScopeValue: 'ScopeValue',
+    SettingKey: 'SettingKey',
+    SettingLabel: 'SettingLabel',
+    SettingGroup: 'SettingGroup',
+    SettingValue: 'SettingValue',
+    SettingValueJson: 'SettingValueJson',
+    SettingType: 'SettingType',
+    DisplayOrder: 'DisplayOrder',
+    IsEditable: 'IsEditable',
+    IsSystem: 'IsSystem',
+    ValideSetting: 'ValideSetting',
+    CreatedAt: 'CreatedAt',
+    UpdatedAt: 'UpdatedAt',
+    UpdatedByUserFk: 'UpdatedByUserFk',
+    ObsSetting: 'ObsSetting'
+  };
+
+  export type T_Admin_UI_SettingScalarFieldEnum = (typeof T_Admin_UI_SettingScalarFieldEnum)[keyof typeof T_Admin_UI_SettingScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -46551,7 +47973,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
-    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
@@ -46574,6 +47995,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
@@ -46589,7 +48011,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrderInput | SortOrder
     ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
-    NomClientSaisi?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
     DateHeureAutoCmd?: SortOrderInput | SortOrder
@@ -46612,6 +48033,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrderInput | SortOrder
     DateEcheancePaiement?: SortOrderInput | SortOrder
     ID_ModePaiementFk?: SortOrderInput | SortOrder
+    NomClientSaisi?: SortOrderInput | SortOrder
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueOrderByWithRelationInput
@@ -46632,7 +48054,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
-    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
@@ -46653,6 +48074,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: XOR<T_GeneriqueNullableScalarRelationFilter, T_GeneriqueWhereInput> | null
@@ -46668,7 +48090,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrderInput | SortOrder
     ID_StatutCmdFk?: SortOrderInput | SortOrder
     ID_ClientFk?: SortOrderInput | SortOrder
-    NomClientSaisi?: SortOrderInput | SortOrder
     ID_UserFk?: SortOrderInput | SortOrder
     geolocalisationCmd?: SortOrderInput | SortOrder
     DateHeureAutoCmd?: SortOrderInput | SortOrder
@@ -46691,6 +48112,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrderInput | SortOrder
     DateEcheancePaiement?: SortOrderInput | SortOrder
     ID_ModePaiementFk?: SortOrderInput | SortOrder
+    NomClientSaisi?: SortOrderInput | SortOrder
     _count?: T_CommandeCountOrderByAggregateInput
     _avg?: T_CommandeAvgOrderByAggregateInput
     _max?: T_CommandeMaxOrderByAggregateInput
@@ -46706,7 +48128,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
-    NomClientSaisi?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableWithAggregatesFilter<"T_Commande"> | Date | string | null
@@ -46729,6 +48150,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableWithAggregatesFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableWithAggregatesFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableWithAggregatesFilter<"T_Commande"> | string | null
   }
 
   export type T_CommandeDetailWhereInput = {
@@ -48235,6 +49657,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementListRelationFilter
     T_Paiement?: T_PaiementListRelationFilter
     T_Professionnel?: XOR<T_ProfessionnelNullableScalarRelationFilter, T_ProfessionnelWhereInput> | null
+    T_Admin_UI_Setting?: T_Admin_UI_SettingListRelationFilter
     T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
     T_Login?: T_LoginListRelationFilter
     T_Entite?: XOR<T_EntiteNullableScalarRelationFilter, T_EntiteWhereInput> | null
@@ -48266,6 +49689,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementOrderByRelationAggregateInput
     T_Paiement?: T_PaiementOrderByRelationAggregateInput
     T_Professionnel?: T_ProfessionnelOrderByWithRelationInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingOrderByRelationAggregateInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceOrderByRelationAggregateInput
     T_Login?: T_LoginOrderByRelationAggregateInput
     T_Entite?: T_EntiteOrderByWithRelationInput
@@ -48300,6 +49724,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementListRelationFilter
     T_Paiement?: T_PaiementListRelationFilter
     T_Professionnel?: XOR<T_ProfessionnelNullableScalarRelationFilter, T_ProfessionnelWhereInput> | null
+    T_Admin_UI_Setting?: T_Admin_UI_SettingListRelationFilter
     T_Fk_Correspondance?: T_Fk_CorrespondanceListRelationFilter
     T_Login?: T_LoginListRelationFilter
     T_Entite?: XOR<T_EntiteNullableScalarRelationFilter, T_EntiteWhereInput> | null
@@ -48434,6 +49859,124 @@ export namespace Prisma {
     DateCreation?: DateTimeWithAggregatesFilter<"T_Discussion"> | Date | string
     DernierMessageAt?: DateTimeNullableWithAggregatesFilter<"T_Discussion"> | Date | string | null
     ValideDiscussion?: BoolWithAggregatesFilter<"T_Discussion"> | boolean
+  }
+
+  export type T_Admin_UI_SettingWhereInput = {
+    AND?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
+    OR?: T_Admin_UI_SettingWhereInput[]
+    NOT?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
+    IdAdminUISetting?: IntFilter<"T_Admin_UI_Setting"> | number
+    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
+    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
+    SettingLabel?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingGroup?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValueJson?: JsonNullableFilter<"T_Admin_UI_Setting">
+    SettingType?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    DisplayOrder?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    IsEditable?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    IsSystem?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    ValideSetting?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    CreatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    ObsSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
+  }
+
+  export type T_Admin_UI_SettingOrderByWithRelationInput = {
+    IdAdminUISetting?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrderInput | SortOrder
+    SettingKey?: SortOrder
+    SettingLabel?: SortOrderInput | SortOrder
+    SettingGroup?: SortOrderInput | SortOrder
+    SettingValue?: SortOrderInput | SortOrder
+    SettingValueJson?: SortOrderInput | SortOrder
+    SettingType?: SortOrderInput | SortOrder
+    DisplayOrder?: SortOrderInput | SortOrder
+    IsEditable?: SortOrderInput | SortOrder
+    IsSystem?: SortOrderInput | SortOrder
+    ValideSetting?: SortOrderInput | SortOrder
+    CreatedAt?: SortOrderInput | SortOrder
+    UpdatedAt?: SortOrderInput | SortOrder
+    UpdatedByUserFk?: SortOrderInput | SortOrder
+    ObsSetting?: SortOrderInput | SortOrder
+    T_Utilisateurs?: T_UtilisateursOrderByWithRelationInput
+  }
+
+  export type T_Admin_UI_SettingWhereUniqueInput = Prisma.AtLeast<{
+    IdAdminUISetting?: number
+    SettingScope_ScopeValue_SettingKey?: T_Admin_UI_SettingSettingScopeScopeValueSettingKeyCompoundUniqueInput
+    AND?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
+    OR?: T_Admin_UI_SettingWhereInput[]
+    NOT?: T_Admin_UI_SettingWhereInput | T_Admin_UI_SettingWhereInput[]
+    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
+    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
+    SettingLabel?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingGroup?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValueJson?: JsonNullableFilter<"T_Admin_UI_Setting">
+    SettingType?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    DisplayOrder?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    IsEditable?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    IsSystem?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    ValideSetting?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    CreatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    ObsSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    T_Utilisateurs?: XOR<T_UtilisateursNullableScalarRelationFilter, T_UtilisateursWhereInput> | null
+  }, "IdAdminUISetting" | "SettingScope_ScopeValue_SettingKey">
+
+  export type T_Admin_UI_SettingOrderByWithAggregationInput = {
+    IdAdminUISetting?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrderInput | SortOrder
+    SettingKey?: SortOrder
+    SettingLabel?: SortOrderInput | SortOrder
+    SettingGroup?: SortOrderInput | SortOrder
+    SettingValue?: SortOrderInput | SortOrder
+    SettingValueJson?: SortOrderInput | SortOrder
+    SettingType?: SortOrderInput | SortOrder
+    DisplayOrder?: SortOrderInput | SortOrder
+    IsEditable?: SortOrderInput | SortOrder
+    IsSystem?: SortOrderInput | SortOrder
+    ValideSetting?: SortOrderInput | SortOrder
+    CreatedAt?: SortOrderInput | SortOrder
+    UpdatedAt?: SortOrderInput | SortOrder
+    UpdatedByUserFk?: SortOrderInput | SortOrder
+    ObsSetting?: SortOrderInput | SortOrder
+    _count?: T_Admin_UI_SettingCountOrderByAggregateInput
+    _avg?: T_Admin_UI_SettingAvgOrderByAggregateInput
+    _max?: T_Admin_UI_SettingMaxOrderByAggregateInput
+    _min?: T_Admin_UI_SettingMinOrderByAggregateInput
+    _sum?: T_Admin_UI_SettingSumOrderByAggregateInput
+  }
+
+  export type T_Admin_UI_SettingScalarWhereWithAggregatesInput = {
+    AND?: T_Admin_UI_SettingScalarWhereWithAggregatesInput | T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
+    OR?: T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
+    NOT?: T_Admin_UI_SettingScalarWhereWithAggregatesInput | T_Admin_UI_SettingScalarWhereWithAggregatesInput[]
+    IdAdminUISetting?: IntWithAggregatesFilter<"T_Admin_UI_Setting"> | number
+    SettingScope?: StringWithAggregatesFilter<"T_Admin_UI_Setting"> | string
+    ScopeValue?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+    SettingKey?: StringWithAggregatesFilter<"T_Admin_UI_Setting"> | string
+    SettingLabel?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+    SettingGroup?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValue?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValueJson?: JsonNullableWithAggregatesFilter<"T_Admin_UI_Setting">
+    SettingType?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
+    DisplayOrder?: IntNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | number | null
+    IsEditable?: BoolNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | boolean | null
+    IsSystem?: BoolNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | boolean | null
+    ValideSetting?: BoolNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | boolean | null
+    CreatedAt?: DateTimeNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedAt?: DateTimeNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedByUserFk?: IntNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | number | null
+    ObsSetting?: StringNullableWithAggregatesFilter<"T_Admin_UI_Setting"> | string | null
   }
 
   export type T_RechercheCreateInput = {
@@ -49755,7 +51298,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -49775,6 +51317,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -49790,7 +51333,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -49813,6 +51355,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -49820,7 +51363,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49840,6 +51382,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -49855,7 +51398,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49878,6 +51420,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -49888,7 +51431,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -49911,11 +51453,11 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
   }
 
   export type T_CommandeUpdateManyMutationInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49935,6 +51477,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_CommandeUncheckedUpdateManyInput = {
@@ -49942,7 +51485,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49965,6 +51507,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_CommandeDetailCreateInput = {
@@ -51504,6 +53047,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -51535,6 +53079,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -51561,6 +53106,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -51592,6 +53138,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -51727,6 +53274,142 @@ export namespace Prisma {
     DateCreation?: DateTimeFieldUpdateOperationsInput | Date | string
     DernierMessageAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ValideDiscussion?: BoolFieldUpdateOperationsInput | boolean
+  }
+
+  export type T_Admin_UI_SettingCreateInput = {
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    ObsSetting?: string | null
+    T_Utilisateurs?: T_UtilisateursCreateNestedOneWithoutT_Admin_UI_SettingInput
+  }
+
+  export type T_Admin_UI_SettingUncheckedCreateInput = {
+    IdAdminUISetting?: number
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    UpdatedByUserFk?: number | null
+    ObsSetting?: string | null
+  }
+
+  export type T_Admin_UI_SettingUpdateInput = {
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
+    T_Utilisateurs?: T_UtilisateursUpdateOneWithoutT_Admin_UI_SettingNestedInput
+  }
+
+  export type T_Admin_UI_SettingUncheckedUpdateInput = {
+    IdAdminUISetting?: IntFieldUpdateOperationsInput | number
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Admin_UI_SettingCreateManyInput = {
+    IdAdminUISetting?: number
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    UpdatedByUserFk?: number | null
+    ObsSetting?: string | null
+  }
+
+  export type T_Admin_UI_SettingUpdateManyMutationInput = {
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Admin_UI_SettingUncheckedUpdateManyInput = {
+    IdAdminUISetting?: IntFieldUpdateOperationsInput | number
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedByUserFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type IntFilter<$PrismaModel = never> = {
@@ -52949,7 +54632,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
-    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -52972,6 +54654,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrder
     DateEcheancePaiement?: SortOrder
     ID_ModePaiementFk?: SortOrder
+    NomClientSaisi?: SortOrder
   }
 
   export type T_CommandeAvgOrderByAggregateInput = {
@@ -52993,7 +54676,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
-    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -53016,6 +54698,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrder
     DateEcheancePaiement?: SortOrder
     ID_ModePaiementFk?: SortOrder
+    NomClientSaisi?: SortOrder
   }
 
   export type T_CommandeMinOrderByAggregateInput = {
@@ -53023,7 +54706,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: SortOrder
     ID_StatutCmdFk?: SortOrder
     ID_ClientFk?: SortOrder
-    NomClientSaisi?: SortOrder
     ID_UserFk?: SortOrder
     geolocalisationCmd?: SortOrder
     DateHeureAutoCmd?: SortOrder
@@ -53046,6 +54728,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: SortOrder
     DateEcheancePaiement?: SortOrder
     ID_ModePaiementFk?: SortOrder
+    NomClientSaisi?: SortOrder
   }
 
   export type T_CommandeSumOrderByAggregateInput = {
@@ -54205,7 +55888,17 @@ export namespace Prisma {
     isNot?: T_ProfessionnelWhereInput | null
   }
 
+  export type T_Admin_UI_SettingListRelationFilter = {
+    every?: T_Admin_UI_SettingWhereInput
+    some?: T_Admin_UI_SettingWhereInput
+    none?: T_Admin_UI_SettingWhereInput
+  }
+
   export type T_ChatOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -54323,6 +56016,82 @@ export namespace Prisma {
     IdUserClientFk?: SortOrder
     IdProfessionnelFk?: SortOrder
     IdEntiteFk?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingSettingScopeScopeValueSettingKeyCompoundUniqueInput = {
+    SettingScope: string
+    ScopeValue: string
+    SettingKey: string
+  }
+
+  export type T_Admin_UI_SettingCountOrderByAggregateInput = {
+    IdAdminUISetting?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrder
+    SettingKey?: SortOrder
+    SettingLabel?: SortOrder
+    SettingGroup?: SortOrder
+    SettingValue?: SortOrder
+    SettingValueJson?: SortOrder
+    SettingType?: SortOrder
+    DisplayOrder?: SortOrder
+    IsEditable?: SortOrder
+    IsSystem?: SortOrder
+    ValideSetting?: SortOrder
+    CreatedAt?: SortOrder
+    UpdatedAt?: SortOrder
+    UpdatedByUserFk?: SortOrder
+    ObsSetting?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingAvgOrderByAggregateInput = {
+    IdAdminUISetting?: SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedByUserFk?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingMaxOrderByAggregateInput = {
+    IdAdminUISetting?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrder
+    SettingKey?: SortOrder
+    SettingLabel?: SortOrder
+    SettingGroup?: SortOrder
+    SettingValue?: SortOrder
+    SettingType?: SortOrder
+    DisplayOrder?: SortOrder
+    IsEditable?: SortOrder
+    IsSystem?: SortOrder
+    ValideSetting?: SortOrder
+    CreatedAt?: SortOrder
+    UpdatedAt?: SortOrder
+    UpdatedByUserFk?: SortOrder
+    ObsSetting?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingMinOrderByAggregateInput = {
+    IdAdminUISetting?: SortOrder
+    SettingScope?: SortOrder
+    ScopeValue?: SortOrder
+    SettingKey?: SortOrder
+    SettingLabel?: SortOrder
+    SettingGroup?: SortOrder
+    SettingValue?: SortOrder
+    SettingType?: SortOrder
+    DisplayOrder?: SortOrder
+    IsEditable?: SortOrder
+    IsSystem?: SortOrder
+    ValideSetting?: SortOrder
+    CreatedAt?: SortOrder
+    UpdatedAt?: SortOrder
+    UpdatedByUserFk?: SortOrder
+    ObsSetting?: SortOrder
+  }
+
+  export type T_Admin_UI_SettingSumOrderByAggregateInput = {
+    IdAdminUISetting?: SortOrder
+    DisplayOrder?: SortOrder
+    UpdatedByUserFk?: SortOrder
   }
 
   export type T_ArticleCreateNestedOneWithoutT_RechercheInput = {
@@ -58693,6 +60462,13 @@ export namespace Prisma {
     connect?: T_ProfessionnelWhereUniqueInput
   }
 
+  export type T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput = {
+    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
+    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
+    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+  }
+
   export type T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput = {
     create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
     connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
@@ -58779,6 +60555,13 @@ export namespace Prisma {
     create?: XOR<T_ProfessionnelCreateWithoutT_UtilisateursInput, T_ProfessionnelUncheckedCreateWithoutT_UtilisateursInput>
     connectOrCreate?: T_ProfessionnelCreateOrConnectWithoutT_UtilisateursInput
     connect?: T_ProfessionnelWhereUniqueInput
+  }
+
+  export type T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput = {
+    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
+    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
+    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
   }
 
   export type T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput = {
@@ -58915,6 +60698,20 @@ export namespace Prisma {
     delete?: T_ProfessionnelWhereInput | boolean
     connect?: T_ProfessionnelWhereUniqueInput
     update?: XOR<XOR<T_ProfessionnelUpdateToOneWithWhereWithoutT_UtilisateursInput, T_ProfessionnelUpdateWithoutT_UtilisateursInput>, T_ProfessionnelUncheckedUpdateWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput = {
+    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
+    upsert?: T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
+    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
+    set?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    disconnect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    delete?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    update?: T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
+    updateMany?: T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput[]
+    deleteMany?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
   }
 
   export type T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput = {
@@ -59087,6 +60884,20 @@ export namespace Prisma {
     update?: XOR<XOR<T_ProfessionnelUpdateToOneWithWhereWithoutT_UtilisateursInput, T_ProfessionnelUpdateWithoutT_UtilisateursInput>, T_ProfessionnelUncheckedUpdateWithoutT_UtilisateursInput>
   }
 
+  export type T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput = {
+    create?: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput> | T_Admin_UI_SettingCreateWithoutT_UtilisateursInput[] | T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput[]
+    connectOrCreate?: T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput | T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput[]
+    upsert?: T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput[]
+    createMany?: T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope
+    set?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    disconnect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    delete?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    connect?: T_Admin_UI_SettingWhereUniqueInput | T_Admin_UI_SettingWhereUniqueInput[]
+    update?: T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput[]
+    updateMany?: T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput | T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput[]
+    deleteMany?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
+  }
+
   export type T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput = {
     create?: XOR<T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput> | T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput[] | T_Fk_CorrespondanceUncheckedCreateWithoutT_UtilisateursInput[]
     connectOrCreate?: T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput | T_Fk_CorrespondanceCreateOrConnectWithoutT_UtilisateursInput[]
@@ -59203,6 +61014,22 @@ export namespace Prisma {
     update?: T_ChatUpdateWithWhereUniqueWithoutT_DiscussionInput | T_ChatUpdateWithWhereUniqueWithoutT_DiscussionInput[]
     updateMany?: T_ChatUpdateManyWithWhereWithoutT_DiscussionInput | T_ChatUpdateManyWithWhereWithoutT_DiscussionInput[]
     deleteMany?: T_ChatScalarWhereInput | T_ChatScalarWhereInput[]
+  }
+
+  export type T_UtilisateursCreateNestedOneWithoutT_Admin_UI_SettingInput = {
+    create?: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput
+    connect?: T_UtilisateursWhereUniqueInput
+  }
+
+  export type T_UtilisateursUpdateOneWithoutT_Admin_UI_SettingNestedInput = {
+    create?: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+    connectOrCreate?: T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput
+    upsert?: T_UtilisateursUpsertWithoutT_Admin_UI_SettingInput
+    disconnect?: T_UtilisateursWhereInput | boolean
+    delete?: T_UtilisateursWhereInput | boolean
+    connect?: T_UtilisateursWhereUniqueInput
+    update?: XOR<XOR<T_UtilisateursUpdateToOneWithWhereWithoutT_Admin_UI_SettingInput, T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput>, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
   }
 
   export type NestedIntFilter<$PrismaModel = never> = {
@@ -59764,6 +61591,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -59794,6 +61622,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -60075,6 +61904,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -60105,6 +61935,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -60130,6 +61961,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -60160,6 +61992,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -60229,6 +62062,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -60259,6 +62093,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -60486,6 +62321,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -60516,6 +62352,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -60737,6 +62574,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -60767,6 +62605,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -67311,6 +69150,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -67341,6 +69181,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -67851,6 +69692,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -67881,6 +69723,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -68446,6 +70289,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -68476,6 +70320,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -69105,6 +70950,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -69135,6 +70981,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -69201,7 +71048,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_CommandeDetailInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -69221,6 +71067,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -69235,7 +71082,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -69258,6 +71104,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
@@ -69334,7 +71181,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_CommandeDetailInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -69354,6 +71200,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -69368,7 +71215,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -69391,6 +71237,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
@@ -69631,7 +71478,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_MouvementInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -69651,6 +71497,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -69665,7 +71512,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -69688,6 +71534,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
   }
@@ -69896,7 +71743,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_MouvementInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -69916,6 +71762,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -69930,7 +71777,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -69953,13 +71799,13 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
 
   export type T_CommandeCreateWithoutT_ReglementsInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -69979,6 +71825,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -69993,7 +71840,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -70016,6 +71862,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
   }
@@ -70158,7 +72005,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_ReglementsInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -70178,6 +72024,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -70192,7 +72039,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -70215,6 +72061,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
   }
@@ -70882,6 +72729,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -70912,6 +72760,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -71062,6 +72911,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -71092,6 +72942,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -71313,6 +73164,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -71343,6 +73195,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -71505,6 +73358,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -71535,6 +73389,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -71935,6 +73790,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -71965,6 +73821,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -72317,6 +74174,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -72347,6 +74205,7 @@ export namespace Prisma {
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -74389,7 +76248,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -74409,6 +76267,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
@@ -74423,7 +76282,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -74445,6 +76303,7 @@ export namespace Prisma {
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -74462,7 +76321,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -74482,6 +76340,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
@@ -74496,7 +76355,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -74518,6 +76376,7 @@ export namespace Prisma {
     UrlFacture?: string | null
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -74535,7 +76394,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -74555,6 +76413,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueInput
@@ -74568,7 +76427,6 @@ export namespace Prisma {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -74591,6 +76449,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -74608,7 +76467,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -74628,6 +76486,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -74641,7 +76500,6 @@ export namespace Prisma {
     ID_Commande?: number
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -74664,6 +76522,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -75074,6 +76933,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -75103,6 +76963,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -75566,7 +77427,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_StatutCmdFk?: IntNullableFilter<"T_Commande"> | number | null
     ID_ClientFk?: IntNullableFilter<"T_Commande"> | number | null
-    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
     ID_UserFk?: IntNullableFilter<"T_Commande"> | number | null
     geolocalisationCmd?: StringNullableFilter<"T_Commande"> | string | null
     DateHeureAutoCmd?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
@@ -75589,6 +77449,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: IntNullableFilter<"T_Commande"> | number | null
     DateEcheancePaiement?: DateTimeNullableFilter<"T_Commande"> | Date | string | null
     ID_ModePaiementFk?: IntNullableFilter<"T_Commande"> | number | null
+    NomClientSaisi?: StringNullableFilter<"T_Commande"> | string | null
   }
 
   export type T_CommandeUpsertWithWhereUniqueWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
@@ -76104,6 +77965,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -76134,6 +77996,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -76201,6 +78064,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -76231,6 +78095,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -76715,6 +78580,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -76744,6 +78610,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -78088,6 +79955,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
     T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
@@ -78118,6 +79986,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
 
@@ -78339,6 +80208,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -78369,6 +80239,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
 
@@ -78559,7 +80430,6 @@ export namespace Prisma {
 
   export type T_CommandeCreateWithoutT_UtilisateursInput = {
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -78579,6 +80449,7 @@ export namespace Prisma {
     ValideRemiseFacture?: boolean | null
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueCreateNestedOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueInput
@@ -78593,7 +80464,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -78615,6 +80485,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Mouvement?: T_MouvementUncheckedCreateNestedManyWithoutT_CommandeInput
     T_Reglements?: T_ReglementsUncheckedCreateNestedManyWithoutT_CommandeInput
@@ -78734,6 +80605,53 @@ export namespace Prisma {
   export type T_ProfessionnelCreateOrConnectWithoutT_UtilisateursInput = {
     where: T_ProfessionnelWhereUniqueInput
     create: XOR<T_ProfessionnelCreateWithoutT_UtilisateursInput, T_ProfessionnelUncheckedCreateWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingCreateWithoutT_UtilisateursInput = {
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    ObsSetting?: string | null
+  }
+
+  export type T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput = {
+    IdAdminUISetting?: number
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    ObsSetting?: string | null
+  }
+
+  export type T_Admin_UI_SettingCreateOrConnectWithoutT_UtilisateursInput = {
+    where: T_Admin_UI_SettingWhereUniqueInput
+    create: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingCreateManyT_UtilisateursInputEnvelope = {
+    data: T_Admin_UI_SettingCreateManyT_UtilisateursInput | T_Admin_UI_SettingCreateManyT_UtilisateursInput[]
+    skipDuplicates?: boolean
   }
 
   export type T_Fk_CorrespondanceCreateWithoutT_UtilisateursInput = {
@@ -79158,6 +81076,45 @@ export namespace Prisma {
     T_Professionnel_Entite?: T_Professionnel_EntiteUncheckedUpdateManyWithoutT_ProfessionnelNestedInput
   }
 
+  export type T_Admin_UI_SettingUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
+    where: T_Admin_UI_SettingWhereUniqueInput
+    update: XOR<T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput>
+    create: XOR<T_Admin_UI_SettingCreateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedCreateWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingUpdateWithWhereUniqueWithoutT_UtilisateursInput = {
+    where: T_Admin_UI_SettingWhereUniqueInput
+    data: XOR<T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput, T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingUpdateManyWithWhereWithoutT_UtilisateursInput = {
+    where: T_Admin_UI_SettingScalarWhereInput
+    data: XOR<T_Admin_UI_SettingUpdateManyMutationInput, T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursInput>
+  }
+
+  export type T_Admin_UI_SettingScalarWhereInput = {
+    AND?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
+    OR?: T_Admin_UI_SettingScalarWhereInput[]
+    NOT?: T_Admin_UI_SettingScalarWhereInput | T_Admin_UI_SettingScalarWhereInput[]
+    IdAdminUISetting?: IntFilter<"T_Admin_UI_Setting"> | number
+    SettingScope?: StringFilter<"T_Admin_UI_Setting"> | string
+    ScopeValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingKey?: StringFilter<"T_Admin_UI_Setting"> | string
+    SettingLabel?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingGroup?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValue?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    SettingValueJson?: JsonNullableFilter<"T_Admin_UI_Setting">
+    SettingType?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+    DisplayOrder?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    IsEditable?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    IsSystem?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    ValideSetting?: BoolNullableFilter<"T_Admin_UI_Setting"> | boolean | null
+    CreatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedAt?: DateTimeNullableFilter<"T_Admin_UI_Setting"> | Date | string | null
+    UpdatedByUserFk?: IntNullableFilter<"T_Admin_UI_Setting"> | number | null
+    ObsSetting?: StringNullableFilter<"T_Admin_UI_Setting"> | string | null
+  }
+
   export type T_Fk_CorrespondanceUpsertWithWhereUniqueWithoutT_UtilisateursInput = {
     where: T_Fk_CorrespondanceWhereUniqueInput
     update: XOR<T_Fk_CorrespondanceUpdateWithoutT_UtilisateursInput, T_Fk_CorrespondanceUncheckedUpdateWithoutT_UtilisateursInput>
@@ -79496,6 +81453,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
     T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
@@ -79526,6 +81484,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
     T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
     T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
   }
@@ -79671,6 +81630,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -79696,6 +81656,137 @@ export namespace Prisma {
     T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Chat?: T_ChatUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Article?: T_ArticleUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
+    T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+  }
+
+  export type T_UtilisateursCreateWithoutT_Admin_UI_SettingInput = {
+    NomUser: string
+    PrenomUser: string
+    EmailUser: string
+    MotdepasseUser: string
+    PhoneUser?: string | null
+    DatecreationUser?: Date | string | null
+    ValideUser?: boolean
+    SexeUser: string
+    DateModificationUser?: Date | string
+    UrlPhoto?: string | null
+    Is_staff?: boolean
+    Is_Admin?: boolean
+    T_Recherche?: T_RechercheCreateNestedManyWithoutT_UtilisateursInput
+    T_Chat?: T_ChatCreateNestedManyWithoutT_UtilisateursInput
+    T_Communication?: T_CommunicationCreateNestedManyWithoutT_UtilisateursInput
+    T_Discussion?: T_DiscussionCreateNestedManyWithoutT_UtilisateursInput
+    T_Article?: T_ArticleCreateNestedManyWithoutT_UtilisateursInput
+    T_Commande?: T_CommandeCreateNestedManyWithoutT_UtilisateursInput
+    T_Payeur?: T_PaiementCreateNestedManyWithoutT_PayeurInput
+    T_Paiement?: T_PaiementCreateNestedManyWithoutT_UtilisateursInput
+    T_Professionnel?: T_ProfessionnelCreateNestedOneWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceCreateNestedManyWithoutT_UtilisateursInput
+    T_Login?: T_LoginCreateNestedManyWithoutT_UtilisateursInput
+    T_Entite?: T_EntiteCreateNestedOneWithoutT_UtilisateursInput
+    T_Generique?: T_GeneriqueCreateNestedOneWithoutT_UtilisateursInput
+  }
+
+  export type T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput = {
+    IdUser?: number
+    NomUser: string
+    PrenomUser: string
+    EmailUser: string
+    MotdepasseUser: string
+    PhoneUser?: string | null
+    DatecreationUser?: Date | string | null
+    IdRoleFk?: number | null
+    ValideUser?: boolean
+    SexeUser: string
+    DateModificationUser?: Date | string
+    UrlPhoto?: string | null
+    IdEntiteFk?: number | null
+    Is_staff?: boolean
+    Is_Admin?: boolean
+    T_Recherche?: T_RechercheUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Chat?: T_ChatUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Communication?: T_CommunicationUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Discussion?: T_DiscussionUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Article?: T_ArticleUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Commande?: T_CommandeUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Payeur?: T_PaiementUncheckedCreateNestedManyWithoutT_PayeurInput
+    T_Paiement?: T_PaiementUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Professionnel?: T_ProfessionnelUncheckedCreateNestedOneWithoutT_UtilisateursInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedCreateNestedManyWithoutT_UtilisateursInput
+    T_Login?: T_LoginUncheckedCreateNestedManyWithoutT_UtilisateursInput
+  }
+
+  export type T_UtilisateursCreateOrConnectWithoutT_Admin_UI_SettingInput = {
+    where: T_UtilisateursWhereUniqueInput
+    create: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+  }
+
+  export type T_UtilisateursUpsertWithoutT_Admin_UI_SettingInput = {
+    update: XOR<T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
+    create: XOR<T_UtilisateursCreateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedCreateWithoutT_Admin_UI_SettingInput>
+    where?: T_UtilisateursWhereInput
+  }
+
+  export type T_UtilisateursUpdateToOneWithWhereWithoutT_Admin_UI_SettingInput = {
+    where?: T_UtilisateursWhereInput
+    data: XOR<T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput, T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput>
+  }
+
+  export type T_UtilisateursUpdateWithoutT_Admin_UI_SettingInput = {
+    NomUser?: StringFieldUpdateOperationsInput | string
+    PrenomUser?: StringFieldUpdateOperationsInput | string
+    EmailUser?: StringFieldUpdateOperationsInput | string
+    MotdepasseUser?: StringFieldUpdateOperationsInput | string
+    PhoneUser?: NullableStringFieldUpdateOperationsInput | string | null
+    DatecreationUser?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ValideUser?: BoolFieldUpdateOperationsInput | boolean
+    SexeUser?: StringFieldUpdateOperationsInput | string
+    DateModificationUser?: DateTimeFieldUpdateOperationsInput | Date | string
+    UrlPhoto?: NullableStringFieldUpdateOperationsInput | string | null
+    Is_staff?: BoolFieldUpdateOperationsInput | boolean
+    Is_Admin?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUpdateManyWithoutT_UtilisateursNestedInput
+    T_Chat?: T_ChatUpdateManyWithoutT_UtilisateursNestedInput
+    T_Communication?: T_CommunicationUpdateManyWithoutT_UtilisateursNestedInput
+    T_Discussion?: T_DiscussionUpdateManyWithoutT_UtilisateursNestedInput
+    T_Article?: T_ArticleUpdateManyWithoutT_UtilisateursNestedInput
+    T_Commande?: T_CommandeUpdateManyWithoutT_UtilisateursNestedInput
+    T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
+    T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
+    T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
+    T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
+    T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
+    T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
+  }
+
+  export type T_UtilisateursUncheckedUpdateWithoutT_Admin_UI_SettingInput = {
+    IdUser?: IntFieldUpdateOperationsInput | number
+    NomUser?: StringFieldUpdateOperationsInput | string
+    PrenomUser?: StringFieldUpdateOperationsInput | string
+    EmailUser?: StringFieldUpdateOperationsInput | string
+    MotdepasseUser?: StringFieldUpdateOperationsInput | string
+    PhoneUser?: NullableStringFieldUpdateOperationsInput | string | null
+    DatecreationUser?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    IdRoleFk?: NullableIntFieldUpdateOperationsInput | number | null
+    ValideUser?: BoolFieldUpdateOperationsInput | boolean
+    SexeUser?: StringFieldUpdateOperationsInput | string
+    DateModificationUser?: DateTimeFieldUpdateOperationsInput | Date | string
+    UrlPhoto?: NullableStringFieldUpdateOperationsInput | string | null
+    IdEntiteFk?: NullableIntFieldUpdateOperationsInput | number | null
+    Is_staff?: BoolFieldUpdateOperationsInput | boolean
+    Is_Admin?: BoolFieldUpdateOperationsInput | boolean
+    T_Recherche?: T_RechercheUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Chat?: T_ChatUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Communication?: T_CommunicationUncheckedUpdateManyWithoutT_UtilisateursNestedInput
+    T_Discussion?: T_DiscussionUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Article?: T_ArticleUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Commande?: T_CommandeUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
@@ -81564,7 +83655,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -81586,6 +83676,7 @@ export namespace Prisma {
     UrlFacture?: string | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
   }
 
   export type T_CommandeCreateManyT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
@@ -81593,7 +83684,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -81615,13 +83705,13 @@ export namespace Prisma {
     UrlFacture?: string | null
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
+    NomClientSaisi?: string | null
   }
 
   export type T_CommandeCreateManyT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
     ID_Commande?: number
     ID_TypeCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -81644,13 +83734,13 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
   }
 
   export type T_CommandeCreateManyT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
     ID_Commande?: number
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     ID_UserFk?: number | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
@@ -81673,6 +83763,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
   }
 
   export type T_MouvementCreateManyT_GeneriqueInput = {
@@ -83417,7 +85508,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ConditionPaiementFkToT_GeneriqueInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83437,6 +85527,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
@@ -83451,7 +85542,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83473,6 +85563,7 @@ export namespace Prisma {
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -83483,7 +85574,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83505,11 +85595,11 @@ export namespace Prisma {
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_ModePaiementFkToT_GeneriqueInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83529,6 +85619,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
@@ -83543,7 +85634,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83565,6 +85655,7 @@ export namespace Prisma {
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -83575,7 +85666,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83597,11 +85687,11 @@ export namespace Prisma {
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_StatutCmdFkToT_GeneriqueInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83621,6 +85711,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_TypeCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_TypeCmdFkToT_GeneriqueNestedInput
@@ -83634,7 +85725,6 @@ export namespace Prisma {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83657,6 +85747,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -83666,7 +85757,6 @@ export namespace Prisma {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83689,11 +85779,11 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_CommandeUpdateWithoutT_Generique_T_Commande_ID_TypeCmdFkToT_GeneriqueInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83713,6 +85803,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -83726,7 +85817,6 @@ export namespace Prisma {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83749,6 +85839,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -83758,7 +85849,6 @@ export namespace Prisma {
     ID_Commande?: IntFieldUpdateOperationsInput | number
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     ID_UserFk?: NullableIntFieldUpdateOperationsInput | number | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -83781,6 +85871,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_MouvementUpdateWithoutT_GeneriqueInput = {
@@ -84158,6 +86249,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Entite?: T_EntiteUpdateOneWithoutT_UtilisateursNestedInput
@@ -84187,6 +86279,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -84712,6 +86805,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUpdateManyWithoutT_UtilisateursNestedInput
     T_Generique?: T_GeneriqueUpdateOneWithoutT_UtilisateursNestedInput
@@ -84741,6 +86835,7 @@ export namespace Prisma {
     T_Payeur?: T_PaiementUncheckedUpdateManyWithoutT_PayeurNestedInput
     T_Paiement?: T_PaiementUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Professionnel?: T_ProfessionnelUncheckedUpdateOneWithoutT_UtilisateursNestedInput
+    T_Admin_UI_Setting?: T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Fk_Correspondance?: T_Fk_CorrespondanceUncheckedUpdateManyWithoutT_UtilisateursNestedInput
     T_Login?: T_LoginUncheckedUpdateManyWithoutT_UtilisateursNestedInput
   }
@@ -84833,7 +86928,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: number | null
     ID_StatutCmdFk?: number | null
     ID_ClientFk?: number | null
-    NomClientSaisi?: string | null
     geolocalisationCmd?: string | null
     DateHeureAutoCmd?: Date | string | null
     DateCmd?: Date | string | null
@@ -84855,6 +86949,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: number | null
     DateEcheancePaiement?: Date | string | null
     ID_ModePaiementFk?: number | null
+    NomClientSaisi?: string | null
   }
 
   export type T_PaiementCreateManyT_PayeurInput = {
@@ -84885,6 +86980,25 @@ export namespace Prisma {
     IdPayeurFk?: number | null
     IdTypeMouvementFk?: number | null
     IdEntiteFk: number
+  }
+
+  export type T_Admin_UI_SettingCreateManyT_UtilisateursInput = {
+    IdAdminUISetting?: number
+    SettingScope?: string
+    ScopeValue?: string | null
+    SettingKey: string
+    SettingLabel?: string | null
+    SettingGroup?: string | null
+    SettingValue?: string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: string | null
+    DisplayOrder?: number | null
+    IsEditable?: boolean | null
+    IsSystem?: boolean | null
+    ValideSetting?: boolean | null
+    CreatedAt?: Date | string | null
+    UpdatedAt?: Date | string | null
+    ObsSetting?: string | null
   }
 
   export type T_Fk_CorrespondanceCreateManyT_UtilisateursInput = {
@@ -85120,7 +87234,6 @@ export namespace Prisma {
 
   export type T_CommandeUpdateWithoutT_UtilisateursInput = {
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -85140,6 +87253,7 @@ export namespace Prisma {
     ValideRemiseFacture?: NullableBoolFieldUpdateOperationsInput | boolean | null
     UrlFacture?: NullableStringFieldUpdateOperationsInput | string | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_Generique_T_Commande_ID_ConditionPaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ConditionPaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_ModePaiementFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_ModePaiementFkToT_GeneriqueNestedInput
     T_Generique_T_Commande_ID_StatutCmdFkToT_Generique?: T_GeneriqueUpdateOneWithoutT_Commande_T_Commande_ID_StatutCmdFkToT_GeneriqueNestedInput
@@ -85154,7 +87268,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -85176,6 +87289,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     T_CommandeDetail?: T_CommandeDetailUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Mouvement?: T_MouvementUncheckedUpdateManyWithoutT_CommandeNestedInput
     T_Reglements?: T_ReglementsUncheckedUpdateManyWithoutT_CommandeNestedInput
@@ -85186,7 +87300,6 @@ export namespace Prisma {
     ID_TypeCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_StatutCmdFk?: NullableIntFieldUpdateOperationsInput | number | null
     ID_ClientFk?: NullableIntFieldUpdateOperationsInput | number | null
-    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
     geolocalisationCmd?: NullableStringFieldUpdateOperationsInput | string | null
     DateHeureAutoCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     DateCmd?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -85208,6 +87321,7 @@ export namespace Prisma {
     ID_ConditionPaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
     DateEcheancePaiement?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     ID_ModePaiementFk?: NullableIntFieldUpdateOperationsInput | number | null
+    NomClientSaisi?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_PaiementUpdateWithoutT_PayeurInput = {
@@ -85296,6 +87410,62 @@ export namespace Prisma {
     IdPayeurFk?: NullableIntFieldUpdateOperationsInput | number | null
     IdTypeMouvementFk?: NullableIntFieldUpdateOperationsInput | number | null
     IdEntiteFk?: IntFieldUpdateOperationsInput | number
+  }
+
+  export type T_Admin_UI_SettingUpdateWithoutT_UtilisateursInput = {
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Admin_UI_SettingUncheckedUpdateWithoutT_UtilisateursInput = {
+    IdAdminUISetting?: IntFieldUpdateOperationsInput | number
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type T_Admin_UI_SettingUncheckedUpdateManyWithoutT_UtilisateursInput = {
+    IdAdminUISetting?: IntFieldUpdateOperationsInput | number
+    SettingScope?: StringFieldUpdateOperationsInput | string
+    ScopeValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingKey?: StringFieldUpdateOperationsInput | string
+    SettingLabel?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingGroup?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValue?: NullableStringFieldUpdateOperationsInput | string | null
+    SettingValueJson?: NullableJsonNullValueInput | InputJsonValue
+    SettingType?: NullableStringFieldUpdateOperationsInput | string | null
+    DisplayOrder?: NullableIntFieldUpdateOperationsInput | number | null
+    IsEditable?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    IsSystem?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    ValideSetting?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    CreatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    UpdatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    ObsSetting?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type T_Fk_CorrespondanceUpdateWithoutT_UtilisateursInput = {

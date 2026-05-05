@@ -306,3 +306,53 @@ WHERE "ValideSetting" = true
 GROUP BY "SettingGroup"
 ORDER BY "SettingGroup";
 ALTER TABLE systeme."V_Admin_UI_Setting_Group" OWNER TO postgres;
+-- View: systeme.V_Admin_UI_Setting_Audit
+-- DROP VIEW systeme."V_Admin_UI_Setting_Audit";
+CREATE OR REPLACE VIEW systeme."V_Admin_UI_Setting_Audit" AS
+SELECT "IdLog",
+    "TableName",
+    "Operation",
+    "ChangedAt",
+    COALESCE(
+        "NewData"->>'settingScope'::text,
+        "OldData"->>'settingScope'::text,
+        'global'::text
+    ) AS "SettingScope",
+    COALESCE(
+        "NewData"->>'scopeValue'::text,
+        "OldData"->>'scopeValue'::text
+    ) AS "ScopeValue",
+    COALESCE(
+        "NewData"->>'settingKey'::text,
+        "OldData"->>'settingKey'::text
+    ) AS "SettingKey",
+    COALESCE(
+        "NewData"->>'settingLabel'::text,
+        "OldData"->>'settingLabel'::text
+    ) AS "SettingLabel",
+    COALESCE(
+        "NewData"->>'settingGroup'::text,
+        "OldData"->>'settingGroup'::text
+    ) AS "SettingGroup",
+    COALESCE(
+        "NewData"->>'settingValue'::text,
+        "OldData"->>'settingValue'::text
+    ) AS "SettingValue",
+    COALESCE(
+        "NewData"->>'updatedByName'::text,
+        "OldData"->>'updatedByName'::text
+    ) AS "UpdatedByName",
+    COALESCE(
+        "NewData"->>'updatedByUserId'::text,
+        "OldData"->>'updatedByUserId'::text
+    ) AS "UpdatedByUserId",
+    COALESCE(
+        "NewData"->>'updatedAt'::text,
+        "OldData"->>'updatedAt'::text
+    ) AS "UpdatedSettingAt",
+    "OldData",
+    "NewData"
+FROM systeme."T_Audit_Log" a
+WHERE "TableName" = 'T_Admin_UI_Setting'::text
+ORDER BY "ChangedAt" DESC;
+ALTER TABLE systeme."V_Admin_UI_Setting_Audit" OWNER TO postgres;

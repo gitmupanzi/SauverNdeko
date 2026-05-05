@@ -573,6 +573,18 @@ export function SimpleTable({
       index: startIndex + index,
     }));
   }, [currentPage, rowsPerPage, sortedRows]);
+  const visiblePageNumbers = useMemo(() => {
+    const radius = 2;
+    const startPage = Math.max(1, currentPage - radius);
+    const endPage = Math.min(totalPages, currentPage + radius);
+    const pageNumbers = [];
+
+    for (let pageNumber = startPage; pageNumber <= endPage; pageNumber += 1) {
+      pageNumbers.push(pageNumber);
+    }
+
+    return pageNumbers;
+  }, [currentPage, totalPages]);
 
   const selectedPageIds = useMemo(
     () => paginatedRowEntries.map((entry) => String(getRowId(entry.row, entry.index))).filter(Boolean),
@@ -1160,16 +1172,24 @@ export function SimpleTable({
       {filteredRows.length === 0 ? (
         <section className="table-empty-state">Aucun resultat ne correspond a la recherche dans ce tableau.</section>
       ) : (
-        <section className="admin-table-footer logistics-table-footer">
-          <div className="admin-table-footer-meta">
-            <span>{`Page ${currentPage} sur ${totalPages}`}</span>
-            <span>{`${paginatedRowEntries.length} lignes affichees sur ${sortedRows.length}`}</span>
+        <section className="admin-table-footer logistics-table-footer logistics-table-pager">
+          <div className="logistics-table-pager-size">
+            <label className="admin-form-field logistics-inline-select">
+              <span>Lignes</span>
+              <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
+                {rowsPerPageOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <div className="admin-table-footer-actions">
+          <div className="admin-table-footer-actions logistics-table-pager-actions">
             <div className="admin-pagination">
               <button type="button" className="secondary-action" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                1ere
+                {`<<`}
               </button>
               <button
                 type="button"
@@ -1179,13 +1199,23 @@ export function SimpleTable({
               >
                 Prec
               </button>
+              {visiblePageNumbers.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={`secondary-action ${pageNumber === currentPage ? "is-active" : ""}`.trim()}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              ))}
               <button
                 type="button"
                 className="secondary-action"
                 onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
                 disabled={currentPage === totalPages}
               >
-                Suiv
+                {`Suiv >`}
               </button>
               <button
                 type="button"
@@ -1193,7 +1223,7 @@ export function SimpleTable({
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage === totalPages}
               >
-                Dern
+                {`Dern >>`}
               </button>
             </div>
           </div>

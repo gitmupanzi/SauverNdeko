@@ -51,7 +51,7 @@ Le module doit contenir les écrans suivants :
 Règles importantes à respecter :
 
 - Les écrans doivent être cohérents visuellement entre eux.
-- Utiliser une barre latérale logistique avec les menus :
+- Prévoir une sidebar logistique rétractable, permettant à l’utilisateur d’afficher ou de masquer le menu latéral selon ses besoins. Cette sidebar contiendra les menus suivants :
   - Tableau de bord
   - Articles
   - Commandes

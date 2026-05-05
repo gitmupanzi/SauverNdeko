@@ -71,16 +71,42 @@ function getArticleStockState(article) {
   };
 }
 
+function getArticleExpirationState(article) {
+  const label = String(article?.EtatPeremption || "");
+
+  if (label.toLowerCase().includes("perim")) {
+    return { key: "perime", label: label || "Perime", tone: "danger" };
+  }
+
+  if (label.toLowerCase().includes("alerte")) {
+    return { key: "alerte", label: label || "Alerte peremption", tone: "warning" };
+  }
+
+  if (label.toLowerCase().includes("non")) {
+    return { key: "non-renseignee", label: label || "Non renseignee", tone: "info" };
+  }
+
+  return { key: "valide", label: label || "Valide", tone: "success" };
+}
+
+function getArticleRecordState(article) {
+  return article?.ValideArticle
+    ? { key: "actif", label: "Actif", tone: "success" }
+    : { key: "inactif", label: "Inactif", tone: "info" };
+}
+
 export default function Articles({ references, refreshKey, onDataChanged, sharedTable }) {
   const { user: currentUser } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [articleStateFilter, setArticleStateFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [unitFilter, setUnitFilter] = useState("");
   const [stockStateFilter, setStockStateFilter] = useState("all");
+  const [peremptionFilter, setPeremptionFilter] = useState("all");
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(() => ARTICLES_CRUD_CONFIG.createFormState());
@@ -128,13 +154,29 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const visibleRows = useMemo(
     () =>
       rows.filter((row) => {
-        if (stockStateFilter === "all") {
-          return true;
+        const stockState = getArticleStockState(row);
+        const expirationState = getArticleExpirationState(row);
+        const recordState = getArticleRecordState(row);
+
+        if (stockStateFilter !== "all" && stockState.key !== stockStateFilter) {
+          return false;
         }
 
-        return getArticleStockState(row).key === stockStateFilter;
+        if (peremptionFilter !== "all" && expirationState.key !== peremptionFilter) {
+          return false;
+        }
+
+        if (articleStateFilter !== "all" && recordState.key !== articleStateFilter) {
+          return false;
+        }
+
+        if (unitFilter && String(row.ID_UniteFk || "") !== String(unitFilter)) {
+          return false;
+        }
+
+        return true;
       }),
-    [rows, stockStateFilter]
+    [articleStateFilter, peremptionFilter, rows, stockStateFilter, unitFilter]
   );
   const stockStateSummary = useMemo(
     () =>
@@ -150,69 +192,80 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   );
   const tableColumns = useMemo(
     () => [
+      { key: "CodeArticleInterne", label: "Code interne" },
+      { key: "NomArticle", label: "Article" },
+      {
+        key: "ID_TypeArticleFk",
+        label: "Categorie",
+        render: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
+        renderText: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
+      },
       {
         key: "ID_TypeArticleFk",
         label: "Type",
-        render: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || "-",
-        renderText: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || "-",
-      },
-      { key: "CodeArticleInterne", label: "Code" },
-      { key: "CodeArticleExterne", label: "Code externe", renderText: (row) => row.CodeArticleExterne || "-" },
-      { key: "NomArticle", label: "Designation" },
-      { key: "RefArticle", label: "Reference" },
-      {
-        key: "ID_CategorieArticleFk",
-        label: "Categorie",
-        render: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || "-",
-        renderText: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || "-",
+        render: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || row.TypeArticle || "-",
+        renderText: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || row.TypeArticle || "-",
       },
       {
         key: "ID_UniteFk",
         label: "Unite",
-        render: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || "-",
-        renderText: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || "-",
+        render: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || row.Unite || "-",
+        renderText: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || row.Unite || "-",
       },
       { key: "QteArticle", label: "Stock", render: (row) => formatNumber(row.QteArticle), renderText: (row) => formatNumber(row.QteArticle) },
-      { key: "QteMinArticle", label: "Seuil", render: (row) => formatNumber(row.QteMinArticle), renderText: (row) => formatNumber(row.QteMinArticle) },
+      { key: "QteMinArticle", label: "Stock min", render: (row) => formatNumber(row.QteMinArticle), renderText: (row) => formatNumber(row.QteMinArticle) },
+      { key: "QteACommander", label: "A commander", render: (row) => formatNumber(row.QteACommander), renderText: (row) => formatNumber(row.QteACommander) },
       { key: "PUArticle", label: "PU", render: (row) => formatCurrency(row.PUArticle), renderText: (row) => formatCurrency(row.PUArticle) },
-      { key: "ObsArticle", label: "Obs", renderText: (row) => row.ObsArticle || "-" },
+      { key: "PVArticle", label: "PV", render: (row) => formatCurrency(row.PVArticle), renderText: (row) => formatCurrency(row.PVArticle) },
+      {
+        key: "ValeurStockAchat",
+        label: "Valeur stock achat",
+        render: (row) => formatCurrency(row.ValeurStockAchat),
+        renderText: (row) => formatCurrency(row.ValeurStockAchat),
+      },
+      {
+        key: "MargeUnitaire",
+        label: "Marge",
+        render: (row) => formatCurrency(row.MargeUnitaire),
+        renderText: (row) => formatCurrency(row.MargeUnitaire),
+      },
       {
         key: "stockState",
         label: "Etat stock",
-        render: (row) =>
-          <ToneBadge tone={getArticleStockState(row).tone}>{getArticleStockState(row).label}</ToneBadge>,
+        render: (row) => <ToneBadge tone={getArticleStockState(row).tone}>{getArticleStockState(row).label}</ToneBadge>,
         renderText: (row) => getArticleStockState(row).label,
       },
       {
+        key: "EtatPeremption",
+        label: "Etat peremption",
+        render: (row) => <ToneBadge tone={getArticleExpirationState(row).tone}>{getArticleExpirationState(row).label}</ToneBadge>,
+        renderText: (row) => getArticleExpirationState(row).label,
+      },
+      {
         key: "ValideArticle",
-        label: "Fiche",
-        render: (row) =>
-          row.ValideArticle ? <ToneBadge tone="info">Active</ToneBadge> : <ToneBadge tone="warning">Desactivee</ToneBadge>,
-        renderText: (row) => (row.ValideArticle ? "Active" : "Desactivee"),
+        label: "Etat article",
+        render: (row) => <ToneBadge tone={getArticleRecordState(row).tone}>{getArticleRecordState(row).label}</ToneBadge>,
+        renderText: (row) => getArticleRecordState(row).label,
       },
       {
         key: "actions",
         label: "Actions",
         render: (row) => (
           <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
-              Voir
-            </button>
-            <button type="button" className="secondary-action" onClick={() => handleEditArticle(row)}>
-              Modifier
-            </button>
-            <button type="button" className="admin-danger-button" onClick={() => handleDisableArticle(row)}>
-              Desactiver
-            </button>
-            <button type="button" className="admin-danger-button" onClick={() => handleDeleteArticle(row)}>
-              Supprimer
+            <button
+              type="button"
+              className="logistics-kebab-button"
+              onClick={() => sharedTable?.setSelectedRow?.(row)}
+              aria-label={`Actions ${row.NomArticle || "article"}`}
+            >
+              ⋮
             </button>
           </div>
         ),
         exportValue: () => "",
       },
     ],
-    [categoryLabelMap, handleDeleteArticle, handleDisableArticle, sharedTable, typeLabelMap, unitLabelMap]
+    [categoryLabelMap, sharedTable, typeLabelMap, unitLabelMap]
   );
 
   useEffect(() => {
@@ -226,7 +279,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         q: deferredSearch,
         typeId: typeFilter,
         categorieId: categoryFilter,
-        statut: statusFilter === "all" ? "" : statusFilter,
+        statut: articleStateFilter === "all" ? "" : articleStateFilter === "actif" ? "true" : "false",
         take: 250,
       });
 
@@ -259,7 +312,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     return () => {
       isMounted = false;
     };
-  }, [categoryFilter, deferredSearch, refreshKey, statusFilter, typeFilter]);
+  }, [articleStateFilter, categoryFilter, deferredSearch, refreshKey, typeFilter]);
 
   useEffect(() => {
     if (editorMode !== "create" || !currentUserId) {
@@ -379,145 +432,147 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   }
 
   return (
-    <div className="logistics-stack">
+    <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
-      <div className="logistics-workbench">
-        <div className="logistics-primary-pane">
-          <SectionCard
-            title="Catalogue des articles"
-            subtitle="Vue compacte de gestion pour consulter vite le stock, les references et l'etat des articles."
-            actions={
-              <div className="logistics-inline-actions">
-                <button type="button" className="secondary-action" onClick={handleNewArticle}>
-                  Ajouter article
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() =>
-                    exportRowsToCsv("logistique-articles.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)
-                  }
-                  disabled={visibleRows.length === 0}
-                >
-                  Exporter
-                </button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() =>
-                    exportRowsToPdf("logistique-articles", tableColumns.filter((column) => column.key !== "actions"), visibleRows)
-                  }
-                  disabled={visibleRows.length === 0}
-                >
-                  Imprimer
-                </button>
-              </div>
-            }
-          >
-            <div className="logistics-summary-grid">
-              <SummaryCard title="Articles visibles" value={formatNumber(visibleRows.length)} caption="Liste compacte en cours" />
-              <SummaryCard title="Disponibles" value={formatNumber(stockStateSummary.disponible)} tone="success" />
-              <SummaryCard title="Stock faible" value={formatNumber(stockStateSummary.faible)} tone="warning" />
-              <SummaryCard title="Ruptures" value={formatNumber(stockStateSummary.rupture)} tone="danger" />
-            </div>
+      <header className="logistics-screen-copy">
+        <h1>Articles</h1>
+        <p>Catalogue, stock, valorisation et peremption des articles</p>
+      </header>
 
-            <div className="logistics-filter-grid logistics-filter-grid-wide">
-              <label className="admin-form-field">
-                <span>{sharedTable?.searchLabel || "Recherche globale"}</span>
-                <input
-                  type="search"
-                  value={sharedTable?.searchValue || ""}
-                  onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-                  placeholder="Nom, reference, code interne..."
-                />
-              </label>
+      <section className="logistics-screen-search-card">
+        <label className="admin-form-field logistics-screen-search-field">
+          <span>{sharedTable?.searchLabel || "Recherche"}</span>
+          <input
+            type="search"
+            value={sharedTable?.searchValue || ""}
+            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
+            placeholder="Rechercher un article, code, reference ou categorie..."
+          />
+        </label>
+      </section>
 
-              <label className="admin-form-field">
-                <span>Etat fiche</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="all">Tous</option>
-                  <option value="true">Actifs</option>
-                  <option value="false">Desactives</option>
-                </select>
-              </label>
+      <section className="logistics-top-actions">
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewArticle}>
+          Ajouter
+        </button>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedArticle && handleEditArticle(selectedArticle)} disabled={!selectedArticle}>
+          Modifier
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-red"
+          onClick={() => selectedArticle && handleDeleteArticle(selectedArticle)}
+          disabled={!selectedArticle || selectedArticle.ValideArticle !== false}
+          title={!selectedArticle ? "Selectionnez un article" : selectedArticle.ValideArticle !== false ? "Desactivez d'abord la fiche avant la suppression definitive." : "Suppression definitive"}
+        >
+          Supprimer
+        </button>
+        <button type="button" className="logistics-top-action is-orange" onClick={() => selectedArticle && handleDisableArticle(selectedArticle)} disabled={!selectedArticle}>
+          Desactiver
+        </button>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedArticle && sharedTable?.setSelectedRow?.(selectedArticle)} disabled={!selectedArticle}>
+          Voir
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-green"
+          onClick={() => exportRowsToCsv("logistique-articles.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
+          disabled={visibleRows.length === 0}
+        >
+          Exporter
+        </button>
+        <button
+          type="button"
+          className="logistics-top-action is-purple"
+          onClick={() => exportRowsToPdf("logistique-articles", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
+          disabled={visibleRows.length === 0}
+        >
+          Imprimer
+        </button>
+        <button type="button" className="logistics-top-action is-sky" disabled>
+          Correspondance FK
+        </button>
+        <button type="button" className="logistics-top-action is-muted" disabled>
+          Autres filtres
+        </button>
+      </section>
 
-              <SelectField
-                label="Type article"
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-                options={articleTypeOptions}
-              />
+      <section className="logistics-screen-filter-card">
+        <div className="logistics-mockup-filter-grid">
+          <SelectField
+            label="Categorie article"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            options={articleCategoryOptions}
+          />
 
-              <SelectField
-                label="Categorie"
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                options={articleCategoryOptions}
-              />
+          <SelectField
+            label="Type article"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            options={articleTypeOptions}
+          />
 
-              <label className="admin-form-field">
-                <span>Etat du stock</span>
-                <select value={stockStateFilter} onChange={(event) => setStockStateFilter(event.target.value)}>
-                  <option value="all">Tous</option>
-                  <option value="disponible">Disponible</option>
-                  <option value="faible">Stock faible</option>
-                  <option value="rupture">Rupture</option>
-                </select>
-              </label>
-            </div>
+          <SelectField
+            label="Unite"
+            value={unitFilter}
+            onChange={(event) => setUnitFilter(event.target.value)}
+            options={articleUnitOptions}
+          />
 
-            <SelectionStrip
-              selectedRow={selectedArticle}
-              label={selectedArticle ? `Ligne selectionnee: article #${selectedArticle.ID_Article}` : "Aucune ligne selectionnee"}
-              description={
-                selectedArticle
-                  ? `${selectedArticle.NomArticle || "-"} | ${selectedArticle.CodeArticleInterne || "Sans code"} | ${getArticleStockState(selectedArticle).label}`
-                  : "Cliquez une ligne pour l'activer et reutiliser ses actions hors du tableau."
-              }
-              actions={
-                selectedArticle ? (
-                  <>
-                    <button type="button" className="secondary-action" onClick={() => handleEditArticle(selectedArticle)}>
-                      Modifier
-                    </button>
-                    <button type="button" className="admin-danger-button" onClick={() => handleDisableArticle(selectedArticle)}>
-                      Desactiver
-                    </button>
-                    <button type="button" className="admin-danger-button" onClick={() => handleDeleteArticle(selectedArticle)}>
-                      Supprimer
-                    </button>
-                  </>
-                ) : null
-              }
-            />
+          <label className="admin-form-field">
+            <span>Etat stock</span>
+            <select value={stockStateFilter} onChange={(event) => setStockStateFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="disponible">Disponible</option>
+              <option value="faible">Stock faible</option>
+              <option value="rupture">Rupture</option>
+            </select>
+          </label>
 
-            <TableToolbar
-              title={sharedTable?.toolbarTitle || "Tableau V_Article"}
-              rows={visibleRows}
-              columns={tableColumns.filter((column) => column.key !== "actions")}
-              exportFilename={sharedTable?.exportFilename || "logistique-v_article.csv"}
-            />
+          <label className="admin-form-field">
+            <span>Etat peremption</span>
+            <select value={peremptionFilter} onChange={(event) => setPeremptionFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="valide">Valide</option>
+              <option value="alerte">Alerte peremption</option>
+              <option value="perime">Perime</option>
+              <option value="non-renseignee">Non renseignee</option>
+            </select>
+          </label>
 
-            <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun article a afficher." />
-
-            {!loading && !error && visibleRows.length > 0 ? (
-              <SimpleTable
-                rows={visibleRows}
-                columns={tableColumns}
-                selectedRowId={selectedArticle?.ID_Article || null}
-                onRowSelect={sharedTable?.setSelectedRow}
-                defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
-                defaultSortColumn="NomArticle"
-                exportFilename={sharedTable?.exportFilename || "logistique-v_article.csv"}
-              />
-            ) : null}
-          </SectionCard>
+          <label className="admin-form-field">
+            <span>Etat article</span>
+            <select value={articleStateFilter} onChange={(event) => setArticleStateFilter(event.target.value)}>
+              <option value="all">Toutes</option>
+              <option value="actif">Actif</option>
+              <option value="inactif">Inactif</option>
+            </select>
+          </label>
         </div>
+      </section>
 
-        {selectedArticle || editorMode ? (
-          <aside className="logistics-side-pane">
-            {selectedArticle ? (
-              <SectionCard title="Fiche article" subtitle="Lecture detaillee issue de la vue logistique.">
+      <section className="logistics-screen-table-card">
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun article a afficher." />
+
+        {!loading && !error && visibleRows.length > 0 ? (
+          <SimpleTable
+            rows={visibleRows}
+            columns={tableColumns}
+            selectedRowId={selectedArticle?.ID_Article || null}
+            onRowSelect={sharedTable?.setSelectedRow}
+            enableSelection={false}
+            showControls={false}
+            defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
+            defaultSortColumn="NomArticle"
+            defaultRowsPerPage={10}
+            exportFilename={sharedTable?.exportFilename || "logistique-v_article.csv"}
+          />
+        ) : null}
+      </section>
+
+      {selectedArticle ? (
+        <SectionCard title="Fiche article" subtitle="Lecture detaillee issue de la vue logistique.">
                 <div className="logistics-detail-grid">
                   <article>
                     <strong>{selectedArticle.NomArticle}</strong>
@@ -527,14 +582,18 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
                     <p>Type: {typeLabelMap.get(String(selectedArticle.ID_TypeArticleFk)) || "-"}</p>
                     <p>Categorie: {categoryLabelMap.get(String(selectedArticle.ID_CategorieArticleFk)) || "-"}</p>
                     <p>Etat stock: {getArticleStockState(selectedArticle).label}</p>
+                    <p>Etat peremption: {getArticleExpirationState(selectedArticle).label}</p>
                   </article>
                   <article>
                     <p>Utilisateur: {selectedArticle.NomComplet || userLabelMap.get(String(selectedArticle.IdUser)) || "-"}</p>
                     <p>Unite: {unitLabelMap.get(String(selectedArticle.ID_UniteFk)) || "-"}</p>
                     <p>Stock courant: {formatNumber(selectedArticle.QteArticle)}</p>
                     <p>Seuil minimum: {formatNumber(selectedArticle.QteMinArticle)}</p>
+                    <p>A commander: {formatNumber(selectedArticle.QteACommander)}</p>
                     <p>PU: {formatCurrency(selectedArticle.PUArticle)}</p>
                     <p>PV: {formatCurrency(selectedArticle.PVArticle)}</p>
+                    <p>Valeur stock achat: {formatCurrency(selectedArticle.ValeurStockAchat)}</p>
+                    <p>Marge unitaire: {formatCurrency(selectedArticle.MargeUnitaire)}</p>
                     <p>Peremption: {formatDate(selectedArticle.DatePeremptionArticle)}</p>
                     <p>Alerte peremption: {formatDate(selectedArticle.DatePeremptionAlerteArticle)}</p>
                     <p>
@@ -549,14 +608,14 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
                     <p>Photo: {selectedArticle.PhotoArticle || "-"}</p>
                   </article>
                 </div>
-              </SectionCard>
-            ) : null}
+        </SectionCard>
+      ) : null}
 
-            {editorMode ? (
-              <SectionCard
-                title={editorMode === "edit" ? "Modifier l'article" : "Creer un article"}
-                subtitle="Le formulaire ecrit directement dans T_Article sans toucher aux triggers existants."
-              >
+      {editorMode ? (
+        <SectionCard
+          title={editorMode === "edit" ? "Modifier l'article" : "Creer un article"}
+          subtitle="Le formulaire ecrit directement dans T_Article sans toucher aux triggers existants."
+        >
                 {articleReferenceWarnings.length > 0 ? (
                   <section className="table-empty-state">
                     {`References logistiques a completer: ${articleReferenceWarnings.join(" ")}`}
@@ -774,11 +833,8 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
               </button>
             </div>
                 </form>
-              </SectionCard>
-            ) : null}
-          </aside>
-        ) : null}
-      </div>
+        </SectionCard>
+      ) : null}
     </div>
   );
 }

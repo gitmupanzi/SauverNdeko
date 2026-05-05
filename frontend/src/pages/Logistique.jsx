@@ -20,6 +20,7 @@ import StockAudit from "./logistique/StockAudit";
 import { LOGISTIQUE_GENERIC_SOURCE_CONFIG, LOGISTIQUE_MODULE_SCHEMA } from "./logistique/views";
 
 const LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY = "logistique.generic-category-overrides";
+const LOGISTIQUE_SIDEBAR_STORAGE_KEY = "logistique.sidebar-collapsed";
 
 function normalizeStringRecord(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -55,6 +56,14 @@ function readLogistiqueCategoryOverrides() {
   } catch (_error) {
     return {};
   }
+}
+
+function readSidebarCollapsedPreference() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(LOGISTIQUE_SIDEBAR_STORAGE_KEY) === "true";
 }
 
 function extractPayloadRows(payload) {
@@ -335,6 +344,13 @@ function countLoadedReferenceEntries(references) {
   }, 0);
 }
 
+function normalizeUiText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function LogistiqueSummaryCard({ title, value, tone = "primary" }) {
   return (
     <article className={`admin-summary-card ${tone}`}>
@@ -526,12 +542,157 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
   );
 }
 
+function LogistiqueSidebar({ collapsed, activeTab, mainTabs, activeTabConfig, onNavigate, onToggle }) {
+  const activeMainTab = mainTabs.find((tab) => tab.key === activeTab) || mainTabs[0];
+  const activeLabel = activeMainTab?.label || activeTabConfig.label || activeTabConfig.title;
+  const isDashboardContext =
+    activeTab === "dashboard" ||
+    ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
+
+  return (
+    <aside className={`logistics-sidebar-shell ${collapsed ? "is-collapsed" : ""}`.trim()}>
+      <div className="logistics-sidebar-top">
+        <div className="logistics-brand-lockup">
+          <div className="logistics-brand-mark">SN</div>
+          {!collapsed ? (
+            <div className="logistics-brand-copy">
+              <strong>SauverNdeko</strong>
+              <span>Logistique</span>
+            </div>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className="logistics-sidebar-toggle"
+          onClick={onToggle}
+          aria-label={collapsed ? "Afficher le menu logistique" : "Replier le menu logistique"}
+        >
+          {collapsed ? ">" : "<"}
+        </button>
+      </div>
+
+      <div className="logistics-sidebar-nav">
+        {mainTabs.map((tab) => {
+          const isActive = tab.key === activeTab || (tab.key === "dashboard" && isDashboardContext);
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className={`logistics-sidebar-link ${isActive ? "is-active" : ""}`.trim()}
+              onClick={() => onNavigate(tab.key)}
+              title={tab.title}
+            >
+              <span className="logistics-sidebar-icon" aria-hidden="true">
+                {tab.icon}
+              </span>
+              {!collapsed ? <span className="logistics-sidebar-label">{tab.label || tab.title}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="logistics-sidebar-footer">
+        {!collapsed ? (
+          <>
+            <div className="logistics-sidebar-user-avatar">AD</div>
+            <div className="logistics-sidebar-user-copy">
+              <strong>Admin</strong>
+              <span>Administrateur</span>
+              <small>{activeLabel}</small>
+            </div>
+          </>
+        ) : (
+          <div className="logistics-sidebar-user-avatar">AD</div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function LogistiqueShellHeader({
+  activeTabConfig,
+  activeTab,
+  referencesLoading,
+  references,
+  selectedCommande,
+  onRefresh,
+  onShowFkMappings,
+  showFkMappingPanel,
+  onDashboard,
+}) {
+  const title = activeTabConfig.label || activeTabConfig.title;
+  const subtitle =
+    activeTab === "dashboard"
+      ? "Vue synthetique du stock, des commandes, des mouvements et des reglements."
+      : activeTabConfig.description || activeTabConfig.viewLabel;
+  const activeViewLabel = activeTabConfig.viewLabel;
+  const articleCount = referencesLoading ? "..." : formatCompactCount(references?.articles?.length || 0);
+  const factureCount = referencesLoading ? "..." : formatCompactCount(references?.factures?.length || 0);
+  const contextualChips = [
+    activeViewLabel,
+    `${articleCount} articles`,
+    `${factureCount} factures`,
+    selectedCommande?.CodeCmd ? `Commande cible : ${selectedCommande.CodeCmd}` : "",
+  ].filter(Boolean);
+
+  return (
+    <section className="logistics-shell-header-card">
+      <div className="logistics-shell-header-main">
+        <div className="logistics-shell-header-copy">
+          <span className="logistics-shell-eyebrow">Module logistique</span>
+          <h1>{title}</h1>
+          <p>{subtitle}</p>
+        </div>
+
+        <div className="logistics-shell-header-side">
+          <div className="logistics-shell-header-status">
+            <span className="status-pill">{activeTabConfig.accessMode}</span>
+            {activeTab !== "dashboard" ? (
+              <button type="button" className="secondary-action" onClick={onDashboard}>
+                Tableau de bord
+              </button>
+            ) : null}
+          </div>
+
+          <div className="logistics-shell-header-actions">
+            <button type="button" className="secondary-action" onClick={onShowFkMappings}>
+              {showFkMappingPanel ? "Masquer FK" : "Correspondance FK"}
+            </button>
+            <button type="button" className="primary-action" onClick={onRefresh}>
+              Actualiser
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="logistics-shell-chip-row">
+        {contextualChips.map((item) => (
+          <span key={item} className={`status-pill ${item === activeViewLabel ? "" : "is-muted"}`}>
+            {item}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const TABS = LOGISTIQUE_MODULE_SCHEMA.views;
 const TAB_GROUPS = LOGISTIQUE_MODULE_SCHEMA.tabGroups;
 const TABLE_FEATURE_CONFIG = LOGISTIQUE_MODULE_SCHEMA.tableFeatures;
+const MAIN_TAB_DEFINITIONS = [
+  { key: "dashboard", label: "Tableau de bord", icon: "D" },
+  { key: "articles", label: "Articles", icon: "A" },
+  { key: "commandes", label: "Commandes", icon: "C" },
+  { key: "details", label: "Commande detail", icon: "L" },
+  { key: "mouvements", label: "Historique des mouvements", icon: "M" },
+  { key: "reglements", label: "Reglements", icon: "R" },
+];
 
 export default function Logistique() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sharedTableState, setSharedTableState] = useState({
@@ -571,6 +732,14 @@ export default function Logistique() {
 
     window.localStorage.setItem(LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY, JSON.stringify(genericCategoryOverrides));
   }, [genericCategoryOverrides]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(LOGISTIQUE_SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     let isMounted = true;
@@ -736,6 +905,18 @@ export default function Logistique() {
       },
     }));
     handleNavigate("details");
+  }
+
+  function handleOpenCommande(commande) {
+    setSelectedCommande(commande);
+    setSharedTableState((current) => ({
+      ...current,
+      commandes: {
+        ...current.commandes,
+        selectedRow: commande,
+      },
+    }));
+    handleNavigate("commandes");
   }
 
   function updateSharedTableState(tabKey, patch) {
@@ -1034,42 +1215,13 @@ export default function Logistique() {
     await persistSharedFkSettings({});
   }
 
-  const headerStats = useMemo(
-    () => [
-      { label: "Volets logistiques", value: TABS.length },
-      {
-        label: "Vue selectionnee",
-        value: TABS.find((tab) => tab.key === activeTab)?.title || "Aucune",
-        tone: "soft",
-      },
-      {
-        label: "References chargees",
-        value: referencesLoading ? "..." : formatCompactCount(countLoadedReferenceEntries(references)),
-        tone: "soft",
-      },
-    ],
-    [activeTab, references, referencesLoading]
-  );
-
-  const tabGroups = useMemo(
+  const mainTabs = useMemo(
     () =>
-      TAB_GROUPS.map((group) => ({
-        ...group,
-        tabs: TABS.filter((tab) => tab.group === group.key),
-      })),
+      MAIN_TAB_DEFINITIONS.map((item) => ({
+        ...TABS.find((tab) => tab.key === item.key),
+        ...item,
+      })).filter((item) => item?.key),
     []
-  );
-
-  const logistiqueMeta = useMemo(
-    () =>
-      [
-        activeTabConfig.accessMode,
-        activeTabConfig.viewLabel,
-        referencesLoading ? "Chargement des references..." : `${formatCompactCount(references?.articles?.length || 0)} articles references`,
-        referencesLoading ? "" : `${formatCompactCount(references?.factures?.length || 0)} factures repertoriees`,
-        selectedCommande?.CodeCmd ? `Commande cible: ${selectedCommande.CodeCmd}` : "",
-      ].filter(Boolean),
-    [activeTabConfig, references, referencesLoading, selectedCommande]
   );
 
   const sharedTableFeatures = useMemo(
@@ -1095,294 +1247,24 @@ export default function Logistique() {
   return (
     <>
       <LogistiqueResponsiveStyles />
-      <div className="page-shell admin-page-shell logistics-page-shell">
+      <div className="page-shell admin-page-shell logistics-page-shell logistics-shell-layout">
+        <LogistiqueSidebar
+          collapsed={sidebarCollapsed}
+          activeTab={activeTab}
+          mainTabs={mainTabs}
+          activeTabConfig={activeTabConfig}
+          onNavigate={handleNavigate}
+          onToggle={() => setSidebarCollapsed((current) => !current)}
+        />
+
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
-          <LogistiqueCatalogueBar
-            tabGroups={tabGroups}
-            activeTab={activeTab}
-            activeTabConfig={activeTabConfig}
-            onNavigate={handleNavigate}
-          />
-
-          {activeTab === "dashboard" ? (
-            <section className="admin-summary-grid">
-              {headerStats.map((item) => (
-                <LogistiqueSummaryCard
-                  key={item.label}
-                  title={item.label}
-                  value={String(item.value)}
-                  tone={item.tone || "primary"}
-                />
-              ))}
-            </section>
-          ) : null}
-
-          <section className="admin-content-card logistics-content-card">
-            <div className="admin-sticky-panel logistics-sticky-panel">
-              <div className="admin-content-head">
-                <div className="section-head">
-                  <h3>{activeTabConfig.label || activeTabConfig.title}</h3>
-                  <p>{activeTabConfig.viewLabel}</p>
-                </div>
-                <span className="status-pill">{activeTabConfig.accessMode}</span>
-              </div>
-
-              <div className="admin-toolbar">
-                <div className="admin-toolbar-meta">
-                  {logistiqueMeta.map((item) => (
-                    <span key={item} className={`status-pill ${item === activeTabConfig.accessMode ? "" : "is-muted"}`}>
-                      {item}
-                    </span>
-                  ))}
-                  {referencesError ? <small>{referencesError}</small> : null}
-                  {!referencesError && genericSupportError ? <small>{genericSupportError}</small> : null}
-                </div>
-
-                <div className="admin-toolbar-actions">
-                  <button type="button" className="secondary-action" onClick={bumpRefresh}>
-                    Actualiser
-                  </button>
-                  {activeTab !== "dashboard" ? (
-                    <button type="button" className="secondary-action" onClick={() => handleNavigate("dashboard")}>
-                      Retour dashboard
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
             {referencesLoading ? <section className="table-empty-state">Chargement des references logistiques...</section> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
 
-            {!referencesLoading && !referencesError && activeFkMappings.length > 0 ? (
-              <section className="admin-fk-mapping-card">
-                <div className="admin-fk-mapping-head">
-                  <div>
-                    <strong>Correspondances FK et comportement des listes</strong>
-                    <p>Parametrage optionnel des listes logistiques.</p>
-                  </div>
-                  <div className="admin-fk-mapping-head-side">
-                    <span className="status-pill is-muted">
-                      {`${activeGenericMappings.length + activeDirectMappings.length} reglage(s) pour cette vue`}
-                    </span>
-                    <div className="admin-fk-mapping-head-actions">
-                      <button
-                        className="secondary-action"
-                        type="button"
-                        onClick={() => setShowFkMappingPanel((current) => !current)}
-                      >
-                        {showFkMappingPanel ? "Masquer correspondances FK" : "Correspondances FK"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {!showFkMappingPanel ? (
-                  <div className="admin-fk-history-empty">Panneau masque pour garder la lecture du tableau prioritaire.</div>
-                ) : (
-                  <>
-                    <div className={`admin-fk-mapping-note is-${sharedFkSyncStatus.tone}`}>
-                      <div className="admin-fk-mapping-note-head">
-                        <span className={`admin-fk-state-chip is-${sharedFkSyncStatus.tone}`}>{sharedFkSyncStatus.title}</span>
-                      </div>
-                      <div className="admin-fk-mapping-note-details">
-                        {sharedFkSyncStatus.details.map((detail, index) => (
-                          <span key={`${detail.text}-${index}`} className={`admin-fk-note-item is-${detail.tone || "muted"}`}>
-                            {detail.text}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="admin-fk-history-card">
-                      <div className="admin-fk-history-head">
-                        <div>
-                          <strong>Historique compact</strong>
-                          <p>Les dernieres modifications enregistrees pour le parametrage partage logistique.</p>
-                        </div>
-                        <span className="status-pill is-muted">
-                          {loadingSharedFkAudit ? "Chargement..." : `${visibleSharedFkAuditRows.length} entree(s) affichee(s)`}
-                        </span>
-                      </div>
-
-                      {sharedFkAuditError ? <div className="admin-fk-history-empty is-error">{sharedFkAuditError}</div> : null}
-
-                      {!sharedFkAuditError && loadingSharedFkAudit ? (
-                        <div className="admin-fk-history-empty">Chargement de l'historique des reglages FK...</div>
-                      ) : null}
-
-                      {!sharedFkAuditError && !loadingSharedFkAudit && visibleSharedFkAuditRows.length === 0 ? (
-                        <div className="admin-fk-history-empty">
-                          Aucun historique n'est encore disponible pour les reglages logistiques.
-                        </div>
-                      ) : null}
-
-                      {!sharedFkAuditError && !loadingSharedFkAudit && visibleSharedFkAuditRows.length > 0 ? (
-                        <div className="admin-fk-history-list">
-                          {visibleSharedFkAuditRows.map((row) => {
-                            const operationLabel = row.Operation === "CREATE" ? "Creation" : "Mise a jour";
-                            const changedAtLabel =
-                              formatDisplayDateTime(row.ChangedAt || row.UpdatedSettingAt) ||
-                              String(row.ChangedAt || row.UpdatedSettingAt || "");
-                            const authorLabel = row.UpdatedByName || row.UpdatedByUserId || "Utilisateur inconnu";
-
-                            return (
-                              <article key={row.IdLog || `${row.ChangedAt}-${row.Operation}`} className="admin-fk-history-item">
-                                <div className="admin-fk-history-item-top">
-                                  <strong>{operationLabel}</strong>
-                                  <span className="admin-fk-state-chip is-info">Logistique</span>
-                                </div>
-                                <div className="admin-fk-history-item-meta">
-                                  <span>{changedAtLabel}</span>
-                                  <span>{authorLabel}</span>
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {genericMappingStates.length > 0 ? (
-                      <>
-                        <div className="admin-fk-mapping-section-head">
-                          <strong>Categories generiques</strong>
-                          <span>ID_CategorieGenerique utilise pour chaque liste deroulante logistique</span>
-                        </div>
-
-                        <div className="admin-fk-mapping-head-actions">
-                          <button
-                            className="secondary-action"
-                            type="button"
-                            onClick={handleApplyAllGenericCategoryOverrides}
-                            disabled={!hasDirtyGenericDrafts || hasInvalidGenericDrafts || savingSharedFkSettings || loadingSharedFkSettings}
-                          >
-                            Appliquer toutes les categories
-                          </button>
-                          <button
-                            className="secondary-action"
-                            type="button"
-                            onClick={handleResetAllFkSettings}
-                            disabled={(!hasCustomFkSettings && !hasDirtyGenericDrafts) || savingSharedFkSettings || loadingSharedFkSettings}
-                          >
-                            Reinitialiser tout
-                          </button>
-                        </div>
-
-                        <div className="admin-fk-mapping-grid">
-                          {genericMappingStates.map((mapping) => (
-                            <article key={mapping.sourceKey} className="admin-fk-mapping-item">
-                              <div className="admin-fk-mapping-meta">
-                                <div className="admin-fk-mapping-title-row">
-                                  <strong>{mapping.labels.join(", ")}</strong>
-                                  <div className="admin-fk-state-badges">
-                                    <span className={`admin-fk-state-chip ${mapping.isCustom ? "is-custom" : "is-default"}`}>
-                                      {mapping.isLocked ? "Verrouille" : mapping.isCustom ? "Personnalise" : "Defaut"}
-                                    </span>
-                                    {mapping.isDirty ? <span className="admin-fk-state-chip is-pending">Non applique</span> : null}
-                                    {!mapping.isValid ? <span className="admin-fk-state-chip is-invalid">Invalide</span> : null}
-                                  </div>
-                                </div>
-                                <span>{mapping.fieldNames.join(", ")}</span>
-                                <small>{mapping.sourceKey}</small>
-                              </div>
-
-                              <label className={`admin-form-field ${!mapping.isValid ? "is-invalid" : ""}`}>
-                                <span>ID categorie</span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={mapping.inputValue}
-                                  onChange={(event) => handleGenericCategoryDraftChange(mapping.sourceKey, event.target.value)}
-                                  placeholder={mapping.defaultValue}
-                                  disabled={mapping.isLocked}
-                                />
-                              </label>
-
-                              <div className="admin-fk-mapping-hint">
-                                <small>{`Defaut: ${mapping.defaultValue}`}</small>
-                                <small>{`Categorie active: ${mapping.effectiveCategoryLabels}`}</small>
-                                <small>{`${mapping.optionsCount} options chargees actuellement`}</small>
-                                {mapping.isLocked ? (
-                                  <small>Alignement metier verrouille pour garantir les listes deroulantes logistiques attendues.</small>
-                                ) : null}
-                                {!mapping.isValid ? (
-                                  <small>Utilisez un ou plusieurs IDs entiers positifs separes par des virgules.</small>
-                                ) : null}
-                              </div>
-
-                              <div className="admin-fk-mapping-actions">
-                                <button
-                                  className="secondary-action"
-                                  type="button"
-                                  onClick={() => handleApplyGenericCategoryOverride(mapping.sourceKey)}
-                                  disabled={
-                                    mapping.isLocked ||
-                                    !mapping.isValid ||
-                                    !mapping.isDirty ||
-                                    savingSharedFkSettings ||
-                                    loadingSharedFkSettings
-                                  }
-                                >
-                                  Appliquer
-                                </button>
-                                <button
-                                  className="secondary-action"
-                                  type="button"
-                                  onClick={() => handleResetGenericCategoryOverride(mapping.sourceKey)}
-                                  disabled={
-                                    mapping.isLocked ||
-                                    ((!mapping.isCustom && mapping.inputValue === mapping.defaultValue) ||
-                                      savingSharedFkSettings ||
-                                      loadingSharedFkSettings)
-                                  }
-                                >
-                                  Reinitialiser
-                                </button>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </>
-                    ) : null}
-
-                    {activeDirectMappings.length > 0 ? (
-                      <>
-                        <div className="admin-fk-mapping-section-head">
-                          <strong>Sources directes</strong>
-                          <span>Ces liaisons restent basees sur des tables ou vues metier sans categorie generique editable.</span>
-                        </div>
-
-                        <div className="admin-fk-mapping-grid">
-                          {activeDirectMappings.map((mapping) => (
-                            <article key={mapping.field} className="admin-fk-mapping-item">
-                              <div className="admin-fk-mapping-meta">
-                                <div className="admin-fk-mapping-title-row">
-                                  <strong>{mapping.label}</strong>
-                                  <div className="admin-fk-state-badges">
-                                    <span className="admin-fk-state-chip is-default">Direct</span>
-                                  </div>
-                                </div>
-                                <span>{mapping.field}</span>
-                                <small>{mapping.source}</small>
-                              </div>
-                              <div className="admin-fk-mapping-hint">
-                                <small>Cette correspondance est informative et sert au detail de ligne et aux libelles.</small>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </>
-                    ) : null}
-                  </>
-                )}
-              </section>
-            ) : null}
-
             {!referencesLoading && !referencesError ? (
               <div className="logistics-shell-view">
-                {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} /> : null}
+                {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
                 {activeTab === "articles" ? (
                   <Articles
                     references={references}
@@ -1424,11 +1306,11 @@ export default function Logistique() {
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
                     sharedTable={sharedTableFeatures.reglements}
+                    onOpenCommande={handleOpenCommande}
                   />
                 ) : null}
               </div>
             ) : null}
-          </section>
           </div>
         </section>
       </div>
