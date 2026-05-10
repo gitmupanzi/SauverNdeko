@@ -32,6 +32,10 @@ const validation = {
 
 const service = {
   list: (query) => viewRepository.list(query),
+  async listEntries(query = {}) {
+    const result = await logistiqueService.listReglementEntries(query);
+    return result?.data || [];
+  },
   search: (query) => viewRepository.list(query),
   async getById(id) {
     const data = await repository.findById(validation.parseId(id));
@@ -91,6 +95,14 @@ const controller = {
       return sendError(res, error);
     }
   },
+  async listEntries(req, res) {
+    try {
+      const data = await service.listEntries(req.query);
+      return sendSuccess(res, 200, 'Ecritures de reglement recuperees avec succes.', data);
+    } catch (error) {
+      return sendError(res, error);
+    }
+  },
   async getById(req, res) {
     try {
       const data = await service.getById(req.params.id);
@@ -127,6 +139,7 @@ const controller = {
 
 const router = express.Router();
 router.get('/search', controller.search);
+router.get('/entries', controller.listEntries);
 router.get('/:id', controller.getById);
 router.get('/', controller.list);
 router.post('/', controller.create);

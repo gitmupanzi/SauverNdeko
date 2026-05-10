@@ -3,13 +3,21 @@ import {
   createLogistiqueArticle,
   createLogistiqueCommande,
   createLogistiqueCommandeDetail,
+  fetchLogistiqueArticles,
+  fetchLogistiqueAlertesStock,
+  fetchLogistiqueCommandes,
   createLogistiqueReglement,
   deleteLogistiqueCommande,
   deleteLogistiqueArticle,
   deleteLogistiqueCommandeDetail,
   fetchLogistiqueCommandeDetails,
+  fetchLogistiqueConsommation,
+  fetchLogistiqueCouverture,
   fetchLogistiqueDashboard,
+  fetchLogistiqueMouvements,
+  fetchLogistiqueReglements,
   fetchLogistiqueReglementEntries,
+  fetchLogistiqueStockAudit,
   hardDeleteLogistiqueArticle,
   updateLogistiqueArticle,
   updateLogistiqueCommande,
@@ -681,53 +689,33 @@ const LOGISTIQUE_VIEW_FETCHERS = {
     fetchSummary: () => fetchLogistiqueDashboard(),
   },
   articles: {
-    fetchRows: createViewRowsFetcher("V_Article", {
-      filterMap: {
-        typeId: "ID_TypeArticleFk",
-        categorieId: "ID_CategorieArticleFk",
-        statut: "ValideArticle",
-      },
-    }),
+    fetchRows: (options = {}) => fetchLogistiqueArticles(options),
   },
   commandes: {
-    fetchRows: createViewRowsFetcher("V_Commande", {
-      filterMap: {
-        typeId: "ID_TypeCmdFk",
-        statutId: "ID_StatutCmdFk",
-        client: "ID_ClientFk",
-      },
-    }),
+    fetchRows: (options = {}) => fetchLogistiqueCommandes(options),
   },
   details: {
-    fetchRows: createViewRowsFetcher("V_CommandeDetail", {
-      filterMap: {
-        commandeId: "ID_CmdFk",
-      },
-    }),
+    fetchRows: (options = {}) =>
+      fetchLogistiqueCommandeDetails(options.commandeId ?? options.commande ?? null, options),
   },
   mouvements: {
-    fetchRows: createViewRowsFetcher("V_Mouvement", {
-      filterMap: {
-        article: "ID_ArticleFk",
-        typeId: "ID_TypeMvtFk",
-      },
-    }),
+    fetchRows: (options = {}) => fetchLogistiqueMouvements(options),
   },
   reglements: {
-    fetchRows: createViewRowsFetcher("V_SuiviReglements"),
+    fetchRows: (options = {}) => fetchLogistiqueReglements(options),
     fetchEntries: (options = {}) => fetchLogistiqueReglementEntries(options),
   },
   audit: {
-    fetchRows: createViewRowsFetcher("V_AuditStock"),
+    fetchRows: (options = {}) => fetchLogistiqueStockAudit(options),
   },
   alertes: {
-    fetchRows: createViewRowsFetcher("V_AlertStock"),
+    fetchRows: (options = {}) => fetchLogistiqueAlertesStock(options),
   },
   consommation: {
-    fetchRows: createViewRowsFetcher("V_ConsoMensuelle"),
+    fetchRows: (options = {}) => fetchLogistiqueConsommation(options),
   },
   couverture: {
-    fetchRows: createViewRowsFetcher("V_CouvertureStock"),
+    fetchRows: (options = {}) => fetchLogistiqueCouverture(options),
   },
 };
 

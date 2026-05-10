@@ -83,7 +83,17 @@ export function deleteLogistiqueCommande(id) {
 }
 
 export function fetchLogistiqueCommandeDetails(commandeId, options = {}) {
-  return logistiqueGet(`/commandes/${commandeId}/details`, options);
+  const queryOptions = { ...options };
+
+  if ("commandeId" in queryOptions) {
+    delete queryOptions.commandeId;
+  }
+
+  if (commandeId != null && commandeId !== "") {
+    queryOptions.commande = commandeId;
+  }
+
+  return logistiqueGet("/commande-details", queryOptions);
 }
 
 export function fetchLogistiqueMouvements(options = {}) {
@@ -91,15 +101,18 @@ export function fetchLogistiqueMouvements(options = {}) {
 }
 
 export function createLogistiqueCommandeDetail(commandeId, payload) {
-  return logistiqueWrite(`/commandes/${commandeId}/details`, "POST", payload);
+  return logistiqueWrite("/commande-details", "POST", {
+    ...payload,
+    ID_CmdFk: commandeId,
+  });
 }
 
 export function updateLogistiqueCommandeDetail(commandeId, articleId, payload) {
-  return logistiqueWrite(`/commandes/${commandeId}/details/${articleId}`, "PUT", payload);
+  return logistiqueWrite(`/commande-details/${commandeId}/${articleId}`, "PUT", payload);
 }
 
 export function deleteLogistiqueCommandeDetail(commandeId, articleId) {
-  return requestJson(`/api/logistique/commandes/${commandeId}/details/${articleId}`, {
+  return requestJson(`/api/logistique/commande-details/${commandeId}/${articleId}`, {
     method: "DELETE",
     requiresAuth: true,
   });

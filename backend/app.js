@@ -6,7 +6,7 @@ const viewsRoutes = require('./routes/views.routes');
 const authRoutes = require('./routes/auth.routes');
 const publicRoutes = require('./routes/public.routes');
 const discussionRoutes = require('./routes/discussion.routes');
-const logistiqueRoutes = require('./routes/logistique.routes');
+const logistiqueLegacyRoutes = require('./routes/logistique.legacy.routes');
 const registerModuleRoutes = require('./src/modules/register-module-routes');
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -26,7 +26,7 @@ app.get('/health', (req, res) => {
 app.use('/api/public', publicRoutes);
 app.use('/api/discussions', discussionRoutes);
 registerModuleRoutes(app);
-app.use('/api/logistique', logistiqueRoutes);
+app.use('/api/logistique', logistiqueLegacyRoutes);
 app.use('/api', domainRoutes);
 app.use('/api', routes);
 app.use('/api/views', viewsRoutes);

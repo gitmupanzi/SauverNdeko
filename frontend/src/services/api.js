@@ -47,13 +47,26 @@ async function requestJson(path, options = {}) {
         status: response.status,
         message: payload?.message || `Erreur API (${response.status}).`,
         data: payload?.data ?? null,
+        error: payload?.error ?? {
+          code: "HTTP_ERROR",
+          details: payload?.message || `Erreur API (${response.status}).`,
+        },
       };
     }
 
     return payload;
   } catch (error) {
     console.warn(`Impossible de contacter ${path}`, error);
-    return null;
+    return {
+      success: false,
+      status: 0,
+      message: "Impossible de contacter l'API.",
+      data: null,
+      error: {
+        code: "NETWORK_ERROR",
+        details: error?.message || "Erreur reseau inconnue.",
+      },
+    };
   }
 }
 
@@ -72,6 +85,30 @@ function buildQueryString(options = {}) {
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
+}
+
+const ADMIN_MODEL_ROUTE_MAP = Object.freeze({
+  T_CategorieGenerique: "/api/referentiel/categories-generiques",
+  T_Generique: "/api/referentiel/generiques",
+  T_Utilisateurs: "/api/systeme/utilisateurs",
+  T_Entite: "/api/systeme/entites",
+  T_Entite_Localisation: "/api/systeme/entite-localisations",
+  T_Licence: "/api/systeme/licences",
+  T_Login: "/api/systeme/logins",
+  T_Audit_Log: "/api/systeme/audit-logs",
+  T_Fk_Correspondance: "/api/systeme/fk-correspondances",
+  T_Admin_UI_Setting: "/api/systeme/admin-ui-settings",
+  T_Niveau_0: "/api/geolocalisation/niveau-0",
+  T_Niveau_1_Old: "/api/geolocalisation/niveau-1-old",
+  T_Niveau_1: "/api/geolocalisation/niveau-1",
+  T_Niveau_2: "/api/geolocalisation/niveau-2",
+  T_Niveau_3: "/api/geolocalisation/niveau-3",
+  T_Niveau_4: "/api/geolocalisation/niveau-4",
+  T_Niveau_5: "/api/geolocalisation/niveau-5",
+});
+
+function resolveAdminModelBasePath(model) {
+  return ADMIN_MODEL_ROUTE_MAP[model] || `/api/models/${model}`;
 }
 
 export function fetchPublicStats() {
@@ -147,13 +184,13 @@ export function fetchViewData(schema, view, options = {}) {
 }
 
 export function fetchAdminEntities(options = {}) {
-  return requestJson(`/api/entites${buildQueryString(options)}`, {
+  return requestJson(`/api/systeme/entites${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
 
 export function createAdminEntity(payload) {
-  return requestJson("/api/entites", {
+  return requestJson("/api/systeme/entites", {
     method: "POST",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -161,13 +198,13 @@ export function createAdminEntity(payload) {
 }
 
 export function fetchAdminEntity(id) {
-  return requestJson(`/api/entites/${id}`, {
+  return requestJson(`/api/systeme/entites/${id}`, {
     requiresAuth: true,
   });
 }
 
 export function updateAdminEntity(id, payload) {
-  return requestJson(`/api/entites/${id}`, {
+  return requestJson(`/api/systeme/entites/${id}`, {
     method: "PUT",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -175,26 +212,26 @@ export function updateAdminEntity(id, payload) {
 }
 
 export function deleteAdminEntity(id) {
-  return requestJson(`/api/entites/${id}`, {
+  return requestJson(`/api/systeme/entites/${id}`, {
     method: "DELETE",
     requiresAuth: true,
   });
 }
 
 export function fetchAdminLicences(options = {}) {
-  return requestJson(`/api/licences${buildQueryString(options)}`, {
+  return requestJson(`/api/systeme/licences${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
 
 export function fetchAdminLicence(id) {
-  return requestJson(`/api/licences/${id}`, {
+  return requestJson(`/api/systeme/licences/${id}`, {
     requiresAuth: true,
   });
 }
 
 export function createAdminLicence(payload) {
-  return requestJson("/api/licences", {
+  return requestJson("/api/systeme/licences", {
     method: "POST",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -202,7 +239,7 @@ export function createAdminLicence(payload) {
 }
 
 export function updateAdminLicence(id, payload) {
-  return requestJson(`/api/licences/${id}`, {
+  return requestJson(`/api/systeme/licences/${id}`, {
     method: "PUT",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -210,20 +247,20 @@ export function updateAdminLicence(id, payload) {
 }
 
 export function deleteAdminLicence(id) {
-  return requestJson(`/api/licences/${id}`, {
+  return requestJson(`/api/systeme/licences/${id}`, {
     method: "DELETE",
     requiresAuth: true,
   });
 }
 
 export function fetchAdminUser(id) {
-  return requestJson(`/api/utilisateurs/${id}`, {
+  return requestJson(`/api/systeme/utilisateurs/${id}`, {
     requiresAuth: true,
   });
 }
 
 export function createAdminUser(payload) {
-  return requestJson("/api/utilisateurs", {
+  return requestJson("/api/systeme/utilisateurs", {
     method: "POST",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -231,7 +268,7 @@ export function createAdminUser(payload) {
 }
 
 export function updateAdminUser(id, payload) {
-  return requestJson(`/api/utilisateurs/${id}`, {
+  return requestJson(`/api/systeme/utilisateurs/${id}`, {
     method: "PUT",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -239,26 +276,26 @@ export function updateAdminUser(id, payload) {
 }
 
 export function deleteAdminUser(id) {
-  return requestJson(`/api/utilisateurs/${id}`, {
+  return requestJson(`/api/systeme/utilisateurs/${id}`, {
     method: "DELETE",
     requiresAuth: true,
   });
 }
 
 export function fetchAdminModelList(model, options = {}) {
-  return requestJson(`/api/models/${model}${buildQueryString(options)}`, {
+  return requestJson(`${resolveAdminModelBasePath(model)}${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
 
 export function fetchAdminModelItem(model, id) {
-  return requestJson(`/api/models/${model}/${id}`, {
+  return requestJson(`${resolveAdminModelBasePath(model)}/${id}`, {
     requiresAuth: true,
   });
 }
 
 export function createAdminModelRecord(model, payload) {
-  return requestJson(`/api/models/${model}`, {
+  return requestJson(resolveAdminModelBasePath(model), {
     method: "POST",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -266,7 +303,7 @@ export function createAdminModelRecord(model, payload) {
 }
 
 export function updateAdminModelRecord(model, id, payload) {
-  return requestJson(`/api/models/${model}/${id}`, {
+  return requestJson(`${resolveAdminModelBasePath(model)}/${id}`, {
     method: "PUT",
     requiresAuth: true,
     body: JSON.stringify(payload),
@@ -274,26 +311,26 @@ export function updateAdminModelRecord(model, id, payload) {
 }
 
 export function deleteAdminModelRecord(model, id) {
-  return requestJson(`/api/models/${model}/${id}`, {
+  return requestJson(`${resolveAdminModelBasePath(model)}/${id}`, {
     method: "DELETE",
     requiresAuth: true,
   });
 }
 
 export function fetchAdminUiSettings(options = {}) {
-  return requestJson(`/api/admin-ui-settings${buildQueryString(options)}`, {
+  return requestJson(`/api/systeme/admin-ui-settings${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
 
 export function fetchAdminUiSettingsAudit(options = {}) {
-  return requestJson(`/api/admin-ui-settings/audit${buildQueryString(options)}`, {
+  return requestJson(`/api/views/systeme/V_Admin_UI_Setting_Audit${buildQueryString(options)}`, {
     requiresAuth: true,
   });
 }
 
 export function saveAdminUiSettings(payload) {
-  return requestJson("/api/admin-ui-settings", {
+  return requestJson("/api/systeme/admin-ui-settings", {
     method: "PUT",
     requiresAuth: true,
     body: JSON.stringify(payload),
