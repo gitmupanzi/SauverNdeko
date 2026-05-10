@@ -52,8 +52,20 @@ const service = {
   },
 };
 
+const normalizeJsonData = (value) =>
+  JSON.parse(
+    JSON.stringify(value, (_, current) => {
+      if (typeof current === 'bigint') {
+        const asNumber = Number(current);
+        return Number.isSafeInteger(asNumber) ? asNumber : current.toString();
+      }
+
+      return current;
+    })
+  );
+
 const sendSuccess = (res, statusCode, message, data) =>
-  res.status(statusCode).json({ success: true, message, data, error: null });
+  res.status(statusCode).json({ success: true, message, data: normalizeJsonData(data), error: null });
 const sendError = (res, error) =>
   res.status(error.statusCode || 500).json({
     success: false,
