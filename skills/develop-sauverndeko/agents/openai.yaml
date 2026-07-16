@@ -1,0 +1,4 @@
+interface:
+  display_name: "Développer SauverNdeko"
+  short_description: "Faire évoluer la plateforme et ses contrats"
+  default_prompt: "Utilise $develop-sauverndeko pour analyser une évolution SauverNdeko de bout en bout, de PostgreSQL à React."
