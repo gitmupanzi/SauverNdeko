@@ -1,0 +1,114 @@
+{
+  "mode": "synthetique",
+  "avertissement": "DONNÉES FICTIVES — NON DÉCISIONNEL — aucun export applicatif réel",
+  "devises_autorisees": [
+    "CDF",
+    "USD",
+    "EUR",
+    "ALL"
+  ],
+  "restitution": [
+    {
+      "type": "montant",
+      "valeur": "1250.5",
+      "unite": "EUR",
+      "attendu": "1 250,50 EUR"
+    },
+    {
+      "type": "montant",
+      "valeur": "0",
+      "unite": "USD",
+      "attendu": "0,00 USD"
+    },
+    {
+      "type": "montant",
+      "valeur": "12.50",
+      "unite": null,
+      "attendu": "12,50 — devise non renseignée"
+    },
+    {
+      "type": "montant",
+      "valeur": null,
+      "unite": "CDF",
+      "motif": "Source absente",
+      "attendu": "Non disponible — Source absente"
+    },
+    {
+      "type": "quantite",
+      "valeur": "3",
+      "unite": "PCE",
+      "attendu": "3,000 PCE"
+    },
+    {
+      "type": "quantite",
+      "valeur": "3.125",
+      "unite": "kg",
+      "attendu": "3,125 kg"
+    },
+    {
+      "type": "quantite",
+      "valeur": "3",
+      "unite": null,
+      "attendu": "3,000 — unité non renseignée"
+    },
+    {
+      "type": "pourcentage",
+      "valeur": "0.3",
+      "attendu": "30,00 %"
+    },
+    {
+      "type": "points",
+      "valeur": "10",
+      "attendu": "10,00 points de pourcentage"
+    },
+    {
+      "type": "p",
+      "valeur": "0.00000042",
+      "attendu": "4,2e-7"
+    }
+  ],
+  "resultat_reference": {
+    "document_id": "DEMO-COMMANDE-0007",
+    "mode": "synthetique",
+    "organisation_id": "ORG-DEMO-001",
+    "type_document": "commande",
+    "portee": "tous_resultats_filtres",
+    "filtres_appliques": {
+      "commande": "CMD-0007"
+    },
+    "date_situation": null,
+    "periode": {
+      "debut": "2026-10-01",
+      "fin": "2026-10-24"
+    },
+    "devise": null,
+    "unite": "PCE",
+    "lignes": [
+      {
+        "code_article": "ART-0007",
+        "quantite": "3.000",
+        "unite": "PCE",
+        "prix_unitaire": "12.50",
+        "montant_ligne": "37.50"
+      }
+    ],
+    "totaux": {
+      "MontantHT": "37.50",
+      "MontantTTC": "37.50",
+      "TotalRegle": "0.00",
+      "Reste": "37.50"
+    },
+    "limites": [
+      "Devise non renseignée dans la source fictive",
+      "Aucun taux de taxe fourni"
+    ],
+    "statut_validation": "non_effectuee"
+  },
+  "ic_illustratif": {
+    "borne_basse": "-0.25",
+    "borne_haute": "5.25",
+    "niveau": "0.95",
+    "methode": "Exemple fictif fourni",
+    "unite": "unités"
+  }
+}

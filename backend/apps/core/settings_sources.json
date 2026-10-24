@@ -1,0 +1,427 @@
+{
+  "generic": {
+    "roles": {
+      "moduleName": "admin",
+      "schemaName": "referentiel",
+      "sourceKey": "roles",
+      "fieldName": "roles",
+      "fieldLabel": "Role",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        39
+      ]
+    },
+    "entityTypes": {
+      "moduleName": "admin",
+      "schemaName": "referentiel",
+      "sourceKey": "entityTypes",
+      "fieldName": "entityTypes",
+      "fieldLabel": "Type entite",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        48
+      ]
+    },
+    "licenseStatuses": {
+      "moduleName": "admin",
+      "schemaName": "referentiel",
+      "sourceKey": "licenseStatuses",
+      "fieldName": "licenseStatuses",
+      "fieldLabel": "Statut licence",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        55
+      ]
+    },
+    "niveau2Types": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau2Types",
+      "fieldName": "niveau2Types",
+      "fieldLabel": "Type niveau 2",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        32
+      ]
+    },
+    "niveau3Types": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau3Types",
+      "fieldName": "niveau3Types",
+      "fieldLabel": "Type niveau 3",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        32
+      ]
+    },
+    "niveau2Statuses": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau2Statuses",
+      "fieldName": "niveau2Statuses",
+      "fieldLabel": "Statut niveau 2",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        4
+      ]
+    },
+    "niveau3Statuses": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau3Statuses",
+      "fieldName": "niveau3Statuses",
+      "fieldLabel": "Statut niveau 3",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        4
+      ]
+    },
+    "deploymentStatuses": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "deploymentStatuses",
+      "fieldName": "deploymentStatuses",
+      "fieldLabel": "Statut deploiement",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        27
+      ]
+    },
+    "dpsAccessRoutes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "dpsAccessRoutes",
+      "fieldName": "dpsAccessRoutes",
+      "fieldLabel": "Voie acces DPS",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        29
+      ]
+    },
+    "antBczAccessRoutes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "antBczAccessRoutes",
+      "fieldName": "antBczAccessRoutes",
+      "fieldLabel": "Voie acces antenne BCZS",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        29
+      ]
+    },
+    "dpsBczAccessRoutes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "dpsBczAccessRoutes",
+      "fieldName": "dpsBczAccessRoutes",
+      "fieldLabel": "Voie acces DPS BCZS",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        29
+      ]
+    },
+    "niveau4Types": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau4Types",
+      "fieldName": "niveau4Types",
+      "fieldLabel": "Type niveau 4",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        32
+      ]
+    },
+    "niveau5Types": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau5Types",
+      "fieldName": "niveau5Types",
+      "fieldLabel": "Type niveau 5",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        32
+      ]
+    },
+    "niveau4Statuses": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau4Statuses",
+      "fieldName": "niveau4Statuses",
+      "fieldLabel": "Statut niveau 4",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        4
+      ]
+    },
+    "niveau5Statuses": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveau5Statuses",
+      "fieldName": "niveau5Statuses",
+      "fieldLabel": "Statut niveau 5",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        4
+      ]
+    },
+    "networkAvailabilities": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "networkAvailabilities",
+      "fieldName": "networkAvailabilities",
+      "fieldLabel": "Disponibilite reseau",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        19
+      ]
+    },
+    "zsAsAccessRoutes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "zsAsAccessRoutes",
+      "fieldName": "zsAsAccessRoutes",
+      "fieldLabel": "Voie acces ZS-AS",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        29
+      ]
+    },
+    "zsSiteAccessRoutes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "zsSiteAccessRoutes",
+      "fieldName": "zsSiteAccessRoutes",
+      "fieldLabel": "Voie acces ZS-Site",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        29
+      ]
+    },
+    "roofTypes": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "roofTypes",
+      "fieldName": "roofTypes",
+      "fieldLabel": "Type de toit",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        18
+      ]
+    },
+    "logistique.articleTypes": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Article",
+      "sourceKey": "logistique.articleTypes",
+      "fieldName": "ID_TypeArticleFk",
+      "fieldLabel": "Type d'article",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        46
+      ]
+    },
+    "logistique.articleCategories": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Article",
+      "sourceKey": "logistique.articleCategories",
+      "fieldName": "ID_CategorieArticleFk",
+      "fieldLabel": "Categorie d'article",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        40
+      ]
+    },
+    "logistique.articleUnits": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Article",
+      "sourceKey": "logistique.articleUnits",
+      "fieldName": "ID_UniteFk",
+      "fieldLabel": "Unite",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        34
+      ]
+    },
+    "logistique.commandeTypes": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "sourceKey": "logistique.commandeTypes",
+      "fieldName": "ID_TypeCmdFk",
+      "fieldLabel": "Type de commande",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        64
+      ]
+    },
+    "logistique.commandeStatuses": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Commande",
+      "sourceKey": "logistique.commandeStatuses",
+      "fieldName": "ID_StatutCmdFk",
+      "fieldLabel": "Statut commande",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        28
+      ]
+    },
+    "logistique.commandeConditionPaiements": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Commande",
+      "sourceKey": "logistique.commandeConditionPaiements",
+      "fieldName": "ID_ConditionPaiementFk",
+      "fieldLabel": "Condition de paiement",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        37
+      ]
+    },
+    "logistique.commandeModesPaiement": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_Commande",
+      "sourceKey": "logistique.commandeModesPaiement",
+      "fieldName": "ID_ModePaiementFk",
+      "fieldLabel": "Mode de paiement",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        36
+      ]
+    },
+    "logistique.reglementModes": {
+      "moduleName": "logistique",
+      "schemaName": "logistique",
+      "viewName": "V_SuiviReglements",
+      "sourceKey": "logistique.reglementModes",
+      "fieldName": "ID_ModeReglementFk",
+      "fieldLabel": "Mode de reglement",
+      "referenceSchemaName": "referentiel",
+      "referenceObjectName": "T_Generique",
+      "referenceFieldName": "ID_Generique",
+      "defaultCategoryIds": [
+        36
+      ]
+    }
+  },
+  "hierarchy": {
+    "niveaux0": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux0",
+      "fieldName": "niveaux0",
+      "fieldLabel": "Niveau 0",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "all"
+    },
+    "niveaux1Old": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux1Old",
+      "fieldName": "niveaux1Old",
+      "fieldLabel": "Niveau 1 historique",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "all"
+    },
+    "niveaux1": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux1",
+      "fieldName": "niveaux1",
+      "fieldLabel": "Niveau 1",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "filtered"
+    },
+    "niveaux2": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux2",
+      "fieldName": "niveaux2",
+      "fieldLabel": "Niveau 2",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "filtered"
+    },
+    "niveaux3": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux3",
+      "fieldName": "niveaux3",
+      "fieldLabel": "Niveau 3",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "filtered"
+    },
+    "niveaux4": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux4",
+      "fieldName": "niveaux4",
+      "fieldLabel": "Niveau 4",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "filtered"
+    },
+    "niveaux5": {
+      "moduleName": "admin",
+      "schemaName": "geolocalisation",
+      "sourceKey": "niveaux5",
+      "fieldName": "niveaux5",
+      "fieldLabel": "Niveau 5",
+      "mappingType": "hierarchy_mode",
+      "defaultMode": "filtered"
+    }
+  }
+}

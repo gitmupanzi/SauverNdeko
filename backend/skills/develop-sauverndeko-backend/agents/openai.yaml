@@ -1,4 +1,4 @@
 interface:
   display_name: "Backend SauverNdeko"
-  short_description: "Développer les API Express et Prisma"
-  default_prompt: "Utilise $develop-sauverndeko-backend pour modifier cette API SauverNdeko en préservant ses contrats SQL et frontend."
+  short_description: "Dï¿½velopper les API Django et PostgreSQL"
+  default_prompt: "Utilise $develop-sauverndeko-backend pour modifier cette API SauverNdeko en prï¿½servant ses contrats SQL et frontend."

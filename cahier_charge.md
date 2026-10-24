@@ -16,7 +16,7 @@ Il doit pouvoir etre reutilise par :
 L'architecture actuelle repose sur :
 
 - `frontend/` : React + Vite
-- `backend/` : Node.js + Express + Prisma
+- `backend/` : Python + Django + Django REST Framework + psycopg
 - `PostgreSQL` : base de donnees structuree par schemas
 
 ## 2. Vision produit
@@ -220,7 +220,7 @@ Fonctions attendues :
 ### 9.1 Deja en place
 
 - frontend React + Vite
-- backend Express + Prisma
+- backend Django + Django REST Framework
 - connexion PostgreSQL
 - authentification
 - session restauree
@@ -328,9 +328,9 @@ Elle doit permettre a un administrateur de :
 
 ### 12.2 Backend
 
-- API REST Express
+- API REST Django REST Framework
 - acces protege aux routes sensibles
-- Prisma pour les CRUD standards
+- connexion Django/psycopg, modèles métier unmanaged et services communs pour les CRUD standards
 - vues SQL pour les lectures metier
 - logique de parametrage partage
 
@@ -363,3 +363,46 @@ La cible n'est pas seulement de finaliser une application locale, mais de dispos
 - administrable
 - extensible
 - compatible avec des besoins multi-pays et multi-organisations
+
+
+---
+
+# Addendum — orientation ERP du 24 octobre 2026
+
+Cet addendum précise la cible et actualise l’état des sections historiques qui le précèdent.
+
+## Cible produit
+
+SauverNdeko doit évoluer vers un ERP configurable dont la logistique est un domaine. Conserver les usages santé/services et le socle public/connecté/administration, puis relier progressivement tiers, produits, achats, ventes, stocks, facturation, règlements et pilotage. Les modules finance, RH, projets et immobilisations demandent un périmètre client propre ; ils ne sont pas considérés comme disponibles.
+
+## État actualisé
+
+Le code contient déjà des écrans et API de logistique, commandes, lignes, mouvements, règlements, stock et dashboard. Leur classement historique parmi les évolutions futures ne signifie donc plus une absence de code. Leur recette, la sécurité des nouveaux routeurs et l’exhaustivité des mesures restent à consolider.
+
+La présence de tables de paiement ou de caisse ne prouve pas un cycle de trésorerie ou une comptabilité générale complète. Le fonctionnement multi-organisation, multi-pays et multidevise reste à éprouver ; les portées de paramètres ne constituent pas une isolation de données.
+
+## Exigences complémentaires
+
+1. Privilégier les vues PostgreSQL communes pour les lectures, agrégats et contrôles réutilisés. Utiliser la connexion PostgreSQL Django/psycopg ; centraliser validation, droits et transactions dans les services Django.
+2. Versionner COMMENT ON TABLE, VIEW et COLUMN pour les objets métier créés ou modifiés. Contrôler ensuite les commentaires installés dans PostgreSQL.
+3. Rendre les indicateurs disposant d’un détail consultables au clic et au clavier. Valeur, détail, registre filtré et export partagent le même périmètre autorisé et les mêmes critères.
+4. Créer les consultations communes Produit 360 et Commande 360, puis Facture/Règlement et tiers selon le modèle disponible. Prévoir redimensionnement, mobile, focus, navigation entre objets et retour au contexte.
+5. Moderniser les interfaces avec des composants et styles partagés, des filtres réellement appliqués, des tableaux flexibles et des aides sobres.
+6. Sécuriser chaque route et objet côté serveur, y compris listes, FK, agrégats, détails et exports. Tester les rôles et l’isolation entre organisations.
+7. Préserver les invariants de stock, les mouvements en lecture seule et les commandes clôturées. Vérifier l’installation des routines avant toute évolution.
+
+## Références et prochaines étapes
+
+La [cartographie](skills/sauverndeko-erp/references/cartographie.md) décrit les preuves, limites et écarts ; la [trajectoire ERP](skills/sauverndeko-erp/references/trajectoire-erp.md) définit les lots et leurs critères. Les [skills transverses](skills/sauverndeko-erp/SKILL.md), [backend](backend/skill/SKILL.md) et [frontend](frontend/skill/SKILL.md) servent de consignes de développement.
+
+La présente intervention livre de la documentation et des skills. Elle ne modifie pas le code exécuté ou la base et ne déclare aucun des parcours 360 ou nouveaux modules comme livré.
+
+
+## Actualisation — backend Django du 24/10/2026
+
+Le propriétaire a choisi Django + Django REST Framework et a précisé de ne pas modifier la base. Le backend Python conserve les API utilisées par React, PostgreSQL, les vues/triggers et les comptes existants. L’ancien backend Express/Prisma et ses dépendances ont été supprimés à la demande du propriétaire. Les modèles métier sont unmanaged ; les migrations natives Django sont autorisées uniquement dans public. La connexion est en lecture seule par défaut pendant la vérification. Voir [le guide](backend/README.md) et [le bilan technique actuel](SQL/documentation/Audit_Metier_20261024.md). Cette actualisation remplace les choix Node/Prisma des sections historiques ; elle ne certifie ni les écritures réelles ni la disponibilité de tous les modules ERP.
+
+
+### Autorisation complémentaire — socle Django public
+
+Le propriétaire a ensuite autorisé les migrations des tables natives Django dans public. Dix tables techniques ont été créées ; les 30 tables métier et leurs données sont conservées. Cette autorisation remplace l’interdiction de DDL uniquement pour ce socle natif. La fusion public/systeme est une question examinée séparément ; aucune table métier n’a été déplacée.

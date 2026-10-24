@@ -1,44 +1,12 @@
 ---
 name: develop-sauverndeko-backend
-description: Développer, corriger et valider le backend SauverNdeko en Node.js CommonJS, Express 4, Prisma 6 et PostgreSQL. Utiliser pour les routes et contrôleurs publics, authentification JWT, discussions, administration, modules `referentiel`, `systeme`, `geolocalisation` et `logistique`, repositories de tables ou vues, validation et mapping des payloads, sérialisation Prisma, middleware de sécurité, contrats d'erreur et intégration avec les schémas SQL SauverNdeko.
+description: Maintenir les API Django et Django REST Framework de SauverNdeko sur PostgreSQL. Utiliser pour les routes, permissions, transactions et lectures métier du backend actuel.
 ---
 
-# Développer le backend SauverNdeko
+# Backend SauverNdeko — Django
 
-Travailler depuis `backend/` et relier toute modification de données au schéma PostgreSQL réel situé dans `../SQL/`.
+Le backend actif utilise Django/DRF et les modèles métier unmanaged. Les règles PostgreSQL, les permissions et les vérifications sont maintenues dans le skill backend canonique.
 
-## Procédure
+Lire les [consignes du projet](../../../skills/AGENTS.md), puis appliquer le [skill canonique actuel](../../skill/SKILL.md). Ce point d’entrée conserve le nom du skill récupéré depuis GitHub sans dupliquer les instructions maintenues.
 
-1. Lire [references/backend-architecture.md](references/backend-architecture.md).
-2. Vérifier les montages et routes avec `scripts/inspect_backend.py --routes`, puis rechercher le concept avec `--query`.
-3. Lire le modèle dans `prisma/schema.prisma` et le DDL ou la vue SQL correspondante dans `../SQL/`.
-4. Identifier si l'endpoint appartient à l'architecture modulaire, à l'API historique ou aux routes génériques.
-5. Définir le contrat avec [references/api-contracts.md](references/api-contracts.md) : méthode, chemin, authentification, rôle, query, payload, réponse et erreurs.
-6. Modifier dans l'ordre repository/viewRepository, mapper, validation, service, controller et route. Réutiliser `src/modules/shared/module-kit.js` pour un CRUD standard.
-7. Préserver les règles de base : ne pas mettre à jour le stock en double si un trigger le fait et ne pas rendre modifiable une vue ou un historique en lecture seule.
-8. Valider avec [references/validation.md](references/validation.md).
-
-## Règles
-
-- Conserver CommonJS (`require`, `module.exports`) dans le backend actuel.
-- Monter les routes statiques comme `/search` avant `/:id`.
-- Utiliser `catchAsync` ou le mécanisme d'erreur existant; laisser `errorHandler` produire une réponse cohérente.
-- Valider et normaliser les entrées avant le repository. Ne pas transmettre `req.body` directement à Prisma.
-- Respecter `DEFAULT_TAKE = 100` et `MAX_TAKE = 500` du module kit, sauf contrat spécialisé justifié.
-- Utiliser le delegate Prisma exact de `schema.prisma`; ne pas modifier `generated/prisma` à la main.
-- Préférer Prisma ou les requêtes paramétrées. Pour une vue dynamique, limiter schéma, vue, colonnes et tri à des métadonnées autorisées.
-- Sérialiser proprement `BigInt`, `Decimal`, dates et JSON avant `res.json`.
-- Vérifier `verifyToken` et `requireAdmin` pour chaque route sensible; une protection frontend ne suffit pas.
-- Préserver les modules `writeEnabled: false`, notamment les mouvements et dashboards de lecture.
-- Ne pas journaliser mots de passe, JWT, refresh tokens ou données personnelles sensibles.
-- Ne pas lancer `prisma db pull` sans demande explicite : cette commande peut réécrire le schéma source.
-
-## Utilitaire
-
-```powershell
-$python = "C:\Users\Benjamin-mupanzi\AppData\Local\anaconda3\python.exe"
-& $python backend/skills/develop-sauverndeko-backend/scripts/inspect_backend.py --routes
-& $python backend/skills/develop-sauverndeko-backend/scripts/inspect_backend.py --module logistique/commande
-& $python backend/skills/develop-sauverndeko-backend/scripts/inspect_backend.py --query "V_Commande"
-```
-
+Les références et utilitaires de ce dossier décrivent le relevé antérieur à la conversion Django. Ne pas les utiliser comme description du backend installé ni exécuter leurs anciennes commandes Node/Prisma. Consulter les références du skill canonique pour le travail courant.

@@ -1,0 +1,43 @@
+{
+  "version": "3.0",
+  "date_documentaire": "2026-10-24",
+  "projet": "SauverNdeko",
+  "provenance": {
+    "projet_origine": "imf_BB",
+    "dossier": "skills/document-mise-en-forme",
+    "constat": "Copie identique avant adaptation ; les règles métier et actifs du projet source ne sont pas des dépendances actives.",
+    "skill_avant_sha256": "0b45c3cc03ef5784737bb36a43b2ad9f819491729a11936b84599db50b83c17d"
+  },
+  "assets": {
+    "logo": {
+      "chemin": "assets/sauverndeko-logo.jpg",
+      "source_projet": "frontend/public/sauverndeko-logo.jpg",
+      "sha256": "b866e6904053f8c541b1f1c44b99957ac8e64004f75b146dcd648d78b127c611",
+      "transformation": "Aucune : copie des octets d’origine"
+    }
+  },
+  "sources_sauverndeko": [
+    {
+      "chemin": "frontend/src/styles.css",
+      "sha256": "5ac2eba69b4e87e61b0d54d76f35ec2f21798bab76a45a8f9eb7e7928cf6005f",
+      "role": "Palette et marque de l’application"
+    },
+    {
+      "chemin": "frontend/src/pages/logistique/logistiqueShared.jsx",
+      "sha256": "5cd2436e217f376c5f331f86d04449629d24543544728a398a1959711906fd88",
+      "role": "État réel des helpers d’export"
+    },
+    {
+      "chemin": "backend/services/logistique.service.js",
+      "sha256": "a0453dc27241785321883fb518abc2825051b37b12722e7ae39df03ca411797f",
+      "role": "Champs et services métier réels"
+    },
+    {
+      "chemin": "SQL/documentation/Logistique_Fiabilisation_20261024.md",
+      "sha256": "78319aec731439300704268c7d00ed4b9682bc1730bb9f3ec784c99f7b61905c",
+      "role": "Règles SQL vérifiées du domaine logistique"
+    }
+  ],
+  "perimetre": "Règles, modèles Markdown et fixtures ERP ; aucun moteur d’export natif ni rendu réel ajouté.",
+  "conventions": "Les valeurs des calculs restent dans les services et vues PostgreSQL ; l’organisation émettrice et la devise sont explicites."
+}

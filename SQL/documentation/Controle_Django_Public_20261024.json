@@ -1,0 +1,154 @@
+{
+  "tablesParSchema": {
+    "public": [
+      "auth_group",
+      "auth_group_permissions",
+      "auth_permission",
+      "auth_user",
+      "auth_user_groups",
+      "auth_user_user_permissions",
+      "django_admin_log",
+      "django_content_type",
+      "django_migrations",
+      "django_session"
+    ],
+    "systeme": [
+      "T_Admin_UI_Setting",
+      "T_Audit_Log",
+      "T_Entite",
+      "T_Entite_Localisation",
+      "T_Fk_Correspondance",
+      "T_Licence",
+      "T_Login",
+      "T_Utilisateurs"
+    ]
+  },
+  "referencesFKEntrantes": [
+    [
+      "public",
+      "auth_group",
+      2
+    ],
+    [
+      "public",
+      "auth_permission",
+      2
+    ],
+    [
+      "public",
+      "auth_user",
+      3
+    ],
+    [
+      "public",
+      "django_content_type",
+      2
+    ],
+    [
+      "systeme",
+      "T_Entite",
+      11
+    ],
+    [
+      "systeme",
+      "T_Utilisateurs",
+      11
+    ]
+  ],
+  "comptesDjango": 0,
+  "comptesMetier": 3,
+  "contraintesNativesNonValidees": 0,
+  "indexNatifsInvalides": 0,
+  "searchPath": [
+    "public",
+    [
+      "public"
+    ]
+  ],
+  "publicCreateAccordeATous": false,
+  "lignesNatives": {
+    "auth_group": 0,
+    "auth_group_permissions": 0,
+    "auth_permission": 144,
+    "auth_user": 0,
+    "auth_user_groups": 0,
+    "auth_user_user_permissions": 0,
+    "django_admin_log": 0,
+    "django_content_type": 36,
+    "django_migrations": 18,
+    "django_session": 0
+  },
+  "commentaires": [
+    {
+      "type": "COLUMN",
+      "objets": 1064,
+      "documentes": 1064,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "CONSTRAINT",
+      "objets": 300,
+      "documentes": 300,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "FUNCTION",
+      "objets": 27,
+      "documentes": 27,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "INDEX",
+      "objets": 172,
+      "documentes": 172,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "PROCEDURE",
+      "objets": 6,
+      "documentes": 6,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "SCHEMA",
+      "objets": 9,
+      "documentes": 9,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "SEQUENCE",
+      "objets": 36,
+      "documentes": 36,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "TABLE",
+      "objets": 40,
+      "documentes": 40,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "TRIGGER",
+      "objets": 27,
+      "documentes": 27,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    },
+    {
+      "type": "VIEW",
+      "objets": 39,
+      "documentes": 39,
+      "sans_commentaire": 0,
+      "objets_a_documenter": null
+    }
+  ],
+  "commentairesManquants": 0
+}

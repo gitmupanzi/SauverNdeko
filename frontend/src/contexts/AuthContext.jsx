@@ -62,6 +62,51 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!authState.isAuthenticated) {
+      return undefined;
+    }
+
+    let active = true;
+    let refreshing = false;
+
+    async function synchronizeProfile() {
+      if (!active || refreshing || document.visibilityState === "hidden") {
+        return;
+      }
+      const accessToken = getStoredAuth()?.accessToken;
+      if (!accessToken) {
+        return;
+      }
+
+      refreshing = true;
+      try {
+        const payload = await fetchCurrentUser(accessToken);
+        if (!active || getStoredAuth()?.accessToken !== accessToken) {
+          return;
+        }
+        if (payload?.success && payload.data) {
+          persistSessionUser(payload.data);
+          startTransition(() => {
+            setAuthState((current) => ({ ...current, user: payload.data }));
+          });
+        }
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    // Les droits viennent du serveur, y compris pour une session déjà ouverte.
+    void synchronizeProfile();
+    window.addEventListener("focus", synchronizeProfile);
+    document.addEventListener("visibilitychange", synchronizeProfile);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", synchronizeProfile);
+      document.removeEventListener("visibilitychange", synchronizeProfile);
+    };
+  }, [authState.isAuthenticated]);
+
   async function login(credentials) {
     const payload = await loginUser(credentials);
 

@@ -1,0 +1,85 @@
+{
+  "version": "3.0",
+  "projet": "SauverNdeko",
+  "date": "2026-10-24",
+  "identite": {
+    "application": "SauverNdeko",
+    "logo": "assets/sauverndeko-logo.jpg",
+    "emetteur": "organisation_autorisee_du_contexte",
+    "logo_emetteur": "si_fourni_et_autorise",
+    "signature": "etat_reel_uniquement"
+  },
+  "palette": {
+    "bleu": "3F7DF1",
+    "bleu_fonce": "2F67D6",
+    "bleu_clair": "EAF1FF",
+    "vert": "55BF57",
+    "turquoise": "11B4BB",
+    "texte": "252525",
+    "texte_secondaire": "5F6B7A",
+    "fond": "FFFFFF",
+    "fond_alterne": "F4F4F4",
+    "bordure": "D8E1EC",
+    "alerte": "B42318"
+  },
+  "typographie": {
+    "titres": "Raleway",
+    "texte_office": "Aptos",
+    "repli_office": "Calibri",
+    "repli_pdf": "police_disponible_declaree_et_verifiee"
+  },
+  "word_pdf": {
+    "papier": "A4",
+    "orientation": "portrait",
+    "marges_cm": {
+      "gauche": 2.5,
+      "droite": 2,
+      "haut": 2,
+      "bas": 2
+    },
+    "texte_pt": 11,
+    "titres_pt": [
+      18,
+      14,
+      12,
+      11
+    ],
+    "tableau_pt": 9,
+    "interligne": 1.15,
+    "espace_apres_pt": 6,
+    "logo_largeur_cm": 2,
+    "pagination": "Page X sur Y"
+  },
+  "excel": {
+    "extension": ".xlsx",
+    "police": "Aptos",
+    "texte_pt": 11,
+    "entete_fond": "2F67D6",
+    "entete_texte": "FFFFFF",
+    "figer_entete": true,
+    "filtres": true,
+    "formats": {
+      "montant": "#,##0.00",
+      "quantite": "#,##0.###",
+      "ratio": "0.00%",
+      "date": "dd/mm/yyyy",
+      "horodatage": "dd/mm/yyyy hh:mm",
+      "identifiant": "@"
+    }
+  },
+  "semantique": {
+    "devise_par_defaut": null,
+    "unite_par_defaut": null,
+    "portee_par_defaut": null,
+    "calculs_metier": "backend_et_vues_postgresql",
+    "absence": "valeur_vide_et_motif",
+    "zero": "zero_fourni_par_la_source",
+    "ht_ttc": "restituer_les_champs_source_sans_taxe_inventee"
+  },
+  "fichiers": {
+    "excel": "xlsx_natif",
+    "word": "docx_natif",
+    "pdf": "pdf_reel",
+    "csv": "format_distinct_sans_charte"
+  }
+}

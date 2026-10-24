@@ -60,10 +60,10 @@ export function usePublicCatalogue() {
       const experts = getCollection(expertsPayload).map(mapExpertPublic);
       const diseases = getCollection(diseasesPayload).map(mapDiseasePublic);
 
-      const usingArticles = articles.length ? articles : mockArticles;
-      const usingPharmacies = pharmacies.length ? pharmacies : mockPharmacies;
-      const usingExperts = experts.length ? experts : mockExperts;
-      const usingDiseases = diseases.length ? diseases : mockDiseases;
+      const usingArticles = articlesPayload?.success === true ? articles : mockArticles;
+      const usingPharmacies = pharmaciesPayload?.success === true ? pharmacies : mockPharmacies;
+      const usingExperts = expertsPayload?.success === true ? experts : mockExperts;
+      const usingDiseases = diseasesPayload?.success === true ? diseases : mockDiseases;
       const usingStats = mapStatsPublic(
         statsPayload,
         mockStats,

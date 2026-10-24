@@ -1,0 +1,86 @@
+{
+  "referentiel/categories-generiques": {
+    "model": "T_CategorieGenerique",
+    "view": "V_CategorieGenerique"
+  },
+  "referentiel/generiques": {
+    "model": "T_Generique",
+    "view": "V_Generique"
+  },
+  "systeme/utilisateurs": {
+    "model": "T_Utilisateurs",
+    "view": "V_User_profil"
+  },
+  "systeme/entites": {
+    "model": "T_Entite",
+    "view": null
+  },
+  "systeme/entite-localisations": {
+    "model": "T_Entite_Localisation",
+    "view": "V_Entite_Localisation_Detail"
+  },
+  "systeme/licences": {
+    "model": "T_Licence",
+    "view": "V_Licence_active"
+  },
+  "systeme/logins": {
+    "model": "T_Login",
+    "view": "V_Login_history"
+  },
+  "systeme/audit-logs": {
+    "model": "T_Audit_Log",
+    "view": "V_Audit_log"
+  },
+  "systeme/fk-correspondances": {
+    "model": "T_Fk_Correspondance",
+    "view": "V_Fk_Correspondance_Detail"
+  },
+  "systeme/admin-ui-settings": {
+    "model": "T_Admin_UI_Setting",
+    "view": "V_Admin_UI_Setting"
+  },
+  "logistique/articles": {
+    "model": "T_Article",
+    "view": "V_Article"
+  },
+  "logistique/commandes": {
+    "model": "T_Commande",
+    "view": "V_Commande"
+  },
+  "logistique/reglements": {
+    "model": "T_Reglements",
+    "view": "V_SuiviReglements"
+  },
+  "logistique/mouvements": {
+    "model": "T_Mouvement",
+    "view": "V_Mouvement"
+  },
+  "geolocalisation/niveau-0": {
+    "model": "T_Niveau_0",
+    "view": "V_Niveau_0"
+  },
+  "geolocalisation/niveau-1-old": {
+    "model": "T_Niveau_1_Old",
+    "view": "V_Niveau_1_Old"
+  },
+  "geolocalisation/niveau-1": {
+    "model": "T_Niveau_1",
+    "view": "V_Niveau_1"
+  },
+  "geolocalisation/niveau-2": {
+    "model": "T_Niveau_2",
+    "view": "V_Niveau_2"
+  },
+  "geolocalisation/niveau-3": {
+    "model": "T_Niveau_3",
+    "view": "V_Niveau_3"
+  },
+  "geolocalisation/niveau-4": {
+    "model": "T_Niveau_4",
+    "view": "V_Niveau_4"
+  },
+  "geolocalisation/niveau-5": {
+    "model": "T_Niveau_5",
+    "view": "V_Niveau_5"
+  }
+}

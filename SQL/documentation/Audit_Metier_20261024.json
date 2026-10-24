@@ -1,0 +1,130 @@
+{
+  "date": "2026-10-24",
+  "migration": "20261024_04_coherence_schemas_metier",
+  "etat": "appliquee",
+  "baseApplicativeLectureSeule": true,
+  "frontend": "http://localhost:5176",
+  "backend": "http://127.0.0.1:5002",
+  "tablesMetier": 31,
+  "vues": 48,
+  "testsUnitairesDjango": 66,
+  "testsMetierPostgreSQL": 36,
+  "echangesDjangoRecette": 19,
+  "connexionMotDePasseRecette": true,
+  "controlesGETBaseApplicative": 96,
+  "tablesExistantesControleesEtInchangees": 27,
+  "clesEtrangeresControlees": 77,
+  "clesEtrangeresNonValidees": 0,
+  "orphelins": 0,
+  "ecartsStock": 0,
+  "couvertureCommentaires": {
+    "commentaires": [
+      {
+        "type": "COLUMN",
+        "objets": 1200,
+        "documentes": 1200,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "CONSTRAINT",
+        "objets": 314,
+        "documentes": 314,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "FUNCTION",
+        "objets": 31,
+        "documentes": 31,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "INDEX",
+        "objets": 176,
+        "documentes": 176,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "PROCEDURE",
+        "objets": 6,
+        "documentes": 6,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "SCHEMA",
+        "objets": 9,
+        "documentes": 9,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "SEQUENCE",
+        "objets": 38,
+        "documentes": 38,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "TABLE",
+        "objets": 41,
+        "documentes": 41,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "TRIGGER",
+        "objets": 30,
+        "documentes": 30,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      },
+      {
+        "type": "VIEW",
+        "objets": 48,
+        "documentes": 48,
+        "sans_commentaire": 0,
+        "objets_a_documenter": null
+      }
+    ],
+    "total": 1893,
+    "geolocalisation": {
+      "structures_comptees": "21949",
+      "sites_sources": 21949
+    }
+  },
+  "restaurationsStructure": [
+    {
+      "restaurationSQLCanonique": "OK",
+      "tables": 41,
+      "vues": 48,
+      "donneesCopiees": false
+    },
+    {
+      "restaurationSQLCanonique": "OK",
+      "tables": 31,
+      "vues": 48,
+      "donneesCopiees": false
+    }
+  ],
+  "recetteSansDonneesClients": true,
+  "nouvelleTableAnalyticsVide": true,
+  "retourArriereEtReexecution": "verifies sur recette",
+  "anciensJournauxSecretsConservesMaisMasques": 10,
+  "gestionConnexions": {
+    "requêtesHTTP": 20,
+    "connexionsDjangoAvant": 0,
+    "connexionsDjangoApres": 0,
+    "connexionsPersistantesDesactivees": true,
+    "instancesAnciennesWindowsArretRefuse": true,
+    "sessionsInactivesLiberees": 33
+  },
+  "sha256FichiersSQL": {
+    "SauverNdeko_Structure.sql": "4c673332c9cdd3c2c8b6afb77773e6146ff3563fd628b629fe5f8882c51da564",
+    "SauverNdeko_Metier_Structure.sql": "c362a33e5cb84ecf5409eb1cb0c210157abf2eb10c30adce447b5085cf481a94"
+  },
+  "statutTestsUnitaires": "Résultat historique de 66 tests exécutés avant le retrait des fichiers demandé par le propriétaire."
+}

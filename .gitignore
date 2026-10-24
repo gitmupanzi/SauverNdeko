@@ -1,0 +1,23 @@
+# Etat et journaux locaux des lanceurs
+.runtime/
+
+# Secrets et environnements locaux
+.env
+.env.*
+.venv/
+node_modules/
+
+# Caches et journaux generes
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.log
+
+# Sorties Vite reproductibles
+/frontend/dist/
+/frontend/.vite-verify-*/
+
+# Sauvegardes locales de donnees
+*.backup
+*.dump
