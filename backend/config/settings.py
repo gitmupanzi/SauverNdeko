@@ -98,7 +98,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     v.strip()
     for v in os.getenv(
-        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5174,http://127.0.0.1:5174"
     ).split(",")
     if v.strip()
 ]

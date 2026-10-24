@@ -12,6 +12,7 @@ $BackendRoot=Join-Path $ProjectRoot 'backend'
 $FrontendRoot=Join-Path $ProjectRoot 'frontend'
 $RuntimeRoot=Join-Path $ProjectRoot '.runtime'
 $StatePath=Join-Path $RuntimeRoot 'services.json'
+$RequiredFrontendPort=5174
 $ServiceScript=Join-Path $PSScriptRoot 'sauverndeko-service.ps1'
 $PythonExecutable=Join-Path $BackendRoot '.venv\Scripts\python.exe'
 $ManagePath=Join-Path $BackendRoot 'manage.py'
@@ -61,6 +62,10 @@ function Free-Port([int]$Preferred) {
  for ($Candidate=$Preferred;$Candidate -lt $Preferred+30;$Candidate++) { if (-not (Port-InUse $Candidate)) { return $Candidate } }
  throw "Aucun port disponible a partir de $Preferred. Les programmes existants sont conserves."
 }
+function Frontend-Port {
+ if (Port-InUse $RequiredFrontendPort) { throw ('Le port frontend '+$RequiredFrontendPort+' est occupe. Fermer cette instance puis relancer ; aucun autre port ne sera choisi.') }
+ return $RequiredFrontendPort
+}
 function Http-Ready([string]$Url) {
  try { return (Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200 } catch { return $false }
 }
@@ -98,7 +103,7 @@ function Network-Settings {
  return [pscustomobject]@{mode=$Mode;bind=if($Mode -eq 'lan'){'0.0.0.0'}else{'127.0.0.1'};hosts=($Hosts | Sort-Object -Unique) -join ','}
 }
 function Show-Addresses($State) {
- $Port=if ($null -ne $State) {[int]$State.frontend_port} else {5173}
+ $Port=if ($null -ne $State) {[int]$State.frontend_port} else {$RequiredFrontendPort}
  $Lines=@('SauverNdeko',('Sur ce PC : http://localhost:'+ $Port +'/'))
  $Active=$null -ne $State -and @($State.services | Where-Object {Expected-Process $_}).Count -gt 0
  if ($Active -and $State.network_mode -eq 'lan') {
@@ -149,7 +154,7 @@ function Start-Project {
  $State=Read-State;$Network=Network-Settings
  if ($null -ne $State) {
   $Alive=@($State.services | Where-Object {Expected-Process $_})
-  if ($Alive.Count -eq 2 -and $State.network_mode -eq $Network.mode -and $State.network_hosts -eq $Network.hosts) {
+  if ($Alive.Count -eq 2 -and [int]$State.frontend_port -eq $RequiredFrontendPort -and $State.network_mode -eq $Network.mode -and $State.network_hosts -eq $Network.hosts) {
    if ((Http-Ready ('http://127.0.0.1:'+$State.frontend_port+'/health')) -and (Http-Ready ('http://127.0.0.1:'+$State.backend_port+'/health'))) { Step 'Application deja demarree.';Show-Addresses $State;return }
   }
   if ($Alive.Count) { Stop-Project }
@@ -159,7 +164,7 @@ function Start-Project {
  $Node=Get-Command node.exe -ErrorAction SilentlyContinue
  if ($null -eq $Node) { throw 'Node.js est necessaire au frontend. Installer Node.js puis relancer.' }
  Initialize-Python
- $BackendPort=Free-Port 5000;$FrontendPort=Free-Port 5173
+ $FrontendPort=Frontend-Port;$BackendPort=Free-Port 5000
  $State=[pscustomobject]@{version=1;project_root=$ProjectRoot;backend_port=$BackendPort;frontend_port=$FrontendPort;network_mode=$Network.mode;network_hosts=$Network.hosts;services=@()}
  $Launched=@()
  try {

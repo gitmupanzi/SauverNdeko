@@ -3,7 +3,7 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('backend','frontend')][string]$Service,
  [Parameter(Mandatory=$true)][string]$ProjectRoot,
  [Parameter(Mandatory=$true)][string]$Instance,
- [int]$BackendPort=5000,[int]$FrontendPort=5173,
+ [int]$BackendPort=5000,[int]$FrontendPort=5174,
  [string]$BindHost='127.0.0.1',[string]$NodePath='',
  [string]$NetworkHosts=''
 )

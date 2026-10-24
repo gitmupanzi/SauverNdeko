@@ -43,9 +43,9 @@ demarrer.bat contrôle Django, démarre les services en arrière-plan, attend le
 
 On peut aussi ouvrir ces fichiers BAT depuis l’Explorateur. Leurs chemins sont calculés à partir du dossier du projet.
 
-Django utilise le port 5000 par défaut et Vite le port 5173. Si un port est occupé, le lanceur cherche dans les plages 5000–5029 et 5173–5202 sans arrêter le programme qui l’occupe. Le proxy Vite reçoit le port Django choisi.
+Le frontend utilise le port fixe 5174 : http://localhost:5174/. Si ce port est occupé, le démarrage s’arrête avec un message explicite ; aucun autre port frontend n’est choisi. Vite applique aussi ce comportement avec npm run dev. Django utilise le port 5000 par défaut et peut choisir un port libre dans la plage 5000–5029. Le proxy Vite reçoit le port Django choisi.
 
-Utiliser l’adresse affichée par adresse-reseau.bat : le port peut changer après un redémarrage. Le navigateur utilise l’adresse du frontend, qui transmet les requêtes API au backend. Fermer le navigateur n’arrête pas les serveurs.
+Utiliser l’adresse affichée par adresse-reseau.bat : le port frontend reste 5174 après un redémarrage. Le navigateur utilise l’adresse du frontend, qui transmet les requêtes API au backend. Fermer le navigateur n’arrête pas les serveurs.
 
 ~~~powershell
 .\redemarrer.bat

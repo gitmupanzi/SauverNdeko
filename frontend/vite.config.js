@@ -14,7 +14,8 @@ export default defineConfig({
   plugins: [react()],
   cacheDir: viteCacheDir,
   server: {
-    port: 5173,
+    port: 5174,
+    strictPort: true,
     allowedHosts: localAllowedHosts,
     proxy: {
       "/api": { target: backendTarget, changeOrigin: true },
