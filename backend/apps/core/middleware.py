@@ -12,6 +12,8 @@ class CorsMiddleware:
             if request.method == "OPTIONS"
             else self.get_response(request)
         )
+        if request.path.startswith(("/api/", "/SauverNdeko/auth/")):
+            response["Cache-Control"] = "no-store, private"
         origin = request.headers.get("Origin")
         if origin in settings.CORS_ALLOWED_ORIGINS:
             response["Access-Control-Allow-Origin"] = origin

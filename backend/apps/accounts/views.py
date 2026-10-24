@@ -1,5 +1,4 @@
 import re
-from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
@@ -25,6 +24,8 @@ class LoginView(APIView):
         password = request.data.get("MotdepasseUser")
         if not isinstance(email, str) or not isinstance(password, str):
             raise APIError("EmailUser et MotdepasseUser sont obligatoires.")
+        if not email.strip() or len(email.strip()) > 150 or not password or len(password) > 4096:
+            raise AuthenticationFailed("Identifiants incorrects.")
         row = db.one(
             'SELECT "IdUser","MotdepasseUser" FROM systeme."T_Utilisateurs" WHERE lower("EmailUser")=lower(%s)',
             [email.strip()],
@@ -49,74 +50,13 @@ class RefreshView(APIView):
 class RegisterView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [LoginThrottle]
 
     def post(self, request):
-        db.ensure_writable()
-        body = request.data
-        allowed = {
-            "NomUser",
-            "PrenomUser",
-            "EmailUser",
-            "MotdepasseUser",
-            "SexeUser",
-            "PhoneUser",
-            "IdEntiteFk",
-        }
-        if set(body) - allowed:
-            raise APIError(
-                "Champ interdit à l’inscription publique.", "PRIVILEGE_ESCALATION", 403
-            )
-        required = ["NomUser", "PrenomUser", "EmailUser", "MotdepasseUser", "SexeUser"]
-        if any(
-            not isinstance(body.get(k), str) or not body[k].strip() for k in required
-        ):
-            raise APIError("Profil incomplet.")
-        if (
-            not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", body["EmailUser"])
-            or len(body["EmailUser"]) > 150
-        ):
-            raise APIError("Email invalide.")
-        if len(body["MotdepasseUser"]) < 12 or len(body["MotdepasseUser"]) > 4096:
-            raise APIError("Mot de passe de 12 caractères minimum.")
-        if body["SexeUser"] not in {"M", "F"}:
-            raise APIError("Sexe invalide.")
-        if (
-            len(body["NomUser"]) > 100
-            or len(body["PrenomUser"]) > 100
-            or len(body.get("PhoneUser", "")) > 20
-        ):
-            raise APIError("Champ trop long.")
-        with transaction.atomic():
-            role = db.one(
-                'SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE lower(c."NomCategorieGenerique")=\'role\' AND lower(g."NomGenerique") IN (\'utilisateur\',\'user\',\'client\',\'patient\') ORDER BY g."ID_Generique" LIMIT 1'
-            )
-            if role is None:
-                raise APIError("Rôle public non configuré.", "ROLE_UNAVAILABLE", 503)
-            entity = body.get("IdEntiteFk")
-            if entity is not None:
-                from apps.core.repository import positive
-
-                entity = positive(entity, "Entité")
-                if not db.one(
-                    'SELECT "IdEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s AND "ValideEntite"=true',
-                    [entity],
-                ):
-                    raise APIError("Entité introuvable.")
-            row = db.one(
-                'INSERT INTO systeme."T_Utilisateurs" ("NomUser","PrenomUser","EmailUser","MotdepasseUser","SexeUser","PhoneUser","IdRoleFk","Is_staff","Is_Admin","IdEntiteFk") VALUES (%s,%s,%s,%s,%s,%s,%s,false,false,%s) RETURNING "IdUser"',
-                [
-                    body["NomUser"],
-                    body["PrenomUser"],
-                    body["EmailUser"].strip(),
-                    make_password(body["MotdepasseUser"]),
-                    body["SexeUser"],
-                    body.get("PhoneUser"),
-                    role["ID_Generique"],
-                    entity,
-                ],
-            )
-            return ok(status=201, **tokens(actor_by_id(row["IdUser"])))
+        raise APIError(
+            "La création des comptes est réservée à l’administration.",
+            "REGISTRATION_DISABLED",
+            403,
+        )
 
 
 class MeView(APIView):

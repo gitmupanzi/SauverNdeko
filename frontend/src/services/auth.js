@@ -28,11 +28,20 @@ export function persistAuthSession(payload, fallbackUser = null) {
   return setStoredAuth(session);
 }
 
-export async function loginUser(credentials) {
-  return requestJson("/SauverNdeko/auth/login", {
+export async function loginUser(credentials, { signal } = {}) {
+  const payload = await requestJson("/SauverNdeko/auth/login", {
     method: "POST",
     body: JSON.stringify(credentials),
+    signal,
   });
+  if (
+    payload?.success &&
+    (typeof payload.accessToken !== "string" || !payload.accessToken.trim() ||
+      !payload.user || typeof payload.user !== "object" || Array.isArray(payload.user))
+  ) {
+    return { success: false, error: { code: "INVALID_LOGIN_RESPONSE" } };
+  }
+  return payload;
 }
 
 export async function registerUser(payload) {

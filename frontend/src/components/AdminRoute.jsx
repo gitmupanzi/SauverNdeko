@@ -1,7 +1,9 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { loginPathFor } from "../services/authNavigation";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function AdminRoute({ children }) {
+  const location = useLocation();
   const { loading, isAuthenticated, user } = useAuth();
 
   if (loading) {
@@ -13,7 +15,7 @@ export default function AdminRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login?redirect=%2Fadmin" replace />;
+    return <Navigate to={loginPathFor(location)} replace />;
   }
 
   if (!user?.permissions?.canAccessAdmin) {

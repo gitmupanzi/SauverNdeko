@@ -32,7 +32,7 @@ Depuis PowerShell à la racine du projet :
 .\adresse-reseau.bat
 ~~~
 
-demarrer.bat contrôle Django, démarre les services en arrière-plan, attend leur disponibilité et ouvre le navigateur. Il vérifie aussi une lecture du catalogue public pour contrôler la connexion PostgreSQL. Les deux services déjà suivis, sains et lancés dans le même mode sont réutilisés.
+demarrer.bat contrôle Django, démarre les services en arrière-plan, attend leur disponibilité et ouvre le navigateur. Le contrôle de disponibilité vérifie aussi PostgreSQL, sans lire de données métier en anonyme. Les deux services déjà suivis, sains et lancés dans le même mode sont réutilisés.
 
 | Fichier | Action |
 |---|---|
@@ -105,3 +105,5 @@ Placer -NoPause en premier pour éviter la pause du fichier BAT en cas d’erreu
 Les contrôles précédents du 24 octobre 2026 ont couvert le démarrage réel, la réutilisation sans duplication, le proxy, le redémarrage et l’arrêt. Le mode réseau a été contrôlé sur sa configuration ; l’accès depuis un second ordinateur reste à vérifier.
 
 Voir aussi le [guide backend](../backend/README.md) et le [guide SQL](../SQL/README.md).
+
+L’ouverture sans session présente la connexion. Après authentification, l’accueil affiche les applications autorisées par Django. La création des comptes est réservée à l’administration.

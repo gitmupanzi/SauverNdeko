@@ -3,20 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { useAuth } from "../contexts/AuthContext";
 import { fetchPublicPharmacies } from "../services/api";
 
-function normalizeRedirectPath(rawValue, fallbackPath) {
-  if (
-    !rawValue ||
-    typeof rawValue !== "string" ||
-    !rawValue.startsWith("/") ||
-    rawValue.startsWith("//") ||
-    rawValue.startsWith("/login") ||
-    rawValue.startsWith("/register")
-  ) {
-    return fallbackPath;
-  }
-
-  return rawValue;
-}
+import { normalizeAuthRedirect } from "../services/authNavigation";
 
 function buildInitialFormState() {
   return {
@@ -42,9 +29,9 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const redirectTarget = normalizeRedirectPath(
+  const redirectTarget = normalizeAuthRedirect(
     searchParams.get("redirect") || `${location.state?.from?.pathname || ""}${location.state?.from?.search || ""}`,
-    "/profil"
+    "/"
   );
 
   useEffect(() => {

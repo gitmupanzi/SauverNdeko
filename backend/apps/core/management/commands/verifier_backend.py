@@ -46,6 +46,7 @@ class Command(BaseCommand):
             client.force_authenticate(actor)
             urls = [
                 "/health",
+                "/api/workspace/modules",
                 "/api/public/stats",
                 "/api/public/articles",
                 "/api/public/pharmacies",

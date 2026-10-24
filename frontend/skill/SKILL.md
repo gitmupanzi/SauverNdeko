@@ -14,6 +14,10 @@ description: Faire évoluer les interfaces React de SauverNdeko vers des parcour
 
 - Pour les exports Excel, Word et PDF : [skill documentaire SauverNdeko](../../skills/document-mise-en-forme/SKILL.md). Réutiliser la charte et le contrat de parité sans recalcul métier propre au format.
 
+## Entrée de l’application
+
+Le propriétaire demande le login comme écran d’entrée. App.jsx attend la restauration de session, présente /login aux visiteurs sans session et conserve les destinations internes pour le retour après connexion. Le shell et le catalogue se chargent après authentification ; l’inscription libre est fermée. Ne pas rétablir une page d’accueil anonyme par défaut. Django impose aussi l’authentification sur le catalogue et fournit les modules autorisés par /api/workspace/modules. Conserver les contrôles d’objet et de périmètre sur chaque route.
+
 ## Pile et responsabilités
 
 Conserver React 19 en JSX, React Router, Vite, Bootstrap et Bootstrap Icons présents dans le projet. Les principes d’imf_BB sont à reproduire dans cette pile ; ne pas imposer sa migration TypeScript. Le backend est Django/DRF avec les JWT existants ; ne pas remplacer la session React par des cookies Django sans décision dédiée. Ajouter une dépendance seulement pour un besoin réel.
@@ -50,3 +54,7 @@ Sources et calcul, replié, précède Voir le détail. Les explications reflète
 ## Vérification
 
 Le package frontend déclare build, dev et preview, sans script test. Pour une modification réelle, npm run build vérifie le bundling ; compléter par les interactions utiles à la tâche sur données fictives. Vérifier ordinateur, largeur intermédiaire et mobile, clavier, zoom réel, retour au focus, annulation, erreur et parité des filtres/détails/exports. Une compilation seule ne valide pas les droits, la précision d’un KPI ou l’ergonomie d’une fenêtre.
+
+## Ton des interfaces
+
+Le propriétaire a validé l’accueil par applications, inspiré d’Odoo. Préserver cette présentation et employer des libellés courts, humains et professionnels. Retirer les textes qui ressemblent à des consignes de conception, les mentions de backend/JWT et les explications techniques inutiles. Les descriptions utiles restent brèves ; les explications de calcul sont repliées.

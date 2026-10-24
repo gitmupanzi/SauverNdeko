@@ -1,5 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import AdminRoute from "./components/AdminRoute";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -8,11 +8,12 @@ import Discussions from "./pages/Discussions";
 import Diseases from "./pages/Diseases";
 import Experts from "./pages/Experts";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
+import Login, { SessionLoading } from "./pages/Login";
+import { loginPathFor } from "./services/authNavigation";
 import Pharmacies from "./pages/Pharmacies";
 import Products from "./pages/Products";
 import Profile from "./pages/Profile";
-import Register from "./pages/Register";
+import WorkspaceHome from "./pages/WorkspaceHome";
 import Admin from "./pages/Admin";
 import Logistique from "./pages/Logistique";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
@@ -101,7 +102,7 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
 function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onLogout }) {
   const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
   const items = [
-    { label: "Accueil", path: "/", icon: "bi-house-door" },
+    { label: "Applications", path: "/", icon: "bi-grid-3x3-gap" },
     { label: "Produits", path: "/produits", icon: "bi-capsule" },
     { label: "Pharmacies", path: "/pharmacies", icon: "bi-geo-alt" },
     { label: "Experts", path: "/experts", icon: "bi-people" },
@@ -193,7 +194,7 @@ function BottomNav({ currentPath, onHome, onDiscussions, onSearch }) {
   );
 }
 
-export default function App() {
+function ApplicationShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { health, catalogue } = usePublicCatalogue();
@@ -240,9 +241,7 @@ export default function App() {
     await logout();
     closeOverlays();
 
-    if (["/discussions", "/profil", "/admin", "/logistique"].includes(location.pathname)) {
-      navigate("/", { replace: true });
-    }
+    navigate("/login", { replace: true });
   }
 
   function handleSearchChange(event) {
@@ -360,7 +359,7 @@ export default function App() {
         <main className="mobile-content" ref={contentRef}>
           <Routes>
             <Route
-              path="/"
+              path="/catalogue"
               element={
                 <Home
                   health={health}
@@ -387,8 +386,6 @@ export default function App() {
             />
             <Route path="/experts" element={<Experts experts={catalogue.experts} onContact={openDiscussion} />} />
             <Route path="/maladies" element={<Diseases diseases={catalogue.diseases} />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             <Route
               path="/profil"
               element={
@@ -434,4 +431,20 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+export default function App() {
+  const location = useLocation();
+  const isLoginRoute = useMatch("/login");
+  const isRegisterRoute = useMatch("/register");
+  const { loading, isAuthenticated } = useAuth();
+
+  if (isLoginRoute) return <Login />;
+  if (isRegisterRoute) return <Navigate to="/login" replace />;
+  if (loading) return <SessionLoading />;
+  if (!isAuthenticated) {
+    return <Navigate to={loginPathFor(location)} replace />;
+  }
+  if (location.pathname === "/") return <WorkspaceHome />;
+  return <ApplicationShell />;
 }

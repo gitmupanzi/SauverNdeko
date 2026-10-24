@@ -1,6 +1,6 @@
 from django.conf import settings
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from apps.core import db
 from apps.core.repository import page, positive
 from apps.core.responses import ok, APIError
@@ -56,8 +56,8 @@ def recipient(kind, target_id):
 
 
 class PublicView(APIView):
-    authentication_classes = []
-    permission_classes = [AllowAny]
+    # Le nom conserve le contrat des projections ; leur accès ERP exige un compte actif.
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, kind):
         params = request.query_params.dict()

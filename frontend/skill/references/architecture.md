@@ -4,22 +4,26 @@ Relevé statique du 24/10/2026. Racine de travail : frontend/.
 
 ## Structure et routes
 
-main.jsx charge l’application. App.jsx contient le routage, le shell public, la recherche globale, le tiroir de navigation et les appels d’ouverture de discussions. AuthContext expose session, utilisateur et permissions ; ProtectedRoute protège profil/discussions, AdminRoute protège administration/logistique dans l’interface.
+main.jsx charge l’application. App.jsx présente le login aux visiteurs sans session, puis monte le shell applicatif et la recherche globale, le tiroir de navigation et les appels d’ouverture de discussions. AuthContext expose session, utilisateur et permissions ; ProtectedRoute protège profil/discussions, AdminRoute protège administration/logistique dans l’interface.
 
 | Route | Page | Accès dans React |
 |---|---|---|
-| / | Home | Public |
-| /produits | Products | Public |
-| /pharmacies | Pharmacies | Public |
-| /experts | Experts | Public |
-| /maladies | Diseases | Public |
-| /login, /register | Login, Register | Public |
+| / | WorkspaceHome | Connecté ; modules fournis par Django |
+| /catalogue | Home | Connecté |
+| /produits | Products | Connecté |
+| /pharmacies | Pharmacies | Connecté |
+| /experts | Experts | Connecté |
+| /maladies | Diseases | Connecté |
+| /login | Login | Sans session ; redirection si session valide |
+| /register | Redirection vers /login | Inscription libre fermée |
 | /profil | Profile | Connecté |
 | /discussions | Discussions | Connecté |
 | /admin | Admin | canAccessAdmin |
 | /logistique | Logistique | canAccessAdmin |
 
-La protection React ne certifie pas la protection API. La navigation actuelle reste fortement structurée autour d’un shell mobile ; le workspace ERP desktop doit être conçu sans casser le catalogue public.
+Le propriétaire a demandé le login comme écran d’entrée, selon le principe d’imf_BB. Sans session valide, les pages applicatives redirigent vers /login ; l’inscription libre est fermée et la création des comptes appartient à l’administration. Une session déjà valide est restaurée. Le catalogue ne se charge qu’après entrée dans le shell. Après connexion, la destination interne demandée est conservée, paramètres et fragment inclus ; par défaut, l’accueil est ouvert. La déconnexion ramène au login.
+
+Django impose aussi l’authentification sur les projections du catalogue, malgré leur préfixe historique /api/public/. /api/workspace/modules filtre les applications selon les droits actuels ; les routes privées contrôlent leurs propres permissions. Les réponses API/auth portent Cache-Control: no-store. La session rejetée par le serveur ramène au login. L’accueil par modules est distinct du shell des registres. Sa présentation a été approuvée par le propriétaire ; conserver ce repère visuel, en retirant les mentions ERP/espace de travail et le nom d’espace de l’en-tête à sa demande.
 
 ## Services et données
 
@@ -59,3 +63,7 @@ Créer une infrastructure JSX commune de consultation et un état d’ouverture 
 Créer un contrat unique de critères appliqués pour dashboard, liste, détail et export, avec restitution des filtres visibles. Le contexte comprend organisation, identifiant stable, critères appliqués et point de retour. Ne pas stocker de données métier privées dans une préférence de largeur.
 
 La validation et le détail des interactions figurent dans [les contrats d’interface](contrats-interface.md).
+
+## Direction validée pour la suite
+
+Interface moderne inspirée d’Odoo : tableaux et recherches cohérents, indicateurs réellement cliquables et consultations Produit 360/Commande 360 suivant les contrats du projet et les comportements d’imf_BB. Ces fiches restent à construire. Le propriétaire demande des textes courts, humains et professionnels, sans phrases de consigne ni détails techniques dans le parcours ordinaire.

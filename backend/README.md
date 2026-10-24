@@ -14,7 +14,7 @@ py -3.12 -m venv .venv
 
 L’environnement local est déjà installé. Ne pas écraser le .env existant : DATABASE_URL, JWT_SECRET et JWT_REFRESH_SECRET sont réutilisés. Les options Django sont lues depuis ce fichier par [config/settings.py](config/settings.py).
 
-SAUVERNDEKO_DB_READ_ONLY vaut 1 par défaut. Les GET et la connexion sont utilisables ; inscription, modification de profil et écritures métier renvoient READ_ONLY/503. L’activation explicite de SAUVERNDEKO_DB_READ_ONLY=0 nécessite un redémarrage et permettra les écritures normales de l’application. La connexion applicative reste actuellement en lecture seule. Aucun lancement ne crée de table ni de base.
+SAUVERNDEKO_DB_READ_ONLY vaut 1 par défaut. La connexion et les GET autorisés sont utilisables ; modification de profil et écritures métier renvoient READ_ONLY/503. L’inscription libre est fermée avec REGISTRATION_DISABLED/403. L’activation explicite de SAUVERNDEKO_DB_READ_ONLY=0 nécessite un redémarrage et permettra les écritures normales de l’application. La connexion applicative reste actuellement en lecture seule. Aucun lancement ne crée de table ni de base.
 
 Le serveur runserver est destiné au développement local. Pour une installation client, prévoir un serveur WSGI/ASGI, HTTPS, les hôtes/origines autorisés, les secrets, sauvegardes, surveillance et une recette des écritures métier autorisée séparément.
 
@@ -46,7 +46,7 @@ Les effets de stock et les totaux restent portés par les triggers PostgreSQL. L
 - L’accès privé exige un JWT valide et un utilisateur actif relu en base. Is_Admin représente l’administration globale ; Is_staff/les rôles administratifs existants donnent accès au périmètre local autorisé.
 - Les organisations sont déduites du créateur actuel des articles/commandes, conformément aux colonnes existantes. Cette limite ne garantit pas une propriété immuable si un créateur change d’organisation. Les lignes contrôlent les deux parents. Les objets sans règle de périmètre démontrée restent réservés à l’administration globale.
 - Les mots de passe bcrypt existants sont lus sans modification. Les nouveaux mots de passe utilisent le hachage Django. Les anciens mots de passe en clair sont refusés par défaut. Les JWT restent sans révocation persistante, comme auparavant ; la déconnexion efface la session côté client.
-- Le rôle de l’inscription publique est choisi au serveur. Une association déclarée à une entité n’accorde aucun droit administratif ; les discussions d’une structure sont réservées à ses gestionnaires autorisés et aux participants concernés.
+- La création des comptes est réservée à l’administration. Une association à une entité n’accorde aucun droit administratif ; les discussions d’une structure sont réservées à ses gestionnaires autorisés et aux participants concernés.
 - Les nombres décimaux sont reçus et renvoyés sans conversion en flottants. Les quantités de mouvement restent entières selon le schéma actuel. La base ne fournit pas une devise par commande : aucune certification multidevise n’est ajoutée.
 - L’administration utilise les écrans React existants. L’administration native Django est accessible uniquement sur le backend local, à /django-admin/. Elle utilise ses propres comptes natifs ; elle ne remplace pas l’administration ERP React.
 - analytics.T_Recherche et V_Recherche sont installées. GET /api/recherches est réservé à l’administration globale ; ce registre est consultable sans activer de suivi automatique.
@@ -68,3 +68,7 @@ Voir [le bilan de migration](../SQL/documentation/Django_Public_20261024.md). Le
 Le [bilan de la migration 04](../SQL/documentation/Audit_Metier_20261024.md) décrit les contrôles de stock, licences, JSON/UUID, géographie et discussions. Les résultats historiques des 66 tests unitaires, des 36 scénarios PostgreSQL et des 19 échanges Django sur recette sont conservés dans ce bilan. Le dossier de tests unitaires a été retiré depuis ; les commandes de contrôle disponibles sont celles indiquées plus haut. Les fichiers SQL canoniques et leur usage sont décrits dans [SQL/README.md](../SQL/README.md).
 
 Le serveur local ferme les connexions PostgreSQL après chaque requête (CONN_MAX_AGE=0) et les identifie comme SauverNdeko-Django. Les anciens serveurs lancés sous une autre session Windows doivent être fermés depuis cette session ; utiliser les adresses de .runtime/services.json pour l’instance courante.
+
+## Accès ERP et applications
+
+/api/workspace/modules exige une authentification et expose les huit applications existantes aux administrateurs, six aux autres utilisateurs. Les contrôles de permissions des routes métier restent indépendants du menu. Les endpoints /api/public/* sont conservés pour leur contrat de projection, mais exigent maintenant un compte actif. Les réponses /api/* et /SauverNdeko/auth/* portent Cache-Control: no-store, private. Une réponse 401 sur une requête privée ramène le frontend au login. /health vérifie la connexion PostgreSQL par SELECT 1 ; aucune donnée métier anonyme n’est nécessaire au lancement.

@@ -1,26 +1,10 @@
-import { getAccessToken } from "./authStorage";
+import { AUTH_SESSION_INVALID_EVENT, getAccessToken } from "./authStorage";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 async function safeFetchJson(path) {
-  const url = `${API_BASE_URL}${path}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.warn(`Impossible de recuperer ${path}`, error);
-    return null;
-  }
+  const payload = await requestJson(path, { requiresAuth: true });
+  return payload?.success ? payload : null;
 }
 
 async function requestJson(path, options = {}) {
@@ -42,6 +26,9 @@ async function requestJson(path, options = {}) {
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 401 && accessToken && accessToken === getAccessToken()) {
+        window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT, { detail: { accessToken } }));
+      }
       return {
         success: false,
         status: response.status,

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
-  { label: "Accueil", path: "/" },
+  { label: "Applications", path: "/" },
   { label: "Produits", path: "/produits" },
   { label: "Pharmacies", path: "/pharmacies" },
   { label: "Experts", path: "/experts" },
@@ -11,7 +11,8 @@ const NAV_ITEMS = [
 ];
 
 const TITLE_BY_PATH = {
-  "/": "Accueil",
+  "/": "Applications",
+  "/catalogue": "Catalogue",
   "/produits": "Produits",
   "/pharmacies": "Pharmacies et depots",
   "/experts": "Experts",

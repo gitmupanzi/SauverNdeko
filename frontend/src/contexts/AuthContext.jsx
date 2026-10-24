@@ -8,7 +8,7 @@ import {
   restoreUserSession,
   updateCurrentUserProfile,
 } from "../services/auth";
-import { getStoredAuth, setStoredAuth } from "../services/authStorage";
+import { AUTH_SESSION_INVALID_EVENT, clearStoredAuth, getStoredAuth, setStoredAuth } from "../services/authStorage";
 
 const AuthContext = createContext(null);
 
@@ -40,7 +40,12 @@ export function AuthProvider({ children }) {
     let active = true;
 
     async function bootstrapSession() {
-      const session = await restoreUserSession();
+      let session = null;
+      try {
+        session = await restoreUserSession();
+      } catch {
+        // Une restauration indisponible laisse la connexion accessible.
+      }
 
       if (!active) {
         return;
@@ -60,6 +65,17 @@ export function AuthProvider({ children }) {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    function invalidateSession(event) {
+      const accessToken = getStoredAuth()?.accessToken;
+      if (!accessToken || event.detail?.accessToken !== accessToken) return;
+      clearStoredAuth();
+      setAuthState(buildGuestState());
+    }
+    window.addEventListener(AUTH_SESSION_INVALID_EVENT, invalidateSession);
+    return () => window.removeEventListener(AUTH_SESSION_INVALID_EVENT, invalidateSession);
   }, []);
 
   useEffect(() => {
@@ -85,6 +101,11 @@ export function AuthProvider({ children }) {
         if (!active || getStoredAuth()?.accessToken !== accessToken) {
           return;
         }
+        if (payload?.status === 401) {
+          clearStoredAuth();
+          setAuthState(buildGuestState());
+          return;
+        }
         if (payload?.success && payload.data) {
           persistSessionUser(payload.data);
           startTransition(() => {
@@ -107,8 +128,9 @@ export function AuthProvider({ children }) {
     };
   }, [authState.isAuthenticated]);
 
-  async function login(credentials) {
-    const payload = await loginUser(credentials);
+  async function login(credentials, options = {}) {
+    const payload = await loginUser(credentials, options);
+    if (options.signal?.aborted) return { success: false };
 
     if (payload?.success) {
       const session = persistAuthSession(payload, payload.user || null);

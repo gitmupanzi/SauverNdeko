@@ -19,6 +19,7 @@ class HealthView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        db.one("SELECT 1 AS ready")
         return ok(
             {
                 "backend": "django",

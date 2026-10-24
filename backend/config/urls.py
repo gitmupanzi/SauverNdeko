@@ -18,11 +18,13 @@ from apps.core.views import (
     MODULES,
 )
 from apps.core.ui_settings import UISettingsView
+from apps.core.workspace import WorkspaceModulesView
 from apps.catalogue.views import PublicView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
 urlpatterns = [
+    re_path(r"^api/workspace/modules/?$", WorkspaceModulesView.as_view()),
     re_path(r"^django-admin/", admin.site.urls),
     re_path(r"^api/recherches(?:/(?P<pk>[0-9]+))?/?$", RecherchesView.as_view()),
     re_path(

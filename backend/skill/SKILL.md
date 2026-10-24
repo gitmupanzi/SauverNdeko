@@ -43,3 +43,7 @@ Les recettes SQL/tests/test_metier_postgresql.py et test_api_postgresql.py sont 
 ## Séparation des schémas et comptes
 
 public contient le socle natif Django ; systeme conserve entités, utilisateurs/profils métier, licences, réglages et journaux. Une fusion des schémas n’a pas été retenue : voir [l’examen DBA](../../SQL/documentation/Decision_Systeme_Public_20261024.md). auth_user n’a pas été alimentée par copie des comptes métier. Le rapprochement futur des identités demande un lien explicite et une migration vérifiée ; ne pas confondre déplacement de tables et fusion de comptes.
+
+## Entrée ERP fermée
+
+À la demande du propriétaire, les projections du catalogue exigent aussi une session JWT valide, malgré le préfixe /api/public conservé pour compatibilité. L’inscription libre renvoie REGISTRATION_DISABLED ; les comptes sont gérés dans l’administration. /api/workspace/modules retourne uniquement les modules permis par les droits existants, sans accorder de permission supplémentaire. Les réponses API et authentification sont sans cache. /health contrôle PostgreSQL avec SELECT 1, sans exposer de données métier ; le lanceur ne teste plus le catalogue en anonyme. La configuration PostgreSQL reste en lecture seule.

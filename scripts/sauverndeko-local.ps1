@@ -172,7 +172,6 @@ function Start-Project {
   $Record=Start-ServiceRecord 'backend' $BackendPort $BackendPort $FrontendPort $Network $Node.Source
   $Launched+=$Record;$State.services=@($Launched);Save-State $State
   Wait-Service "http://127.0.0.1:$BackendPort/health" $Record
-  Wait-Service "http://127.0.0.1:$BackendPort/api/public/articles?take=1" $Record
   Step "Demarrage React/Vite sur le port $FrontendPort..."
   $Record=Start-ServiceRecord 'frontend' $FrontendPort $BackendPort $FrontendPort $Network $Node.Source
   $Launched+=$Record;$State.services=@($Launched);Save-State $State
