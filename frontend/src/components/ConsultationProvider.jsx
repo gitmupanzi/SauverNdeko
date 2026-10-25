@@ -1,3 +1,5 @@
+import BusinessDocuments from "./BusinessDocuments";
+import CreditNotes from "../pages/logistique/CreditNotes";
 import { formatConsumptionMoney, formatCurrencyGroups } from "../utils/money";
 import { accessSignature, moduleRights } from "../services/moduleAccess";
 import { useNavigate } from "react-router-dom";
@@ -228,8 +230,9 @@ function OrderObjectContent({entry,update,open,openFolder}){
     <ConsultationTabs tabs={tabs} value={section} onChange={changeSection} label="Rubriques du bon de stock" idPrefix={prefix}/>
     {tabs.map(tab=><section key={tab.key} className="commande360-tabpanel consultation-tabpanel" role="tabpanel" id={prefix+"-panel-"+tab.key} aria-labelledby={prefix+"-tab-"+tab.key} tabIndex={tab.key===section?0:-1} hidden={tab.key!==section}>
       {tab.key===section?<>
-        {section==="identite"?<OrderOverview record={record} onSection={changeSection}/>:section==="retours"?<OrderReturnHistory remote={returns} onOpen={openRelated} onReturn={()=>setEditor("retour")} canWrite={canWrite}/>:section==="controle"?<OrderControl record={record} onSection={changeSection}/>:section==="facturation"?<>
+        {section==="identite"?<><OrderOverview record={record} onSection={changeSection}/><BusinessDocuments kind="bon" objectId={entry.id} types={record.EstCommandeSortie?["sortie","livraison"]:record.EstCommandeEntree?["entree"]:[]}/></>:section==="retours"?<OrderReturnHistory remote={returns} onOpen={openRelated} onReturn={()=>setEditor("retour")} canWrite={canWrite}/>:section==="controle"?<OrderControl record={record} onSection={changeSection}/>:section==="facturation"?<>
           <OrderBillingHeading record={record}/>
+          {invoiced?<><BusinessDocuments kind="facture" objectId={entry.id} types={["facture"]}/><CreditNotes commandId={entry.id} refreshKey={workflowVersion} onChanged={()=>{setWorkflowVersion(v=>v+1);refresh();}}/></>:null}
           {invoiced?<><div className="commande360-invoice-tabs"><ConsultationTabs tabs={invoiceTabs} value={invoiceSection} onChange={key=>changeSection("facturation",key)} label="Facture et règlements du bon" idPrefix={prefix+"-billing"}/></div>
             {invoiceTabs.map(item=><section key={item.key} role="tabpanel" id={prefix+"-billing-panel-"+item.key} aria-labelledby={prefix+"-billing-tab-"+item.key} tabIndex={item.key===invoiceSection?0:-1} hidden={item.key!==invoiceSection}>{item.key===invoiceSection?<ResultTable key={dataSection} remote={details} query={query} onQueryChange={changeQuery} fields={ORDER_SECTION_FIELDS[dataSection] || []} open={openRelated} onReady={restoreContext}/>:null}</section>)}
           </>:null}

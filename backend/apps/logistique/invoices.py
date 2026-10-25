@@ -266,12 +266,18 @@ def context(actor,command_id):
     display_lines=lines if issued else candidates
     total=issued['MontantTTC'] if issued else net
     credit=[]
+    from .credit_notes import ready as credit_ready,context as credit_context
+    credit_state=credit_context(actor,command_id)['data'] if issued and not legacy and credit_ready() else None
+    if credit_state and (credit_state['avoirs'] or issued.get('AvoirImpute',0)):
+        edit_reason=edit_reason or 'Un avoir existe. Les informations de la facture sont conservées.'
     if issued and not legacy:
         for line in lines:
             after=max(returned.get(line['ID_ArticleFk'],Decimal('0'))-exact(line['QteRetourAvantFacture'],'les retours'),0)
             if after:
                 credit.append({'ID_ArticleFk':line['ID_ArticleFk'],'NomArticle':line['NomArticle'],
                     'Quantite':after,'MontantLigne':(after*exact(line['PUFacture'],'le prix')).quantize(CENT)})
+    if credit_state is not None:
+        credit=credit_state['lignesEnAttente']
     now=datetime.now(timezone.utc)
     defaults={key:(issued or parent).get(key) for key in METADATA}
     defaults['DateFacture']=defaults.get('DateFacture') or now

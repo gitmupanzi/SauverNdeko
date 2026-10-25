@@ -95,3 +95,7 @@ ThemePicker affiche uniquement l’icône du choix : soleil pour Clair, lune pou
 ## Outils et relevés historiques
 
 Les anciennes références [frontend-architecture.md](references/frontend-architecture.md), [api-and-ui-contracts.md](references/api-and-ui-contracts.md) et [validation.md](references/validation.md) conservent le relevé antérieur à la conversion Django. Les références précédentes décrivent les conventions actuelles. L’[inspecteur statique](scripts/inspect_frontend.py) peut aider à repérer composants et services ; son inventaire partiel des routes ne valide ni les ModuleGate conditionnels ni les permissions.
+
+## Documents métier et avoirs
+
+Réutiliser BusinessDocuments pour PDF et justificatifs privés ; conserver les états de chargement, reprise du téléchargement échoué et protection des réponses obsolètes après changement d’entreprise. Utiliser le formulaire CreditNotes partagé pour émission, imputation et remboursement ; la consultation reste en lecture avec un bouton Fermer. Une réponse incertaine conserve le même identifiant et le même contenu pour vérification. Afficher les montants exacts fournis par le serveur et distinguer encaissements, avoirs imputés, remboursements et solde disponible. Aucun transfert bancaire n’est exécuté par l’enregistrement d’un remboursement.

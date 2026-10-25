@@ -5,6 +5,8 @@ from apps.logistique.tiers import EntreprisesView,TiersView,TiersReferencesView,
 from apps.accounts.mail_settings import MailSettingsView
 from apps.accounts.password_reset import PasswordResetView, PasswordResetCheckView, PasswordResetConfirmView
 from apps.accounts.passwords import PasswordChangeView
+from apps.logistique.documents import DocumentPdfView, AttachmentsView
+from apps.logistique.credit_notes import OrderCreditsView, CreditView
 from apps.logistique.payments import PaymentPreparationView, PaymentBatchView
 from apps.logistique.invoices import InvoiceView
 from apps.logistique.stock_returns import StockReturnsView
@@ -44,6 +46,10 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|facture|recu|avoir)\.pdf/?$", DocumentPdfView.as_view()),
+    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
+    re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
+    re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
     re_path(r"^api/logistique/inventaires/unites/?$", UnitPrecisionView.as_view()),
     re_path(r"^api/logistique/inventaires/catalogue/?$", InventoriesView.as_view(), {"action":"catalogue"}),
     re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/valider/?$", InventoriesView.as_view(), {"action":"valider"}),

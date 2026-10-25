@@ -72,6 +72,10 @@ def state(row,actor,*,creation=False):
     elif not actor.admin or not access_snapshot(actor)['modules']['logistique']['canManage']:
         reason='Votre rôle ne permet pas de gérer les règlements.'
     elif settings.DB_READ_ONLY:reason='Les écritures sont momentanément indisponibles.'
+    if not creation and not reason:
+        from .credit_notes import ready as credit_ready
+        if credit_ready() and db.one('''SELECT EXISTS(SELECT 1 FROM logistique."T_Avoir" WHERE "ID_CommandeFk"=%s) OR EXISTS(SELECT 1 FROM logistique."T_AvoirAffectation" WHERE "ID_CommandeCibleFk"=%s) AS used''',[parent['ID_Commande'],parent['ID_Commande']])['used']:
+            reason='Un avoir est lié à cette facture. Le règlement doit être conservé.'
     raw=row.get('raw') or {}
     try:
         remaining=Decimal(str(facture.get('Reste') or '0'));old_amount=Decimal(str(raw.get('MontantRegle') or '0'));invoice_amount=Decimal(str(facture.get('MontantFacture') or '0'))
@@ -191,7 +195,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
                 if not valid:fail('ID_ModeReglementFk','Ce mode n’est plus disponible. Actualisez la liste.')
             # Même parent verrouillé pour chaque règlement : aucun double encaissement concurrent du solde.
             sums=db.one('SELECT COALESCE(SUM("MontantRegle"),0) AS total FROM logistique."T_Reglements" WHERE "CodeFactureFk"=%s AND (%s::integer IS NULL OR "ID_Reglement"<>%s)',[code,payment_id,payment_id])
-            others=Decimal(str(sums['total']));invoice_amount=Decimal(str(current['facture']['MontantFacture']));new_total=others+amount
+            others=Decimal(str(sums['total']));invoice_amount=Decimal(str(current['facture'].get('MontantNetARegler',current['facture']['MontantFacture'])));new_total=others+amount
             if new_total>MAX_AMOUNT:fail('MontantRegle','Le total des règlements dépasse la capacité de la facture.')
             old_total=others+Decimal(str((old or {}).get('MontantRegle') or '0'))
             if new_total>invoice_amount and not (old is not None and old_total>invoice_amount and new_total<old_total):

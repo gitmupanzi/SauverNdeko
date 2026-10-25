@@ -35,3 +35,7 @@ Les zones visa/signature restent vides dans un brouillon ; lorsqu’un statut de
 La génération réussie d’un DOCX ne prouve pas sa pagination. Rendre le document avec le moteur disponible, inspecter les pages obtenues, corriger la source puis rendre de nouveau. Vérifier le PDF final, pas uniquement son texte extrait. Si une police manque, déclarer le repli et inspecter son effet ; ne pas joindre des polices au paquet.
 
 Préserver les informations d’accessibilité réellement produites : titres structurés, ordre de lecture, libellés et descriptions utiles. Ne pas annoncer une certification d’accessibilité, d’archivage ou une compatibilité bureautique qui n’a pas été testée.
+
+## Moteur logistique installé
+
+Le service backend apps/logistique/documents.py produit les bons d’entrée, sortie et livraison, factures, reçus et avoirs. ReportLab utilise Helvetica comme police de repli, A4 et des tableaux à en-têtes répétés avec Page X sur Y. Les identités sont figées à l’émission des documents financiers ; les reprises historiques sont signalées. Les pièces PDF et images restent privées. Les PDF de recette ont été rendus et contrôlés sur une page et sur cinq pages. Une nouvelle modification du gabarit demande une nouvelle vérification de toutes les pages.

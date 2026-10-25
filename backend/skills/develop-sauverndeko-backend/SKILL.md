@@ -64,3 +64,7 @@ Les répartitions par catégorie utilisent GROUP BY et leurs détails imposent I
 ## Relevés historiques conservés
 
 Les anciennes références [backend-architecture.md](references/backend-architecture.md), [api-contracts.md](references/api-contracts.md), [validation.md](references/validation.md) et [inspect_backend.py](scripts/inspect_backend.py) décrivent Express/Prisma avant la conversion. Elles sont conservées comme archives ; ne pas exécuter leurs anciennes commandes ni les utiliser pour décrire le backend actuel. Les références précédentes portent les consignes maintenues.
+
+## Documents et avoirs logistiques
+
+Les migrations 11/12 et les services documents.py/credit_notes.py assurent les PDF métier, pièces privées, avoirs après retour facturé, imputations et remboursements enregistrés. Les avoirs ne recréent jamais un mouvement de stock. V_Facture fournit le solde net commun ; ne pas déduire une seconde fois les imputations dans les vues aval. Conserver les identités émises, les lignes facturées et les écritures financières ; corriger par un document traçable. Les fichiers sont téléchargés après contrôle du parent et de son entreprise, jamais par une URL publique. Le PDF/les images utilisent des réponses binaires et les erreurs restent JSON. Les mutations portent une révision et un identifiant idempotent, avec verrouillage du parent puis des objets dans un ordre stable.

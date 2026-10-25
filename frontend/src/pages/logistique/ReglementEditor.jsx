@@ -1,3 +1,4 @@
+import BusinessDocuments from "../../components/BusinessDocuments";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {moduleRights} from "../../services/moduleAccess";
@@ -74,6 +75,7 @@ export default function ReglementEditor({reglementId=null,commandeId=null,readOn
     <Field id={id+"MontantRegle"} label={"Montant réglé *"+(code?" · "+code:"")} error={issues.MontantRegle} hint={meta?.maximumAmount!=null?"Montant maximal : "+formatCurrency(meta.maximumAmount,code):""}><input id={id+"MontantRegle"} name="MontantRegle" inputMode="decimal" maxLength={32} value={values.MontantRegle} onChange={event=>change("MontantRegle",event.target.value)} disabled={disabled} aria-invalid={Boolean(issues.MontantRegle)} aria-describedby={issues.MontantRegle?id+"MontantRegle-error":meta?.maximumAmount!=null?id+"MontantRegle-hint":undefined}/></Field>
     <Field id={id+"currency"} label="Devise"><input id={id+"currency"} value={code||"Non renseignée"} readOnly/></Field>
    </div></section>{!creating?<section className="record-editor-section"><h3><AppIcon name="document"/>Traçabilité</h3><div className="record-editor-grid"><Field id={id+"ID_Reglement"} label="Écriture"><input id={id+"ID_Reglement"} readOnly value={record?.ID_Reglement??"—"}/></Field><Field id={id+"bon"} label="Bon d’origine"><input id={id+"bon"} readOnly value={record?.CodeCmd||invoice?.CodeCmd||"Non renseigné"}/></Field></div></section>:null}</>:null}
+   {!creating&&record?.ID_Reglement?<BusinessDocuments kind="reglement" objectId={record.ID_Reglement} types={["recu"]}/>:null}
   </div>
  </PaymentFrame>;
 }

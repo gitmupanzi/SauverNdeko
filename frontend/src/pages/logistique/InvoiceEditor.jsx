@@ -8,6 +8,7 @@ import {requestJson} from "../../services/api";
 import {formatCurrency,formatNumber,SimpleTable} from "./logistiqueShared";
 import {createReceiptRequestId} from "./receiptForm";
 import {invoiceDeadline,invoiceErrors,invoiceForm,invoicePayload} from "./invoiceForm";
+import BusinessDocuments from "../../components/BusinessDocuments";
 import "./InvoiceEditor.css";
 
 function Field({id,label,error,hint,children}) {return <div className="record-field"><label htmlFor={id}>{label}</label>{children}{error?<small id={id+"-error"} className="record-field-error">{error}</small>:hint?<small id={id+"-hint"}>{hint}</small>:null}</div>;}
@@ -84,6 +85,7 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
         {dateField("DateEcheancePaiement","Échéance de paiement *",{readOnly:automatic!==null,hint:automatic!==null?"Calculée selon le délai de la condition de paiement.":"Renseignez l’échéance convenue."})}
       </div></section>
       <section className="record-editor-section"><h3><AppIcon name="box"/>Articles facturés</h3><p className="record-editor-note">Quantités restantes après les restitutions enregistrées avant l’émission.</p><div className="erp-results" data-density="compact"><SimpleTable rows={record.lignes||[]} columns={columns} defaultPinnedColumns={[]} showControls={false} toolbar={<></>} emptyMessage="Aucun article à facturer."/></div></section>
+      {existing?<BusinessDocuments kind="facture" objectId={commandeId} types={["facture"]}/>:null}
       {record.retoursApresEmission?.required?<section className="record-editor-section invoice-credit-note"><h3><AppIcon name="alert"/>Avoir à établir</h3><p>Des articles ont été restitués après l’émission. La facture reste inchangée.</p>{record.retoursApresEmission.MontantAvoir!=null?<strong>{formatCurrency(record.retoursApresEmission.MontantAvoir,record.retoursApresEmission.DeviseCode)}</strong>:null}</section>:null}
     </div>:null}
   </RecordEditorFrame>;
