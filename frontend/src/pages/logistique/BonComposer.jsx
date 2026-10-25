@@ -15,6 +15,7 @@ import {asArrayPayload,buildReferenceOptions,formatDate,formatNumber,SimpleTable
 import {commandeForm} from "./commandeForm";
 import {createReceiptRequestId} from "./receiptForm";
 import {cataloguePrice,compositionBasket,compositionBasketSnapshot,compositionDirection,compositionHeaderErrors,compositionLine,compositionLineErrors,compositionLotsUnchanged,compositionPayload,compositionTotal,compositionType,MAX_COMPOSITION_LINES} from "./bonComposerForm";
+import {lotAvailability,requiredLotQuantity,allocatedQuantity,wholeQuantity} from "../../utils/lotAllocation";
 import "./BonComposer.css";
 import "../../components/DataTable.css";
 
@@ -43,7 +44,7 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
   const dirty=JSON.stringify(values)!==JSON.stringify(firstValues.current)||compositionBasketSnapshot(basket)!==initialBasket.current,total=compositionTotal(basket);
   const typeOptions=(references?.commandeTypes||[]).filter(type=>compositionDirection(type)).map(type=>({value:String(type.id),label:type.label||type.abbr}));
   const chosenIds=new Set(basket.map(line=>String(line.article.ID_Article))),newSelected=selected.filter(article=>!chosenIds.has(String(article.ID_Article)));
-  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;lotsRequests.current.queue=[];lotsRequests.current.clear();};},[]);
   useEffect(()=>{if(contextKey!==initialContext.current)onClose();},[contextKey,onClose]);
   useEffect(()=>{
     if(creating)return;
@@ -58,6 +59,7 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
   useReferencesRefresh(()=>setCatalogueRevision(value=>value+1),{enabled:!disabled});
   useEffect(()=>{
     if(!direction||!values.ID_DeviseFk){setRows([]);setMeta(null);setLoading(false);return;}
+    if(direction==="sortie"&&!disabled)for(const line of basket)loadLots(line.article.ID_Article);
     let live=true;setLoading(true);setCatalogueError("");
     const params=new URLSearchParams({q:query,...grid,statut:"true",stockState:"all",contexte:"composition",...(direction==="sortie"?{columnFilters:JSON.stringify({QteArticle:">0"})}:{})});
     read("/registre/articles?"+params).then(response=>{
@@ -85,23 +87,43 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
     const eligible=articles.filter(article=>!chosenIds.has(String(article.ID_Article))&&article.ValideArticle!==false&&(direction!=="sortie"||compareDecimal(article.QteArticle,"0")===1));
     if(basket.length+eligible.length>MAX_COMPOSITION_LINES){setError("Un bon peut contenir au maximum "+MAX_COMPOSITION_LINES+" articles distincts.");return;}
     setBasket(current=>{const existing=new Set(current.map(line=>String(line.article.ID_Article))),added=eligible.filter(article=>{const id=String(article.ID_Article);if(existing.has(id))return false;existing.add(id);return true;});return current.length+added.length>MAX_COMPOSITION_LINES?current:[...current,...added.map(article=>compositionLine(article,values,references,sourceBon))];});setSelected([]);setSelectionReset(value=>value+1);setError("");
+    if(direction==="sortie")for(const article of eligible)loadLots(article.ID_Article);
     if(eligible[0])requestAnimationFrame(()=>document.getElementById(prefix+"qty-"+eligible[0].ID_Article)?.focus({preventScroll:true}));
   }
   function removeArticle(id){if(disabled)return;setBasket(current=>current.filter(line=>String(line.article.ID_Article)!==String(id)));setLineErrors(current=>{const next={...current};delete next[id];return next;});}
-  function focusLineIssue(issues){const id=Object.keys(issues)[0],fields=issues[id]||{},field=fields.QteCmdDetail?"qty":fields.PUCmdDetail?"price":fields.ObsCmdDetail?"obs":fields.LieuCmdDetail?"place":fields.SelectCmdDetail?"selected":fields.Lots?"lots":"qty";setActive("articles");setLineDetail(["qty","price"].includes(field)?null:{id,section:field==="lots"?"lots":"infos"});requestAnimationFrame(()=>document.getElementById(prefix+field+"-"+id)?.focus());}
-  async function loadLots(articleId){
-    if(disabled||direction!=="sortie"||knownLots[articleId]?.loading||knownLots[articleId]?.rows)return;
-    const token={};lotsRequests.current.set(articleId,token);setKnownLots(current=>({...current,[articleId]:{loading:true,error:"",rows:null}}));
-    const available=[];let skip=0;
-    while(mounted.current&&lotsRequests.current.get(articleId)===token){
-      const response=await read("/consultations/produit/"+articleId+"/lots?take=100&skip="+skip);
-      if(!mounted.current||lotsRequests.current.get(articleId)!==token)return;
-      if(!response?.success){setKnownLots(current=>({...current,[articleId]:{loading:false,error:response?.message||"Les lots ne sont pas disponibles.",rows:null}}));return;}
-      const page=asArrayPayload(response);available.push(...page);skip+=page.length;
-      const count=Number(response.meta?.filteredCount??response.meta?.totalCount??skip);
-      if(skip>=count){setKnownLots(current=>({...current,[articleId]:{loading:false,error:"",rows:available}}));return;}
-      if(!page.length){setKnownLots(current=>({...current,[articleId]:{loading:false,error:"La liste des lots est incomplète. Réessayez.",rows:null}}));return;}
-    }
+  function focusLineIssue(issues){const id=Object.keys(issues)[0],fields=issues[id]||{},field=fields.QteCmdDetail?"qty":fields.PUCmdDetail?"price":fields.ObsCmdDetail?"obs":fields.LieuCmdDetail?"place":fields.SelectCmdDetail?"selected":fields.Lots?"lots":"qty";setActive("articles");setLineDetail(["qty","price"].includes(field)?null:{id,section:field==="lots"?"lots":"infos"});if(field==="lots")loadLots(id);requestAnimationFrame(()=>document.getElementById(prefix+field+"-"+id)?.focus());}
+  function drainLots(){
+    const jobs=lotsRequests.current;
+    if(!jobs.queue)jobs.queue=[];if(jobs.active==null)jobs.active=0;
+    while(mounted.current&&jobs.active<3&&jobs.queue.length){const task=jobs.queue.shift();jobs.active++;task().finally(()=>{jobs.active--;drainLots();});}
+  }
+  function loadLots(articleId,{force=false}={}){
+    const id=String(articleId);
+    if(disabled||direction!=="sortie"||!force&&lotsRequests.current.has(id))return;
+    if(force&&knownLots[id]?.loading)return;
+    const token={};lotsRequests.current.set(id,token);setKnownLots(current=>({...current,[id]:{loading:true,error:"",rows:null,meta:null}}));
+    if(!lotsRequests.current.queue)lotsRequests.current.queue=[];
+    lotsRequests.current.queue.push(async()=>{try{
+      const available=[];let skip=0,stock=null;
+      while(mounted.current&&lotsRequests.current.get(id)===token){
+        const response=await read("/consultations/produit/"+id+"/lots?take=100&skip="+skip);
+        if(!mounted.current||lotsRequests.current.get(id)!==token)return;
+        if(!response?.success){lotsRequests.current.delete(id);setKnownLots(current=>({...current,[id]:{loading:false,error:response?.message||"Les lots ne sont pas disponibles.",rows:null,meta:null}}));return;}
+        if(response.meta?.lotStock)stock=response.meta.lotStock;
+        const page=asArrayPayload(response);available.push(...page);skip+=page.length;
+        const count=Number(response.meta?.filteredCount??response.meta?.totalCount??skip);
+        if(skip>=count){if(!stock){lotsRequests.current.delete(id);setKnownLots(current=>({...current,[id]:{loading:false,error:"Les disponibilités par lot doivent être actualisées. Réessayez.",rows:null,meta:null}}));return;}setKnownLots(current=>({...current,[id]:{loading:false,error:"",rows:available,meta:{lotStock:stock}}}));return;}
+        if(!page.length){lotsRequests.current.delete(id);setKnownLots(current=>({...current,[id]:{loading:false,error:"La liste des lots est incomplète. Réessayez.",rows:null,meta:null}}));return;}
+      }
+    }catch{if(mounted.current&&lotsRequests.current.get(id)===token){lotsRequests.current.delete(id);setKnownLots(current=>({...current,[id]:{loading:false,error:"Les lots ne sont pas disponibles. Réessayez.",rows:null,meta:null}}));}}});drainLots();
+  }
+  function availabilityFor(line){const current=knownLots[line.article.ID_Article];return lotAvailability(current?.meta,current?.rows||[],line.original);}
+  function lotState(line){
+    const current=knownLots[line.article.ID_Article],available=availabilityFor(line),minimum=requiredLotQuantity(line.QteCmdDetail,available),assigned=allocatedQuantity(line.Lots);
+    if(current?.loading)return "Vérification des lots…";
+    if(current?.error)return "Vérifier les lots";
+    if(minimum!=null&&wholeQuantity(minimum)>0n&&assigned!=null&&assigned<wholeQuantity(minimum))return "Lots requis · "+formatNumber(minimum)+" "+stockUnit(line.article);
+    return assigned&&assigned>0n?"Lots · "+formatNumber(assigned.toString())+" "+stockUnit(line.article):"Lots et stock sans lot";
   }
   function requestClose(){if(busy)return;if(uncertain){setCloseWarning(true);return;}onClose();}
   function requestReload(){if(busy||uncertain)return;if(dirty)setReloadWarning(true);else setEditRevision(value=>value+1);}
@@ -110,7 +132,7 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
     let snapshot=request.current;
     if(!uncertain){
       const invalid=compositionHeaderErrors(values,references,sourceBon),invalidLines={};
-      for(const line of basket){const issues=compositionLineErrors(line,direction),lotsIssue=compositionLotsUnchanged(line)?"":lotErrors(line.Lots,line.QteCmdDetail);if(lotsIssue)issues.Lots=lotsIssue;if(knownLots[line.article.ID_Article]?.error&&line.Lots.length)issues.Lots="Vérifiez les lots disponibles avant d’enregistrer.";if(Object.keys(issues).length)invalidLines[line.article.ID_Article]=issues;}
+      for(const line of basket){const issues=compositionLineErrors(line,direction),unchanged=compositionLotsUnchanged(line),availability=availabilityFor(line),lotsIssue=unchanged?"":lotErrors(line.Lots,line.QteCmdDetail,{outgoing:direction==="sortie",availability});if(lotsIssue)issues.Lots=lotsIssue;if(direction==="sortie"&&!unchanged&&(!availability||knownLots[line.article.ID_Article]?.error))issues.Lots="Vérifiez les lots disponibles avant d’enregistrer.";if(Object.keys(issues).length)invalidLines[line.article.ID_Article]=issues;}
       setHeaderErrors(invalid);setLineErrors(invalidLines);setError("");
       if(Object.keys(invalid).length){setError("Vérifiez les informations du bon.");focusHeader(invalid);return;}
       if(creating&&!basket.length||basket.length>MAX_COMPOSITION_LINES){setActive("articles");setError(creating?"Ajoutez entre 1 et "+MAX_COMPOSITION_LINES+" articles au bon.":"Un bon peut contenir au maximum "+MAX_COMPOSITION_LINES+" articles.");return;}
@@ -135,7 +157,8 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
         const match=/^lignes\.(\d+)(?:\.(.+))?$/.exec(key);if(match&&basket[Number(match[1])]){const id=basket[Number(match[1])].article.ID_Article,field=match[2]?.startsWith("Lots")?"Lots":["QteCmdDetail","PUCmdDetail","ObsCmdDetail","LieuCmdDetail","RemiseCmdDetail","SelectCmdDetail"].includes(match[2])?match[2]:"article";rowIssues[id]={...rowIssues[id],[field]:String(message)};}
       }
       const general=details&&typeof details==="object"?[details.bon,details.lignes,details.requestId].find(value=>typeof value==="string"&&value):"";
-      setHeaderErrors(bonIssues);setLineErrors(rowIssues);setError(general||response.message||"Le bon n’a pas pu être enregistré.");if(Object.keys(bonIssues).length)focusHeader(bonIssues);else if(Object.keys(rowIssues).length)focusLineIssue(rowIssues);return;
+      const lotFailure=Object.entries(rowIssues).find(([,fields])=>fields.Lots),lotArticle=lotFailure?basket.find(line=>String(line.article.ID_Article)===String(lotFailure[0]))?.article:null,lotMessage=lotFailure?(lotArticle?.NomArticle?lotArticle.NomArticle+" : ":"")+lotFailure[1].Lots:"";
+      setHeaderErrors(bonIssues);setLineErrors(rowIssues);for(const [id,fields] of Object.entries(rowIssues))if(fields.Lots)loadLots(id,{force:true});setError(general||lotMessage||response.message||"Le bon n’a pas pu être enregistré.");if(Object.keys(bonIssues).length)focusHeader(bonIssues);else if(Object.keys(rowIssues).length)focusLineIssue(rowIssues);return;
     }
     onSaved(response.data.bon,creating?"created":"updated");
   }
@@ -148,13 +171,13 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
   const lineLocked=line=>Boolean(line?.original)&&(line.article.ValideArticle!==true||line.article.missing);
   function openLine(line,section){setLineDetail({id:String(line.article.ID_Article),section});if(section==="lots"&&!disabled&&!lineLocked(line))loadLots(line.article.ID_Article);}
   const basketColumns=[
-    {key:"article",label:"Article et stock",width:310,sortable:false,render:line=>{const article=line.article,issues=lineErrors[article.ID_Article]||{};return <span className="bon-composer-cart-identity"><strong>{article.NomArticle||"Article #"+article.ID_Article}</strong><small>{articleReferences(article)} · Stock : {formatNumber(article.QteArticle)} {stockUnit(article)}{line.original?" · Quantité d’origine : "+formatNumber(line.original.QteCmdDetail):""}</small>{lineLocked(line)?<small>Historique conservé</small>:null}{issues.article?<small className="record-field-error">{issues.article}</small>:null}{["ObsCmdDetail","LieuCmdDetail","SelectCmdDetail","Lots"].some(key=>issues[key])?<button type="button" className="erp-object-link bon-composer-detail-error" onClick={()=>openLine(line,issues.Lots?"lots":"infos")}>Informations à vérifier</button>:null}</span>; }},
+    {key:"article",label:"Article et stock",width:310,sortable:false,render:line=>{const article=line.article,issues=lineErrors[article.ID_Article]||{};return <span className="bon-composer-cart-identity"><strong>{article.NomArticle||"Article #"+article.ID_Article}</strong><small>{articleReferences(article)} · Stock : {formatNumber(article.QteArticle)} {stockUnit(article)}{line.original?" · Quantité d’origine : "+formatNumber(line.original.QteCmdDetail):""}</small>{lineLocked(line)?<small>Historique conservé</small>:null}{direction==="sortie"?<button type="button" className={"erp-object-link bon-composer-lot-state"+(issues.Lots?" is-error":"")} disabled={busy} onClick={()=>openLine(line,"lots")}><AppIcon name="box" size={12}/>{lotState(line)}</button>:null}{issues.article?<small className="record-field-error">{issues.article}</small>:null}{["ObsCmdDetail","LieuCmdDetail","SelectCmdDetail","Lots"].some(key=>issues[key])?<button type="button" className="erp-object-link bon-composer-detail-error" onClick={()=>openLine(line,issues.Lots?"lots":"infos")}>Informations à vérifier</button>:null}</span>; }},
     {key:"QteCmdDetail",label:"Quantité",width:120,align:"right",sortable:false,render:line=>{const id=line.article.ID_Article,invalid=lineErrors[id]?.QteCmdDetail;return <div className="bon-composer-cart-field"><label className="erp-sr-only" htmlFor={prefix+"qty-"+id}>{"Quantité · "+line.article.NomArticle}</label><input id={prefix+"qty-"+id} className="bon-composer-cart-input is-quantity" inputMode="numeric" maxLength={10} value={line.QteCmdDetail} onChange={event=>changeLine(id,"QteCmdDetail",event.target.value)} onKeyDown={event=>{if(event.key==="Enter")event.preventDefault();}} disabled={disabled||lineLocked(line)} aria-invalid={Boolean(invalid)} aria-describedby={invalid?prefix+"qty-"+id+"-error":undefined}/>{invalid?<small id={prefix+"qty-"+id+"-error"} className="record-field-error">{invalid}</small>:null}</div>;}},
     {key:"PUCmdDetail",label:"Prix unitaire"+(currencyCode?" · "+currencyCode:""),width:155,align:"right",sortable:false,render:line=>{const id=line.article.ID_Article,invalid=lineErrors[id]?.PUCmdDetail;return <div className="bon-composer-cart-field"><label className="erp-sr-only" htmlFor={prefix+"price-"+id}>{"Prix unitaire · "+line.article.NomArticle}</label><input id={prefix+"price-"+id} className="bon-composer-cart-input is-price" inputMode="decimal" maxLength={32} value={line.PUCmdDetail} placeholder="À saisir" onChange={event=>changeLine(id,"PUCmdDetail",event.target.value)} onKeyDown={event=>{if(event.key==="Enter")event.preventDefault();}} disabled={disabled||lineLocked(line)} aria-invalid={Boolean(invalid)} aria-describedby={invalid?prefix+"price-"+id+"-error":undefined}/>{invalid?<small id={prefix+"price-"+id+"-error"} className="record-field-error">{invalid}</small>:null}</div>;}},
     {key:"amount",label:"Montant",width:170,align:"right",sortable:false,render:line=>formatCurrency(multiplyDecimal(line.QteCmdDetail,line.PUCmdDetail),currencyCode)},
     {key:"actions",label:"Actions",width:90,sortable:false,render:line=><RowActionsMenu label={line.article.NomArticle||"Article"} items={[{label:"Informations",icon:"document",disabled:busy,onSelect:()=>openLine(line,"infos")},{label:"Lots",icon:"box",disabled:busy,onSelect:()=>openLine(line,"lots")},{label:"Retirer du bon",icon:"trash",danger:true,disabled,reason:disabled?"Le bon est en consultation.":"",onSelect:()=>removeArticle(line.article.ID_Article)}]}/>},
   ];
-  const detailLine=lineDetail?basket.find(line=>String(line.article.ID_Article)===String(lineDetail.id)):null,detailDisabled=disabled||lineLocked(detailLine),detailIssues=detailLine?lineErrors[detailLine.article.ID_Article]||{}:{},detailPrice=detailLine?cataloguePrice(detailLine.article,values,references,sourceBon):"",detailKnown=detailLine?knownLots[detailLine.article.ID_Article]:null,detailPrefix=prefix+"-line-detail";
+  const detailLine=lineDetail?basket.find(line=>String(line.article.ID_Article)===String(lineDetail.id)):null,detailDisabled=disabled||lineLocked(detailLine),detailIssues=detailLine?lineErrors[detailLine.article.ID_Article]||{}:{},detailPrice=detailLine?cataloguePrice(detailLine.article,values,references,sourceBon):"",detailKnown=detailLine?knownLots[detailLine.article.ID_Article]:null,detailAvailability=detailLine?availabilityFor(detailLine):null,detailPrefix=prefix+"-line-detail";
   const lotsBusy=Object.values(knownLots).some(item=>item.loading);
   return <RecordEditorFrame title={creating?"Nouveau bon de stock":"Modifier le bon de stock"} subtitle={sourceBon?.CodeCmd||"Préparez le bon et ses articles"} icon="receipt" defaultWidth={1180} className="bon-composer-dialog" storageKey="sauverndeko.bon-composer.width" onClose={requestClose} onSubmit={submit} busy={busy} loading={editLoading&&!sourceBon} dirty={!uncertain&&dirty} canSubmit={canWrite&&!editLoading&&!lotsBusy&&(uncertain||editable&&(creating?basket.length>0:dirty))} submitLabel={uncertain?"Réessayer":creating?"Enregistrer le bon":"Enregistrer les modifications"} error={error} onReload={!creating&&editReloadable&&!uncertain?requestReload:null}>
     <div className="bon-composer">
@@ -214,8 +237,8 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
           <Field id={prefix+"selected-"+detailLine.article.ID_Article} label="Sélection enregistrée" error={detailIssues.SelectCmdDetail}><SearchSelect id={prefix+"selected-"+detailLine.article.ID_Article} label="Sélection enregistrée" value={detailLine.SelectCmdDetail==null?"":String(detailLine.SelectCmdDetail)} options={[{value:"",label:"Non renseignée"},{value:"true",label:"Oui"},{value:"false",label:"Non"}]} onChange={value=>changeLine(detailLine.article.ID_Article,"SelectCmdDetail",value===""?null:value==="true")} disabled={detailDisabled} invalid={Boolean(detailIssues.SelectCmdDetail)} aria-describedby={detailIssues.SelectCmdDetail?prefix+"selected-"+detailLine.article.ID_Article+"-error":undefined}/></Field>
         </div>{detailPrice!==""&&detailPrice!==detailLine.PUCmdDetail?<button type="button" className="erp-object-link bon-composer-catalogue-price" disabled={detailDisabled} onClick={()=>changeLine(detailLine.article.ID_Article,"PUCmdDetail",detailPrice)}>Utiliser le prix catalogue : {formatCurrency(detailPrice,currencyCode)}</button>:null}</section></section>
         <section role="tabpanel" id={detailPrefix+"-panel-lots"} aria-labelledby={detailPrefix+"-tab-lots"} hidden={lineDetail.section!=="lots"} tabIndex={lineDetail.section==="lots"?0:-1}>
-          {detailKnown?.loading?<p className="record-editor-note" role="status">Chargement des lots disponibles…</p>:null}{detailKnown?.error?<div className="record-editor-error" role="alert"><span>{detailKnown.error}</span><ActionButton icon="refresh" disabled={detailDisabled} onClick={()=>loadLots(detailLine.article.ID_Article)}>Réessayer</ActionButton></div>:null}
-          <div id={prefix+"lots-"+detailLine.article.ID_Article} tabIndex={-1}><LotFields value={detailLine.Lots} onChange={lots=>changeLine(detailLine.article.ID_Article,"Lots",lots)} total={detailLine.QteCmdDetail} known={detailKnown?.rows||[]} outgoing={direction==="sortie"} disabled={detailDisabled||Boolean(detailKnown?.loading)} title={direction==="sortie"?"Lots sortants":"Lots reçus"} error={detailIssues.Lots}/></div>
+          {detailKnown?.error?<div className="record-editor-error" role="alert"><span>{detailKnown.error}</span><ActionButton icon="refresh" disabled={detailDisabled} onClick={()=>loadLots(detailLine.article.ID_Article,{force:true})}>Réessayer</ActionButton></div>:null}
+          <div id={prefix+"lots-"+detailLine.article.ID_Article} tabIndex={-1}><LotFields value={detailLine.Lots} onChange={lots=>changeLine(detailLine.article.ID_Article,"Lots",lots)} total={detailLine.QteCmdDetail} known={detailKnown?.rows||[]} availability={detailAvailability} loading={Boolean(detailKnown?.loading)} unit={stockUnit(detailLine.article)} outgoing={direction==="sortie"} disabled={detailDisabled||Boolean(detailKnown?.loading)} title={direction==="sortie"?"Lots sortants":"Lots reçus"} error={detailIssues.Lots}/></div>
         </section>
       </DrawerDialog>:null}
       </>:null}

@@ -275,6 +275,9 @@ def consultation(actor, kind, pk, section, raw):
     # Le total de la rubrique reste celui de cet objet, avant sa recherche locale.
     parent_where, parent_values = read_predicate(obj, actor, {}, fixed)
     meta["totalCount"] = db.one("SELECT COUNT(*) AS n FROM " + row_source(obj) + " WHERE " + parent_where, parent_values)["n"]
+    if kind=="produit" and section=="lots":
+        from .lots import stock_state
+        meta["lotStock"]=clean(stock_state(pk))
     return rows, meta
 
 class RegisterReadView(APIView):

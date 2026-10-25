@@ -47,7 +47,7 @@ Le champ Type de bon utilise SearchSelect et la référence T_Commande.ID_TypeCm
 
 - Poids unitaire et unité de masse sont facultatifs ensemble. Ils ne changent ni unité ni quantité de stock. Conserver les décimales comme chaînes dans les échanges.
 - Un article peut avoir plusieurs lots reçus avec les produits. Le numéro appartient à l’article et à ses mouvements, pas à une unique colonne N° lot sur la fiche. Une ligne peut ventiler sa quantité entre plusieurs lots.
-- Une sortie reprend des lots déjà reçus. Si une ventilation est saisie, sa somme égale la quantité de la ligne. Les historiques non identifiés restent sans lot ; ne pas inventer de numéro.
+- Une sortie reprend des lots déjà reçus. Sa ventilation peut être partielle si le reliquat est couvert par le stock disponible sans lot ; afficher séparément les quantités ventilées et sans lot. Pour une entrée, une ventilation saisie reste complète. Les historiques non identifiés restent sans lot ; ne pas inventer de numéro.
 - Les lots des fiches Produit 360 et Bon de stock 360 concernent uniquement l’objet consulté. Le registre Articles peut afficher leur nombre.
 - InformationArticle décrit le produit et ses caractéristiques. Le présenter avant Observation (ObsArticle), réservé aux remarques. Ce texte ne remplace pas une donnée structurée indispensable aux calculs.
 
@@ -140,3 +140,6 @@ ReglementBatchEditor reprend le parcours de préparation en panier : rechercher 
 Une facture peut recevoir plusieurs modes dans ce panier, sans doublon facture/mode ; les règlements historiques d’un même mode restent autorisés. Le solde proposé déduit les lignes déjà préparées pour cette facture. Les montants restent des chaînes décimales exactes et les totaux sont distincts par devise. Un changement de sélection, une erreur serveur ou un conflit ne supprime pas la saisie.
 
 Enregistrer le panier par un seul POST /api/logistique/reglements/groupes, avec requestId stable et révision de chaque facture préparée. Un échec refuse tout le panier ; après une réponse incertaine, Réessayer conserve le même corps et le même UUID. Ne pas envoyer une boucle de créations indépendantes ni annoncer un règlement validé avant la réponse serveur.
+
+
+Dans le panier d’un bon de sortie, rendre visible le besoin de lots et ouvrir leur saisie depuis la ligne. Réutiliser SearchSelect pour choisir les lots reçus, avec leur disponibilité. Charger les budgets par lot sans perdre les quantités, prix ou lots déjà saisis. Une erreur serveur lignes.<indice>.Lots désigne l’article concerné, ouvre sa rubrique Lots et conserve le panier ; ne pas afficher les noms SQL ni le message technique PostgreSQL. L’indication de disponibilité ne remplace pas la validation serveur sous verrou.

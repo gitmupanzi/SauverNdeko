@@ -139,7 +139,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             if key in allowed
         }
         effective = {**(old or {}), **data}
-        from .lots import line_lots, sync_movement
+        from .lots import line_lots, sync_movement, validate_stock, unchanged as lots_unchanged
         previous_lots = line_lots(commande_id, positive(article_id)) if old else []
         if old:
             from .document_rules import check_revision
@@ -149,7 +149,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         elif received is not None:raise APIError("Version inattendue à la création.")
         next_id = positive(effective.get("ID_ArticleFk"))
         if previous_lots and operation != "delete" and lots is None and (next_id != positive(article_id) or effective.get("QteCmdDetail") != old.get("QteCmdDetail")):
-            raise APIError("Répartissez la nouvelle quantité entre les lots de cette ligne.", "LOT_REQUIRED", 409)
+            raise APIError({"Lots":"Répartissez la nouvelle quantité entre les lots de cette ligne."}, "LOT_REQUIRED", 409)
         # Parent commande puis articles dans un ordre stable, comme les triggers existants.
         selected_article = None
         for current_id in sorted(
@@ -223,7 +223,13 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         if operation != "delete" and lots is not None:
             movement = db.one('SELECT "ID_Mvt" FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=%s AND "ID_ArticleFk"=%s',[commande_id,next_id])
             if not movement:raise APIError("Mouvement source introuvable.", "LOT_MOVEMENT_MISSING", 409)
-            sync_movement(next_id,movement["ID_Mvt"],lots,effective["QteCmdDetail"])
+            try:
+                unchanged=old is not None and effective.get("QteCmdDetail")==old.get("QteCmdDetail") and lots_unchanged(lots,previous_lots,effective["QteCmdDetail"])
+                if not unchanged:sync_movement(next_id,movement["ID_Mvt"],lots,effective["QteCmdDetail"])
+            except APIError as error:
+                raise APIError({"Lots":str(error.detail)},error.default_code,error.status_code) from error
+        # Les contraintes de lots sont différées : cibler la ligne avant de quitter sa transaction.
+        for current_id in sorted({next_id,*([positive(article_id)] if article_id is not None else [])}):validate_stock(current_id)
         next_lots=line_lots(commande_id,next_id) if operation!="delete" else []
         audit(obj, operation.upper(), {**old,"Lots":previous_lots} if old else None, {**row,"Lots":next_lots}, actor)
         return clean({**row,"Lots":next_lots})

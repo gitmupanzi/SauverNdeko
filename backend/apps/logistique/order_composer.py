@@ -17,7 +17,7 @@ from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
 from apps.core.repository import audit, clean, coerce, get_record, mutate, positive, predicate
 from apps.core.responses import APIError, ExactEncoder, ok
-from .lots import normalize as normalize_lots
+from .lots import normalize as normalize_lots, outgoing_type
 from .services import mutate_line
 
 MAX_LINES=50
@@ -79,6 +79,7 @@ def composition_data(actor,body,old=None,old_lines=None):
         except APIError:composition_error('bon.'+key,'Choisissez une valeur de la liste.')
     if header['DateCmd'] is None:composition_error('bon.DateCmd','Indiquez la date et l’heure du bon.')
     line_columns={column['column_name']:column for column in model('T_CommandeDetail')['columns'] if column['column_name']!='ID_CmdFk'}
+    outgoing=outgoing_type(header["ID_TypeCmdFk"])
     lines=[];seen=set();total=Decimal('0');total_quantity=0
     for index,item in enumerate(raw_lines):
         prefix='lignes.'+str(index)
@@ -108,9 +109,9 @@ def composition_data(actor,body,old=None,old_lines=None):
                 lots=normalize_lots(raw_lots,lot_sum)
                 if lot_sum>line['QteCmdDetail']:raise APIError('La ventilation dépasse la quantité de cette ligne.')
                 previous=next((row for row in (old_lines or []) if row['ID_ArticleFk']==identifier),None)
-                if lots and lot_sum!=line['QteCmdDetail'] and (previous is None or Decimal(str(previous.get('QteCmdDetail'))) != quantity or lot_signature(lots)!=lot_signature(previous.get('Lots',[]))):
+                if lots and lot_sum!=line['QteCmdDetail'] and not outgoing and (previous is None or Decimal(str(previous.get('QteCmdDetail'))) != quantity or lot_signature(lots)!=lot_signature(previous.get('Lots',[]))):
                     raise APIError('Répartissez la quantité entière entre les lots de la ligne modifiée.')
-            else:lots=normalize_lots(raw_lots,line['QteCmdDetail'])
+            else:lots=normalize_lots(raw_lots,line['QteCmdDetail'],allow_partial=outgoing)
         except APIError as error:mapped_error(error,prefix+'.Lots')
         line['Lots']=[{**lot,'DatePeremptionLot':lot['DatePeremptionLot'].isoformat() if lot['DatePeremptionLot'] else None} for lot in lots]
         lines.append({'index':index,'data':line})

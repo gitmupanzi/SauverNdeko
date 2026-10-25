@@ -50,8 +50,14 @@ def ok(data=None, *, status=200, message="", meta=None, **extra):
 
 def exception_handler(exc, context):
     if isinstance(exc, IntegrityError):
+        cause = getattr(exc, "__cause__", None)
+        diagnostic = getattr(cause, "diag", None)
+        # Métadonnées utiles au diagnostic ; aucune valeur SQL ni saisie utilisateur.
+        log.warning("Écriture refusée (SQLSTATE=%s, schéma=%s, table=%s, contrainte=%s).",
+                    getattr(cause, "sqlstate", None), getattr(diagnostic, "schema_name", None),
+                    getattr(diagnostic, "table_name", None), getattr(diagnostic, "constraint_name", None))
         exc = APIError(
-            "Écriture refusée par les contraintes PostgreSQL.",
+            "L’enregistrement n’a pas pu être validé. Vérifiez les informations saisies et réessayez.",
             "CONSTRAINT_VIOLATION",
             409,
         )

@@ -31,3 +31,5 @@
 @container(max-width:1000px){.bon-composer-catalogue .logistics-table-wrap{max-height:350px;}}
 @container(max-width:540px){.bon-composer-summary{gap:10px;}.bon-composer-summary>strong{width:100%;margin:0;justify-content:space-between;}.bon-composer-catalogue,.bon-composer-basket{padding:12px;}.bon-composer-catalogue>header,.bon-composer-basket>header{flex-wrap:wrap;}.bon-composer-search>label:first-child{flex-basis:100%;}.bon-composer-total strong{font-size:17px;}.bon-composer-cart-table table.admin-table{min-width:700px!important;}}
 @container(max-width:540px){.bon-composer-cart-input.is-quantity{width:76px;}.bon-composer-cart-input.is-price{width:116px;}}
+
+.bon-composer .bon-composer-lot-state{display:inline-flex;align-items:center;gap:5px;justify-self:start;font-size:10px;line-height:1.4;text-align:left;}.bon-composer .bon-composer-lot-state.is-error{color:var(--erp-danger);}

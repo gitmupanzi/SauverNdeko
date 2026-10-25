@@ -10,6 +10,7 @@ import LotFields,{lotErrors} from "../../components/LotFields";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import {formatCurrency,formatDate,formatNumber,asArrayPayload} from "./logistiqueShared";
 import {multiplyDecimal} from "../../utils/money";
+import {lotAvailability,wholeQuantity,unchangedLotAllocation} from "../../utils/lotAllocation";
 import {lineForm,lineLots,linePrice,lineErrors,linePayload,lineDirection,closedBon} from "./lineForm";
 
 const read=(path)=>requestJson("/api/logistique"+path,{requiresAuth:true});
@@ -53,10 +54,10 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
  const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[bon,setBon]=useState(null),[bonMeta,setBonMeta]=useState(null),[article,setArticle]=useState(null);
  const [loading,setLoading]=useState(!creating),[bonLoading,setBonLoading]=useState(creating&&Boolean(selectedCommande?.ID_Commande)),[articleLoading,setArticleLoading]=useState(false),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[errors,setErrors]=useState({}),[reload,setReload]=useState(0),[conflict,setConflict]=useState(false),[confirmReload,setConfirmReload]=useState(false);
- const [lots,setLots]=useState([]),[knownLots,setKnownLots]=useState([]),[lotsLoading,setLotsLoading]=useState(false),[lotsFailure,setLotsFailure]=useState("");
+ const [lots,setLots]=useState([]),[knownLots,setKnownLots]=useState({rows:[],meta:null,retry:0}),[lotsLoading,setLotsLoading]=useState(false),[lotsFailure,setLotsFailure]=useState("");
  const [bonFailure,setBonFailure]=useState(""),[articleFailure,setArticleFailure]=useState("");
  const canWrite=user?.permissions?.canWriteData===true,dirty=JSON.stringify({values,lots})!==initial;
- const direction=lineDirection(bon),outgoing=direction==="sortie";
+ const direction=lineDirection(bon),outgoing=direction==="sortie",availability=lotAvailability(knownLots.meta,knownLots.rows,record);
  const reason=bonFailure||articleFailure||(!creating&&meta?.canEdit!==true?(meta?.editReason||"Cette ligne n’est pas modifiable."):bonMeta?.canEdit===false?(bonMeta.editReason||"Ce bon n’est pas modifiable."):closedBon(bon)?"Ce bon est clôturé.":bon&&bon.ID_DeviseFk==null?"Renseignez la devise du bon avant ses lignes.":article?.ValideArticle===false?"Cet article est inactif.":"");
  const blocked=!canWrite||busy||loading||bonLoading||articleLoading;
  const canSubmit=canWrite&&!blocked&&!lotsLoading&&!lotsFailure&&!reason&&Boolean(bon&&article)&&(creating||Boolean(meta?.revision&&dirty));
@@ -67,7 +68,8 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   Promise.all([read("/commandes/"+line.ID_CmdFk),read("/commande-details/"+line.ID_CmdFk+"/"+line.ID_ArticleFk),read("/articles/"+line.ID_ArticleFk)]).then(([parent,current,product])=>{
    if(!active)return;
    if(!parent?.success||!current?.success||!product?.success){setError([parent,current,product].find(response=>!response?.success)?.message||"La ligne n’a pas pu être chargée.");setRecord(null);setMeta(null);setLoading(false);return;}
-   const next=lineForm(current.data),nextLots=lineLots(current.data?.Lots||[]);
+   const next=lineForm(current.data),nextLots=lineLots(current.data?.Lots||[]).map(row=>({...row,Quantite:wholeQuantity(row.Quantite)?.toString()??row.Quantite}));
+   next.QteCmdDetail=wholeQuantity(next.QteCmdDetail)?.toString()??next.QteCmdDetail;
    setBon(parent.data);setBonMeta(parent.meta);setRecord(current.data);setMeta(current.meta);setArticle(product.data);setValues(next);setLots(nextLots);setInitial(JSON.stringify({values:next,lots:nextLots}));setLoading(false);
   });return()=>{active=false;};
  },[creating,line?.ID_CmdFk,line?.ID_ArticleFk,reload]);
@@ -92,23 +94,24 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   });return()=>{active=false;};
  },[creating,values.ID_ArticleFk,bon?.ID_Commande,reload]);
  useEffect(()=>{
-  setKnownLots([]);setLotsFailure("");
+  const retry=knownLots.retry;setKnownLots({rows:[],meta:null,retry});setLotsFailure("");
   if(!outgoing||!article?.ID_Article){setLotsLoading(false);return;}
   let active=true;setLotsLoading(true);
   async function load(){
-   const available=[];let skip=0;
+   const available=[];let skip=0,stock=null;
    while(active){
     const result=await read("/consultations/produit/"+article.ID_Article+"/lots?take=100&skip="+skip);
     if(!active)return;
     if(!result?.success){setLotsFailure(result?.message||"Les lots disponibles n’ont pas pu être chargés.");setLotsLoading(false);return;}
+    if(result.meta?.lotStock)stock=result.meta.lotStock;
     const page=asArrayPayload(result);available.push(...page);skip+=page.length;
     const total=Number(result.meta?.filteredCount??result.meta?.totalCount??skip);
-    if(skip>=total){setKnownLots(available);setLotsLoading(false);return;}
+    if(skip>=total){if(!stock){setLotsFailure("Les disponibilités par lot doivent être actualisées. Réessayez.");setLotsLoading(false);return;}setKnownLots({rows:available,meta:{lotStock:stock},retry});setLotsLoading(false);return;}
     if(!page.length){setLotsFailure("La liste des lots est incomplète. Rechargez la fiche.");setLotsLoading(false);return;}
    }
   }
   load();return()=>{active=false;};
- },[outgoing,article?.ID_Article,reload]);
+ },[outgoing,article?.ID_Article,reload,knownLots.retry]);
  useEffect(()=>{if(!loading){const frame=requestAnimationFrame(()=>bodyRef.current?.querySelector('input:not(:disabled):not(:read-only),[role="combobox"]:not(:disabled)')?.focus({preventScroll:true}));return()=>cancelAnimationFrame(frame);}},[loading]);
  function change(name,value){setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));}
  function focusInvalid(fields){requestAnimationFrame(()=>{const name=Object.keys(fields)[0];bodyRef.current?.querySelector('[id="'+prefix+name+'"]')?.focus();});}
@@ -119,7 +122,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
  function reloadRecord(){if(dirty)setConfirmReload(true);else setReload(x=>x+1);}
  async function submit(){
   if(!canSubmit||saving.current)return;
-  const invalid=lineErrors(values,bon,article,record),lotError=lotErrors(lots,values.QteCmdDetail);
+  const invalid=lineErrors(values,bon,article,record),lotError=outgoing&&unchangedLotAllocation(lots,values.QteCmdDetail,record)?"":lotErrors(lots,values.QteCmdDetail,{outgoing,availability});
   if(lotError)invalid.Lots=lotError;
   setErrors(invalid);setError("");setConflict(false);
   if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
@@ -129,8 +132,8 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   const response=await requestJson("/api/logistique/commande-details"+(creating?"":"/"+record.ID_CmdFk+"/"+record.ID_ArticleFk),{requiresAuth:true,method:creating?"POST":"PUT",body:JSON.stringify(payload)});
   if(!mounted.current)return;saving.current=false;setBusy(false);
   if(!response?.success){
-   const details=response?.error?.details,fieldErrors=details&&typeof details==="object"&&!Array.isArray(details)?Object.fromEntries(Object.entries(details).filter(([key])=>key in values||key==="Lots").map(([key,value])=>[key,String(value)])):{};
-   setErrors(fieldErrors);setError(Object.keys(fieldErrors).length?"Vérifiez les champs indiqués.":response?.message||"La ligne n’a pas pu être enregistrée.");setConflict(response?.error?.code==="LINE_CONFLICT");if(Object.keys(fieldErrors).length)focusInvalid(fieldErrors);return;
+   const details=response?.error?.details,fieldErrors=details&&typeof details==="object"&&!Array.isArray(details)?Object.fromEntries(Object.entries(details).filter(([key])=>key in values||key==="Lots"||key.startsWith("Lots.")).map(([key,value])=>[key.startsWith("Lots.")?"Lots":key,String(value)])):{};
+   setErrors(fieldErrors);if(fieldErrors.Lots&&outgoing)setKnownLots(current=>({...current,retry:current.retry+1}));setError(Object.keys(fieldErrors).length?"Vérifiez les champs indiqués.":response?.message||"La ligne n’a pas pu être enregistrée.");setConflict(response?.error?.code==="LINE_CONFLICT");if(Object.keys(fieldErrors).length)focusInvalid(fieldErrors);return;
   }
   onSaved(response.data,creating?"created":"updated");
  }
@@ -150,7 +153,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
      {input("PUCmdDetail","Prix unitaire *"+(bon?.DeviseCode?" · "+bon.DeviseCode:""),{inputMode:"decimal",hint:direction==="entree"?"Prix d’achat dans la devise du bon.":"Prix dans la devise du bon, sans conversion automatique."})}
      <Field id={prefix+"total"} label="Montant de la ligne" wide><output id={prefix+"total"} className="stock-receipt-total">{formatCurrency(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail),bon?.DeviseCode)}</output></Field>
     </Section>
-    <div id={prefix+"Lots"} tabIndex={-1}><LotFields value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsLoading?<p className="record-editor-note" role="status">Chargement des lots disponibles…</p>:null}</div>
+    <div id={prefix+"Lots"} tabIndex={-1}><LotFields value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>
     <Section title="Informations complémentaires" icon="document">
      <Field id={prefix+"ObsCmdDetail"} label="Observation" wide><textarea id={prefix+"ObsCmdDetail"} name="ObsCmdDetail" value={values.ObsCmdDetail} onChange={e=>change("ObsCmdDetail",e.target.value)} disabled={blocked||Boolean(reason)}/></Field>
      {input("LieuCmdDetail","Identifiant du lieu",{inputMode:"numeric",hint:"Facultatif, selon le paramétrage de votre organisation."})}
