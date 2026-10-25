@@ -143,3 +143,7 @@ Enregistrer le panier par un seul POST /api/logistique/reglements/groupes, avec 
 
 
 Dans le panier d’un bon de sortie, rendre visible le besoin de lots et ouvrir leur saisie depuis la ligne. Réutiliser SearchSelect pour choisir les lots reçus, avec leur disponibilité. Charger les budgets par lot sans perdre les quantités, prix ou lots déjà saisis. Une erreur serveur lignes.<indice>.Lots désigne l’article concerné, ouvre sa rubrique Lots et conserve le panier ; ne pas afficher les noms SQL ni le message technique PostgreSQL. L’indication de disponibilité ne remplace pas la validation serveur sous verrou.
+
+## Filtres catégoriels des registres
+
+Les choix de population des listes logistiques utilisent RegisterCategoryFilter et SearchSelect : liste compacte recherchable, choix actif visible et options dynamiques du référentiel. Éviter une rangée de boutons pour chaque catégorie. Conserver les handlers de filtrage serveur, la remise à la première page et les autres critères. Les véritables sous-onglets des formulaires et consultations restent ConsultationTabs.

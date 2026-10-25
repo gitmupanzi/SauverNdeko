@@ -1,3 +1,4 @@
+import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import { currencyOptions } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
@@ -208,9 +209,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
         <ActionButton icon="settings" onClick={onToggleFkMappings} title="Réglages des références">Réglages</ActionButton>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
-      </>} tabs={<nav className="erp-register-tabs" aria-label="État du stock">
-        {[["all","Tous les articles","box"],["disponible","Disponibles","check-circle"],["faible","Stock faible","alert"],["rupture","Ruptures","box"]].map(([key,label,icon]) => <button key={key} type="button" aria-pressed={criteria.stockState === key} onClick={() => chooseStock(key)}><AppIcon name={icon}/>{label}</button>)}
-      </nav>}>
+      </>} tabs={<RegisterCategoryFilter label="État du stock" value={criteria.stockState} options={[{value:"all",label:"Tous les articles"},{value:"disponible",label:"Disponibles"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Ruptures"}]} onChange={chooseStock}/>}>
         <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
             {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}

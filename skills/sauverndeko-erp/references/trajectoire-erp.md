@@ -85,3 +85,7 @@ Commencer par la propriété durable et le référentiel de tiers, dont dépende
 ## Livraison partielle du 25 octobre 2026
 
 Installés et vérifiés : Entités propriétaires durables, contexte de l’administrateur global, Clients et fournisseurs/Tiers 360 et types du référentiel, destinations géographiques, inventaire physique avec validation unique et quantités fractionnaires par précision d’unité. Recettes privées : 48 contrôles socle/tiers/destinations et 59 quantités/inventaires/concurrence ; vérification supplémentaire de la reprise avec stock déjà présent. Les PDF métier, justificatifs, avoirs/remboursements et la valorisation CUMP restent hors de cette livraison.
+
+## Situation après les livraisons du 25 octobre 2026
+
+Le [relevé des travaux restants](../../../docs/reste-a-faire-logistique.md) fait foi pour la suite : les documents PDF, justificatifs, avoirs, imputations et remboursements sont désormais livrés, ainsi que les filtres catégoriels communs. Les mentions « hors de cette livraison » dans les bilans antérieurs décrivent leur tranche datée. Les deux développements logistiques prioritaires restent la valorisation CUMP et les alertes exhaustives par lot ; les contrôles de mise en service sont détaillés dans le relevé.
