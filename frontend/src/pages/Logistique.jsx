@@ -481,7 +481,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
     { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements"] },
-    { label: "Finances", keys: ["reglements"] },
+    { label: "Finances", keys: ["factures", "reglements"] },
   ];
   return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
     <div className="logistics-sidebar-top">
@@ -586,7 +586,8 @@ const MAIN_TAB_DEFINITIONS = [
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
   { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
-  { key: "reglements", label: "Factures et règlements", icon: "bi-wallet2" },
+  { key: "factures", label: "Factures", icon: "document" },
+  { key: "reglements", label: "Règlements", icon: "bi-wallet2" },
 ];
 
 export default function Logistique() {
@@ -606,6 +607,7 @@ export default function Logistique() {
     commandes: { search: "", selectedRow: null },
     details: { search: "", selectedRow: null, composerMode: "view" },
     mouvements: { search: "", selectedRow: null },
+    factures: { search: "", selectedRow: null },
     reglements: { search: "", selectedRow: null },
   });
   const [baseReferences, setBaseReferences] = useState(null);
@@ -1159,7 +1161,7 @@ export default function Logistique() {
                 ) : null}
 
                 {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
-                {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"reglements":"commandes")}/> : null}
+                {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"factures":"commandes")}/> : null}
                 {activeTab === "articles" ? (
                   <Articles
                     references={references}
@@ -1194,6 +1196,7 @@ export default function Logistique() {
                   <Mouvements
                     references={references}
                     refreshKey={refreshKey}
+                    onDataChanged={bumpRefresh}
                     sharedTable={sharedTableFeatures.mouvements}
                     onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
@@ -1204,12 +1207,14 @@ export default function Logistique() {
                   <ConsommationMensuelle references={references} refreshKey={refreshKey} />
                 ) : null}
                 {activeTab === "couverture" ? <CouvertureStock refreshKey={refreshKey} /> : null}
-                {activeTab === "reglements" ? (
+                {["factures", "reglements"].includes(activeTab) ? (
                   <Reglements
+                    section={activeTab}
+                    onSectionChange={handleNavigate}
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
-                    sharedTable={sharedTableFeatures.reglements}
+                    sharedTable={sharedTableFeatures[activeTab]}
                     onOpenCommande={handleOpenCommande}
                     onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />

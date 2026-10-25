@@ -1,355 +1,189 @@
-import CurrencySelect from "../../components/CurrencySelect";
-import { multiplyDecimal } from "../../utils/money";
-import CategoricalSelect from "../../components/CategoricalSelect";
+import {useEffect,useId,useMemo,useRef,useState} from "react";
+import {useAuth} from "../../contexts/AuthContext";
+import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
+import {useConsultations} from "../../components/ConsultationProvider";
+import RegisterSurface from "../../components/RegisterSurface";
+import DataTableToolbar from "../../components/DataTableToolbar";
+import SearchSelect from "../../components/SearchSelect";
+import RowActionsMenu from "../../components/RowActionsMenu";
 import ActionButton from "../../components/ActionButton";
-import { useConsultations } from "../../components/ConsultationProvider";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import {
-  asArrayPayload,
-  buildReferenceLabelMap,
-  buildReferenceOptions,
-  exportRowsToCsv,
-  exportRowsToPdf,
-  formatCurrency,
-  formatDate,
-  formatNumber,
-  LoadingErrorEmpty,
-  SectionCard,
-  SelectionStrip,
-  SelectField,
-  SimpleTable,
-  SummaryCard,
-  TableToolbar,
-  ToneBadge,
-} from "./logistiqueShared";
-import { getLogistiqueGenericSourceHint, getLogistiqueViewConfig } from "./views";
+import AppIcon from "../../components/AppIcon";
+import useReferencesRefresh from "../../hooks/useReferencesRefresh";
+import {requestJson,downloadApiFile} from "../../services/api";
+import {accessSignature,moduleRights} from "../../services/moduleAccess";
+import {currencyOptions} from "../../utils/money";
+import {asArrayPayload,buildReferenceOptions,exportRowsToCsv,formatCurrency,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
+import StockReceiptEditor from "./StockReceiptEditor";
+import "./Mouvements.css";
 
-const MOUVEMENTS_VIEW_CONFIG = getLogistiqueViewConfig("mouvements");
+const API="/api/logistique/registre/mouvements";
+const EMPTY={articleId:"",commandeId:"",categorieId:"",articleTypeId:"",typeId:"",origine:"all",sens:"all",deviseId:"",dateFrom:"",dateTo:""};
+const LABELS={q:"Recherche",articleId:"Article",commandeId:"Bon de stock",categorieId:"Catégorie d’article",articleTypeId:"Type d’article",typeId:"Type de mouvement",origine:"Origine",sens:"Sens",deviseId:"Devise",dateFrom:"Du",dateTo:"Au"};
+const DIRECTIONS=[{value:"entree",label:"Entrées"},{value:"sortie",label:"Sorties"},{value:"neutre",label:"Sans variation"}];
+export const MOVEMENT_DEFAULT_COLUMNS=["DateMvt","NomArticle","NomTypeMvt","QteMvt","CodeCmd","PUMvt","MontantMvt","actions"];
+const movementId=row=>row.ID_Mvt;
+const hasValue=(row,key)=>typeof row[key]==="string"&&Boolean(row[key].trim());
+const hasProduct=row=>row.ID_ArticleFk!=null;
+const hasOrder=row=>row.ID_cmdFk!=null;
+const articleLabel=row=>[row.NomArticle||"Article sans libellé",row.CodeArticleInterne||row.RefArticle].filter(Boolean).join(" · ");
+const orderLabel=row=>[row.CodeCmd||"Bon sans code",row.DateCmd?formatDate(row.DateCmd):"",row.TypeCmd||row.AbrTypeCmd].filter(Boolean).join(" · ");
+const activeEntries=criteria=>Object.entries(criteria).filter(([key,value])=>key!=="columnFilters"&&(key==="q"?Boolean(value):value!==EMPTY[key]));
+const cleanColumns=values=>Object.fromEntries(Object.entries(values).map(([key,value])=>[key,String(value).trim()]).filter(([,value])=>value!==""));
+const initialCriteria=q=>({...EMPTY,q:q||"",columnFilters:{}});
 
-function buildReferenceHelperText(sourceKey, options) {
-  const count = Array.isArray(options) ? options.length : 0;
-  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
+export function movementExportColumns(keys){
+ const columns=keys.filter(key=>key!=="actions");
+ if(columns.some(key=>["QteMvt","QteMvtSigned","StockActuel"].includes(key))&&!columns.includes("AbrUnite"))columns.push("AbrUnite");
+ if(columns.some(key=>["PUMvt","MontantMvt","MontantMvtSigned"].includes(key))&&!columns.includes("DeviseCode"))columns.push("DeviseCode");
+ return [...new Set(columns)];
+}
+export function buildMovementQuery(criteria,grid={},columns){
+ const params=new URLSearchParams();
+ for(const key of ["q",...Object.keys(EMPTY)])if(criteria[key]!==undefined)params.set(key,String(criteria[key]));
+ for(const key of ["take","skip","sortBy","sortDir"])if(grid[key]!==undefined)params.set(key,String(grid[key]));
+ const columnFilters=cleanColumns(criteria.columnFilters||{});
+ if(Object.keys(columnFilters).length)params.set("columnFilters",JSON.stringify(columnFilters));
+ if(columns)params.set("columns",JSON.stringify(movementExportColumns(columns)));
+ params.set("timeZone","Africa/Kinshasa");
+ return params;
 }
 
-function getMovementTone(row) {
-  const label = String(row?.NomTypeMvt || row?.TypeMvt || "").toLowerCase();
-
-  if (label.includes("sort")) {
-    return "warning";
-  }
-
-  if (label.includes("entr")) {
-    return "success";
-  }
-
-  return "info";
+// Les choix volumineux sont recherchés et paginés ; aucun catalogue tronqué en mémoire.
+function MovementRecordFilter({id,label,kind,value,selectedLabel,onChange,scopeKey}){
+ const product=kind==="article",idKey=product?"ID_Article":"ID_Commande",path=product?"articles":"commandes",labelFor=product?articleLabel:orderLabel;
+ const [search,setSearch]=useState(""),[query,setQuery]=useState(""),[skip,setSkip]=useState(0),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
+ useReferencesRefresh(()=>setRevision(current=>current+1));
+ useEffect(()=>{
+  let active=true;setLoading(true);setError("");
+  const params=new URLSearchParams({q:query,take:"25",skip:String(skip),sortBy:product?"NomArticle":"DateCmd",sortDir:product?"asc":"desc"});
+  requestJson("/api/logistique/registre/"+path+"?"+params,{requiresAuth:true}).then(response=>{
+   if(!active)return;
+   if(!response?.success){if(response?.status===401||response?.status===403){setRows([]);setMeta(null);}setError(response?.message||"Les choix n’ont pas pu être chargés.");setLoading(false);return;}
+   setRows(asArrayPayload(response));setMeta(response.meta||null);setLoading(false);
+  }).catch(()=>{if(active){setError("Les choix n’ont pas pu être chargés.");setLoading(false);}});
+  return()=>{active=false;};
+ },[path,product,query,skip,revision,scopeKey]);
+ const options=[{value:"",label:product?"Tous les articles":"Tous les bons"},...rows.map(row=>({value:String(row[idKey]),label:labelFor(row)}))];
+ if(value&&!options.some(option=>option.value===String(value)))options.splice(1,0,{value:String(value),label:selectedLabel||"Sélection conservée"});
+ const total=Number(meta?.filteredCount??0),next=skip+rows.length<total;
+ function applySearch(){setQuery(search.trim());setSkip(0);setRevision(current=>current+1);}
+ return <div className="mouvements-record-filter">
+  <label htmlFor={id}>{label}</label>
+  <div className="mouvements-choice-search"><input type="search" aria-label={"Rechercher · "+label} value={search} onChange={event=>setSearch(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();event.stopPropagation();applySearch();}}} placeholder={product?"Nom ou code article…":"Code du bon…"}/><ActionButton icon="search" className="is-icon" aria-label={"Rechercher les choix · "+label} onClick={applySearch} disabled={loading}/></div>
+  <SearchSelect id={id} label={label} value={value} options={options} onChange={nextValue=>onChange(nextValue,options.find(option=>option.value===nextValue)?.label||"")} loading={loading} disabled={Boolean(error)} describedBy={id+"-state"}/>
+  <div className="mouvements-choice-page"><small id={id+"-state"} role="status">{loading?"Chargement…":total?`${skip+1}–${skip+rows.length} sur ${formatNumber(total)}`:"Aucun choix disponible."}</small><ActionButton icon="chevron-left" className="is-icon" aria-label={"Choix précédents · "+label} onClick={()=>setSkip(current=>Math.max(0,current-25))} disabled={loading||Boolean(error)||skip===0}/><ActionButton icon="chevron-right" className="is-icon" aria-label={"Choix suivants · "+label} onClick={()=>setSkip(current=>current+25)} disabled={loading||Boolean(error)||!next}/></div>
+  {error?<p className="mouvements-choice-error" role="alert">{error}<button type="button" className="erp-object-link" onClick={()=>setRevision(current=>current+1)}>Réessayer</button></p>:null}
+ </div>;
 }
 
-export default function Mouvements({ references, refreshKey, sharedTable, onToggleFkMappings }) {
-  const { openProduct, openOrder } = useConsultations();
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [currencyFilter,setCurrencyFilter]=useState("");
-  const [articleFilter, setArticleFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [commandeFilter, setCommandeFilter] = useState("");
-  const [originFilter, setOriginFilter] = useState("all");
-  const [stockDirectionFilter, setStockDirectionFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const selectedMouvement = sharedTable?.selectedRow || null;
-  const deferredSearch = useDeferredValue(sharedTable?.searchValue || "");
-
-  const articleOptions = useMemo(() => buildReferenceOptions(references?.articles, "Article"), [references]);
-  const mouvementTypeOptions = useMemo(() => buildReferenceOptions(references?.commandeTypes, "Type"), [references]);
-  const typeLabelMap = useMemo(() => buildReferenceLabelMap(mouvementTypeOptions), [mouvementTypeOptions]);
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (commandeFilter && !String(row.CodeCmd || "").toLowerCase().includes(String(commandeFilter).toLowerCase())) {
-          return false;
-        }
-
-        if (originFilter !== "all" && String(row.OrigineMouvement || "") !== originFilter) {
-          return false;
-        }
-
-        if (stockDirectionFilter === "entree" && Number(row.SigneStock || 0) <= 0) {
-          return false;
-        }
-
-        if (stockDirectionFilter === "sortie" && Number(row.SigneStock || 0) >= 0) {
-          return false;
-        }
-
-        return true;
-      }),
-    [commandeFilter, originFilter, rows, stockDirectionFilter]
-  );
-  const summary = useMemo(
-    () =>
-      visibleRows.reduce(
-        (accumulator, row) => {
-          accumulator.total += 1;
-          accumulator.quantite += Number(row.QteMvt || 0);
-
-          const label = String(row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || "").toLowerCase();
-
-          if (label.includes("sort")) {
-            accumulator.sorties += Number(row.QteMvt || 0);
-          } else if (label.includes("entr")) {
-            accumulator.entrees += Number(row.QteMvt || 0);
-          }
-
-          return accumulator;
-        },
-        { total: 0, quantite: 0, entrees: 0, sorties: 0 }
-      ),
-    [typeLabelMap, visibleRows]
-  );
-  const compactColumns = useMemo(
-    () => [
-      { key: "ID_Mvt", label: "ID mouvement", renderText: (row) => String(row.ID_Mvt || "-") },
-      { key: "DateMvt", label: "Date mouvement", renderText: (row) => formatDate(row.DateMvt, { withTime: true }) },
-      { key: "CodeArticleInterne", label: "Code article", renderText: (row) => row.CodeArticleInterne || "-" },
-      { key: "NomArticle", label: "Article" },
-      { key: "CodeCmd", label: "N° de bon", renderText: (row) => row.CodeCmd || "-" },
-      {
-        key: "ID_TypeMvtFk",
-        label: "Type mouvement",
-        renderText: (row) =>
-          row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`,
-      },
-      { key: "QteMvt", label: "Quantite", renderText: (row) => formatNumber(row.QteMvt) },
-      { key: "QteMvtSigned", label: "Quantite signee", renderText: (row) => formatNumber(row.QteMvtSigned) },
-      { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
-      { key: "PUMvt", label: "PU mouvement", renderText: (row) => formatCurrency(row.PUMvt,row.DeviseCode) },
-      { key: "MontantMvt", label: "Montant mouvement", renderText: (row) => formatCurrency(row.MontantMvt,row.DeviseCode) },
-      {
-        key: "MontantMvtSigned",
-        label: "Montant signe",
-        renderText: (row) =>
-          formatCurrency(
-            row.MontantMvtSigned != null ? row.MontantMvtSigned : multiplyDecimal(row.MontantMvt,row.SigneStock),row.DeviseCode
-          ),
-      },
-      { key: "OrigineMouvement", label: "Origine mouvement", renderText: (row) => row.OrigineMouvement || "-" },
-      { key: "actions", label: "Actions", renderText: () => "" },
-    ],
-    [typeLabelMap]
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadMouvements() {
-      setLoading(true);
-      setError("");
-
-      const response = await MOUVEMENTS_VIEW_CONFIG.fetchRows({
-        q: deferredSearch,
-        article: articleFilter,
-        deviseId:currencyFilter,
-        typeId: typeFilter,
-        dateFrom,
-        dateTo,
-        take: 150,
-      });
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!response?.success) {
-        setRows([]);
-        setError(response?.message || "Impossible de charger les mouvements.");
-        setLoading(false);
-        return;
-      }
-
-      const nextRows = asArrayPayload(response);
-      setRows(nextRows);
-      if (selectedMouvement?.ID_Mvt != null) {
-        const matchedMouvement = nextRows.find((row) => row.ID_Mvt === selectedMouvement.ID_Mvt);
-        if (matchedMouvement) {
-          sharedTable?.setSelectedRow?.(matchedMouvement);
-        } else {
-          sharedTable?.clearSelectedRow?.();
-        }
-      }
-      setLoading(false);
-    }
-
-    loadMouvements();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [articleFilter, dateFrom, dateTo, deferredSearch, refreshKey, typeFilter, currencyFilter]);
-
-  return (
-    <div className="logistics-screen">
-      <header className="logistics-screen-copy">
-        <h1>Historique des mouvements</h1>
-        <p>Trace les entrees et sorties de stock issues de la logique metier existante</p>
-      </header>
-
-      <section className="logistics-screen-search-card">
-        <label className="admin-form-field logistics-screen-search-field">
-          <span>{sharedTable?.searchLabel || "Recherche"}</span>
-          <input
-            type="search"
-            value={sharedTable?.searchValue || ""}
-            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-            placeholder="Rechercher un mouvement, article ou bon de stock..."
-          />
-        </label>
-      </section>
-
-      <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedMouvement && openProduct(selectedMouvement)} disabled={!selectedMouvement}>
-          Voir
-        </button>
-        <ActionButton icon="download" type="button"  onClick={() => exportRowsToCsv("logistique-mouvements.csv", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>CSV · page</ActionButton>
-        <ActionButton icon="print" type="button"  onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>Imprimer · page</ActionButton>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
-      </section>
-
-      <section className="logistics-screen-filter-card">
-        <div className="logistics-mockup-filter-grid">
-          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
-          <SelectField label="Type mouvement" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} options={mouvementTypeOptions} />
-          <label className="admin-form-field">
-            <span>Origine mouvement</span>
-            <CategoricalSelect aria-label="Origine du mouvement" value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
-              <option value="all">Toutes</option>
-              <option value="Bon de stock">Bon de stock</option>
-              <option value="Ajustement direct article">Ajustement direct article</option>
-            </CategoricalSelect>
-          </label>
-          <SelectField label="Article" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} options={articleOptions} />
-          <label className="admin-form-field">
-            <span>Bon de stock</span>
-            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="N° de bon..." />
-          </label>
-          <label className="admin-form-field">
-            <span>Sens stock</span>
-            <CategoricalSelect aria-label="Sens du stock" value={stockDirectionFilter} onChange={(event) => setStockDirectionFilter(event.target.value)}>
-              <option value="all">Tous</option>
-              <option value="entree">Entree</option>
-              <option value="sortie">Sortie</option>
-            </CategoricalSelect>
-          </label>
-          <label className="admin-form-field">
-            <span>Periode</span>
-            <div className="logistics-period-range">
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
-                aria-label="Date de debut mouvement"
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
-                aria-label="Date de fin mouvement"
-              />
-            </div>
-          </label>
-        </div>
-      </section>
-
-      <section className="logistics-screen-table-card">
-        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucun mouvement a afficher." />
-
-          <SimpleTable
-            rows={visibleRows}
-            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun mouvement pour ces critères."}
-            loading={loading}
-            onRowConsult={(row, key) => key === "CodeCmd" ? openOrder(row) : openProduct(row)}
-            consultColumns={["CodeCmd", "NomArticle", "CodeArticleInterne", "ID_ArticleFk"]}
-            isCellConsultable={(row, key) => key === "CodeCmd" ? Boolean(row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) : Boolean(row.ID_Article || row.ID_ArticleFk)}
-            selectedRowId={selectedMouvement?.ID_Mvt || null}
-            onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection
-            showControls
-            defaultPinnedColumns={["DateMvt", "NomArticle"]}
-            defaultSortColumn="DateMvt"
-            defaultRowsPerPage={10}
-            exportFilename={sharedTable?.exportFilename || "logistique-v_mouvement.csv"}
-            columns={compactColumns.map((column) => ({
-              ...column,
-              render: (row) => {
-                if (column.key === "ID_Mvt") {
-                  return row.ID_Mvt;
-                }
-
-                if (column.key === "DateMvt") {
-                  return formatDate(row.DateMvt, { withTime: true });
-                }
-
-                if (column.key === "ID_TypeMvtFk") {
-                  return (
-                    <ToneBadge tone={getMovementTone(row)}>
-                      {row.NomTypeMvt || row.TypeMvt || typeLabelMap.get(String(row.ID_TypeMvtFk)) || `#${row.ID_TypeMvtFk ?? "-"}`}
-                    </ToneBadge>
-                  );
-                }
-
-                if (column.key === "CodeArticleInterne") {
-                  return row.CodeArticleInterne || "-";
-                }
-
-                if (column.key === "CodeCmd") {
-                  return row.CodeCmd || "-";
-                }
-
-                if (column.key === "QteMvt" || column.key === "QteMvtSigned") {
-                  return formatNumber(row[column.key]);
-                }
-
-                if (column.key === "PUMvt" || column.key === "MontantMvt") {
-                  return formatCurrency(row[column.key],row.DeviseCode);
-                }
-
-                if (column.key === "MontantMvtSigned") {
-                  return formatCurrency(
-                    row.MontantMvtSigned != null
-                      ? row.MontantMvtSigned
-                      : multiplyDecimal(row.MontantMvt,row.SigneStock),row.DeviseCode
-                  );
-                }
-
-                if (column.key === "OrigineMouvement") {
-                  return (
-                    <ToneBadge tone={row.OrigineMouvement === "Bon de stock" ? "info" : "warning"}>
-                      {row.OrigineMouvement || "-"}
-                    </ToneBadge>
-                  );
-                }
-
-                if (column.key === "actions") {
-                  return (
-                    <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="logistics-kebab-button"
-                        onClick={() => sharedTable?.setSelectedRow?.(row)}
-                        aria-label={`Actions ${row.CodeArticleInterne || "mouvement"}`}
-                      >
-                        &#8942;
-                      </button>
-                    </div>
-                  );
-                }
-
-                return row[column.key] ?? "-";
-              },
-            }))}
-          />
-      </section>
-    </div>
-  );
+export default function Mouvements({references,refreshKey,sharedTable,onToggleFkMappings,onDataChanged}){
+ const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
+ const rights=moduleRights(user,"logistique"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
+ const scopeKey=JSON.stringify([user?.IdUser,user?.IdEntiteFk,user?.permissions?.canAccessAdmin,user?.permissions?.canWriteData,user?.permissions?.canExportData,accessSignature(user)]);
+ const canExport=canRead&&Boolean(user?.permissions)&&user.permissions.canExportData!==false&&rights.canExport===true;
+ const canManage=canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;
+ const managePermission=useRef(canManage);managePermission.current=canManage;
+ const shared=useRef(sharedTable);shared.current=sharedTable;
+ const previousScope=useRef(scopeKey),columnsAnchorRef=useRef(null),exportRequest=useRef(null);
+ const [search,setSearch]=useState(sharedTable?.searchValue||""),[draft,setDraft]=useState(EMPTY),[criteria,setCriteria]=useState(()=>initialCriteria(sharedTable?.searchValue));
+ const [columnDraft,setColumnDraft]=useState({}),[recordLabels,setRecordLabels]=useState({}),[appliedLabels,setAppliedLabels]=useState({});
+ const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateMvt",sortDir:"desc"}),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0),[denied,setDenied]=useState(false);
+ const [filtersOpen,setFiltersOpen]=useState(false),[criteriaError,setCriteriaError]=useState(""),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(MOVEMENT_DEFAULT_COLUMNS);
+ const [density,setDensity]=useState(()=>{try{return localStorage.getItem("sauverndeko.table.density")==="airy"?"airy":"compact";}catch{return "compact";}});
+ const [selected,setSelected]=useState([]),[selectionReset,setSelectionReset]=useState(0),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
+ const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null),[feedback,setFeedback]=useState(null);
+ const appliedColumnFilters=criteria.columnFilters||{},activeFilters=activeEntries(criteria).length+Object.keys(appliedColumnFilters).length;
+ const pending=search.trim()!==criteria.q||Object.keys(EMPTY).some(key=>draft[key]!==criteria[key])||JSON.stringify(cleanColumns(columnDraft))!==JSON.stringify(appliedColumnFilters);
+ const options=useMemo(()=>({categorieId:buildReferenceOptions(references?.articleCategories,"Catégorie"),articleTypeId:buildReferenceOptions(references?.articleTypes,"Type"),typeId:buildReferenceOptions(references?.commandeTypes,"Type"),deviseId:currencyOptions(references,true),sens:DIRECTIONS,
+  origine:(meta?.options?.origines||[]).map(option=>({value:String(option.value),label:String(option.label)}))}),[references,meta?.options?.origines]);
+ const contextChanged=previousScope.current!==scopeKey,blocked=loading||Boolean(error)||!canRead||contextChanged||denied;
+ function changeGrid(patch){setLoading(true);setGrid(current=>({...current,...patch}));}
+ function apply(){
+  if(draft.dateFrom&&draft.dateTo&&draft.dateFrom>draft.dateTo){setCriteriaError("La date de fin doit suivre la date de début.");return;}
+  const q=search.trim();setCriteriaError("");setLoading(true);setCriteria({...draft,q,columnFilters:cleanColumns(columnDraft)});setAppliedLabels(recordLabels);shared.current?.setSearchValue?.(q);setGrid(current=>({...current,skip:0}));
+ }
+ function reset(){setLoading(true);setSearch("");setDraft(EMPTY);setCriteria(initialCriteria());setColumnDraft({});setRecordLabels({});setAppliedLabels({});setCriteriaError("");setGrid(current=>({...current,skip:0}));shared.current?.setSearchValue?.("");}
+ function removeFilter(key){setLoading(true);setCriteriaError("");if(key==="q"){setSearch("");shared.current?.setSearchValue?.("");}else setDraft(current=>({...current,[key]:EMPTY[key]}));setCriteria(current=>({...current,[key]:key==="q"?"":EMPTY[key]}));setGrid(current=>({...current,skip:0}));}
+ function removeColumnFilter(key){setLoading(true);setColumnDraft(current=>Object.fromEntries(Object.entries(current).filter(([name])=>name!==key)));setCriteria(current=>({...current,columnFilters:Object.fromEntries(Object.entries(current.columnFilters).filter(([name])=>name!==key))}));setGrid(current=>({...current,skip:0}));}
+ function chooseDirection(sens){setLoading(true);setDraft(current=>({...current,sens}));setCriteria(current=>({...current,sens}));setGrid(current=>({...current,skip:0}));}
+ function product(row){if(!blocked&&hasProduct(row))openProduct({...row,ID_Article:row.ID_ArticleFk});}
+ function order(row){if(!blocked&&hasOrder(row))openOrder({...row,ID_Commande:row.ID_cmdFk});}
+ function consult(row,key){if(key==="CodeCmd")order(row);else product(row);}
+ function selectionChanged(next){setSelected(next);shared.current?.setSelectedRow?.(next.length===1?next[0]:null);}
+ function receive(row){if(managePermission.current&&!blocked&&hasProduct(row)&&row.ValideArticle!==false)setReceipt(row.ID_ArticleFk);}
+ function received(result){setReceipt(null);setSavedReceipt(result.bon);setFeedback({type:"success",message:"Réception enregistrée."});setRevision(value=>value+1);refreshFolders();onDataChanged?.();}
+ useEffect(()=>{try{localStorage.setItem("sauverndeko.table.density",density);}catch{/* Préférence locale facultative. */}},[density]);
+ useEffect(()=>{
+  if(previousScope.current===scopeKey)return;
+  previousScope.current=scopeKey;setRows([]);setMeta(null);setSelected([]);setReceipt(null);setSavedReceipt(null);setFeedback(null);setSelectionReset(value=>value+1);setRecordLabels({});setAppliedLabels({});shared.current?.clearSelectedRow?.();reset();
+ },[scopeKey]);
+ useEffect(()=>{
+  let active=true;setLoading(true);setError("");setDenied(false);
+  if(!canRead){setRows([]);setMeta(null);setError("Vous n’avez pas accès aux mouvements de stock.");setLoading(false);return()=>{active=false;};}
+  requestJson(API+"?"+buildMovementQuery(criteria,grid),{requiresAuth:true}).then(response=>{
+   if(!active)return;
+   if(!response?.success){setRows([]);setMeta(null);if(response?.status===401||response?.status===403){setDenied(true);setSelected([]);setReceipt(null);setSavedReceipt(null);setFeedback(null);setSelectionReset(value=>value+1);setRecordLabels({});setAppliedLabels({});shared.current?.clearSelectedRow?.();}setError(response?.message||"Les mouvements n’ont pas pu être chargés.");setLoading(false);return;}
+   setRows(asArrayPayload(response));setMeta(response.meta||null);setLoading(false);
+  }).catch(()=>{if(active){setRows([]);setMeta(null);setError("Les mouvements n’ont pas pu être chargés.");setLoading(false);}});
+  return()=>{active=false;};
+ },[criteria,grid,refreshKey,revision,scopeKey]);
+ useEffect(()=>{setExportError("");exportRequest.current?.abort();exportRequest.current=null;setExporting(false);return()=>{exportRequest.current?.abort();};},[criteria,grid.sortBy,grid.sortDir,scopeKey,denied]);
+ async function exportExcel(){
+  if(!canExport||blocked||pending||exporting||!meta?.filteredCount||!visibleColumns.some(key=>key!=="actions"))return;
+  const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
+  const params=buildMovementQuery(criteria,{sortBy:grid.sortBy,sortDir:grid.sortDir},visibleColumns);
+  try{await downloadApiFile(API+"/export.xlsx?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
+ }
+ const columns=useMemo(()=>[
+  {key:"ID_Mvt",label:"N° de mouvement",width:155,align:"right",filterType:"number",render:row=>formatNumber(row.ID_Mvt)},
+  {key:"DateMvt",label:"Date et heure",width:180,filterType:"date",render:row=>formatDate(row.DateMvt)},
+  {key:"NomArticle",label:"Article",width:260,filterType:"text",render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle||"Article sans libellé"}</strong><small>{row.CodeArticleInterne||"Code non renseigné"}</small></span></span>,renderText:row=>row.NomArticle||""},
+  {key:"CodeArticleInterne",label:"Code article",width:155,filterType:"text"},
+  {key:"RefArticle",label:"Référence article",width:170,filterType:"text"},
+  {key:"CategorieArticle",label:"Catégorie d’article",width:190},
+  {key:"TypeArticle",label:"Type d’article",width:180},
+  {key:"NomTypeMvt",label:"Mouvement",width:155,render:row=><span className={"erp-status is-"+(Number(row.SigneStock)>0?"success":Number(row.SigneStock)<0?"warning":"neutral")}><AppIcon name={Number(row.SigneStock)>0?"stock-in":Number(row.SigneStock)<0?"stock-out":"movements"} size={13}/>{row.NomTypeMvt||row.TypeMvt||"Non renseigné"}</span>,renderText:row=>row.NomTypeMvt||row.TypeMvt||""},
+  {key:"QteMvt",label:"Quantité",width:140,align:"right",filterType:"number",render:row=><span className="erp-stock-quantity">{formatNumber(row.QteMvt)}<small>{row.AbrUnite||""}</small></span>},
+  {key:"AbrUnite",label:"Unité",width:100},
+  {key:"QteMvtSigned",label:"Variation du stock",width:155,align:"right",filterType:"number",render:row=><span className="erp-stock-quantity">{formatNumber(row.QteMvtSigned)}<small>{row.AbrUnite||""}</small></span>},
+  {key:"StockActuel",label:"Stock actuel",width:155,align:"right",filterType:"number",render:row=><span className="erp-stock-quantity" title="Stock actuel de l’article">{formatNumber(row.StockActuel)}<small>{row.AbrUnite||""}</small></span>},
+  {key:"CodeCmd",label:"Bon de stock",width:155,filterType:"text",render:row=>row.CodeCmd||"Sans bon",renderText:row=>row.CodeCmd||""},
+  {key:"PUMvt",label:"Prix unitaire",width:160,align:"right",filterType:"number",render:row=>formatCurrency(row.PUMvt,row.DeviseCode)},
+  {key:"MontantMvt",label:"Montant",width:170,align:"right",filterType:"number",render:row=>formatCurrency(row.MontantMvt,row.DeviseCode)},
+  {key:"MontantMvtSigned",label:"Montant signé",width:170,align:"right",filterType:"number",render:row=>formatCurrency(row.MontantMvtSigned,row.DeviseCode)},
+  {key:"DeviseCode",label:"Devise",width:110,render:row=>row.DeviseCode||"Non renseignée"},
+  {key:"OrigineMouvement",label:"Origine",width:200,render:row=>options.origine.find(option=>option.value===row.OrigineMouvement)?.label||row.OrigineMouvement||"—"},
+  {key:"DateCmd",label:"Date du bon",width:180,render:row=>formatDate(row.DateCmd)},
+  {key:"DateHeureAutoMvt",label:"Enregistré le",width:190,render:row=>formatDate(row.DateHeureAutoMvt,{withSeconds:true})},
+  {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title={hasOrder(row)?"Consulter le bon":"Consulter l’article"} aria-label={hasOrder(row)?"Consulter le bon "+(row.CodeCmd||"sans code"):"Consulter "+(row.NomArticle||"l’article")} disabled={blocked||(!hasOrder(row)&&!hasProduct(row))} onClick={()=>hasOrder(row)?order(row):product(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={row.NomArticle||"Mouvement de stock"} items={[
+   {label:"Consulter l’article",icon:"box",disabled:blocked||!hasProduct(row),onSelect:()=>product(row)},
+   ...(hasOrder(row)?[{label:"Consulter le bon",icon:"receipt",disabled:blocked,onSelect:()=>order(row)}]:[]),
+   ...(canManage?[{label:"Réceptionner du stock",icon:"stock-in",disabled:blocked||!hasProduct(row)||row.ValideArticle===false,reason:row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>receive(row)}]:[])
+  ]}/></div>}
+ ],[options.origine,blocked,canManage,openProduct,openOrder]);
+ const columnsByKey=Object.fromEntries(columns.map(column=>[column.key,column]));
+ function valueLabel(key,value){return appliedLabels[key]||options[key]?.find(option=>option.value===String(value))?.label||(key==="dateFrom"||key==="dateTo"?formatDate(value):value);}
+ function exportSelection(){if(!canExport||blocked||pending||!selected.length)return;const fields=movementExportColumns(visibleColumns).map(key=>columnsByKey[key]).filter(Boolean);exportRowsToCsv("Mouvements_selection.csv",fields,selected);}
+ const summary=meta?.summary;
+ if(contextChanged||!canRead||denied)return <div className="logistics-screen mouvements-register"><RegisterSurface title="Mouvements de stock" subtitle="Journal des entrées, sorties et ajustements"><div className="erp-register-table" role={canRead&&!denied?"status":"alert"}>{contextChanged&&canRead?"Chargement du registre…":error||"Vous n’avez pas accès aux mouvements de stock."}{denied?<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton>:null}</div></RegisterSurface></div>;
+ return <div className="logistics-screen mouvements-register">
+  <div aria-live="polite"><StatusBanner feedback={feedback}/>{savedReceipt?<ActionButton icon="receipt" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée</ActionButton>:null}</div>
+  <RegisterSurface title="Mouvements de stock" subtitle="Journal des entrées, sorties et ajustements" actions={typeof onToggleFkMappings==="function"?<ActionButton icon="settings" onClick={onToggleFkMappings}>Réglages</ActionButton>:null} tabs={<nav className="erp-register-tabs" aria-label="Sens du mouvement">{[["all","Tous les mouvements","movements"],["entree","Entrées","stock-in"],["sortie","Sorties","stock-out"]].map(([key,label,icon])=><button key={key} type="button" aria-pressed={criteria.sens===key} disabled={loading} onClick={()=>chooseDirection(key)}><AppIcon name={icon}/>{label}</button>)}</nav>}>
+   <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
+    {selected.length?<div className="erp-register-selection"><strong>{formatNumber(selected.length)} mouvement{selected.length===1?"":"s"} sélectionné{selected.length===1?"":"s"}</strong>{selected.length===1?<><ActionButton icon="box" disabled={blocked||!hasProduct(selected[0])} onClick={()=>product(selected[0])}>Article</ActionButton>{hasOrder(selected[0])?<ActionButton icon="receipt" disabled={blocked} onClick={()=>order(selected[0])}>Bon de stock</ActionButton>:null}</>:null}{canExport?<ActionButton icon="download" disabled={blocked||pending||!visibleColumns.some(key=>key!=="actions")} onClick={exportSelection}>CSV · sélection</ActionButton>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" disabled={loading} onClick={()=>{setSelectionReset(value=>value+1);shared.current?.clearSelectedRow?.();}}/></div>:null}
+    {error?<div className="erp-table-error" role="alert">{error}<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton></div>:null}
+    <SimpleTable rows={rows} columns={columns} getRowId={movementId} enableSelection selectedRowId={sharedTable?.selectedRow?.ID_Mvt??null} onSelectionChange={selectionChanged} selectionResetKey={selectionReset} defaultVisibleColumns={MOVEMENT_DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} loading={loading} emptyMessage={error?"Les mouvements ne sont pas disponibles.":"Aucun mouvement pour ces critères."} onRowConsult={consult} consultColumns={["NomArticle","CodeArticleInterne","RefArticle","CodeCmd"]} isCellConsultable={(row,key)=>hasValue(row,key)&&(key==="CodeCmd"?hasOrder(row):hasProduct(row))} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={columnDraft} onColumnFilterChange={(key,value)=>setColumnDraft(current=>({...current,[key]:value}))} onApplyColumnFilters={apply} toolbar={<>
+     <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={filterId} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder="Rechercher un article, une référence ou un bon…" exportFile={canExport?exportExcel:undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!visibleColumns.some(key=>key!=="actions")} error={criteriaError||exportError}/>
+     {filtersOpen?<form id={filterId} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">
+      {[["articleId","Article","article"],["commandeId","Bon de stock","commande"]].map(([key,label,kind])=><MovementRecordFilter key={scopeKey+key} id={filterId+key} label={label} kind={kind} value={draft[key]} selectedLabel={recordLabels[key]} scopeKey={scopeKey} onChange={(value,labelValue)=>{setDraft(current=>({...current,[key]:value}));setRecordLabels(current=>({...current,[key]:value?labelValue:""}));}}/>)}
+      {["categorieId","articleTypeId","typeId","origine","sens","deviseId"].map(key=><div key={key} className="mouvements-filter-field"><label htmlFor={filterId+key}>{LABELS[key]}</label><SearchSelect id={filterId+key} label={LABELS[key]} value={draft[key]} options={[{value:EMPTY[key],label:key==="origine"?"Toutes les origines":key==="deviseId"?"Toutes les devises":"Tous"},...options[key]]} onChange={value=>setDraft(current=>({...current,[key]:value}))}/></div>)}
+      {["dateFrom","dateTo"].map(key=><div key={key} className="mouvements-filter-field"><label htmlFor={filterId+key}>{LABELS[key]}</label><input id={filterId+key} type="date" value={draft[key]} onChange={event=>{setDraft(current=>({...current,[key]:event.target.value}));setCriteriaError("");}} aria-invalid={Boolean(criteriaError)} aria-describedby={criteriaError?filterId+"-error":undefined}/></div>)}
+     </div>{criteriaError?<p id={filterId+"-error"} className="mouvements-choice-error" role="alert">{criteriaError}</p>:null}<div className="erp-register-filters-footer"><ActionButton variant="primary" type="submit" disabled={loading}>Appliquer les filtres</ActionButton></div></form>:null}
+     {activeFilters?<div className="erp-register-chips">{activeEntries(criteria).map(([key,value])=><span key={key} className="erp-register-chip">{LABELS[key]} : {valueLabel(key,value)}<button type="button" aria-label={"Retirer le filtre "+LABELS[key]} onClick={()=>removeFilter(key)}><AppIcon name="close" size={13}/></button></span>)}{Object.entries(appliedColumnFilters).map(([key,value])=><span key={"column-"+key} className="erp-register-chip">{columnsByKey[key]?.label||"Colonne"} : {value}<button type="button" aria-label={"Retirer le filtre de colonne "+(columnsByKey[key]?.label||key)} onClick={()=>removeColumnFilter(key)}><AppIcon name="close" size={13}/></button></span>)}</div>:null}
+    </>}/>
+    <div className="mouvements-register-footer">{summary?<p role="status">{formatNumber(summary.total)} mouvement{Number(summary.total)===1?"":"s"} · {formatNumber(summary.articles)} article{Number(summary.articles)===1?"":"s"} · {formatNumber(summary.bons)} bon{Number(summary.bons)===1?"":"s"}</p>:null}<p>Heures : Africa/Kinshasa · Journal en lecture seule</p></div>
+   </div>
+  </RegisterSurface>
+  {receipt!=null?<StockReceiptEditor key={scopeKey+receipt} articleId={receipt} references={references} onClose={()=>setReceipt(null)} onSaved={received}/>:null}
+ </div>;
 }

@@ -1,625 +1,119 @@
-import CurrencySelect from "../../components/CurrencySelect";
-import { compareDecimal } from "../../utils/money";
-import CategoricalSelect from "../../components/CategoricalSelect";
+import {useEffect,useId,useMemo,useRef,useState} from "react";
+import {useAuth} from "../../contexts/AuthContext";
+import {useConsultations} from "../../components/ConsultationProvider";
+import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
+import {moduleRights,accessSignature} from "../../services/moduleAccess";
+import RegisterSurface from "../../components/RegisterSurface";
+import ConsultationTabs from "../../components/ConsultationTabs";
+import DataTableToolbar from "../../components/DataTableToolbar";
+import SearchSelect from "../../components/SearchSelect";
+import RowActionsMenu from "../../components/RowActionsMenu";
 import ActionButton from "../../components/ActionButton";
-import { useAuth } from "../../contexts/AuthContext";
-import { useConsultations } from "../../components/ConsultationProvider";
-import { useEffect, useMemo, useState } from "react";
-import {
-  asArrayPayload,
-  buildReferenceLabelMap,
-  buildReferenceOptions,
-  exportRowsToCsv,
-  exportRowsToPdf,
-  formatCurrency,
-  formatDate,
-  getApiMessage,
-  LoadingErrorEmpty,
-  SectionCard,
-  SelectionStrip,
-  SelectField,
-  SimpleTable,
-  SummaryCard,
-  StatusBanner,
-  TableToolbar,
-  ToneBadge,
-} from "./logistiqueShared";
-import {
-  getLogistiqueCrudConfig,
-  getLogistiqueGenericSourceHint,
-  getLogistiqueViewConfig,
-} from "./views";
+import AppIcon from "../../components/AppIcon";
+import {requestJson,downloadApiFile} from "../../services/api";
+import {currencyOptions,formatCurrency} from "../../utils/money";
+import {asArrayPayload,buildReferenceOptions,exportRowsToCsv,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
+import InvoiceEditor from "./InvoiceEditor";
+import ReglementEditor,{ReglementDeleteDialog} from "./ReglementEditor";
+import ReglementBatchEditor from "./ReglementBatchEditor";
+import "./Reglements.css";
 
-const REGLEMENTS_VIEW_CONFIG = getLogistiqueViewConfig("reglements");
-const REGLEMENTS_CRUD_CONFIG = getLogistiqueCrudConfig("reglements");
+const COMMON={client:"",deviseId:"",dateFrom:"",dateTo:"",commandeId:""};
+const INITIAL={factures:{...COMMON,payment:"all",late:"all",dueFrom:"",dueTo:""},reglements:{...COMMON,modeId:"",codeFacture:""}};
+const LABELS={q:"Recherche",client:"Tiers",deviseId:"Devise",dateFrom:"Du",dateTo:"Au",commandeId:"Facture",payment:"Paiement",late:"Retard",dueFrom:"Échéance du",dueTo:"Échéance au",modeId:"Mode",codeFacture:"Facture"};
+const PAYMENTS=[{value:"all",label:"Toutes les factures"},{value:"non-reglee",label:"Non réglées"},{value:"partielle",label:"Partiellement réglées"},{value:"reglee",label:"Soldées"},{value:"retard",label:"En retard"}];
+const DEFAULT_COLUMNS={factures:["CodeFacture","DateFacture","NomClientSaisi","MontantFacture","TotalRegle","Reste","EtatReglement","actions"],reglements:["DateReglement","CodeFactureFk","NomClientSaisi","ModeReglement","MontantRegle","actions"]};
+const normalise=value=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function State({value}){if(value==null||value==="")return "—";const label=normalise(value),tone=/retard/.test(label)?"danger":/non |partiel|attente|a regler/.test(label)?"warning":/solde|reglee|paye/.test(label)?"success":"neutral";return <span className={"erp-status is-"+tone}>{value}</span>;}
 
-function buildReferenceHelperText(sourceKey, options) {
-  const count = Array.isArray(options) ? options.length : 0;
-  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
+export default function Reglements({references,refreshKey,onDataChanged,onToggleFkMappings,section,onSectionChange}){
+ const {user}=useAuth(),rights=moduleRights(user,"logistique"),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),tabsId=useId();
+ const canWrite=user?.permissions?.canWriteData===true&&rights.canManage===true,canExport=user?.permissions?.canExportData!==false&&rights.canExport===true;
+ const [batch,setBatch]=useState(null),[selectedInvoices,setSelectedInvoices]=useState([]),[localSection,setLocalSection]=useState("factures"),[invoiceTarget,setInvoiceTarget]=useState(null),[selectedInvoice,setSelectedInvoice]=useState(null),[editor,setEditor]=useState(null),[deleting,setDeleting]=useState(null),[invoiceEditor,setInvoiceEditor]=useState(null),[revision,setRevision]=useState(0),[feedback,setFeedback]=useState(null);
+ const controlledSection=["factures","reglements"].includes(section)?section:null,active=controlledSection||localSection;
+ function setActive(next){if(!["factures","reglements"].includes(next))return;setLocalSection(next);onSectionChange?.(next);}
+ const contextKey=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??"")+":"+accessSignature(user);
+ useEffect(()=>{setBatch(null);setSelectedInvoices([]);setEditor(null);setDeleting(null);setInvoiceEditor(null);setSelectedInvoice(null);setInvoiceTarget(null);setFeedback(null);},[contextKey]);
+ function saved(record,operation){setEditor(null);setDeleting(null);setInvoiceEditor(null);setFeedback({type:"success",message:operation==="deleted"?"Règlement supprimé.":operation==="created"?"Règlement enregistré.":"Règlement mis à jour."});setRevision(value=>value+1);refreshFolders();onDataChanged?.();}
+ function newPayment(row){if(canWrite)setEditor({id:null,commandeId:row?.ID_Commande??null});}
+ function openPayments(row){setInvoiceTarget(row);setActive("reglements");}
+ return <div className="logistics-screen finance-screen"><div aria-live="polite"><StatusBanner feedback={feedback}/></div>
+  <RegisterSurface title={controlledSection?(active==="factures"?"Factures":"Règlements"):"Factures et règlements"} subtitle={controlledSection?(active==="factures"?"Suivi des factures émises":"Journal des paiements"):"Factures émises et journal des paiements"} actions={<>{onToggleFkMappings?<ActionButton icon="settings" onClick={onToggleFkMappings}>Réglages</ActionButton>:null}<ActionButton icon="plus" variant="primary" disabled={!canWrite} onClick={()=>setBatch({initialInvoices:active==="factures"?selectedInvoices:[]})}>Préparer des règlements</ActionButton></>} tabs={controlledSection?null:<ConsultationTabs tabs={[{key:"factures",label:"Factures",icon:"document"},{key:"reglements",label:"Règlements",icon:"wallet"}]} value={active} onChange={setActive} label="Factures et règlements" idPrefix={tabsId}/>}>
+   {["factures","reglements"].map(kind=><section key={kind} role={controlledSection?"region":"tabpanel"} id={tabsId+"-panel-"+kind} aria-labelledby={controlledSection?undefined:tabsId+"-tab-"+kind} aria-label={controlledSection?(kind==="factures"?"Factures":"Règlements"):undefined} hidden={active!==kind} tabIndex={active===kind?0:-1}>
+    <FinanceRegister kind={kind} enabled={active===kind} references={references} contextKey={contextKey} refreshKey={String(refreshKey??"")+":"+revision} canWrite={canWrite} canExport={canExport} invoiceTarget={kind==="reglements"?invoiceTarget:null} clearInvoiceTarget={()=>setInvoiceTarget(null)} onSelectInvoice={setSelectedInvoice} onSelectInvoices={setSelectedInvoices} onNewPayment={newPayment} onEditPayment={row=>{if(canWrite)setEditor({id:row.ID_Reglement});}} onViewPayment={row=>setEditor({id:row.ID_Reglement,readOnly:true})} onDeletePayment={row=>{if(canWrite)setDeleting(row.ID_Reglement);}} onInvoice={row=>setInvoiceEditor(row.ID_Commande)} openInvoice={consultations.openOrderInvoice} openPayments={openPayments} openOrder={consultations.openOrder}/>
+   </section>)}
+  </RegisterSurface>
+  {batch?<ReglementBatchEditor references={references} initialInvoices={batch.initialInvoices} onClose={()=>setBatch(null)} onSaved={data=>{setBatch(null);saved(data,"created");const count=data.reglements?.length||0;setFeedback({type:"success",message:count===1?"Règlement enregistré.":count+" règlements enregistrés."});}}/>:null}
+  {editor?<ReglementEditor key={editor.id??"new"} reglementId={editor.id} commandeId={editor.commandeId} readOnly={editor.readOnly===true} onClose={()=>setEditor(null)} onSaved={saved}/>:null}
+  {deleting!=null?<ReglementDeleteDialog key={deleting} reglementId={deleting} onClose={()=>setDeleting(null)} onSaved={saved}/>:null}
+  {invoiceEditor!=null?<InvoiceEditor key={invoiceEditor} commandeId={invoiceEditor} onClose={()=>setInvoiceEditor(null)} onSaved={()=>{setInvoiceEditor(null);setRevision(value=>value+1);refreshFolders();onDataChanged?.();setFeedback({type:"success",message:"Facture mise à jour."});}}/>:null}
+ </div>;
 }
 
-function getReglementState(row) {
-  const label = String(row?.EtatReglement || "");
-  const normalized = label
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-  if (normalized.includes("part")) {
-    return { key: "partielle", label: label || "Partiellement reglee", tone: "warning" };
-  }
-
-  if (normalized.includes("non facture")) {
-    return { key: "non-facturee", label: label || "Non facturee", tone: "info" };
-  }
-
-  if (normalized.includes("non reglee")) {
-    return { key: "non-reglee", label: label || "Non reglee", tone: "danger" };
-  }
-
-  return label ? { key: "reglee",label,tone:"success" } : {key:"inconnu",label:"Non renseigné",tone:"neutral"};
-}
-
-export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande, onToggleFkMappings }) {
-  const { openProduct, openOrder } = useConsultations();
-  const { user } = useAuth();
-  const canWrite = user?.permissions?.canWriteData !== false;
-  const [summaryRows, setSummaryRows] = useState([]);
-  const [entryRows, setEntryRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState(null);
-  const [currencyFilter,setCurrencyFilter]=useState("");
-  const [codeFactureFilter, setCodeFactureFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [lateFilter, setLateFilter] = useState("all");
-  const [factureDateFilter, setFactureDateFilter] = useState("");
-  const [echeanceFilter, setEcheanceFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [paymentStateFilter, setPaymentStateFilter] = useState("all");
-  const [editorMode, setEditorMode] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(() => REGLEMENTS_CRUD_CONFIG.createFormState());
-  const selectedEntry = sharedTable?.selectedRow || null;
-  const [selectedSummary, setSelectedSummary] = useState(null);
-
-  const modeOptions = useMemo(() => buildReferenceOptions(references?.reglementModes, "Mode"), [references]);
-  const clientOptions = useMemo(() => buildReferenceOptions(references?.clients, "Client"), [references]);
-  const modeLabelMap = useMemo(() => buildReferenceLabelMap(modeOptions), [modeOptions]);
-  const clientLabelMap = useMemo(() => buildReferenceLabelMap(clientOptions), [clientOptions]);
-  const factureOptions = useMemo(
-    () =>
-      Array.isArray(references?.factures)
-        ? references.factures.map((item) => ({
-            value: item.code,
-            label: item.label,
-          }))
-        : [],
-    [references]
-  );
-  const summaryVisibleRows = useMemo(
-    () =>
-      summaryRows.filter((row) => {
-        const paymentState = getReglementState(row);
-        const normalizedSearch = String(codeFactureFilter || "")
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        const rowSearch = [row.CodeCmd, row.CodeFacture, row.NomClientSaisi]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-
-        if (normalizedSearch && !rowSearch.includes(normalizedSearch)) {
-          return false;
-        }
-
-        if (paymentStateFilter !== "all" && paymentState.key !== paymentStateFilter) {
-          return false;
-        }
-
-        if (lateFilter === "oui" && !row.EstEnRetard) {
-          return false;
-        }
-
-        if (lateFilter === "non" && row.EstEnRetard) {
-          return false;
-        }
-
-        if (factureDateFilter && row.DateFacture) {
-          const currentDate = new Date(row.DateFacture).toISOString().slice(0, 10);
-          if (currentDate !== factureDateFilter) {
-            return false;
-          }
-        }
-
-        if (echeanceFilter && row.DateEcheancePaiement) {
-          const currentDate = new Date(row.DateEcheancePaiement).toISOString().slice(0, 10);
-          if (currentDate !== echeanceFilter) {
-            return false;
-          }
-        }
-
-        if (
-          clientFilter &&
-          String(row.NomClientSaisi || "") !== String(clientLabelMap.get(String(clientFilter)) || clientFilter)
-        ) {
-          return false;
-        }
-
-        if (dateFrom && row.DateFacture && new Date(row.DateFacture) < new Date(dateFrom)) {
-          return false;
-        }
-
-        if (dateTo && row.DateFacture && new Date(row.DateFacture) > new Date(`${dateTo}T23:59:59`)) {
-          return false;
-        }
-
-        return true;
-      }),
-    [clientFilter, clientLabelMap, codeFactureFilter, dateFrom, dateTo, echeanceFilter, factureDateFilter, lateFilter, paymentStateFilter, summaryRows]
-  );
-  const summaryByFacture = useMemo(
-    () => new Map(summaryRows.map((row) => [String(row.CodeFacture || ""), row])),
-    [summaryRows]
-  );
-  const summaryColumns = useMemo(
-    () => [
-      { key: "ID_Commande", label: "Bon de stock", exportValue: (row) => `#${row.ID_Commande}` },
-      { key: "CodeFacture", label: "Facture" },
-      { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
-      { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC,row.DeviseCode) },
-      { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle,row.DeviseCode) },
-      { key: "Reste", label: "Reste", renderText: (row) => formatCurrency(row.Reste,row.DeviseCode) },
-    ],
-    []
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadReglements() {
-      setLoading(true);
-      setError("");
-
-      const [summaryResponse, entriesResponse] = await Promise.all([
-        REGLEMENTS_VIEW_CONFIG.fetchRows({
-          codeFacture: codeFactureFilter,
-          deviseId:currencyFilter,
-          resteOnly: paymentStateFilter === "non-reglee" || paymentStateFilter === "partielle" ? "true" : "",
-          take: 200,
-        }),
-        REGLEMENTS_VIEW_CONFIG.fetchEntries({
-          codeFacture: codeFactureFilter,
-          deviseId:currencyFilter,
-          client: clientFilter,
-          dateFrom,
-          dateTo,
-          take: 200,
-        }),
-      ]);
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!summaryResponse?.success || !entriesResponse?.success) {
-        setSummaryRows([]);
-        setEntryRows([]);
-        setError(summaryResponse?.message || entriesResponse?.message || "Impossible de charger les reglements.");
-        setLoading(false);
-        return;
-      }
-
-      const nextSummaryRows = asArrayPayload(summaryResponse);
-      const nextEntryRows = asArrayPayload(entriesResponse);
-      setSummaryRows(nextSummaryRows);
-      setEntryRows(nextEntryRows);
-      if (selectedSummary?.ID_Commande != null) {
-        const matchedSummary = nextSummaryRows.find((row) => row.ID_Commande === selectedSummary.ID_Commande);
-        setSelectedSummary(matchedSummary || null);
-      }
-      if (selectedEntry?.ID_Reglement != null) {
-        const matchedEntry = nextEntryRows.find((row) => row.ID_Reglement === selectedEntry.ID_Reglement);
-        if (matchedEntry) {
-          sharedTable?.setSelectedRow?.(matchedEntry);
-        } else {
-          sharedTable?.clearSelectedRow?.();
-        }
-      }
-      setLoading(false);
-    }
-
-    loadReglements();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [clientFilter, codeFactureFilter, dateFrom, dateTo, paymentStateFilter, refreshKey, currencyFilter]);
-
-  function resetEditor() {
-    setEditorMode("");
-    sharedTable?.clearSelectedRow?.();
-    setFormValues(REGLEMENTS_CRUD_CONFIG.createFormState());
-  }
-
-  function handleNewReglement() {
-    sharedTable?.clearSelectedRow?.();
-    setEditorMode("create");
-    setFormValues({
-      ...REGLEMENTS_CRUD_CONFIG.createFormState(),
-      CodeFactureFk: selectedSummary?.CodeFacture || "",
-    });
-  }
-
-  function handleEditReglement(entry) {
-    sharedTable?.setSelectedRow?.(entry);
-    setEditorMode("edit");
-    setFormValues(REGLEMENTS_CRUD_CONFIG.mapRecordToForm(entry));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setSubmitting(true);
-
-    const payload = REGLEMENTS_CRUD_CONFIG.buildPayload(formValues, {
-      mode: editorMode,
-      record: selectedEntry,
-    });
-
-    const response =
-      editorMode === "edit" && selectedEntry
-        ? await REGLEMENTS_CRUD_CONFIG.updateRecord({ record: selectedEntry, payload })
-        : await REGLEMENTS_CRUD_CONFIG.createRecord({ payload });
-
-    setSubmitting(false);
-
-    if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Enregistrement du reglement impossible.") });
-      return;
-    }
-
-    setFeedback({
-      type: "success",
-      message:
-        editorMode === "edit"
-          ? REGLEMENTS_CRUD_CONFIG.messages.updateSuccess
-          : REGLEMENTS_CRUD_CONFIG.messages.createSuccess,
-    });
-    resetEditor();
-    onDataChanged?.();
-  }
-
-  return (
-    <div className="logistics-screen">
-      <StatusBanner feedback={feedback} />
-      <header className="logistics-screen-copy">
-        <h1>Factures et règlements</h1>
-        <p>Suivi des factures, paiements, restes a payer et retards</p>
-      </header>
-
-      <section className="logistics-screen-search-card">
-        <label className="admin-form-field logistics-screen-search-field">
-          <span>{sharedTable?.searchLabel || "Recherche"}</span>
-          <input
-            type="search"
-            value={codeFactureFilter}
-            onChange={(event) => setCodeFactureFilter(event.target.value)}
-            placeholder="Rechercher une facture, bon de stock ou tiers..."
-          />
-        </label>
-      </section>
-
-      <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewReglement} disabled={!canWrite}>
-          Ajouter reglement
-        </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedEntry && handleEditReglement(selectedEntry)} disabled={!canWrite || !selectedEntry}>
-          Modifier reglement
-        </button>
-        <button
-          type="button"
-          className="logistics-top-action is-cyan"
-          onClick={() => selectedSummary && openOrder(selectedSummary)}
-          disabled={!selectedSummary}
-        >
-          Consulter le bon
-        </button>
-        <ActionButton icon="download"
-          type="button"
-
-          onClick={() => exportRowsToCsv("logistique-reglements-synthese.csv", summaryColumns, summaryVisibleRows)}
-          disabled={summaryVisibleRows.length === 0}
-        >CSV · page</ActionButton>
-        <ActionButton icon="print"
-          type="button"
-
-          onClick={() => exportRowsToPdf("logistique-reglements-synthese", summaryColumns, summaryVisibleRows)}
-          disabled={summaryVisibleRows.length === 0}
-        >Imprimer · page</ActionButton>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
-      </section>
-
-      <section className="logistics-screen-filter-card">
-        <div className="logistics-mockup-filter-grid">
-          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
-          <label className="admin-form-field">
-            <span>Etat reglement</span>
-            <CategoricalSelect aria-label="État du règlement" value={paymentStateFilter} onChange={(event) => setPaymentStateFilter(event.target.value)}>
-              <option value="all">Toutes</option>
-              <option value="reglee">Reglee</option>
-              <option value="partielle">Partiellement reglee</option>
-              <option value="non-reglee">Non reglee</option>
-              <option value="non-facturee">Non facturee</option>
-            </CategoricalSelect>
-          </label>
-
-          <label className="admin-form-field">
-            <span>Retard paiement</span>
-            <CategoricalSelect aria-label="Retard de paiement" value={lateFilter} onChange={(event) => setLateFilter(event.target.value)}>
-              <option value="all">Toutes</option>
-              <option value="oui">Oui</option>
-              <option value="non">Non</option>
-            </CategoricalSelect>
-          </label>
-
-          <SelectField label="Tiers" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
-
-          <label className="admin-form-field">
-            <span>Date facture</span>
-            <input type="date" value={factureDateFilter} onChange={(event) => setFactureDateFilter(event.target.value)} />
-          </label>
-
-          <label className="admin-form-field">
-            <span>Echeance</span>
-            <input type="date" value={echeanceFilter} onChange={(event) => setEcheanceFilter(event.target.value)} />
-          </label>
-
-          <label className="admin-form-field">
-            <span>Periode</span>
-            <input type="text" readOnly value={dateFrom || dateTo ? `${dateFrom || "..."} - ${dateTo || "..."}` : "Selectionner"} />
-          </label>
-        </div>
-      </section>
-
-      <section className="logistics-screen-table-card">
-        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucun suivi de reglement disponible." />
-
-          <SimpleTable
-            rows={summaryVisibleRows}
-            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucune facture pour ces critères."}
-            loading={loading}
-            onRowConsult={openOrder}
-            consultColumns={["CodeCmd"]}
-            isCellConsultable={(row) => Boolean(row.CodeCmd)}
-            selectedRowId={selectedSummary?.ID_Commande || null}
-            onRowSelect={setSelectedSummary}
-            enableSelection
-            showControls
-            defaultPinnedColumns={["CodeFacture", "DateFacture"]}
-            defaultSortColumn="Reste"
-            defaultRowsPerPage={10}
-            columns={[
-              { key: "CodeCmd", label: "N° de bon", render: (row) => row.CodeCmd || "—" },
-              { key: "CodeFacture", label: "Code facture", render: (row) => row.CodeFacture || "-" },
-              { key: "DateFacture", label: "Date facture", render: (row) => formatDate(row.DateFacture) },
-              { key: "DateEcheancePaiement", label: "Echeance", render: (row) => formatDate(row.DateEcheancePaiement) },
-              { key: "NomClientSaisi", label: "Tiers", render: (row) => row.NomClientSaisi || "-" },
-              { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC,row.DeviseCode) },
-              { key: "TotalRegle", label: "Total regle", render: (row) => formatCurrency(row.TotalRegle,row.DeviseCode) },
-              {
-                key: "Reste",
-                label: "Reste",
-                render: (row) => <ToneBadge tone={compareDecimal(row.Reste,"0") === null ? "neutral" : compareDecimal(row.Reste,"0") === 1 ? "danger" : "success"}>{formatCurrency(row.Reste,row.DeviseCode)}</ToneBadge>,
-              },
-              { key: "NbReglements", label: "Nombre reglements", render: (row) => row.NbReglements ?? 0 },
-              { key: "DernierReglement", label: "Dernier reglement", render: (row) => formatDate(row.DernierReglement) },
-              { key: "JoursAvantEcheance", label: "Jours avant echeance", render: (row) => row.JoursAvantEcheance ?? "-" },
-              {
-                key: "EtatReglement",
-                label: "Etat reglement",
-                render: (row) => {
-                  const state = getReglementState(row);
-                  return <ToneBadge tone={state.tone}>{state.label}</ToneBadge>;
-                },
-              },
-              {
-                key: "Retard",
-                label: "Retard",
-                render: (row) => <ToneBadge tone={row.EstEnRetard ? "danger" : "success"}>{row.EstEnRetard ? "Oui" : "Non"}</ToneBadge>,
-              },
-            ]}
-          />
-      </section>
-
-      <SectionCard title="Historique des règlements" subtitle="Paiements rattachés aux factures.">
-        <SelectionStrip
-          selectedRow={selectedEntry}
-          label={selectedEntry ? `Ligne selectionnee: reglement #${selectedEntry.ID_Reglement}` : "Aucune ligne selectionnee"}
-          description={
-            selectedEntry
-              ? `${selectedEntry.CodeFactureFk || "-"} | ${formatCurrency(selectedEntry.MontantRegle,selectedEntry.DeviseCode)}`
-              : "Selectionnez une ecriture pour la consulter ou la modifier plus vite."
-          }
-          actions={
-            selectedEntry ? (
-              <button type="button" className="secondary-action" onClick={() => handleEditReglement(selectedEntry)}>
-                Modifier
-              </button>
-            ) : null
-          }
-        />
-
-        <TableToolbar
-          title="Règlements"
-          rows={entryRows}
-          columns={[
-            { key: "DateReglement", label: "Date", renderText: (row) => formatDate(row.DateReglement) },
-            { key: "CodeFactureFk", label: "Facture" },
-            { key: "ID_ClientFk", label: "Tiers", renderText: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || row.ID_ClientFk || "-" },
-            {
-              key: "ID_ModeReglementFk",
-              label: "Mode",
-              renderText: (row) => row.T_Generique?.NomGenerique || modeLabelMap.get(String(row.ID_ModeReglementFk)) || row.ID_ModeReglementFk,
-            },
-            { key: "MontantRegle", label: "Montant", renderText: (row) => formatCurrency(row.MontantRegle,row.DeviseCode) },
-          ]}
-          exportFilename="logistique-reglements.csv"
-        />
-
-        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucune ecriture de reglement disponible." />
-
-          <SimpleTable
-            rows={entryRows}
-            loading={loading}
-            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun règlement pour ces critères."}
-            selectedRowId={selectedEntry?.ID_Reglement || null}
-            onRowSelect={sharedTable?.setSelectedRow}
-            defaultPinnedColumns={["DateReglement", "CodeFactureFk"]}
-            defaultSortColumn="DateReglement"
-            exportFilename="logistique-reglements.csv"
-            columns={[
-              { key: "DateReglement", label: "Date", render: (row) => formatDate(row.DateReglement) },
-              { key: "CodeFactureFk", label: "Facture" },
-              {
-                key: "ID_ClientFk",
-                label: "Tiers",
-                render: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || (row.ID_ClientFk ? `#${row.ID_ClientFk}` : "-"),
-              },
-              {
-                key: "T_Generique",
-                label: "Mode",
-                render: (row) =>
-                  row.T_Generique?.NomGenerique ||
-                  modeLabelMap.get(String(row.ID_ModeReglementFk)) ||
-                  `#${row.ID_ModeReglementFk}`,
-              },
-              { key: "MontantRegle", label: "Montant", render: (row) => formatCurrency(row.MontantRegle,row.DeviseCode) },
-              {
-                key: "EtatPaiement",
-                label: "Etat",
-                render: (row) =>
-                  compareDecimal(summaryByFacture.get(String(row.CodeFactureFk || ""))?.Reste,"0") === 1 ? (
-                    <ToneBadge tone="warning">Impaye</ToneBadge>
-                  ) : (
-                    <ToneBadge tone="success">Paye</ToneBadge>
-                  ),
-              },
-              {
-                key: "actions",
-                label: "Actions",
-                render: (row) => (
-                  <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-                    <button type="button" className="secondary-action" onClick={() => sharedTable?.setSelectedRow?.(row)}>
-                      Voir
-                    </button>
-                    <button type="button" className="secondary-action" onClick={() => handleEditReglement(row)}>
-                      Modifier
-                    </button>
-                  </div>
-                ),
-              },
-            ]}
-          />
-      </SectionCard>
-
-      {selectedEntry ? (
-        <SectionCard title="Reglement selectionne" subtitle="Lecture detaillee de l'ecriture choisie.">
-          <div className="logistics-detail-grid">
-            <article>
-              <strong>{selectedEntry.CodeFactureFk}</strong>
-              <p>Montant: {formatCurrency(selectedEntry.MontantRegle,selectedEntry.DeviseCode)}</p>
-            </article>
-            <article>
-              <p>Date: {formatDate(selectedEntry.DateReglement)}</p>
-              <p>
-                Mode:{" "}
-                {selectedEntry.T_Generique?.NomGenerique ||
-                  modeLabelMap.get(String(selectedEntry.ID_ModeReglementFk)) ||
-                  `#${selectedEntry.ID_ModeReglementFk}`}
-              </p>
-              <p>Tiers: {clientLabelMap.get(String(selectedEntry.ID_ClientFk)) || (selectedEntry.ID_ClientFk ? `#${selectedEntry.ID_ClientFk}` : "-")}</p>
-              <p>
-                Etat:{" "}
-                {compareDecimal(summaryByFacture.get(String(selectedEntry.CodeFactureFk || ""))?.Reste,"0") === 1
-                  ? "Impaye"
-                  : "Paye"}
-              </p>
-            </article>
-          </div>
-        </SectionCard>
-      ) : null}
-
-      {editorMode ? (
-        <SectionCard
-          title={editorMode === "edit" ? "Modifier le reglement" : "Saisir un reglement"}
-          subtitle="Paiement rattaché à une facture."
-        >
-          <form className="admin-editor-form" onSubmit={handleSubmit}>
-            <div className="admin-editor-grid">
-              <SelectField
-                label="Code facture"
-                value={formValues.CodeFactureFk}
-                onChange={(event) => setFormValues((current) => ({ ...current, CodeFactureFk: event.target.value }))}
-                options={factureOptions}
-                allowEmpty={false}
-              />
-
-              <SelectField
-                label="Mode de reglement"
-                value={formValues.ID_ModeReglementFk}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, ID_ModeReglementFk: event.target.value }))
-                }
-                options={modeOptions}
-                allowEmpty={false}
-                disabled={modeOptions.length === 0}
-                helperText={buildReferenceHelperText("logistique.reglementModes", modeOptions)}
-              />
-
-              <SelectField
-                label="Tiers"
-                value={formValues.ID_ClientFk}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_ClientFk: event.target.value }))}
-                options={clientOptions}
-              />
-
-              <label className="admin-form-field">
-                <span>Date reglement</span>
-                <input
-                  type="date"
-                  value={formValues.DateReglement}
-                  onChange={(event) => setFormValues((current) => ({ ...current, DateReglement: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Montant réglé ({summaryByFacture.get(String(formValues.CodeFactureFk || ""))?.DeviseCode || selectedEntry?.DeviseCode || "devise de la facture"})</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formValues.MontantRegle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, MontantRegle: event.target.value }))}
-                  required
-                />
-              </label>
-            </div>
-
-            <div className="admin-editor-actions">
-              <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
-                Annuler
-              </button>
-              <button type="submit" className="primary-action" disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Enregistrer"}
-              </button>
-            </div>
-          </form>
-        </SectionCard>
-      ) : null}
-    </div>
-  );
+export function FinanceRegister({kind,enabled,references,contextKey,refreshKey,canWrite,canExport,invoiceTarget,clearInvoiceTarget,onSelectInvoice,onSelectInvoices,onNewPayment,onEditPayment,onViewPayment,onDeletePayment,onInvoice,openInvoice,openPayments,openOrder}){
+ const invoices=kind==="factures",filterId=useId(),columnsRef=useRef(null),exportRequest=useRef(null),previousContext=useRef(contextKey);
+ const [rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[reload,setReload]=useState(0);
+ const [search,setSearch]=useState(""),[filters,setFilters]=useState(INITIAL[kind]),[criteria,setCriteria]=useState({...INITIAL[kind],q:""}),[filtersOpen,setFiltersOpen]=useState(false),[filterError,setFilterError]=useState("");
+ const [grid,setGrid]=useState({take:25,skip:0,sortBy:invoices?"DateFacture":"DateReglement",sortDir:"desc"}),[selection,setSelection]=useState([]),[selectionReset,setSelectionReset]=useState(0),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS[kind]),[columnsOpen,setColumnsOpen]=useState(false),[indicators,setIndicators]=useState(false);
+ const [density,setDensity]=useState(()=>{try{return localStorage.getItem("sauverndeko.table.density")==="airy"?"airy":"compact";}catch{return "compact";}}),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
+ const blocked=!enabled||loading||Boolean(error),pending=search.trim()!==criteria.q||Object.keys(INITIAL[kind]).some(key=>filters[key]!==criteria[key]),activeFilters=Object.entries(criteria).filter(([key,value])=>key==="q"?Boolean(value):value!==INITIAL[kind][key]).length;
+ useEffect(()=>{try{localStorage.setItem("sauverndeko.table.density",density);}catch{}},[density]);
+ useEffect(()=>{if(invoices)return;const id=invoiceTarget?.ID_Commande!=null?String(invoiceTarget.ID_Commande):"";setFilters(current=>({...current,commandeId:id}));setCriteria(current=>({...current,commandeId:id}));setGrid(current=>({...current,skip:0}));},[invoiceTarget?.ID_Commande,invoices]);
+ useEffect(()=>{
+  if(previousContext.current===contextKey)return;previousContext.current=contextKey;setRows([]);setMeta(null);setSelection([]);setSelectionReset(value=>value+1);setSearch("");setFilters(INITIAL[kind]);setCriteria({...INITIAL[kind],q:""});setGrid(current=>({...current,skip:0}));
+ },[contextKey,kind]);
+ useEffect(()=>{
+  if(!enabled)return;let live=true;setLoading(true);setError("");
+  const query=new URLSearchParams({...criteria,...grid,timeZone:"Africa/Kinshasa"});
+  requestJson("/api/logistique/registre/"+kind+"?"+query,{requiresAuth:true}).then(response=>{if(!live)return;if(!response?.success){if([401,403].includes(response?.status)){setRows([]);setMeta(null);setSelection([]);setSelectionReset(value=>value+1);if(invoices){onSelectInvoice?.(null);onSelectInvoices?.([]);}}setError(response?.message||"La liste n’a pas pu être chargée.");setLoading(false);return;}setRows(asArrayPayload(response));setMeta(response.meta||null);setLoading(false);});
+  return()=>{live=false;};
+ },[kind,enabled,contextKey,criteria,grid,refreshKey,reload]);
+ useEffect(()=>{setExportError("");exportRequest.current?.abort();exportRequest.current=null;setExporting(false);return()=>exportRequest.current?.abort();},[criteria,grid.sortBy,grid.sortDir,enabled,contextKey]);
+ function changeGrid(patch){setGrid(current=>({...current,...patch}));}
+ function apply(){if(filters.dateFrom&&filters.dateTo&&filters.dateFrom>filters.dateTo||invoices&&filters.dueFrom&&filters.dueTo&&filters.dueFrom>filters.dueTo){setFilterError("La date de fin doit suivre la date de début.");return;}setCriteria({...filters,q:search.trim()});setFilterError("");changeGrid({skip:0});}
+ function reset(){setSearch("");setFilters(INITIAL[kind]);setCriteria({...INITIAL[kind],q:""});setFilterError("");changeGrid({skip:0});if(!invoices)clearInvoiceTarget?.();}
+ function removeFilter(key){if(key==="q")setSearch("");else setFilters(current=>({...current,[key]:INITIAL[kind][key]}));setCriteria(current=>({...current,[key]:key==="q"?"":INITIAL[kind][key]}));changeGrid({skip:0});if(key==="commandeId")clearInvoiceTarget?.();}
+ function preset(payment){setFilters(current=>({...current,payment}));setCriteria(current=>({...current,payment}));changeGrid({skip:0});}
+ const options={client:[{value:"",label:"Tous les tiers"},...buildReferenceOptions(references?.clients)],deviseId:[{value:"",label:"Toutes les devises"},...currencyOptions(references,true)],...(invoices?{payment:PAYMENTS,late:[{value:"all",label:"Tous"},{value:"true",label:"En retard"},{value:"false",label:"Sans retard"}]}:{modeId:[{value:"",label:"Tous les modes"},...buildReferenceOptions(references?.reglementModes)]})};
+ const dateKeys=invoices?["dateFrom","dateTo","dueFrom","dueTo"]:["dateFrom","dateTo"];
+ function labelFor(key,value){return options[key]?.find(option=>String(option.value)===String(value))?.label||(key==="commandeId"?invoiceTarget?.CodeFacture||"Bon sélectionné":dateKeys.includes(key)?value.split("-").reverse().join("/"):value);}
+ async function exportExcel(){
+  if(!canExport||blocked||pending||exporting||!meta?.filteredCount)return;const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
+  const query=new URLSearchParams({...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(visibleColumns.filter(key=>key!=="actions"))});
+  try{await downloadApiFile("/api/logistique/registre/"+kind+"/export.xlsx?"+query,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
+ }
+ function consult(row){if(blocked)return;if(invoices)openInvoice(row);else onViewPayment(row);}
+ const columns=invoices?[
+  {key:"CodeFacture",label:"Facture",width:190,render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="document" size={18}/></span><span className="erp-product-identity"><strong>{row.CodeFacture||"—"}</strong><small>{row.CodeCmd||""}</small></span></span>},
+  {key:"DateFacture",label:"Date de facture",width:175,render:row=>formatDate(row.DateFacture)},
+  {key:"CodeCmd",label:"Bon de stock",width:150},{key:"NomClientSaisi",label:"Tiers",width:200},
+  {key:"MontantFacture",label:"Montant facturé",width:175,align:"right",render:row=>formatCurrency(row.MontantFacture,row.DeviseCode)},
+  {key:"TotalRegle",label:"Réglé",width:155,align:"right",render:row=>formatCurrency(row.TotalRegle,row.DeviseCode)},
+  {key:"Reste",label:"Solde à régler",width:175,align:"right",render:row=>formatCurrency(row.Reste,row.DeviseCode)},
+  {key:"EtatReglement",label:"Paiement",width:170,render:row=><State value={row.EtatReglement}/>},
+  {key:"DateEcheancePaiement",label:"Échéance",width:175,render:row=>formatDate(row.DateEcheancePaiement)},
+  {key:"NbReglements",label:"Règlements",width:110,align:"right",render:row=>formatNumber(row.NbReglements)},
+  {key:"DernierReglement",label:"Dernier règlement",width:175,render:row=>formatDate(row.DernierReglement)},
+  {key:"MontantAvoirAEtablir",label:"Avoir à établir",width:170,align:"right",render:row=>formatCurrency(row.MontantAvoirAEtablir,row.DeviseCode)},
+  {key:"DeviseCode",label:"Devise",width:100},
+  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu label={row.CodeFacture||"Facture"} items={[{label:"Consulter la facture",icon:"eye",disabled:blocked,onSelect:()=>openInvoice(row)},{label:"Voir les règlements",icon:"wallet",disabled:blocked,onSelect:()=>openPayments(row)},{label:"Enregistrer un règlement",icon:"plus",disabled:blocked||!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>onNewPayment(row)},...(meta?.features?.invoices===true?[{label:"Modifier la facture",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onInvoice(row)}]:[]),{label:"Bon d’origine",icon:"receipt",disabled:blocked,onSelect:()=>openOrder(row)}]}/>},
+ ]:[
+  {key:"DateReglement",label:"Date et heure",width:185,render:row=>formatDate(row.DateReglement)},
+  {key:"CodeFactureFk",label:"Facture",width:170,render:row=><button type="button" className="erp-object-link" disabled={blocked||!row.ID_Commande} onClick={event=>{event.stopPropagation();openInvoice(row);}}>{row.CodeFactureFk||"—"}</button>},
+  {key:"CodeCmd",label:"Bon de stock",width:150},{key:"NomClientSaisi",label:"Tiers",width:210},{key:"ModeReglement",label:"Mode de règlement",width:180},
+  {key:"MontantRegle",label:"Montant réglé",width:185,align:"right",render:row=>formatCurrency(row.MontantRegle,row.DeviseCode)},{key:"DeviseCode",label:"Devise",width:100},
+  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu label={"Règlement du "+formatDate(row.DateReglement)} items={[{label:"Consulter",icon:"eye",disabled:blocked,onSelect:()=>onViewPayment(row)},{label:"Modifier",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onEditPayment(row)},{label:"Consulter la facture",icon:"document",disabled:blocked||!row.ID_Commande,onSelect:()=>openInvoice(row)},{label:"Supprimer",icon:"trash",danger:true,disabled:blocked||!canWrite,onSelect:()=>onDeletePayment(row)}]}/>},
+ ];
+ const amountLabels=invoices?{MontantFacture:"Facturé",TotalRegle:"Réglé",Reste:"Solde à régler",MontantAvoirAEtablir:"Avoir à établir"}:{MontantRegle:"Montant réglé"};
+ return <div className="erp-register-table erp-results finance-register" data-density={density} aria-busy={loading}>
+  {invoices?<nav className="finance-presets" aria-label="État des factures">{PAYMENTS.map(item=><button key={item.value} type="button" aria-pressed={criteria.payment===item.value} onClick={()=>preset(item.value)}>{item.label}</button>)}</nav>:null}
+  {selection.length?<div className="erp-register-selection"><strong>{selection.length===1?(invoices?selection[0].CodeFacture:selection[0].CodeFactureFk):selection.length+" éléments sélectionnés"}</strong>{selection.length===1?<ActionButton icon="eye" disabled={blocked} onClick={()=>consult(selection[0])}>Consulter</ActionButton>:null}<ActionButton icon="download" disabled={!canExport||blocked} onClick={()=>{if(canExport&&!blocked)exportRowsToCsv((invoices?"Factures":"Reglements")+"_selection.csv",columns.filter(column=>column.key!=="actions"),selection);}}>CSV · sélection</ActionButton><ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={()=>{setSelection([]);setSelectionReset(value=>value+1);if(invoices){onSelectInvoice?.(null);onSelectInvoices?.([]);}}}/></div>:null}
+  {error?<div className="erp-table-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={()=>setReload(value=>value+1)} disabled={loading}>Réessayer</ActionButton></div>:null}
+  <SimpleTable rows={rows} columns={columns} getRowId={row=>invoices?row.ID_Commande:row.ID_Reglement} enableSelection onSelectionChange={next=>{if(blocked)return;setSelection(next);if(invoices){onSelectInvoice?.(next.length===1?next[0]:null);onSelectInvoices?.(next);}}} selectionResetKey={selectionReset} defaultVisibleColumns={DEFAULT_COLUMNS[kind]} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} loading={loading} emptyMessage={invoices?"Aucune facture pour ces critères.":"Aucun règlement pour ces critères."} onRowConsult={consult} consultColumns={invoices?["CodeFacture"]:["DateReglement"]} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} toolbar={<>
+   <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={filterId} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsRef} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} exportFile={exportExcel} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount} error={exportError} placeholder={invoices?"Rechercher une facture, un bon ou un tiers…":"Rechercher une facture, un tiers ou un paiement…"}/>
+   {filtersOpen?<form id={filterId} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">{Object.entries(options).map(([key,choices])=><div className="finance-filter" key={key}><label htmlFor={filterId+key}>{LABELS[key]}</label><SearchSelect id={filterId+key} label={LABELS[key]} value={filters[key]} options={choices} onChange={value=>setFilters(current=>({...current,[key]:value}))}/></div>)}{dateKeys.map(key=><label key={key}><span>{LABELS[key]}</span><input type="date" value={filters[key]} onChange={event=>setFilters(current=>({...current,[key]:event.target.value}))}/></label>)}</div>{filterError?<p className="erp-table-error" role="alert">{filterError}</p>:null}<div className="erp-register-filters-footer"><ActionButton type="submit" variant="primary" disabled={loading}>Appliquer</ActionButton></div></form>:null}
+   {activeFilters?<div className="erp-register-chips">{Object.entries(criteria).filter(([key,value])=>key==="q"?Boolean(value):value!==INITIAL[kind][key]).map(([key,value])=><span className="erp-register-chip" key={key}>{LABELS[key]} : {labelFor(key,value)}<button type="button" aria-label={"Retirer le filtre "+LABELS[key]} onClick={()=>removeFilter(key)}><AppIcon name="close" size={12}/></button></span>)}</div>:null}
+  </>}/>
+  {meta?.amountsByCurrency?<div className="finance-indicators"><button type="button" className="erp-object-link" aria-expanded={indicators} onClick={()=>setIndicators(value=>!value)}><AppIcon name={indicators?"chevron-up":"chevron-down"} size={13}/>{indicators?"Masquer les indicateurs":"Afficher les indicateurs"}</button>{indicators?<div className="finance-amounts">{Object.entries(amountLabels).map(([key,label])=><section key={key}><h3>{label}</h3>{Array.isArray(meta.amountsByCurrency[key])&&meta.amountsByCurrency[key].length?meta.amountsByCurrency[key].map((group,index)=><strong key={String(group.id??group.code??index)}>{formatCurrency(group.value,group.code)}</strong>):<span>Aucun montant.</span>}</section>)}</div>:null}</div>:null}
+ </div>;
 }

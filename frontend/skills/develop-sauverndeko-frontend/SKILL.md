@@ -42,7 +42,7 @@ React présente les données autorisées et pilote les interactions. Les mesures
 
 - Le code/nom d’un objet et son bouton Consulter ouvrent la même fiche 360 depuis liste, recherche ou détail lié.
 - Une valeur d’indicateur ayant un détail ouvre cette population exacte, ou son registre avec un filtre visible et effaçable. La carte et le lien de détail partagent le même contrat.
-- ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Les fiches Facture/Règlement et Tiers dédiées restent à construire.
+- ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Une facture ouvre directement la rubrique Facturation de Bon de stock 360 ; ReglementEditor fournit la consultation et le formulaire commun des paiements. La fiche Tiers dédiée reste à construire.
 - Toute fenêtre latérale métier de ce type utilise DrawerDialog et propose les commandes communes Réduire, Élargir, Rétablir la largeur et Fermer, avec les mêmes icônes. Conserver poignée, clavier, adaptation mobile et retour au contexte, conformément à la référence. Cette règle couvre aussi les réglages, pas seulement les consultations 360.
 - La consultation charge uniquement l’objet sélectionné, puis ses rubriques à la demande si volumineuses. Ne pas lancer une requête 360 pour chaque ligne du tableau.
 
@@ -63,7 +63,7 @@ React présente les données autorisées et pilote les interactions. Les mesures
 
 ## Navigation logistique livrée
 
-Conserver la colonne de gauche sur toute la hauteur : logo, menus à icônes regroupés en Pilotage/Stocks/Finances, rubrique active visible, retour aux applications, repli sur ordinateur et rail compact sur mobile. Le propriétaire demande le parcours Numérique–M-PESA : blocs Articles/Bons de stock/Factures/Alertes avec mini-indicateurs compacts (éviter les grandes tuiles), clic sur un KPI, détail dans une liste sous la synthèse, recherche validée, pagination serveur, puis Revenir à l’indicateur ou fermeture avec défilement/focus au déclencheur. Une fiche 360 consulte uniquement un enregistrement précis depuis ce détail ou un autre onglet.
+Conserver la colonne de gauche sur toute la hauteur : logo, menus à icônes regroupés en Pilotage/Stocks/Finances, rubrique active visible, deux entrées Finances distinctes Factures et Règlements, retour aux applications, repli sur ordinateur et rail compact sur mobile. Le propriétaire demande le parcours Numérique–M-PESA : blocs Articles/Bons de stock/Factures/Alertes avec mini-indicateurs compacts (éviter les grandes tuiles), clic sur un KPI, détail dans une liste sous la synthèse, recherche validée, pagination serveur, puis Revenir à l’indicateur ou fermeture avec défilement/focus au déclencheur. Une fiche 360 consulte uniquement un enregistrement précis depuis ce détail ou un autre onglet.
 
 Lire [la terminologie du stock](references/terminologie-stock.md) pour les noms de menus, documents, tiers et mouvements. Les noms techniques T_Commande et /commandes restent internes.
 
@@ -71,7 +71,7 @@ Lire [la terminologie du stock](references/terminologie-stock.md) pour les noms 
 
 TailAdmin React est la référence visuelle demandée par le propriétaire pour le login, Vos applications et les modules. Conserver les principes d’interaction d’imf_BB : indicateurs vers liste intégrée, puis fiche 360 d’un enregistrement. Préserver la marque SauverNdeko, les mini-indicateurs compacts, le menu bleu ardoise et les styles partagés. Lire la référence visuelle avant une évolution de présentation.
 
-La charte commune couvre Connexion, Vos applications, Découvrir les applications, Licences et applications, Tableau de bord logistique, Articles, Dossiers de suivi, Bons de stock, Lignes des bons et les consultations 360. Les futurs écrans reprennent leurs composants, tokens, états et interactions ; éviter une variante de présentation propre à chaque onglet.
+La charte commune couvre Connexion, Vos applications, Découvrir les applications, Licences et applications, Tableau de bord logistique, Articles, Dossiers de suivi, Bons de stock, Lignes des bons, Mouvements de stock, Factures et règlements et les consultations 360. Les futurs écrans reprennent leurs composants, tokens, états et interactions ; éviter une variante de présentation propre à chaque onglet.
 
 Les sous-onglets de consultation utilisent [ConsultationTabs](../../src/components/ConsultationTabs.jsx), partagé entre profil et fiches métier : barre compacte, icônes communes, onglet actif visible et navigation au clavier. La modernité comprend le contenu lié à l’objet sélectionné, le chargement à la demande et la conservation du contexte, au-delà du seul style. Voir les [références et le contrat des onglets](references/design-reference.md#sous-onglets-de-consultation).
 

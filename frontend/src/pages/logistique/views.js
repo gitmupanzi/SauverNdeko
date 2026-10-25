@@ -150,10 +150,19 @@ const LOGISTIQUE_VIEWS = [
     accessMode: "Lecture seule",
   },
   {
-    key: "reglements",
+    key: "factures",
     schema: SCHEMA_NAME,
     name: "V_SuiviReglements",
-    title: "Suivi des reglements",
+    title: "Factures",
+    description: "Factures émises, soldes et échéances.",
+    group: "pilotage",
+    accessMode: "Consultation et facturation",
+  },
+  {
+    key: "reglements",
+    schema: SCHEMA_NAME,
+    name: "V_Reglements",
+    title: "Règlements",
     description: "Suit les ecritures de reglement et le reste a payer par facture.",
     group: "pilotage",
     accessMode: "CRUD disponible",
@@ -291,6 +300,15 @@ const LOGISTIQUE_TABLE_FEATURES = {
       },
       { field: "ID_ArticleFk", label: "Article", source: "logistique.T_Article via V_Mouvement", kind: "direct" },
       { field: "ID_cmdFk", label: "Bon de stock", source: "logistique.T_Commande via V_Mouvement", kind: "direct" },
+    ],
+  },
+  factures: {
+    searchLabel: "Recherche facture",
+    toolbarTitle: "Factures",
+    fkMappings: [
+      {field: "ID_Commande", label: "Bon de stock", source: "logistique.T_Commande", kind: "direct"},
+      {field: "ID_ModePaiementFk", label: "Mode de paiement", sourceKey: "logistique.commandeModesPaiement", source: "referentiel.T_Generique", kind: "generic"},
+      {field: "ID_ConditionPaiementFk", label: "Condition de paiement", sourceKey: "logistique.commandeConditionPaiements", source: "referentiel.T_Generique", kind: "generic"},
     ],
   },
   reglements: {

@@ -8,7 +8,7 @@ MONETARY_KEYS = {"montantBons", "montantTotalFacture", "montantTotalRegle", "mon
 AMOUNT_FIELDS = {
     "PUArticle", "PVArticle", "ValeurStockAchat", "MargeUnitaire", "MontantHT", "MontantTTC",
     "MontantRegleFacture", "MontantResteFacture", "TotalRegleReel", "ResteReel", "PUCmdDetail",
-    "MontantLigne", "PUMvt", "MontantMvt", "ValeurConsoMensuelle", "MontantRegle", "TotalRegle", "Reste",
+    "MontantLigne", "PUMvt", "MontantMvt", "MontantMvtSigned", "ValeurConsoMensuelle", "MontantRegle", "TotalRegle", "Reste",
 }
 
 

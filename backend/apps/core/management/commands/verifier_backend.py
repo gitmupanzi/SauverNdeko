@@ -69,6 +69,7 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1"])
+            urls.extend("/api/logistique/registre/"+kind+"?take=1" for kind in ("mouvements","factures","reglements"))
             urls.append("/api/logistique/registre/articles?contexte=composition&take=1")
             urls.append("/api/logistique/dossiers-suivi")
             urls.extend("/api/logistique/dossiers-suivi/"+folder["key"]+"?take=1" for folder in AUTOMATIC)
@@ -91,10 +92,16 @@ class Command(BaseCommand):
                 platform_order = cursor.fetchone()
                 cursor.execute('SELECT "ID_CmdFk","ID_ArticleFk" FROM logistique."T_CommandeDetail" ORDER BY "ID_CmdFk","ID_ArticleFk" LIMIT 1')
                 sample_line = cursor.fetchone()
+                cursor.execute('SELECT "ID_Commande" FROM logistique."T_Commande" WHERE NULLIF(btrim("CodeFacture"),\'\') IS NOT NULL ORDER BY "ID_Commande" LIMIT 1')
+                sample_invoice=cursor.fetchone()
+                cursor.execute('SELECT "ID_Reglement" FROM logistique."T_Reglements" ORDER BY "ID_Reglement" LIMIT 1')
+                sample_payment=cursor.fetchone()
             if sample_order:urls.append("/api/logistique/commandes/"+str(sample_order[0]))
             if platform_order:
                 for suffix in ("composition","retours","facture"):
                     urls.append("/api/logistique/commandes/"+str(platform_order[0])+"/"+suffix)
+            if sample_invoice:urls.append("/api/logistique/reglements/preparation?commandeId="+str(sample_invoice[0]))
+            if sample_payment:urls.append("/api/logistique/reglements/"+str(sample_payment[0]))
             if sample_line:urls.append("/api/logistique/commande-details/"+str(sample_line[0])+"/"+str(sample_line[1]))
             results = []
             with override_settings(
@@ -139,6 +146,10 @@ class Command(BaseCommand):
                     "/api/logistique/synthese",
                     "/api/logistique/registre/articles?take=1",
                     "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1",
+                    "/api/logistique/registre/mouvements?take=1",
+                    "/api/logistique/registre/factures?take=1",
+                    "/api/logistique/registre/reglements?take=1",
+                    "/api/logistique/reglements/preparation?commandeId=1",
                     "/api/logistique/dossiers-suivi",
                     "/api/logistique/articles",
                     "/api/logistique/articles/1/receptions",

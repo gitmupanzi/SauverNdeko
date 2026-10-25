@@ -361,6 +361,10 @@ def audit(obj, operation, old=None, new=None, actor=None):
 @transaction.atomic
 def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     db.ensure_writable()
+    if name=="T_Reglements":
+        if hard and not actor.global_admin:raise APIError("Suppression définitive réservée à un administrateur global.","GLOBAL_ADMIN_REQUIRED",403)
+        from apps.logistique.payments import mutate_payment
+        return mutate_payment(actor,body,keys,operation)
     obj = model(name)
     check_global_write(obj, actor)
     if name in READONLY:

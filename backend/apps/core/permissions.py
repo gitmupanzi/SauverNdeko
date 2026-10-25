@@ -66,11 +66,11 @@ def scope_for(obj, actor, alias="v"):
             values.append(org)
         if cmd:
             clauses.append(
-                f'EXISTS (SELECT 1 FROM logistique."T_Commande" own_c JOIN systeme."T_Utilisateurs" own_u ON own_u."IdUser"=own_c."ID_UserFk" WHERE own_c."ID_Commande"={a}."{cmd}" AND own_u."IdEntiteFk"=%s)'
+                (f'{a}."{cmd}" IS NULL OR ' if name in {"T_Mouvement","V_Mouvement","V_MouvementStock"} else "")+f'EXISTS (SELECT 1 FROM logistique."T_Commande" own_c JOIN systeme."T_Utilisateurs" own_u ON own_u."IdUser"=own_c."ID_UserFk" WHERE own_c."ID_Commande"={a}."{cmd}" AND own_u."IdEntiteFk"=%s)'
             )
             values.append(org)
         if clauses:
-            return " AND ".join(clauses), values
+            return " AND ".join("("+clause+")" for clause in clauses), values
         if "CodeFactureFk" in columns:
             return (
                 f'EXISTS (SELECT 1 FROM logistique."T_Commande" own_c JOIN systeme."T_Utilisateurs" own_u ON own_u."IdUser"=own_c."ID_UserFk" WHERE own_c."CodeFacture"={a}."CodeFactureFk" AND own_u."IdEntiteFk"=%s)',

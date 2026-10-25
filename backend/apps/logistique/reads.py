@@ -52,7 +52,7 @@ def params_only(raw):
     return {key: value for key, value in raw.items() if key in QUERY_KEYS and value not in (None, "")}
 
 def row_source(obj):
-    return db.qualified(obj["schema"], obj["name"]) + " v"
+    return obj.get("_row_source") or db.qualified(obj["schema"], obj["name"]) + " v"
 
 def source_for_indicator(key, name):
     obj = view("logistique", name)
@@ -70,21 +70,15 @@ def read_predicate(obj, actor, raw=None, fixed_filters=None):
             WHERE composition_owner."IdUser"=v."ID_UserFK"
             AND composition_owner."IdEntiteFk" IS NOT DISTINCT FROM %s)'''
         values.append(actor.organisation)
-    dates = {}
-    for key, value in period.items():
-        try:
-            dates[key] = date.fromisoformat(value)
-        except (ValueError, TypeError):
-            raise APIError("Date de filtre invalide.")
-    if dates.get("dateFrom") and dates.get("dateTo") and dates["dateFrom"] > dates["dateTo"]:
-        raise APIError("La date de fin doit suivre la date de début.")
-    columns = {col["column_name"] for col in obj["columns"]}
-    field = obj.get("_date_field") or next((key for key in ["DateMvt", "DateCmd", "DateReglement", "DateFacture", "Mois"] if key in columns), None)
-    if field and field in columns:
-        for key, operator in [("dateFrom", ">="), ("dateTo", "<")]:
-            if key in dates:
-                where += " AND v." + db.ident(field) + operator + ("%s::date + INTERVAL '1 day'" if key == "dateTo" else "%s::date")
-                values.append(dates[key])
+    from .ledger_registers import period_clause
+    columns = {col['column_name'] for col in obj['columns']}
+    field=obj.get('_date_field') or next((key for key in ['DateMvt','DateCmd','DateReglement','DateFacture','Mois'] if key in columns),None)
+    if field:
+        clause,bind=period_clause(obj,field,period.get('dateFrom'),period.get('dateTo'),raw or {})
+        if clause:where+=' AND '+clause;values.extend(bind)
+    if obj.get('_extra_period'):
+        field,begin,end=obj['_extra_period'];clause,bind=period_clause(obj,field,begin,end,raw or {})
+        if clause:where+=' AND '+clause;values.extend(bind)
     return where, values
 
 def read_scope(obj, actor, raw=None, condition="TRUE", fixed_filters=None, population_query=None):
@@ -109,7 +103,7 @@ def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popula
     columns = [col["column_name"] for col in obj["columns"]]
     source = row_source(obj)
     scope, scope_values = read_predicate(obj, actor, {}) if obj.get("_composition_scope") else scope_for(obj, actor)
-    total = db.one("SELECT COUNT(*) AS n FROM " + source + " WHERE " + scope, scope_values)["n"]
+    total = db.one("SELECT COUNT(*) AS n FROM " + source + " WHERE (" + scope + ") AND ("+obj.get("_base_condition","TRUE")+")", scope_values)["n"]
     count = db.one("SELECT COUNT(*) AS n FROM " + source + " WHERE " + where, values)["n"]
     rows = db.query("SELECT v.* FROM " + source + " WHERE " + where + " ORDER BY " + order + " LIMIT %s OFFSET %s", [*values,take,skip])
     return clean(rows), {"columns":columns, "columnTypes":{col["column_name"]:col["data_type"] for col in obj["columns"]}, "totalCount":total, "filteredCount":count, "count":len(rows), "take":take, "skip":skip, "sortBy":sort, "sortDir":direction, "columnFilters":applied}, (where,values)
@@ -174,6 +168,8 @@ def overview(actor, raw):
     return {"totals": totals, "amountsByCurrency": grouped, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
+    from .ledger_registers import KINDS, register_source as ledger_source
+    if kind in KINDS:return ledger_source(kind,raw,for_export)
     if kind not in {"articles", "commandes", "lignes"}:
         raise APIError("Registre introuvable.", "NOT_FOUND", 404)
     unknown = set(raw) - (BASE_QUERY_KEYS | ({"contexte"} if kind == "articles" else set()) | ({"commandeId","articleId","etat"} if kind == "lignes" else set()) | ({"columns"} if for_export else set()))
@@ -230,6 +226,9 @@ def register(actor, kind, raw):
     obj, condition, filters = register_source(kind, raw)
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
+    if kind in {"mouvements","factures","reglements"}:
+        from .ledger_registers import annotate_metadata
+        return rows,annotate_metadata(kind,obj,actor,raw,where,values,meta)
     if kind == "commandes":
         from .stock_returns import annotate_return_context
         rows=annotate_return_context(rows,actor)

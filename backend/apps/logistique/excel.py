@@ -14,6 +14,7 @@ from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 from apps.core import db
 from apps.core.permissions import IsERPAdmin
+from apps.core.module_access import require_module
 from apps.core.responses import APIError, ExactJSONRenderer, ExactEncoder
 from .reads import resolve_indicator, register_source, read_scope, row_source
 from .table_queries import LABELS, NUMERIC, DATES, document_zone
@@ -23,10 +24,12 @@ ROOT = Path(settings.BASE_DIR).parent
 ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
 MAX_EXPORT_ROWS = 100000
 DEFAULT_FIELDS = {
+    "V_Mouvement":["DateMvt","CodeArticleInterne","NomArticle","AbrUnite","NomTypeMvt","CodeCmd","RefArticle","CategorieArticle","TypeArticle","StockActuel","QteMvt","QteMvtSigned","PUMvt","MontantMvt","MontantMvtSigned","OrigineMouvement"],
+    "V_Reglements":["CodeFactureFk","CodeCmd","DateReglement","NomClientSaisi","ModeReglement","MontantRegle"],
     "V_Article":["CodeArticleInterne","NomArticle","TypeArticle","CategorieArticle","Unite","QteArticle","QteMinArticle","PUArticle","PVArticle","DatePeremptionArticle","EtatStock","EtatPeremption"],
     "V_CommandeDetail":["CodeCmd","DateCmd","TypeCmd","StatutCmd","CodeArticleInterne","NomArticle","QteCmdDetail","AbrUnite","PUCmdDetail","MontantLigne","EtatLigne"],
     "V_Commande":["CodeCmd","RefCmd","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","MontantHT","MontantTTC","MontantFacture","CodeFacture","DateFacture","MontantRegleFacture","MontantResteFacture","EtatPaiement"],
-    "V_SuiviReglements":["CodeFacture","CodeCmd","DateFacture","DateEcheancePaiement","NomClientSaisi","MontantTTC","TotalRegle","Reste","EtatReglement"],
+    "V_SuiviReglements":["CodeFacture","CodeCmd","DateFacture","DateEcheancePaiement","NomClientSaisi","MontantFacture","MontantBon","TotalRegle","Reste","EtatReglement"],
     "V_AuditStock":["NomArticle","StockArticle","StockMouvements","Ecart","EtatAuditStock"],
     "V_CouvertureStock":["NomArticle","StockActuel","ConsoMoyMensuelle","CouvertureMois","EtatCouverture"],
 }
@@ -47,7 +50,7 @@ def export_columns(obj, raw):
         raise APIError("Colonne d’export non autorisée.")
     wanted = list(wanted)
     # Les quantités restent numériques ; leur unité accompagne le tableau exporté.
-    quantities = {"QteArticle","QteMinArticle","QteACommander","StockActuel","StockArticle","StockMouvements","ConsoMensuelle","ConsoMoyMensuelle","QteCmdDetail","QteMvtSigned"}
+    quantities = {"QteArticle","QteMinArticle","QteACommander","StockActuel","StockArticle","StockMouvements","ConsoMensuelle","ConsoMoyMensuelle","QteCmdDetail","QteMvt","QteMvtSigned"}
     if quantities.intersection(wanted) and not {"Unite","AbrUnite"}.intersection(wanted):
         unit = next((key for key in ("Unite","AbrUnite") if key in available),None)
         if unit:
@@ -152,7 +155,7 @@ def write_workbook(target, columns, rows, context):
             for label,value in [("Type de dossier",context["folder"]["objectType"]),("Alimentation",context["folder"]["mode"]),("Critères du dossier",json.dumps(context["folder"]["rules"],ensure_ascii=False))]:
                 records.append((label,value))
         raw = context["raw"]
-        for key,label in {"deviseId":"Devise · identifiant","categorieId":"Catégorie · identifiant","typeId":"Type · identifiant","uniteId":"Unité · identifiant","statut":"Article actif","stockState":"État du stock","peremption":"Péremption","statutId":"Statut · identifiant","client":"Tiers · identifiant","sansDetails":"Sans lignes","payment":"Paiement","control":"Contrôle"}.items():
+        for key,label in {"deviseId":"Devise · identifiant","categorieId":"Catégorie · identifiant","typeId":"Type · identifiant","uniteId":"Unité · identifiant","statut":"Article actif","stockState":"État du stock","peremption":"Péremption","statutId":"Statut · identifiant","client":"Tiers · identifiant","sansDetails":"Sans lignes","payment":"Paiement","control":"Contrôle","articleId":"Article · identifiant","articleTypeId":"Type d’article · identifiant","commandeId":"Bon · identifiant","modeId":"Mode de règlement · identifiant","codeFacture":"Facture","origine":"Origine du mouvement","sens":"Sens du mouvement","late":"Retard de paiement","dueFrom":"Échéance du","dueTo":"Échéance au"}.items():
             if raw.get(key) not in (None,"","all"):
                 records.append(("Critère · "+label,str(raw[key])))
         if precise_text:
@@ -181,10 +184,11 @@ def indicator_workbook(actor, key, raw):
 def register_workbook(actor, kind, raw):
     obj,condition,fixed = register_source(kind,raw,for_export=True)
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
-    label = {"articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock"}[kind]
+    label = {"articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label)
 
 def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label):
+    require_module(actor,"logistique","export")
     folder_context = label if isinstance(label,dict) else None
     if folder_context: label=folder_context["title"]
     fields = export_columns(obj,raw)

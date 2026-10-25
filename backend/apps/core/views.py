@@ -85,6 +85,9 @@ class ModuleView(APIView):
                 if obj["primaryKey"][0] in {c["column_name"] for c in source["columns"]}
                 else obj
             )
+            if obj["name"]=="T_Reglements":
+                from apps.logistique.payments import get_payment
+                data,meta=get_payment(request.user,positive(pk));response=ok(data,meta=meta);response["ETag"]='"'+meta["revision"]+'"';return response
             if obj["name"] == "T_Commande":
                 from apps.logistique.document_rules import editable_record
                 record = editable_record(obj,source,request.user,{obj["primaryKey"][0]:positive(pk)})
@@ -106,7 +109,8 @@ class ModuleView(APIView):
             from apps.logistique.photos import request_data, save_article
             body, photo = request_data(request)
             return ok(save_article(request.user, body, photo), status=201)
-        return ok(mutate(obj["name"], request.user, request.data), status=201)
+        result=mutate(obj["name"],request.user,request.data)
+        return ok(result,status=200 if obj["name"]=="T_Reglements" and result.get("replayed") else 201)
 
     def put(self, request, module=None, model_name=None, pk=None):
         obj, _ = self.objects(module, model_name)
@@ -136,7 +140,7 @@ class ModuleView(APIView):
             mutate(
                 obj["name"],
                 request.user,
-                body=request.data if obj["name"] in {"T_Article","T_Commande"} else None,
+                body=request.data if obj["name"] in {"T_Article","T_Commande","T_Reglements"} else None,
                 keys={obj["primaryKey"][0]: positive(pk)},
                 operation="delete",
                 hard=request.query_params.get("mode") == "hard",

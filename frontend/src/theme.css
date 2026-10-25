@@ -62,3 +62,8 @@ html[data-theme]:not([data-theme="light"]) .consult-record-heading > span { colo
 :root{--erp-danger:#b8324b;}
 :root[data-theme="dark"]{--erp-danger:#ff9aaf;}
 :root[data-theme="contrast"]{--erp-danger:#ffb3bf;}
+
+/* Messages des registres : contraste lisible et densité commune. */
+.logistics-screen .profile-feedback{padding:12px 16px;border-radius:10px;box-shadow:none;font-size:13px;margin-bottom:16px;}
+.logistics-screen .profile-feedback.is-success{color:var(--erp-on-mint);background:var(--erp-mint);border:1px solid var(--erp-border);}
+.logistics-screen .profile-feedback.is-error{color:var(--erp-danger);background:var(--erp-surface);border:1px solid var(--erp-danger);}
