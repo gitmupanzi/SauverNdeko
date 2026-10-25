@@ -145,7 +145,7 @@ def profile(actor):
         ]
     }
     result["canAccessAdmin"] = actor.admin
-    result["permissions"] = {"canAccessAdmin": actor.admin}
+    result["permissions"] = {"canAccessAdmin": actor.admin, "canWriteData": not settings.DB_READ_ONLY}
     result["role"] = (
         {
             "id": row.get("IdRoleFk"),

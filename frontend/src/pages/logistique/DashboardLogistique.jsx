@@ -1,677 +1,154 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  asArrayPayload,
-  buildReferenceOptions,
-  exportRowsToCsv,
-  formatCurrency,
-  formatDate,
-  formatNumber,
-  LoadingErrorEmpty,
-  ToneBadge,
-} from "./logistiqueShared";
-import { getLogistiqueViewConfig } from "./views";
+import AppIcon from "../../components/AppIcon";
+import ActionButton from "../../components/ActionButton";
+import "./DashboardLogistique.css";
+import { useEffect, useRef, useState } from "react";
+import { requestJson } from "../../services/api";
+import { IndicatorDetails } from "../../components/ConsultationProvider";
+import { formatNumber, formatDate } from "./logistiqueShared";
 
-const DASHBOARD_VIEW_CONFIG = getLogistiqueViewConfig("dashboard");
-const AUDIT_VIEW_CONFIG = getLogistiqueViewConfig("audit");
-const ALERTES_VIEW_CONFIG = getLogistiqueViewConfig("alertes");
-const CONSOMMATION_VIEW_CONFIG = getLogistiqueViewConfig("consommation");
-const COUVERTURE_VIEW_CONFIG = getLogistiqueViewConfig("couverture");
-
-function formatPercent(value) {
-  return `${formatNumber(Number(value || 0).toFixed(1))} %`;
+function periodDates(key) {
+  const today = new Date();
+  const year = today.getFullYear(), month = today.getMonth();
+  const iso = date => [date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
+  if (key === "all") return { dateFrom:"",dateTo:"" };
+  const from = new Date(year,key === "year" ? 0 : key === "quarter" ? Math.floor(month/3)*3 : month,1);
+  const to = new Date(year,key === "year" ? 12 : key === "quarter" ? Math.floor(month/3)*3+3 : month+1,0);
+  return { dateFrom:iso(from),dateTo:iso(to) };
+}
+function IndicatorBlock({ id, title, icon, scope, children }) {
+  const [open, setOpen] = useState(true);
+  return <section className="erp-indicator-block" aria-labelledby={id + "-title"}>
+    <header className="erp-block-header"><h2 id={id + "-title"}><span className="erp-block-icon"><AppIcon name={icon} size={18} /></span>{title}{scope ? <span className="erp-block-scope">{scope}</span> : null}</h2><button type="button" aria-expanded={open} aria-controls={id + "-body"} onClick={() => setOpen((current) => !current)} aria-label={(open ? "Masquer " : "Afficher ") + title} title={open ? "Masquer" : "Afficher"}><AppIcon name={open ? "chevron-up" : "chevron-down"} /></button></header>
+    <div id={id + "-body"} className="erp-block-body" hidden={!open}>{children}</div>
+  </section>;
 }
 
-function formatShortCurrency(value) {
-  const numericValue = Number(value || 0);
-
-  if (Math.abs(numericValue) >= 1000000) {
-    return `${formatNumber((numericValue / 1000000).toFixed(1))}M`;
-  }
-
-  if (Math.abs(numericValue) >= 1000) {
-    return `${formatNumber((numericValue / 1000).toFixed(0))}k`;
-  }
-
-  return formatNumber(numericValue);
-}
-
-function normalizeText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function getAuditTone(row) {
-  return Number(row?.Ecart || 0) === 0 ? "success" : Number(row?.Ecart || 0) > 0 ? "warning" : "danger";
-}
-
-function getAlertStockTone(row) {
-  if (row?.EstRupture) {
-    return "danger";
-  }
-
-  if (row?.EstAlerteStock) {
-    return "warning";
-  }
-
-  return "info";
-}
-
-function getExpirationTone(row) {
-  if (row?.EstPerime) {
-    return "danger";
-  }
-
-  if (row?.EstAlertePeremption) {
-    return "warning";
-  }
-
-  return "success";
-}
-
-function getPaymentTone(label) {
-  const normalized = normalizeText(label);
-
-  if (normalized.includes("part")) {
-    return "warning";
-  }
-
-  if (normalized.includes("non")) {
-    return "danger";
-  }
-
-  if (normalized.includes("regl")) {
-    return "success";
-  }
-
-  return "info";
-}
-
-function getControlTone(label) {
-  const normalized = normalizeText(label);
-
-  if (normalized.includes("sans")) {
-    return "warning";
-  }
-
-  if (normalized.includes("incoher")) {
-    return "danger";
-  }
-
-  if (normalized.includes("coher")) {
-    return "success";
-  }
-
-  return "info";
-}
-
-function getCoverageTone(label) {
-  const normalized = normalizeText(label);
-
-  if (normalized.includes("crit")) {
-    return "danger";
-  }
-
-  if (normalized.includes("faible")) {
-    return "warning";
-  }
-
-  if (normalized.includes("aucune")) {
-    return "info";
-  }
-
-  return "success";
-}
-
-function getMovementTone(label) {
-  const normalized = normalizeText(label);
-  return normalized.includes("sort") ? "warning" : normalized.includes("entr") ? "success" : "info";
-}
-
-function buildMonthLabel(value) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Date(value).toLocaleDateString("fr-FR", { month: "short" });
-}
-
-function buildReportRows(totals) {
-  return [
-    { label: "Articles", value: totals.articles || 0 },
-    { label: "Commandes", value: totals.commandes || 0 },
-    { label: "Stock faible", value: totals.prochesRupture || 0 },
-    { label: "Ruptures", value: totals.alertesStock || 0 },
-    { label: "Commandes sans details", value: totals.commandesSansDetails || 0 },
-    { label: "Reglements en retard", value: totals.facturesEnRetard || 0 },
-  ];
-}
-
-function DashboardKpiCard({ colorClass, label, value, iconText }) {
-  return (
-    <article className="logistics-dashboard-kpi-card">
-      <div className={`logistics-dashboard-kpi-icon ${colorClass}`}>{iconText}</div>
-      <div className="logistics-dashboard-kpi-copy">
-        <span>{label}</span>
-        <strong>{value}</strong>
-      </div>
-    </article>
-  );
-}
-
-function DashboardMetricTile({ label, value, tone = "default" }) {
-  return (
-    <article className={`logistics-dashboard-metric-tile is-${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
-}
-
-function DashboardMiniTable({ columns, rows, emptyMessage = "Aucune donnee." }) {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return <div className="table-empty-state">{emptyMessage}</div>;
-  }
-
-  return (
-    <div className="logistics-dashboard-mini-table-wrap">
-      <table className="logistics-dashboard-mini-table">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column.key}>{column.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.ID_Article || row.ID_Commande || row.ID_Mvt || `${columnKey(row)}-${index}`}>
-              {columns.map((column) => (
-                <td key={`${column.key}-${index}`}>{column.render ? column.render(row, index) : row[column.key] ?? "-"}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function columnKey(row) {
-  return row?.CodeCmd || row?.CodeArticleInterne || row?.NomArticle || row?.CodeFacture || "row";
-}
-
-export default function DashboardLogistique({ refreshKey, onNavigate, references }) {
+export default function DashboardLogistique({ refreshKey }) {
+  const [periodMode, setPeriodMode] = useState("all");
+  const [draft, setDraft] = useState({ q: "", dateFrom: "", dateTo: "" });
+  const [criteria, setCriteria] = useState({ q: "", dateFrom: "", dateTo: "" });
   const [summary, setSummary] = useState(null);
-  const [auditRows, setAuditRows] = useState([]);
-  const [alertRows, setAlertRows] = useState([]);
-  const [consoRows, setConsoRows] = useState([]);
-  const [coverageRows, setCoverageRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [periodFilter, setPeriodFilter] = useState("ce-mois");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [commandeTypeFilter, setCommandeTypeFilter] = useState("");
-  const [commandeStatusFilter, setCommandeStatusFilter] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState("");
-
+  const [filterError, setFilterError] = useState("");
+  const [version, setVersion] = useState(0);
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const detailPanel = useRef(null);
+  const detailTitle = useRef(null);
+  const detailReturn = useRef(null);
+  const detailTrigger = useRef(null);
+  function showMetric(key, label, event, filters = {}) { detailTrigger.current = event.currentTarget; setSelectedMetric({ key, label, filters }); }
+  function closeMetric() {
+    setSelectedMetric(null);
+    const origin = detailTrigger.current;
+    if (origin?.isConnected) { const target = origin.closest("[hidden]") ? origin.closest(".erp-indicator-block")?.querySelector(".erp-block-header > button") : origin; target?.scrollIntoView({ block:"center",behavior:"auto" }); target?.focus({preventScroll:true}); }
+  }
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard() {
-      setLoading(true);
-      setError("");
-
-      const [summaryResponse, auditResponse, alertResponse, consoResponse, coverageResponse] = await Promise.all([
-        DASHBOARD_VIEW_CONFIG.fetchSummary(),
-        AUDIT_VIEW_CONFIG.fetchRows({ take: 200 }),
-        ALERTES_VIEW_CONFIG.fetchRows({ take: 200 }),
-        CONSOMMATION_VIEW_CONFIG.fetchRows({ take: 400 }),
-        COUVERTURE_VIEW_CONFIG.fetchRows({ take: 400 }),
-      ]);
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!summaryResponse?.success) {
-        setSummary(null);
-        setAuditRows([]);
-        setAlertRows([]);
-        setConsoRows([]);
-        setCoverageRows([]);
-        setError(summaryResponse?.message || "Impossible de charger le tableau de bord logistique.");
-        setLoading(false);
-        return;
-      }
-
-      setSummary(summaryResponse.data);
-      setAuditRows(asArrayPayload(auditResponse));
-      setAlertRows(asArrayPayload(alertResponse));
-      setConsoRows(asArrayPayload(consoResponse));
-      setCoverageRows(asArrayPayload(coverageResponse));
+    if (!selectedMetric) return;
+    detailPanel.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    detailReturn.current?.focus({ preventScroll: true });
+  }, [selectedMetric]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams(Object.entries(criteria).filter(([, value]) => value));
+    requestJson("/api/logistique/synthese?" + params, { requiresAuth: true, signal: controller.signal }).then((payload) => {
+      if (controller.signal.aborted) return;
+      if (!payload?.success) { setSummary(null); setError("La synthèse n’a pas pu être chargée."); }
+      else setSummary(payload.data);
       setLoading(false);
-    }
-
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshKey]);
-
-  const totals = summary?.totals || {};
-  const highlights = summary?.highlights || {};
-  const categoryOptions = useMemo(() => buildReferenceOptions(references?.articleCategories, "Categorie"), [references]);
-  const typeOptions = useMemo(() => buildReferenceOptions(references?.articleTypes, "Type"), [references]);
-  const commandeTypeOptions = useMemo(() => buildReferenceOptions(references?.commandeTypes, "Type"), [references]);
-  const commandeStatusOptions = useMemo(() => buildReferenceOptions(references?.commandeStatuses, "Statut"), [references]);
-
-  const auditStats = useMemo(() => {
-    const coherentRows = auditRows.filter((row) => row.EstStockCoherent);
-    const totalEntrees = auditRows.reduce((sum, row) => sum + Number(row.QteEntree || 0), 0);
-    const totalSorties = auditRows.reduce((sum, row) => sum + Number(row.QteSortie || 0), 0);
-
-    return {
-      total: auditRows.length,
-      coherent: coherentRows.length,
-      ecarts: auditRows.filter((row) => Number(row.Ecart || 0) !== 0).length,
-      coherenceRate: auditRows.length > 0 ? (coherentRows.length / auditRows.length) * 100 : 0,
-      totalEntrees,
-      totalSorties,
-    };
-  }, [auditRows]);
-
-  const alertStats = useMemo(() => {
-    const stockFaible = alertRows.filter((row) => !row.EstRupture && row.EstAlerteStock).length;
-    const ruptures = alertRows.filter((row) => row.EstRupture).length;
-    const qteACommander = alertRows.reduce((sum, row) => sum + Number(row.QteACommander || 0), 0);
-    const peremption = alertRows.filter((row) => row.EstAlertePeremption || row.EstPerime).length;
-
-    return { stockFaible, ruptures, qteACommander, peremption };
-  }, [alertRows]);
-
-  const monthlyConsumption = useMemo(() => {
-    const monthMap = new Map();
-
-    consoRows.forEach((row) => {
-      const monthKey = String(row.Mois || "");
-
-      if (!monthKey) {
-        return;
-      }
-
-      const current = monthMap.get(monthKey) || {
-        month: monthKey,
-        totalQuantity: 0,
-        totalValue: 0,
-      };
-
-      current.totalQuantity += Number(row.ConsoMensuelle || 0);
-      current.totalValue += Number(row.ValeurConsoMensuelle || 0);
-      monthMap.set(monthKey, current);
     });
-
-    return Array.from(monthMap.values())
-      .sort((left, right) => new Date(left.month) - new Date(right.month))
-      .slice(-6);
-  }, [consoRows]);
-
-  const totalConsumedValue = useMemo(
-    () => monthlyConsumption.reduce((sum, row) => sum + Number(row.totalValue || 0), 0),
-    [monthlyConsumption]
-  );
-
-  const coverageStats = useMemo(() => {
-    const totalStock = coverageRows.reduce((sum, row) => sum + Number(row.StockActuel || 0), 0);
-    const totalConso6 = coverageRows.reduce((sum, row) => sum + Number(row.Conso6Mois || 0), 0);
-    const totalConsoMonthly = coverageRows.reduce((sum, row) => sum + Number(row.ConsoMoyMensuelle || 0), 0);
-    const validCoverageRows = coverageRows.filter((row) => Number.isFinite(Number(row.CouvertureMois)));
-    const averageCoverageMonths =
-      validCoverageRows.length > 0
-        ? validCoverageRows.reduce((sum, row) => sum + Number(row.CouvertureMois || 0), 0) / validCoverageRows.length
-        : 0;
-    const coverageDays = Math.round(averageCoverageMonths * 30);
-    const stateCount = coverageRows.reduce((accumulator, row) => {
-      const state = String(row.EtatCouverture || "Correcte");
-      accumulator[state] = (accumulator[state] || 0) + 1;
-      return accumulator;
-    }, {});
-    const dominantState =
-      Object.entries(stateCount).sort((left, right) => right[1] - left[1])[0]?.[0] || "Correcte";
-
-    return {
-      totalStock,
-      totalConso6,
-      totalConsoMonthly,
-      averageCoverageMonths,
-      coverageDays,
-      dominantState,
-    };
-  }, [coverageRows]);
-
-  const recentCommandes = useMemo(() => (Array.isArray(highlights.commandesRecentes) ? highlights.commandesRecentes.slice(0, 5) : []), [highlights]);
-  const recentMouvements = useMemo(() => (Array.isArray(highlights.mouvementsRecents) ? highlights.mouvementsRecents.slice(0, 5) : []), [highlights]);
-  const reportRows = useMemo(() => buildReportRows(totals), [totals]);
-  const maxMonthlyValue = useMemo(
-    () => Math.max(1, ...monthlyConsumption.map((row) => Number(row.totalValue || 0))),
-    [monthlyConsumption]
-  );
-
-  return (
-    <div className="logistics-dashboard-page">
-      <div className="logistics-dashboard-head">
-        <div className="logistics-screen-copy">
-          <h1>Tableau de bord</h1>
-          <p>Vue synthetique du stock, des commandes, des mouvements et des reglements</p>
+    return () => controller.abort();
+  }, [criteria, refreshKey, version]);
+  function apply(event) {
+    event.preventDefault();
+    if (draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo) { setFilterError("La date de fin doit suivre la date de début."); return; }
+    setFilterError("");
+    setCriteria({ ...draft, q: draft.q.trim() });
+  }
+  const totals = summary?.totals || {};
+  function metric(key, label, icon = "bi-bar-chart", tone = "blue", suffix = "", options = {}) {
+    const value = options.value !== undefined ? options.value : totals[key];
+    const selected = selectedMetric?.key === key && JSON.stringify(selectedMetric?.filters || {}) === JSON.stringify(options.filters || {});
+    const open = (event) => showMetric(key, label, event, options.filters || {});
+    return <article key={options.rowKey || key} className={"erp-kpi is-" + tone}>
+      <button type="button" className="erp-kpi-main" disabled={loading} aria-label={label + " : " + formatNumber(value) + (value != null ? suffix : "") + ". Voir la liste"} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
+        <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span><span className="erp-kpi-label" title={label}>{label}</span><strong>{formatNumber(value)}{value != null ? suffix : ""}</strong><AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
+      </button>
+    </article>;
+  }
+  return <div className="erp-dashboard">
+    <div className="erp-screen-head"><div className="logistics-screen-copy"><h1>Tableau de bord</h1></div></div>
+    <form className="erp-dashboard-filters" role="search" onSubmit={apply}>
+      <label className="admin-form-field erp-dashboard-query"><span>Recherche</span><span className="erp-dashboard-search"><AppIcon name="search" /><input type="search" placeholder="Article, bon de stock, tiers…" value={draft.q} onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))} /></span></label>
+      <label className="admin-form-field erp-dashboard-period"><span>Période</span><select value={periodMode} onChange={(event) => { setPeriodMode(event.target.value); if(event.target.value !== "custom") setDraft(current => ({...current,...periodDates(event.target.value)})); }}><option value="all">Toutes les dates</option><option value="month">Ce mois</option><option value="quarter">Ce trimestre</option><option value="year">Cette année</option><option value="custom">Personnalisée</option></select></label>
+      <label className="admin-form-field"><span>Du</span><input type="date" value={draft.dateFrom} onChange={(event) => { setPeriodMode("custom"); setDraft((current) => ({ ...current, dateFrom: event.target.value })); }} /></label>
+      <label className="admin-form-field"><span>Au</span><input type="date" value={draft.dateTo} onChange={(event) => { setPeriodMode("custom"); setDraft((current) => ({ ...current, dateTo: event.target.value })); }} /></label>
+      <ActionButton type="submit" variant="primary" disabled={loading}>Rechercher</ActionButton><ActionButton icon="reset" disabled={loading} onClick={() => { const empty = { q: "", dateFrom: "", dateTo: "" }; setPeriodMode("all"); setDraft(empty); setCriteria(empty); setFilterError(""); }}>Réinitialiser</ActionButton>
+    </form>
+    {filterError ? <p role="alert" className="erp-filter-error">{filterError}</p> : null}
+    {loading ? <p role="status" className="erp-data-note">Actualisation…</p> : null}
+    {error ? <div className="table-empty-state" role="alert">{error} <button type="button" onClick={() => setVersion((value) => value + 1)}>Réessayer</button></div> : null}
+    {summary ? <div aria-busy={loading}>
+      <div className="erp-dashboard-sections"><div className="erp-dashboard-column">
+      <IndicatorBlock id="dashboard-articles" title="Articles" icon="bi-box-seam" scope="Stock courant">
+        <div className="erp-group-grid">
+          {metric("articles", "Nombre d’articles", "bi-box", "blue")}
+          {summary.categories?.length ? summary.categories.map((category) => metric("articlesCategorie", category.label, "bi-tag", "teal", "", { value: category.count, rowKey: "category-" + (category.id ?? "none"), filters: { categorieId: category.id ?? "sans-categorie" } })) : null}
         </div>
-
-        <div className="logistics-dashboard-userbar" aria-hidden="true">
-          <div className="logistics-dashboard-bell">
-            <span>3</span>
-          </div>
-          <div className="logistics-dashboard-avatar">AD</div>
+        <details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("auditTotal", "Articles contrôlés")}{metric("auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>
+      </IndicatorBlock>
+      <IndicatorBlock id="dashboard-bons" title="Bons de stock" icon="bi-receipt">
+        <div className="erp-group-grid">
+          {metric("commandes", "Nombre de bons", "bi-receipt", "purple")}
+          {metric("commandesEnAttente", "En attente", "bi-hourglass-split", "amber")}
+          {metric("commandesEnCours", "En cours", "bi-arrow-repeat", "slate")}
+          {metric("commandesEntree", "Entrées", "bi-box-arrow-in-down", "teal")}
+          {metric("commandesSortie", "Sorties", "bi-box-arrow-up", "blue")}
+          {metric("commandesSansDetails", "Sans lignes", "bi-list-check", "coral")}
+          {metric("commandesNonFacturees", "Non facturés", "bi-file-earmark", "slate")}
+          {metric("montantBons", "Valeur des bons", "bi-cash-stack", "purple")}
         </div>
-      </div>
+        <p className="erp-data-note erp-block-note">Montants sans devise précisée.</p>
+      </IndicatorBlock>
+      </div><div className="erp-dashboard-column">
+      <IndicatorBlock id="dashboard-factures" title="Factures" icon="bi-file-earmark-text">
+        <div className="erp-group-grid">
+          {metric("factures", "Nombre de factures", "bi-file-earmark-text", "blue")}
+          {metric("facturesSoldees", "Soldées", "bi-check2-circle", "teal")}
+          {metric("facturesPartielles", "Partiellement réglées", "bi-wallet2", "slate")}
+          {metric("facturesARegler", "À régler", "bi-hourglass-split", "amber")}
+          {metric("facturesEnRetard", "En retard", "bi-calendar-event", "coral")}
+        </div>
+        <h3 className="erp-block-subtitle">Montants</h3>
+        <div className="erp-group-grid">
+          {metric("montantTotalFacture", "Facturé", "bi-cash-stack", "blue")}
+          {metric("montantTotalRegle", "Réglé", "bi-check2-circle", "teal")}
+          {metric("montantRestant", "Solde à régler", "bi-hourglass-split", "amber")}
+        </div>
+        <p className="erp-data-note erp-block-note">Montants sans devise précisée.</p>
+      </IndicatorBlock>
+      <IndicatorBlock id="dashboard-alertes" title="Alertes" icon="bi-bell">
+        <div className="erp-group-grid">
+          {metric("alertesStock", "Stock faible", "bi-exclamation-triangle", "amber")}
+          {metric("ruptures", "Ruptures", "bi-box-seam", "coral")}
+          {metric("peremptionProche", "Péremption proche", "bi-calendar-event", "amber")}
+          {metric("articlesPerimes", "Articles périmés", "bi-calendar-x", "coral")}
+          {metric("auditEcarts", "Écarts de stock", "bi-exclamation-circle", "rose")}
+          {metric("couvertureCritique", "Couverture courte", "bi-hourglass-split", "slate")}
+        </div>
+      </IndicatorBlock>
+      </div></div>
+      {selectedMetric ? <div ref={detailPanel} id="dashboard-indicator-details" className="erp-detail-entry">
+        <ActionButton ref={detailReturn} className="erp-detail-return" icon="arrow-up" onClick={closeMetric}>Revenir à l’indicateur</ActionButton>
+        <section className="erp-panel erp-indicator-details" aria-labelledby="dashboard-detail-title">
+        <div className="erp-detail-header"><div><span>Liste détaillée</span><h2 ref={detailTitle} tabIndex="-1" id="dashboard-detail-title">{selectedMetric.label}</h2></div><button type="button" className="erp-detail-close" aria-label="Fermer la liste" onClick={closeMetric}><AppIcon name="close" /></button></div>
+        {(criteria.q || criteria.dateFrom || criteria.dateTo) ? <p className="erp-detail-criteria">{[criteria.q && "Recherche : " + criteria.q, criteria.dateFrom && "Du " + formatDate(criteria.dateFrom), criteria.dateTo && "au " + formatDate(criteria.dateTo)].filter(Boolean).join(" · ")}</p> : null}
+        <IndicatorDetails key={selectedMetric.key + JSON.stringify(criteria) + JSON.stringify(selectedMetric.filters)} metricKey={selectedMetric.key} criteria={{ ...criteria, ...selectedMetric.filters }} />
+        </section>
+      </div> : null}
 
-      <LoadingErrorEmpty loading={loading} error={error} rows={summary ? [summary] : []} emptyMessage="Aucune synthese disponible." />
-
-      {summary ? (
-        <>
-          <section className="logistics-dashboard-kpi-grid">
-            <DashboardKpiCard colorClass="is-blue" iconText="A" label="Articles" value={formatNumber(totals.articles)} />
-            <DashboardKpiCard colorClass="is-violet" iconText="C" label="Commandes" value={formatNumber(totals.commandes)} />
-            <DashboardKpiCard colorClass="is-amber" iconText="!" label="Stock faible" value={formatNumber(totals.prochesRupture)} />
-            <DashboardKpiCard colorClass="is-red" iconText="X" label="Ruptures" value={formatNumber(totals.alertesStock)} />
-            <DashboardKpiCard colorClass="is-sky" iconText="D" label="Commandes sans details" value={formatNumber(totals.commandesSansDetails)} />
-            <DashboardKpiCard colorClass="is-green" iconText="R" label="Reglements en retard" value={formatNumber(totals.facturesEnRetard)} />
-          </section>
-
-          <section className="logistics-top-actions">
-            <button type="button" className="logistics-top-action is-blue" onClick={() => onNavigate("articles")}>
-              Nouvel article
-            </button>
-            <button type="button" className="logistics-top-action is-indigo" onClick={() => onNavigate("commandes")}>
-              Nouvelle commande
-            </button>
-            <button type="button" className="logistics-top-action is-orange" onClick={() => onNavigate("alertes")}>
-              Voir alertes stock
-            </button>
-            <button type="button" className="logistics-top-action is-sky" onClick={() => onNavigate("commandes")}>
-              Voir commandes sans details
-            </button>
-            <button
-              type="button"
-              className="logistics-top-action is-green"
-              onClick={() => exportRowsToCsv("logistique-dashboard.csv", [
-                { key: "label", label: "Indicateur" },
-                { key: "value", label: "Valeur" },
-              ], reportRows)}
-            >
-              Exporter rapport
-            </button>
-            <button type="button" className="logistics-top-action is-purple" onClick={() => window.print()}>
-              Imprimer
-            </button>
-            <button type="button" className="logistics-top-action is-muted" disabled>
-              Autres filtres
-            </button>
-          </section>
-
-          <section className="logistics-screen-filter-card">
-            <div className="logistics-mockup-filter-grid">
-              <label className="admin-form-field">
-                <span>Periode</span>
-                <select value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}>
-                  <option value="ce-mois">Ce mois</option>
-                  <option value="trois-mois">3 derniers mois</option>
-                  <option value="six-mois">6 derniers mois</option>
-                </select>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Categorie article</span>
-                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-                  <option value="">Toutes</option>
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Type article</span>
-                <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                  <option value="">Toutes</option>
-                  {typeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Type commande</span>
-                <select value={commandeTypeFilter} onChange={(event) => setCommandeTypeFilter(event.target.value)}>
-                  <option value="">Toutes</option>
-                  {commandeTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Statut commande</span>
-                <select value={commandeStatusFilter} onChange={(event) => setCommandeStatusFilter(event.target.value)}>
-                  <option value="">Tous</option>
-                  {commandeStatusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Etat paiement</span>
-                <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
-                  <option value="">Tous</option>
-                  <option value="reglee">Reglee</option>
-                  <option value="partielle">Partiellement reglee</option>
-                  <option value="non-reglee">Non reglee</option>
-                  <option value="non-facturee">Non facturee</option>
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <section className="logistics-dashboard-grid">
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Audit de stock</h3>
-                  <p>Comparaison entre stock article et stock mouvements</p>
-                </div>
-              </div>
-
-              <div className="logistics-dashboard-metric-row">
-                <DashboardMetricTile label="Articles audites" value={formatNumber(auditStats.total)} />
-                <DashboardMetricTile label="Stocks coherents" value={formatNumber(auditStats.coherent)} tone="success" />
-                <DashboardMetricTile label="Ecarts detectes" value={formatNumber(auditStats.ecarts)} tone="danger" />
-                <DashboardMetricTile label="Taux de coherence" value={formatPercent(auditStats.coherenceRate)} tone="info" />
-              </div>
-
-              <DashboardMiniTable
-                emptyMessage="Aucun audit disponible."
-                rows={auditRows.slice(0, 5)}
-                columns={[
-                  { key: "CodeArticleInterne", label: "Code article" },
-                  { key: "NomArticle", label: "Article" },
-                  { key: "StockArticle", label: "Stock article", render: (row) => formatNumber(row.StockArticle) },
-                  { key: "StockMouvements", label: "Stock mouvements", render: (row) => formatNumber(row.StockMouvements) },
-                  { key: "Ecart", label: "Ecart", render: (row) => formatNumber(row.Ecart) },
-                  { key: "EtatAuditStock", label: "Etat audit", render: (row) => <ToneBadge tone={getAuditTone(row)}>{row.EtatAuditStock || "-"}</ToneBadge> },
-                ]}
-              />
-
-              <button type="button" className="logistics-dashboard-link" onClick={() => onNavigate("audit")}>
-                Voir le rapport complet
-              </button>
-            </article>
-
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Alertes de stock</h3>
-                  <p>Articles en rupture ou en stock faible</p>
-                </div>
-              </div>
-
-              <div className="logistics-dashboard-metric-row">
-                <DashboardMetricTile label="Stock faible" value={formatNumber(alertStats.stockFaible)} tone="warning" />
-                <DashboardMetricTile label="Ruptures" value={formatNumber(alertStats.ruptures)} tone="danger" />
-                <DashboardMetricTile label="Quantite a commander" value={formatNumber(alertStats.qteACommander)} tone="info" />
-                <DashboardMetricTile label="Alertes peremption" value={formatNumber(alertStats.peremption)} tone="warning" />
-              </div>
-
-              <DashboardMiniTable
-                emptyMessage="Aucune alerte de stock."
-                rows={alertRows.slice(0, 4)}
-                columns={[
-                  { key: "CodeArticleInterne", label: "Code article" },
-                  { key: "NomArticle", label: "Article" },
-                  { key: "QteArticle", label: "Stock actuel", render: (row) => formatNumber(row.QteArticle) },
-                  { key: "QteMinArticle", label: "Seuil d'alerte", render: (row) => formatNumber(row.QteMinArticle) },
-                  {
-                    key: "EtatStock",
-                    label: "Etat",
-                    render: (row) => <ToneBadge tone={getAlertStockTone(row)}>{row.EtatStock || (row.EstRupture ? "Rupture" : "Stock faible")}</ToneBadge>,
-                  },
-                ]}
-              />
-
-              <button type="button" className="logistics-dashboard-link" onClick={() => onNavigate("alertes")}>
-                Voir toutes les alertes
-              </button>
-            </article>
-
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Consommation mensuelle</h3>
-                  <p>Sorties de stock par mois</p>
-                </div>
-              </div>
-
-              <div className="logistics-dashboard-chart">
-                {monthlyConsumption.map((row) => (
-                  <article key={row.month} className="logistics-dashboard-chart-bar">
-                    <strong>{formatShortCurrency(row.totalValue)}</strong>
-                    <div className="logistics-dashboard-chart-track">
-                      <span style={{ height: `${Math.max(12, (Number(row.totalValue || 0) / maxMonthlyValue) * 100)}%` }} />
-                    </div>
-                    <small>{buildMonthLabel(row.month)}</small>
-                  </article>
-                ))}
-              </div>
-
-              <div className="logistics-dashboard-chart-footer">
-                <span>Valeur consommee</span>
-                <strong>{formatCurrency(totalConsumedValue)}</strong>
-              </div>
-            </article>
-
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Couverture stock</h3>
-                  <p>Duree estimee de stock selon la consommation des 6 derniers mois</p>
-                </div>
-              </div>
-
-              <div className="logistics-dashboard-metric-row">
-                <DashboardMetricTile label="Stock actuel" value={`${formatNumber(coverageStats.totalStock)} u.`} />
-                <DashboardMetricTile label="Conso 6 mois" value={`${formatNumber(coverageStats.totalConso6)} u.`} />
-                <DashboardMetricTile label="Conso moyenne mensuelle" value={`${formatNumber(coverageStats.totalConsoMonthly)} u.`} />
-                <DashboardMetricTile label="Couverture" value={`${formatNumber(coverageStats.coverageDays)} jours`} tone="info" />
-                <DashboardMetricTile label="Etat couverture" value={coverageStats.dominantState} tone={getCoverageTone(coverageStats.dominantState)} />
-              </div>
-
-              <div className="logistics-dashboard-legend">
-                <span><i className="is-success" />Correcte</span>
-                <span><i className="is-warning" />Faible</span>
-                <span><i className="is-danger" />Critique</span>
-                <span><i className="is-info" />Aucune consommation recente</span>
-              </div>
-
-              <button type="button" className="logistics-dashboard-link" onClick={() => onNavigate("couverture")}>
-                Voir le detail de la couverture
-              </button>
-            </article>
-          </section>
-
-          <section className="logistics-dashboard-grid">
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Dernieres commandes</h3>
-                </div>
-              </div>
-
-              <DashboardMiniTable
-                emptyMessage="Aucune commande recente."
-                rows={recentCommandes}
-                columns={[
-                  { key: "CodeCmd", label: "Code commande" },
-                  { key: "DateCmd", label: "Date", render: (row) => formatDate(row.DateCmd) },
-                  { key: "TypeCmd", label: "Type", render: (row) => row.TypeCmd || "-" },
-                  { key: "StatutCmd", label: "Statut", render: (row) => <ToneBadge tone="info">{row.StatutCmd || "-"}</ToneBadge> },
-                  { key: "NomClientSaisi", label: "Client", render: (row) => row.NomClientSaisi || "-" },
-                  { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC) },
-                  { key: "EtatPaiement", label: "Etat paiement", render: (row) => <ToneBadge tone={getPaymentTone(row.EtatPaiement)}>{row.EtatPaiement || "-"}</ToneBadge> },
-                  { key: "EtatControleCommande", label: "Controle commande", render: (row) => <ToneBadge tone={getControlTone(row.EtatControleCommande)}>{row.EtatControleCommande || "-"}</ToneBadge> },
-                ]}
-              />
-
-              <button type="button" className="logistics-dashboard-link" onClick={() => onNavigate("commandes")}>
-                Voir toutes les commandes
-              </button>
-            </article>
-
-            <article className="logistics-dashboard-panel">
-              <div className="logistics-dashboard-panel-head">
-                <div>
-                  <h3>Derniers mouvements</h3>
-                </div>
-              </div>
-
-              <DashboardMiniTable
-                emptyMessage="Aucun mouvement recent."
-                rows={recentMouvements}
-                columns={[
-                  { key: "DateMvt", label: "Date mouvement", render: (row) => formatDate(row.DateMvt, { withTime: true }) },
-                  { key: "NomArticle", label: "Article" },
-                  { key: "TypeMvt", label: "Type mouvement", render: (row) => <ToneBadge tone={getMovementTone(row.TypeMvt)}>{row.TypeMvt || "-"}</ToneBadge> },
-                  { key: "QteMvt", label: "Quantite", render: (row) => formatNumber(row.QteMvtSigned ?? row.QteMvt) },
-                  { key: "MontantMvt", label: "Montant mouvement", render: (row) => formatCurrency(row.MontantMvtSigned ?? row.MontantMvt) },
-                  { key: "OrigineMouvement", label: "Origine mouvement", render: (row) => row.OrigineMouvement || "-" },
-                ]}
-              />
-
-              <button type="button" className="logistics-dashboard-link" onClick={() => onNavigate("mouvements")}>
-                Voir tous les mouvements
-              </button>
-            </article>
-          </section>
-        </>
-      ) : null}
-    </div>
-  );
+    </div> : null}
+  </div>;
 }

@@ -47,3 +47,11 @@ public contient le socle natif Django ; systeme conserve entités, utilisateurs/
 ## Entrée ERP fermée
 
 À la demande du propriétaire, les projections du catalogue exigent aussi une session JWT valide, malgré le préfixe /api/public conservé pour compatibilité. L’inscription libre renvoie REGISTRATION_DISABLED ; les comptes sont gérés dans l’administration. /api/workspace/modules retourne uniquement les modules permis par les droits existants, sans accorder de permission supplémentaire. Les réponses API et authentification sont sans cache. /health contrôle PostgreSQL avec SELECT 1, sans exposer de données métier ; le lanceur ne teste plus le catalogue en anonyme. La configuration PostgreSQL reste en lecture seule.
+
+## Lectures logistiques ERP
+
+apps/logistique/reads.py partage les prédicats autorisés entre synthèse, indicateurs, registres et consultations. Conserver les valeurs Decimal et distinguer absence et zéro. populationQ maintient la population du KPI tandis que q affine sa liste ; une recherche de détail ne doit pas retirer le périmètre d’organisation ou le critère d’origine. Une consultation vérifie le parent puis impose ses clés aux rubriques, y compris la facture des règlements. Aucun mouvement supplémentaire n’est créé en Python.
+
+verifier_backend contrôle désormais ces nouvelles routes dans son diagnostic GET en lecture seule. Le frontend distingue canAccessAdmin et canWriteData fourni par le profil : un accès au module n’autorise pas automatiquement l’écriture. Le libellé métier Bon de stock correspond encore aux clés techniques Commande ; ne pas renommer le contrat sans migration explicite.
+
+Les répartitions par catégorie utilisent GROUP BY et leurs détails imposent ID_CategorieArticleFk. Distinguer En attente et En cours ; les sens Entrée/Sortie viennent des indicateurs de la vue. Le bloc Factures exclut les bons sans référence de facture. Les filtres temporels portent sur DateFacture pour la facturation, DateCmd pour les bons et DateMvt pour les mouvements. Ne pas réutiliser implicitement la première date présente dans une vue.

@@ -323,3 +323,26 @@ export function saveAdminUiSettings(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export async function downloadApiFile(path, { signal, filename = "SauverNdeko_Export_Complet.xlsx" } = {}) {
+  const accessToken = getAccessToken();
+  const response = await fetch(API_BASE_URL + path, { signal, headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ...(accessToken ? { Authorization: "Bearer " + accessToken } : {}) } });
+  if (!response.ok) {
+    if (response.status === 401 && accessToken && accessToken === getAccessToken()) window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT,{detail:{accessToken}}));
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.message || (response.status === 403 ? "Accès à l’export refusé." : "L’export n’a pas pu être préparé."));
+  }
+  if (!response.headers.get("Content-Type")?.includes("spreadsheetml.sheet")) throw new Error("Le fichier Excel reçu est invalide.");
+  const blob = await response.blob();
+  if (signal?.aborted || accessToken !== getAccessToken()) throw new DOMException("Export annulé","AbortError");
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const plain = disposition.match(/filename="([^"]+)"/i);
+  try { filename = encoded ? decodeURIComponent(encoded[1]) : plain?.[1] || filename; } catch { /* Nom de repli. */ }
+  filename = filename.replace(/[\\/:*?"<>|\r\n]/g,"_");
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url),0);
+  return { filename, size: blob.size };
+}

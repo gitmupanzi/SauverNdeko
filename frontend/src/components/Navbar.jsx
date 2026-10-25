@@ -1,3 +1,4 @@
+import AppIcon from "./AppIcon";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -85,7 +86,7 @@ export default function Navbar({
         <h1 className="topbar-title">{pageTitle}</h1>
         {showSearch ? (
           <button className="icon-button" type="button" onClick={onOpenSearch} aria-label="Ouvrir la recherche">
-            <i className="bi bi-search" aria-hidden="true" />
+            <AppIcon name="search" size={18} />
           </button>
         ) : (
           <span className="topbar-spacer" aria-hidden="true" />
@@ -117,7 +118,7 @@ export default function Navbar({
         <div className="desktop-actions">
           {showSearch ? (
             <button className="desktop-search" type="button" onClick={onOpenSearch}>
-              <i className="bi bi-search" aria-hidden="true" />
+              <AppIcon name="search" size={18} />
               <span>Rechercher</span>
             </button>
           ) : (

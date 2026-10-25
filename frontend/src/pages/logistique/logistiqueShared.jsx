@@ -1,24 +1,29 @@
+import TablePagination from "../../components/TablePagination";
+import ColumnPicker from "../../components/ColumnPicker";
+import AppIcon from "../../components/AppIcon";
+import ActionButton from "../../components/ActionButton";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-const numberFormatter = new Intl.NumberFormat("fr-FR");
-const currencyFormatter = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
 
 const DEFAULT_ROWS_PER_PAGE = 25;
 const MIN_COLUMN_WIDTH = 120;
 const SELECTION_COLUMN_WIDTH = 64;
 
 export function formatNumber(value) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? numberFormatter.format(parsed) : "0";
+  if (value == null || value === "") return "—";
+  const text = String(value);
+  if (/^-?\d+(\.\d+)?$/.test(text)) {
+    const negative = text.startsWith("-");
+    const parts = (negative ? text.slice(1) : text).split(".");
+    const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
+    const fraction = parts[1]?.replace(/0+$/, "");
+    return (negative ? "−" : "") + integer + (fraction ? "," + fraction : "");
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 6 }).format(numeric) : "—";
 }
 
 export function formatCurrency(value) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? currencyFormatter.format(parsed) : currencyFormatter.format(0);
+  return formatNumber(value);
 }
 
 export function formatDate(value, options = {}) {
@@ -447,16 +452,54 @@ export function SimpleTable({
   defaultRowsPerPage = DEFAULT_ROWS_PER_PAGE,
   rowsPerPageOptions = [10, 25, 50, 100],
   showControls = true,
+  showSearch = true,
+  serverMeta = null,
+  serverState = {},
+  onServerChange,
+  onRowConsult,
+  consultColumns = [],
+  isCellConsultable = () => true,
+  loading = false,
+  toolbar = null,
+  columnsPanelOpen,
+  columnsAnchorRef,
+  onColumnsPanelClose,
+  onVisibleColumnsChange,
+  filtersVisible = false,
+  columnFilters = {},
+  onColumnFilterChange,
+  onApplyColumnFilters,
 }) {
   const tableWrapRef = useRef(null);
+  const localColumnsAnchor=useRef(null);
+  const columnsTrigger=columnsAnchorRef || localColumnsAnchor;
+  function closeColumns(returnFocus=false){
+    if(columnsPanelOpen !== undefined) onColumnsPanelClose?.();
+    else setControlsOpen(false);
+    if(returnFocus) requestAnimationFrame(()=>columnsTrigger.current?.focus({preventScroll:true}));
+  }
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({
+  const [localSortConfig, setSortConfig] = useState({
     column: defaultSortColumn,
     direction: defaultSortColumn ? "asc" : "",
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
-  const [controlsOpen, setControlsOpen] = useState(false);
+  const [localPage, setLocalPage] = useState(1);
+  const [localRowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
+  const serverMode = typeof onServerChange === "function";
+  const rowsPerPage = serverMode ? Number(serverState.take || serverMeta?.take || defaultRowsPerPage) : localRowsPerPage;
+  const currentPage = serverMode ? Math.floor(Number(serverState.skip || 0) / rowsPerPage) + 1 : localPage;
+  const sortConfig = serverMode ? { column: serverState.sortBy || serverMeta?.sortBy || "", direction: serverState.sortDir || serverMeta?.sortDir || "" } : localSortConfig;
+  function setCurrentPage(next) {
+    const target = typeof next === "function" ? next(currentPage) : next;
+    if (target === currentPage) return;
+    if (serverMode) onServerChange({ skip: (target - 1) * rowsPerPage });
+    else setLocalPage(target);
+  }
+  const [localControlsOpen, setControlsOpen] = useState(false);
+  const controlsOpen = columnsPanelOpen ?? localControlsOpen;
+  const columnKeys = columns.map((column) => column.key).join("|");
+  const pinnedDefaultsKey = defaultPinnedColumns.join("|");
+  const knownColumnKeys = useRef(columns.map((column) => column.key));
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [pinnedColumns, setPinnedColumns] = useState(defaultPinnedColumns);
   const [visibleColumns, setVisibleColumns] = useState(() => columns.map((column) => column.key));
@@ -475,10 +518,11 @@ export function SimpleTable({
 
   useEffect(() => {
     const availableColumnKeys = columns.map((column) => column.key);
+    const previousColumnKeys = knownColumnKeys.current;
 
     setVisibleColumns((current) => {
       const retained = current.filter((columnKey) => availableColumnKeys.includes(columnKey));
-      const appended = availableColumnKeys.filter((columnKey) => !retained.includes(columnKey));
+      const appended = availableColumnKeys.filter((columnKey) => !previousColumnKeys.includes(columnKey));
       return [...retained, ...appended];
     });
 
@@ -509,7 +553,8 @@ export function SimpleTable({
 
       return nextWidths;
     });
-  }, [columns, defaultPinnedColumns]);
+    knownColumnKeys.current = availableColumnKeys;
+  }, [columnKeys, pinnedDefaultsKey]);
 
   useEffect(() => {
     setSelectedRowIds((current) => {
@@ -523,13 +568,16 @@ export function SimpleTable({
     [columns, visibleColumns]
   );
 
+  const visibleKeys = effectiveVisibleColumns.map((column) => column.key).join("|");
+  useEffect(() => { onVisibleColumnsChange?.(effectiveVisibleColumns.map((column) => column.key)); }, [visibleKeys, onVisibleColumnsChange]);
+
   const searchableColumns = useMemo(
     () => effectiveVisibleColumns.filter((column) => column.searchable !== false && column.key !== "actions"),
     [effectiveVisibleColumns]
   );
 
   const filteredRows = useMemo(() => {
-    if (!searchTerm.trim()) {
+    if (serverMode || !searchTerm.trim()) {
       return rows;
     }
 
@@ -538,10 +586,10 @@ export function SimpleTable({
     return rows.filter((row, index) =>
       searchableColumns.some((column) => normalizeSearchText(getColumnTextValue(column, row, index)).includes(normalizedSearch))
     );
-  }, [rows, searchTerm, searchableColumns]);
+  }, [rows, searchTerm, searchableColumns, serverMode]);
 
   const sortedRows = useMemo(() => {
-    if (!sortConfig.column || !sortConfig.direction) {
+    if (serverMode || !sortConfig.column || !sortConfig.direction) {
       return filteredRows;
     }
 
@@ -558,21 +606,22 @@ export function SimpleTable({
     });
 
     return sortConfig.direction === "desc" ? sorted.reverse() : sorted;
-  }, [columns, filteredRows, sortConfig]);
+  }, [columns, filteredRows, sortConfig, serverMode]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil((serverMode ? Number(serverMeta?.filteredCount || 0) : sortedRows.length) / rowsPerPage));
 
   useEffect(() => {
+    if (serverMode && !serverMeta) return;
     setCurrentPage((current) => Math.min(current, totalPages));
-  }, [totalPages]);
+  }, [totalPages, Boolean(serverMeta)]);
 
   const paginatedRowEntries = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
-    return sortedRows.slice(startIndex, startIndex + rowsPerPage).map((row, index) => ({
+    return (serverMode ? sortedRows : sortedRows.slice(startIndex, startIndex + rowsPerPage)).map((row, index) => ({
       row,
       index: startIndex + index,
     }));
-  }, [currentPage, rowsPerPage, sortedRows]);
+  }, [currentPage, rowsPerPage, sortedRows, serverMode]);
   const visiblePageNumbers = useMemo(() => {
     const radius = 2;
     const startPage = Math.max(1, currentPage - radius);
@@ -636,6 +685,10 @@ export function SimpleTable({
   }, []);
 
   function handleSortColumn(columnKey) {
+    if (serverMode) {
+      onServerChange({ sortBy: columnKey, sortDir: sortConfig.column === columnKey && sortConfig.direction === "asc" ? "desc" : "asc", skip: 0 });
+      return;
+    }
     setSortConfig((current) => {
       if (current.column !== columnKey) {
         return { column: columnKey, direction: "asc" };
@@ -692,6 +745,7 @@ export function SimpleTable({
   }
 
   function handleRowsPerPageChange(nextValue) {
+    if (serverMode) { onServerChange({ take: nextValue, skip: 0 }); return; }
     setRowsPerPage(nextValue);
     setCurrentPage(1);
   }
@@ -790,9 +844,6 @@ export function SimpleTable({
     };
   }
 
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return <section className="table-empty-state">{emptyMessage || "Aucune donnee disponible."}</section>;
-  }
 
   const exportableColumns = effectiveVisibleColumns.filter((column) => column.key !== "actions");
   const exportBaseFilename = String(exportFilename || "logistique-tableau").replace(/\.(csv|xls|xlsx|pdf)$/i, "");
@@ -802,22 +853,23 @@ export function SimpleTable({
       : sortedRows;
 
   return (
-    <div className="logistics-advanced-table">
+    <div className={"logistics-advanced-table" + (toolbar ? " erp-data-grid" : "")}>
       {showControls ? (
         <section className="admin-search-card logistics-table-controls logistics-table-toolbar-card">
+          {toolbar || <>
           <div className="logistics-table-control-row">
-            <label className="admin-form-field logistics-table-search-field">
+            {showSearch ? <label className="admin-form-field logistics-table-search-field">
               <span>Recherche rapide</span>
               <input
                 type="search"
-                value={searchTerm}
+                value={serverMode ? serverState.q || "" : searchTerm}
                 onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setCurrentPage(1);
+                  if (serverMode) onServerChange({ q: event.target.value, skip: 0 });
+                  else { setSearchTerm(event.target.value); setCurrentPage(1); }
                 }}
-                placeholder="Filtrer toutes les colonnes visibles"
+                placeholder={serverMode ? "Rechercher dans le registre" : "Filtrer les lignes chargées"}
               />
-            </label>
+            </label> : null}
 
             <div className="admin-toolbar-actions">
               <label className="admin-form-field logistics-inline-select">
@@ -831,18 +883,12 @@ export function SimpleTable({
                 </select>
               </label>
 
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => setControlsOpen((current) => !current)}
-              >
-                {controlsOpen ? "Masquer colonnes" : "Colonnes"}
-              </button>
+              <ActionButton ref={columnsTrigger} icon="columns" aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>Colonnes</ActionButton>
 
               <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export logistique">
-                <button
+                <ActionButton icon="download"
                   type="button"
-                  className={`secondary-action admin-scroll-trigger ${showExportMenu ? "is-active" : ""}`}
+
                   onClick={() => {
                     setShowNavigationMenu(false);
                     setShowExportMenu((current) => !current);
@@ -852,42 +898,42 @@ export function SimpleTable({
                   aria-haspopup="true"
                 >
                   Exporter
-                </button>
+                </ActionButton>
                 {showExportMenu ? (
                   <div className="admin-scroll-menu-panel">
-                    <button
+                    <ActionButton icon="download"
                       type="button"
-                      className="secondary-action"
+
                       onClick={() => {
                         exportRowsToCsv(`${exportBaseFilename}.csv`, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
                       disabled={!exportRows.length}
                     >
-                      Export CSV
-                    </button>
-                    <button
+                      CSV · page
+                    </ActionButton>
+                    <ActionButton icon="download"
                       type="button"
-                      className="secondary-action"
+
                       onClick={() => {
                         exportRowsToExcel(`${exportBaseFilename}.csv`, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
                       disabled={!exportRows.length}
                     >
-                      Export Excel
-                    </button>
-                    <button
+                      Tableur HTML · page
+                    </ActionButton>
+                    <ActionButton icon="print"
                       type="button"
-                      className="secondary-action"
+
                       onClick={() => {
                         exportRowsToPdf(exportBaseFilename, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
                       disabled={!exportRows.length}
                     >
-                      Export PDF
-                    </button>
+                      Imprimer · page
+                    </ActionButton>
                   </div>
                 ) : null}
               </div>
@@ -960,7 +1006,7 @@ export function SimpleTable({
 
           <div className="logistics-table-meta-row">
             <div className="logistics-table-pills">
-              <span className="status-pill is-muted">{`${sortedRows.length}/${rows.length} lignes`}</span>
+              <span className="status-pill is-muted">{serverMode ? (serverMeta?.filteredCount ?? "—") + " résultat(s)" : `${sortedRows.length}/${rows.length} lignes`}</span>
               <span className="status-pill is-muted">{`${effectiveVisibleColumns.length} colonnes visibles`}</span>
               <span className="status-pill is-muted">{`${pinnedColumns.length} colonnes gelees`}</span>
               {enableSelection ? (
@@ -968,75 +1014,11 @@ export function SimpleTable({
               ) : null}
               {scrollState.overflow ? <span className="status-pill is-muted">Defilement horizontal actif</span> : null}
             </div>
-            {controlsOpen ? (
-              <span className="logistics-table-meta-hint">
-                Cochez, gelez ou reinitialisez les colonnes sans surcharger la zone de lecture.
-              </span>
-            ) : null}
+
           </div>
 
-          {controlsOpen ? (
-            <div className="admin-search-grid">
-              <div className="admin-visibility-card admin-form-field-wide logistics-visibility-card">
-                <div className="admin-visibility-head">
-                  <span>Colonnes visibles, gelees et largeur</span>
-                  <div className="admin-visibility-actions">
-                    <button
-                      type="button"
-                      className="secondary-action"
-                      onClick={() => setVisibleColumns(columns.map((column) => column.key))}
-                    >
-                      Tout afficher
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-action"
-                      onClick={() =>
-                        setColumnWidths(Object.fromEntries(columns.map((column) => [column.key, getColumnDefaultWidth(column)])))
-                      }
-                    >
-                      Largeurs auto
-                    </button>
-                  </div>
-                </div>
-
-                <div className="admin-visibility-grid">
-                  {columns.map((column) => {
-                    const isPinned = pinnedColumns.includes(column.key);
-
-                    return (
-                      <div key={`visible-${column.key}`} className="admin-column-option">
-                        <label className="admin-multiselect-option">
-                          <input
-                            type="checkbox"
-                            checked={visibleColumns.includes(column.key)}
-                            onChange={() => handleToggleVisibleColumn(column.key)}
-                          />
-                          <span>{column.label}</span>
-                        </label>
-                        <div className="admin-column-option-actions">
-                          <button
-                            type="button"
-                            className={`secondary-action ${isPinned ? "is-active" : ""}`}
-                            onClick={() => handleTogglePinnedColumn(column.key)}
-                          >
-                            {isPinned ? "Degeler" : "Geler"}
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-action"
-                            onClick={() => handleResetColumnWidth(column.key)}
-                          >
-                            Largeur auto
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : null}
+          </>}
+          <ColumnPicker open={controlsOpen} anchorRef={columnsTrigger} onClose={closeColumns} columns={columns} visibleKeys={visibleColumns} pinnedKeys={pinnedColumns} onToggleVisible={handleToggleVisibleColumn} onTogglePinned={handleTogglePinnedColumn} onShowAll={()=>setVisibleColumns(columns.map(column=>column.key))} onResetWidth={handleResetColumnWidth} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))} />
         </section>
       ) : null}
 
@@ -1046,7 +1028,7 @@ export function SimpleTable({
         tabIndex={0}
         aria-label="Tableau logistique avance avec defilement horizontal et vertical"
       >
-        <table className="public-table logistics-table admin-table">
+        <table className="public-table logistics-table admin-table table table-hover align-middle mb-0">
           <colgroup>
             {enableSelection ? <col style={{ width: SELECTION_COLUMN_WIDTH }} /> : null}
             {effectiveVisibleColumns.map((column) => (
@@ -1073,7 +1055,8 @@ export function SimpleTable({
                 return (
                   <th
                     key={column.key}
-                    className={`admin-table-head-cell ${isPinned ? "is-pinned" : ""}`}
+                    aria-sort={sortConfig.column === column.key ? (sortConfig.direction === "asc" ? "ascending" : "descending") : "none"}
+                    className={`admin-table-head-cell ${isPinned ? "is-pinned" : ""} ${column.align === "right" ? "is-numeric" : ""}`}
                     style={getCellStyle(column)}
                   >
                     <div className="admin-header-cell">
@@ -1092,13 +1075,7 @@ export function SimpleTable({
                           </div>
                           {isSortable ? (
                             <small className="admin-header-indicator" aria-hidden="true">
-                              {sortConfig.column === column.key
-                                ? sortConfig.direction === "asc"
-                                  ? "^"
-                                  : sortConfig.direction === "desc"
-                                    ? "v"
-                                    : "<>"
-                                : "<>"}
+                              <i className={"bi " + (sortConfig.column === column.key ? sortConfig.direction === "asc" ? "bi-arrow-up" : "bi-arrow-down" : "bi-arrow-down-up")} />
                             </small>
                           ) : null}
                         </button>
@@ -1116,9 +1093,16 @@ export function SimpleTable({
                 );
               })}
             </tr>
+            {filtersVisible ? <tr className="erp-column-filter-row">
+              {enableSelection ? <th /> : null}
+              {effectiveVisibleColumns.map((column) => <th key={column.key} className={pinnedColumns.includes(column.key) ? "is-pinned" : ""} style={getCellStyle(column)}>
+                {column.filterType ? (column.filterType === "boolean" ? <select aria-label={"Filtrer : " + column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)}><option value="">Tous</option><option value="true">Oui</option><option value="false">Non</option></select> : <input type={column.filterType === "date" ? "date" : "text"} aria-label={"Filtrer : " + column.label} placeholder={column.filterType === "number" ? "=, >=, <=…" : "Filtrer…"} title={column.filterType === "number" ? "Exemples : 50, >= 50, <= 100" : column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onApplyColumnFilters?.(); } }} />) : null}
+              </th>)}
+            </tr> : null}
           </thead>
 
           <tbody>
+            {!paginatedRowEntries.length ? <tr className="erp-grid-empty"><td colSpan={Math.max(1,effectiveVisibleColumns.length + Number(enableSelection))}>{loading ? "Chargement…" : emptyMessage || "Aucun résultat pour ces critères."}</td></tr> : null}
             {paginatedRowEntries.map((entry) => {
               const row = entry.row;
               const rowIndex = entry.index;
@@ -1154,11 +1138,11 @@ export function SimpleTable({
                       <td
                         key={`${rowId}-${column.key}`}
                         className={`${isPinned ? "admin-table-cell is-pinned" : "admin-table-cell"} ${
-                          column.key === "actions" ? "admin-actions-cell" : ""
+                          column.align === "right" ? "is-numeric" : column.key === "actions" ? "admin-actions-cell" : ""
                         }`.trim()}
                         style={getCellStyle(column)}
                       >
-                        {column.render ? column.render(row, rowIndex) : row[column.key] ?? "-"}
+                        {onRowConsult && consultColumns.includes(column.key) && isCellConsultable(row, column.key) ? <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); onRowConsult(row, column.key); }}>{column.render ? column.render(row, rowIndex) : row[column.key] ?? "Consulter"}</button> : column.render ? column.render(row, rowIndex) : row[column.key] ?? "—"}
                       </td>
                     );
                   })}
@@ -1169,66 +1153,7 @@ export function SimpleTable({
         </table>
       </div>
 
-      {filteredRows.length === 0 ? (
-        <section className="table-empty-state">Aucun resultat ne correspond a la recherche dans ce tableau.</section>
-      ) : (
-        <section className="admin-table-footer logistics-table-footer logistics-table-pager">
-          <div className="logistics-table-pager-size">
-            <label className="admin-form-field logistics-inline-select">
-              <span>Lignes</span>
-              <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
-                {rowsPerPageOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="admin-table-footer-actions logistics-table-pager-actions">
-            <div className="admin-pagination">
-              <button type="button" className="secondary-action" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                {`<<`}
-              </button>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-                disabled={currentPage === 1}
-              >
-                Prec
-              </button>
-              {visiblePageNumbers.map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  className={`secondary-action ${pageNumber === currentPage ? "is-active" : ""}`.trim()}
-                  onClick={() => setCurrentPage(pageNumber)}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
-                disabled={currentPage === totalPages}
-              >
-                {`Suiv >`}
-              </button>
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                {`Dern >>`}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
+      <TablePagination total={serverMode ? serverMeta?.filteredCount : sortedRows.length} take={rowsPerPage} page={currentPage} onPage={setCurrentPage} loading={loading} />
     </div>
   );
 }

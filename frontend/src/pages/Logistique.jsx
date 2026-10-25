@@ -1,3 +1,7 @@
+import AppIcon from "../components/AppIcon";
+import { Link } from "react-router-dom";
+import ModuleHeader from "../components/ModuleHeader";
+import "./logistique/LogistiqueModern.css";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import {
   fetchAdminModelList,
@@ -542,73 +546,37 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
   );
 }
 
-function LogistiqueSidebar({ collapsed, activeTab, mainTabs, activeTabConfig, onNavigate, onToggle }) {
-  const activeMainTab = mainTabs.find((tab) => tab.key === activeTab) || mainTabs[0];
-  const activeLabel = activeMainTab?.label || activeTabConfig.label || activeTabConfig.title;
-  const isDashboardContext =
-    activeTab === "dashboard" ||
-    ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
-
-  return (
-    <aside className={`logistics-sidebar-shell ${collapsed ? "is-collapsed" : ""}`.trim()}>
-      <div className="logistics-sidebar-top">
-        <div className="logistics-brand-lockup">
-          <div className="logistics-brand-mark">SN</div>
-          {!collapsed ? (
-            <div className="logistics-brand-copy">
-              <strong>SauverNdeko</strong>
-              <span>Logistique</span>
-            </div>
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          className="logistics-sidebar-toggle"
-          onClick={onToggle}
-          aria-label={collapsed ? "Afficher le menu logistique" : "Replier le menu logistique"}
-        >
-          {collapsed ? ">" : "<"}
-        </button>
-      </div>
-
-      <div className="logistics-sidebar-nav">
-        {mainTabs.map((tab) => {
-          const isActive = tab.key === activeTab || (tab.key === "dashboard" && isDashboardContext);
-
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              className={`logistics-sidebar-link ${isActive ? "is-active" : ""}`.trim()}
-              onClick={() => onNavigate(tab.key)}
-              title={tab.title}
-            >
-              <span className="logistics-sidebar-icon" aria-hidden="true">
-                {tab.icon}
-              </span>
-              {!collapsed ? <span className="logistics-sidebar-label">{tab.label || tab.title}</span> : null}
-            </button>
-          );
+function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
+  const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
+  const groups = [
+    { label: "Pilotage", keys: ["dashboard"] },
+    { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements"] },
+    { label: "Finances", keys: ["reglements"] },
+  ];
+  return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
+    <div className="logistics-sidebar-top">
+      <Link to="/" className="logistics-brand-lockup" aria-label="SauverNdeko — Applications">
+        <img className="logistics-brand-logo" src="/sauverndeko-logo.jpg" alt="" width="34" height="34" />
+        {!collapsed ? <div className="logistics-brand-copy"><strong>SauverNdeko</strong><span>Logistique</span></div> : null}
+      </Link>
+      <button type="button" className="logistics-sidebar-toggle" onClick={onToggle} aria-label={collapsed ? "Afficher le menu logistique" : "Replier le menu logistique"} title={collapsed ? "Déplier" : "Replier"}><AppIcon name="sidebar" /></button>
+    </div>
+    <nav className="logistics-sidebar-nav" aria-label="Menu logistique">
+      {groups.map((group) => <div key={group.label} className="logistics-nav-group" role="group" aria-label={group.label}>
+        {!collapsed ? <span className="logistics-nav-heading">{group.label}</span> : null}
+        {group.keys.map((key) => {
+          const tab = mainTabs.find((item) => item.key === key);
+          if (!tab) return null;
+          const active = key === activeTab || (key === "dashboard" && dashboardActive);
+          return <button key={key} type="button" className={"logistics-sidebar-link" + (active ? " is-active" : "")} onClick={() => onNavigate(key)} title={tab.label || tab.title} aria-label={tab.label || tab.title} aria-current={active ? "page" : undefined}>
+            <span className="logistics-sidebar-icon" aria-hidden="true"><AppIcon name={tab.icon || "apps"} size={18} /></span>
+            {!collapsed ? <span className="logistics-sidebar-label">{tab.label || tab.title}</span> : null}
+          </button>;
         })}
-      </div>
-
-      <div className="logistics-sidebar-footer">
-        {!collapsed ? (
-          <>
-            <div className="logistics-sidebar-user-avatar">AD</div>
-            <div className="logistics-sidebar-user-copy">
-              <strong>Admin</strong>
-              <span>Administrateur</span>
-              <small>{activeLabel}</small>
-            </div>
-          </>
-        ) : (
-          <div className="logistics-sidebar-user-avatar">AD</div>
-        )}
-      </div>
-    </aside>
-  );
+      </div>)}
+    </nav>
+    <div className="logistics-app-switcher"><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
+  </aside>;
 }
 
 function LogistiqueShellHeader({
@@ -625,7 +593,7 @@ function LogistiqueShellHeader({
   const title = activeTabConfig.label || activeTabConfig.title;
   const subtitle =
     activeTab === "dashboard"
-      ? "Vue synthetique du stock, des commandes, des mouvements et des reglements."
+      ? "Vue synthetique du stock, des bons de stock, des mouvements et des reglements."
       : activeTabConfig.description || activeTabConfig.viewLabel;
   const activeViewLabel = activeTabConfig.viewLabel;
   const articleCount = referencesLoading ? "..." : formatCompactCount(references?.articles?.length || 0);
@@ -634,7 +602,7 @@ function LogistiqueShellHeader({
     activeViewLabel,
     `${articleCount} articles`,
     `${factureCount} factures`,
-    selectedCommande?.CodeCmd ? `Commande cible : ${selectedCommande.CodeCmd}` : "",
+    selectedCommande?.CodeCmd ? `Bon de stock cible : ${selectedCommande.CodeCmd}` : "",
   ].filter(Boolean);
 
   return (
@@ -682,16 +650,17 @@ const TABS = LOGISTIQUE_MODULE_SCHEMA.views;
 const TAB_GROUPS = LOGISTIQUE_MODULE_SCHEMA.tabGroups;
 const TABLE_FEATURE_CONFIG = LOGISTIQUE_MODULE_SCHEMA.tableFeatures;
 const MAIN_TAB_DEFINITIONS = [
-  { key: "dashboard", label: "Tableau de bord", icon: "D" },
-  { key: "articles", label: "Articles", icon: "A" },
-  { key: "commandes", label: "Commandes", icon: "C" },
-  { key: "details", label: "Commande detail", icon: "L" },
-  { key: "mouvements", label: "Historique des mouvements", icon: "M" },
-  { key: "reglements", label: "Reglements", icon: "R" },
+  { key: "dashboard", label: "Tableau de bord", icon: "bi-speedometer2" },
+  { key: "articles", label: "Articles", icon: "bi-box-seam" },
+  { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
+  { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
+  { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
+  { key: "reglements", label: "Factures et règlements", icon: "bi-wallet2" },
 ];
 
 export default function Logistique() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [activeTab]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -884,7 +853,8 @@ export default function Logistique() {
     setRefreshKey((current) => current + 1);
   }
 
-  function handleNavigate(tabKey) {
+  function handleNavigate(tabKey, options = {}) {
+    if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
     startTransition(() => {
       setActiveTab(tabKey);
     });
@@ -1247,7 +1217,7 @@ export default function Logistique() {
   return (
     <>
       <LogistiqueResponsiveStyles />
-      <div className="page-shell admin-page-shell logistics-page-shell logistics-shell-layout">
+      <div className={"logistics-modern logistics-app" + (sidebarCollapsed ? " is-menu-collapsed" : "")}>
         <LogistiqueSidebar
           collapsed={sidebarCollapsed}
           activeTab={activeTab}
@@ -1257,6 +1227,8 @@ export default function Logistique() {
           onToggle={() => setSidebarCollapsed((current) => !current)}
         />
 
+        <ModuleHeader title="Logistique" />
+        <div className="page-shell admin-page-shell logistics-page-shell logistics-shell-layout">
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
             {referencesLoading ? <section className="table-empty-state">Chargement des references logistiques...</section> : null}
@@ -1264,12 +1236,12 @@ export default function Logistique() {
 
             {!referencesLoading && !referencesError ? (
               <div className="logistics-shell-view">
-                {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 ? (
+                {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
                   <section className="logistics-screen-filter-card">
                     <div className="logistics-card-head">
                       <div className="section-head">
-                        <h3>Correspondances FK</h3>
-                        <p>Parametrez ici les liens des champs secondaires vers `T_Generique` pour la vue active.</p>
+                        <h3>Réglages des références</h3>
+
                       </div>
                       <div className="logistics-card-actions">
                         <button
@@ -1277,7 +1249,7 @@ export default function Logistique() {
                           className="secondary-action"
                           onClick={() => setShowFkMappingPanel((current) => !current)}
                         >
-                          {showFkMappingPanel ? "Masquer FK" : "Correspondances FK"}
+                          {showFkMappingPanel ? "Fermer" : "Réglages"}
                         </button>
                       </div>
                     </div>
@@ -1420,6 +1392,7 @@ export default function Logistique() {
             ) : null}
           </div>
         </section>
+      </div>
       </div>
     </>
   );

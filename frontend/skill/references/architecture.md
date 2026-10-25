@@ -20,6 +20,7 @@ main.jsx charge l’application. App.jsx présente le login aux visiteurs sans s
 | /discussions | Discussions | Connecté |
 | /admin | Admin | canAccessAdmin |
 | /logistique | Logistique | canAccessAdmin |
+| /territoires | OrganisationTerritoriale | canAccessAdmin |
 
 Le propriétaire a demandé le login comme écran d’entrée, selon le principe d’imf_BB. Sans session valide, les pages applicatives redirigent vers /login ; l’inscription libre est fermée et la création des comptes appartient à l’administration. Une session déjà valide est restaurée. Le catalogue ne se charge qu’après entrée dans le shell. Après connexion, la destination interne demandée est conservée, paramètres et fragment inclus ; par défaut, l’accueil est ouvert. La déconnexion ramène au login.
 
@@ -39,31 +40,42 @@ Admin.jsx concentre beaucoup de code (~4 816 lignes). Les configurations pages/a
 
 Une extraction de composants doit préserver les comportements effectivement utilisés : filtres, sélection, colonnes, scroll, formulaires, audit et réglages. Ne pas réécrire toute l’administration pour ajouter une seule consultation.
 
-## Logistique
+## Logistique — état du 25/10/2026
 
-Logistique.jsx gère sidebar, onglet actif, références et correspondances. pages/logistique/views.js regroupe le catalogue des dix vues, règles CRUD, sources de référentiels et fetchers. Les clés dashboard/articles/commandes/details/mouvements/reglements/audit/alertes/consommation/couverture sont internes à cette page.
+Logistique.jsx possède un en-tête de module et une colonne de navigation permanente à gauche, avec icônes Bootstrap, repli sur ordinateur et rail compact sur mobile. Le shell du catalogue n’enveloppe plus ce module. Les libellés métier sont définis dans la [terminologie du stock](terminologie-stock.md).
 
-Composants dédiés : DashboardLogistique, Articles, Commandes, CommandeDetails, Mouvements, Reglements, StockAudit, AlertesStock, ConsommationMensuelle et CouvertureStock.
+DashboardLogistique charge /api/logistique/synthese avec les critères appliqués. Les mesures viennent du serveur, jamais d’une somme sur la page. Quatre blocs repliables regroupent Articles (dont catégories), Bons de stock (attente, en cours, entrées, sorties, lignes et facturation), Factures (comptages et montants) et Alertes (stock faible, ruptures, péremption, écarts, couverture courte). Le bloc Derniers bons de stock est supprimé ; les listes sont chargées sur clic d’un indicateur. Une facture possède une référence non vide ; les bons non facturés sont exclus du bloc Factures. Les périodes utilisent la date du bon, la date de facture ou la date du mouvement selon la source. Le clic sur une carte ou son lien de détail charge /api/logistique/indicateurs/<clé> dans une liste sous les indicateurs. Revenir à l’indicateur et Fermer la liste restituent défilement et focus. Les recherches de détail sont validées explicitement ; populationQ conserve la recherche du dashboard lorsque q affine la liste.
 
-logistiqueShared.jsx contient SectionCard, SummaryCard, LoadingErrorEmpty, SimpleTable, SelectionStrip, formulaires et helpers de format/export. Vérifier les props existantes avant d’ajouter un second tableau générique. SimpleTable gère des fonctions d’affichage locales ; cela ne rend pas exhaustive une recherche sur un résultat limité par l’API.
+Articles et Commandes (libellé Bons de stock) utilisent /api/logistique/registre/articles et /registre/commandes. SimpleTable accepte serverMeta/serverState/onServerChange ; ses tris, recherches et pages sont alors exécutés par Django. Les colonnes visibles, gelées et redimensionnées restent locales. Les autres registres utilisent encore leurs lectures historiques : leur présentation commune ne prouve pas l’exhaustivité de leurs listes plafonnées.
 
-## Limites à ne pas propager
+ConsultationProvider, monté sous AuthProvider, expose openProduct/openOrder. Les identités et Consulter convergent vers une même fiche ; lignes, mouvements et factures peuvent ouvrir leur article ou bon associé. L’API /api/logistique/consultations/<produit|commande>/<id> vérifie le parent autorisé puis fixe les clés étrangères des rubriques. Les paramètres du navigateur ne peuvent pas déplacer le parent. Les rubriques lourdes sont chargées à la demande et paginées.
 
-- DashboardKpiCard est une carte statique ; les valeurs n’ouvrent pas encore leur détail.
-- Plusieurs boutons onNavigate changent seulement l’onglet ; un libellé mentionnant un critère ne prouve pas que le critère est appliqué.
-- Les filtres du dashboard ne sont pas transmis à son chargement ; des synthèses React utilisent des listes plafonnées, parfois demandées au-delà du maximum serveur.
-- formatNumber/formatCurrency convertissent aujourd’hui certaines absences en zéro ; formatCurrency utilise USD en dur. Ne pas recopier ce traitement dans les nouveaux contrats.
-- exportRowsToExcel produit du HTML avec extension .xls ; exportRowsToPdf utilise une fenêtre d’impression. Les helpers consomment les lignes fournies, sans garantir un registre complet.
-- Aucun conteneur partagé Produit 360/Commande 360 conforme au contrat cible n’a été trouvé.
+Le dialog natif fournit largeur initiale 680 px, boutons ±160, poignée/clavier, rétablissement, Échap et restitution du focus. La largeur seule est mémorisée. Une modification de largeur ne relance pas les lectures. Sur mobile, la fiche occupe toute la largeur. Changer de session, organisation ou permission ferme les fiches.
 
-## Points d’extension proposés
+Les montants conservent les décimales reçues et une absence reste —. La devise n’étant pas fournie par le modèle actuel, aucune devise n’est inventée. Les détails d’indicateurs disposent d’un export XLSX serveur complet, portant sur les critères appliqués, le tri et les colonnes métier visibles. La route /api/logistique/indicateurs/<clé>/export.xlsx partage read_scope et resolve_indicator avec la liste. Le serveur refuse explicitement les exports de plus de 100 000 lignes ; aucune troncature silencieuse. Les autres exports historiques restent des exports de page (CSV, tableau HTML compatible tableur, impression navigateur). Aucun PDF serveur exhaustif n’est annoncé.
 
-Créer une infrastructure JSX commune de consultation et un état d’ouverture par objet ; noms indicatifs, pas fichiers déjà présents : ConsultationDialog, Product360, Order360 et openObject({type,id,context}). Utiliser les API métier actuelles lorsqu’elles suffisent ; définir les rubriques manquantes avec le backend.
+## Organisation territoriale
 
-Créer un contrat unique de critères appliqués pour dashboard, liste, détail et export, avec restitution des filtres visibles. Le contexte comprend organisation, identifiant stable, critères appliqués et point de retour. Ne pas stocker de données métier privées dans une préférence de largeur.
+L’accueil présente ce module aux utilisateurs autorisés, via /api/workspace/modules. /territoires réutilise Admin restreint au schéma geolocalisation : découpages administratifs et pyramide sanitaire. Ce nom n’affirme pas une conformité réglementaire ou ONU.
 
-La validation et le détail des interactions figurent dans [les contrats d’interface](contrats-interface.md).
+## Vérifications
 
-## Direction validée pour la suite
+Le bundling Vite, le diagnostic Django GET en lecture seule et la recette navigateur sur données fictives sont complémentaires. La recette couvre recherche au-delà de la première page, pagination, KPI vers liste intégrée, fiches liées, retour/focus, redimensionnement sans requête, refus d’accès et mobile. Les contrôles API utilisent la base SauverNdeko en lecture seule ; aucune écriture métier ni migration n’est requise par cette évolution.
 
-Interface moderne inspirée d’Odoo : tableaux et recherches cohérents, indicateurs réellement cliquables et consultations Produit 360/Commande 360 suivant les contrats du projet et les comportements d’imf_BB. Ces fiches restent à construire. Le propriétaire demande des textes courts, humains et professionnels, sans phrases de consigne ni détails techniques dans le parcours ordinaire.
+## Thèmes et préférences
+
+main.jsx monte ThemeProvider autour de l’application. ThemePicker propose les quatre modes dans les en-têtes et à la connexion. theme.css porte les palettes et les adaptations des composants partagés ; ThemeContext applique data-theme et color-scheme sans recharger les listes. La clé sauverndeko.theme contient uniquement le choix de présentation. La couleur par défaut du menu logistique est bleu ardoise.
+
+## Barre de données et présentation
+
+DataTableToolbar et DataTable.css servent les détails d’indicateurs et les rubriques paginées des fiches 360 : recherche validée, taille de page, filtres par colonne, réinitialisation, densité, colonnes et pagination. Excel est proposé uniquement lorsque son endpoint complet est raccordé. columnFilters est un objet JSON de valeurs validées côté Django à partir des métadonnées de la vue. Les filtres numériques acceptent =, >, >=, < et <= ; les dates suivent le fuseau validé timeZone. populationQ maintient la population du dashboard quand la recherche de détail affine les résultats. Le KPI conserve sa mesure de population, et le pied du tableau indique le nombre de résultats affinés.
+
+La préférence sauverndeko.table.density change uniquement l’espacement. Elle ne déclenche pas de lecture métier. Les colonnes visibles/gelées/redimensionnées restent pilotées par SimpleTable. Le login, Vos applications et DashboardLogistique suivent la référence TailAdmin adaptée à React/Bootstrap ; aucune migration Next.js/Tailwind n’est nécessaire. Les périodes prédéfinies remplissent les dates du formulaire ; Appliquer déclenche la lecture.
+
+## Colonnes, pagination et résumé du projet
+
+ColumnPicker remplace la grille des réglages par un menu ancré : recherche locale, visibilité, colonne figée et largeur automatique. Le menu utilise la couche native popover lorsqu’elle est disponible, fonctionne dans une fiche 360, se ferme par Échap ou clic extérieur et restitue le focus au déclencheur. Ces réglages ne déclenchent pas de lecture métier.
+
+TablePagination affiche la plage réellement présentée et les pages disponibles. Quand tous les résultats tiennent sur une page, le pied indique Tous les résultats sont affichés ; les boutons précédent/suivant ne sont pas proposés. La barre de recherche reste visible même après un résultat vide, afin de pouvoir réinitialiser.
+
+Le panneau droit du login contient un résumé court de Projet Startup SauverNdeko.pdf fourni par le propriétaire : produits, professionnels et établissements de proximité en RDC, avec la santé, l’immobilier et la construction comme premiers domaines. Ce texte présente la mission sans promettre une couverture territoriale, un résultat médical ou des fonctions non raccordées. Le dashboard ne propose plus Actualiser ni Nouveau bon de stock dans son en-tête, à sa demande ; la création appartient au registre.

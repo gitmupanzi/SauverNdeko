@@ -109,3 +109,9 @@ Le relevé statique précédent reste la trace de l’étape de cartographie. L�
 La migration 02 est appliquée à la base locale : verrouillage des parents, totaux par instruction, clôture normalisée, alertes sans seuil, couverture sans jours futurs et audit SQL filtrable. Les données existantes sont inchangées ; les contrôles ont été exécutés sur une base de recette fictive. Les deux nouvelles fonctions et le remplacement d’un trigger par quatre portent la couverture globale à 1558 objets/colonnes commentés (27 fonctions, six procédures, 27 triggers ; autres familles inchangées).
 
 Consulter le [bilan de fiabilisation](../../../SQL/documentation/Logistique_Fiabilisation_20261024.md). Les écarts de droits API, d’isolation et de calculs du dashboard frontend restent ouverts.
+
+## Évolution frontend logistique — 24 octobre 2026
+
+Le relevé initial ci-dessus reste historique. Le backend actif est Django/DRF, sans Prisma. Le dashboard utilise des agrégats SQL exhaustifs et des critères transmis au serveur. Les détails des KPI s’affichent sous la synthèse avec retour à l’indicateur. Les registres Articles et Bons de stock sont paginés/recherchés côté serveur ; Produit 360 et Bon de stock 360 sont raccordés à une consultation commune. Le module Organisation territoriale ouvre le schéma geolocalisation depuis l’accueil. Voir [l’architecture actualisée](../../../frontend/skill/references/architecture.md) et [la terminologie](../../../frontend/skill/references/terminologie-stock.md).
+
+Les anciennes listes restantes et les exports de page ne constituent pas des exports exhaustifs ni une comptabilité générale. Aucune table ni donnée métier n’a été modifiée pour cette évolution frontend.

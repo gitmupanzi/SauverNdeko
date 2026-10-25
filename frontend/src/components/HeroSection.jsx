@@ -1,3 +1,4 @@
+import AppIcon from "./AppIcon";
 export default function HeroSection({ onOpenSearch, onProducts, onExperts }) {
   return (
     <div className="desktop-overview-copy">
@@ -10,7 +11,7 @@ export default function HeroSection({ onOpenSearch, onProducts, onExperts }) {
       </div>
       <div className="desktop-overview-actions">
         <button className="desktop-primary d-inline-flex align-items-center gap-2" type="button" onClick={onOpenSearch}>
-          <i className="bi bi-search" aria-hidden="true" />
+          <AppIcon name="search" size={18} />
           Lancer une recherche
         </button>
         <button className="desktop-secondary d-inline-flex align-items-center gap-2" type="button" onClick={onProducts}>

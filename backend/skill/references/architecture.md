@@ -25,3 +25,11 @@ La source analytics.T_Recherche est installée ; son registre GET est réservé 
 Voir [le bilan métier et technique](../../../SQL/documentation/Audit_Metier_20261024.md) et [le guide de démarrage](../../README.md).
 
 Le socle natif est documenté dans [le bilan PostgreSQL](../../../SQL/documentation/Django_Public_20261024.md). Les migrations du socle sont distinctes des scripts SQL métier.
+
+## Filtres de colonnes et Excel des indicateurs
+
+apps/logistique/table_queries.py valide columnFilters, les types de la vue, le tri et timeZone. Les identifiants SQL restent issus des métadonnées autorisées ; les valeurs sont liées comme paramètres. reads.read_scope et resolve_indicator sont communs aux listes et à excel.IndicatorExcelView. Le nombre de lignes exportées se calcule à partir des lignes réellement écrites, dans une lecture unique de la vue autorisée.
+
+/api/logistique/indicateurs/<clé>/export.xlsx utilise XlsxWriter, déclaré dans l’unique requirements.txt. Les colonnes métier sont en liste blanche ; l’export n’expose pas d’identifiants utilisateur ni d’objets hors périmètre. La limite de 100 000 lignes produit un refus 413 explicite. Les nombres de plus de 15 chiffres significatifs restent en texte pour éviter une perte Excel et sont signalés dans Informations. Les identifiants, références et textes pouvant ressembler à des formules sont écrits comme texte. Les dates natives sont présentées dans le fuseau validé. La devise reste non renseignée si la source ne la porte pas.
+
+Le logo et la charte proviennent de skills/document-mise-en-forme/assets. La recette du 25/10/2026 a contrôlé 26 exports statiques et une catégorie, les compteurs, les refus d’accès, les filtres et la limite ; les classeurs ont été relus avec openpyxl sur des données fictives et une lecture SQL protégée. Cette vérification n’est pas une certification d’affichage dans toutes les versions d’Office. Aucun schéma ni objet PostgreSQL n’a été modifié pour cette évolution.

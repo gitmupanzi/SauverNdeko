@@ -1,3 +1,6 @@
+import ActionButton from "../../components/ActionButton";
+import { useAuth } from "../../contexts/AuthContext";
+import { useConsultations } from "../../components/ConsultationProvider";
 import { useEffect, useMemo, useState } from "react";
 import {
   asArrayPayload,
@@ -55,6 +58,9 @@ function getReglementState(row) {
 }
 
 export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande, onToggleFkMappings }) {
+  const { openProduct, openOrder } = useConsultations();
+  const { user } = useAuth();
+  const canWrite = user?.permissions?.canWriteData !== false;
   const [summaryRows, setSummaryRows] = useState([]);
   const [entryRows, setEntryRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +184,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   );
   const summaryColumns = useMemo(
     () => [
-      { key: "ID_Commande", label: "Commande", exportValue: (row) => `#${row.ID_Commande}` },
+      { key: "ID_Commande", label: "Bon de stock", exportValue: (row) => `#${row.ID_Commande}` },
       { key: "CodeFacture", label: "Facture" },
       { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC) },
       { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle) },
@@ -304,7 +310,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
     <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
       <header className="logistics-screen-copy">
-        <h1>Reglements</h1>
+        <h1>Factures et règlements</h1>
         <p>Suivi des factures, paiements, restes a payer et retards</p>
       </header>
 
@@ -315,48 +321,39 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
             type="search"
             value={codeFactureFilter}
             onChange={(event) => setCodeFactureFilter(event.target.value)}
-            placeholder="Rechercher une facture, commande ou client..."
+            placeholder="Rechercher une facture, bon de stock ou tiers..."
           />
         </label>
       </section>
 
       <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewReglement}>
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewReglement} disabled={!canWrite}>
           Ajouter reglement
         </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedEntry && handleEditReglement(selectedEntry)} disabled={!selectedEntry}>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedEntry && handleEditReglement(selectedEntry)} disabled={!canWrite || !selectedEntry}>
           Modifier reglement
         </button>
         <button
           type="button"
           className="logistics-top-action is-cyan"
-          onClick={() => selectedSummary && onOpenCommande?.({ ID_Commande: selectedSummary.ID_Commande, CodeCmd: selectedSummary.CodeCmd }, "view")}
-          disabled={!selectedSummary || !onOpenCommande}
+          onClick={() => selectedSummary && openOrder(selectedSummary)}
+          disabled={!selectedSummary}
         >
-          Voir commande
+          Consulter le bon
         </button>
-        <button
+        <ActionButton icon="download"
           type="button"
-          className="logistics-top-action is-green"
+
           onClick={() => exportRowsToCsv("logistique-reglements-synthese.csv", summaryColumns, summaryVisibleRows)}
           disabled={summaryVisibleRows.length === 0}
-        >
-          Exporter
-        </button>
-        <button
+        >CSV · page</ActionButton>
+        <ActionButton icon="print"
           type="button"
-          className="logistics-top-action is-purple"
+
           onClick={() => exportRowsToPdf("logistique-reglements-synthese", summaryColumns, summaryVisibleRows)}
           disabled={summaryVisibleRows.length === 0}
-        >
-          Imprimer
-        </button>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
-          Correspondance FK
-        </button>
-        <button type="button" className="logistics-top-action is-muted" disabled>
-          Autres filtres
-        </button>
+        >Imprimer · page</ActionButton>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
       </section>
 
       <section className="logistics-screen-filter-card">
@@ -381,7 +378,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
             </select>
           </label>
 
-          <SelectField label="Client" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
+          <SelectField label="Tiers" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
 
           <label className="admin-form-field">
             <span>Date facture</span>
@@ -406,19 +403,22 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         {!loading && !error && summaryVisibleRows.length > 0 ? (
           <SimpleTable
             rows={summaryVisibleRows}
+            onRowConsult={openOrder}
+            consultColumns={["CodeCmd"]}
+            isCellConsultable={(row) => Boolean(row.CodeCmd)}
             selectedRowId={selectedSummary?.ID_Commande || null}
             onRowSelect={setSelectedSummary}
             enableSelection
-            showControls={false}
+            showControls
             defaultPinnedColumns={["CodeFacture", "DateFacture"]}
             defaultSortColumn="Reste"
             defaultRowsPerPage={10}
             columns={[
-              { key: "CodeCmd", label: "Code commande", render: (row) => row.CodeCmd || `#${row.ID_Commande}` },
+              { key: "CodeCmd", label: "N° de bon", render: (row) => row.CodeCmd || "—" },
               { key: "CodeFacture", label: "Code facture", render: (row) => row.CodeFacture || "-" },
               { key: "DateFacture", label: "Date facture", render: (row) => formatDate(row.DateFacture) },
               { key: "DateEcheancePaiement", label: "Echeance", render: (row) => formatDate(row.DateEcheancePaiement) },
-              { key: "NomClientSaisi", label: "Client", render: (row) => row.NomClientSaisi || "-" },
+              { key: "NomClientSaisi", label: "Tiers", render: (row) => row.NomClientSaisi || "-" },
               { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC) },
               { key: "TotalRegle", label: "Total regle", render: (row) => formatCurrency(row.TotalRegle) },
               {
@@ -447,7 +447,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         ) : null}
       </section>
 
-      <SectionCard title="Ecritures de reglement" subtitle="Historique modifiable des lignes de T_Reglements.">
+      <SectionCard title="Historique des règlements" subtitle="Paiements rattachés aux factures.">
         <SelectionStrip
           selectedRow={selectedEntry}
           label={selectedEntry ? `Ligne selectionnee: reglement #${selectedEntry.ID_Reglement}` : "Aucune ligne selectionnee"}
@@ -466,12 +466,12 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
         />
 
         <TableToolbar
-          title="Ecritures T_Reglements"
+          title="Règlements"
           rows={entryRows}
           columns={[
             { key: "DateReglement", label: "Date", renderText: (row) => formatDate(row.DateReglement) },
             { key: "CodeFactureFk", label: "Facture" },
-            { key: "ID_ClientFk", label: "Client", renderText: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || row.ID_ClientFk || "-" },
+            { key: "ID_ClientFk", label: "Tiers", renderText: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || row.ID_ClientFk || "-" },
             {
               key: "ID_ModeReglementFk",
               label: "Mode",
@@ -497,7 +497,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               { key: "CodeFactureFk", label: "Facture" },
               {
                 key: "ID_ClientFk",
-                label: "Client",
+                label: "Tiers",
                 render: (row) => clientLabelMap.get(String(row.ID_ClientFk)) || (row.ID_ClientFk ? `#${row.ID_ClientFk}` : "-"),
               },
               {
@@ -553,7 +553,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
                   modeLabelMap.get(String(selectedEntry.ID_ModeReglementFk)) ||
                   `#${selectedEntry.ID_ModeReglementFk}`}
               </p>
-              <p>Client: {clientLabelMap.get(String(selectedEntry.ID_ClientFk)) || (selectedEntry.ID_ClientFk ? `#${selectedEntry.ID_ClientFk}` : "-")}</p>
+              <p>Tiers: {clientLabelMap.get(String(selectedEntry.ID_ClientFk)) || (selectedEntry.ID_ClientFk ? `#${selectedEntry.ID_ClientFk}` : "-")}</p>
               <p>
                 Etat:{" "}
                 {Number(summaryByFacture.get(String(selectedEntry.CodeFactureFk || ""))?.Reste || 0) > 0
@@ -568,7 +568,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       {editorMode ? (
         <SectionCard
           title={editorMode === "edit" ? "Modifier le reglement" : "Saisir un reglement"}
-          subtitle="Creation et modification dans T_Reglements seulement."
+          subtitle="Paiement rattaché à une facture."
         >
           <form className="admin-editor-form" onSubmit={handleSubmit}>
             <div className="admin-editor-grid">
@@ -593,7 +593,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               />
 
               <SelectField
-                label="Client"
+                label="Tiers"
                 value={formValues.ID_ClientFk}
                 onChange={(event) => setFormValues((current) => ({ ...current, ID_ClientFk: event.target.value }))}
                 options={clientOptions}

@@ -23,7 +23,15 @@ from apps.catalogue.views import PublicView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
+from apps.logistique.excel import IndicatorExcelView
+from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
+
 urlpatterns = [
+    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes)/?$", RegisterReadView.as_view()),
+    re_path(r"^api/logistique/synthese/?$", OverviewReadView.as_view()),
+    re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/export\.xlsx/?$", IndicatorExcelView.as_view()),
+    re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),
+    re_path(r"^api/logistique/consultations/(?P<kind>produit|commande)/(?P<pk>[0-9]+)(?:/(?P<section>[a-z]+))?/?$", ConsultationReadView.as_view()),
     re_path(r"^api/workspace/modules/?$", WorkspaceModulesView.as_view()),
     re_path(r"^django-admin/", admin.site.urls),
     re_path(r"^api/recherches(?:/(?P<pk>[0-9]+))?/?$", RecherchesView.as_view()),

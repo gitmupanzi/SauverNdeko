@@ -1,3 +1,5 @@
+import { useAuth } from "../../contexts/AuthContext";
+import { useConsultations } from "../../components/ConsultationProvider";
 import { useEffect, useMemo, useState } from "react";
 import {
   asArrayPayload,
@@ -77,6 +79,9 @@ function getDetailLineState(detail) {
 }
 
 export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+  const { openProduct, openOrder } = useConsultations();
+  const { user } = useAuth();
+  const canWrite = user?.permissions?.canWriteData !== false;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -294,7 +299,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
       if (!response?.success) {
         setRows([]);
-        setError(response?.message || "Impossible de charger les details de commande.");
+        setError(response?.message || "Impossible de charger les lignes du bon.");
         setLoading(false);
         return;
       }
@@ -401,14 +406,14 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     }
 
     if (duplicateArticleInCommande) {
-      setFeedback({ type: "error", message: "Cet article existe deja dans la commande. Modifiez la ligne existante." });
+      setFeedback({ type: "error", message: "Cet article existe deja dans le bon de stock. Modifiez la ligne existante." });
       return;
     }
 
     if (stockError) {
       setFeedback({
         type: "error",
-        message: "La quantite demandee depasse le stock disponible pour cette commande de sortie.",
+        message: "La quantite demandee depasse le stock disponible pour ce bon de sortie.",
       });
       return;
     }
@@ -464,8 +469,8 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
       <header className="logistics-screen-copy">
-        <h1>Commande detail</h1>
-        <p>Lignes de commande, quantites, prix et controle du stock</p>
+        <h1>Lignes des bons</h1>
+        <p>Lignes des bons, quantites, prix et controle du stock</p>
       </header>
 
       <section className="logistics-screen-search-card">
@@ -475,47 +480,36 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
             type="search"
             value={sharedTable?.searchValue || ""}
             onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-            placeholder="Rechercher une ligne, commande, article ou facture..."
+            placeholder="Rechercher une ligne, bon de stock, article ou facture..."
           />
         </label>
       </section>
 
       <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewLine} disabled={!selectedCommande}>
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewLine} disabled={!canWrite || !selectedCommande}>
           Ajouter ligne
         </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedDetail && handleEditLine(selectedDetail)} disabled={!selectedCommande || !selectedDetail}>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedDetail && handleEditLine(selectedDetail)} disabled={!canWrite || !selectedCommande || !selectedDetail}>
           Modifier ligne
         </button>
         <button type="button" className="logistics-top-action is-red" onClick={() => selectedDetail && handleDeleteLine(selectedDetail)} disabled={!selectedCommande || !selectedDetail}>
           Supprimer ligne
         </button>
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedDetail && sharedTable?.setSelectedRow?.(selectedDetail)} disabled={!selectedDetail}>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedDetail && openOrder(selectedDetail)} disabled={!selectedDetail}>
           Voir
         </button>
-        <button type="button" className="logistics-top-action is-green" disabled={visibleRows.length === 0}>
-          Exporter
-        </button>
-        <button type="button" className="logistics-top-action is-purple" disabled={visibleRows.length === 0}>
-          Imprimer
-        </button>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
-          Correspondance FK
-        </button>
-        <button type="button" className="logistics-top-action is-muted" disabled>
-          Autres filtres
-        </button>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
       </section>
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
           <label className="admin-form-field">
-            <span>Commande</span>
-            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="Code commande..." />
+            <span>Bon de stock</span>
+            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="N° de bon..." />
           </label>
 
           <label className="admin-form-field">
-            <span>Type commande</span>
+            <span>Type de bon</span>
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
               <option value="all">Toutes</option>
               {Array.from(new Set(rows.map((row) => row.TypeCmd).filter(Boolean))).map((label) => (
@@ -527,7 +521,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           </label>
 
           <label className="admin-form-field">
-            <span>Statut commande</span>
+            <span>Statut du bon</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Toutes</option>
               {Array.from(new Set(rows.map((row) => row.StatutCmd).filter(Boolean))).map((label) => (
@@ -567,13 +561,13 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                 type="date"
                 value={dateFrom}
                 onChange={(event) => setDateFrom(event.target.value)}
-                aria-label="Date de debut detail commande"
+                aria-label="Date de debut detail bon de stock"
               />
               <input
                 type="date"
                 value={dateTo}
                 onChange={(event) => setDateTo(event.target.value)}
-                aria-label="Date de fin detail commande"
+                aria-label="Date de fin detail bon de stock"
               />
             </div>
           </label>
@@ -583,36 +577,39 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       <section className="logistics-screen-table-card">
         {!selectedCommande ? (
           <section className="table-empty-state">
-            Selectionnez une commande depuis l'onglet Commandes pour ajouter ou modifier des lignes. La vue reste consultable globalement.
+            Selectionnez un bon de stock depuis l'onglet Bons de stock pour ajouter ou modifier des lignes. La vue reste consultable globalement.
           </section>
         ) : null}
 
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune ligne de commande a afficher." />
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune ligne de bon de stock a afficher." />
 
         {!loading && !error && visibleRows.length > 0 ? (
           <SimpleTable
             rows={visibleRows}
+            onRowConsult={(row, key) => key === "CodeCmd" ? openOrder(row) : openProduct(row)}
+            consultColumns={["CodeCmd", "NomArticle", "CodeArticleInterne", "ID_ArticleFk"]}
+            isCellConsultable={(row, key) => key === "CodeCmd" ? Boolean(row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) : Boolean(row.ID_Article || row.ID_ArticleFk)}
             selectedRowId={selectedDetail ? `${selectedDetail.ID_CmdFk}-${selectedDetail.ID_ArticleFk}` : null}
             getRowId={(row) => `${row.ID_CmdFk}-${row.ID_ArticleFk}`}
             onRowSelect={sharedTable?.setSelectedRow}
             enableSelection
-            showControls={false}
+            showControls
             defaultPinnedColumns={["CodeCmd", "NomArticle"]}
             defaultSortColumn="DateCmd"
             defaultRowsPerPage={10}
             exportFilename={sharedTable?.exportFilename || "logistique-v_commandedetail.csv"}
             columns={[
-              { key: "CodeCmd", label: "Code commande" },
+              { key: "CodeCmd", label: "N° de bon" },
               { key: "CodeFacture", label: "Facture", render: (row) => row.CodeFacture || "-" },
-              { key: "DateCmd", label: "Date commande", render: (row) => formatDate(row.DateCmd, { withTime: true }) },
+              { key: "DateCmd", label: "Date du bon", render: (row) => formatDate(row.DateCmd, { withTime: true }) },
               {
                 key: "TypeCmd",
-                label: "Type commande",
+                label: "Type de bon",
                 render: (row) => <ToneBadge tone={normalizeSearchText(row.TypeCmd).includes("sort") ? "warning" : "success"}>{row.TypeCmd || "-"}</ToneBadge>,
               },
               {
                 key: "StatutCmd",
-                label: "Statut commande",
+                label: "Statut du bon",
                 render: (row) => <ToneBadge tone="info">{row.StatutCmd || "-"}</ToneBadge>,
               },
               { key: "CodeArticleInterne", label: "Code article", render: (row) => row.CodeArticleInterne || "-" },
@@ -673,7 +670,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
       {editorMode ? (
         <SectionCard
-          title={editorMode === "edit" ? "Modifier la ligne produit" : "Ajouter un produit a la commande"}
+          title={editorMode === "edit" ? "Modifier la ligne produit" : "Ajouter un produit au bon de stock"}
           subtitle="Selectionnez un article deja present dans T_Article, renseignez la quantite voulue, puis validez la ligne."
         >
           <div className="logistics-command-builder">
@@ -758,7 +755,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
                   {duplicateArticleInCommande ? (
                     <section className="logistics-inline-alert is-warning">
-                      Cet article est deja present dans la commande. Modifiez plutot la ligne existante.
+                      Cet article est deja present dans le bon de stock. Modifiez plutot la ligne existante.
                     </section>
                   ) : null}
 
@@ -852,7 +849,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                 </form>
               ) : (
                 <section className="table-empty-state">
-                  Selectionnez un article dans la liste de gauche pour preparer la ligne de commande.
+                  Selectionnez un article dans la liste de gauche pour preparer la ligne de bon de stock.
                 </section>
               )}
             </section>

@@ -1,3 +1,4 @@
+import ThemePicker from "../components/ThemePicker";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,7 +11,6 @@ function LoginBrand() {
       <img src="/sauverndeko-logo.jpg" alt="" width="56" height="56" />
       <div>
         <span className="login-brand-name">SauverNdeko</span>
-        <span className="login-brand-caption">Votre espace de travail</span>
       </div>
     </div>
   );
@@ -18,7 +18,7 @@ function LoginBrand() {
 
 export function SessionLoading() {
   return (
-    <main className="login-screen">
+    <main className="login-screen"><div className="login-theme"><ThemePicker /></div>
       <section className="login-card login-session-card" aria-label="Ouverture de SauverNdeko">
         <LoginBrand />
         <p className="login-session-status" role="status">
@@ -166,13 +166,12 @@ export default function Login() {
   const busy = submitting || loading || isAuthenticated;
 
   return (
-    <main className="login-screen">
+    <main className="login-screen"><div className="login-theme"><ThemePicker /></div>
       <section className="login-card" aria-labelledby="login-title">
         <LoginBrand />
         <header className="login-heading">
-          <span className="login-eyebrow">BIENVENUE</span>
-          <h1 id="login-title">Connectez-vous</h1>
-          <p>Retrouvez vos outils et votre organisation.</p>
+          <h1 id="login-title">Connexion</h1>
+          <p>Accédez à vos applications.</p>
         </header>
 
         {redirectTarget !== "/" ? (
@@ -267,8 +266,9 @@ export default function Login() {
           <span className="login-status" role="status">{submitting ? "Connexion en cours. Veuillez patienter." : ""}</span>
         </form>
 
-        <p className="login-register">Pour obtenir un accès, contactez l’administrateur de votre organisation.</p>
+        <p className="login-register">Besoin d’un accès ? Contactez votre administrateur.</p>
       </section>
+      <aside className="login-identity" aria-label="SauverNdeko"><div><img src="/sauverndeko-logo.jpg" alt="" width="76" height="76" /><h2>SauverNdeko</h2><p className="login-project-lead">Produits, compétences et services de proximité.</p><p className="login-project-summary">Une plateforme congolaise qui rapproche les usagers des professionnels et des établissements. Le projet se développe d’abord dans la santé, l’immobilier et la construction, avec l’ambition de servir d’autres secteurs.</p><div className="login-project-sectors" aria-label="Premiers domaines du projet"><span>Santé</span><span>Immobilier</span><span>Construction</span></div></div></aside>
     </main>
   );
 }

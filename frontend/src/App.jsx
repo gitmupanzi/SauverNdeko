@@ -1,3 +1,4 @@
+import AppIcon from "./components/AppIcon";
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
 import AdminRoute from "./components/AdminRoute";
@@ -16,6 +17,7 @@ import Profile from "./pages/Profile";
 import WorkspaceHome from "./pages/WorkspaceHome";
 import Admin from "./pages/Admin";
 import Logistique from "./pages/Logistique";
+import OrganisationTerritoriale from "./pages/OrganisationTerritoriale";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
 import { buildDiscussionPath, matchesSearch, normalizeText } from "./services/mappers";
 
@@ -188,7 +190,7 @@ function BottomNav({ currentPath, onHome, onDiscussions, onSearch }) {
       </button>
 
       <button className="bottom-icon" type="button" onClick={onSearch}>
-        <i className="bi bi-search" aria-hidden="true" />
+        <AppIcon name="search" size={18} />
       </button>
     </nav>
   );
@@ -437,7 +439,8 @@ export default function App() {
   const location = useLocation();
   const isLoginRoute = useMatch("/login");
   const isRegisterRoute = useMatch("/register");
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, user } = useAuth();
+  const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin].join(":");
 
   if (isLoginRoute) return <Login />;
   if (isRegisterRoute) return <Navigate to="/login" replace />;
@@ -446,5 +449,7 @@ export default function App() {
     return <Navigate to={loginPathFor(location)} replace />;
   }
   if (location.pathname === "/") return <WorkspaceHome />;
-  return <ApplicationShell />;
+  if (location.pathname === "/logistique") return <AdminRoute><Logistique key={scopeKey} /></AdminRoute>;
+  if (location.pathname === "/territoires") return <AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute>;
+  return <ApplicationShell key={scopeKey} />;
 }

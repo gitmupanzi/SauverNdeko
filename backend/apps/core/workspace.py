@@ -9,7 +9,8 @@ WORKSPACE_MODULES = (
     {"key": "professionnels", "label": "Professionnels", "description": "Consulter les profils des professionnels.", "path": "/experts", "icon": "people", "tone": "purple"},
     {"key": "sante", "label": "Informations santé", "description": "Consulter les informations par maladie.", "path": "/maladies", "icon": "heart-pulse", "tone": "rose"},
     {"key": "discussions", "label": "Discussions", "description": "Retrouver vos échanges et messages.", "path": "/discussions", "icon": "chat-dots", "tone": "sky"},
-    {"key": "logistique", "label": "Logistique", "description": "Articles, commandes, stock et règlements.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
+    {"key": "logistique", "label": "Logistique", "description": "Articles, stock, bons et factures.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
+    {"key": "territoires", "label": "Organisation territoriale", "description": "Découpage administratif et pyramide sanitaire.", "path": "/territoires", "icon": "diagram-3", "tone": "teal", "admin": True},
     {"key": "administration", "label": "Administration", "description": "Utilisateurs, organisations et paramètres.", "path": "/admin", "icon": "sliders", "tone": "slate", "admin": True},
 )
 

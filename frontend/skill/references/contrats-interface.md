@@ -1,6 +1,6 @@
 # Contrats d’interface ERP
 
-Ces contrats reprennent les comportements demandés dans imf_BB et les adaptent aux objets de SauverNdeko. Ce sont les critères des prochaines implémentations ; leur documentation ne les rend pas actifs dans l’application.
+Ces contrats reprennent les comportements demandés dans imf_BB et les adaptent aux objets de SauverNdeko. L’état réellement livré et ses limites figurent dans architecture.md.
 
 ## 1. Tableaux et filtres
 
@@ -27,7 +27,7 @@ Pour chaque indicateur, définir avec le backend : clé stable, mesure, unité/d
 
 Les critères actuels criticalOnly et resteOnly ne prouvent pas respectivement « rupture » et « retard ». Ajouter le contrat exact côté API avant de rendre ces cartes actionnables.
 
-La valeur, la carte actionnable et Voir le détail ouvrent le même résultat. Utiliser un bouton/lien sémantique activable au clavier ; l’aide ou Sources et calcul ne déclenche pas l’ouverture. Si aucun détail fiable n’existe, conserver une mesure informative sans fausse affordance.
+Dans le tableau de bord, la valeur, la carte actionnable et Voir le détail ouvrent le même panneau de liste sous la synthèse, avec Revenir à l’indicateur et fermeture qui restituent le focus et le défilement. Les fiches 360 consultent ensuite un enregistrement précis. Utiliser un bouton/lien sémantique activable au clavier ; Sources et calcul est retiré du tableau de bord et de ses listes à la demande du propriétaire. Si aucun détail fiable n’existe, conserver une mesure informative sans fausse affordance.
 
 Les ensembles analytiques de KPI des registres commencent repliés avec Afficher les indicateurs et aria-expanded=false. L’utilisateur peut les ouvrir ; un filtrage ne les ouvre pas implicitement. Les tableaux, graphiques et exports restent utilisables lorsque les KPI sont masqués. Les cartes essentielles de la page de pilotage sont gérées selon son organisation propre.
 
@@ -70,7 +70,7 @@ Sélection de ligne, cases, menu, aide et boutons d’écriture ne doivent pas o
 
 ## 6. Sources et calcul, sobriété visuelle
 
-Garder titre court, valeur, devise/unité, date/période et réserve indispensable visibles. Sources et calcul est replié et placé avant Voir le détail : sources sur lignes séparées, formule et critères vérifiés dans le backend. Une explication absente reste absente ; ne pas inventer un contrôle.
+Garder titre court, valeur, devise/unité, date/période et réserve indispensable visibles. À la demande du propriétaire, Sources et calcul est retiré du tableau de bord et de ses listes ; conserver les définitions vérifiées côté serveur et la traçabilité des exports. Une explication absente reste absente ; ne pas inventer un contrôle.
 
 Repères visuels repris d’imf_BB : bandeaux principaux foncés à texte blanc ; sous-blocs repliables vert très clair #f2f7f5, texte #184f49, survol #e8f2ee, avec adaptation à la charte SauverNdeko. Centraliser ces tokens/styles. Les cartes gardent des bords, espacements et focus cohérents.
 
@@ -99,4 +99,4 @@ Préparation… désactive les doubles déclenchements, puis télécharge ou exp
 | Export page et export complet | Nombre de lignes, filtres et format conformes aux libellés |
 | 1920, environ 1000 et 390 px ; zoom réel | Pas de débordement global, tableau avec scroll interne, fermeture et actions accessibles |
 
-Le build Vite ne couvre pas ces interactions. Lors de la recette, préciser ce qui est exécuté dans le navigateur, simulé ou seulement relu dans le code. Pour cette livraison de cartographie, aucun de ces parcours applicatifs n’a été testé.
+Le build Vite ne couvre pas ces interactions. Lors de la recette, préciser ce qui est exécuté dans le navigateur, simulé ou seulement relu dans le code. Les critères non couverts dans une recette donnée restent à vérifier ; ne pas confondre recette fictive et écriture métier réelle.

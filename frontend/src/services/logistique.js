@@ -38,7 +38,7 @@ export function fetchLogistiqueReferences() {
 }
 
 export function fetchLogistiqueArticles(options = {}) {
-  return logistiqueGet("/articles", options);
+  return logistiqueGet("/registre/articles", options);
 }
 
 export function createLogistiqueArticle(payload) {
@@ -64,7 +64,7 @@ export function hardDeleteLogistiqueArticle(id) {
 }
 
 export function fetchLogistiqueCommandes(options = {}) {
-  return logistiqueGet("/commandes", options);
+  return logistiqueGet("/registre/commandes", options);
 }
 
 export function createLogistiqueCommande(payload) {

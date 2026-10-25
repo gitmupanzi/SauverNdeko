@@ -1,0 +1,15 @@
+:root { --erp-action:#217b75; --erp-action-hover:#196a65; --erp-action-text:#fff; --erp-action-border:#b8d4d1; --erp-action-soft:#edf7f5; }
+html[data-theme="dark"] { --erp-action:#74d6c8; --erp-action-hover:#92e5da; --erp-action-text:#102c2b; --erp-action-border:#4e7776; --erp-action-soft:#1d3838; }
+html[data-theme="contrast"] { --erp-action:#ffe36a; --erp-action-hover:#ffe36a; --erp-action-text:#000; --erp-action-border:#fff; --erp-action-soft:#131313; }
+button.ui-action { display:inline-flex; flex:none; align-items:center; justify-content:center; gap:8px; min-height:40px; height:40px; padding:0 15px; border:1px solid var(--erp-action-border); border-radius:5px; background:var(--erp-surface,#fff); color:var(--erp-action); font:600 12px/1.2 "Segoe UI",Arial,sans-serif; white-space:nowrap; box-shadow:none; text-transform:none; letter-spacing:0; transition:background-color .15s,border-color .15s; }
+button.ui-action.is-primary { min-width:128px; background:var(--erp-action); color:var(--erp-action-text); border-color:var(--erp-action); }
+button.ui-action:hover:not(:disabled) { background:var(--erp-action-soft); border-color:var(--erp-action); }
+button.ui-action.is-primary:hover:not(:disabled) { background:var(--erp-action-hover); border-color:var(--erp-action-hover); }
+button.ui-action.is-active,button.ui-action[aria-pressed="true"],button.ui-action[aria-expanded="true"] { background:var(--erp-action-soft); border-color:var(--erp-action); }
+button.ui-action:focus-visible { outline:2px solid var(--erp-action); outline-offset:3px; }
+button.ui-action:disabled { opacity:.45; cursor:not-allowed; }
+button.ui-action.is-icon { width:40px; min-width:40px; padding:0; }
+button.ui-action[data-action="reset"],button.ui-action[data-action="download"] { min-width:128px; }
+button.ui-action .app-icon { width:15px; height:15px; }
+@media(max-width:760px) { button.ui-action { padding-inline:11px; font-size:11px; gap:6px; }button.ui-action[data-action="reset"],button.ui-action[data-action="download"] { min-width:112px; } }
+@media(prefers-reduced-motion:reduce) { button.ui-action { transition:none; } }

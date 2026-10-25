@@ -1,10 +1,13 @@
+import ActionButton from "../components/ActionButton";
+import AppIcon from "../components/AppIcon";
+import ThemePicker from "../components/ThemePicker";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { requestJson } from "../services/api";
 import "./WorkspaceHome.css";
 
-const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/admin"]);
+const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/territoires", "/admin"]);
 
 export default function WorkspaceHome() {
   const { user, logout } = useAuth();
@@ -31,7 +34,7 @@ export default function WorkspaceHome() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [version]);
+  }, [version, user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin]);
 
   const query = search.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const visible = modules.filter((module) =>
@@ -53,13 +56,13 @@ export default function WorkspaceHome() {
           <img src="/sauverndeko-logo.jpg" alt="" width="40" height="40" />
           <span>SauverNdeko</span>
         </Link>
-        <div className="workspace-account">
+        <div className="workspace-account"><ThemePicker />
           <Link to="/profil" className="workspace-profile" aria-label={"Mon profil — " + displayName}>
             <span className="workspace-avatar" aria-hidden="true">{initials}</span>
             <span>{displayName}</span>
           </Link>
           <button className="workspace-logout" type="button" onClick={leaveWorkspace} disabled={leaving} aria-label="Se déconnecter">
-            <i className="bi bi-box-arrow-right" aria-hidden="true" />
+            <AppIcon name="logout" />
             <span>{leaving ? "Déconnexion…" : "Se déconnecter"}</span>
           </button>
         </div>
@@ -70,7 +73,7 @@ export default function WorkspaceHome() {
           <div><p className="workspace-kicker">VOTRE ESPACE</p><h1>Vos applications</h1><p>Choisissez un module pour commencer.</p></div>
           <form className="workspace-search" role="search" onSubmit={(event) => event.preventDefault()}>
             <label className="workspace-sr-only" htmlFor="workspace-search">Rechercher une application</label>
-            <i className="bi bi-search" aria-hidden="true" />
+            <AppIcon name="search" />
             <input id="workspace-search" type="search" placeholder="Rechercher une application…" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" />
           </form>
         </div>
@@ -83,13 +86,14 @@ export default function WorkspaceHome() {
             <nav className="workspace-modules" aria-label="Applications disponibles">
               {visible.map((module) => (
                 <Link className={"workspace-app is-" + module.tone} to={module.path} key={module.key}>
+                  <span className="workspace-app-open" aria-hidden="true"><i className="bi bi-arrow-up-right" /></span>
                   <span className="workspace-app-icon"><i className={"bi bi-" + module.icon} aria-hidden="true" /></span>
                   <strong>{module.label}</strong>
                   <span className="workspace-app-description">{module.description}</span>
                 </Link>
               ))}
             </nav>
-            {!visible.length ? <div className="workspace-state"><i className="bi bi-search" aria-hidden="true" /><p>{query ? "Aucune application ne correspond à votre recherche." : "Aucune application n’est attribuée à ce compte."}</p>{query ? <button type="button" onClick={() => setSearch("")}>Effacer la recherche</button> : null}</div> : null}
+            {!visible.length ? <div className="workspace-state"><AppIcon name="search" /><p>{query ? "Aucune application ne correspond à votre recherche." : "Aucune application n’est attribuée à ce compte."}</p>{query ? <ActionButton icon="reset" type="button" onClick={() => setSearch("")}>Effacer la recherche</ActionButton> : null}</div> : null}
           </>
         ) : null}
         <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Les applications affichées correspondent à vos autorisations.</p>

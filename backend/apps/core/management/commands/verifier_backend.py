@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 from apps.accounts.authentication import Actor
 from apps.core.views import MODULES
 from apps.core.registry import VIEWS
+from apps.logistique.reads import INDICATORS
 
 
 class Command(BaseCommand):
@@ -62,6 +63,8 @@ class Command(BaseCommand):
                 "/api/recherches",
                 "/api/geolocalisation/hierarchie",
             ]
+            urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1"])
+            urls.extend("/api/logistique/indicateurs/" + key + "?take=1" for key in INDICATORS)
             urls.extend("/api/" + name + "?take=1" for name in MODULES)
             urls.extend(
                 "/api/views/" + obj["schema"] + "/" + obj["name"] + "?take=1"
@@ -100,6 +103,9 @@ class Command(BaseCommand):
                 ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]
             ):
                 for url in [
+                    "/api/logistique/synthese",
+                    "/api/logistique/registre/articles?take=1",
+                    "/api/logistique/registre/commandes?take=1",
                     "/api/logistique/articles",
                     "/api/logistique/commandes",
                     "/api/logistique/commande-details",
@@ -119,7 +125,7 @@ class Command(BaseCommand):
                     )
                     if response.status_code != 200:
                         self.stderr.write("Échec du périmètre local : " + url)
-                    elif url.endswith("/dashboard"):
+                    elif url.endswith(("/dashboard", "/synthese")):
                         if (
                             response.data["data"]["totals"]["articles"] != 0
                             or response.data["data"]["totals"]["commandes"] != 0

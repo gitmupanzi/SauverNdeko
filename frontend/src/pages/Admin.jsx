@@ -1,3 +1,4 @@
+import ActionButton from "../components/ActionButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchAdminUiSettings,
@@ -1481,9 +1482,9 @@ function AdminViewButton({ view, isActive, onSelect }) {
   );
 }
 
-export default function Admin() {
+export default function Admin({ schemaOnly = "", moduleTitle = "Administration" }) {
   const [availableViews, setAvailableViews] = useState([]);
-  const [selectedViewKey, setSelectedViewKey] = useState(DEFAULT_ADMIN_VIEW_KEY);
+  const [selectedViewKey, setSelectedViewKey] = useState(schemaOnly ? schemaOnly + ".V_Niveau_0" : DEFAULT_ADMIN_VIEW_KEY);
   const [rows, setRows] = useState([]);
   const [viewMeta, setViewMeta] = useState({
     totalCount: 0,
@@ -1591,6 +1592,7 @@ export default function Admin() {
   const adminViews = useMemo(() => {
     const availableKeys = new Set(availableViews.map((view) => normalizeViewKey(view.schema, view.name)));
     return ADMIN_VIEWS.filter((view) => {
+      if (schemaOnly && view.schema !== schemaOnly) return false;
       if (view.virtual) {
         if (view.renderMode === "dashboard" || view.renderMode === "empty") {
           return true;
@@ -1602,7 +1604,7 @@ export default function Admin() {
 
       return availableKeys.has(normalizeViewKey(view.schema, view.name));
     });
-  }, [availableViews]);
+  }, [availableViews, schemaOnly]);
 
   const navigationViews = useMemo(
     () => adminViews.filter((view) => view.showInNavigation !== false),
@@ -3733,7 +3735,7 @@ export default function Admin() {
         <aside className="admin-sidebar-card">
           <div className="admin-module-brand">
             <strong>SauverNdeko</strong>
-            <span>Administration</span>
+            <span>{moduleTitle}</span>
           </div>
 
           {loadingViews ? (
@@ -3919,8 +3921,8 @@ export default function Admin() {
                   </button>
                 ) : null}
                 <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export">
-                  <button
-                    className={`secondary-action admin-scroll-trigger ${showExportMenu ? "is-active" : ""}`}
+                  <ActionButton icon="download"
+
                     type="button"
                     onClick={() => {
                       setShowNavigationMenu(false);
@@ -3931,18 +3933,18 @@ export default function Admin() {
                     aria-haspopup="true"
                   >
                     Exporter
-                  </button>
+                  </ActionButton>
                   {showExportMenu ? (
                     <div className="admin-scroll-menu-panel">
-                      <button className="secondary-action" type="button" onClick={handleExportCsv} disabled={sortedRows.length === 0}>
+                      <ActionButton icon="download"  type="button" onClick={handleExportCsv} disabled={sortedRows.length === 0}>
                         Export CSV
-                      </button>
-                      <button className="secondary-action" type="button" onClick={handleExportExcel} disabled={rows.length === 0}>
+                      </ActionButton>
+                      <ActionButton icon="download"  type="button" onClick={handleExportExcel} disabled={rows.length === 0}>
                         Export Excel
-                      </button>
-                      <button className="secondary-action" type="button" onClick={handleExportPdf} disabled={rows.length === 0}>
+                      </ActionButton>
+                      <ActionButton icon="download"  type="button" onClick={handleExportPdf} disabled={rows.length === 0}>
                         Export PDF
-                      </button>
+                      </ActionButton>
                     </div>
                   ) : null}
                 </div>
@@ -4037,14 +4039,14 @@ export default function Admin() {
                           Appliquer toutes les categories
                         </button>
                       ) : null}
-                      <button
-                        className="secondary-action"
+                      <ActionButton icon="reset"
+
                         type="button"
                         onClick={handleResetAllFkSettings}
                         disabled={(!hasCustomFkSettings && !hasDirtyGenericDrafts) || savingSharedFkSettings || loadingSharedFkSettings}
                       >
                         Reinitialiser tout
-                      </button>
+                      </ActionButton>
                     </div>
                   </div>
                 </div>
@@ -4172,14 +4174,14 @@ export default function Admin() {
                               >
                                 Appliquer
                               </button>
-                              <button
-                                className="secondary-action"
+                              <ActionButton icon="reset"
+
                                 type="button"
                                 onClick={() => handleResetGenericCategoryOverride(mapping.source)}
                                 disabled={(!mapping.isCustom && mapping.inputValue === mapping.defaultValue) || savingSharedFkSettings || loadingSharedFkSettings}
                               >
                                 Reinitialiser
-                              </button>
+                              </ActionButton>
                             </div>
                           </article>
                         );
@@ -4346,9 +4348,9 @@ export default function Admin() {
                   <h3>Filtres</h3>
                   <p>Affinez le tableau, gelez et redimensionnez les colonnes importantes.</p>
                 </div>
-                <button className="secondary-action" type="button" onClick={handleResetFilters}>
+                <ActionButton icon="reset"  type="button" onClick={handleResetFilters}>
                   Reinitialiser
-                </button>
+                </ActionButton>
               </div>
 
               {activeFilterChips.length > 0 ? (
@@ -4430,9 +4432,9 @@ export default function Admin() {
                       <button type="button" className="secondary-action" onClick={handleShowAllColumns}>
                         Tout afficher
                       </button>
-                      <button type="button" className="secondary-action" onClick={handleResetColumns}>
+                      <ActionButton icon="reset" type="button"  onClick={handleResetColumns}>
                         Reinitialiser
-                      </button>
+                      </ActionButton>
                     </div>
                   </div>
                   <div className="admin-visibility-grid">

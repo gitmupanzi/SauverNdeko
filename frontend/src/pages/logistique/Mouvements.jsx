@@ -1,3 +1,5 @@
+import ActionButton from "../../components/ActionButton";
+import { useConsultations } from "../../components/ConsultationProvider";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   asArrayPayload,
@@ -41,6 +43,7 @@ function getMovementTone(row) {
 }
 
 export default function Mouvements({ references, refreshKey, sharedTable, onToggleFkMappings }) {
+  const { openProduct, openOrder } = useConsultations();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -107,7 +110,7 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
       { key: "DateMvt", label: "Date mouvement", renderText: (row) => formatDate(row.DateMvt, { withTime: true }) },
       { key: "CodeArticleInterne", label: "Code article", renderText: (row) => row.CodeArticleInterne || "-" },
       { key: "NomArticle", label: "Article" },
-      { key: "CodeCmd", label: "Code commande", renderText: (row) => row.CodeCmd || "-" },
+      { key: "CodeCmd", label: "N° de bon", renderText: (row) => row.CodeCmd || "-" },
       {
         key: "ID_TypeMvtFk",
         label: "Type mouvement",
@@ -193,27 +196,18 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
             type="search"
             value={sharedTable?.searchValue || ""}
             onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-            placeholder="Rechercher un mouvement, article ou commande..."
+            placeholder="Rechercher un mouvement, article ou bon de stock..."
           />
         </label>
       </section>
 
       <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedMouvement && sharedTable?.setSelectedRow?.(selectedMouvement)} disabled={!selectedMouvement}>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedMouvement && openProduct(selectedMouvement)} disabled={!selectedMouvement}>
           Voir
         </button>
-        <button type="button" className="logistics-top-action is-green" onClick={() => exportRowsToCsv("logistique-mouvements.csv", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>
-          Exporter
-        </button>
-        <button type="button" className="logistics-top-action is-purple" onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>
-          Imprimer
-        </button>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
-          Correspondance FK
-        </button>
-        <button type="button" className="logistics-top-action is-muted" disabled>
-          Autres filtres
-        </button>
+        <ActionButton icon="download" type="button"  onClick={() => exportRowsToCsv("logistique-mouvements.csv", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>CSV · page</ActionButton>
+        <ActionButton icon="print" type="button"  onClick={() => exportRowsToPdf("logistique-mouvements", compactColumns, visibleRows)} disabled={visibleRows.length === 0}>Imprimer · page</ActionButton>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
       </section>
 
       <section className="logistics-screen-filter-card">
@@ -223,14 +217,14 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
             <span>Origine mouvement</span>
             <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
               <option value="all">Toutes</option>
-              <option value="Commande">Commande</option>
+              <option value="Bon de stock">Bon de stock</option>
               <option value="Ajustement direct article">Ajustement direct article</option>
             </select>
           </label>
           <SelectField label="Article" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} options={articleOptions} />
           <label className="admin-form-field">
-            <span>Commande</span>
-            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="Code commande..." />
+            <span>Bon de stock</span>
+            <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="N° de bon..." />
           </label>
           <label className="admin-form-field">
             <span>Sens stock</span>
@@ -266,10 +260,13 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
         {!loading && !error && visibleRows.length > 0 ? (
           <SimpleTable
             rows={visibleRows}
+            onRowConsult={(row, key) => key === "CodeCmd" ? openOrder(row) : openProduct(row)}
+            consultColumns={["CodeCmd", "NomArticle", "CodeArticleInterne", "ID_ArticleFk"]}
+            isCellConsultable={(row, key) => key === "CodeCmd" ? Boolean(row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) : Boolean(row.ID_Article || row.ID_ArticleFk)}
             selectedRowId={selectedMouvement?.ID_Mvt || null}
             onRowSelect={sharedTable?.setSelectedRow}
             enableSelection
-            showControls={false}
+            showControls
             defaultPinnedColumns={["DateMvt", "NomArticle"]}
             defaultSortColumn="DateMvt"
             defaultRowsPerPage={10}
@@ -319,7 +316,7 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
 
                 if (column.key === "OrigineMouvement") {
                   return (
-                    <ToneBadge tone={row.OrigineMouvement === "Commande" ? "info" : "warning"}>
+                    <ToneBadge tone={row.OrigineMouvement === "Bon de stock" ? "info" : "warning"}>
                       {row.OrigineMouvement || "-"}
                     </ToneBadge>
                   );

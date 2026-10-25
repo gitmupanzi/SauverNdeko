@@ -1,3 +1,5 @@
+import ActionButton from "../../components/ActionButton";
+import { useConsultations } from "../../components/ConsultationProvider";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -161,7 +163,21 @@ function getCommandeQteTotale(row) {
 
 export default function Commandes({ references, refreshKey, onDataChanged, onOpenDetails, sharedTable, onToggleFkMappings }) {
   const { user: currentUser } = useAuth();
+  const { openOrder } = useConsultations();
+  const [gridState, setGridState] = useState({ take: 25, skip: 0, sortBy: "DateCmd", sortDir: "desc" });
+  const [serverMeta, setServerMeta] = useState(null);
+  const canWrite = currentUser?.permissions?.canWriteData !== false;
+  function changeGrid(patch) {
+    if ("q" in patch) { sharedTable?.setSearchValue?.(patch.q); delete patch.q; }
+    setGridState((current) => ({ ...current, ...patch }));
+  }
   const editorRef = useRef(null);
+  useEffect(() => {
+    if (sharedTable?.composerMode === "create") {
+      if (canWrite) handleNewCommande();
+      sharedTable?.setComposerMode?.("view");
+    }
+  }, [sharedTable?.composerMode, canWrite]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -201,8 +217,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const commandeReferenceWarnings = useMemo(
     () =>
       [
-        commandeTypeOptions.length === 0 ? "La liste Type de commande est vide." : "",
-        commandeStatusOptions.length === 0 ? "La liste Statut commande est vide." : "",
+        commandeTypeOptions.length === 0 ? "La liste Type de bon est vide." : "",
+        commandeStatusOptions.length === 0 ? "La liste Statut du bon est vide." : "",
         conditionPaiementOptions.length === 0 ? "La liste Condition de paiement est vide." : "",
         modePaiementOptions.length === 0 ? "La liste Mode de paiement est vide." : "",
       ].filter(Boolean),
@@ -230,21 +246,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       "-"
     );
   }, [currentUserDisplayName, editorMode, formValues.ID_UserFk, selectedCommande, userLabelMap]);
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (paymentFilter !== "all" && getCommandePaymentState(row).key !== paymentFilter) {
-          return false;
-        }
+  const visibleRows = rows;
 
-        if (controlFilter !== "all" && getCommandeControlState(row).key !== controlFilter) {
-          return false;
-        }
-
-        return true;
-      }),
-    [controlFilter, paymentFilter, rows]
-  );
   const summary = useMemo(
     () =>
       visibleRows.reduce(
@@ -275,11 +278,11 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   );
   const tableColumns = useMemo(
     () => [
-      { key: "CodeCmd", label: "Code commande" },
+      { key: "CodeCmd", label: "N° de bon" },
       { key: "RefCmd", label: "Reference", renderText: (row) => row.RefCmd || "-" },
       {
         key: "DateCmd",
-        label: "Date commande",
+        label: "Date du bon",
         render: (row) => formatDate(row.DateCmd, { withTime: true }),
         renderText: (row) => formatDate(row.DateCmd, { withTime: true }),
       },
@@ -303,7 +306,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       },
       {
         key: "ID_ClientFk",
-        label: "Client",
+        label: "Tiers",
         render: (row) => getCommandeClientLabel(row, clientLabelMap),
         renderText: (row) => getCommandeClientLabel(row, clientLabelMap),
       },
@@ -350,7 +353,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       },
       {
         key: "EtatControleCommande",
-        label: "Controle commande",
+        label: "Contrôle du bon",
         render: (row) => {
           const controlState = getCommandeControlState(row);
           return <ToneBadge tone={controlState.tone}>{controlState.label}</ToneBadge>;
@@ -358,7 +361,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         renderText: (row) => getCommandeControlState(row).label,
       },
       {
-        key: "actions",
+        key: "actions", sortable: false,
         label: "Actions",
         render: (row) => (
           <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
@@ -387,7 +390,9 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         client: clientFilter,
         dateFrom,
         dateTo,
-        take: 200,
+        payment: paymentFilter,
+        control: controlFilter,
+        ...gridState,
       });
 
       if (!isMounted) {
@@ -396,12 +401,13 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
       if (!response?.success) {
         setRows([]);
-        setError(response?.message || "Impossible de charger les commandes.");
+        setError(response?.message || "Impossible de charger les bons de stock.");
         setLoading(false);
         return;
       }
 
       const nextRows = asArrayPayload(response);
+      setServerMeta(response.meta || null);
       setRows(nextRows);
       if (selectedCommande?.ID_Commande != null) {
         const matchedCommande = nextRows.find((row) => row.ID_Commande === selectedCommande.ID_Commande);
@@ -419,7 +425,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     return () => {
       isMounted = false;
     };
-  }, [clientFilter, dateFrom, dateTo, deferredSearch, refreshKey, statusFilter, typeFilter]);
+  }, [clientFilter, dateFrom, dateTo, deferredSearch, refreshKey, statusFilter, typeFilter, paymentFilter, controlFilter, gridState]);
 
   useEffect(() => {
     if (editorMode !== "create") {
@@ -492,7 +498,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     setSubmitting(false);
 
     if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Enregistrement de la commande impossible.") });
+      setFeedback({ type: "error", message: getApiMessage(response, "Enregistrement du bon de stock impossible.") });
       return;
     }
 
@@ -515,14 +521,14 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   }
 
   async function handleDeleteCommande(commande) {
-    if (!window.confirm(`Supprimer la commande "${commande.CodeCmd || `#${commande.ID_Commande}`}" ?`)) {
+    if (!window.confirm(`Supprimer le bon de stock "${commande.CodeCmd || `#${commande.ID_Commande}`}" ?`)) {
       return;
     }
 
     const response = await COMMANDES_CRUD_CONFIG.deleteRecord({ record: commande });
 
     if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Suppression de la commande impossible.") });
+      setFeedback({ type: "error", message: getApiMessage(response, "Suppression du bon de stock impossible.") });
       return;
     }
 
@@ -534,7 +540,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       setCreatedCommandeAction(null);
     }
 
-    setFeedback({ type: "success", message: getApiMessage(response, "Commande supprimee avec succes.") });
+    setFeedback({ type: "success", message: getApiMessage(response, "Bon de stock supprimé avec succes.") });
     onDataChanged?.();
   }
 
@@ -542,8 +548,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     <div className="logistics-screen">
       <StatusBanner feedback={feedback} />
       <header className="logistics-screen-copy">
-        <h1>Commandes</h1>
-        <p>Liste des commandes, facturation, reglement et controle des montants</p>
+        <h1>Bons de stock</h1>
+        <p>Liste des bons de stock, facturation, reglement et controle des montants</p>
       </header>
 
       <section className="logistics-screen-search-card">
@@ -553,65 +559,54 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
             type="search"
             value={sharedTable?.searchValue || ""}
             onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-            placeholder="Rechercher une commande, facture, client ou reference..."
+            placeholder="Rechercher un bon de stock, facture, tiers ou reference..."
           />
         </label>
       </section>
 
       <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewCommande}>
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewCommande} disabled={!canWrite}>
           Ajouter
         </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedCommande && handleEditCommande(selectedCommande)} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedCommande && handleEditCommande(selectedCommande)} disabled={!canWrite || !selectedCommande || isCommandeLockedForUi(selectedCommande)}>
           Modifier
         </button>
-        <button type="button" className="logistics-top-action is-red" onClick={() => selectedCommande && handleDeleteCommande(selectedCommande)} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+        <button type="button" className="logistics-top-action is-red" onClick={() => selectedCommande && handleDeleteCommande(selectedCommande)} disabled={!canWrite || !selectedCommande || isCommandeLockedForUi(selectedCommande)}>
           Supprimer
         </button>
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedCommande && sharedTable?.setSelectedRow?.(selectedCommande)} disabled={!selectedCommande}>
-          Voir
-        </button>
-        <button type="button" className="logistics-top-action is-blue" onClick={() => selectedCommande && onOpenDetails?.(selectedCommande, "create")} disabled={!selectedCommande || isCommandeLockedForUi(selectedCommande)}>
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedCommande && openOrder(selectedCommande)} disabled={!selectedCommande}>Consulter</button>
+        <button type="button" className="logistics-top-action is-blue" onClick={() => selectedCommande && onOpenDetails?.(selectedCommande, "create")} disabled={!canWrite || !selectedCommande || isCommandeLockedForUi(selectedCommande)}>
           Ajouter produits
         </button>
-        <button
+        <ActionButton icon="download"
           type="button"
-          className="logistics-top-action is-green"
+
           onClick={() => exportRowsToCsv("logistique-commandes.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
           disabled={visibleRows.length === 0}
-        >
-          Exporter
-        </button>
-        <button
+        >CSV · page</ActionButton>
+        <ActionButton icon="print"
           type="button"
-          className="logistics-top-action is-purple"
+
           onClick={() => exportRowsToPdf("logistique-commandes", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
           disabled={visibleRows.length === 0}
-        >
-          Imprimer
-        </button>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
-          Correspondance FK
-        </button>
-        <button type="button" className="logistics-top-action is-muted" disabled>
-          Autres filtres
-        </button>
+        >Imprimer · page</ActionButton>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
       </section>
 
       {createdCommandeAction ? (
         <section className="logistics-inline-alert is-success">
-          {`Commande creee: ${createdCommandeAction.CodeCmd || `#${createdCommandeAction.ID_Commande}`}. Vous pouvez maintenant ajouter les produits.`}
+          {`Bon de stock créé: ${createdCommandeAction.CodeCmd || `#${createdCommandeAction.ID_Commande}`}. Vous pouvez maintenant ajouter les produits.`}
         </section>
       ) : null}
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
-          <SelectField label="Type commande" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} options={commandeTypeOptions} />
-          <SelectField label="Statut commande" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} options={commandeStatusOptions} />
+          <SelectField label="Type de bon" value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={commandeTypeOptions} />
+          <SelectField label="Statut du bon" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={commandeStatusOptions} />
 
           <label className="admin-form-field">
             <span>Etat paiement</span>
-            <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+            <select value={paymentFilter} onChange={(event) => { setPaymentFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="reglee">Reglee</option>
               <option value="partielle">Partiellement reglee</option>
@@ -621,8 +616,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           </label>
 
           <label className="admin-form-field">
-            <span>Controle commande</span>
-            <select value={controlFilter} onChange={(event) => setControlFilter(event.target.value)}>
+            <span>Contrôle du bon</span>
+            <select value={controlFilter} onChange={(event) => { setControlFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="coherente">Coherente</option>
               <option value="sans-details">Sans details</option>
@@ -630,7 +625,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
             </select>
           </label>
 
-          <SelectField label="Client" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
+          <SelectField label="Tiers" value={clientFilter} onChange={(event) => { setClientFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={clientOptions} />
 
           <label className="admin-form-field">
             <span>Periode</span>
@@ -638,14 +633,14 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
-                aria-label="Date de debut commande"
+                onChange={(event) => { setDateFrom(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
+                aria-label="Date de debut bon de stock"
               />
               <input
                 type="date"
                 value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
-                aria-label="Date de fin commande"
+                onChange={(event) => { setDateTo(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
+                aria-label="Date de fin bon de stock"
               />
             </div>
           </label>
@@ -653,16 +648,23 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       </section>
 
       <section className="logistics-screen-table-card">
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune commande a afficher." />
+        <p className="erp-result-count" role="status">{serverMeta?.filteredCount ?? "—"} résultat(s)</p>
+        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun bon de stock a afficher." />
 
-        {!loading && !error && visibleRows.length > 0 ? (
+        {!error ? (
           <SimpleTable
             rows={visibleRows}
             columns={tableColumns}
             selectedRowId={selectedCommande?.ID_Commande || null}
             onRowSelect={sharedTable?.setSelectedRow}
             enableSelection
-            showControls={false}
+            showControls
+            serverMeta={serverMeta}
+            serverState={{ ...gridState, q: sharedTable?.searchValue || "" }}
+            onServerChange={changeGrid}
+            onRowConsult={openOrder}
+            consultColumns={["CodeCmd", "RefCmd"]}
+            loading={loading}
             defaultPinnedColumns={["CodeCmd", "DateCmd"]}
             defaultSortColumn="DateCmd"
             defaultRowsPerPage={10}
@@ -671,42 +673,12 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         ) : null}
       </section>
 
-      {selectedCommande ? (
-        <SectionCard title="Fiche commande" subtitle="Synthese de la commande selectionnee.">
-                <div className="logistics-detail-grid">
-                  <article>
-                    <strong>{selectedCommande.CodeCmd || `Commande #${selectedCommande.ID_Commande}`}</strong>
-                    <p>Date: {formatDate(selectedCommande.DateCmd, { withTime: true })}</p>
-                    <p>Type: {typeLabelMap.get(String(selectedCommande.ID_TypeCmdFk)) || `#${selectedCommande.ID_TypeCmdFk ?? "-"}`}</p>
-                    <p>
-                      Statut commande:{" "}
-                      {statusLabelMap.get(String(selectedCommande.ID_StatutCmdFk)) ||
-                        `#${selectedCommande.ID_StatutCmdFk ?? "-"}`}
-                    </p>
-                    <p>Geolocalisation: {selectedCommande.geolocalisationCmd || "-"}</p>
-                    <p>Produits: {formatNumber(getCommandeProduitsCount(selectedCommande))}</p>
-                  </article>
-                  <article>
-                    <p>Client: {getCommandeClientLabel(selectedCommande, clientLabelMap)}</p>
-                    <p>Client saisi: {selectedCommande.NomClientSaisi || "-"}</p>
-                    <p>Utilisateur: {selectedCommande.NomComplet || userLabelMap.get(String(selectedCommande.ID_UserFk)) || "-"}</p>
-                    <p>Facture: {selectedCommande.CodeFacture || "-"}</p>
-                    <p>TTC: {formatCurrency(selectedCommande.MontantTTC)}</p>
-                    <p>Regle: {formatCurrency(selectedCommande.MontantRegleFacture)}</p>
-                    <p>Reste: {formatCurrency(selectedCommande.MontantResteFacture)}</p>
-                    <p>Qte totale: {formatNumber(getCommandeQteTotale(selectedCommande))}</p>
-                    <p>BL URL: {selectedCommande.UrlBL || "-"}</p>
-                    <p>Facture URL: {selectedCommande.UrlFacture || "-"}</p>
-                    <p>Observation: {selectedCommande.ObsCmd || "-"}</p>
-                  </article>
-                </div>
-        </SectionCard>
-      ) : null}
+
 
       {editorMode ? (
         <SectionCard
-          title={editorMode === "edit" ? "Modifier la commande" : "Creer une commande"}
-          subtitle="Renseignez d'abord l'entete de la commande, puis enchainez avec l'ajout des produits."
+          title={editorMode === "edit" ? "Modifier le bon de stock" : "Creer un bon de stock"}
+          subtitle="Renseignez d'abord l'entete du bon de stock, puis enchainez avec l'ajout des produits."
         >
           {commandeReferenceWarnings.length > 0 ? (
             <section className="table-empty-state">
@@ -715,7 +687,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
           ) : null}
 
           <div className="logistics-inline-alert is-warning">
-            Enregistrez d'abord l'entete. L'application vous proposera ensuite d'ajouter directement les produits de la commande.
+            Enregistrez d'abord l'entete. L'application vous proposera ensuite d'ajouter directement les produits du bon de stock.
           </div>
 
           <form ref={editorRef} className="admin-editor-form logistics-command-form" onSubmit={handleSubmit}>
@@ -723,12 +695,12 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               <section className="logistics-card-nested logistics-command-form-main">
                 <div className="section-head">
                   <h4>Entete essentielle</h4>
-                  <p>Les champs ci-dessous suffisent pour creer rapidement la commande.</p>
+                  <p>Les champs ci-dessous suffisent pour creer rapidement le bon de stock.</p>
                 </div>
 
                 <div className="logistics-command-editor-grid">
                   <SelectField
-                    label="Type commande"
+                    label="Type de bon"
                     value={formValues.ID_TypeCmdFk}
                     onChange={(event) => setFormValues((current) => ({ ...current, ID_TypeCmdFk: event.target.value }))}
                     options={commandeTypeOptions}
@@ -738,7 +710,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                   />
 
                   <SelectField
-                    label="Statut commande"
+                    label="Statut du bon"
                     value={formValues.ID_StatutCmdFk}
                     onChange={(event) => setFormValues((current) => ({ ...current, ID_StatutCmdFk: event.target.value }))}
                     options={commandeStatusOptions}
@@ -748,7 +720,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                   />
 
                   <label className="admin-form-field">
-                    <span>Date commande</span>
+                    <span>Date du bon</span>
                     <input
                       type="datetime-local"
                       value={formValues.DateCmd}
@@ -762,26 +734,26 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                   </label>
 
                   <SelectField
-                    label="Client"
+                    label="Tiers"
                     value={formValues.ID_ClientFk}
                     onChange={(event) => setFormValues((current) => ({ ...current, ID_ClientFk: event.target.value }))}
                     options={clientOptions}
                   />
 
                   <label className="admin-form-field">
-                    <span>Nom client saisi</span>
+                    <span>Nom tiers saisi</span>
                     <input
                       type="text"
                       value={formValues.NomClientSaisi}
                       onChange={(event) =>
                         setFormValues((current) => ({ ...current, NomClientSaisi: event.target.value }))
                       }
-                      placeholder="Utiliser si le client n'existe pas encore"
+                      placeholder="Utiliser si le tiers n'existe pas encore"
                     />
                   </label>
 
                   <label className="admin-form-field">
-                    <span>Code commande</span>
+                    <span>N° de bon</span>
                     <input
                       type="text"
                       value={formValues.CodeCmd}
@@ -806,7 +778,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                       onChange={(event) =>
                         setFormValues((current) => ({ ...current, geolocalisationCmd: event.target.value }))
                       }
-                      placeholder="Lieu de la commande, province, site..."
+                      placeholder="Lieu du bon de stock, province, site..."
                     />
                   </label>
 
@@ -823,22 +795,22 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
               <aside className="logistics-card-nested logistics-command-form-side">
                 <div className="section-head">
                   <h4>Flux de travail</h4>
-                  <p>Creation de l'entete puis ajout direct des produits sans repartir chercher la commande.</p>
+                  <p>Creation de l'entete puis ajout direct des produits sans repartir chercher le bon de stock.</p>
                 </div>
 
                 <div className="logistics-summary-grid logistics-summary-grid-compact">
-                  <SummaryCard title="Etape 1" value="Entete" tone="info" caption="Type, date, client, reference" />
+                  <SummaryCard title="Etape 1" value="Entete" tone="info" caption="Type, date, tiers, reference" />
                   <SummaryCard title="Etape 2" value="Produits" tone="success" caption="Ajout direct apres creation" />
                 </div>
 
                 <div className="logistics-detail-grid">
                   <article>
-                    <strong>Commande en cours</strong>
+                    <strong>Bon de stock en cours</strong>
                     <p>Type: {typeLabelMap.get(String(formValues.ID_TypeCmdFk || "")) || "A choisir"}</p>
                     <p>Statut: {statusLabelMap.get(String(formValues.ID_StatutCmdFk || "")) || "A choisir"}</p>
                   </article>
                   <article>
-                    <p>Client: {clientLabelMap.get(String(formValues.ID_ClientFk || "")) || formValues.NomClientSaisi || "-"}</p>
+                    <p>Tiers: {clientLabelMap.get(String(formValues.ID_ClientFk || "")) || formValues.NomClientSaisi || "-"}</p>
                     <p>Date: {formValues.DateCmd ? formatDate(formValues.DateCmd, { withTime: true }) : "-"}</p>
                   </article>
                 </div>
@@ -899,7 +871,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                         checked={formValues.SelectCmd}
                         onChange={(event) => setFormValues((current) => ({ ...current, SelectCmd: event.target.checked }))}
                       />
-                      <span>Commande selectionnee</span>
+                      <span>Bon de stock selectionnee</span>
                     </label>
                   </div>
                 </section>
@@ -1028,7 +1000,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                 Annuler
               </button>
               <button type="submit" className="primary-action" disabled={submitting || isCommandeFormBlocked}>
-                {isCommandeFormBlocked ? "Type de commande indisponible" : submitting ? "Enregistrement..." : "Enregistrer l'entete"}
+                {isCommandeFormBlocked ? "Type de bon indisponible" : submitting ? "Enregistrement..." : "Enregistrer l'entete"}
               </button>
             </div>
           </form>

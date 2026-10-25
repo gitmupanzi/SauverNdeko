@@ -1,0 +1,92 @@
+"""Filtres typés et ordre partagés par les listes et les exports logistiques."""
+import json
+import re
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from django.conf import settings
+from apps.core import db
+from apps.core.responses import APIError
+
+LABELS = {"CodeArticleInterne":"Code article","NomArticle":"Article","RefArticle":"Référence","TypeArticle":"Type","CategorieArticle":"Catégorie","Unite":"Unité","AbrUnite":"Unité","QteArticle":"Stock actuel","QteMinArticle":"Seuil","QteACommander":"À commander","PUArticle":"Prix d’achat","PVArticle":"Prix de vente","ValeurStockAchat":"Valeur au prix d’achat","MargeUnitaire":"Marge unitaire","DatePeremptionArticle":"Péremption","EtatStock":"État du stock","EtatPeremption":"Péremption","ValideArticle":"Actif","CodeCmd":"Bon de stock","RefCmd":"Référence","DateCmd":"Date du bon","TypeCmd":"Type","StatutCmd":"Statut","NomClientSaisi":"Tiers","NbLignes":"Lignes","NbArticlesDistincts":"Articles distincts","QteTotale":"Quantité totale","MontantHT":"Montant HT","MontantTTC":"Montant TTC","CodeFacture":"Facture","DateFacture":"Date de facture","DateEcheancePaiement":"Échéance","MontantRegleFacture":"Réglé","MontantResteFacture":"Solde à régler","TotalRegleReel":"Réglé","ResteReel":"Solde à régler","EtatPaiement":"Paiement","EtatControleCommande":"Contrôle","QteCmdDetail":"Quantité","PUCmdDetail":"Prix unitaire","MontantLigne":"Montant","DateMvt":"Date du mouvement","NomTypeMvt":"Type de mouvement","QteMvtSigned":"Quantité signée","PUMvt":"Prix unitaire","MontantMvt":"Montant","OrigineMouvement":"Origine","Mois":"Mois","ConsoMensuelle":"Consommation","ValeurConsoMensuelle":"Valeur","StockActuel":"Stock actuel","ConsoMoyMensuelle":"Consommation moyenne","CouvertureMois":"Couverture en mois","EtatCouverture":"Couverture","StockArticle":"Stock courant","StockMouvements":"Stock des mouvements","Ecart":"Écart","EtatAuditStock":"Contrôle","DateReglement":"Date de règlement","MontantRegle":"Réglé","CodeFactureFk":"Facture","TotalRegle":"Réglé","Reste":"Solde à régler","EtatReglement":"Paiement"}
+NUMERIC = {"smallint","integer","bigint","numeric","decimal","real","double precision"}
+DATES = {"date","timestamp without time zone","timestamp with time zone"}
+
+def document_zone(raw):
+    name = raw.get("timeZone") or settings.TIME_ZONE
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        raise APIError("Fuseau horaire invalide.")
+
+def parse_column_filters(obj, raw):
+    value = raw.get("columnFilters") or "{}"
+    if isinstance(value, str):
+        if len(value) > 8000:
+            raise APIError("Trop de filtres.")
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError):
+            raise APIError("Filtres invalides.")
+    if not isinstance(value, dict) or len(value) > 30:
+        raise APIError("Filtres invalides.")
+    columns = {col["column_name"]:col for col in obj["columns"]}
+    clauses, params, applied = [], [], {}
+    for key, item in value.items():
+        if key not in columns or key not in LABELS or not isinstance(item, str):
+            raise APIError("Colonne de filtre non autorisée.")
+        item = item.strip()
+        if not item:
+            continue
+        if len(item) > 300:
+            raise APIError("Filtre trop long.")
+        field = "v." + db.ident(key)
+        kind = columns[key]["data_type"]
+        if kind in NUMERIC:
+            match = re.fullmatch(r"\s*(>=|<=|>|<|=|≥|≤)?\s*([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))\s*", item)
+            if not match:
+                raise APIError("Filtre numérique invalide : " + LABELS[key] + ".")
+            try:
+                number = Decimal(match[2].replace(",", "."))
+                if not number.is_finite() or len(match[2]) > 50:
+                    raise InvalidOperation
+            except InvalidOperation:
+                raise APIError("Nombre invalide.")
+            operator = {"≥":">=","≤":"<="}.get(match[1],match[1]) or "="
+            clauses.append(field + operator + "%s")
+            params.append(number)
+        elif kind in DATES:
+            try:
+                day = date.fromisoformat(item)
+            except ValueError:
+                raise APIError("Date invalide : " + LABELS[key] + ".")
+            if kind == "timestamp with time zone":
+                clauses.append("(" + field + " AT TIME ZONE %s)::date=%s")
+                params.extend([str(document_zone(raw)),day])
+            else:
+                clauses.append(field + "::date=%s")
+                params.append(day)
+        elif kind == "boolean":
+            if item not in {"true","false"}:
+                raise APIError("Valeur booléenne invalide.")
+            clauses.append(field + "=%s")
+            params.append(item == "true")
+        elif kind in {"text","character varying","character"}:
+            clauses.append("POSITION(LOWER(%s) IN LOWER(COALESCE(" + field + ",'')))>0")
+            params.append(item)
+        else:
+            raise APIError("Type de filtre non pris en charge.")
+        applied[key] = item
+    return " AND ".join(clauses), params, applied
+
+def query_order(obj, raw):
+    columns = {col["column_name"] for col in obj["columns"]}
+    sort = raw.get("sortBy") or (obj.get("primaryKey") or list(columns))[0]
+    direction = str(raw.get("sortDir","desc")).lower()
+    if sort not in columns or direction not in {"asc","desc"}:
+        raise APIError("Tri non autorisé.")
+    order = "v." + db.ident(sort) + " " + direction.upper() + " NULLS LAST"
+    for key in obj.get("primaryKey",[]):
+        if key != sort:
+            order += ",v." + db.ident(key) + " ASC"
+    return order, sort, direction

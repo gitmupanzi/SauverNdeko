@@ -7,7 +7,7 @@
   justify-content: center;
   gap: 22px;
   padding: 36px 20px;
-  background: radial-gradient(ellipse at 50% 25%, #fff 0%, #f2f6fb 70%, #eaf0f8 100%);
+  background:var(--erp-bg,#f3f6fb);
   color: #182b45;
   font-family: "Segoe UI", Arial, sans-serif;
 }
@@ -83,3 +83,41 @@
   .login-spinner { animation: none; }
   .login-screen * { transition: none; }
 }
+
+/* Connexion : formulaire sobre et identité visuelle commune à l’ERP. */
+.login-screen:has(.login-identity) { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:stretch; justify-content:stretch; gap:0; padding:0; }
+.login-screen:has(.login-identity) > .login-card { align-self:center; justify-self:center; width:min(calc(100% - 64px),448px); padding:32px; margin:64px 0; border-color:var(--erp-border); border-radius:14px; box-shadow:0 2px 8px rgb(16 24 40 / 3%); background:var(--erp-surface); }
+.login-screen .login-heading h1 { font-size:30px; letter-spacing:-.5px; color:var(--erp-text); }
+.login-screen .login-heading p { color:var(--erp-muted); }
+.login-screen .login-brand-name { font-size:21px; }
+.login-screen .login-brand img { width:44px; height:44px; border-radius:9px; }
+.login-screen .login-input-wrap input { height:48px; border-color:var(--erp-border); background:var(--erp-surface); color:var(--erp-text); border-radius:8px; }
+.login-screen .login-password-toggle { height:40px; width:40px; color:var(--erp-muted); }
+.login-screen .login-submit { min-height:46px; border-color:var(--erp-primary); border-radius:8px; background:var(--erp-primary); color:var(--erp-on-primary); box-shadow:0 1px 2px rgb(16 24 40 / 5%); }
+.login-screen .login-submit:hover:not(:disabled) { filter:brightness(.94); }
+.login-screen .login-submit:disabled { opacity:.6; }
+.login-screen .login-register { color:var(--erp-muted); border-color:var(--erp-border); font-size:11px; margin-bottom:0; }
+.login-identity { position:relative; display:grid; place-items:center; min-width:0; overflow:hidden; background:#203b56; color:#fff; }
+.login-identity::before { content:""; position:absolute; inset:0; background-image:linear-gradient(rgb(255 255 255 / 5%) 1px,transparent 1px),linear-gradient(90deg,rgb(255 255 255 / 5%) 1px,transparent 1px); background-size:56px 56px; mask-image:radial-gradient(ellipse at center,#000,transparent 80%); }
+.login-identity::after { content:""; position:absolute; width:440px; height:440px; border-radius:50%; top:-220px; right:-220px; border:1px solid rgb(255 255 255 / 10%); box-shadow:0 0 0 60px rgb(255 255 255 / 2%),0 0 0 120px rgb(255 255 255 / 2%); }
+.login-identity > div { position:relative; z-index:1; padding:44px; text-align:center; }
+.login-identity img { border-radius:18px; box-shadow:0 6px 24px rgb(0 0 0 / 12%); }
+.login-identity h2 { color:#fff; font:700 32px/1.2 "Segoe UI",sans-serif; margin:24px 0 14px; letter-spacing:-.5px; }
+.login-identity p { margin:0; color:#c7d6e6; font:14px/1.6 "Segoe UI",sans-serif; }
+html[data-theme="dark"] .login-identity { background:#14263c; }
+html[data-theme="contrast"] .login-identity { background:#000; border-left:1px solid #fff; }
+html[data-theme="contrast"] .login-identity p { color:#fff; }
+@media(max-width:1000px) { .login-screen:has(.login-identity) { display:flex; justify-content:center; align-items:center; padding:76px 20px 32px; }.login-identity { display:none; }.login-screen:has(.login-identity) > .login-card { margin:0; width:min(100%,448px); } }
+@media(max-width:480px) { .login-screen:has(.login-identity) { padding:70px 16px 24px; }.login-screen:has(.login-identity) > .login-card { padding:26px 22px; }.login-screen .login-heading h1 { font-size:28px; } }
+
+.login-screen > .login-theme { z-index:5; }
+
+.login-screen { --login-danger:#b42318; }.login-screen .login-help-toggle { color:var(--erp-link); }.login-screen .login-help-text { color:var(--erp-muted); background:var(--erp-raised); border-color:var(--erp-link); }.login-screen .login-password-toggle:hover:not(:disabled) { background:var(--erp-active); color:var(--erp-link); }.login-screen .login-error { background:color-mix(in srgb,var(--login-danger) 8%,var(--erp-surface)); color:var(--login-danger); border-color:color-mix(in srgb,var(--login-danger) 35%,var(--erp-border)); }.login-screen .login-field-error { color:var(--login-danger); }
+html[data-theme] .login-screen .login-input-wrap input[aria-invalid="true"] { border-color:var(--login-danger); }
+html[data-theme="dark"] .login-screen,html[data-theme="contrast"] .login-screen { --login-danger:#ffb0ae; }
+html[data-theme="dark"] .login-screen .login-caps-lock,html[data-theme="contrast"] .login-screen .login-caps-lock { color:#f2d18d; }
+
+.login-identity > div { max-width:570px; }.login-identity .login-project-lead { margin:0; color:#eef4fa; font-size:17px; font-weight:500; }.login-identity .login-project-summary { max-width:440px; margin:20px auto 0; color:#d0dfed; font-size:14px; line-height:1.9; }.login-project-sectors { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:23px; }.login-project-sectors > span { padding:6px 12px; border:1px solid rgb(255 255 255 / 20%); border-radius:6px; color:#dce9f6; font-size:11px; background:rgb(255 255 255 / 4%); }
+html[data-theme="contrast"] .login-identity .login-project-summary,html[data-theme="contrast"] .login-identity .login-project-lead,html[data-theme="contrast"] .login-project-sectors > span { color:#fff; }
+
+.login-identity img { margin-inline:auto; }

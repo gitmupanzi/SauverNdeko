@@ -1,0 +1,180 @@
+.logistics-modern { min-height: 100vh; background: #f3f6fb; color: #243b55; font-family: "Segoe UI", Arial, sans-serif; }
+.logistics-modern .module-header { min-height: 72px; padding: 13px 25px; gap: 18px; position: sticky; top: 0; z-index: 30; background: #fff; }.module-apps-link { display: grid; place-items: center; min-width: 36px; height: 36px; color: #5f7c9e; border: 1px solid #dce5f0; border-radius: 7px; text-decoration: none; }.module-apps-link:hover { color: #2f66b1; background: #f1f5fc; }.module-header-title { padding-left: 18px; border-left: 1px solid #dce5f0; color: #657b93; font-size: 13px; }
+.logistics-modern .logistics-shell-layout { display: grid; grid-template-columns: 208px minmax(0, 1fr); align-items: start; gap: 24px; padding: 24px; min-height: calc(100svh - 72px); }.logistics-modern .logistics-shell-layout:has(.logistics-sidebar-shell.is-collapsed) { grid-template-columns: 70px minmax(0, 1fr); }
+.logistics-modern .logistics-sidebar-shell { position: sticky; top: 96px; min-height: 0; height: auto; max-height: calc(100svh - 120px); padding: 16px 10px; overflow: auto; border: 1px solid #dee6f0; border-radius: 13px; background: #fff; color: #425b76; box-shadow: 0 3px 12px rgb(33 55 85 / 3%); }
+.logistics-modern .logistics-sidebar-top { padding: 0 4px 16px; gap: 8px; border-bottom: 1px solid #edf1f6; }.logistics-modern .logistics-brand-mark { width: 32px; height: 32px; border-radius: 8px; background: #e9f1ff; color: #4773b6; font-size: 11px; }.logistics-modern .logistics-brand-copy strong { display: none; }.logistics-modern .logistics-brand-copy span { font-size: 14px; font-weight: 600; color: #314d70; }.logistics-modern .logistics-sidebar-toggle { width: 28px; height: 28px; border-radius: 6px; background: #f3f6fb; color: #7389a2; }
+.logistics-modern .logistics-sidebar-nav { display: flex; flex-direction: column; gap: 5px; padding-top: 14px; }.logistics-modern .logistics-sidebar-link { min-height: 43px; height: auto; padding: 10px 12px; gap: 11px; border-radius: 7px; color: #546e89; background: transparent; box-shadow: none; font-size: 12px; line-height: 1.5; }.logistics-modern .logistics-sidebar-link.is-active { background: #eaf1ff; color: #3268b8; font-weight: 600; }.logistics-modern .logistics-sidebar-link:hover { background: #f0f5fc; }.logistics-modern .logistics-sidebar-icon { color: inherit; font-size: 12px; width: 18px; }.logistics-modern .logistics-sidebar-footer { display: none; }
+.logistics-modern .logistics-workspace { display: block; min-width: 0; }.logistics-modern .logistics-main-column { min-width: 0; }.logistics-modern .logistics-shell-view { display: grid; gap: 18px; }.logistics-modern .logistics-screen-copy h1 { margin: 0; font: 600 27px/1.25 "Segoe UI", Arial, sans-serif; color: #243b55; letter-spacing: -.5px; }.logistics-modern .logistics-screen-copy p { margin: 8px 0 0; color: #71839a; font-size: 13px; }
+.logistics-modern .logistics-card,.logistics-modern .logistics-screen-filter-card,.logistics-modern .logistics-screen-table-card { border: 1px solid #dde5ef; border-radius: 11px; box-shadow: 0 3px 12px rgb(33 55 85 / 3%); background: #fff; }.logistics-modern .logistics-screen-filter-card { padding: 18px; }.logistics-modern .logistics-screen-table-card { padding: 16px; min-width: 0; }.logistics-modern .logistics-top-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+.logistics-modern .logistics-top-action,.logistics-modern .primary-action,.logistics-modern .secondary-action { min-height: 36px; padding: 8px 13px; border: 1px solid #d6e0ed; border-radius: 6px; background: #fff; color: #496784; box-shadow: none; font: 600 12px/1.4 "Segoe UI", Arial, sans-serif; }.logistics-modern .primary-action,.logistics-modern .logistics-top-action.is-blue { background: #3974d7; border-color: #3974d7; color: #fff; }.logistics-modern .logistics-top-action.is-red { color: #b24d59; }.logistics-modern button:disabled { opacity: .5; cursor: not-allowed; }.logistics-modern .secondary-action:hover:not(:disabled) { background: #f0f5fc; }.logistics-modern button:focus-visible,.logistics-modern a:focus-visible { outline: 2px solid #79a2e5; outline-offset: 3px; }
+.logistics-modern .admin-form-field > span,.logistics-modern .admin-form-field > label { text-transform: none; color: #627b94; font: 500 12px/1.5 "Segoe UI", Arial, sans-serif; }.logistics-modern .admin-form-field input,.logistics-modern .admin-form-field select,.logistics-modern .admin-form-field textarea { min-height: 38px; border: 1px solid #cfdbe8; border-radius: 7px; box-shadow: none; color: #304b69; font: 13px "Segoe UI", Arial, sans-serif; }.logistics-modern .admin-form-field input:focus,.logistics-modern .admin-form-field select:focus { border-color: #79a1df; box-shadow: 0 0 0 3px rgb(55 115 210 / 10%); outline: none; }
+.logistics-modern .admin-table,.consultation-dialog .admin-table { color: #334f6e; font: 12px/1.5 "Segoe UI", Arial, sans-serif; }.logistics-modern .admin-table th,.consultation-dialog .admin-table th { background: #f3f6fa; color: #516e8b; border-color: #dfe7f0; }.logistics-modern .admin-table td,.consultation-dialog .admin-table td { padding-block: 11px; border-bottom: 1px solid #e9eef5; }.logistics-modern .admin-table tbody tr:nth-child(even) { background: #fafbfd; }.logistics-modern .admin-table tbody tr:hover { background: #f0f5fc; }.logistics-modern .admin-table-head-cell.is-pinned,.logistics-modern .admin-table-cell.is-pinned { background: inherit; }.logistics-modern .admin-header-trigger { color: #506b87; font-weight: 600; }.logistics-modern .logistics-row-selected { background: #eaf2ff !important; }.logistics-modern .logistics-table-pager { margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf1f6; }
+.erp-result-count { margin: 0 0 12px; color: #72859b; font-size: 12px; }.logistics-modern .status-pill,.logistics-modern .logistics-tone-badge { font: 500 11px "Segoe UI", sans-serif; border-radius: 5px; }.logistics-modern .table-empty-state { padding: 20px; font-size: 13px; box-shadow: none; border-radius: 8px; color: #6c7e93; }
+.logistics-modern .admin-page-shell { padding: 24px; }.logistics-modern .admin-module-brand span { color: #36577b; }
+@media (max-width: 1000px) { .logistics-modern .logistics-shell-layout { gap: 18px; padding: 18px; grid-template-columns: 178px minmax(0,1fr); }.logistics-modern .logistics-sidebar-shell { top: 90px; } }
+@media (max-width: 760px) { .logistics-modern .module-header { min-height: 66px; padding: 12px 15px; gap: 10px; }.module-header-title { border: 0; padding: 0; font-size: 12px; }.logistics-modern .module-header .workspace-brand span { display: none; }.logistics-modern .logistics-shell-layout,.logistics-modern .logistics-shell-layout:has(.logistics-sidebar-shell.is-collapsed) { display: block; padding: 14px; }.logistics-modern .logistics-sidebar-shell { position: static; max-height: none; padding: 8px; margin-bottom: 18px; }.logistics-modern .logistics-sidebar-top { display: none; }.logistics-modern .logistics-sidebar-nav { flex-direction: row; padding: 0; gap: 6px; overflow-x: auto; }.logistics-modern .logistics-sidebar-link { flex: none; padding: 9px 11px; min-height: 38px; }.logistics-modern .logistics-sidebar-footer { display: none; }.logistics-modern .logistics-screen-copy h1 { font-size: 24px; }.logistics-modern .logistics-screen-table-card { padding: 12px; }.logistics-modern .admin-page-shell { padding: 14px; } }
+
+.erp-dashboard { display: grid; gap: 17px; }.erp-screen-head,.erp-screen-actions,.erp-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.erp-screen-actions { justify-content: flex-end; }.erp-dashboard-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 17px; border: 1px solid #dce5f0; border-radius: 10px; background: #fff; }.erp-dashboard-filters .admin-form-field { min-width: 130px; flex: none; }.erp-dashboard-filters .erp-dashboard-query { min-width: 190px; flex: 1; }.erp-dashboard-filters input { width: 100%; }.erp-data-note { margin: 0; color: #6d8198; font-size: 12px; line-height: 1.6; }.erp-filter-error { margin: 0; color: #a44752; font-size: 12px; }
+.erp-kpi-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }.erp-kpi { min-width: 0; padding: 16px; border: 1px solid #dce5ef; border-radius: 11px; background: #fff; box-shadow: 0 3px 12px rgb(33 55 85 / 3%); --metric-color: #537fc8; }.erp-kpi.is-purple { --metric-color: #8c7bb6; }.erp-kpi.is-amber { --metric-color: #ae8442; }.erp-kpi.is-coral { --metric-color: #c57369; }.erp-kpi.is-slate { --metric-color: #6d829f; }.erp-kpi.is-rose { --metric-color: #b76b8d; }.erp-kpi.is-teal { --metric-color: #438f88; }
+.erp-kpi-main { display: flex; align-items: center; gap: 13px; width: 100%; padding: 0; text-align: left; }.erp-kpi-main > span:last-child { display: grid; gap: 6px; min-width: 0; }.erp-kpi-icon { display: grid; place-items: center; flex: none; width: 41px; height: 41px; border-radius: 10px; color: #fff; background: var(--metric-color); font-size: 19px; }.erp-kpi-label { color: #667d96; font-size: 12px; }.erp-kpi-main strong { color: #294767; font: 600 27px/1.2 "Segoe UI", Arial, sans-serif; overflow-wrap: anywhere; }.erp-kpi-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #edf1f6; }.erp-kpi-foot details { color: #658174; font-size: 10px; line-height: 1.6; }.erp-kpi-foot details p { margin: 8px 0 0; }.erp-kpi-foot summary { cursor: pointer; }.erp-kpi-foot > button { color: #6384af; padding: 0 3px; }.erp-dashboard-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin-bottom: 20px; }.erp-panel { min-width: 0; padding: 20px; border: 1px solid #dce5ef; border-radius: 11px; background: #fff; }.erp-panel h2 { margin: 0 0 16px; font: 600 17px/1.4 "Segoe UI", Arial, sans-serif; color: #324f71; }.erp-panel-head { margin-bottom: 12px; }.erp-panel-head h2 { margin: 0; }.erp-kpi-small-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin-top: 14px; }.erp-kpi-small-grid .erp-kpi { box-shadow: none; padding: 12px; }.erp-kpi-small-grid .erp-kpi-icon { display: none; }.erp-kpi-small-grid .erp-kpi-main strong { font-size: 21px; }.erp-kpi-small-grid .erp-kpi-foot { margin-top: 10px; }
+@media(min-width:1600px){.erp-kpi-grid{grid-template-columns:repeat(6,minmax(0,1fr));}.erp-kpi-main strong{font-size:28px;}.erp-kpi-icon{width:35px;height:35px;font-size:17px;}.erp-kpi-main{gap:10px;}}@media(max-width:1100px){.erp-dashboard-panels{grid-template-columns:1fr;}}@media(max-width:760px){.erp-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.erp-kpi{padding:12px;}.erp-kpi-icon{width:32px;height:32px;font-size:16px;}.erp-kpi-main{gap:9px;}.erp-kpi-main strong{font-size:24px;}.erp-kpi-label{font-size:11px;}.erp-screen-head{align-items:flex-start;}.erp-dashboard-filters .erp-dashboard-query{flex-basis:100%;}.erp-dashboard-filters .admin-form-field{min-width:0;flex:1;}.erp-panel{padding:15px;}}
+
+.module-read-only { padding: 4px 8px; border: 1px solid #dde7ef; border-radius: 5px; color: #6b8097; font-size: 10px; background: #f7f9fc; }
+
+.logistics-modern .logistics-shell-layout { max-width: none; margin: 0; background: #f3f6fb; }
+.logistics-modern .logistics-sidebar-shell,.logistics-modern .logistics-sidebar-shell.is-collapsed { width: 100%; margin: 0; align-self: start; gap: 12px; }
+.logistics-modern .logistics-sidebar-icon { display: grid; place-items: center; flex: 0 0 20px; font-size: 17px; }
+.logistics-modern .logistics-brand-mark { font-size: 17px; }
+.logistics-modern .logistics-sidebar-shell.is-collapsed .logistics-sidebar-top { flex-direction: column; }
+
+/* Navigation permanente : identité et menus dans la colonne de gauche. */
+.logistics-modern.logistics-app { --sidebar-width: 224px; padding-left: var(--sidebar-width); }
+.logistics-modern.logistics-app.is-menu-collapsed { --sidebar-width: 76px; }
+.logistics-modern.logistics-app .logistics-sidebar-shell { position: fixed; inset: 0 auto 0 0; width: var(--sidebar-width); height: 100dvh; max-height: none; min-height: 0; margin: 0; padding: 20px 14px; border: 0; border-right: 1px solid #dee6f0; border-radius: 0; background: #fff; box-shadow: none; z-index: 40; gap: 16px; overflow-x: hidden; }
+.logistics-modern.logistics-app .logistics-sidebar-top { display: flex; flex-direction: column; align-items: stretch; gap: 17px; padding: 0 4px 17px; border-bottom: 1px solid #edf1f6; }
+.logistics-modern.logistics-app .logistics-brand-lockup { display: flex; gap: 10px; align-items: center; text-decoration: none; min-height: 44px; }
+.logistics-brand-logo { flex: none; border-radius: 8px; object-fit: contain; }
+.logistics-modern.logistics-app .logistics-brand-copy strong { display: block; color: #243b55; font: 650 15px/1.3 "Segoe UI",sans-serif; }
+.logistics-modern.logistics-app .logistics-brand-copy span { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; color: #8291a4; }
+.logistics-modern.logistics-app .logistics-sidebar-toggle { align-self: flex-end; width: 28px; height: 25px; }
+.logistics-modern.logistics-app .logistics-sidebar-nav { display: flex; flex-direction: column; padding-top: 0; gap: 7px; overflow: visible; }
+.logistics-modern.logistics-app .logistics-sidebar-link { display: flex; align-items: center; flex: none; width: 100%; min-height: 44px; padding: 11px 12px; gap: 11px; font-size: 12px; line-height: 1.5; text-align: left; }
+.logistics-modern.logistics-app .logistics-sidebar-link.is-active { background: #eaf1ff; color: #3268b8; box-shadow: inset 3px 0 #4c7fd3; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-top { align-items: center; padding-inline: 0; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-toggle { align-self: center; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-link { justify-content: center; padding-inline: 0; }
+.logistics-modern.logistics-app > .module-header .workspace-brand { display: none; }
+.logistics-modern.logistics-app > .module-header .module-header-title { border: 0; padding: 0; color: #3f5d7d; font-size: 14px; font-weight: 600; }
+.logistics-modern.logistics-app .logistics-shell-layout { display: block; padding: 25px 28px; background: #f3f6fb; }
+@media(max-width:1000px) and (min-width:761px) { .logistics-modern.logistics-app { --sidebar-width: 200px; }.logistics-modern.logistics-app.is-menu-collapsed { --sidebar-width: 76px; }.logistics-modern.logistics-app .logistics-shell-layout { padding: 22px; } }
+@media(max-width:760px) { .logistics-modern.logistics-app,.logistics-modern.logistics-app.is-menu-collapsed { --sidebar-width: 60px; }.logistics-modern.logistics-app .logistics-sidebar-shell { padding: 14px 8px; }.logistics-modern.logistics-app .logistics-sidebar-top { align-items: center; padding: 0 0 16px; }.logistics-modern.logistics-app .logistics-brand-copy,.logistics-modern.logistics-app .logistics-sidebar-toggle,.logistics-modern.logistics-app .logistics-sidebar-label { display: none; }.logistics-modern.logistics-app .logistics-sidebar-link { padding-inline: 0; justify-content: center; min-height: 44px; }.logistics-modern.logistics-app .logistics-shell-layout { padding: 18px 12px; }.logistics-modern.logistics-app > .module-header { padding: 12px; gap: 9px; }.logistics-modern.logistics-app .workspace-profile > span:last-child { display: none; }.logistics-modern.logistics-app .module-read-only { display: none; }.erp-screen-head { flex-wrap: wrap; }.erp-dashboard-filters { padding: 12px; }.erp-dashboard-filters .erp-dashboard-query { min-width: 0; }.erp-panel-head { flex-wrap: wrap; } }
+
+.logistics-modern .logistics-top-actions .logistics-top-action { background: #fff; color: #496784; border: 1px solid #d6e0ed; box-shadow: none; }
+.logistics-modern .logistics-top-actions .logistics-top-action.is-blue { background: #3974d7; border-color: #3974d7; color: #fff; }
+.logistics-modern .logistics-top-actions .logistics-top-action.is-red { color: #ad4d59; }
+.logistics-modern.logistics-app .logistics-sidebar-link:hover { color: #3268b8; background: #f0f5fc; }
+.logistics-modern .logistics-top-actions { margin: 0; }
+.logistics-modern .logistics-hero-search { background: transparent; box-shadow: none; padding: 0; border-radius: 0; }
+
+.erp-indicator-details { margin-bottom: 20px; scroll-margin-top: 90px; }
+.erp-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 17px; margin: -20px -20px 18px; border-radius: 10px 10px 0 0; background: #243f60; color: #fff; }
+.erp-detail-header h2 { margin: 0; color: #fff; font-size: 16px; }
+.erp-detail-header .secondary-action { color: #e5eef9; background: rgb(255 255 255 / 8%); border-color: rgb(255 255 255 / 20%); }
+.erp-detail-criteria { padding: 10px 13px; margin: 0 0 16px; background: #f2f7f5; border-radius: 6px; color: #285a51; font-size: 12px; }
+.erp-indicator-details .consult-indicator { margin-bottom: 12px; }
+.erp-indicator-details .consult-source { margin-bottom: 14px; }
+.erp-indicator-details .logistics-table-controls { margin-bottom: 14px; }
+.erp-kpi-main[aria-expanded="true"] strong { color: #245da6; }
+.erp-kpi:has(.erp-kpi-main[aria-expanded="true"]) { border-color: #7c9fd4; box-shadow: 0 0 0 2px rgb(74 118 184 / 8%); }
+@media(max-width:760px) { .erp-detail-header { margin: -15px -15px 16px; padding: 12px; flex-wrap: wrap; }.erp-detail-header h2 { font-size: 15px; }.erp-detail-header .secondary-action { font-size: 11px; } }
+
+.logistics-modern .logistics-table-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+.logistics-modern .logistics-table-pills .status-pill { padding: 3px 7px; border: 0; background: #eff3f8; color: #718397; font-size: 10px; }
+.logistics-modern .logistics-table-pager-size { display: none; }
+
+.erp-detail-entry { scroll-margin-top: 90px; margin-bottom: 20px; }
+.erp-detail-return { margin-bottom: 10px; }
+.erp-detail-header { background: #f2f7f5; color: #244f53; border-bottom: 1px solid #dce6e5; }
+.erp-detail-header > div > span { display: block; margin-bottom: 4px; color: #63817f; font-size: 10px; }
+.erp-detail-header h2 { color: #244c57; }
+.erp-detail-close { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border: 1px solid #cbdedb; border-radius: 50%; color: #517976; background: #fff; }
+.erp-detail-close:hover { background: #e8f2ee; }
+.erp-indicator-details .admin-table th { background: #243f60; color: #fff; }
+.erp-indicator-details .admin-table th .admin-header-trigger { color: #fff; }
+.erp-indicator-details .logistics-table-controls { padding: 12px; border-radius: 7px; box-shadow: none; margin-bottom: 14px; }
+.erp-indicator-details .logistics-table-control-row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px; }
+.erp-indicator-details .logistics-table-controls .admin-toolbar-actions { flex: 1; justify-content: flex-start; }
+.erp-indicator-details .consult-search { margin-top: 0; }
+
+.erp-indicator-block { margin-bottom: 20px; border: 1px solid #dbe4ee; border-radius: 11px; background: #fff; overflow: hidden; }
+.erp-block-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; background: #243f60; color: #fff; }
+.erp-block-header h2 { display: flex; align-items: center; gap: 10px; margin: 0; color: inherit; font: 600 17px/1.4 "Segoe UI",sans-serif; }
+.erp-block-header h2 i { font-size: 18px; color: #c9daee; }
+.erp-block-header > button { display: flex; align-items: center; gap: 7px; padding: 5px 9px; color: #e4edf9; background: rgb(255 255 255 / 8%); border: 1px solid rgb(255 255 255 / 18%); border-radius: 6px; font-size: 11px; }
+.erp-block-body { padding: 16px; }
+.erp-group-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.erp-group-grid .erp-kpi { box-shadow: none; padding: 14px; border-radius: 8px; }
+.erp-block-subtitle { margin: 19px 0 12px; padding: 9px 12px; border-radius: 6px; background: #f2f7f5; color: #315c57; font: 600 12px/1.5 "Segoe UI",sans-serif; }
+.erp-category-grid .erp-kpi-main strong { font-size: 23px; }
+.erp-stock-controls { margin-top: 17px; border-top: 1px solid #e7edf4; padding-top: 12px; }
+.erp-stock-controls > summary { color: #637d93; cursor: pointer; font-size: 12px; }
+.erp-stock-controls > .erp-group-grid { margin-top: 12px; }
+.erp-block-note { margin-top: 12px; }
+@media(min-width:1600px) { .erp-group-grid { grid-template-columns: repeat(6,minmax(0,1fr)); } }
+@media(max-width:1120px) { .erp-group-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width:760px) { .erp-group-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }.erp-block-header { padding: 12px; }.erp-block-header h2 { font-size: 15px; }.erp-block-body { padding: 11px; }.erp-group-grid .erp-kpi { padding: 10px; }.erp-group-grid .erp-kpi-main { flex-wrap: wrap; gap: 8px; }.erp-group-grid .erp-kpi-label { overflow-wrap: anywhere; } }
+
+.erp-dashboard-panels:has(> .erp-panel:only-child) { grid-template-columns: minmax(0, 1fr); }
+
+/* Mini-indicateurs compacts à l’intérieur de chaque bloc. */
+.erp-indicator-block { margin-bottom: 16px; }
+.erp-block-header { padding: 11px 15px; }
+.erp-block-header h2 { font-size: 15px; }
+.erp-block-header h2 i { font-size: 16px; }
+.erp-block-body { padding: 12px; }
+.erp-group-grid { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 9px; }
+.erp-group-grid .erp-kpi { padding: 9px 10px; border-radius: 6px; background: #fff; box-shadow: none; }
+.erp-group-grid .erp-kpi-main { gap: 8px; flex-wrap: nowrap; }
+.erp-group-grid .erp-kpi-icon { width: 25px; height: 25px; border-radius: 6px; font-size: 13px; }
+.erp-group-grid .erp-kpi-main > span:last-child { gap: 3px; }
+.erp-group-grid .erp-kpi-label { font-size: 11px; line-height: 1.35; color: #677e96; }
+.erp-group-grid .erp-kpi-main strong { font-size: 21px; line-height: 1.2; font-weight: 600; }
+.erp-group-grid .erp-kpi-foot { margin-top: 8px; padding-top: 6px; gap: 5px; }
+.erp-group-grid .erp-kpi-foot details { font-size: 9px; line-height: 1.5; }
+.erp-group-grid .erp-kpi-foot > button { font-size: 12px; }
+.erp-block-subtitle { margin: 13px 0 9px; padding: 7px 10px; font-size: 11px; }
+.erp-stock-controls { margin-top: 12px; padding-top: 10px; }
+.logistics-modern.logistics-app .logistics-sidebar-link { font-size: 13px; }
+.logistics-modern .admin-table,.consultation-dialog .admin-table { font-size: 13px; }
+@media(max-width:1350px) { .erp-group-grid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media(max-width:1000px) { .erp-group-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width:760px) { .erp-group-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }.erp-block-body { padding: 10px; }.erp-group-grid .erp-kpi { padding: 8px; }.erp-group-grid .erp-kpi-main { gap: 7px; }.erp-group-grid .erp-kpi-main strong { font-size: 20px; }.erp-group-grid .erp-kpi-icon { width: 22px; height: 22px; font-size: 12px; }.erp-group-grid .erp-kpi-label { font-size: 10px; }.erp-group-grid .erp-kpi-foot details { font-size: 8.5px; } }
+
+.erp-group-grid .erp-kpi-main > span:last-child { display: flex; flex: 1; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px 9px; }
+.erp-group-grid .erp-kpi-label { flex: 1 1 58px; }
+.erp-group-grid .erp-kpi-main strong { flex: 0 1 auto; margin-left: auto; font-size: 20px; }
+.erp-group-grid .erp-kpi-foot details { font-size: 10px; }
+@media(max-width:760px) { .erp-group-grid .erp-kpi-main > span:last-child { gap: 3px 6px; }.erp-group-grid .erp-kpi-label { flex-basis: 48px; font-size: 11px; }.erp-group-grid .erp-kpi-main strong { font-size: 19px; }.erp-group-grid .erp-kpi-foot details { font-size: 9.5px; } }
+
+/* Navigation ERP : repères de travail et raccourci d’applications. */
+.logistics-modern.logistics-app .logistics-sidebar-shell { padding: 0 12px; gap: 0; border-right: 1px solid #e1e8f1; box-shadow: 2px 0 16px rgb(31 55 86 / 2%); }
+.logistics-modern.logistics-app .logistics-sidebar-top { min-height: 72px; flex: none; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 7px; padding: 12px 1px; border-bottom: 1px solid #edf1f6; }
+.logistics-modern.logistics-app .logistics-brand-lockup { gap: 8px; min-width: 0; }
+.logistics-modern.logistics-app .logistics-brand-copy strong { font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+.logistics-modern.logistics-app .logistics-brand-copy span { color: #8b9caf; font-size: 10px; margin-top: 3px; }
+.logistics-modern.logistics-app .logistics-sidebar-toggle { flex: none; align-self: center; width: 25px; height: 28px; font-size: 14px; background: transparent; color: #8a9bb0; }
+.logistics-modern.logistics-app .logistics-sidebar-toggle:hover { background: #eff4fb; color: #427ac7; }
+.logistics-modern.logistics-app .logistics-sidebar-nav { flex: 1; min-height: 0; padding: 18px 0; gap: 21px; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; }
+.logistics-nav-group { display: flex; flex-direction: column; gap: 5px; }
+.logistics-nav-heading { padding: 0 11px 6px; color: #8a9aad; font: 600 10px/1.5 "Segoe UI",sans-serif; letter-spacing: .8px; text-transform: uppercase; }
+.logistics-modern.logistics-app .logistics-sidebar-link { min-height: 45px; padding: 7px 9px; gap: 10px; border: 1px solid transparent; border-radius: 9px; font-size: 12px; line-height: 1.45; font-weight: 500; color: #60758e; }
+.logistics-modern.logistics-app .logistics-sidebar-icon { display: grid; place-items: center; flex: 0 0 29px; width: 29px; height: 29px; border-radius: 8px; font-size: 17px; color: #7c90a8; background: #f5f7fb; }
+.logistics-modern.logistics-app .logistics-sidebar-link:hover { color: #346bb3; background: #f5f8fd; border-color: #eaf0f8; }
+.logistics-modern.logistics-app .logistics-sidebar-link:hover .logistics-sidebar-icon { color: #3977cb; background: #eaf1fc; }
+.logistics-modern.logistics-app .logistics-sidebar-link.is-active { color: #2f64ab; background: #edf4ff; border-color: #dce9fb; box-shadow: none; font-weight: 600; }
+.logistics-modern.logistics-app .logistics-sidebar-link.is-active .logistics-sidebar-icon { color: #fff; background: #4b80cf; box-shadow: 0 3px 8px rgb(61 114 193 / 17%); }
+.logistics-app-switcher { flex: none; padding: 13px 0 17px; border-top: 1px solid #edf1f6; }
+.logistics-app-switcher a { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 6px 10px; border-radius: 8px; color: #70859e; font-size: 12px; text-decoration: none; }
+.logistics-app-switcher a > span:first-child { display: grid; place-items: center; width: 26px; height: 26px; color: #7a94b6; background: #f1f5fb; border-radius: 7px; }
+.logistics-app-switcher a > i:last-child { margin-left: auto; font-size: 12px; color: #99a9ba; }
+.logistics-app-switcher a:hover { background: #f5f8fd; color: #386db7; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-top { flex-direction: column; align-items: center; gap: 4px; padding-block: 13px; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-nav { gap: 16px; }
+.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-link { padding-inline: 0; }
+.logistics-sidebar-shell.is-collapsed .logistics-app-switcher a { justify-content: center; padding-inline: 0; }
+@media(max-width:1000px) and (min-width:761px) { .logistics-modern.logistics-app:not(.is-menu-collapsed) { --sidebar-width: 216px; } }
+@media(max-width:760px) { .logistics-modern.logistics-app .logistics-sidebar-shell { padding-inline: 7px; }.logistics-modern.logistics-app .logistics-sidebar-top,.logistics-modern.logistics-app .logistics-sidebar-shell.is-collapsed .logistics-sidebar-top { min-height: 66px; flex-direction: row; justify-content: center; padding: 12px 0; }.logistics-modern.logistics-app .logistics-sidebar-toggle,.logistics-modern.logistics-app .logistics-nav-heading { display: none; }.logistics-modern.logistics-app .logistics-sidebar-nav { padding-top: 12px; gap: 16px; }.logistics-modern.logistics-app .logistics-sidebar-link { min-height: 42px; padding: 5px 0; }.logistics-modern.logistics-app .logistics-sidebar-icon { flex-basis: 28px; width: 28px; height: 28px; font-size: 16px; }.logistics-app-switcher { padding-bottom: 10px; }.logistics-app-switcher a { justify-content: center; padding-inline: 0; }.logistics-app-switcher a > span:not(:first-child),.logistics-app-switcher a > i { display: none; } }
+
+/* Colonne bleu ardoise : repère constant, y compris avec le thème clair. */
+.logistics-modern.logistics-app .logistics-sidebar-shell { background:var(--erp-sidebar-bg,#203b56); color:var(--erp-sidebar-text,#e9f1fa); border-color:var(--erp-sidebar-border,#3a5671); }
+.logistics-modern.logistics-app .logistics-brand-copy strong { color:var(--erp-sidebar-text,#e9f1fa); }
+.logistics-modern.logistics-app :is(.logistics-brand-copy span,.logistics-nav-heading,.logistics-sidebar-toggle) { color:var(--erp-sidebar-muted,#bdd0e2); }
+.logistics-modern.logistics-app :is(.logistics-sidebar-top,.logistics-app-switcher) { border-color:var(--erp-sidebar-border,#3a5671); }
+.logistics-modern.logistics-app .logistics-sidebar-link { color:var(--erp-sidebar-text,#e9f1fa); }
+.logistics-modern.logistics-app .logistics-sidebar-icon { color:var(--erp-sidebar-muted,#bdd0e2); background:var(--erp-sidebar-icon,#2d4d6b); }
+.logistics-modern.logistics-app .logistics-sidebar-link:hover { color:var(--erp-sidebar-text,#e9f1fa); background:var(--erp-sidebar-hover,#2b4c6b); border-color:var(--erp-sidebar-border,#3a5671); }
+.logistics-modern.logistics-app .logistics-sidebar-link.is-active { color:var(--erp-sidebar-text,#e9f1fa); background:var(--erp-sidebar-active,#315d89); border-color:var(--erp-sidebar-border,#3a5671); }
+.logistics-modern.logistics-app .logistics-sidebar-toggle:hover { background:var(--erp-sidebar-hover,#2b4c6b); color:var(--erp-sidebar-text,#fff); }
+.logistics-modern.logistics-app .logistics-app-switcher a { color:var(--erp-sidebar-muted,#bdd0e2); }
+.logistics-modern.logistics-app .logistics-app-switcher a:hover { background:var(--erp-sidebar-hover,#2b4c6b); color:var(--erp-sidebar-text,#fff); }
+.logistics-modern.logistics-app .logistics-app-switcher a > span:first-child { color:var(--erp-sidebar-muted,#bdd0e2); background:var(--erp-sidebar-icon,#2d4d6b); }

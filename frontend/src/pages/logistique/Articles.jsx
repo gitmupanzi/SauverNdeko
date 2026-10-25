@@ -1,3 +1,5 @@
+import ActionButton from "../../components/ActionButton";
+import { useConsultations } from "../../components/ConsultationProvider";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -97,6 +99,20 @@ function getArticleRecordState(article) {
 
 export default function Articles({ references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
   const { user: currentUser } = useAuth();
+  const { openProduct } = useConsultations();
+  const [gridState, setGridState] = useState({ take: 25, skip: 0, sortBy: "NomArticle", sortDir: "asc" });
+  const [serverMeta, setServerMeta] = useState(null);
+  const canWrite = currentUser?.permissions?.canWriteData !== false;
+  function changeGrid(patch) {
+    if ("q" in patch) { sharedTable?.setSearchValue?.(patch.q); delete patch.q; }
+    setGridState((current) => ({ ...current, ...patch }));
+  }
+  useEffect(() => {
+    if (sharedTable?.composerMode === "create") {
+      if (canWrite) handleNewArticle();
+      sharedTable?.setComposerMode?.("view");
+    }
+  }, [sharedTable?.composerMode, canWrite]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -151,33 +167,8 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       "-"
     );
   }, [currentUserDisplayName, editorMode, formValues.ID_UserFK, selectedArticle, userLabelMap]);
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const stockState = getArticleStockState(row);
-        const expirationState = getArticleExpirationState(row);
-        const recordState = getArticleRecordState(row);
+  const visibleRows = rows;
 
-        if (stockStateFilter !== "all" && stockState.key !== stockStateFilter) {
-          return false;
-        }
-
-        if (peremptionFilter !== "all" && expirationState.key !== peremptionFilter) {
-          return false;
-        }
-
-        if (articleStateFilter !== "all" && recordState.key !== articleStateFilter) {
-          return false;
-        }
-
-        if (unitFilter && String(row.ID_UniteFk || "") !== String(unitFilter)) {
-          return false;
-        }
-
-        return true;
-      }),
-    [articleStateFilter, peremptionFilter, rows, stockStateFilter, unitFilter]
-  );
   const stockStateSummary = useMemo(
     () =>
       visibleRows.reduce(
@@ -195,7 +186,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       { key: "CodeArticleInterne", label: "Code interne" },
       { key: "NomArticle", label: "Article" },
       {
-        key: "ID_TypeArticleFk",
+        key: "ID_CategorieArticleFk",
         label: "Categorie",
         render: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
         renderText: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
@@ -230,7 +221,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         renderText: (row) => formatCurrency(row.MargeUnitaire),
       },
       {
-        key: "stockState",
+        key: "stockState", sortable: false,
         label: "Etat stock",
         render: (row) => <ToneBadge tone={getArticleStockState(row).tone}>{getArticleStockState(row).label}</ToneBadge>,
         renderText: (row) => getArticleStockState(row).label,
@@ -248,7 +239,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         renderText: (row) => getArticleRecordState(row).label,
       },
       {
-        key: "actions",
+        key: "actions", sortable: false,
         label: "Actions",
         render: (row) => (
           <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
@@ -280,7 +271,10 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         typeId: typeFilter,
         categorieId: categoryFilter,
         statut: articleStateFilter === "all" ? "" : articleStateFilter === "actif" ? "true" : "false",
-        take: 250,
+        uniteId: unitFilter,
+        stockState: stockStateFilter,
+        peremption: peremptionFilter,
+        ...gridState,
       });
 
       if (!isMounted) {
@@ -295,6 +289,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       }
 
       const nextRows = asArrayPayload(response);
+      setServerMeta(response.meta || null);
       setRows(nextRows);
       if (selectedArticle?.ID_Article != null) {
         const matchedArticle = nextRows.find((row) => row.ID_Article === selectedArticle.ID_Article);
@@ -312,7 +307,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     return () => {
       isMounted = false;
     };
-  }, [articleStateFilter, categoryFilter, deferredSearch, refreshKey, typeFilter]);
+  }, [articleStateFilter, categoryFilter, deferredSearch, refreshKey, typeFilter, unitFilter, stockStateFilter, peremptionFilter, gridState]);
 
   useEffect(() => {
     if (editorMode !== "create" || !currentUserId) {
@@ -452,10 +447,10 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       </section>
 
       <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewArticle}>
+        <button type="button" className="logistics-top-action is-blue" onClick={handleNewArticle} disabled={!canWrite}>
           Ajouter
         </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedArticle && handleEditArticle(selectedArticle)} disabled={!selectedArticle}>
+        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedArticle && handleEditArticle(selectedArticle)} disabled={!canWrite || !selectedArticle}>
           Modifier
         </button>
         <button
@@ -467,34 +462,23 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         >
           Supprimer
         </button>
-        <button type="button" className="logistics-top-action is-orange" onClick={() => selectedArticle && handleDisableArticle(selectedArticle)} disabled={!selectedArticle}>
+        <button type="button" className="logistics-top-action is-orange" onClick={() => selectedArticle && handleDisableArticle(selectedArticle)} disabled={!canWrite || !selectedArticle}>
           Desactiver
         </button>
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedArticle && sharedTable?.setSelectedRow?.(selectedArticle)} disabled={!selectedArticle}>
-          Voir
-        </button>
-        <button
+        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedArticle && openProduct(selectedArticle)} disabled={!selectedArticle}>Consulter</button>
+        <ActionButton icon="download"
           type="button"
-          className="logistics-top-action is-green"
+
           onClick={() => exportRowsToCsv("logistique-articles.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
           disabled={visibleRows.length === 0}
-        >
-          Exporter
-        </button>
-        <button
+        >CSV · page</ActionButton>
+        <ActionButton icon="print"
           type="button"
-          className="logistics-top-action is-purple"
+
           onClick={() => exportRowsToPdf("logistique-articles", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
           disabled={visibleRows.length === 0}
-        >
-          Imprimer
-        </button>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>
-          Correspondance FK
-        </button>
-        <button type="button" className="logistics-top-action is-muted" disabled>
-          Autres filtres
-        </button>
+        >Imprimer · page</ActionButton>
+        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
       </section>
 
       <section className="logistics-screen-filter-card">
@@ -502,27 +486,27 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
           <SelectField
             label="Categorie article"
             value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
+            onChange={(event) => { setCategoryFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
             options={articleCategoryOptions}
           />
 
           <SelectField
             label="Type article"
             value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
+            onChange={(event) => { setTypeFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
             options={articleTypeOptions}
           />
 
           <SelectField
             label="Unite"
             value={unitFilter}
-            onChange={(event) => setUnitFilter(event.target.value)}
+            onChange={(event) => { setUnitFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
             options={articleUnitOptions}
           />
 
           <label className="admin-form-field">
             <span>Etat stock</span>
-            <select value={stockStateFilter} onChange={(event) => setStockStateFilter(event.target.value)}>
+            <select value={stockStateFilter} onChange={(event) => { setStockStateFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="disponible">Disponible</option>
               <option value="faible">Stock faible</option>
@@ -532,7 +516,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
 
           <label className="admin-form-field">
             <span>Etat peremption</span>
-            <select value={peremptionFilter} onChange={(event) => setPeremptionFilter(event.target.value)}>
+            <select value={peremptionFilter} onChange={(event) => { setPeremptionFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="valide">Valide</option>
               <option value="alerte">Alerte peremption</option>
@@ -543,7 +527,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
 
           <label className="admin-form-field">
             <span>Etat article</span>
-            <select value={articleStateFilter} onChange={(event) => setArticleStateFilter(event.target.value)}>
+            <select value={articleStateFilter} onChange={(event) => { setArticleStateFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="actif">Actif</option>
               <option value="inactif">Inactif</option>
@@ -553,16 +537,23 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       </section>
 
       <section className="logistics-screen-table-card">
+        <p className="erp-result-count" role="status">{serverMeta?.filteredCount ?? "—"} résultat(s)</p>
         <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun article a afficher." />
 
-        {!loading && !error && visibleRows.length > 0 ? (
+        {!error ? (
           <SimpleTable
             rows={visibleRows}
             columns={tableColumns}
             selectedRowId={selectedArticle?.ID_Article || null}
             onRowSelect={sharedTable?.setSelectedRow}
             enableSelection
-            showControls={false}
+            showControls
+            serverMeta={serverMeta}
+            serverState={{ ...gridState, q: sharedTable?.searchValue || "" }}
+            onServerChange={changeGrid}
+            onRowConsult={openProduct}
+            consultColumns={["CodeArticleInterne", "NomArticle"]}
+            loading={loading}
             defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
             defaultSortColumn="NomArticle"
             defaultRowsPerPage={10}
@@ -571,45 +562,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         ) : null}
       </section>
 
-      {selectedArticle ? (
-        <SectionCard title="Fiche article" subtitle="Lecture detaillee issue de la vue logistique.">
-                <div className="logistics-detail-grid">
-                  <article>
-                    <strong>{selectedArticle.NomArticle}</strong>
-                    <p>Code interne: {selectedArticle.CodeArticleInterne || "-"}</p>
-                    <p>Code externe: {selectedArticle.CodeArticleExterne ?? "-"}</p>
-                    <p>Reference: {selectedArticle.RefArticle || "-"}</p>
-                    <p>Type: {typeLabelMap.get(String(selectedArticle.ID_TypeArticleFk)) || "-"}</p>
-                    <p>Categorie: {categoryLabelMap.get(String(selectedArticle.ID_CategorieArticleFk)) || "-"}</p>
-                    <p>Etat stock: {getArticleStockState(selectedArticle).label}</p>
-                    <p>Etat peremption: {getArticleExpirationState(selectedArticle).label}</p>
-                  </article>
-                  <article>
-                    <p>Utilisateur: {selectedArticle.NomComplet || userLabelMap.get(String(selectedArticle.IdUser)) || "-"}</p>
-                    <p>Unite: {unitLabelMap.get(String(selectedArticle.ID_UniteFk)) || "-"}</p>
-                    <p>Stock courant: {formatNumber(selectedArticle.QteArticle)}</p>
-                    <p>Seuil minimum: {formatNumber(selectedArticle.QteMinArticle)}</p>
-                    <p>A commander: {formatNumber(selectedArticle.QteACommander)}</p>
-                    <p>PU: {formatCurrency(selectedArticle.PUArticle)}</p>
-                    <p>PV: {formatCurrency(selectedArticle.PVArticle)}</p>
-                    <p>Valeur stock achat: {formatCurrency(selectedArticle.ValeurStockAchat)}</p>
-                    <p>Marge unitaire: {formatCurrency(selectedArticle.MargeUnitaire)}</p>
-                    <p>Peremption: {formatDate(selectedArticle.DatePeremptionArticle)}</p>
-                    <p>Alerte peremption: {formatDate(selectedArticle.DatePeremptionAlerteArticle)}</p>
-                    <p>
-                      Jours d'alerte:{" "}
-                      {(selectedArticle.NbreJoursAlerteArticle ??
-                        computeArticleAlertDays(
-                          selectedArticle.DatePeremptionArticle,
-                          selectedArticle.DatePeremptionAlerteArticle
-                        )) ||
-                        "-"}
-                    </p>
-                    <p>Photo: {selectedArticle.PhotoArticle || "-"}</p>
-                  </article>
-                </div>
-        </SectionCard>
-      ) : null}
+
 
       {editorMode ? (
         <SectionCard
