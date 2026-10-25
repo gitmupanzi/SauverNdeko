@@ -1,3 +1,5 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { formatConsumptionMoney } from "../../utils/money";
 import { useEffect, useMemo, useState } from "react";
 import {
   asArrayPayload,
@@ -17,6 +19,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currencyFilter,setCurrencyFilter]=useState("");
   const [articleFilter, setArticleFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -31,6 +34,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
 
       const response = await CONSOMMATION_VIEW_CONFIG.fetchRows({
         article: articleFilter,
+        deviseId:currencyFilter,
         dateFrom,
         dateTo,
         take: 120,
@@ -56,7 +60,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
     return () => {
       isMounted = false;
     };
-  }, [articleFilter, dateFrom, dateTo, refreshKey]);
+  }, [articleFilter, dateFrom, dateTo, refreshKey,currencyFilter]);
 
   const maxValue = useMemo(
     () => Math.max(1, ...rows.map((row) => Number(row.ConsoMensuelle || 0))),
@@ -67,6 +71,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
     <div className="logistics-stack">
       <SectionCard title="Consommation mensuelle" subtitle="Vue V_ConsoMensuelle avec representation graphique simple.">
         <div className="logistics-filter-grid logistics-filter-grid-wide">
+          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
           <SelectField
             label="Article"
             value={articleFilter}
@@ -115,6 +120,7 @@ export default function ConsommationMensuelle({ references, refreshKey }) {
             columns={[
               { key: "NomArticle", label: "Article" },
               { key: "Mois", label: "Mois", render: (row) => formatDate(row.Mois) },
+              { key:"ValeurConsoMensuelle",label:"Valeur par devise",render:formatConsumptionMoney,renderText:formatConsumptionMoney },
               { key: "ConsoMensuelle", label: "Consommation", render: (row) => formatNumber(row.ConsoMensuelle) },
             ]}
           />

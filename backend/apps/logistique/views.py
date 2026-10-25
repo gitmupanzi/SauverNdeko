@@ -59,7 +59,7 @@ class StockView(APIView):
             "consommation": "V_ConsoMensuelle",
             "couverture": "V_CouvertureStock",
             "sans-details": "V_CommandesSansDetails",
-            "entries": "T_Reglements",
+            "entries": "V_Reglements",
         }
         if kind is None:
             return ok(
@@ -73,9 +73,7 @@ class StockView(APIView):
             )
         if kind not in names:
             raise APIError("Registre introuvable.", "NOT_FOUND", 404)
-        obj = (
-            model(names[kind]) if kind == "entries" else view("logistique", names[kind])
-        )
+        obj = view("logistique", names[kind])
         rows, meta = listing(obj, request.user, request.query_params.dict())
         return ok(rows, meta=meta)
 

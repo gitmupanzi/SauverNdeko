@@ -1,3 +1,5 @@
+import useReferencesRefresh from "../hooks/useReferencesRefresh";
+import {formatDate} from "./logistique/logistiqueShared";
 import ReferenceSettings from "../components/ReferenceSettings";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
@@ -6,10 +8,9 @@ import ModuleHeader from "../components/ModuleHeader";
 import "./logistique/LogistiqueModern.css";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import {
-  fetchAdminModelList,
+  fetchCompleteReferenceRows,
   fetchAdminUiSettings,
   fetchAdminUiSettingsAudit,
-  fetchViewData,
   saveAdminUiSettings,
 } from "../services/api";
 import { fetchLogistiqueReferences } from "../services/logistique";
@@ -78,6 +79,7 @@ function extractPayloadRows(payload) {
 }
 
 function normalizeGenericRows(rows, categories) {
+  const categoryById = new Map(categories.map(category => [String(category.ID_CategorieGenerique ?? category.id ?? ""), category]));
   const categoryNameById = new Map(
     categories.map((category) => [
       String(category.ID_CategorieGenerique ?? category.id ?? ""),
@@ -94,6 +96,7 @@ function normalizeGenericRows(rows, categories) {
       NomGenerique: row.NomGenerique ?? row.label,
       AbrGenerique: row.AbrGenerique ?? row.abbr ?? "",
       ID_CategorieGeneriqueFk: categoryId,
+      ValideCategorieGenerique: categoryById.get(String(categoryId ?? ""))?.ValideCategorieGenerique,
       NomCategorieGenerique:
         row.NomCategorieGenerique || categoryNameById.get(String(categoryId ?? "")) || "",
     };
@@ -129,7 +132,7 @@ function serializeCategoryIds(categoryIds) {
 
 function filterGenericsByCategoryIds(generics, categoryIds) {
   const allowedIds = new Set(categoryIds.map((value) => Number(value)));
-  return generics.filter((item) => allowedIds.has(Number(item.ID_CategorieGeneriqueFk ?? item.ID_CategorieGenerique)));
+  return generics.filter((item) => item.ValideGenerique === true && item.ValideCategorieGenerique === true && allowedIds.has(Number(item.ID_CategorieGeneriqueFk ?? item.ID_CategorieGenerique)));
 }
 
 function getConfiguredCategoryIdsForSource(sourceKey, overrides) {
@@ -180,8 +183,15 @@ function buildLogistiqueReferences(baseReferences, generics, overrides) {
     const generatedOptions = buildGenericReferenceOptions(sourceKey, generics, overrides);
     const backendOptions = Array.isArray(baseReferences[config.referenceKey]) ? baseReferences[config.referenceKey] : [];
 
-    if (config.locked && backendOptions.length > 0) {
-      nextReferences[config.referenceKey] = backendOptions;
+    const configuredIds = getConfiguredCategoryIdsForSource(sourceKey, overrides);
+    const canonical = configuredIds.length === config.defaultCategoryIds.length && configuredIds.every(id => config.defaultCategoryIds.includes(id));
+    if ((config.locked || canonical) && Array.isArray(baseReferences[config.referenceKey])) {
+      // La projection métier est exhaustive ; une liste vide ne doit pas réintroduire d’anciennes valeurs.
+      const byId = new Map(generics.map(item => [String(item.ID_Generique), item]));
+      nextReferences[config.referenceKey] = backendOptions.filter(option => {
+        const reference = byId.get(String(option.id));
+        return !reference || (reference.ValideGenerique === true && reference.ValideCategorieGenerique === true);
+      });
       return;
     }
 
@@ -217,24 +227,8 @@ function mergeLogistiqueOverrides(allOverrides, logistiqueOverrides) {
 }
 
 function formatDisplayDateTime(value) {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(parsed);
+  const formatted=formatDate(value,{withTime:true});
+  return formatted==="—"||formatted==="-"?null:formatted;
 }
 
 function parseAuditPayload(rawValue) {
@@ -482,6 +476,7 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
 }
 
 function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
+  const { user } = useAuth();
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
@@ -510,7 +505,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
         })}
       </div>)}
     </nav>
-    <div className="logistics-app-switcher"><Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
+    <div className="logistics-app-switcher">{user?.permissions?.canAccessAdmin?<Link to="/admin" title="Administration" aria-label="Administration"><span><AppIcon name="shield" /></span>{!collapsed ? <><span>Administration</span><AppIcon name="arrow-up-right" /></> : null}</Link>:null}<Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
   </aside>;
 }
 
@@ -614,12 +609,8 @@ export default function Logistique() {
     reglements: { search: "", selectedRow: null },
   });
   const [baseReferences, setBaseReferences] = useState(null);
-  useEffect(()=>{
-    if(!refreshKey)return;
-    let active=true;
-    fetchLogistiqueReferences().then(result=>{if(active&&result?.success)setBaseReferences(result.data);});
-    return()=>{active=false;};
-  },[refreshKey]);
+  const [referenceVersion, setReferenceVersion] = useState(0);
+  useReferencesRefresh(() => setReferenceVersion(version => version + 1));
   const [referenceCategories, setReferenceCategories] = useState([]);
   const [genericRows, setGenericRows] = useState([]);
   const [referencesLoading, setReferencesLoading] = useState(true);
@@ -662,15 +653,15 @@ export default function Logistique() {
     let isMounted = true;
 
     async function loadReferences() {
-      setReferencesLoading(true);
+      // Une actualisation conserve les formulaires et leurs listes déjà chargées.
+      if (!baseReferences) setReferencesLoading(true);
       setReferencesError("");
       setGenericSupportError("");
 
-      const [referencesResponse, categoriesResponse, genericsViewResponse, genericsTableResponse] = await Promise.all([
+      const [referencesResponse, categoriesResponse, genericsResponse] = await Promise.all([
         fetchLogistiqueReferences(),
-        fetchAdminModelList("T_CategorieGenerique", { take: 200 }),
-        fetchViewData("referentiel", "V_Generique", { take: 500 }),
-        fetchAdminModelList("T_Generique", { take: 500 }),
+        fetchCompleteReferenceRows("T_CategorieGenerique"),
+        fetchCompleteReferenceRows("T_Generique"),
       ]);
 
       if (!isMounted) {
@@ -678,21 +669,18 @@ export default function Logistique() {
       }
 
       if (!referencesResponse?.success) {
-        setBaseReferences(null);
-        setReferencesError(referencesResponse?.message || "Impossible de charger les references logistiques.");
+        if (!baseReferences) setReferencesError(referencesResponse?.message || "Impossible de charger les références logistiques.");
+        else setGenericSupportError(referencesResponse?.message || "Les références n’ont pas pu être actualisées. Réessayez.");
         setReferencesLoading(false);
         return;
       }
 
-      const categories = extractPayloadRows(categoriesResponse);
-      const genericsFromView = normalizeGenericRows(extractPayloadRows(genericsViewResponse), categories);
-      const genericsFromTable = normalizeGenericRows(extractPayloadRows(genericsTableResponse), categories);
-
+      const categories = categoriesResponse?.success ? extractPayloadRows(categoriesResponse) : referenceCategories;
       setBaseReferences(referencesResponse.data);
-      setReferenceCategories(categories);
-      setGenericRows(genericsFromView.length > 0 ? genericsFromView : genericsFromTable);
+      if (categoriesResponse?.success) setReferenceCategories(categories);
+      if (genericsResponse?.success && categoriesResponse?.success) setGenericRows(normalizeGenericRows(extractPayloadRows(genericsResponse), categories));
 
-      if (!categoriesResponse?.success || (!genericsViewResponse?.success && !genericsTableResponse?.success)) {
+      if (!categoriesResponse?.success || !genericsResponse?.success) {
         setGenericSupportError("Les sources referentiel du panneau FK n'ont pas toutes pu etre chargees.");
       }
 
@@ -704,7 +692,7 @@ export default function Logistique() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [referenceVersion, refreshKey]);
 
   useEffect(() => {
     let isMounted = true;

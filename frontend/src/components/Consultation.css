@@ -14,3 +14,7 @@
 .consultation-dialog button:focus-visible { outline: 2px solid #6e9ee2; outline-offset: 2px; }.consultation-dialog .logistics-advanced-table { min-width: 0; }.consultation-dialog .admin-table { font-size: 12px; }.consultation-dialog .logistics-table-pager-size { display: none; }.consultation-dialog .admin-pagination { flex-wrap: wrap; }.consultation-dialog .secondary-action { min-height: 30px; padding: 5px 8px; border-radius: 5px; font-size: 12px; box-shadow: none; }
 @media (max-width: 640px) { .consultation-dialog { width: 100vw; border: 0; }.consult-width-actions,.consult-resize { display: none; }.consult-header { padding: 15px 18px; }.consult-content { padding: 18px; }.consult-record-heading h3 { font-size: 21px; }.consult-fields { gap: 0 16px; }.consult-search label { width: 100%; } }
 @media (max-width: 380px) { .consult-fields { grid-template-columns: 1fr; } }
+
+/* Le statut de synthèse ne déplace pas les indicateurs pendant une lecture. */
+.erp-dashboard { position:relative; }
+.erp-dashboard-loading { position:absolute; top:5px; right:0; z-index:2; padding:4px 8px; border:1px solid var(--erp-border); border-radius:5px; background:var(--erp-surface); color:var(--erp-muted); font-size:11px; line-height:1.4; pointer-events:none; }

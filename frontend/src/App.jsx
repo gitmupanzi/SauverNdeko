@@ -1,3 +1,5 @@
+import PasswordReset from "./pages/PasswordReset";
+import ModuleHeader from "./components/ModuleHeader";
 import ModuleGate from "./components/ModuleGate";
 import Applications from "./pages/Applications";
 import ApplicationLicences from "./pages/ApplicationLicences";
@@ -444,9 +446,11 @@ export default function App() {
   const location = useLocation();
   const isLoginRoute = useMatch("/login");
   const isRegisterRoute = useMatch("/register");
+  const isPasswordResetRoute = useMatch("/reset-password");
   const { loading, isAuthenticated, user } = useAuth();
   const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.IdRoleFk, user?.permissions?.canAccessAdmin, accessSignature(user)].join(":");
 
+  if (isPasswordResetRoute) return <PasswordReset />;
   if (isLoginRoute) return <Login />;
   if (isRegisterRoute) return <Navigate to="/login" replace />;
   if (loading) return <SessionLoading />;
@@ -454,6 +458,7 @@ export default function App() {
     return <Navigate to={loginPathFor(location)} replace />;
   }
   if (location.pathname === "/") return <WorkspaceHome key={scopeKey} />;
+  if (location.pathname === "/profil") return <div className="applications-page"><ModuleHeader title="Mon profil" /><Profile key={scopeKey} /></div>;
   if (location.pathname === "/applications") return <Applications key={scopeKey} />;
   if (location.pathname === "/abonnements") return <AdminRoute><ApplicationLicences key={scopeKey} /></AdminRoute>;
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;

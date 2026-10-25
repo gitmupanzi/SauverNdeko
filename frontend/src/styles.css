@@ -35,6 +35,8 @@
   box-sizing: border-box;
 }
 
+html { scrollbar-gutter: stable; }
+
 html,
 body,
 #root {
@@ -43,7 +45,7 @@ body,
 }
 
 body {
-  min-width: 320px;
+  min-width: 0;
   font-family: var(--font-base);
   background:
     radial-gradient(circle at top, rgba(63, 125, 241, 0.14), transparent 34%),

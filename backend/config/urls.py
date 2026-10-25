@@ -1,3 +1,8 @@
+from apps.accounts.mail_settings import MailSettingsView
+from apps.accounts.password_reset import PasswordResetView, PasswordResetCheckView, PasswordResetConfirmView
+from apps.accounts.passwords import PasswordChangeView
+from apps.logistique.receipts import ArticleReceiptView
+from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
 from django.contrib import admin
 from django.urls import re_path
@@ -23,6 +28,7 @@ from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.catalogue.views import PublicView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
+from apps.communication.notifications import NotificationsView, NotificationReadView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
 from apps.logistique.excel import IndicatorExcelView, RegisterExcelView, FolderExcelView
@@ -30,6 +36,7 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/receptions/?$", ArticleReceiptView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/photo/?$", ArticlePhotoView.as_view()),
     re_path(r"^api/public/articles/(?P<pk>[0-9]+)/photo/?$", PublicArticlePhotoView.as_view(), {"kind":"articles"}),
     re_path(r"^api/workspace/catalogue/?$", WorkspaceCatalogueView.as_view()),
@@ -58,16 +65,23 @@ urlpatterns = [
         {"schema": "systeme", "name": "V_Fk_Correspondance_Audit"},
     ),
     re_path(r"^health/?$", HealthView.as_view()),
+    re_path(r"^SauverNdeko/auth/password-reset/?$", PasswordResetView.as_view()),
+    re_path(r"^SauverNdeko/auth/password-reset/check/?$", PasswordResetCheckView.as_view()),
+    re_path(r"^SauverNdeko/auth/password-reset/confirm/?$", PasswordResetConfirmView.as_view()),
     re_path(r"^SauverNdeko/auth/login/?$", LoginView.as_view()),
     re_path(r"^SauverNdeko/auth/register/?$", RegisterView.as_view()),
     re_path(r"^SauverNdeko/auth/refresh/?$", RefreshView.as_view()),
     re_path(r"^SauverNdeko/auth/me/?$", MeView.as_view()),
+    re_path(r"^SauverNdeko/auth/me/password/?$", PasswordChangeView.as_view()),
+    re_path(r"^SauverNdeko/auth/me/photo/?$", ProfilePhotoView.as_view()),
     re_path(r"^SauverNdeko/auth/verify/?$", VerifyView.as_view()),
     re_path(r"^SauverNdeko/auth/logout/?$", LogoutView.as_view()),
     re_path(
         r"^api/public/(?P<kind>stats|articles|pharmacies|experts|maladies|chat/context)/?$",
         PublicView.as_view(),
     ),
+    re_path(r"^api/notifications/?$", NotificationsView.as_view()),
+    re_path(r"^api/notifications/(?P<pk>[0-9]+)/read/?$", NotificationReadView.as_view()),
     re_path(r"^api/discussions/start/?$", StartView.as_view()),
     re_path(r"^api/discussions/?$", DiscussionsView.as_view()),
     re_path(r"^api/discussions/(?P<pk>[0-9]+)/messages/?$", MessagesView.as_view()),
@@ -127,6 +141,7 @@ urlpatterns = [
         ModuleView.as_view(),
         {"module": "referentiel/generiques"},
     ),
+    re_path(r"^api/systeme/messagerie/?$", MailSettingsView.as_view()),
     re_path(r"^api/systeme/admin-ui-settings/?$", UISettingsView.as_view()),
     re_path(r"^api/admin-ui-settings/?$", UISettingsView.as_view()),
     re_path(

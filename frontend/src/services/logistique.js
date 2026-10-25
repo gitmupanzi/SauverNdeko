@@ -41,6 +41,9 @@ export function fetchLogistiqueArticles(options = {}) {
   return logistiqueGet("/registre/articles", options);
 }
 
+export function fetchArticleReception(id) {return logistiqueGet("/articles/"+id+"/receptions");}
+export function receiveArticleStock(id,payload) {return logistiqueWrite("/articles/"+id+"/receptions","POST",payload);}
+
 export function fetchLogistiqueArticle(id) {
   return logistiqueGet("/articles/"+id);
 }

@@ -48,6 +48,8 @@ class Command(BaseCommand):
             client.force_authenticate(actor)
             urls = [
                 "/health",
+                "/SauverNdeko/auth/me/password",
+                "/api/systeme/messagerie",
                 "/api/workspace/modules",
                 "/api/workspace/catalogue",
                 "/api/workspace/organisations",
@@ -75,6 +77,12 @@ class Command(BaseCommand):
                 "/api/views/" + obj["schema"] + "/" + obj["name"] + "?take=1"
                 for obj in VIEWS.values()
             )
+            # Préparation d’une réception en GET uniquement, sans créer de bon.
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT a."ID_Article" FROM logistique."T_Article" a JOIN systeme."T_Utilisateurs" u ON u."IdUser"=a."ID_UserFK" WHERE a."ValideArticle" IS TRUE AND u."IdEntiteFk" IS NULL ORDER BY a."ID_Article" LIMIT 1')
+                receipt_article = cursor.fetchone()
+            if receipt_article:
+                urls.append("/api/logistique/articles/"+str(receipt_article[0])+"/receptions")
             results = []
             with override_settings(
                 ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]
@@ -93,6 +101,13 @@ class Command(BaseCommand):
                                 ensure_ascii=False,
                             )
                         )
+            # La politique publique de récupération reste contrôlée en anonyme, sans envoi.
+            anonymous = APIClient()
+            with override_settings(ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]):
+                response = anonymous.get("/SauverNdeko/auth/password-reset")
+            results.append({"url":"/SauverNdeko/auth/password-reset","status":response.status_code})
+            if response.status_code != 200 or response.data.get("data",{}).get("available") is not False:
+                raise CommandError("La récupération publique doit rester indisponible pendant le diagnostic en lecture seule.")
             # Une organisation fictive sans offre doit être refusée avant toute lecture métier.
             client.force_authenticate(
                 Actor(
@@ -113,6 +128,7 @@ class Command(BaseCommand):
                     "/api/logistique/registre/commandes?take=1",
                     "/api/logistique/dossiers-suivi",
                     "/api/logistique/articles",
+                    "/api/logistique/articles/1/receptions",
                     "/api/logistique/commandes",
                     "/api/logistique/commande-details",
                     "/api/logistique/mouvements",

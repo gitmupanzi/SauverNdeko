@@ -1,4 +1,4 @@
 interface:
   display_name: "Frontend SauverNdeko"
-  short_description: "Développer interface React et services"
-  default_prompt: "Utilise $develop-sauverndeko-frontend pour modifier cette interface SauverNdeko en respectant les contrats API et les rôles."
+  short_description: "DÃ©velopper interface React et services"
+  default_prompt: "Utilise $develop-sauverndeko-frontend pour modifier cette interface SauverNdeko en respectant les contrats API et les rÃ´les."

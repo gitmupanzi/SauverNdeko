@@ -2,7 +2,7 @@ import "./Applications.css";
 import { accessSignature } from "../services/moduleAccess";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
-import ThemePicker from "../components/ThemePicker";
+import AccountControls from "../components/AccountControls";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,13 +12,12 @@ import "./WorkspaceHome.css";
 const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/territoires", "/admin"]);
 
 export default function WorkspaceHome() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [modules, setModules] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [version, setVersion] = useState(0);
-  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,15 +41,6 @@ export default function WorkspaceHome() {
   const visible = modules.filter((module) =>
     (module.label + " " + module.description).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(query)
   );
-  const displayName = user?.PrenomUser || user?.NomUser || "Bienvenue";
-  const initials = ((user?.PrenomUser?.[0] || "") + (user?.NomUser?.[0] || "")).toUpperCase() || "SN";
-
-  async function leaveWorkspace() {
-    if (leaving) return;
-    setLeaving(true);
-    try { await logout(); } finally { setLeaving(false); }
-  }
-
   return (
     <div className="workspace-home">
       <header className="workspace-bar">
@@ -58,16 +48,7 @@ export default function WorkspaceHome() {
           <img src="/sauverndeko-logo.jpg" alt="" width="40" height="40" />
           <span>SauverNdeko</span>
         </Link>
-        <div className="workspace-account"><ThemePicker />
-          <Link to="/profil" className="workspace-profile" aria-label={"Mon profil — " + displayName}>
-            <span className="workspace-avatar" aria-hidden="true">{initials}</span>
-            <span>{displayName}</span>
-          </Link>
-          <button className="workspace-logout" type="button" onClick={leaveWorkspace} disabled={leaving} aria-label="Se déconnecter">
-            <AppIcon name="logout" />
-            <span>{leaving ? "Déconnexion…" : "Se déconnecter"}</span>
-          </button>
-        </div>
+        <AccountControls />
       </header>
 
       <main className="workspace-main" id="workspace-main">
@@ -99,7 +80,7 @@ export default function WorkspaceHome() {
             {!visible.length ? <div className="workspace-state"><AppIcon name="search" /><p>{query ? "Aucune application ne correspond à votre recherche." : "Aucune application n’est attribuée à ce compte."}</p>{query ? <ActionButton icon="reset" type="button" onClick={() => setSearch("")}>Effacer la recherche</ActionButton> : null}</div> : null}
           </>
         ) : null}
-        <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Applications incluses dans l’offre de votre organisation et autorisées pour votre rôle.</p>
+        {!user?.moduleAccess?.platformAdmin ? <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Applications incluses dans l’offre de votre organisation et autorisées pour votre rôle.</p> : null}
       </main>
     </div>
   );

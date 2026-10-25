@@ -1,3 +1,6 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { multiplyDecimal, sameCurrency } from "../../utils/money";
+import CategoricalSelect from "../../components/CategoricalSelect";
 import LotFields, {lotErrors} from "../../components/LotFields";
 import {requestJson} from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -97,6 +100,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const [commandeFilter, setCommandeFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currencyFilter,setCurrencyFilter]=useState("");
   const [articleFilter, setArticleFilter] = useState("");
   const [lineStateFilter, setLineStateFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -164,9 +168,9 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     return articleCatalog.filter((article) => article.searchText.includes(normalizedSearch)).slice(0, 24);
   }, [articleCatalog, articleSearch]);
   const quantityNumber = Number(formValues.QteCmdDetail || 0);
-  const unitPriceNumber = Number(formValues.PUCmdDetail || 0);
+  const catalogueCurrencyMatches=sameCurrency(selectedArticle,selectedCommande);
   const selectedArticleStock = Number(selectedArticle?.stock || 0);
-  const lineTotal = Number.isFinite(quantityNumber) && Number.isFinite(unitPriceNumber) ? quantityNumber * unitPriceNumber : 0;
+  const lineTotal = multiplyDecimal(formValues.QteCmdDetail,formValues.PUCmdDetail);
   const previousQuantity=editorMode==="edit" && String(selectedDetail?.ID_ArticleFk)===String(selectedArticle?.id)?Number(selectedDetail.QteCmdDetail||0):0;
   const quantityDelta=quantityNumber-previousQuantity;
   const projectedStock =
@@ -252,14 +256,15 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       { key: "label", label: "Article" },
       { key: "categoryLabel", label: "Categorie" },
       { key: "reference", label: "Reference", renderText: (row) => row.reference || "-" },
+      { key:"currencyCode",label:"Devise",renderText:row=>row.currencyCode || "Non renseignée" },
       { key: "stock", label: "Stock", renderText: (row) => formatNumber(row.stock) },
       {
         key: "unitPrice",
         label: commandeDirection === "sortie" ? "PV" : "PU",
         render: (row) =>
-          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice),
+          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice,row.currencyCode),
         renderText: (row) =>
-          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice),
+          formatCurrency(commandeDirection === "sortie" ? row.salePrice : row.purchasePrice ?? row.salePrice,row.currencyCode),
       },
       {
         key: "actions",
@@ -283,7 +288,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       PUCmdDetail:
         current.ID_ArticleFk === article.id && current.PUCmdDetail
           ? current.PUCmdDetail
-          : getDefaultUnitPrice(article, commandeDirection),
+          : sameCurrency(article,selectedCommande) ? getDefaultUnitPrice(article, commandeDirection) : "",
     }));
   }
 
@@ -296,6 +301,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
       const response = await COMMANDE_DETAILS_VIEW_CONFIG.fetchRows({
         commandeId: selectedCommande?.ID_Commande,
+        deviseId:currencyFilter,
         take: 150,
       });
 
@@ -330,7 +336,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     return () => {
       isMounted = false;
     };
-  }, [refreshKey, selectedCommande?.ID_Commande]);
+  }, [refreshKey, selectedCommande?.ID_Commande, currencyFilter]);
 
   useEffect(() => {
     if (!selectedCommande?.ID_Commande) {
@@ -441,6 +447,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     }
 
     if(!canWrite||submitting||lotsLoading||!lotsLoaded)return;
+    if(!/^\d+(?:[.,]\d{1,2})?$/.test(String(formValues.PUCmdDetail).trim())){setFeedback({type:"error",message:"Renseignez un prix unitaire dans la devise du bon."});return;}
     const lotError=lotErrors(lots,formValues.QteCmdDetail);setLotsError(lotError);if(lotError)return;
     setSubmitting(true);
 
@@ -450,6 +457,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       parentRecord: selectedCommande,
     });
 
+    payload.PUCmdDetail=String(payload.PUCmdDetail).trim().replace(",",".");
     payload.Lots=lots;
     const response =
       editorMode === "edit" && selectedDetail
@@ -528,6 +536,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
+          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
           <label className="admin-form-field">
             <span>Bon de stock</span>
             <input type="search" value={commandeFilter} onChange={(event) => setCommandeFilter(event.target.value)} placeholder="N° de bon..." />
@@ -535,48 +544,48 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
 
           <label className="admin-form-field">
             <span>Type de bon</span>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Type de bon" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
               <option value="all">Toutes</option>
               {Array.from(new Set(rows.map((row) => row.TypeCmd).filter(Boolean))).map((label) => (
                 <option key={label} value={label}>
                   {label}
                 </option>
               ))}
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
             <span>Statut du bon</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Statut du bon" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Toutes</option>
               {Array.from(new Set(rows.map((row) => row.StatutCmd).filter(Boolean))).map((label) => (
                 <option key={label} value={label}>
                   {label}
                 </option>
               ))}
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
             <span>Article</span>
-            <select value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Article" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)}>
               <option value="">Toutes</option>
               {articleCatalog.map((article) => (
                 <option key={article.id} value={article.id}>
                   {article.label}
                 </option>
               ))}
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
             <span>Etat ligne</span>
-            <select value={lineStateFilter} onChange={(event) => setLineStateFilter(event.target.value)}>
+            <CategoricalSelect aria-label="État de la ligne" value={lineStateFilter} onChange={(event) => setLineStateFilter(event.target.value)}>
               <option value="all">Toutes</option>
               <option value="valide">Valide</option>
               <option value="quantite-invalide">Quantite invalide</option>
               <option value="prix-manquant">Prix non renseigne</option>
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
@@ -606,11 +615,12 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
           </section>
         ) : null}
 
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucune ligne de bon de stock a afficher." />
+        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucune ligne de bon de stock a afficher." />
 
-        {!loading && !error && visibleRows.length > 0 ? (
           <SimpleTable
             rows={visibleRows}
+            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucune ligne de bon pour ces critères."}
+            loading={loading}
             onRowConsult={(row, key) => key === "CodeCmd" ? openOrder(row) : openProduct(row)}
             consultColumns={["CodeCmd", "NomArticle", "CodeArticleInterne", "ID_ArticleFk"]}
             isCellConsultable={(row, key) => key === "CodeCmd" ? Boolean(row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) : Boolean(row.ID_Article || row.ID_ArticleFk)}
@@ -647,11 +657,12 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
               },
               { key: "StockActuel", label: "Stock actuel", render: (row) => formatNumber(row.StockActuel) },
               { key: "QteCmdDetail", label: "Quantite", render: (row) => formatNumber(row.QteCmdDetail) },
-              { key: "PUCmdDetail", label: "PU", render: (row) => formatCurrency(row.PUCmdDetail) },
+              { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
+              { key: "PUCmdDetail", label: "PU", render: (row) => formatCurrency(row.PUCmdDetail,row.DeviseCode) },
               {
                 key: "MontantLigne",
                 label: "Montant ligne",
-                render: (row) => formatCurrency(row.MontantLigne ?? Number(row.QteCmdDetail || 0) * Number(row.PUCmdDetail || 0)),
+                render: (row) => formatCurrency(row.MontantLigne,row.DeviseCode),
               },
               { key: "LieuCmdDetail", label: "Lieu", render: (row) => row.LieuCmdDetail ?? "-" },
               {
@@ -675,7 +686,6 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
               },
             ]}
           />
-        ) : null}
       </section>
 
       {selectedDetail ? (
@@ -686,7 +696,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
               <p>Quantite: {formatNumber(selectedDetail.QteCmdDetail)}</p>
             </article>
             <article>
-              <p>Prix: {formatCurrency(selectedDetail.PUCmdDetail)}</p>
+              <p>Prix: {formatCurrency(selectedDetail.PUCmdDetail,selectedDetail.DeviseCode)}</p>
               <p>Lieu: {selectedDetail.LieuCmdDetail ?? "-"}</p>
             </article>
           </div>
@@ -749,9 +759,9 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                 <form className="admin-editor-form logistics-command-line-form" onSubmit={handleSubmit}>
                   <div className="logistics-summary-grid">
                     <SummaryCard title="Stock actuel" value={formatNumber(selectedArticle.stock)} caption="Quantite disponible dans T_Article" />
-                    <SummaryCard title="Prix achat" value={formatCurrency(selectedArticle.purchasePrice)} caption="PU article" />
-                    <SummaryCard title="Prix vente" value={formatCurrency(selectedArticle.salePrice)} caption="PV article" />
-                    <SummaryCard title="Total ligne" value={formatCurrency(lineTotal)} caption="Quantite x prix unitaire" />
+                    <SummaryCard title="Prix achat" value={formatCurrency(selectedArticle.purchasePrice,selectedArticle.currencyCode)} caption="PU article" />
+                    <SummaryCard title="Prix vente" value={formatCurrency(selectedArticle.salePrice,selectedArticle.currencyCode)} caption="PV article" />
+                    <SummaryCard title="Total ligne" value={formatCurrency(lineTotal,selectedCommande?.DeviseCode)} caption="Quantite x prix unitaire" />
                   </div>
 
                   <div className="logistics-detail-grid">
@@ -809,15 +819,17 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                     </label>
 
                     <label className="admin-form-field">
-                      <span>Prix unitaire</span>
+                      <span>Prix unitaire ({selectedCommande?.DeviseCode || "devise non renseignée"}) *</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
+                        required
                         value={formValues.PUCmdDetail}
                         onChange={(event) => setFormValues((current) => ({ ...current, PUCmdDetail: event.target.value }))}
                       />
                     </label>
+                    {selectedArticle&&!catalogueCurrencyMatches?<p className="logistics-inline-alert">Le prix catalogue est en {selectedArticle.currencyCode || "devise non renseignée"}. Saisissez le prix dans la devise du bon ({selectedCommande?.DeviseCode || "non renseignée"}).</p>:null}
 
                     <label className="admin-form-field">
                       <span>Lieu</span>

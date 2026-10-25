@@ -7,8 +7,9 @@ from apps.core.permissions import IsERPAdmin, scope_for
 from apps.core.registry import view, model
 from apps.core.repository import predicate, page, get_record, positive, clean
 from apps.core.responses import ok, APIError
+from .currency import MONETARY_KEYS, amounts_by_currency, scalar_amount, validate_currency
 
-QUERY_KEYS = {"q", "dateFrom", "dateTo", "take", "skip", "sortBy", "sortDir", "columnFilters", "timeZone"}
+QUERY_KEYS = {"q", "dateFrom", "dateTo", "take", "skip", "sortBy", "sortDir", "columnFilters", "timeZone", "deviseId"}
 INDICATORS = {
     "articles": ("V_Article", "TRUE", "COUNT(*)", "Articles", "produit", "Tous les articles autorisés."),
     "commandes": ("V_Commande", "TRUE", "COUNT(*)", "Bons de stock", "commande", "Tous les bons de stock autorisés."),
@@ -110,11 +111,10 @@ def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popula
 
 def metric_value(obj, actor, raw, condition, expression, fixed_filters=None):
     where, values = read_predicate(obj, actor, raw, fixed_filters)
+    if expression.startswith("SUM("):
+        return scalar_amount(amounts_by_currency(obj, row_source(obj), where + " AND (" + condition + ")", values, expression))
     # Les expressions sont des constantes du registre ci-dessus.
     value = db.one("SELECT " + expression + " AS value FROM " + row_source(obj) + " WHERE " + where + " AND (" + condition + ")", values)["value"]
-    if value is None and expression.startswith("SUM("):
-        count = db.one("SELECT COUNT(*) AS n FROM " + row_source(obj) + " WHERE " + where + " AND (" + condition + ")", values)["n"]
-        return 0 if count == 0 else None
     return value
 
 def resolve_indicator(key, raw):
@@ -140,19 +140,33 @@ def indicator_details(actor, key, raw):
     metric_criteria = {**raw, "q": population_query} if population_query is not None else dict(raw)
     metric_criteria.pop("columnFilters", None)
     rows, meta, _ = read_page(obj, actor, raw, condition, fixed_filters=fixed_filters, population_query=population_query)
-    meta["indicator"] = {"key": key, "label": label, "value": metric_value(obj, actor, metric_criteria, condition, expression, fixed_filters), "definition": definition, "kind": kind, "source": name, "unit": "%" if key == "coherenceRate" else None}
+    groups = None
+    if key in MONETARY_KEYS:
+        where, values = read_predicate(obj, actor, metric_criteria, fixed_filters)
+        groups = amounts_by_currency(obj, row_source(obj), where + " AND (" + condition + ")", values, expression)
+    value = scalar_amount(groups) if groups is not None else metric_value(obj, actor, metric_criteria, condition, expression, fixed_filters)
+    meta["indicator"] = {"key":key, "label":label, "value":value, "definition":definition, "kind":kind, "source":name, "unit":"%" if key == "coherenceRate" else None}
+    if groups is not None:
+        meta["indicator"]["amountsByCurrency"] = groups
+
     return rows, meta
 
 def overview(actor, raw):
     raw = params_only(raw)
-    totals = {}
+    totals, grouped = {}, {}
     for key, rule in INDICATORS.items():
         name, condition, expression, *_ = rule
-        totals[key] = metric_value(source_for_indicator(key, name), actor, raw, condition, expression)
+        obj = source_for_indicator(key, name)
+        if key in MONETARY_KEYS:
+            where, values = read_predicate(obj, actor, raw)
+            grouped[key] = amounts_by_currency(obj, row_source(obj), where + " AND (" + condition + ")", values, expression)
+            totals[key] = scalar_amount(grouped[key])
+        else:
+            totals[key] = metric_value(obj, actor, raw, condition, expression)
     article_source = view("logistique", "V_Article")
     where, values = read_predicate(article_source, actor, raw)
     categories = db.query('SELECT "ID_CategorieArticleFk" AS id, COALESCE(NULLIF(BTRIM("CategorieArticle"),\'\'),\'Sans catégorie\') AS label, COUNT(*) AS count FROM ' + row_source(article_source) + ' WHERE ' + where + ' GROUP BY "ID_CategorieArticleFk", "CategorieArticle" ORDER BY label', values)
-    return {"totals": totals, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
+    return {"totals": totals, "amountsByCurrency": grouped, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
     if kind not in {"articles", "commandes"}:
@@ -205,7 +219,7 @@ def register(actor, kind, raw):
 
 SECTIONS = {
     "produit": {"lots": ("V_LotArticleStock", "ID_ArticleFk"), "commandes": ("V_CommandeDetail", "ID_ArticleFk"), "mouvements": ("V_Mouvement", "ID_ArticleFk"), "consommation": ("V_ConsoMensuelle", "ID_Article"), "couverture": ("V_CouvertureStock", "ID_Article"), "controle": ("V_AuditStock", "ID_Article")},
-    "commande": {"lots": ("V_MouvementLot", "ID_cmdFk"), "lignes": ("V_CommandeDetail", "ID_CmdFk"), "mouvements": ("V_Mouvement", "ID_cmdFk"), "reglements": ("T_Reglements", "CodeFactureFk"), "facture": ("V_SuiviReglements", "ID_Commande")},
+    "commande": {"lots": ("V_MouvementLot", "ID_cmdFk"), "lignes": ("V_CommandeDetail", "ID_CmdFk"), "mouvements": ("V_Mouvement", "ID_cmdFk"), "reglements": ("V_Reglements", "CodeFactureFk"), "facture": ("V_SuiviReglements", "ID_Commande")},
 }
 def consultation(actor, kind, pk, section, raw):
     if kind not in SECTIONS:
@@ -223,6 +237,8 @@ def consultation(actor, kind, pk, section, raw):
     if section not in SECTIONS[kind]:
         raise APIError("Rubrique introuvable.", "NOT_FOUND", 404)
     name, field = SECTIONS[kind][section]
+    if kind == "produit" and section == "consommation" and raw.get("deviseId") not in (None,"","all"):
+        name = "V_ConsoMensuelleDevise"
     value = header.get("CodeFacture") if section == "reglements" else pk
     if section == "reglements" and not value:
         return [], {"filteredCount": 0, "totalCount": 0, "count": 0, "take": 25, "skip": 0, "columns": []}

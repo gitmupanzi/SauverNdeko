@@ -37,7 +37,7 @@ Pour les exports Excel de listes, appliquer la préférence explicite du 25/10/2
 
 ## Sources et intégration
 
-Lire [le skill ERP](../sauverndeko-erp/SKILL.md), [le backend](../../backend/skill/SKILL.md) ou [le frontend](../../frontend/skill/SKILL.md) selon la couche touchée. Conserver Django/DRF, PostgreSQL et React existants ; aucun exporteur ou système de jobs d’un autre projet n’est supposé disponible.
+Lire [le skill ERP](../sauverndeko-erp/SKILL.md), [le backend](../../backend/skills/develop-sauverndeko-backend/SKILL.md) ou [le frontend](../../frontend/skills/develop-sauverndeko-frontend/SKILL.md) selon la couche touchée. Conserver Django/DRF, PostgreSQL et React existants ; aucun exporteur ou système de jobs d’un autre projet n’est supposé disponible.
 
 Les modèles de [rapport](modeles/rapport_direction.md), [commande](modeles/bon_commande.md), [livraison](modeles/bon_livraison.md) et [facture/règlement](modeles/facture_reglement.md) sont des plans de contenu. Ils ne sont pas des fichiers Office binaires ou des fonctionnalités déjà raccordées.
 

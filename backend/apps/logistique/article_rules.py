@@ -8,7 +8,7 @@ from apps.core import db
 from apps.core.responses import APIError, ExactEncoder
 
 # Le stock varie avec les bons : il ne doit jamais être réécrit par l'édition d'identité.
-VERSION_FIELDS = ("PoidsUnitaire","ID_UnitePoidsFk","InformationArticle","ID_Article", "NomArticle", "RefArticle", "CodeArticleInterne",
+VERSION_FIELDS = ("ID_DeviseFk","PoidsUnitaire","ID_UnitePoidsFk","InformationArticle","ID_Article", "NomArticle", "RefArticle", "CodeArticleInterne",
     "CodeArticleExterne", "ID_TypeArticleFk", "ID_CategorieArticleFk", "ID_UniteFk",
     "ID_UserFK", "PUArticle", "PVArticle", "QteMinArticle", "PhotoArticle",
     "ObsArticle", "ValideArticle", "DatePeremptionArticle",
@@ -42,11 +42,15 @@ def usage(record, actor):
         linked_lots=db.one('SELECT EXISTS(SELECT 1 FROM logistique."T_LotArticle" WHERE "ID_ArticleFk"=%s) AS present',[record["ID_Article"]])["present"]
         if linked_lots and actor.global_admin:reason="Cet article possède des lots. Conservez-le désactivé."
     return {"revision": revision(record), "canChangeUnit": not links["bons"] and not links["mouvements"],
-        "canDelete": not reason, "deleteReason": reason}
+        "canChangeCurrency": not links["bons"] and not links["mouvements"], "canDelete": not reason, "deleteReason": reason}
 
 def validate(data, old, actor):
+    from .currency import write_currency
+    write_currency(data, old)
     errors = {}
     effective = {**(old or {}), **data}
+    if old and "ID_DeviseFk" in data and data["ID_DeviseFk"] != old.get("ID_DeviseFk") and not usage(old, actor)["canChangeCurrency"]:
+        errors["ID_DeviseFk"] = "La devise ne peut plus changer après un mouvement ou une ligne de bon."
     for key in ("NomArticle", "RefArticle", "CodeArticleInterne", "PhotoArticle", "ObsArticle", "InformationArticle"):
         if key in data and isinstance(data[key], str):
             data[key] = data[key].strip() or ("" if key == "NomArticle" else None)

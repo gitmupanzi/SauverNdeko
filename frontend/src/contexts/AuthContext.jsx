@@ -1,7 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { moduleForPath, moduleRights } from "../services/moduleAccess";
-import { createContext, startTransition, useContext, useEffect, useState } from "react";
+import { createContext, startTransition, useContext, useEffect, useRef, useState } from "react";
 import {
+  captureAuthSessionContext,
+  isAuthSessionContextCurrent,
+  invalidateAuthSessionContext,
   fetchCurrentUser,
   loginUser,
   registerUser,
@@ -10,7 +13,7 @@ import {
   restoreUserSession,
   updateCurrentUserProfile,
 } from "../services/auth";
-import { AUTH_SESSION_INVALID_EVENT, clearStoredAuth, getStoredAuth, setStoredAuth } from "../services/authStorage";
+import { AUTH_STORAGE_KEY, AUTH_SESSION_INVALID_EVENT, clearStoredAuth, getStoredAuth, setStoredAuth } from "../services/authStorage";
 
 const AuthContext = createContext(null);
 
@@ -22,60 +25,52 @@ function buildGuestState() {
   };
 }
 
-function persistSessionUser(user) {
+function persistSessionUser(user,context) {
+  if(!isAuthSessionContextCurrent(context))return false;
   const stored = getStoredAuth();
   setStoredAuth({
     accessToken: stored?.accessToken || "",
     refreshToken: stored?.refreshToken || "",
     user,
   });
+  return true;
 }
 
 export function AuthProvider({ children }) {
   const location = useLocation();
+  const generation=useRef(0);
   const [authState, setAuthState] = useState({
     loading: true,
     isAuthenticated: false,
     user: null,
   });
 
-  useEffect(() => {
-    let active = true;
-
-    async function bootstrapSession() {
-      let session = null;
-      try {
-        session = await restoreUserSession();
-      } catch {
-        // Une restauration indisponible laisse la connexion accessible.
-      }
-
-      if (!active) {
-        return;
-      }
-
-      startTransition(() => {
-        setAuthState({
-          loading: false,
-          isAuthenticated: Boolean(session?.accessToken),
-          user: session?.user || null,
-        });
-      });
+  const cancelled=()=>({success:false,message:"La session a changé. Recommencez.",error:{code:"AUTH_CONTEXT_CHANGED"}});
+  function sessionMatches(session){
+    const stored=getStoredAuth();
+    return session ? session.accessToken===(stored?.accessToken || "")&&session.refreshToken===(stored?.refreshToken || "") : !stored?.accessToken&&!stored?.refreshToken;
+  }
+  async function restoreForGeneration(expected,isActive=()=>true){
+    const current=()=>isActive()&&generation.current===expected;
+    let session=null;
+    try{session=await restoreUserSession({isCurrent:current});}catch{
+      if(current())startTransition(()=>setAuthState(state=>current()?buildGuestState():state));
+      return;
     }
-
-    bootstrapSession();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    if(!current()||!sessionMatches(session))return;
+    startTransition(()=>setAuthState(state=>current()&&sessionMatches(session)?{loading:false,isAuthenticated:Boolean(session?.accessToken),user:session?.user || null}:state));
+  }
+  useEffect(()=>{
+    let active=true;const expected=generation.current;
+    void restoreForGeneration(expected,()=>active);
+    return()=>{active=false;};
+  },[]);
 
   useEffect(() => {
     function invalidateSession(event) {
       const accessToken = getStoredAuth()?.accessToken;
       if (!accessToken || event.detail?.accessToken !== accessToken) return;
-      clearStoredAuth();
-      setAuthState(buildGuestState());
+      endLocalSession();
     }
     window.addEventListener(AUTH_SESSION_INVALID_EVENT, invalidateSession);
     return () => window.removeEventListener(AUTH_SESSION_INVALID_EVENT, invalidateSession);
@@ -93,7 +88,8 @@ export function AuthProvider({ children }) {
       if (!active || refreshing || document.visibilityState === "hidden") {
         return;
       }
-      const accessToken = getStoredAuth()?.accessToken;
+      const context=captureAuthSessionContext(),expected=generation.current;
+      const accessToken=context.accessToken;
       if (!accessToken) {
         return;
       }
@@ -101,18 +97,17 @@ export function AuthProvider({ children }) {
       refreshing = true;
       try {
         const payload = await fetchCurrentUser(accessToken);
-        if (!active || getStoredAuth()?.accessToken !== accessToken) {
+        if (!active || generation.current!==expected || !isAuthSessionContextCurrent(context)) {
           return;
         }
         if (payload?.status === 401) {
-          clearStoredAuth();
-          setAuthState(buildGuestState());
+          endLocalSession();
           return;
         }
         if (payload?.success && payload.data) {
-          persistSessionUser(payload.data);
+          if(!persistSessionUser(payload.data,context))return;
           startTransition(() => {
-            setAuthState((current) => ({ ...current, user: payload.data }));
+            setAuthState(current=>generation.current===expected&&isAuthSessionContextCurrent(context)?{...current,user:payload.data}:current);
           });
         }
       } finally {
@@ -136,18 +131,17 @@ export function AuthProvider({ children }) {
   }, [authState.isAuthenticated]);
 
   async function login(credentials, options = {}) {
+    const expected=generation.current;
     const payload = await loginUser(credentials, options);
+    if(generation.current!==expected)return cancelled();
     if (options.signal?.aborted) return { success: false };
 
     if (payload?.success) {
+      const committed=++generation.current;
       const session = persistAuthSession(payload, payload.user || null);
 
       startTransition(() => {
-        setAuthState({
-          loading: false,
-          isAuthenticated: Boolean(session?.accessToken),
-          user: session?.user || null,
-        });
+        setAuthState(current=>generation.current===committed&&sessionMatches(session)?{loading:false,isAuthenticated:Boolean(session?.accessToken),user:session?.user || null}:current);
       });
     }
 
@@ -155,45 +149,60 @@ export function AuthProvider({ children }) {
   }
 
   async function register(profileData) {
+    const expected=generation.current;
     const payload = await registerUser(profileData);
+    if(generation.current!==expected)return cancelled();
 
     if (payload?.success) {
+      const committed=++generation.current;
       const session = persistAuthSession(payload, payload.user || null);
 
       startTransition(() => {
-        setAuthState({
-          loading: false,
-          isAuthenticated: Boolean(session?.accessToken),
-          user: session?.user || null,
-        });
+        setAuthState(current=>generation.current===committed&&sessionMatches(session)?{loading:false,isAuthenticated:Boolean(session?.accessToken),user:session?.user || null}:current);
       });
     }
 
     return payload;
   }
 
-  async function logout() {
-    const payload = await logoutUser();
+  function endLocalSession() {
+    generation.current+=1;invalidateAuthSessionContext();
+    try { clearStoredAuth(); } catch { /* La révocation serveur reste effective si le stockage est indisponible. */ }
+    setAuthState(buildGuestState());
+  }
 
-    startTransition(() => {
-      setAuthState(buildGuestState());
-    });
+  useEffect(()=>{
+    let active=true;
+    function onSessionChanged(event){
+      if(event.key!==AUTH_STORAGE_KEY&&event.key!==null)return;
+      const stored=getStoredAuth();
+      if(!stored?.accessToken&&!stored?.refreshToken){endLocalSession();return;}
+      let before=null;try{before=JSON.parse(event.oldValue || "null");}catch{/* Revalidate an unrecognized external context. */}
+      if(before?.accessToken===stored.accessToken&&before?.refreshToken===stored.refreshToken&&before?.user?.IdUser===stored.user?.IdUser&&before?.user?.IdEntiteFk===stored.user?.IdEntiteFk)return;
+      const expected=++generation.current;invalidateAuthSessionContext();
+      setAuthState({loading:true,isAuthenticated:false,user:null});
+      void restoreForGeneration(expected,()=>active);
+    }
+    window.addEventListener("storage",onSessionChanged);
+    return()=>{active=false;window.removeEventListener("storage",onSessionChanged);};
+  },[]);
 
-    return payload;
+  async function logout(){
+    const result=logoutUser();
+    endLocalSession();
+    return result;
   }
 
   async function refreshUser() {
-    const payload = await fetchCurrentUser();
+    const expected=generation.current,context=captureAuthSessionContext();
+    const payload = await fetchCurrentUser(context.accessToken);
+    if(generation.current!==expected||!isAuthSessionContextCurrent(context))return cancelled();
 
     if (payload?.success && payload.data) {
-      persistSessionUser(payload.data);
+      if(!persistSessionUser(payload.data,context))return cancelled();
 
       startTransition(() => {
-        setAuthState({
-          loading: false,
-          isAuthenticated: true,
-          user: payload.data,
-        });
+        setAuthState(current=>generation.current===expected&&isAuthSessionContextCurrent(context)?{loading:false,isAuthenticated:true,user:payload.data}:current);
       });
     }
 
@@ -201,18 +210,15 @@ export function AuthProvider({ children }) {
   }
 
   async function updateProfile(profileData) {
+    const expected=generation.current,context=captureAuthSessionContext();
     const payload = await updateCurrentUserProfile(profileData);
+    if(generation.current!==expected||!isAuthSessionContextCurrent(context))return cancelled();
 
     if (payload?.success && payload.data) {
-      persistSessionUser(payload.data);
+      if(!persistSessionUser(payload.data,context))return cancelled();
 
       startTransition(() => {
-        setAuthState((current) => ({
-          ...current,
-          loading: false,
-          isAuthenticated: true,
-          user: payload.data,
-        }));
+        setAuthState(current=>generation.current===expected&&isAuthSessionContextCurrent(context)?{...current,loading:false,isAuthenticated:true,user:payload.data}:current);
       });
     }
 
@@ -238,6 +244,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        endLocalSession,
         refreshUser,
         updateProfile,
       }}

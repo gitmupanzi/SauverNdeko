@@ -121,3 +121,5 @@ html[data-theme="dark"] .login-screen .login-caps-lock,html[data-theme="contrast
 html[data-theme="contrast"] .login-identity .login-project-summary,html[data-theme="contrast"] .login-identity .login-project-lead,html[data-theme="contrast"] .login-project-sectors > span { color:#fff; }
 
 .login-identity img { margin-inline:auto; }
+
+.login-success{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;margin:0 0 18px;border:1px solid var(--erp-border);border-radius:8px;background:var(--erp-mint);color:var(--erp-on-mint);font-size:12px;line-height:1.6;}

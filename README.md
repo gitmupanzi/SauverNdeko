@@ -6,7 +6,7 @@ La cible produit est désormais un ERP modulaire commercialisable. La logistique
 
 Le code comprend déjà /logistique et ses écrans articles, commandes, lignes, mouvements, règlements, audit, alertes, consommation, couverture et dashboard. Cette présence ne certifie pas encore une chaîne achats/ventes complète ni une version prête à vendre.
 
-Le backend actif est désormais Django + Django REST Framework, connecté au PostgreSQL existant. Les schémas métier sont conservés. Sur autorisation ultérieure du propriétaire, les dix tables natives Django sont installées dans public. L’ancien backend Express/Prisma, ses dépendances et ses lanceurs npm ont été supprimés à la demande du propriétaire ; Node.js reste nécessaire au frontend Vite. Voir le [guide Django](backend/README.md), le [bilan technique actuel](SQL/documentation/Audit_Metier_20261024.md) et la [décision d’accès PostgreSQL](backend/skill/references/decision-acces-postgresql.md).
+Le backend actif est désormais Django + Django REST Framework, connecté au PostgreSQL existant. Les schémas métier sont conservés. Sur autorisation ultérieure du propriétaire, les dix tables natives Django sont installées dans public. L’ancien backend Express/Prisma, ses dépendances et ses lanceurs npm ont été supprimés à la demande du propriétaire ; Node.js reste nécessaire au frontend Vite. Voir le [guide Django](backend/README.md), le [bilan technique actuel](SQL/documentation/Audit_Metier_20261024.md) et la [décision d’accès PostgreSQL](backend/skills/develop-sauverndeko-backend/references/decision-acces-postgresql.md).
 
 Documentation de travail :
 
@@ -14,7 +14,7 @@ Documentation de travail :
 - [Inventaire des modèles, routes et objets SQL](skills/sauverndeko-erp/references/inventaire-technique.md).
 - [Trajectoire ERP et critères des prochains lots](skills/sauverndeko-erp/references/trajectoire-erp.md).
 - [Principes repris d’imf_BB](skills/sauverndeko-erp/references/transposition-imf-bb.md).
-- [Skill transverse ERP](skills/sauverndeko-erp/SKILL.md), [backend](backend/skill/SKILL.md), [frontend](frontend/skill/SKILL.md).
+- [Skill transverse ERP](skills/sauverndeko-erp/SKILL.md), [backend](backend/skills/develop-sauverndeko-backend/SKILL.md), [frontend](frontend/skills/develop-sauverndeko-frontend/SKILL.md).
 
 Les priorités avant livraison client sont la protection des routes modulaires, l’isolation par organisation, les agrégats exhaustifs, les commentaires PostgreSQL et les consultations 360 avec indicateurs cliquables. Elles sont documentées et restent à implémenter ou vérifier.
 

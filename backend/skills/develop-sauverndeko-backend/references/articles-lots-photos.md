@@ -10,6 +10,14 @@ Une modification ne change ni créateur ni directement stock. Une unité ayant d
 
 InformationArticle est un texte complémentaire (limite applicative 20 000 caractères), distinct de ObsArticle. Le poids numeric(14,6) est indépendant des quantités : poids et unité vides ensemble ou renseignés ensemble. Les unités de masse sont les références mg/g/kg/t de catégorie 34. Les quantités de mouvement restent entières selon le schéma existant.
 
+## Réception depuis un article
+
+Le raccourci Réceptionner stock crée un bon d’entrée et sa ligne pour un article autorisé, avec quantité reçue strictement positive, prix Decimal exact, devise et éventuelle ventilation par lots. Un prix catalogue n’est repris que dans la même devise ; un autre prix est fourni explicitement dans la devise du bon, sans conversion implicite. Vérifier les droits, le périmètre, les références et les verrous métier comme dans le parcours des bons.
+
+Le type du bon provient de la FK existante T_Commande.ID_TypeCmdFk vers le référentiel commun. Exposer les types actifs de sens entrée et leur choix initial dans la préparation ; revalider à l’écriture la référence, la catégorie attendue et le sens entrée du type demandé. Le libellé transmis et le filtrage du navigateur ne remplacent pas ce contrôle serveur ; aucune table de types par écran.
+
+Bon, ligne, lots et audit partagent une transaction : une erreur annule la réception entière. Les triggers existants restent seuls responsables de l’incrément de stock, des mouvements et des totaux ; ne pas doubler ces effets par une mise à jour de QteArticle ou un mouvement manuel dans le service du raccourci. Réutiliser les contrôles de ventilation et l’ordre des verrous décrits ci-dessous.
+
 ## Lots
 
 T_LotArticle identifie un numéro par article ; T_MouvementLot ventile un mouvement existant. V_LotArticleStock et V_MouvementLot calculent stock et traçabilité. Les tables, colonnes, vues, fonctions et triggers introduits ont des COMMENT ON.
@@ -33,3 +41,16 @@ L’accès passe par la route logistique avec contrôle d’objet ou la projecti
 Maintenir les recettes SQL/tests sur une base sauverndeko_test_* indépendante, sans données clients. Tester concurrence, conflits, entrée/sortie multi-lots, correction, annulation, lot épuisé, somme incorrecte, photo invalide et nettoyage sur échec. Les diagnostics manage.py restent en lecture seule sur SauverNdeko.
 
 Avant migration : sauvegarde vérifiée, contrôle que données et quantités existantes restent identiques. Aucun DROP CASCADE pour réordonner les colonnes. La présentation d’InformationArticle avant ObsArticle relève de l’interface ; PostgreSQL ajoute la nouvelle colonne sans reconstruire les tables.
+
+
+## Réception depuis Articles — 25/10/2026
+
+GET /api/logistique/articles/<id>/receptions prépare une réception sans écriture : article autorisé, prix d’achat et devise du catalogue, date/heure du bon dans le fuseau configuré, type Entrée actif résolu du référentiel. Le prix est une suggestion dans la même devise ; le frontend l’efface si la devise change. La préparation exige le périmètre de l’article et la même organisation que le compte, y compris pour un administrateur de plateforme.
+
+POST sur cette route reçoit requestId (UUID conservé jusqu’au succès), QteCmdDetail, PUCmdDetail, ID_DeviseFk, DateCmd, et les champs facultatifs RefCmd, ID_ClientFk, NomClientSaisi, ObsCmd, ObsCmdDetail et Lots. Le service receipts.receive_article valide puis crée un bon d’entrée avec mutate et une seule ligne avec mutate_line, dans la même transaction. Propriétaire, article et type proviennent du compte, de l’URL et du référentiel ; aucun champ client ne peut les détourner. Les triggers existants appliquent l’unique effet de stock et le mouvement, puis la ventilation de lots reprend ce mouvement. Aucun UPDATE de stock, INSERT de mouvement ou mise à jour du prix de catalogue n’est réalisé en Python.
+
+La quantité est entière, strictement positive et limitée au type integer du mouvement. Le prix reçu est obligatoire, positif ou nul, respecte numeric(12,2), et le produit quantité × prix doit aussi tenir dans MontantTTC avant toute création. Référence, nom de tiers et observations restent dans leurs limites PostgreSQL de 255 caractères. Maximum 50 lots, numéros uniques par ligne, dates de péremption valides et somme exacte des quantités. Une erreur de ligne ou de lot annule également le bon.
+
+DateCmd est actuellement horodatée avec fuseau : un datetime-local sans offset est interprété explicitement dans settings.TIME_ZONE (Africa/Kinshasa localement), un ISO avec offset conserve son instant. La date du bon saisie est distincte de l’horodatage de création du mouvement généré par la procédure. Ne pas promettre un mouvement antidaté sans évolution SQL dédiée.
+
+Un verrou transactionnel par acteur/UUID et une preuve RECEIVE dans le journal existant protègent les reprises réseau. La preuve conserve l’UUID complet et l’empreinte du payload normalisé ; CodeCmd reste dans sa limite de vingt caractères. Un replay identique retourne le bon existant sans nouveau stock ; un changement de quantité, prix, devise, date, tiers, observations ou lots avec le même UUID renvoie 409. Une nouvelle demande utilise un nouvel UUID. Le mode lecture seule et les droits de gestion logistique sont vérifiés avant toute création. Le diagnostic verifier_backend ne teste que la préparation GET, jamais le POST applicatif.

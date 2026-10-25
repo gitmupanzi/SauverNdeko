@@ -139,3 +139,18 @@ CSRF_TRUSTED_ORIGINS = [
 # Stockage local privé ; aucun répertoire média n’est exposé par un serveur statique.
 ARTICLE_MEDIA_ROOT = Path(os.getenv("SAUVERNDEKO_MEDIA_ROOT", str(BASE_DIR / "media")))
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+# SMTP réel : le secret est un mot de passe d’application Google, jamais celui de SauverNdeko.
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("SAUVERNDEKO_EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("SAUVERNDEKO_EMAIL_PORT", "587"))
+EMAIL_USE_TLS = flag("SAUVERNDEKO_EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = flag("SAUVERNDEKO_EMAIL_USE_SSL")
+EMAIL_HOST_USER = os.getenv("SAUVERNDEKO_EMAIL_HOST_USER", "benjaminmupanzi@gmail.com")
+EMAIL_HOST_PASSWORD = os.getenv("SAUVERNDEKO_EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = "benjaminmupanzi@gmail.com"
+# L’expéditeur applicatif est résolu par accounts.mail_settings (réglage administratif).
+# Origine explicite du frontend ; aucun lien n’est construit depuis l’en-tête Host reçu.
+PASSWORD_RESET_FRONTEND_URL = os.getenv("SAUVERNDEKO_FRONTEND_URL", "http://localhost:5174")
+PASSWORD_RESET_TIMEOUT = 20 * 60

@@ -36,3 +36,6 @@ button.ui-action.is-danger{color:var(--erp-danger);border-color:#e8b6c0;}button.
 @container(max-width:540px){.lot-fields-row{flex-wrap:wrap;}.lot-fields-row>label{flex:1 1 40%;}}
 
 .record-editor-body .record-field-error{color:var(--erp-danger);}
+.record-editor-section .record-editor-check input{width:17px;height:17px;min-height:17px;padding:0;flex:none;}
+
+.stock-receipt-total{display:block;padding:12px 14px;border:1px solid var(--erp-border);border-radius:7px;background:var(--erp-raised);font-size:20px;font-weight:650;color:var(--erp-text);font-variant-numeric:tabular-nums;}

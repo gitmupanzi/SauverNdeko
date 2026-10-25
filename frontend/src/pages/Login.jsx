@@ -1,6 +1,6 @@
 import ThemePicker from "../components/ThemePicker";
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { normalizeAuthRedirect } from "../services/authNavigation";
 import "./Login.css";
@@ -63,7 +63,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
@@ -174,6 +173,7 @@ export default function Login() {
           <p>Accédez à vos applications.</p>
         </header>
 
+        {location.state?.passwordChanged===true?<p className="login-success" role="status"><i className="bi bi-check-circle" aria-hidden="true"/>Votre mot de passe a été modifié. Reconnectez-vous.</p>:null}
         {redirectTarget !== "/" ? (
           <p className="login-destination">
             <i className="bi bi-arrow-return-right" aria-hidden="true" />
@@ -252,10 +252,7 @@ export default function Login() {
           </div>
 
           <div className="login-assistance">
-            <button type="button" className="login-help-toggle" onClick={() => setHelpOpen((open) => !open)} aria-expanded={helpOpen} aria-controls="login-help">
-              Mot de passe oublié ?
-            </button>
-            <p id="login-help" className="login-help-text" hidden={!helpOpen}>Pour récupérer l’accès à votre compte, contactez l’administrateur de votre organisation.</p>
+            <Link to="/reset-password" className="login-help-toggle" onClick={event=>{if(busy)event.preventDefault();}} aria-disabled={busy} tabIndex={busy?-1:undefined}>Mot de passe oublié ?</Link>
           </div>
 
           <button className="login-submit" type="submit" disabled={busy}>

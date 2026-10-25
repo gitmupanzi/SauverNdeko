@@ -1,3 +1,7 @@
+import AdminMailSettings from "../components/AdminMailSettings";
+import useReferencesRefresh from "../hooks/useReferencesRefresh";
+import {formatDate} from "./logistique/logistiqueShared";
+import CategoricalSelect from "../components/CategoricalSelect";
 import { useAuth } from "../contexts/AuthContext";
 import ActionButton from "../components/ActionButton";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +11,7 @@ import {
   fetchAdminEntities,
   fetchAdminLicences,
   fetchAdminModelList,
+  fetchCompleteReferenceRows,
   fetchAvailableViews,
   fetchViewData,
   saveAdminUiSettings,
@@ -173,27 +178,8 @@ function isLikelyIsoDateTimeString(value) {
 }
 
 function formatDisplayDateTime(value) {
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const normalized = String(value).trim();
-  const hasTime = /[T\s]\d{2}:\d{2}/.test(normalized);
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    ...(hasTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }
-      : {}),
-  }).format(parsed);
+  const formatted=formatDate(value,{withTime:true});
+  return formatted==="—"||formatted==="-"?null:formatted;
 }
 
 function formatAdminSettingsSyncLabel(meta) {
@@ -1484,6 +1470,7 @@ function AdminViewButton({ view, isActive, onSelect }) {
 
 export default function Admin({ schemaOnly = "", moduleTitle = "Administration" }) {
   const { user: currentUser } = useAuth();
+  const [mailSettingsOpen,setMailSettingsOpen]=useState(false);
   const [availableViews, setAvailableViews] = useState([]);
   const [selectedViewKey, setSelectedViewKey] = useState(() => schemaOnly ? (() => { const first = ADMIN_VIEWS.find(view => view.schema === schemaOnly); return first ? normalizeViewKey(first.schema,first.name) : ""; })() : DEFAULT_ADMIN_VIEW_KEY);
   const [rows, setRows] = useState([]);
@@ -1531,6 +1518,10 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
   });
   const [loadingSupport, setLoadingSupport] = useState(true);
   const [supportError, setSupportError] = useState("");
+  const [referenceVersion, setReferenceVersion] = useState(0);
+  const viewRequest = useRef(0);
+  useEffect(() => () => { viewRequest.current += 1; }, []);
+  useReferencesRefresh(() => setReferenceVersion(version => version + 1));
   const [editorMode, setEditorMode] = useState(null);
   const [editorRecordId, setEditorRecordId] = useState(null);
   const [editorValues, setEditorValues] = useState({});
@@ -2485,6 +2476,8 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
   }, [loadingData, currentPage, rowsPerPage, rows.length]);
 
   async function loadViewRows(view, overrides = {}) {
+    const requestId = ++viewRequest.current;
+    const silent = overrides.silent === true;
     if (!view) {
       setRows([]);
       setViewMeta((current) => ({
@@ -2509,7 +2502,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       return;
     }
 
-    setLoadingData(true);
+    if (!silent) setLoadingData(true);
     setErrorMessage("");
 
     const effectiveSortColumn =
@@ -2536,6 +2529,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       filters: JSON.stringify(serverFilters),
     });
 
+    if (requestId !== viewRequest.current) return;
     if (payload?.success && Array.isArray(payload.data)) {
       setRows(payload.data);
       setViewMeta({
@@ -2548,17 +2542,14 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
         sortDir: payload.meta?.sortDir || effectiveSortDirection || "asc",
       });
     } else {
-      setRows([]);
-      setViewMeta((current) => ({
-        ...current,
-        columns: [],
-        totalCount: 0,
-        filteredCount: 0,
-      }));
+      if (!silent) {
+        setRows([]);
+        setViewMeta((current) => ({ ...current, columns: [], totalCount: 0, filteredCount: 0 }));
+      }
       setErrorMessage(payload?.message || "Impossible de charger les donnees de la vue selectionnee.");
     }
 
-    setLoadingData(false);
+    if (!silent) setLoadingData(false);
   }
 
   useEffect(() => {
@@ -2595,7 +2586,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       setSupportError("");
 
       if (schemaOnly === "referentiel") {
-        const payload = await fetchAdminModelList("T_CategorieGenerique", { take:200 });
+        const payload = await fetchCompleteReferenceRows("T_CategorieGenerique");
         if (!active) return;
         setSupportData(current => ({...current,categories:extractPayloadRows(payload)}));
         if (!payload?.success) setSupportError("La liste des catégories n’a pas pu être chargée.");
@@ -2625,9 +2616,9 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
         niveaux5ViewPayload,
       ] = await Promise.all([
         fetchAdminEntities({ take: 100 }),
-        fetchAdminModelList("T_CategorieGenerique", { take: 200 }),
+        fetchCompleteReferenceRows("T_CategorieGenerique"),
         fetchViewData("referentiel", "V_Generique", { take: 500 }),
-        fetchAdminModelList("T_Generique", { take: 500 }),
+        fetchCompleteReferenceRows("T_Generique"),
         fetchAdminLicences({ take: 50 }),
         fetchAdminModelList("T_Niveau_0", { take: 1000 }),
         fetchAdminModelList("T_Niveau_1_Old", { take: 1000 }),
@@ -2652,7 +2643,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       const categories = extractPayloadRows(categoriesPayload);
       const genericViewRows = normalizeGenericRows(extractPayloadRows(genericViewsPayload), categories);
       const genericTableRows = normalizeGenericRows(extractPayloadRows(genericTablePayload), categories);
-      const generics = genericViewRows.length > 0 ? genericViewRows : genericTableRows;
+      const generics = genericTablePayload?.success ? genericTableRows : genericViewRows;
       const roles = buildGenericSupportList("roles", generics, genericCategoryOverrides);
       const entityTypes = buildGenericSupportList("entityTypes", generics, genericCategoryOverrides);
       const licenseStatuses = buildGenericSupportList("licenseStatuses", generics, genericCategoryOverrides);
@@ -2748,6 +2739,35 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       active = false;
     };
   }, [genericCategoryOverrides,schemaOnly]);
+
+  useEffect(() => {
+    if (!referenceVersion || loadingSupport) return;
+    let active = true;
+    async function refreshReferenceOptions() {
+      const [categoriesPayload, genericsPayload] = await Promise.all([
+        fetchCompleteReferenceRows("T_CategorieGenerique"),
+        fetchCompleteReferenceRows("T_Generique"),
+      ]);
+      if (!active) return;
+      if (!categoriesPayload?.success || !genericsPayload?.success) {
+        setSupportError("Les références n’ont pas pu être actualisées. Les listes précédentes restent disponibles.");
+        return;
+      }
+      const categories = extractPayloadRows(categoriesPayload);
+      const generics = normalizeGenericRows(extractPayloadRows(genericsPayload), categories);
+      setSupportData(current => ({ ...current, categories,
+        ...Object.fromEntries(Object.keys(GENERIC_OPTION_SOURCE_CONFIG).map(key => [key, buildGenericSupportList(key, generics, genericCategoryOverrides)])),
+      }));
+      setSupportError("");
+    }
+    void refreshReferenceOptions();
+    return () => { active = false; };
+  }, [referenceVersion, genericCategoryOverrides, loadingSupport]);
+
+  useEffect(() => {
+    if (!referenceVersion || loadingData || submittingEditor || selectedView?.schema !== "referentiel") return;
+    void loadViewRows(selectedView, { silent: true });
+  }, [referenceVersion, selectedView, loadingData, submittingEditor]);
 
   useEffect(() => {
     if (adminViews.length === 0) {
@@ -3650,7 +3670,8 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       return (
         <label key={field.name} className="admin-form-field">
           <span>{field.label}</span>
-          <select
+          <CategoricalSelect
+            aria-label={field.label}
             value={value ?? ""}
             onChange={(event) => handleEditorValueChange(field.name, event.target.value)}
             required={Boolean(field.required)}
@@ -3661,7 +3682,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                 {option.label}
               </option>
             ))}
-          </select>
+          </CategoricalSelect>
         </label>
       );
     }
@@ -3755,7 +3776,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
             <div className="admin-view-list">
               <label className="admin-form-field admin-sidebar-select">
                 <span>Vue active</span>
-                <select value={selectedViewKey} onChange={(event) => setSelectedViewKey(event.target.value)}>
+                <CategoricalSelect aria-label="Vue active" value={selectedViewKey} onChange={(event) => setSelectedViewKey(event.target.value)}>
                   {schemaGroups.map((group) => (
                     <optgroup key={group.schema} label={group.title}>
                       {[...group.crudViews, ...group.readOnlyViews].map((view) => {
@@ -3769,7 +3790,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                       })}
                     </optgroup>
                   ))}
-                </select>
+                </CategoricalSelect>
               </label>
 
               {schemaGroups.map((group) => (
@@ -3868,7 +3889,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                 {selectedView?.description || "Cet espace regroupe les ecrans d'administration du systeme."}
               </p>
             </div>
-            <span className="status-pill">Acces admin</span>
+            <div className="admin-mail-tools">{!schemaOnly&&currentUser?.Is_Admin===true?<ActionButton icon="mail" onClick={()=>setMailSettingsOpen(true)}>Messagerie</ActionButton>:null}<span className="status-pill">Acces admin</span></div>
           </section>
 
           {selectedView?.renderMode !== "dashboard" ? (
@@ -4229,7 +4250,8 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
 
                             <label className="admin-form-field">
                               <span>Mode de liste</span>
-                              <select
+                              <CategoricalSelect
+                                aria-label={"Mode de liste · " + mapping.labels.join(", ")}
                                 value={mapping.mode}
                                 onChange={(event) => handleHierarchyFilterModeChange(mapping.source, event.target.value)}
                                 disabled={savingSharedFkSettings || loadingSharedFkSettings || availableModes.length <= 1}
@@ -4238,7 +4260,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                                   <option value="filtered">Liste filtree par parent</option>
                                 ) : null}
                                 {availableModes.includes("all") ? <option value="all">Liste complete</option> : null}
-                              </select>
+                              </CategoricalSelect>
                             </label>
 
                             <div className="admin-fk-mapping-hint">
@@ -4823,6 +4845,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
           </section>
         </div>
       </section>
+      {mailSettingsOpen&&!schemaOnly&&currentUser?.Is_Admin===true?<AdminMailSettings onClose={()=>setMailSettingsOpen(false)}/>:null}
     </div>
   );
 }

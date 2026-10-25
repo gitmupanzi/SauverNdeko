@@ -7,8 +7,8 @@ SauverNdeko évolue vers un ERP modulaire commercialisable, multi-organisation e
 ## Skills du dépôt
 
 - Lire [le skill transverse](sauverndeko-erp/SKILL.md) pour une évolution produit, une cartographie, une livraison ou un changement entre plusieurs couches.
-- Lire [le skill backend](../backend/skill/SKILL.md) pour Django, Django REST Framework, PostgreSQL, les permissions et les calculs métier.
-- Lire [le skill frontend](../frontend/skill/SKILL.md) pour React, les tableaux, les indicateurs et les consultations 360.
+- Lire [le skill backend](../backend/skills/develop-sauverndeko-backend/SKILL.md) pour Django, Django REST Framework, PostgreSQL, les permissions et les calculs métier.
+- Lire [le skill frontend](../frontend/skills/develop-sauverndeko-frontend/SKILL.md) pour React, les tableaux, les indicateurs et les consultations 360.
 - Lire [le skill de mise en forme](document-mise-en-forme/SKILL.md) pour les fichiers Excel, Word et PDF, les exports et leurs gabarits.
 - Consulter les références utiles à la tâche seulement. Ces emplacements sont ceux demandés par le propriétaire ; leur présence ne constitue pas une installation globale dans Codex.
 

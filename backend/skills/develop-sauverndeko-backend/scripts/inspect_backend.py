@@ -1,3 +1,7 @@
+"""Inspecteur historique Express/Prisma ; ne pas utiliser pour le backend Django actuel.
+
+Conservé pour provenance. Consulter ../SKILL.md pour les outils et commandes maintenus.
+"""
 from __future__ import annotations
 
 import argparse

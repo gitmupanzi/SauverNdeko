@@ -38,6 +38,16 @@ def validate_header(obj, data, old, actor):
             if not row or row["ID_CategorieGeneriqueFk"] != category:
                 raise APIError("Référence incompatible : " + field)
     if name == "T_Commande":
+        from .currency import write_currency
+        write_currency(data, old)
+        effective = {**(old or {}), **data}
+        if old and "ID_DeviseFk" in data and data["ID_DeviseFk"] != old.get("ID_DeviseFk"):
+            linked = db.one('''SELECT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=%s)
+                OR EXISTS(SELECT 1 FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=%s)
+                OR EXISTS(SELECT 1 FROM logistique."T_Reglements" WHERE "CodeFactureFk"=%s) AS present''',
+                [old["ID_Commande"],old["ID_Commande"],old.get("CodeFacture")])["present"]
+            if linked or old.get("CodeFacture"):
+                raise APIError("La devise du bon ne peut plus changer après une ligne, un mouvement ou une facture.", "CURRENCY_LOCKED", 409)
         if old is None:
             if not effective.get("ID_TypeCmdFk"):
                 raise APIError("ID_TypeCmdFk obligatoire.")
@@ -73,7 +83,13 @@ def validate_header(obj, data, old, actor):
         code = effective.get("CodeFactureFk")
         if not isinstance(code, str) or not code.strip():
             raise APIError("CodeFactureFk obligatoire.")
-        get_record(model("T_Commande"), actor, {"CodeFacture": code}, lock=True)
+        invoice = get_record(model("T_Commande"), actor, {"CodeFacture": code}, lock=True)
+        parent_currency = invoice.get("ID_DeviseFk")
+        if parent_currency is None:
+            raise APIError("La facture doit posséder une devise avant son règlement.", "CURRENCY_REQUIRED", 409)
+        if ("ID_DeviseFk" in data and data["ID_DeviseFk"] != parent_currency) or (old and old.get("ID_DeviseFk") != parent_currency):
+            raise APIError("Le règlement doit conserver la devise de sa facture.", "CURRENCY_MISMATCH", 409)
+        data["ID_DeviseFk"] = parent_currency
         if effective.get("MontantRegle") is None or effective["MontantRegle"] <= 0:
             raise APIError("MontantRegle doit être positif.")
 
@@ -121,12 +137,15 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         if previous_lots and operation != "delete" and lots is None and (next_id != positive(article_id) or effective.get("QteCmdDetail") != old.get("QteCmdDetail")):
             raise APIError("Répartissez la nouvelle quantité entre les lots de cette ligne.", "LOT_REQUIRED", 409)
         # Parent commande puis articles dans un ordre stable, comme les triggers existants.
+        selected_article = None
         for current_id in sorted(
             {next_id, *([positive(article_id)] if article_id is not None else [])}
         ):
             article = get_record(
                 model("T_Article"), actor, {"ID_Article": current_id}, lock=True
             )
+            if current_id == next_id:
+                selected_article = article
             if (
                 operation != "delete"
                 and current_id == next_id
@@ -134,6 +153,10 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             ):
                 raise APIError("Article inactif.")
         if operation != "delete":
+            if commande.get("ID_DeviseFk") is None:
+                raise APIError("Choisissez la devise du bon avant ses lignes.", "CURRENCY_REQUIRED", 409)
+            if selected_article.get("ID_DeviseFk") != commande.get("ID_DeviseFk") and (old is None or next_id != article_id) and data.get("PUCmdDetail") is None:
+                raise APIError("Saisissez le prix de cette ligne dans la devise du bon.", "CURRENCY_PRICE_REQUIRED", 400)
             qty = effective.get("QteCmdDetail")
             if qty is None or qty <= 0 or qty > 2147483647 or qty != int(qty):
                 raise APIError("QteCmdDetail doit être un entier strictement positif.")
@@ -195,7 +218,11 @@ def scoped_query(sql, actor, params=None):
         obj = VIEWS.get("logistique." + name) or MODELS.get(name)
         if obj is None:
             raise APIError("Source SQL non reconnue.", "INVALID_SOURCE", 500)
-        where, bind = predicate(obj, actor, params)
+        from .reads import read_predicate
+        if name == "V_ConsoMensuelle" and (params or {}).get("deviseId") not in (None,"","all"):
+            name = "V_ConsoMensuelleDevise"
+            obj = view("logistique", name)
+        where, bind = read_predicate(obj, actor, params)
         values.extend(bind)
         return (
             "(SELECT v.* FROM logistique." + db.ident(name) + " v WHERE " + where + ")"
@@ -245,8 +272,14 @@ def dashboard(actor, params=None):
         "documentsManquants",
         "mouvementsRecents",
     ]
+    from .reads import overview
+    monetary = overview(actor, params or {})
+    for key in ("montantTotalFacture", "montantTotalRegle", "montantRestant"):
+        totals[key] = monetary["totals"][key]
     return {
         "totals": totals,
+        "amountsByCurrency": monetary["amountsByCurrency"],
+        "activeCurrency": monetary.get("activeCurrency"),
         "highlights": dict(zip(names, highlights)),
         "assumptions": {
             "procheRuptureMargeMax": 5,
@@ -258,6 +291,9 @@ def dashboard(actor, params=None):
 
 def article_reference(x):
     return {
+        "currencyId": x.get("ID_DeviseFk"),
+        "currencyCode": x.get("DeviseCode"),
+        "currencyLabel": x.get("DeviseLibelle"),
         "id": x["ID_Article"],
         "label": x["NomArticle"],
         "code": x["CodeArticleInterne"] or x["RefArticle"],
@@ -273,8 +309,13 @@ def article_reference(x):
 
 
 def references(actor):
-    result = {}
-    meta = {}
+    from .currency import currency_references
+    currencies = currency_references()
+    usd = [item for item in currencies if item["code"] == "USD"]
+    if len(usd) != 1:
+        raise APIError("Une devise USD active et unique doit être définie dans le référentiel.", "CURRENCY_CONFIGURATION", 503)
+    result = {"currencies": currencies, "defaultCurrencyId": usd[0]["id"], "defaultCurrencyCode": "USD"}
+    meta = {"currencies": {"referenceKey":"currencies", "sourceKey":"logistique.currencies", "locked":True, "categoryLabel":"Devise", "fieldLabel":"Devise"}}
     rules = [
         ("articleTypes", 46, "Type produit", "Type d’article"),
         ("articleCategories", 40, "Categorie produit", "Categorie d’article"),
@@ -292,7 +333,11 @@ def references(actor):
     ]
     for key, category, label, field in rules:
         result[key] = db.query(
-            'SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr,"ID_CategorieGeneriqueFk" AS "categoryId" FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=%s ORDER BY COALESCE(NULLIF(trim("AbrGenerique"),\'\'),"NomGenerique"),"ID_Generique"',
+            '''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,g."ID_CategorieGeneriqueFk" AS "categoryId"
+               FROM referentiel."T_Generique" g
+               JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+               WHERE g."ID_CategorieGeneriqueFk"=%s AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE
+               ORDER BY COALESCE(NULLIF(trim(g."AbrGenerique"),''),g."NomGenerique"),g."ID_Generique"''',
             [category],
         )
         meta[key] = {
@@ -325,7 +370,11 @@ def references(actor):
         'SELECT DISTINCT s.value AS id,COALESCE(NULLIF(trim(e."NomEntite"),\'\'),\'Client #\'||s.value::text) AS label FROM (SELECT "ID_ClientFk" AS value FROM logistique."T_Commande" UNION SELECT "ID_ClientFk" AS value FROM logistique."T_Reglements") s LEFT JOIN systeme."T_Entite" e ON e."IdEntite"=s.value WHERE s.value IS NOT NULL ORDER BY label,id',
         actor,
     )
-    result["weightUnits"] = db.query('SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=34 AND "ValideGenerique" IS TRUE AND lower(btrim("AbrGenerique")) IN (%s,%s,%s,%s) ORDER BY "NomGenerique"',["mg","g","kg","t"])
+    result["weightUnits"] = db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr
+        FROM referentiel."T_Generique" g
+        JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+        WHERE g."ID_CategorieGeneriqueFk"=34 AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE
+          AND lower(btrim(g."AbrGenerique")) IN (%s,%s,%s,%s) ORDER BY g."NomGenerique"''',["mg","g","kg","t"])
     result.update(
         users=[
             {"id": x["IdUser"], "label": (x["NomUser"] + " " + x["PrenomUser"]).strip()}

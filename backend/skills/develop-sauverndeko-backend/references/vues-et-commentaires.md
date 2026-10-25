@@ -87,17 +87,17 @@ Mesurer les plans PostgreSQL et les temps API sur un périmètre représentatif.
 
 Les huit schémas applicatifs de la base locale SauverNdeko possèdent désormais 1553 commentaires couvrant tables, vues, colonnes, fonctions/procédures, triggers, séquences, contraintes et index. Application, réexécution et retour arrière vérifiés sur une copie isolée sans données ; les textes sont vérifiés après commit dans la base locale et les définitions restent inchangées.
 
-Lire le [bilan et les précisions sur le catalogue installé](../../../SQL/documentation/Commentaires_PostgreSQL_20261024.md). La [migration de référence](../../../SQL/migrations/20261024_01_commentaires_objets_postgresql.sql) documente les objets existants ; pour un objet nouveau ou modifié, adapter son commentaire dans une nouvelle évolution versionnée. Les inspections décrites plus haut restent le modèle des futures interventions.
+Lire le [bilan et les précisions sur le catalogue installé](../../../../SQL/documentation/Commentaires_PostgreSQL_20261024.md). La [migration de référence](../../../../SQL/migrations/20261024_01_commentaires_objets_postgresql.sql) documente les objets existants ; pour un objet nouveau ou modifié, adapter son commentaire dans une nouvelle évolution versionnée. Les inspections décrites plus haut restent le modèle des futures interventions.
 
 
 ## Fiabilisation logistique — évolution 20261024_02
 
 La migration 02 est appliquée à la base locale : verrouillage des parents, totaux par instruction, clôture normalisée, alertes sans seuil, couverture sans jours futurs et audit SQL filtrable. Les données existantes sont inchangées ; les contrôles ont été exécutés sur une base de recette fictive. Les deux nouvelles fonctions et le remplacement d’un trigger par quatre portent la couverture globale à 1558 objets/colonnes commentés (27 fonctions, six procédures, 27 triggers ; autres familles inchangées).
 
-Consulter le [bilan de fiabilisation](../../../SQL/documentation/Logistique_Fiabilisation_20261024.md). Les écarts de droits API, d’isolation et de calculs du dashboard frontend restent ouverts.
+Consulter le [bilan de fiabilisation](../../../../SQL/documentation/Logistique_Fiabilisation_20261024.md). Les écarts de droits API, d’isolation et de calculs du dashboard frontend restent ouverts.
 
 ## Audit métier et sources canoniques après la migration 04
 
 Le propriétaire a autorisé l’amélioration des schémas métier. La base comporte maintenant 31 tables métier et 48 vues ; les neuf schémas, public inclus, portent 1 893 commentaires sans manque. Les stocks appliquent des deltas nets par article ; ne pas réintroduire une annulation intermédiaire qui rendrait artificiellement le stock négatif. Les agrégats géographiques incluent les sites directement rattachés au niveau 3. Les vues publiques excluent les données privées et les réponses JSON des curseurs bruts sont décodées avant nettoyage.
 
-Lire le [bilan et les limites](../../../SQL/documentation/Audit_Metier_20261024.md) puis le [guide SQL](../../../SQL/README.md). Les snapshots canoniques sont destinés aux bases vides ; une base existante reçoit uniquement une migration contrôlée. Les migrations historiques 01 à 03 ne doivent pas être rejouées après la version 04 sans examen de leurs effets.
+Lire le [bilan et les limites](../../../../SQL/documentation/Audit_Metier_20261024.md) puis le [guide SQL](../../../../SQL/README.md). Les snapshots canoniques sont destinés aux bases vides ; une base existante reçoit uniquement une migration contrôlée. Les migrations historiques 01 à 03 ne doivent pas être rejouées après la version 04 sans examen de leurs effets.

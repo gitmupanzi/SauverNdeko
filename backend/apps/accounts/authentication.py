@@ -1,6 +1,6 @@
 """JWT compatible React/Express ; droits relus en base à chaque requête."""
 
-import os, hmac
+import os, hmac, hashlib, re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import bcrypt, jwt
@@ -51,7 +51,9 @@ def actor_by_id(user_id):
     return Actor(row)
 
 
-def decode_token(value, kind="access"):
+def decode_claims(value, kind="access"):
+    if kind not in {"access","refresh"}:
+        raise AuthenticationFailed("Type de session invalide.")
     secret = settings.JWT_SECRET if kind == "access" else settings.JWT_REFRESH_SECRET
     if not secret:
         raise AuthenticationFailed("Configuration de session incomplète.")
@@ -64,19 +66,55 @@ def decode_token(value, kind="access"):
         # Les anciens JWT n’avaient pas de token_type. Les nouveaux le portent.
         if claims.get("token_type", kind) != kind:
             raise ValueError()
-        return claims["userId"]
+        return claims
     except (jwt.PyJWTError, ValueError, TypeError):
         raise AuthenticationFailed("Token invalide ou expiré.")
+
+
+def password_version(actor):
+    stored=actor.row.get("MotdepasseUser")
+    if not isinstance(stored,str) or not stored:
+        raise AuthenticationFailed("Compte indisponible.")
+    secret=settings.JWT_SECRET
+    if not secret:
+        raise APIError("Configuration de session incomplète.","AUTH_CONFIGURATION",503)
+    message=f"SauverNdeko:password-version:v1:{actor.pk}:{stored}".encode("utf8")
+    return hmac.new(secret.encode("utf8"),message,hashlib.sha256).hexdigest()
+
+
+def token_actor(value,kind="access"):
+    claims=decode_claims(value,kind)
+    actor=actor_by_id(claims["userId"])
+    if "pwdv" in claims:
+        version=claims["pwdv"]
+        if not isinstance(version,str) or not re.fullmatch(r"[a-f0-9]{64}",version) or not hmac.compare_digest(version,password_version(actor)):
+            raise AuthenticationFailed("Votre session a expiré. Reconnectez-vous.")
+    else:
+        # Compatibilité au déploiement ; un changement révoque ensuite tous les anciens JWT du compte.
+        changed=db.one('''SELECT EXISTS(SELECT 1 FROM systeme."T_Audit_Log"
+            WHERE "TableName"=%s AND "Operation"=%s AND "NewData"->>'IdUser'=%s) AS changed''',
+            ["systeme.T_Utilisateurs","PASSWORD_CHANGE",str(actor.pk)])
+        if not changed or "changed" not in changed:
+            raise APIError("La vérification de session est indisponible.","SESSION_UNAVAILABLE",503)
+        if changed["changed"]:
+            raise AuthenticationFailed("Votre session a expiré. Reconnectez-vous.")
+    return actor
+
+
+def decode_token(value,kind="access"):
+    # Conserve le retour historique tout en imposant la révocation sur ce chemin aussi.
+    return token_actor(value,kind).pk
 
 
 def tokens(actor):
     if not settings.JWT_REFRESH_SECRET:
         raise APIError("JWT_REFRESH_SECRET est obligatoire.", "AUTH_CONFIGURATION", 503)
     now = datetime.now(timezone.utc)
+    version = password_version(actor)
 
     def issue(kind, secret, delta):
         return jwt.encode(
-            {"userId": actor.pk, "token_type": kind, "iat": now, "exp": now + delta},
+            {"userId": actor.pk, "token_type": kind, "iat": now, "exp": now + delta, "pwdv": version},
             secret,
             algorithm="HS256",
         )
@@ -103,6 +141,10 @@ def password_matches(plain, stored):
         or not plain
         or len(plain) > 4096
     ):
+        return False
+    try:
+        plain.encode("utf8")
+    except UnicodeError:
         return False
     if stored.startswith(("$2a$", "$2b$", "$2y$")):
         if len(plain.encode("utf8")) > 72:
@@ -199,7 +241,7 @@ class LegacyJWTAuthentication(BaseAuthentication):
             token = parts[1].decode("ascii")
         except UnicodeError:
             raise AuthenticationFailed("Token invalide.")
-        return actor_by_id(decode_token(token)), token
+        return token_actor(token), token
 
     def authenticate_header(self, request):
         return "Bearer"

@@ -199,6 +199,7 @@ class T_Niveau_5(models.Model):
 
 
 class T_Article(models.Model):
+    ID_DeviseFk = models.IntegerField()
     PoidsUnitaire = models.DecimalField(max_digits=14, decimal_places=6, null=True)
     ID_UnitePoidsFk = models.IntegerField(null=True)
     InformationArticle = models.TextField(null=True)
@@ -229,6 +230,7 @@ class T_Article(models.Model):
 
 
 class T_Commande(models.Model):
+    ID_DeviseFk = models.IntegerField()
     ID_Commande = models.AutoField(primary_key=True)
     ID_TypeCmdFk = models.IntegerField(null=True)
     ID_StatutCmdFk = models.IntegerField(null=True)
@@ -283,6 +285,7 @@ class T_CommandeDetail(models.Model):
 
 
 class T_Mouvement(models.Model):
+    ID_DeviseFk = models.IntegerField()
     ID_Mvt = models.AutoField(primary_key=True)
     ID_TypeMvtFk = models.IntegerField(null=True)
     ID_ArticleFk = models.IntegerField(null=True)
@@ -298,6 +301,7 @@ class T_Mouvement(models.Model):
 
 
 class T_Reglements(models.Model):
+    ID_DeviseFk = models.IntegerField()
     ID_Reglement = models.AutoField(primary_key=True)
     CodeFactureFk = models.TextField(null=True)
     ID_ModeReglementFk = models.IntegerField()

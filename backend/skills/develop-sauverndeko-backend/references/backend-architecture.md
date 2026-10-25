@@ -1,4 +1,4 @@
-> Relevé historique antérieur à la conversion Django. Pour l’architecture et les commandes actuelles, suivre le [skill canonique](../../../skill/SKILL.md). Les descriptions Express/Prisma ci-dessous ne décrivent plus le backend actif.
+> Relevé historique antérieur à la conversion Django. Pour l’architecture et les commandes actuelles, suivre le [skill canonique](../SKILL.md). Les descriptions Express/Prisma ci-dessous ne décrivent plus le backend actif.
 
 # Architecture backend
 

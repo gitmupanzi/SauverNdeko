@@ -1,13 +1,11 @@
-import re
-from django.db import transaction
+import hmac
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.exceptions import AuthenticationFailed
 from apps.core import db
-from apps.core.repository import clean
 from apps.core.responses import ok, APIError
-from .authentication import actor_by_id, decode_token, password_matches, tokens, profile
+from .authentication import actor_by_id, token_actor, password_matches, tokens, profile
 
 
 class LoginThrottle(AnonRateThrottle):
@@ -32,7 +30,11 @@ class LoginView(APIView):
         )
         if not row or not password_matches(password, row["MotdepasseUser"]):
             raise AuthenticationFailed("Identifiants incorrects.")
-        return ok(**tokens(actor_by_id(row["IdUser"])))
+        actor=actor_by_id(row["IdUser"])
+        # Un changement concurrent ne peut transformer un ancien secret en session à jour.
+        if not hmac.compare_digest((actor.row.get("MotdepasseUser") or "").encode("utf8"),row["MotdepasseUser"].encode("utf8")):
+            raise AuthenticationFailed("Identifiants incorrects.")
+        return ok(**tokens(actor))
 
 
 class RefreshView(APIView):
@@ -44,7 +46,7 @@ class RefreshView(APIView):
         value = request.data.get("refreshToken")
         if not isinstance(value, str):
             raise AuthenticationFailed("Refresh token requis.")
-        return ok(**tokens(actor_by_id(decode_token(value, "refresh"))))
+        return ok(**tokens(token_actor(value, "refresh")))
 
 
 class RegisterView(APIView):
@@ -64,42 +66,8 @@ class MeView(APIView):
         return ok(profile(request.user))
 
     def put(self, request):
-        db.ensure_writable()
-        body = request.data
-        allowed = {
-            "NomUser",
-            "PrenomUser",
-            "EmailUser",
-            "PhoneUser",
-            "SexeUser",
-            "UrlPhoto",
-        }
-        if not body or set(body) - allowed:
-            raise APIError("Champ de profil non autorisé.")
-        from apps.core.registry import model
-        from apps.core.repository import coerce
-
-        cols = {c["column_name"]: c for c in model("T_Utilisateurs")["columns"]}
-        values = {k: coerce(cols[k], v) for k, v in body.items()}
-        if "EmailUser" in values and not re.fullmatch(
-            r"[^\s@]+@[^\s@]+\.[^\s@]+", values["EmailUser"]
-        ):
-            raise APIError("Email invalide.")
-        if any(
-            k in values and not values[k].strip() for k in ["NomUser", "PrenomUser"]
-        ):
-            raise APIError("Nom et prénom obligatoires.")
-        if "SexeUser" in values and values["SexeUser"] not in {"M", "F"}:
-            raise APIError("Sexe invalide.")
-        with transaction.atomic():
-            db.query(
-                'UPDATE systeme."T_Utilisateurs" SET '
-                + ",".join(db.ident(k) + "=%s" for k in values)
-                + ',"DateModificationUser"=CURRENT_TIMESTAMP WHERE "IdUser"=%s',
-                [*values.values(), request.user.pk],
-            )
-        return ok(profile(actor_by_id(request.user.pk)))
-
+        from .photos import save_profile
+        return ok(save_profile(request.user, request.data), message="Profil mis à jour.")
 
 class VerifyView(APIView):
     def get(self, request):

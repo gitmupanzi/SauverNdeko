@@ -27,7 +27,7 @@ Aucun moteur Word ou export exhaustif XLSX/PDF serveur commun n’a été identi
 
 ## Source unique et périmètre
 
-Lire [le backend](../../../backend/skill/SKILL.md), [le frontend](../../../frontend/skill/SKILL.md) et [le skill ERP](../../sauverndeko-erp/SKILL.md) selon la tâche. Utiliser les mêmes services, vues, autorisations et filtres pour écran, détail et export. Un paramètre d’organisation envoyé par le navigateur ne constitue pas une autorisation.
+Lire [le backend](../../../backend/skills/develop-sauverndeko-backend/SKILL.md), [le frontend](../../../frontend/skills/develop-sauverndeko-frontend/SKILL.md) et [le skill ERP](../../sauverndeko-erp/SKILL.md) selon la tâche. Utiliser les mêmes services, vues, autorisations et filtres pour écran, détail et export. Un paramètre d’organisation envoyé par le navigateur ne constitue pas une autorisation.
 
 Pour un registre complet, lire l’ensemble filtré côté serveur avant la pagination d’affichage. Ne pas assembler un faux total depuis les 200 premières lignes. Pour un export long, assurer la cohérence temporelle du jeu exporté ; n’ajouter un mécanisme de jobs que si le coût réel le justifie, avec statut, erreur et téléchargement autorisé.
 

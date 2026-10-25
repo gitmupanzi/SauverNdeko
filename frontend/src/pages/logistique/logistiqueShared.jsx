@@ -1,11 +1,15 @@
+import { compareDecimal, withCurrencyColumn, formatConsumptionMoney } from "../../utils/money";
+export { formatCurrency } from "../../utils/money";
+import CategoricalSelect from "../../components/CategoricalSelect";
 import TablePagination from "../../components/TablePagination";
 import ColumnPicker from "../../components/ColumnPicker";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_ROWS_PER_PAGE = 25;
 const MIN_COLUMN_WIDTH = 120;
+const MAX_COLUMN_WIDTH = 10000;
 const SELECTION_COLUMN_WIDTH = 64;
 
 export function formatNumber(value) {
@@ -22,32 +26,37 @@ export function formatNumber(value) {
   return Number.isFinite(numeric) ? new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 6 }).format(numeric) : "—";
 }
 
-export function formatCurrency(value) {
-  return formatNumber(value);
-}
 
 export function formatDate(value, options = {}) {
-  if (!value) {
-    return "-";
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return String(value);
-  }
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    ...(options.withTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      : {}),
+  if (value == null || value === "") return "-";
+  const withTime = options.withTime !== false;
+  const formatInstant = parsed => new Intl.DateTimeFormat("fr-FR", {
+    day:"2-digit", month:"2-digit", year:"numeric", timeZone:"Africa/Kinshasa",
+    ...(withTime ? { hour:"2-digit", minute:"2-digit", hourCycle:"h23", ...(options.withSeconds ? {second:"2-digit"} : {}) } : {}),
   }).format(parsed);
+  if (value instanceof Date || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? String(value) : formatInstant(parsed);
+  }
+  const text = String(value).trim();
+  if (!text) return "-";
+  const parts = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?(Z|[+-]\d{2}(?::?\d{2})?)?)?$/i.exec(text);
+  if (!parts) return text;
+  const [,year,month,day,hour,minute,second,fraction,zone] = parts;
+  const y=Number(year),m=Number(month),d=Number(day);
+  const leap=y%4===0 && (y%100!==0 || y%400===0);
+  const days=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+  if (y<1 || m<1 || m>12 || d<1 || d>days[m-1]) return text;
+  const date = day+"/"+month+"/"+year;
+  if (hour === undefined) return date;
+  if (Number(hour)>23 || Number(minute)>59 || Number(second || 0)>59) return text;
+  // Un timestamp SQL sans fuseau conserve son heure civile, sans conversion du navigateur.
+  if (!zone) return date+(withTime ? " "+hour+":"+minute+(options.withSeconds ? ":"+(second || "00") : "") : "");
+  const offset = zone.toUpperCase()==="Z" ? "Z" : zone.length===3 ? zone+":00" : zone.length===5 ? zone.slice(0,3)+":"+zone.slice(3) : zone;
+  if (offset!=="Z" && (Number(offset.slice(1,3))>23 || Number(offset.slice(4,6))>59)) return text;
+  const milliseconds = fraction ? "."+fraction.slice(1,4).padEnd(3,"0") : "";
+  const parsed = new Date(year+"-"+month+"-"+day+"T"+hour+":"+minute+":"+(second || "00")+milliseconds+offset);
+  return Number.isNaN(parsed.getTime()) ? text : formatInstant(parsed);
 }
 
 export function toInputDateValue(value) {
@@ -190,6 +199,8 @@ function compareSortableValues(leftValue, rightValue) {
     return -1;
   }
 
+  const exact = compareDecimal(leftValue, rightValue);
+  if (exact !== null) return exact;
   const leftNumber = Number(leftValue);
   const rightNumber = Number(rightValue);
   const leftIsNumber = String(leftValue).trim() !== "" && Number.isFinite(leftNumber);
@@ -215,6 +226,9 @@ function getColumnExportValue(column, row, index) {
   if (typeof column.exportValue === "function") {
     return column.exportValue(row, index);
   }
+
+  if (column.key === "MontantsParDevise" || (column.key === "ValeurConsoMensuelle" && row.MontantsParDevise)) return formatConsumptionMoney(row);
+  if (/^(PU|PV|Montant|TotalRegle|Reste|Valeur|Marge)/.test(column.key) && column.key in row) return row[column.key] ?? "";
 
   if (typeof column.renderText === "function") {
     return column.renderText(row, index);
@@ -258,6 +272,7 @@ function getColumnDefaultWidth(column) {
 }
 
 export function exportRowsToCsv(filename, columns, rows) {
+  columns = withCurrencyColumn(columns, rows);
   const csvLines = [
     columns.map((column) => escapeCsvValue(column.label)).join(";"),
     ...rows.map((row, index) =>
@@ -279,6 +294,7 @@ export function exportRowsToCsv(filename, columns, rows) {
 }
 
 export function exportRowsToExcel(filename, columns, rows) {
+  columns = withCurrencyColumn(columns, rows);
   const headerHtml = columns.map((column) => `<th>${column.label}</th>`).join("");
   const rowsHtml = rows
     .map(
@@ -315,6 +331,7 @@ export function exportRowsToExcel(filename, columns, rows) {
 }
 
 export function exportRowsToPdf(filename, columns, rows) {
+  columns = withCurrencyColumn(columns, rows);
   const headerHtml = columns.map((column) => `<th>${column.label}</th>`).join("");
   const rowsHtml = rows
     .map(
@@ -437,6 +454,15 @@ export function FkMappingCard({ title = "Correspondances FK", mappings = [] }) {
   );
 }
 
+function sameTableSelectionValue(left,right) {
+  if(Object.is(left,right))return true;
+  if(left==null||right==null||typeof left!=="object"||typeof right!=="object")return false;
+  if(Array.isArray(left)!==Array.isArray(right))return false;
+  if(left instanceof Date||right instanceof Date)return left instanceof Date&&right instanceof Date&&left.getTime()===right.getTime();
+  const keys=Object.keys(left);
+  return keys.length===Object.keys(right).length&&keys.every(key=>Object.prototype.hasOwnProperty.call(right,key)&&sameTableSelectionValue(left[key],right[key]));
+}
+
 export function SimpleTable({
   columns,
   rows,
@@ -474,6 +500,7 @@ export function SimpleTable({
   onApplyColumnFilters,
 }) {
   const tableWrapRef = useRef(null);
+  const settledTableHeight = useRef(0);
   const selectPageRef = useRef(null);
   const localColumnsAnchor=useRef(null);
   const columnsTrigger=columnsAnchorRef || localColumnsAnchor;
@@ -506,10 +533,17 @@ export function SimpleTable({
   const knownColumnKeys = useRef(columns.map((column) => column.key));
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const selectionCallback = useRef(onSelectionChange);
+  const notifiedSelection = useRef(null);
   selectionCallback.current = onSelectionChange;
   useEffect(() => { setSelectedRowIds([]); },[selectionResetKey]);
   const selectionKey = selectedRowIds.join("|");
-  useEffect(() => { selectionCallback.current?.(rows.filter((row,index) => selectedRowIds.includes(String(getRowId(row,index))))); },[selectionKey,rows]);
+  useEffect(() => {
+    if(!selectionCallback.current)return;
+    const nextSelection=rows.filter((row,index)=>selectedRowIds.includes(String(getRowId(row,index))));
+    if(notifiedSelection.current!==null&&sameTableSelectionValue(notifiedSelection.current,nextSelection))return;
+    notifiedSelection.current=nextSelection;
+    selectionCallback.current(nextSelection);
+  },[selectionKey,rows,getRowId,onSelectionChange]);
   const [pinnedColumns, setPinnedColumns] = useState(defaultPinnedColumns);
   const [visibleColumns, setVisibleColumns] = useState(() => columns.filter((column) => !defaultVisibleColumns || defaultVisibleColumns.includes(column.key)).map((column) => column.key));
   const [columnWidths, setColumnWidths] = useState(() =>
@@ -531,7 +565,7 @@ export function SimpleTable({
 
     setVisibleColumns((current) => {
       const retained = current.filter((columnKey) => availableColumnKeys.includes(columnKey));
-      const appended = availableColumnKeys.filter((columnKey) => !previousColumnKeys.includes(columnKey));
+      const appended = availableColumnKeys.filter((columnKey) => !previousColumnKeys.includes(columnKey) && (!defaultVisibleColumns || defaultVisibleColumns.includes(columnKey)));
       return [...retained, ...appended];
     });
 
@@ -568,7 +602,8 @@ export function SimpleTable({
   useEffect(() => {
     setSelectedRowIds((current) => {
       const availableIds = new Set(rows.map((row, index) => String(getRowId(row, index))));
-      return current.filter((rowId) => availableIds.has(String(rowId)));
+      const retained=current.filter((rowId)=>availableIds.has(String(rowId)));
+      return retained.length===current.length?current:retained;
     });
   }, [getRowId, rows]);
 
@@ -631,6 +666,19 @@ export function SimpleTable({
       index: startIndex + index,
     }));
   }, [currentPage, rowsPerPage, sortedRows, serverMode]);
+  useLayoutEffect(()=>{
+    const wrap=tableWrapRef.current;
+    if(!wrap)return;
+    if(loading){
+      const limit=Number.parseFloat(window.getComputedStyle(wrap).maxHeight);
+      const height=settledTableHeight.current||wrap.getBoundingClientRect().height;
+      wrap.style.minHeight=(Number.isFinite(limit)?Math.min(height,limit):height)+"px";
+    }else{
+      wrap.style.minHeight="";
+      settledTableHeight.current=wrap.getBoundingClientRect().height;
+    }
+  },[loading,paginatedRowEntries.length,rowsPerPage,filtersVisible]);
+
   const visiblePageNumbers = useMemo(() => {
     const radius = 2;
     const startPage = Math.max(1, currentPage - radius);
@@ -772,7 +820,7 @@ export function SimpleTable({
       const delta = moveEvent.clientX - startX;
       setColumnWidths((current) => ({
         ...current,
-        [columnKey]: Math.max(MIN_COLUMN_WIDTH, initialWidth + delta),
+        [columnKey]: Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, initialWidth + delta)),
       }));
     };
 
@@ -783,6 +831,15 @@ export function SimpleTable({
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+  }
+
+  function handleResizeKey(columnKey, event) {
+    if (!["ArrowLeft", "ArrowRight", "Home"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Home") { handleResetColumnWidth(columnKey); return; }
+    const step = event.shiftKey ? 40 : 10;
+    const delta = event.key === "ArrowRight" ? step : -step;
+    setColumnWidths((current) => ({ ...current, [columnKey]: Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, getColumnWidth(columnKey) + delta)) }));
   }
 
   function handleResetColumnWidth(columnKey) {
@@ -866,7 +923,8 @@ export function SimpleTable({
       : sortedRows;
 
   return (
-    <div className={"logistics-advanced-table" + (toolbar ? " erp-data-grid" : "")}>
+    <div className={"logistics-advanced-table" + (toolbar ? " erp-data-grid" : "") + (loading ? " is-loading" : "")} aria-busy={loading}>
+      {loading ? <span className="erp-grid-loading" role="status">{rows.length ? "Actualisation des résultats…" : "Chargement des résultats…"}</span> : null}
       {showControls ? (
         <section className="admin-search-card logistics-table-controls logistics-table-toolbar-card">
           {toolbar || <>
@@ -887,7 +945,7 @@ export function SimpleTable({
             <div className="admin-toolbar-actions">
               <label className="admin-form-field logistics-inline-select">
                 <span>Lignes</span>
-                <select value={rowsPerPage} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
+                <select value={rowsPerPage} disabled={loading} onChange={(event) => handleRowsPerPageChange(Number(event.target.value))}>
                   {rowsPerPageOptions.map((value) => (
                     <option key={value} value={value}>
                       {value}
@@ -896,7 +954,7 @@ export function SimpleTable({
                 </select>
               </label>
 
-              <ActionButton ref={columnsTrigger} icon="columns" aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>Colonnes</ActionButton>
+              <ActionButton ref={columnsTrigger} icon="columns" disabled={loading} aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>Colonnes</ActionButton>
 
               <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export logistique">
                 <ActionButton icon="download"
@@ -906,7 +964,7 @@ export function SimpleTable({
                     setShowNavigationMenu(false);
                     setShowExportMenu((current) => !current);
                   }}
-                  disabled={!exportRows.length}
+                  disabled={loading || !exportRows.length}
                   aria-expanded={showExportMenu}
                   aria-haspopup="true"
                 >
@@ -921,7 +979,7 @@ export function SimpleTable({
                         exportRowsToCsv(`${exportBaseFilename}.csv`, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
-                      disabled={!exportRows.length}
+                      disabled={loading || !exportRows.length}
                     >
                       CSV · page
                     </ActionButton>
@@ -932,7 +990,7 @@ export function SimpleTable({
                         exportRowsToExcel(`${exportBaseFilename}.csv`, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
-                      disabled={!exportRows.length}
+                      disabled={loading || !exportRows.length}
                     >
                       Tableur HTML · page
                     </ActionButton>
@@ -943,7 +1001,7 @@ export function SimpleTable({
                         exportRowsToPdf(exportBaseFilename, exportableColumns, exportRows);
                         setShowExportMenu(false);
                       }}
-                      disabled={!exportRows.length}
+                      disabled={loading || !exportRows.length}
                     >
                       Imprimer · page
                     </ActionButton>
@@ -959,7 +1017,7 @@ export function SimpleTable({
                     setShowExportMenu(false);
                     setShowNavigationMenu((current) => !current);
                   }}
-                  disabled={!scrollState.overflow}
+                  disabled={loading || !scrollState.overflow}
                   aria-expanded={showNavigationMenu}
                   aria-haspopup="true"
                 >
@@ -974,7 +1032,7 @@ export function SimpleTable({
                         handleTableScroll("start");
                         setShowNavigationMenu(false);
                       }}
-                      disabled={!scrollState.canScrollLeft}
+                      disabled={loading || !scrollState.canScrollLeft}
                     >
                       Debut
                     </button>
@@ -985,7 +1043,7 @@ export function SimpleTable({
                         handleTableScroll("left");
                         setShowNavigationMenu(false);
                       }}
-                      disabled={!scrollState.canScrollLeft}
+                      disabled={loading || !scrollState.canScrollLeft}
                     >
                       Gauche
                     </button>
@@ -996,7 +1054,7 @@ export function SimpleTable({
                         handleTableScroll("right");
                         setShowNavigationMenu(false);
                       }}
-                      disabled={!scrollState.canScrollRight}
+                      disabled={loading || !scrollState.canScrollRight}
                     >
                       Droite
                     </button>
@@ -1007,7 +1065,7 @@ export function SimpleTable({
                         handleTableScroll("end");
                         setShowNavigationMenu(false);
                       }}
-                      disabled={!scrollState.canScrollRight}
+                      disabled={loading || !scrollState.canScrollRight}
                     >
                       Fin
                     </button>
@@ -1037,6 +1095,7 @@ export function SimpleTable({
 
       <div
         ref={tableWrapRef}
+        inert={loading ? true : undefined}
         className="public-table-wrap logistics-table-wrap admin-table-wrap"
         tabIndex={0}
         aria-label="Tableau logistique avance avec defilement horizontal et vertical"
@@ -1098,7 +1157,14 @@ export function SimpleTable({
                       <div
                         className="admin-resize-handle"
                         onMouseDown={(event) => handleResizeStart(column.key, event)}
+                        onKeyDown={(event) => handleResizeKey(column.key, event)}
+                        tabIndex={0}
                         role="separator"
+                        aria-valuemin={MIN_COLUMN_WIDTH}
+                        aria-valuemax={MAX_COLUMN_WIDTH}
+                        aria-valuenow={Math.round(getColumnWidth(column.key))}
+                        aria-valuetext={Math.round(getColumnWidth(column.key)) + " pixels"}
+                        title="Flèches : ajuster · Maj : accélérer · Début : largeur automatique"
                         aria-orientation="vertical"
                         aria-label={`Redimensionner la colonne ${column.label}`}
                       />
@@ -1110,7 +1176,7 @@ export function SimpleTable({
             {filtersVisible ? <tr className="erp-column-filter-row">
               {enableSelection ? <th /> : null}
               {effectiveVisibleColumns.map((column) => <th key={column.key} className={pinnedColumns.includes(column.key) ? "is-pinned" : ""} style={getCellStyle(column)}>
-                {column.filterType ? (column.filterType === "boolean" ? <select aria-label={"Filtrer : " + column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)}><option value="">Tous</option><option value="true">Oui</option><option value="false">Non</option></select> : <input type={column.filterType === "date" ? "date" : "text"} aria-label={"Filtrer : " + column.label} placeholder={column.filterType === "number" ? "=, >=, <=…" : "Filtrer…"} title={column.filterType === "number" ? "Exemples : 50, >= 50, <= 100" : column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onApplyColumnFilters?.(); } }} />) : null}
+                {column.filterType ? (column.filterType === "boolean" ? <CategoricalSelect aria-label={"Filtrer : " + column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)}><option value="">Tous</option><option value="true">Oui</option><option value="false">Non</option></CategoricalSelect> : <input type={column.filterType === "date" ? "date" : "text"} aria-label={"Filtrer : " + column.label} placeholder={column.filterType === "number" ? "=, >=, <=…" : "Filtrer…"} title={column.filterType === "number" ? "Exemples : 50, >= 50, <= 100" : column.label} value={columnFilters[column.key] || ""} onChange={(event) => onColumnFilterChange?.(column.key,event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onApplyColumnFilters?.(); } }} />) : null}
               </th>)}
             </tr> : null}
           </thead>
@@ -1176,285 +1242,14 @@ export function ToneBadge({ children, tone = "info" }) {
   return <span className={`logistics-badge is-${tone}`}>{children}</span>;
 }
 
-export function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  allowEmpty = true,
-  emptyLabel = "Choisir",
-  disabled = false,
-  required = false,
-  helperText = "",
-  searchable = true,
-  searchPlaceholder = "Rechercher une valeur",
-}) {
-  const containerRef = useRef(null);
-  const searchInputRef = useRef(null);
-  const optionRefs = useRef([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const normalizedSearch = normalizeSearchText(searchTerm).trim();
-  const hasManyOptions = Array.isArray(options) && options.length > 6;
-  const selectedOption = useMemo(
-    () => (Array.isArray(options) ? options.find((option) => String(option.value) === String(value ?? "")) || null : null),
-    [options, value]
-  );
-  const filteredOptions = useMemo(() => {
-    if (!Array.isArray(options)) {
-      return [];
-    }
-
-    if (!normalizedSearch) {
-      return options;
-    }
-
-    const nextOptions = options.filter((option) =>
-      normalizeSearchText(option.label).includes(normalizedSearch)
-    );
-
-    if (
-      selectedOption &&
-      !nextOptions.some((option) => String(option.value) === String(selectedOption.value))
-    ) {
-      return [selectedOption, ...nextOptions];
-    }
-
-    return nextOptions;
-  }, [normalizedSearch, options, selectedOption]);
-  const visibleOptions = useMemo(() => {
-    const nextOptions = filteredOptions.map((option) => ({
-      value: option.value,
-      label: option.label,
-    }));
-
-    if (allowEmpty) {
-      return [{ value: "", label: emptyLabel }, ...nextOptions];
-    }
-
-    return nextOptions;
-  }, [allowEmpty, emptyLabel, filteredOptions]);
-
-  useEffect(() => {
-    if (disabled) {
-      setSearchTerm("");
-      setIsOpen(false);
-      setHighlightedIndex(-1);
-    }
-  }, [disabled]);
-
-  useEffect(() => {
-    if (!isOpen || !searchable || !hasManyOptions) {
-      return;
-    }
-
-    searchInputRef.current?.focus();
-  }, [hasManyOptions, isOpen, searchable]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setHighlightedIndex(-1);
-      return;
-    }
-
-    const selectedIndex = visibleOptions.findIndex((option) => String(option.value) === String(value ?? ""));
-    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : visibleOptions.length > 0 ? 0 : -1);
-  }, [isOpen, value, visibleOptions]);
-
-  useEffect(() => {
-    if (!isOpen || highlightedIndex < 0) {
-      return;
-    }
-
-    optionRefs.current[highlightedIndex]?.scrollIntoView({
-      block: "nearest",
-    });
-  }, [highlightedIndex, isOpen]);
-
-  useEffect(() => {
-    function handlePointerDown(event) {
-      if (!containerRef.current?.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, []);
-
-  const currentLabel = selectedOption?.label || (allowEmpty ? emptyLabel : "Selectionner");
-
-  function emitValue(nextValue) {
-    onChange?.({
-      target: {
-        value: nextValue,
-      },
-    });
-  }
-
-  function handleSelectOption(nextValue) {
-    emitValue(nextValue);
-    setIsOpen(false);
-    setSearchTerm("");
-  }
-
-  function moveHighlight(direction) {
-    if (visibleOptions.length === 0) {
-      return;
-    }
-
-    setHighlightedIndex((current) => {
-      if (current < 0) {
-        return 0;
-      }
-
-      if (direction === "down") {
-        return current >= visibleOptions.length - 1 ? 0 : current + 1;
-      }
-
-      return current <= 0 ? visibleOptions.length - 1 : current - 1;
-    });
-  }
-
-  function handleComboboxKeyDown(event) {
-    if (disabled) {
-      return;
-    }
-
-    if (!isOpen && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter")) {
-      event.preventDefault();
-      setIsOpen(true);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setIsOpen(false);
-      setSearchTerm("");
-      return;
-    }
-
-    if (!isOpen) {
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      moveHighlight("down");
-      return;
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveHighlight("up");
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-
-      if (highlightedIndex >= 0 && visibleOptions[highlightedIndex]) {
-        handleSelectOption(visibleOptions[highlightedIndex].value);
-      }
-    }
-  }
-
-  if (searchable && !disabled) {
-    return (
-      <div className="admin-form-field">
-        <span>{label}</span>
-        <div ref={containerRef} className="admin-multiselect admin-single-select">
-          <button
-            type="button"
-            className={`admin-multiselect-trigger ${isOpen ? "is-open" : ""}`}
-            onClick={() => setIsOpen((current) => !current)}
-            onKeyDown={handleComboboxKeyDown}
-            aria-expanded={isOpen}
-            aria-haspopup="listbox"
-          >
-            <strong>{currentLabel || emptyLabel}</strong>
-            <small>{isOpen ? "Fermer" : "Choisir"}</small>
-          </button>
-
-          {isOpen ? (
-            <div className="admin-multiselect-panel" role="listbox" aria-label={label}>
-              {hasManyOptions ? (
-                <input
-                  ref={searchInputRef}
-                  className="admin-multiselect-search"
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  onKeyDown={handleComboboxKeyDown}
-                  placeholder={searchPlaceholder}
-                />
-              ) : null}
-
-              <div className="admin-multiselect-options admin-single-select-options">
-                {filteredOptions.length > 0 ? (
-                  visibleOptions.map((option, index) => (
-                    <button
-                      key={option.value}
-                      ref={(element) => {
-                        optionRefs.current[index] = element;
-                      }}
-                      type="button"
-                      className={`admin-multiselect-option admin-single-select-option ${
-                        String(option.value) === String(value ?? "") ? "is-selected" : ""
-                      } ${index === highlightedIndex ? "is-highlighted" : ""}`}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      onKeyDown={handleComboboxKeyDown}
-                      onClick={() => handleSelectOption(option.value)}
-                    >
-                      <span>{option.label}</span>
-                    </button>
-                  ))
-                ) : allowEmpty ? (
-                  <button
-                    ref={(element) => {
-                      optionRefs.current[0] = element;
-                    }}
-                    type="button"
-                    className={`admin-multiselect-option admin-single-select-option ${
-                      String(value ?? "") === "" ? "is-selected" : ""
-                    } ${highlightedIndex === 0 ? "is-highlighted" : ""}`}
-                    onMouseEnter={() => setHighlightedIndex(0)}
-                    onKeyDown={handleComboboxKeyDown}
-                    onClick={() => handleSelectOption("")}
-                  >
-                    <span>{emptyLabel}</span>
-                  </button>
-                ) : (
-                  <div className="admin-multiselect-empty">Aucune valeur ne correspond a la recherche.</div>
-                )}
-              </div>
-            </div>
-          ) : null}
-        </div>
-        {normalizedSearch && isOpen ? <small>{`${filteredOptions.length} option(s) correspond(ent) a la recherche.`}</small> : null}
-        {helperText ? <small>{helperText}</small> : null}
-      </div>
-    );
-  }
-
-  return (
-    <label className="admin-form-field">
-      <span>{label}</span>
-      <select value={value} onChange={onChange} disabled={disabled} required={required}>
-        {allowEmpty ? <option value="">{emptyLabel}</option> : null}
-        {Array.isArray(options) ? options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        )) : null}
-      </select>
-      {helperText ? <small>{helperText}</small> : null}
-    </label>
-  );
+export function SelectField({label,value,onChange,options=[],allowEmpty=true,emptyLabel="Choisir",disabled=false,required=false,helperText=""}) {
+  return <label className="admin-form-field"><span>{label}</span>
+    <CategoricalSelect aria-label={label} value={value} onChange={onChange} disabled={disabled} required={required}>
+      {allowEmpty?<option value="">{emptyLabel}</option>:null}
+      {Array.isArray(options)?options.map(option=><option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>):null}
+    </CategoricalSelect>
+    {helperText?<small>{helperText}</small>:null}
+  </label>;
 }
 
 export function buildReferenceOptions(items, fallbackPrefix = "Option") {

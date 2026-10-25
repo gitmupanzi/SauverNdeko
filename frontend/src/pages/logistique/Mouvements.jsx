@@ -1,3 +1,6 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { multiplyDecimal } from "../../utils/money";
+import CategoricalSelect from "../../components/CategoricalSelect";
 import ActionButton from "../../components/ActionButton";
 import { useConsultations } from "../../components/ConsultationProvider";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -47,6 +50,7 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currencyFilter,setCurrencyFilter]=useState("");
   const [articleFilter, setArticleFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [commandeFilter, setCommandeFilter] = useState("");
@@ -119,14 +123,15 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
       },
       { key: "QteMvt", label: "Quantite", renderText: (row) => formatNumber(row.QteMvt) },
       { key: "QteMvtSigned", label: "Quantite signee", renderText: (row) => formatNumber(row.QteMvtSigned) },
-      { key: "PUMvt", label: "PU mouvement", renderText: (row) => formatCurrency(row.PUMvt) },
-      { key: "MontantMvt", label: "Montant mouvement", renderText: (row) => formatCurrency(row.MontantMvt) },
+      { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
+      { key: "PUMvt", label: "PU mouvement", renderText: (row) => formatCurrency(row.PUMvt,row.DeviseCode) },
+      { key: "MontantMvt", label: "Montant mouvement", renderText: (row) => formatCurrency(row.MontantMvt,row.DeviseCode) },
       {
         key: "MontantMvtSigned",
         label: "Montant signe",
         renderText: (row) =>
           formatCurrency(
-            row.MontantMvtSigned != null ? row.MontantMvtSigned : Number(row.MontantMvt || 0) * Number(row.SigneStock || 0)
+            row.MontantMvtSigned != null ? row.MontantMvtSigned : multiplyDecimal(row.MontantMvt,row.SigneStock),row.DeviseCode
           ),
       },
       { key: "OrigineMouvement", label: "Origine mouvement", renderText: (row) => row.OrigineMouvement || "-" },
@@ -145,6 +150,7 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
       const response = await MOUVEMENTS_VIEW_CONFIG.fetchRows({
         q: deferredSearch,
         article: articleFilter,
+        deviseId:currencyFilter,
         typeId: typeFilter,
         dateFrom,
         dateTo,
@@ -180,7 +186,7 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
     return () => {
       isMounted = false;
     };
-  }, [articleFilter, dateFrom, dateTo, deferredSearch, refreshKey, typeFilter]);
+  }, [articleFilter, dateFrom, dateTo, deferredSearch, refreshKey, typeFilter, currencyFilter]);
 
   return (
     <div className="logistics-screen">
@@ -212,14 +218,15 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
+          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
           <SelectField label="Type mouvement" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} options={mouvementTypeOptions} />
           <label className="admin-form-field">
             <span>Origine mouvement</span>
-            <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Origine du mouvement" value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
               <option value="all">Toutes</option>
               <option value="Bon de stock">Bon de stock</option>
               <option value="Ajustement direct article">Ajustement direct article</option>
-            </select>
+            </CategoricalSelect>
           </label>
           <SelectField label="Article" value={articleFilter} onChange={(event) => setArticleFilter(event.target.value)} options={articleOptions} />
           <label className="admin-form-field">
@@ -228,11 +235,11 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
           </label>
           <label className="admin-form-field">
             <span>Sens stock</span>
-            <select value={stockDirectionFilter} onChange={(event) => setStockDirectionFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Sens du stock" value={stockDirectionFilter} onChange={(event) => setStockDirectionFilter(event.target.value)}>
               <option value="all">Tous</option>
               <option value="entree">Entree</option>
               <option value="sortie">Sortie</option>
-            </select>
+            </CategoricalSelect>
           </label>
           <label className="admin-form-field">
             <span>Periode</span>
@@ -255,11 +262,12 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
       </section>
 
       <section className="logistics-screen-table-card">
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun mouvement a afficher." />
+        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucun mouvement a afficher." />
 
-        {!loading && !error && visibleRows.length > 0 ? (
           <SimpleTable
             rows={visibleRows}
+            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun mouvement pour ces critères."}
+            loading={loading}
             onRowConsult={(row, key) => key === "CodeCmd" ? openOrder(row) : openProduct(row)}
             consultColumns={["CodeCmd", "NomArticle", "CodeArticleInterne", "ID_ArticleFk"]}
             isCellConsultable={(row, key) => key === "CodeCmd" ? Boolean(row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) : Boolean(row.ID_Article || row.ID_ArticleFk)}
@@ -303,14 +311,14 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
                 }
 
                 if (column.key === "PUMvt" || column.key === "MontantMvt") {
-                  return formatCurrency(row[column.key]);
+                  return formatCurrency(row[column.key],row.DeviseCode);
                 }
 
                 if (column.key === "MontantMvtSigned") {
                   return formatCurrency(
                     row.MontantMvtSigned != null
                       ? row.MontantMvtSigned
-                      : Number(row.MontantMvt || 0) * Number(row.SigneStock || 0)
+                      : multiplyDecimal(row.MontantMvt,row.SigneStock),row.DeviseCode
                   );
                 }
 
@@ -341,7 +349,6 @@ export default function Mouvements({ references, refreshKey, sharedTable, onTogg
               },
             }))}
           />
-        ) : null}
       </section>
     </div>
   );

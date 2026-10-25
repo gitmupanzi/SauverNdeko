@@ -10,8 +10,8 @@ description: Cartographier et faire évoluer SauverNdeko vers un ERP modulaire, 
 - Pour repérer un domaine et son état réel : [cartographie](references/cartographie.md), puis [inventaire technique](references/inventaire-technique.md).
 - Pour prioriser une version client ou un module ERP : [trajectoire ERP](references/trajectoire-erp.md).
 - Pour reprendre un comportement d’imf_BB : [matrice de transposition](references/transposition-imf-bb.md).
-- Pour PostgreSQL/API : [skill backend](../../backend/skill/SKILL.md).
-- Pour l’interface : [skill frontend](../../frontend/skill/SKILL.md).
+- Pour PostgreSQL/API : [skill backend](../../backend/skills/develop-sauverndeko-backend/SKILL.md).
+- Pour l’interface : [skill frontend](../../frontend/skills/develop-sauverndeko-frontend/SKILL.md).
 
 - Pour les fichiers Excel, Word et PDF : [mise en forme SauverNdeko](../document-mise-en-forme/SKILL.md), charte, modèles et contrôle des exports.
 
@@ -38,7 +38,7 @@ La première intervention porte sur la cartographie et les skills. Elle ne valid
 - Les mouvements restent en lecture seule ; les commandes clôturées sont protégées selon le scénario et les règles serveur existants.
 - T_CommandeDetail possède une clé composée article/commande. Un article n’apparaît qu’une fois dans une commande avec le modèle actuel.
 - Les règlements se rattachent à la facture par CodeFactureFk ; ne pas reconstruire une relation depuis un nom libre.
-- Les données absentes restent distinctes de zéro. Ne pas additionner des devises ou unités différentes ; le modèle logistique actuel ne suffit pas à certifier un fonctionnement multidevise.
+- Les données absentes restent distinctes de zéro. Ne pas additionner des devises ou unités différentes ; la devise du catalogue et celle du document sont explicites, les flux conservent leur instantané et les totaux sont ventilés par devise. Aucun taux ni conversion implicite n’est fourni.
 - Reprendre les principes d’imf_BB, sans transférer ses clients, secrets, données financières, règles M-PESA/CBS ni obligations financières propres à ce projet. Le backend Django de SauverNdeko conserve les schémas métier ; les migrations natives Django sont autorisées dans public.
 
 ## Préparation d’une version client
@@ -48,3 +48,7 @@ Utiliser les jalons de la trajectoire ERP comme critères de travail, puis rappo
 ## Architecture actualisée
 
 Le backend unique est Django/DRF ; l’ancien backend Express/Prisma et ses dépendances ont été supprimés à la demande du propriétaire. Lire [le bilan technique actuel](../../SQL/documentation/Audit_Metier_20261024.md). Les inventaires initiaux décrivent l’état antérieur. Respecter le périmètre actualisé : schémas métier conservés, migrations natives Django autorisées dans public uniquement.
+
+## Devises logistiques
+
+La migration 20261025_04 est appliquée à SauverNdeko après sauvegarde. Le propriétaire a confirmé le rattachement des montants existants à USD. Pour les nouvelles créations, résoudre USD dans la catégorie Devise active du référentiel ; ne pas figer son identifiant ni inventer une devise dans le formatage frontend. Les champs `ID_DeviseFk`, `DeviseCode` et `DeviseLibelle` accompagnent les prix et montants ; les affichages peuvent suffixer le montant sans imposer une colonne redondante. Les exports numériques conservent une colonne de devise. Les agrégats, leurs détails et exports partagent le même filtre. Les montants de devises différentes ne sont jamais additionnés ; un prix catalogue d’une autre devise ne peut pas être recopié automatiquement dans un bon.

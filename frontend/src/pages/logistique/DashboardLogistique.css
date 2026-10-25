@@ -43,3 +43,8 @@
 @media(max-width:1120px) { .erp-dashboard-sections { grid-template-columns:minmax(0,1fr); }.erp-dashboard .erp-dashboard-filters .erp-dashboard-query { flex-basis:calc(100% - 180px); } }
 @media(max-width:760px) { .logistics-modern.logistics-app .erp-dashboard .erp-dashboard-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); padding:12px; }.erp-dashboard .erp-dashboard-filters .erp-dashboard-query,.erp-dashboard .erp-dashboard-filters .erp-dashboard-period { grid-column:1 / -1; }.erp-dashboard .erp-block-header { padding:10px 12px; }.erp-dashboard .erp-block-body { padding:10px; }.erp-dashboard .erp-screen-actions { flex-wrap:wrap; }.erp-dashboard .erp-block-scope { display:none; } }
 html[data-theme="contrast"] .erp-dashboard .erp-kpi-icon { color:var(--erp-action); }
+
+.erp-dashboard-period .search-select-trigger{min-height:40px;height:40px;padding-block:7px;}
+
+.erp-dashboard .erp-group-grid .erp-kpi-main strong { font-size:clamp(14px,1.25vw,20px); }
+.erp-dashboard-filters > .admin-form-field { min-width:0; }

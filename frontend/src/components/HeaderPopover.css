@@ -1,0 +1,2 @@
+.account-popover { position:fixed; margin:0; inset:auto; padding:8px; overflow:auto; border:1px solid var(--erp-border); border-radius:16px; box-shadow:0 10px 36px rgb(12 28 48 / 15%); background:var(--erp-surface); color:var(--erp-text); z-index:1800; font:400 13px/1.5 var(--font-base,"Segoe UI",sans-serif); }
+.account-popover::backdrop { background:transparent; }

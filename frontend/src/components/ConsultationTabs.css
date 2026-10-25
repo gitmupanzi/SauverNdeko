@@ -1,0 +1,11 @@
+.consultation-tabs { position:relative; display:flex; align-items:center; gap:4px; width:fit-content; max-width:100%; min-width:0; box-sizing:border-box; margin:0 0 20px; padding:4px; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; scrollbar-color:var(--erp-border) transparent; border:1px solid var(--erp-border); border-radius:10px; background:var(--erp-raised); }
+.consultation-tabs .consultation-tabs__tab { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; gap:7px; min-height:39px; margin:0; padding:8px 13px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--erp-muted); font:500 12px/1.4 "Segoe UI",sans-serif; white-space:nowrap; box-shadow:none; }
+.consultation-tabs .consultation-tabs__tab>.app-icon { flex:none; }
+.consultation-tabs .consultation-tabs__tab:hover:not(:disabled) { color:var(--erp-text); background:var(--erp-hover); }
+.consultation-tabs .consultation-tabs__tab[aria-selected="true"] { color:var(--erp-action); background:var(--erp-surface); border-color:var(--erp-border); box-shadow:0 1px 2px rgb(16 24 40 / 6%); font-weight:600; }
+.consultation-tabs .consultation-tabs__tab:focus-visible { position:relative; z-index:1; outline:2px solid var(--erp-link); outline-offset:1px; }
+.consultation-tabs .consultation-tabs__tab:disabled { opacity:.45; cursor:not-allowed; }
+.consultation-tabpanel { min-width:0; outline:0; }
+.consultation-tabpanel:focus-visible { outline:2px solid var(--erp-link); outline-offset:3px; border-radius:8px; }
+html[data-theme="contrast"] .consultation-tabs .consultation-tabs__tab[aria-selected="true"] { border-color:var(--erp-text); }
+@media(max-width:640px) { .consultation-tabs { margin-bottom:16px; }.consultation-tabs .consultation-tabs__tab { min-height:38px; padding:8px 11px; } }

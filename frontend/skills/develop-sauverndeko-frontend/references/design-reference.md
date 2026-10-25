@@ -58,3 +58,27 @@ Le 25/10, la migration SQL/migrations/20261025_01_dossiers_suivi.sql est install
 
 
 Le choix d’affichage de Dossiers de suivi propose Tableau, Liste, Compact et Cartes ; Tableau est le défaut demandé par le propriétaire. La préférence sauverndeko.followupFolders.view ne stocke que le mode, jamais les dossiers. Un changement de mode conserve recherche et filtres et ne recharge pas les données métier. Le tableau doit porter le conteneur erp-results et employer DataTable.css : en-têtes sobres en casse normale, bordures fines, badges colorés, pas de dégradés sur les poignées ni de colonne Actions figée arbitrairement. Utiliser SimpleTable et RowActionsMenu, dont le menu radio rend le mode sélectionné accessible au clavier.
+
+
+## Menu du compte et notifications
+
+Réutiliser [AccountControls](../../../src/components/AccountControls.jsx) pour le menu, le profil, le thème et la déconnexion existante, et [Notifications](../../../src/components/Notifications.jsx) pour la cloche. Le badge vient uniquement de meta.unreadCount de /api/notifications, jamais du nombre d’éléments de la page ni d’une valeur fictive. Une erreur reste une indisponibilité, pas zéro. Les communications sont personnelles et limitées à l’entité autorisée, même pour un administrateur ; vider immédiatement la liste et le badge lors d’un changement de compte ou d’entité. Respecter canMarkRead et conserver l’état non lu si l’écriture échoue.
+
+Conserver les tokens de thème, les mêmes AppIcon, le contraste et les dispositions mobiles. Le menu et les panneaux restent utilisables au clavier, avec focus visible, fermeture par Échap et retour au déclencheur ; le profil et la déconnexion gardent leurs parcours réels et leurs protections de brouillon.
+
+
+## Sous-onglets de consultation
+
+Références de modernité : [onglets TailAdmin](https://react-demo.tailadmin.com/tabs), [profil](https://react-demo.tailadmin.com/profile) et [marketing](https://react-demo.tailadmin.com/marketing) pour la lisibilité et la hiérarchie. Reprendre ces principes dans les composants existants, sans copier de données de démonstration ni créer de fonction marketing sans besoin métier.
+
+[ConsultationTabs](../../../src/components/ConsultationTabs.jsx) reçoit tabs ({key,label,icon}), value, onChange, label et idPrefix. Garder une barre neutre compacte à largeur du contenu, des icônes AppIcon et une pilule active contrastée ; les onglets ne s’étirent pas sur toute la fenêtre. Sur petite largeur, seul leur défilement horizontal révèle l’actif, sans déplacer la page. Flèches gauche/droite et Début/Fin assurent le parcours clavier ; seul l’onglet actif appartient à l’ordre de tabulation. Chaque panneau porte role=tabpanel, id={idPrefix}-panel-{key} et aria-labelledby={idPrefix}-tab-{key}, correspondant aux aria-controls des onglets.
+
+Le contenu reste celui du profil ou de l’objet 360 sélectionné, chargé à la demande avec ses droits et ses états réels. Les changements de style, thème ou largeur ne relancent pas les lectures ; cliquer l’onglet déjà actif ne réinitialise ni filtres ni pagination. Vérifier clavier, focus visible, mobile et thèmes : une apparence moderne seule ne valide pas l’expérience.
+
+## Profil utilisateur et photo
+
+[Profile](../../../src/pages/Profile.jsx) conserve l’identité au-dessus des sous-onglets Informations personnelles, Organisation et Sécurité. Modifier ouvre RecordEditorFrame ; organisation et droits restent en consultation. Le paramètre modifier=1 ouvre une seule fois l’éditeur à l’arrivée.
+
+[UserAvatar](../../../src/components/UserAvatar.jsx) est partagé avec l’en-tête, avec initiales par défaut. Choisir une photo JPEG, PNG ou WebP de 8 Mo maximum, avec aperçu local et retrait ; aucun champ d’adresse d’image dans le parcours. Révoquer les URL d’aperçu au remplacement, à l’annulation et à la fermeture. Aucun téléversement avant Enregistrer : réutiliser updateProfile pour la sauvegarde atomique des informations et de la photo ; le retrait reste une modification en attente. Une erreur conserve le fichier et le brouillon ; Annuler ne persiste rien.
+
+Les contrôles de mot de passe ou de double authentification n’apparaissent que lorsqu’un parcours serveur réel est raccordé.

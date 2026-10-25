@@ -1,3 +1,6 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { compareDecimal } from "../../utils/money";
+import CategoricalSelect from "../../components/CategoricalSelect";
 import ActionButton from "../../components/ActionButton";
 import { useAuth } from "../../contexts/AuthContext";
 import { useConsultations } from "../../components/ConsultationProvider";
@@ -54,7 +57,7 @@ function getReglementState(row) {
     return { key: "non-reglee", label: label || "Non reglee", tone: "danger" };
   }
 
-  return { key: "reglee", label: label || "Reglee", tone: "success" };
+  return label ? { key: "reglee",label,tone:"success" } : {key:"inconnu",label:"Non renseigné",tone:"neutral"};
 }
 
 export default function Reglements({ references, refreshKey, onDataChanged, sharedTable, onOpenCommande, onToggleFkMappings }) {
@@ -66,6 +69,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [currencyFilter,setCurrencyFilter]=useState("");
   const [codeFactureFilter, setCodeFactureFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [lateFilter, setLateFilter] = useState("all");
@@ -162,33 +166,14 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
     () => new Map(summaryRows.map((row) => [String(row.CodeFacture || ""), row])),
     [summaryRows]
   );
-  const summaryMetrics = useMemo(
-    () =>
-      summaryVisibleRows.reduce(
-        (accumulator, row) => {
-          accumulator.total += 1;
-          accumulator.totalFacture += Number(row.MontantTTC || 0);
-          accumulator.totalRegle += Number(row.TotalRegle || 0);
-
-          if (Number(row.Reste || 0) > 0) {
-            accumulator.impayes += 1;
-          } else {
-            accumulator.payes += 1;
-          }
-
-          return accumulator;
-        },
-        { total: 0, totalFacture: 0, totalRegle: 0, payes: 0, impayes: 0 }
-      ),
-    [summaryVisibleRows]
-  );
   const summaryColumns = useMemo(
     () => [
       { key: "ID_Commande", label: "Bon de stock", exportValue: (row) => `#${row.ID_Commande}` },
       { key: "CodeFacture", label: "Facture" },
-      { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC) },
-      { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle) },
-      { key: "Reste", label: "Reste", renderText: (row) => formatCurrency(row.Reste) },
+      { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
+      { key: "MontantTTC", label: "Facture TTC", renderText: (row) => formatCurrency(row.MontantTTC,row.DeviseCode) },
+      { key: "TotalRegle", label: "Regle", renderText: (row) => formatCurrency(row.TotalRegle,row.DeviseCode) },
+      { key: "Reste", label: "Reste", renderText: (row) => formatCurrency(row.Reste,row.DeviseCode) },
     ],
     []
   );
@@ -203,11 +188,13 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       const [summaryResponse, entriesResponse] = await Promise.all([
         REGLEMENTS_VIEW_CONFIG.fetchRows({
           codeFacture: codeFactureFilter,
+          deviseId:currencyFilter,
           resteOnly: paymentStateFilter === "non-reglee" || paymentStateFilter === "partielle" ? "true" : "",
           take: 200,
         }),
         REGLEMENTS_VIEW_CONFIG.fetchEntries({
           codeFacture: codeFactureFilter,
+          deviseId:currencyFilter,
           client: clientFilter,
           dateFrom,
           dateTo,
@@ -251,7 +238,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
     return () => {
       isMounted = false;
     };
-  }, [clientFilter, codeFactureFilter, dateFrom, dateTo, paymentStateFilter, refreshKey]);
+  }, [clientFilter, codeFactureFilter, dateFrom, dateTo, paymentStateFilter, refreshKey, currencyFilter]);
 
   function resetEditor() {
     setEditorMode("");
@@ -358,24 +345,25 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
+          <CurrencySelect references={references} filter value={currencyFilter} onChange={setCurrencyFilter}/>
           <label className="admin-form-field">
             <span>Etat reglement</span>
-            <select value={paymentStateFilter} onChange={(event) => setPaymentStateFilter(event.target.value)}>
+            <CategoricalSelect aria-label="État du règlement" value={paymentStateFilter} onChange={(event) => setPaymentStateFilter(event.target.value)}>
               <option value="all">Toutes</option>
               <option value="reglee">Reglee</option>
               <option value="partielle">Partiellement reglee</option>
               <option value="non-reglee">Non reglee</option>
               <option value="non-facturee">Non facturee</option>
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
             <span>Retard paiement</span>
-            <select value={lateFilter} onChange={(event) => setLateFilter(event.target.value)}>
+            <CategoricalSelect aria-label="Retard de paiement" value={lateFilter} onChange={(event) => setLateFilter(event.target.value)}>
               <option value="all">Toutes</option>
               <option value="oui">Oui</option>
               <option value="non">Non</option>
-            </select>
+            </CategoricalSelect>
           </label>
 
           <SelectField label="Tiers" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} options={clientOptions} />
@@ -398,11 +386,12 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
       </section>
 
       <section className="logistics-screen-table-card">
-        <LoadingErrorEmpty loading={loading} error={error} rows={summaryVisibleRows} emptyMessage="Aucun suivi de reglement disponible." />
+        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucun suivi de reglement disponible." />
 
-        {!loading && !error && summaryVisibleRows.length > 0 ? (
           <SimpleTable
             rows={summaryVisibleRows}
+            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucune facture pour ces critères."}
+            loading={loading}
             onRowConsult={openOrder}
             consultColumns={["CodeCmd"]}
             isCellConsultable={(row) => Boolean(row.CodeCmd)}
@@ -419,12 +408,12 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               { key: "DateFacture", label: "Date facture", render: (row) => formatDate(row.DateFacture) },
               { key: "DateEcheancePaiement", label: "Echeance", render: (row) => formatDate(row.DateEcheancePaiement) },
               { key: "NomClientSaisi", label: "Tiers", render: (row) => row.NomClientSaisi || "-" },
-              { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC) },
-              { key: "TotalRegle", label: "Total regle", render: (row) => formatCurrency(row.TotalRegle) },
+              { key: "MontantTTC", label: "Montant TTC", render: (row) => formatCurrency(row.MontantTTC,row.DeviseCode) },
+              { key: "TotalRegle", label: "Total regle", render: (row) => formatCurrency(row.TotalRegle,row.DeviseCode) },
               {
                 key: "Reste",
                 label: "Reste",
-                render: (row) => <ToneBadge tone={Number(row.Reste || 0) > 0 ? "danger" : "success"}>{formatCurrency(row.Reste)}</ToneBadge>,
+                render: (row) => <ToneBadge tone={compareDecimal(row.Reste,"0") === null ? "neutral" : compareDecimal(row.Reste,"0") === 1 ? "danger" : "success"}>{formatCurrency(row.Reste,row.DeviseCode)}</ToneBadge>,
               },
               { key: "NbReglements", label: "Nombre reglements", render: (row) => row.NbReglements ?? 0 },
               { key: "DernierReglement", label: "Dernier reglement", render: (row) => formatDate(row.DernierReglement) },
@@ -444,7 +433,6 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               },
             ]}
           />
-        ) : null}
       </section>
 
       <SectionCard title="Historique des règlements" subtitle="Paiements rattachés aux factures.">
@@ -453,7 +441,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
           label={selectedEntry ? `Ligne selectionnee: reglement #${selectedEntry.ID_Reglement}` : "Aucune ligne selectionnee"}
           description={
             selectedEntry
-              ? `${selectedEntry.CodeFactureFk || "-"} | ${formatCurrency(selectedEntry.MontantRegle)}`
+              ? `${selectedEntry.CodeFactureFk || "-"} | ${formatCurrency(selectedEntry.MontantRegle,selectedEntry.DeviseCode)}`
               : "Selectionnez une ecriture pour la consulter ou la modifier plus vite."
           }
           actions={
@@ -477,16 +465,17 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               label: "Mode",
               renderText: (row) => row.T_Generique?.NomGenerique || modeLabelMap.get(String(row.ID_ModeReglementFk)) || row.ID_ModeReglementFk,
             },
-            { key: "MontantRegle", label: "Montant", renderText: (row) => formatCurrency(row.MontantRegle) },
+            { key: "MontantRegle", label: "Montant", renderText: (row) => formatCurrency(row.MontantRegle,row.DeviseCode) },
           ]}
           exportFilename="logistique-reglements.csv"
         />
 
-        <LoadingErrorEmpty loading={loading} error={error} rows={entryRows} emptyMessage="Aucune ecriture de reglement disponible." />
+        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucune ecriture de reglement disponible." />
 
-        {!loading && !error && entryRows.length > 0 ? (
           <SimpleTable
             rows={entryRows}
+            loading={loading}
+            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun règlement pour ces critères."}
             selectedRowId={selectedEntry?.ID_Reglement || null}
             onRowSelect={sharedTable?.setSelectedRow}
             defaultPinnedColumns={["DateReglement", "CodeFactureFk"]}
@@ -508,12 +497,12 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
                   modeLabelMap.get(String(row.ID_ModeReglementFk)) ||
                   `#${row.ID_ModeReglementFk}`,
               },
-              { key: "MontantRegle", label: "Montant", render: (row) => formatCurrency(row.MontantRegle) },
+              { key: "MontantRegle", label: "Montant", render: (row) => formatCurrency(row.MontantRegle,row.DeviseCode) },
               {
                 key: "EtatPaiement",
                 label: "Etat",
                 render: (row) =>
-                  Number(summaryByFacture.get(String(row.CodeFactureFk || ""))?.Reste || 0) > 0 ? (
+                  compareDecimal(summaryByFacture.get(String(row.CodeFactureFk || ""))?.Reste,"0") === 1 ? (
                     <ToneBadge tone="warning">Impaye</ToneBadge>
                   ) : (
                     <ToneBadge tone="success">Paye</ToneBadge>
@@ -535,7 +524,6 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               },
             ]}
           />
-        ) : null}
       </SectionCard>
 
       {selectedEntry ? (
@@ -543,7 +531,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
           <div className="logistics-detail-grid">
             <article>
               <strong>{selectedEntry.CodeFactureFk}</strong>
-              <p>Montant: {formatCurrency(selectedEntry.MontantRegle)}</p>
+              <p>Montant: {formatCurrency(selectedEntry.MontantRegle,selectedEntry.DeviseCode)}</p>
             </article>
             <article>
               <p>Date: {formatDate(selectedEntry.DateReglement)}</p>
@@ -556,7 +544,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               <p>Tiers: {clientLabelMap.get(String(selectedEntry.ID_ClientFk)) || (selectedEntry.ID_ClientFk ? `#${selectedEntry.ID_ClientFk}` : "-")}</p>
               <p>
                 Etat:{" "}
-                {Number(summaryByFacture.get(String(selectedEntry.CodeFactureFk || ""))?.Reste || 0) > 0
+                {compareDecimal(summaryByFacture.get(String(selectedEntry.CodeFactureFk || ""))?.Reste,"0") === 1
                   ? "Impaye"
                   : "Paye"}
               </p>
@@ -609,7 +597,7 @@ export default function Reglements({ references, refreshKey, onDataChanged, shar
               </label>
 
               <label className="admin-form-field">
-                <span>Montant regle</span>
+                <span>Montant réglé ({summaryByFacture.get(String(formValues.CodeFactureFk || ""))?.DeviseCode || selectedEntry?.DeviseCode || "devise de la facture"})</span>
                 <input
                   type="number"
                   min="0"

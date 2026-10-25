@@ -7,6 +7,20 @@ import {
   setStoredAuth,
 } from "./authStorage";
 
+let sessionGeneration=0;
+export function invalidateAuthSessionContext(){sessionGeneration+=1;}
+export function captureAuthSessionContext(){
+  const stored=getStoredAuth();
+  return {generation:sessionGeneration,accessToken:stored?.accessToken || "",refreshToken:stored?.refreshToken || ""};
+}
+export function isAuthSessionContextCurrent(context){
+  if(!context||context.generation!==sessionGeneration)return false;
+  const stored=getStoredAuth();
+  return context.accessToken===(stored?.accessToken || "")&&context.refreshToken===(stored?.refreshToken || "");
+}
+function changedAuthContext(){return {success:false,message:"La session a changé. Recommencez.",error:{code:"AUTH_CONTEXT_CHANGED"}};}
+function clearSession(){invalidateAuthSessionContext();clearStoredAuth();}
+
 function buildStoredSession(payload, fallbackUser = null) {
   const accessToken = typeof payload?.accessToken === "string" ? payload.accessToken : "";
   const refreshToken = typeof payload?.refreshToken === "string" ? payload.refreshToken : "";
@@ -25,6 +39,7 @@ function buildStoredSession(payload, fallbackUser = null) {
 
 export function persistAuthSession(payload, fallbackUser = null) {
   const session = buildStoredSession(payload, fallbackUser);
+  invalidateAuthSessionContext();
   return setStoredAuth(session);
 }
 
@@ -66,7 +81,11 @@ export async function fetchCurrentUser(accessToken = getAccessToken()) {
   });
 }
 
+export function fetchPasswordPolicy() {return requestJson("/SauverNdeko/auth/me/password",{requiresAuth:true});}
+export function changeCurrentUserPassword(values) {return requestJson("/SauverNdeko/auth/me/password",{method:"POST",requiresAuth:true,body:JSON.stringify(values)});}
+
 export async function updateCurrentUserProfile(profileData) {
+  if (profileData instanceof FormData) return requestJson("/SauverNdeko/auth/me/photo", {method:"POST",requiresAuth:true,body:profileData});
   return requestJson("/SauverNdeko/auth/me", {
     method: "PUT",
     requiresAuth: true,
@@ -74,100 +93,48 @@ export async function updateCurrentUserProfile(profileData) {
   });
 }
 
-export async function refreshUserSession(refreshToken = getRefreshToken()) {
-  if (!refreshToken) {
-    return {
-      success: false,
-      message: "Aucun refresh token disponible.",
-    };
-  }
-
-  const payload = await requestJson("/SauverNdeko/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({
-      refreshToken,
-    }),
-  });
-
-  if (!payload?.success) {
-    return payload;
-  }
-
-  const stored = getStoredAuth();
-  const session = persistAuthSession(payload, stored?.user || null);
-
-  return {
-    ...payload,
-    session,
-  };
+export async function refreshUserSession(refreshToken = getRefreshToken(), {context=captureAuthSessionContext(),isCurrent=()=>true}={}) {
+  const current=()=>isCurrent()&&isAuthSessionContextCurrent(context);
+  if(!current()||context.refreshToken!==refreshToken)return changedAuthContext();
+  if(!refreshToken)return {success:false,message:"Aucun refresh token disponible."};
+  const payload=await requestJson("/SauverNdeko/auth/refresh",{method:"POST",body:JSON.stringify({refreshToken})});
+  if(!current())return changedAuthContext();
+  if(!payload?.success)return payload;
+  const session=buildStoredSession(payload,getStoredAuth()?.user || null);
+  if(!session)return {success:false,error:{code:"INVALID_REFRESH_RESPONSE"}};
+  // A refresh rotates the credentials within this same guarded operation.
+  setStoredAuth(session);
+  return {...payload,session};
 }
 
-export async function restoreUserSession() {
-  const stored = getStoredAuth();
-
-  if (!stored?.accessToken && !stored?.refreshToken) {
-    clearStoredAuth();
-    return null;
+export async function restoreUserSession({isCurrent=()=>true}={}) {
+  let context=captureAuthSessionContext();
+  const current=()=>isCurrent()&&isAuthSessionContextCurrent(context);
+  if(!current())return null;
+  if(!context.accessToken&&!context.refreshToken){clearSession();return null;}
+  let accessToken=context.accessToken,refreshToken=context.refreshToken;
+  if(accessToken){
+    const verified=await requestJson("/SauverNdeko/auth/verify",{headers:{Authorization:`Bearer ${accessToken}`}});
+    if(!current())return null;
+    if(!verified?.success)accessToken="";
   }
-
-  let accessToken = stored?.accessToken || "";
-  let refreshToken = stored?.refreshToken || "";
-
-  if (accessToken) {
-    const verifyPayload = await requestJson("/SauverNdeko/auth/verify", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!verifyPayload?.success) {
-      accessToken = "";
-    }
+  if(!accessToken){
+    const refreshed=await refreshUserSession(refreshToken,{context,isCurrent});
+    if(refreshed?.session)context={...context,accessToken:refreshed.session.accessToken,refreshToken:refreshed.session.refreshToken};
+    if(!current())return null;
+    if(!refreshed?.success||!refreshed.session){clearSession();return null;}
+    accessToken=refreshed.session.accessToken;refreshToken=refreshed.session.refreshToken;
   }
-
-  if (!accessToken) {
-    const refreshPayload = await refreshUserSession(refreshToken);
-
-    if (!refreshPayload?.success || !refreshPayload.session) {
-      clearStoredAuth();
-      return null;
-    }
-
-    accessToken = refreshPayload.session.accessToken;
-    refreshToken = refreshPayload.session.refreshToken;
-  }
-
-  const mePayload = await fetchCurrentUser(accessToken);
-
-  if (!mePayload?.success || !mePayload.data) {
-    clearStoredAuth();
-    return null;
-  }
-
-  const session = setStoredAuth({
-    accessToken,
-    refreshToken,
-    user: mePayload.data,
-  });
-
-  return session;
+  const me=await fetchCurrentUser(accessToken);
+  if(!current())return null;
+  if(!me?.success||!me.data){clearSession();return null;}
+  return setStoredAuth({accessToken,refreshToken,user:me.data});
 }
 
 export async function logoutUser() {
-  const accessToken = getAccessToken();
-  let payload = {
-    success: true,
-  };
-
-  if (accessToken) {
-    payload = await requestJson("/SauverNdeko/auth/logout", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-  }
-
-  clearStoredAuth();
-  return payload;
+  const accessToken=getAccessToken();
+  // Clear before the request: its delayed response must never clear a newer login.
+  clearSession();
+  if(!accessToken)return {success:true};
+  return requestJson("/SauverNdeko/auth/logout",{method:"POST",headers:{Authorization:`Bearer ${accessToken}`}});
 }

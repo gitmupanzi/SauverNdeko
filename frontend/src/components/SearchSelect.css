@@ -8,3 +8,5 @@
 .search-select-options{max-height:220px;overflow:auto;padding:0 6px 6px;}.search-select-options>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px;border:0;border-radius:6px;background:transparent;color:var(--erp-text);text-align:left;font:13px "Segoe UI",sans-serif;min-height:39px;}
 .search-select-options>button:hover,.search-select-options>button:focus-visible{outline:0;background:var(--erp-hover);}.search-select-options>button[aria-selected=true]{color:var(--erp-action);background:var(--erp-action-soft);font-weight:600;}
 .search-select-options>p{padding:16px 10px;color:var(--erp-muted);font-size:12px;}.search-select-footer{padding:8px 12px;border-top:1px solid var(--erp-border);font-size:11px;color:var(--erp-muted);background:var(--erp-raised);}
+
+button.search-select-trigger > span{font:inherit;color:inherit;text-transform:none;letter-spacing:normal;}

@@ -1,3 +1,6 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { newCurrencyId, compareDecimal } from "../../utils/money";
+import CategoricalSelect from "../../components/CategoricalSelect";
 import ActionButton from "../../components/ActionButton";
 import { useConsultations } from "../../components/ConsultationProvider";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
@@ -182,6 +185,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [currencyFilter,setCurrencyFilter]=useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -193,9 +197,10 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   const [submitting, setSubmitting] = useState(false);
   const [createdCommandeAction, setCreatedCommandeAction] = useState(null);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
-  const [formValues, setFormValues] = useState(() => COMMANDES_CRUD_CONFIG.createFormState());
+  const [formValues, setFormValues] = useState(() => ({...COMMANDES_CRUD_CONFIG.createFormState(),ID_DeviseFk:newCurrencyId(references)}));
   const deferredSearch = useDeferredValue(sharedTable?.searchValue || "");
   const selectedCommande = sharedTable?.selectedRow || null;
+  const currencyLocked=editorMode==="edit" && (Number(selectedCommande?.NbLignes || 0)>0 || Boolean(selectedCommande?.CodeFacture?.trim()) || compareDecimal(selectedCommande?.MontantRegleFacture,"0")===1);
   const currentUserId = currentUser?.IdUser != null ? String(currentUser.IdUser) : "";
   const currentUserDisplayName = useMemo(() => formatUserDisplayName(currentUser), [currentUser]);
 
@@ -328,19 +333,20 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
         render: (row) => formatNumber(row.QteTotale ?? getCommandeQteTotale(row)),
         renderText: (row) => formatNumber(row.QteTotale ?? getCommandeQteTotale(row)),
       },
-      { key: "MontantHT", label: "HT", render: (row) => formatCurrency(row.MontantHT), renderText: (row) => formatCurrency(row.MontantHT) },
-      { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC), renderText: (row) => formatCurrency(row.MontantTTC) },
+      { key:"DeviseCode",label:"Devise",renderText:row=>row.DeviseCode || "Non renseignée" },
+      { key: "MontantHT", label: "HT", render: (row) => formatCurrency(row.MontantHT,row.DeviseCode), renderText: (row) => formatCurrency(row.MontantHT,row.DeviseCode) },
+      { key: "MontantTTC", label: "TTC", render: (row) => formatCurrency(row.MontantTTC,row.DeviseCode), renderText: (row) => formatCurrency(row.MontantTTC,row.DeviseCode) },
       {
         key: "TotalRegleReel",
         label: "Total regle",
-        render: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture),
-        renderText: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture),
+        render: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture,row.DeviseCode),
+        renderText: (row) => formatCurrency(row.TotalRegleReel ?? row.MontantRegleFacture,row.DeviseCode),
       },
       {
         key: "ResteReel",
         label: "Reste reel",
-        render: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture),
-        renderText: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture),
+        render: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture,row.DeviseCode),
+        renderText: (row) => formatCurrency(row.ResteReel ?? row.MontantResteFacture,row.DeviseCode),
       },
       {
         key: "EtatPaiement",
@@ -385,6 +391,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
       const response = await COMMANDES_VIEW_CONFIG.fetchRows({
         q: deferredSearch,
+        deviseId:currencyFilter,
         typeId: typeFilter,
         statutId: statusFilter,
         client: clientFilter,
@@ -401,6 +408,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
       if (!response?.success) {
         setRows([]);
+        setServerMeta(null);
         setError(response?.message || "Impossible de charger les bons de stock.");
         setLoading(false);
         return;
@@ -425,7 +433,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     return () => {
       isMounted = false;
     };
-  }, [clientFilter, dateFrom, dateTo, deferredSearch, refreshKey, statusFilter, typeFilter, paymentFilter, controlFilter, gridState]);
+  }, [clientFilter, dateFrom, dateTo, deferredSearch, refreshKey, statusFilter, typeFilter, paymentFilter, controlFilter, currencyFilter, gridState]);
 
   useEffect(() => {
     if (editorMode !== "create") {
@@ -453,7 +461,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
   function resetEditor() {
     setEditorMode("");
     setShowAdvancedFields(false);
-    setFormValues(COMMANDES_CRUD_CONFIG.createFormState());
+    setFormValues(({...COMMANDES_CRUD_CONFIG.createFormState(),ID_DeviseFk:newCurrencyId(references)}));
   }
 
   function handleNewCommande() {
@@ -462,7 +470,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
     setCreatedCommandeAction(null);
     setShowAdvancedFields(false);
     setFormValues({
-      ...COMMANDES_CRUD_CONFIG.createFormState(),
+      ...({...COMMANDES_CRUD_CONFIG.createFormState(),ID_DeviseFk:newCurrencyId(references)}),
       ID_UserFk: currentUserId,
       DateCmd: buildDefaultCommandeDateTime(),
     });
@@ -483,6 +491,8 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if(submitting||!canWrite)return;
+    if(!formValues.ID_DeviseFk){setFeedback({type:"error",message:"Choisissez une devise pour le bon de stock."});return;}
     setSubmitting(true);
 
     const payload = COMMANDES_CRUD_CONFIG.buildPayload(formValues, {
@@ -490,6 +500,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
       record: selectedCommande,
     });
 
+    if(currencyLocked)delete payload.ID_DeviseFk;
     const response =
       editorMode === "edit" && selectedCommande
         ? await COMMANDES_CRUD_CONFIG.updateRecord({ record: selectedCommande, payload })
@@ -601,28 +612,29 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
       <section className="logistics-screen-filter-card">
         <div className="logistics-mockup-filter-grid">
+          <CurrencySelect references={references} filter value={currencyFilter} onChange={value=>{setCurrencyFilter(value);changeGrid({skip:0});}}/>
           <SelectField label="Type de bon" value={typeFilter} onChange={(event) => { setTypeFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={commandeTypeOptions} />
           <SelectField label="Statut du bon" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={commandeStatusOptions} />
 
           <label className="admin-form-field">
             <span>Etat paiement</span>
-            <select value={paymentFilter} onChange={(event) => { setPaymentFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
+            <CategoricalSelect aria-label="État du paiement" value={paymentFilter} onChange={(event) => { setPaymentFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="reglee">Reglee</option>
               <option value="partielle">Partiellement reglee</option>
               <option value="non-reglee">Non reglee</option>
               <option value="non-facturee">Non facturee</option>
-            </select>
+            </CategoricalSelect>
           </label>
 
           <label className="admin-form-field">
             <span>Contrôle du bon</span>
-            <select value={controlFilter} onChange={(event) => { setControlFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
+            <CategoricalSelect aria-label="Contrôle du bon" value={controlFilter} onChange={(event) => { setControlFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
               <option value="all">Toutes</option>
               <option value="coherente">Coherente</option>
               <option value="sans-details">Sans details</option>
               <option value="incoherente">Montant incoherent</option>
-            </select>
+            </CategoricalSelect>
           </label>
 
           <SelectField label="Tiers" value={clientFilter} onChange={(event) => { setClientFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }} options={clientOptions} />
@@ -649,11 +661,11 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
 
       <section className="logistics-screen-table-card">
         <p className="erp-result-count" role="status">{serverMeta?.filteredCount ?? "—"} résultat(s)</p>
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun bon de stock a afficher." />
+        <LoadingErrorEmpty loading={false} error={error} rows={null} emptyMessage="Aucun bon de stock a afficher." />
 
-        {!error ? (
           <SimpleTable
             rows={visibleRows}
+            emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun bon de stock pour ces critères."}
             columns={tableColumns}
             selectedRowId={selectedCommande?.ID_Commande || null}
             onRowSelect={sharedTable?.setSelectedRow}
@@ -670,7 +682,6 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
             defaultRowsPerPage={10}
             exportFilename={sharedTable?.exportFilename || "logistique-v_commande.csv"}
           />
-        ) : null}
       </section>
 
 
@@ -699,6 +710,7 @@ export default function Commandes({ references, refreshKey, onDataChanged, onOpe
                 </div>
 
                 <div className="logistics-command-editor-grid">
+                  <CurrencySelect references={references} value={formValues.ID_DeviseFk} currentCode={selectedCommande?.DeviseCode} onChange={value=>setFormValues(current=>({...current,ID_DeviseFk:value}))} disabled={submitting||currencyLocked} hint={currencyLocked?"La devise est conservée après ajout de lignes ou facturation.":"Les prix des lignes seront exprimés dans cette devise."}/>
                   <SelectField
                     label="Type de bon"
                     value={formValues.ID_TypeCmdFk}

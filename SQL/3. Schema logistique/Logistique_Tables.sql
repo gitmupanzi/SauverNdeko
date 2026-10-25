@@ -488,7 +488,7 @@ VALUES (
         now()::timestamp without time zone,
         now()::timestamp without time zone,
         v_qte_mvt,
-        COALESCE(NEW."PVArticle", 0)
+        CASE WHEN TG_OP = 'INSERT' OR v_delta > 0 THEN COALESCE(NEW."PUArticle", 0) ELSE COALESCE(NEW."PVArticle", 0) END
     );
 PERFORM set_config(
     'logistique.allow_t_mouvement_write',
@@ -504,7 +504,7 @@ $$;
 -- Name: FUNCTION tr_crud_article_after(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_crud_article_after() IS 'Après INSERT/UPDATE d’article, historise le stock initial non nul ou le delta direct en mouvement sans commande, valorisé avec PVArticle. Refuse les deltas fractionnaires ; le drapeau transactionnel skip_article_report_mvt évite le double report depuis les lignes.';
+COMMENT ON FUNCTION logistique.tr_crud_article_after() IS 'Après INSERT/UPDATE d’article, historise uniquement le stock initial non nul ou le delta direct : les entrées utilisent PUArticle (prix d’achat), les sorties conservent PVArticle. Aucun mouvement historique réécrit. Le drapeau skip_article_report_mvt évite tout double report depuis les lignes de bon, dont PUMvt reste leur PUCmdDetail explicite.';
 
 
 --
@@ -2135,7 +2135,7 @@ CREATE TRIGGER tr_crud_article_after AFTER INSERT OR UPDATE ON logistique."T_Art
 -- Name: TRIGGER tr_crud_article_after ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TRIGGER tr_crud_article_after ON logistique."T_Article" IS 'AFTER INSERT OR UPDATE sur "logistique"."T_Article", pour chaque ligne. Appelle "logistique"."tr_crud_article_after" : Après INSERT/UPDATE d’article, historise le stock initial non nul ou le delta direct en mouvement sans commande, valorisé avec PVArticle. Refuse les deltas fractionnaires ; le drapeau transactionnel skip_article_report_mvt évite le double report depuis les lignes.';
+COMMENT ON TRIGGER tr_crud_article_after ON logistique."T_Article" IS 'Historise le stock initial et les deltas directs : entrées au prix d’achat PUArticle, sorties au prix de vente PVArticle ; aucun second mouvement pour les lignes de bon.';
 
 
 --

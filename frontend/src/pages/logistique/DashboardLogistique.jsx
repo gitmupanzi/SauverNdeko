@@ -1,7 +1,10 @@
+import CurrencySelect from "../../components/CurrencySelect";
+import { formatCurrency } from "../../utils/money";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
+import SearchSelect from "../../components/SearchSelect";
 import "./DashboardLogistique.css";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { requestJson } from "../../services/api";
 import { IndicatorDetails } from "../../components/ConsultationProvider";
 import { formatNumber, formatDate } from "./logistiqueShared";
@@ -23,10 +26,11 @@ function IndicatorBlock({ id, title, icon, scope, children }) {
   </section>;
 }
 
-export default function DashboardLogistique({ refreshKey }) {
+export default function DashboardLogistique({ refreshKey, references }) {
+  const selectPrefix = useId();
   const [periodMode, setPeriodMode] = useState("all");
-  const [draft, setDraft] = useState({ q: "", dateFrom: "", dateTo: "" });
-  const [criteria, setCriteria] = useState({ q: "", dateFrom: "", dateTo: "" });
+  const [draft, setDraft] = useState({ q: "", dateFrom: "", dateTo: "", deviseId:"" });
+  const [criteria, setCriteria] = useState({ q: "", dateFrom: "", dateTo: "", deviseId:"" });
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,17 +41,35 @@ export default function DashboardLogistique({ refreshKey }) {
   const detailTitle = useRef(null);
   const detailReturn = useRef(null);
   const detailTrigger = useRef(null);
+  const activeMetric = useRef(null), scrolledMetric = useRef(null), scrollFrame = useRef(null);
+  activeMetric.current = selectedMetric;
   function showMetric(key, label, event, filters = {}) { detailTrigger.current = event.currentTarget; setSelectedMetric({ key, label, filters }); }
   function closeMetric() {
+    cancelAnimationFrame(scrollFrame.current);
+    activeMetric.current = null;
+    scrolledMetric.current = null;
     setSelectedMetric(null);
     const origin = detailTrigger.current;
     if (origin?.isConnected) { const target = origin.closest("[hidden]") ? origin.closest(".erp-indicator-block")?.querySelector(".erp-block-header > button") : origin; target?.scrollIntoView({ block:"center",behavior:"auto" }); target?.focus({preventScroll:true}); }
   }
-  useEffect(() => {
-    if (!selectedMetric) return;
-    detailPanel.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-    detailReturn.current?.focus({ preventScroll: true });
+  const detailsReady = useCallback(() => {
+    const metric = selectedMetric;
+    if (!metric || scrolledMetric.current === metric) return;
+    scrolledMetric.current = metric;
+    cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = requestAnimationFrame(() => {
+        scrollFrame.current = null;
+        const panel = detailPanel.current;
+        if (activeMetric.current !== metric || !panel?.isConnected) return;
+        const bounds = panel.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) return;
+        panel.scrollIntoView({ block:"start", behavior:"auto" });
+        detailReturn.current?.focus({ preventScroll:true });
+      });
+    });
   }, [selectedMetric]);
+  useEffect(() => () => cancelAnimationFrame(scrollFrame.current), []);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -71,24 +93,32 @@ export default function DashboardLogistique({ refreshKey }) {
   function metric(key, label, icon = "bi-bar-chart", tone = "blue", suffix = "", options = {}) {
     const value = options.value !== undefined ? options.value : totals[key];
     const selected = selectedMetric?.key === key && JSON.stringify(selectedMetric?.filters || {}) === JSON.stringify(options.filters || {});
-    const open = (event) => showMetric(key, label, event, options.filters || {});
+    const displayValue=options.currency !== undefined ? formatCurrency(value,options.currency) : formatNumber(value)+(value != null ? suffix : "");
+    const detailLabel=options.currency !== undefined ? label+" · "+(options.currency || "Devise non renseignée") : label;
+    const open = (event) => showMetric(key, detailLabel, event, options.filters || {});
     return <article key={options.rowKey || key} className={"erp-kpi is-" + tone}>
-      <button type="button" className="erp-kpi-main" disabled={loading} aria-label={label + " : " + formatNumber(value) + (value != null ? suffix : "") + ". Voir la liste"} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
-        <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span><span className="erp-kpi-label" title={label}>{label}</span><strong>{formatNumber(value)}{value != null ? suffix : ""}</strong><AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
+      <button type="button" className="erp-kpi-main" disabled={loading} aria-label={detailLabel + " : " + displayValue + ". Voir la liste"} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
+        <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span><span className="erp-kpi-label" title={label}>{label}</span><strong>{displayValue}</strong><AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
       </button>
     </article>;
+  }
+  function moneyMetrics(key,label,icon,tone) {
+    const groups=summary?.amountsByCurrency?.[key];
+    if (!Array.isArray(groups) || !groups.length) return <p key={key} className="erp-data-note">{label} : {totals[key] === "0" || totals[key] === 0 ? "0" : "—"}</p>;
+    return groups.map(group=>metric(key,label,icon,tone,"",{value:group.value,currency:group.code || "",rowKey:key+":"+(group.id??"none"),filters:{deviseId:group.id??"sans-devise"}}));
   }
   return <div className="erp-dashboard">
     <div className="erp-screen-head"><div className="logistics-screen-copy"><h1>Tableau de bord</h1></div></div>
     <form className="erp-dashboard-filters" role="search" onSubmit={apply}>
       <label className="admin-form-field erp-dashboard-query"><span>Recherche</span><span className="erp-dashboard-search"><AppIcon name="search" /><input type="search" placeholder="Article, bon de stock, tiers…" value={draft.q} onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))} /></span></label>
-      <label className="admin-form-field erp-dashboard-period"><span>Période</span><select value={periodMode} onChange={(event) => { setPeriodMode(event.target.value); if(event.target.value !== "custom") setDraft(current => ({...current,...periodDates(event.target.value)})); }}><option value="all">Toutes les dates</option><option value="month">Ce mois</option><option value="quarter">Ce trimestre</option><option value="year">Cette année</option><option value="custom">Personnalisée</option></select></label>
+      <label className="admin-form-field erp-dashboard-period" htmlFor={selectPrefix+"-period"}><span>Période</span><SearchSelect id={selectPrefix+"-period"} label="Période" value={periodMode} options={[{value:"all",label:"Toutes les dates"},{value:"month",label:"Ce mois"},{value:"quarter",label:"Ce trimestre"},{value:"year",label:"Cette année"},{value:"custom",label:"Personnalisée"}]} onChange={value => { setPeriodMode(value); if(value !== "custom") setDraft(current => ({...current,...periodDates(value)})); }}/></label>
+      <CurrencySelect references={references} filter value={draft.deviseId} onChange={value=>setDraft(current=>({...current,deviseId:value}))}/>
       <label className="admin-form-field"><span>Du</span><input type="date" value={draft.dateFrom} onChange={(event) => { setPeriodMode("custom"); setDraft((current) => ({ ...current, dateFrom: event.target.value })); }} /></label>
       <label className="admin-form-field"><span>Au</span><input type="date" value={draft.dateTo} onChange={(event) => { setPeriodMode("custom"); setDraft((current) => ({ ...current, dateTo: event.target.value })); }} /></label>
-      <ActionButton type="submit" variant="primary" disabled={loading}>Rechercher</ActionButton><ActionButton icon="reset" disabled={loading} onClick={() => { const empty = { q: "", dateFrom: "", dateTo: "" }; setPeriodMode("all"); setDraft(empty); setCriteria(empty); setFilterError(""); }}>Réinitialiser</ActionButton>
+      <ActionButton type="submit" variant="primary" disabled={loading}>Rechercher</ActionButton><ActionButton icon="reset" disabled={loading} onClick={() => { const empty = { q: "", dateFrom: "", dateTo: "", deviseId:"" }; setPeriodMode("all"); setDraft(empty); setCriteria(empty); setFilterError(""); }}>Réinitialiser</ActionButton>
     </form>
     {filterError ? <p role="alert" className="erp-filter-error">{filterError}</p> : null}
-    {loading ? <p role="status" className="erp-data-note">Actualisation…</p> : null}
+    {loading ? <span role="status" className="erp-dashboard-loading">Actualisation…</span> : null}
     {error ? <div className="table-empty-state" role="alert">{error} <button type="button" onClick={() => setVersion((value) => value + 1)}>Réessayer</button></div> : null}
     {summary ? <div aria-busy={loading}>
       <div className="erp-dashboard-sections"><div className="erp-dashboard-column">
@@ -108,9 +138,8 @@ export default function DashboardLogistique({ refreshKey }) {
           {metric("commandesSortie", "Sorties", "bi-box-arrow-up", "blue")}
           {metric("commandesSansDetails", "Sans lignes", "bi-list-check", "coral")}
           {metric("commandesNonFacturees", "Non facturés", "bi-file-earmark", "slate")}
-          {metric("montantBons", "Valeur des bons", "bi-cash-stack", "purple")}
+          {moneyMetrics("montantBons", "Valeur des bons", "bi-cash-stack", "purple")}
         </div>
-        <p className="erp-data-note erp-block-note">Montants sans devise précisée.</p>
       </IndicatorBlock>
       </div><div className="erp-dashboard-column">
       <IndicatorBlock id="dashboard-factures" title="Factures" icon="bi-file-earmark-text">
@@ -123,11 +152,10 @@ export default function DashboardLogistique({ refreshKey }) {
         </div>
         <h3 className="erp-block-subtitle">Montants</h3>
         <div className="erp-group-grid">
-          {metric("montantTotalFacture", "Facturé", "bi-cash-stack", "blue")}
-          {metric("montantTotalRegle", "Réglé", "bi-check2-circle", "teal")}
-          {metric("montantRestant", "Solde à régler", "bi-hourglass-split", "amber")}
+          {moneyMetrics("montantTotalFacture", "Facturé", "bi-cash-stack", "blue")}
+          {moneyMetrics("montantTotalRegle", "Réglé", "bi-check2-circle", "teal")}
+          {moneyMetrics("montantRestant", "Solde à régler", "bi-hourglass-split", "amber")}
         </div>
-        <p className="erp-data-note erp-block-note">Montants sans devise précisée.</p>
       </IndicatorBlock>
       <IndicatorBlock id="dashboard-alertes" title="Alertes" icon="bi-bell">
         <div className="erp-group-grid">
@@ -144,8 +172,8 @@ export default function DashboardLogistique({ refreshKey }) {
         <ActionButton ref={detailReturn} className="erp-detail-return" icon="arrow-up" onClick={closeMetric}>Revenir à l’indicateur</ActionButton>
         <section className="erp-panel erp-indicator-details" aria-labelledby="dashboard-detail-title">
         <div className="erp-detail-header"><div><span>Liste détaillée</span><h2 ref={detailTitle} tabIndex="-1" id="dashboard-detail-title">{selectedMetric.label}</h2></div><button type="button" className="erp-detail-close" aria-label="Fermer la liste" onClick={closeMetric}><AppIcon name="close" /></button></div>
-        {(criteria.q || criteria.dateFrom || criteria.dateTo) ? <p className="erp-detail-criteria">{[criteria.q && "Recherche : " + criteria.q, criteria.dateFrom && "Du " + formatDate(criteria.dateFrom), criteria.dateTo && "au " + formatDate(criteria.dateTo)].filter(Boolean).join(" · ")}</p> : null}
-        <IndicatorDetails key={selectedMetric.key + JSON.stringify(criteria) + JSON.stringify(selectedMetric.filters)} metricKey={selectedMetric.key} criteria={{ ...criteria, ...selectedMetric.filters }} />
+        {(criteria.q || criteria.dateFrom || criteria.dateTo || criteria.deviseId) ? <p className="erp-detail-criteria">{[criteria.deviseId && "Devise : "+(references?.currencies?.find(item=>String(item.id)===String(criteria.deviseId))?.code || "Non renseignée"),criteria.q && "Recherche : " + criteria.q, criteria.dateFrom && "Du " + formatDate(criteria.dateFrom), criteria.dateTo && "au " + formatDate(criteria.dateTo)].filter(Boolean).join(" · ")}</p> : null}
+        <IndicatorDetails key={selectedMetric.key + JSON.stringify(criteria) + JSON.stringify(selectedMetric.filters)} metricKey={selectedMetric.key} criteria={{ ...criteria, ...selectedMetric.filters }} onReady={detailsReady} />
         </section>
       </div> : null}
 

@@ -128,3 +128,21 @@ Une licence inactive ou expirée bloque les modules optionnels côté serveur, y
 Le CRUD Articles accepte le choix ou la capture d’une photo. Les fichiers privés sont enregistrés dans backend/media/Article par défaut ; ARTICLE_MEDIA_ROOT peut définir un autre répertoire local. Conserver les droits d’accès de ce dossier et ne pas l’exposer comme répertoire statique ouvert. Les routes authentifiées de l’application fournissent les images autorisées.
 
 Une sauvegarde PostgreSQL ne contient pas ces fichiers : sauvegarder également media et conserver les chemins avec la base lors de la restauration. Les anciens fichiers remplacés restent conservés pour récupération ; aucune purge automatique n’est activée.
+
+## Messagerie et récupération du mot de passe
+
+L’expéditeur par défaut est **SauverNdeko <benjaminmupanzi@gmail.com>**. Un administrateur de plateforme peut changer le nom et l’adresse dans **Administration → Messagerie**. Ce réglage est commun à la plateforme ; une adresse différente doit aussi être autorisée par le compte Google utilisé pour l’envoi.
+
+Le transport Gmail utilise smtp.gmail.com, le port 587 et TLS. Pour l’activer, renseigner **en privé** dans backend/.env la variable SAUVERNDEKO_EMAIL_HOST_PASSWORD avec un mot de passe d’application Google. Ne pas employer le mot de passe de connexion à SauverNdeko. SAUVERNDEKO_EMAIL_HOST_USER vaut benjaminmupanzi@gmail.com par défaut ; l’adapter si un autre compte assure l’envoi. Ne pas enregistrer ce secret dans Git, un document partagé ou un journal.
+
+SAUVERNDEKO_FRONTEND_URL définit l’origine de l’application utilisée dans les liens (défaut http://localhost:5174). En réseau ou en déploiement, utiliser l’adresse effectivement joignable par les destinataires. Redémarrer le backend après une modification des variables d’environnement. Modifier l’expéditeur dans l’administration ne nécessite pas de redémarrage.
+
+Depuis la connexion, **Mot de passe oublié ?** ouvre la demande d’un lien valable 20 minutes. Le lien devient inutilisable après un changement du mot de passe. La réponse ne confirme pas l’existence d’un compte. Tant que le service d’envoi n’est pas configuré, l’écran indique son indisponibilité ; aucun envoi réussi n’est annoncé.
+
+Depuis **Mon profil → Sécurité**, l’utilisateur peut changer son mot de passe en confirmant celui en cours. Après un changement ou une réinitialisation, une nouvelle connexion est nécessaire ; les anciens jetons d’accès et de renouvellement sont refusés. Les mots de passe et les liens privés ne sont conservés ni dans les réglages de l’administration ni dans les journaux applicatifs.
+
+Voir la [configuration backend de la messagerie](../backend/skills/develop-sauverndeko-backend/references/messagerie-reinitialisation.md) et l’[aide Google sur les mots de passe d’application](https://support.google.com/accounts/answer/185833?hl=fr).
+
+### Vérification de la messagerie du 25 octobre 2026
+
+Le backend local a rechargé la configuration Gmail. Les essais de connexion SMTP ont subi une interruption du dialogue, notamment pendant la négociation chiffrée, sans refus explicite des identifiants. Aucun e-mail réel n’a été envoyé et aucun compte n’a été modifié. Le transport et la délivrance des liens de récupération restent à valider avant une utilisation client ; les champs available/canSend de l’API décrivent la présence de la configuration, sans garantir la délivrance.

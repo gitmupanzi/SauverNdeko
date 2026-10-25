@@ -14,9 +14,10 @@ from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 from apps.core import db
 from apps.core.permissions import IsERPAdmin
-from apps.core.responses import APIError, ExactJSONRenderer
+from apps.core.responses import APIError, ExactJSONRenderer, ExactEncoder
 from .reads import resolve_indicator, register_source, read_scope, row_source
 from .table_queries import LABELS, NUMERIC, DATES, document_zone
+from .currency import AMOUNT_FIELDS
 
 ROOT = Path(settings.BASE_DIR).parent
 ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
@@ -51,6 +52,13 @@ def export_columns(obj, raw):
         if unit:
             position = max(index for index,key in enumerate(wanted) if key in quantities)+1
             wanted.insert(position,unit)
+    if AMOUNT_FIELDS.intersection(wanted):
+        if "DeviseCode" not in available:
+            raise APIError("La devise doit accompagner les montants exportés.", "CURRENCY_SOURCE_UNAVAILABLE", 503)
+        if "DeviseCode" not in wanted:
+            wanted.insert(max(index for index,key in enumerate(wanted) if key in AMOUNT_FIELDS)+1,"DeviseCode")
+        if "MontantsParDevise" in available and "MontantsParDevise" not in wanted:
+            wanted.append("MontantsParDevise")
     if "PoidsUnitaire" in wanted and "UnitePoids" in available and "UnitePoids" not in wanted:
         wanted.insert(wanted.index("PoidsUnitaire")+1,"UnitePoids")
     return [{**available[k],"label":LABELS[k]} for k in wanted]
@@ -60,6 +68,8 @@ def write_workbook(target, columns, rows, context):
     palette = charter["palette"]
     book = xlsxwriter.Workbook(target, {"constant_memory":True,"strings_to_formulas":False,"strings_to_urls":False,"default_date_format":"dd/mm/yyyy hh:mm"})
     count, precise_text = 0, 0
+    seen_currencies = set()
+    monetary_export = any(field["column_name"] in AMOUNT_FIELDS or field["column_name"] == "MontantsParDevise" for field in columns)
     try:
         book.set_properties({"title":context["title"],"subject":"Liste filtrée complète","author":"SauverNdeko","comments":"Valeurs issues de la vue autorisée, sans recalcul métier."})
         sheet = book.add_worksheet("Données")
@@ -81,6 +91,12 @@ def write_workbook(target, columns, rows, context):
         sheet.set_row(header_row,32)
         sheet.freeze_panes(header_row+1,1)
         for row in rows:
+            if monetary_export:
+                currency_parts = row.get("MontantsParDevise")
+                if isinstance(currency_parts,list) and currency_parts:
+                    seen_currencies.update(part.get("code") or None for part in currency_parts if isinstance(part,dict))
+                else:
+                    seen_currencies.add(row.get("DeviseCode") or None)
             count += 1
             if count > MAX_EXPORT_ROWS:
                 raise APIError("L’export dépasse 100 000 lignes. Affinez les filtres.","EXPORT_TOO_LARGE",413)
@@ -111,7 +127,7 @@ def write_workbook(target, columns, rows, context):
                 elif isinstance(value,date):
                     sheet.write_datetime(line,col,datetime.combine(value,datetime.min.time()),styles[zebra,"date"])
                 else:
-                    text = ("Oui" if value else "Non") if isinstance(value,bool) else str(value)
+                    text = ("Oui" if value else "Non") if isinstance(value,bool) else json.dumps(value,ensure_ascii=False,cls=ExactEncoder) if isinstance(value,(dict,list)) else str(value)
                     if len(text)>32767:
                         raise APIError("Une valeur dépasse la limite d’une cellule Excel.","EXPORT_CELL_TOO_LONG",413)
                     sheet.write_string(line,col,text,styles[zebra,"text"])
@@ -128,14 +144,14 @@ def write_workbook(target, columns, rows, context):
         info = book.add_worksheet("Informations")
         info.set_column(0,0,28)
         info.set_column(1,1,100)
-        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devise","Non renseignée")]
+        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
         for key, value in context["filters"].items():
             records.append(("Filtre · "+LABELS[key],value))
         if context.get("folder"):
             for label,value in [("Type de dossier",context["folder"]["objectType"]),("Alimentation",context["folder"]["mode"]),("Critères du dossier",json.dumps(context["folder"]["rules"],ensure_ascii=False))]:
                 records.append((label,value))
         raw = context["raw"]
-        for key,label in {"categorieId":"Catégorie · identifiant","typeId":"Type · identifiant","uniteId":"Unité · identifiant","statut":"Article actif","stockState":"État du stock","peremption":"Péremption","statutId":"Statut · identifiant","client":"Tiers · identifiant","sansDetails":"Sans lignes","payment":"Paiement","control":"Contrôle"}.items():
+        for key,label in {"deviseId":"Devise · identifiant","categorieId":"Catégorie · identifiant","typeId":"Type · identifiant","uniteId":"Unité · identifiant","statut":"Article actif","stockState":"État du stock","peremption":"Péremption","statutId":"Statut · identifiant","client":"Tiers · identifiant","sansDetails":"Sans lignes","payment":"Paiement","control":"Contrôle"}.items():
             if raw.get(key) not in (None,"","all"):
                 records.append(("Critère · "+label,str(raw[key])))
         if precise_text:

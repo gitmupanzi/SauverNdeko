@@ -129,6 +129,7 @@ def predicate(obj, actor, params=None, keys=None):
         "commande": ["ID_Commande", "ID_CmdFk", "ID_cmdFk"],
         "typeId": ["ID_TypeArticleFk", "ID_TypeCmdFk", "ID_TypeMvtFk"],
         "categorieId": ["ID_CategorieArticleFk"],
+        "deviseId": ["ID_DeviseFk"],
         "statutId": ["ID_StatutCmdFk"],
         "client": ["ID_ClientFk"],
         "userId": ["ID_UserFK", "ID_UserFk"],
@@ -138,9 +139,13 @@ def predicate(obj, actor, params=None, keys=None):
     }
     for alias, choices in aliases.items():
         if params.get(alias) not in (None, ""):
+            if alias == "deviseId" and params[alias] == "all":
+                continue
             found = next((c for c in choices if c in columns), None)
             if found:
-                filters[found] = params[alias]
+                filters[found] = (None if params[alias] == "sans-devise" else positive(params[alias], "Devise")) if alias == "deviseId" else params[alias]
+            elif alias == "deviseId":
+                raise APIError("Le filtre de devise n’est pas disponible pour cette liste.")
     for key, value in filters.items():
         if key not in columns or key in PRIVATE:
             raise APIError("Colonne de filtre non autorisée.")
@@ -452,6 +457,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
                 [*data.values(), *values],
             )
     audit(obj, operation.upper(), old, row, actor)
+    if name == "T_Utilisateurs" and old and "MotdepasseUser" in data and data["MotdepasseUser"] != old.get("MotdepasseUser"):
+        audit(obj,"PASSWORD_CHANGE",new={"IdUser":row["IdUser"],"passwordChanged":True},actor=actor)
     return clean(row)
 
 

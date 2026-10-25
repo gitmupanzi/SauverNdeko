@@ -1,3 +1,4 @@
+import CategoricalSelect from "../components/CategoricalSelect";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -198,7 +199,8 @@ export default function Register() {
 
               <label className="auth-field">
                 <span>Sexe</span>
-                <select
+                <CategoricalSelect
+                  aria-label="Sexe"
                   name="SexeUser"
                   value={formData.SexeUser}
                   onChange={handleChange}
@@ -206,12 +208,13 @@ export default function Register() {
                 >
                   <option value="M">Masculin</option>
                   <option value="F">Feminin</option>
-                </select>
+                </CategoricalSelect>
               </label>
 
               <label className="auth-field">
                 <span>Structure de rattachement</span>
-                <select
+                <CategoricalSelect
+                  aria-label="Structure de rattachement"
                   name="IdEntiteFk"
                   value={formData.IdEntiteFk}
                   onChange={handleChange}
@@ -223,7 +226,7 @@ export default function Register() {
                       {entity.NomEntite}
                     </option>
                   ))}
-                </select>
+                </CategoricalSelect>
               </label>
 
               <label className="auth-field">

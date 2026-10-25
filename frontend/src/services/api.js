@@ -1,3 +1,4 @@
+import { notifyReferencesMutation } from "./referencesRefresh";
 import { AUTH_SESSION_INVALID_EVENT, getAccessToken } from "./authStorage";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -41,6 +42,7 @@ async function requestJson(path, options = {}) {
       };
     }
 
+    notifyReferencesMutation(path, fetchOptions.method, payload);
     return payload;
   } catch (error) {
     console.warn(`Impossible de contacter ${path}`, error);
@@ -273,6 +275,26 @@ export function fetchAdminModelList(model, options = {}) {
   return requestJson(`${resolveAdminModelBasePath(model)}${buildQueryString(options)}`, {
     requiresAuth: true,
   });
+}
+
+// Les références alimentent des sélecteurs : parcourir les pages du serveur, sans plafond local.
+export async function fetchCompleteReferenceRows(model) {
+  if (!["T_Generique", "T_CategorieGenerique"].includes(model)) throw new Error("Source de références non autorisée.");
+  const key = model === "T_Generique" ? "ID_Generique" : "ID_CategorieGenerique";
+  const rows = [];
+  let skip = 0;
+  while (true) {
+    const payload = await fetchAdminModelList(model, { take: 500, skip, sortBy: key, sortDir: "asc" });
+    if (!payload?.success || !Array.isArray(payload.data)) return payload;
+    rows.push(...payload.data);
+    const total = Number(payload.meta?.filteredCount ?? payload.meta?.totalCount);
+    const take = Number(payload.meta?.take || 500);
+    if ((Number.isFinite(total) && rows.length >= total) || (!Number.isFinite(total) && payload.data.length < take)) {
+      return { ...payload, data: rows, meta: { ...payload.meta, take: rows.length, skip: 0 } };
+    }
+    if (!payload.data.length) return { success: false, message: "La liste des références n’a pas pu être chargée complètement.", data: null };
+    skip += payload.data.length;
+  }
 }
 
 export function fetchAdminModelItem(model, id) {

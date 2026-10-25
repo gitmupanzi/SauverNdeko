@@ -1,0 +1,13 @@
+.theme-picker[aria-expanded="true"] { background:var(--erp-hover); color:var(--erp-action,var(--erp-link)); border-color:var(--erp-action-border,var(--erp-border)); }
+.theme-menu { padding:7px; border-radius:13px; }
+.theme-menu-heading { margin:0; padding:8px 10px 10px; color:var(--erp-muted); font-size:11px; font-weight:600; letter-spacing:.02em; }
+.theme-menu .theme-menu-choice { width:100%; min-height:42px; display:flex; align-items:center; gap:11px; margin:2px 0; padding:7px 10px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--erp-text); font:500 13px/1.4 "Segoe UI",sans-serif; text-align:left; }
+.theme-menu .theme-menu-icon { width:27px; height:27px; display:grid; place-items:center; flex:none; color:var(--erp-muted); font-size:17px; }
+.theme-menu .theme-menu-choice>.app-icon { margin-left:auto; flex:none; color:var(--erp-action,var(--erp-link)); }
+.theme-menu .theme-menu-choice:hover { background:var(--erp-hover); }
+.theme-menu .theme-menu-choice[aria-checked="true"] { background:var(--erp-action-soft,var(--erp-mint)); color:var(--erp-action,var(--erp-on-mint)); }
+.theme-menu .theme-menu-choice[aria-checked="true"] .theme-menu-icon { color:inherit; }
+.theme-menu .theme-menu-choice:focus-visible { outline:2px solid var(--erp-link); outline-offset:-2px; }
+.theme-menu .theme-menu-choice:last-child { margin-top:8px; position:relative; }
+.theme-menu .theme-menu-choice:last-child::before { content:""; position:absolute; height:1px; top:-6px; left:2px; right:2px; background:var(--erp-border); }
+html[data-theme="contrast"] .theme-menu .theme-menu-choice[aria-checked="true"] { border-color:var(--erp-text); }

@@ -1,6 +1,6 @@
 # Cartographie de SauverNdeko
 
-> Relevé historique de l’architecture Express/Prisma avant conversion. Depuis le choix ultérieur du propriétaire le 24/10/2026, le backend actif est Django ; voir [le bilan actuel](../../../SQL/documentation/Audit_Metier_20261024.md). Les fichiers Node décrits ici ont depuis été supprimés à la demande du propriétaire. Leurs chemins ci-dessous sont historiques ; pour le code actuel, consulter [l’architecture Django](../../../backend/skill/references/architecture.md). La base est restée inchangée pendant la conversion.
+> Relevé historique de l’architecture Express/Prisma avant conversion. Depuis le choix ultérieur du propriétaire le 24/10/2026, le backend actif est Django ; voir [le bilan actuel](../../../SQL/documentation/Audit_Metier_20261024.md). Les fichiers Node décrits ici ont depuis été supprimés à la demande du propriétaire. Leurs chemins ci-dessous sont historiques ; pour le code actuel, consulter [l’architecture Django](../../../backend/skills/develop-sauverndeko-backend/references/architecture.md). La base est restée inchangée pendant la conversion.
 
 Relevé du 24 octobre 2026, à partir de C:/Users/Benjamin-mupanzi/Documents/SauverNdeko. Référence : projet voisin imf_BB, ses skills backend/frontend et l’historique partagé par le propriétaire. Le dépôt était sans modification Git lors du relevé initial.
 
@@ -112,6 +112,6 @@ Consulter le [bilan de fiabilisation](../../../SQL/documentation/Logistique_Fiab
 
 ## Évolution frontend logistique — 24 octobre 2026
 
-Le relevé initial ci-dessus reste historique. Le backend actif est Django/DRF, sans Prisma. Le dashboard utilise des agrégats SQL exhaustifs et des critères transmis au serveur. Les détails des KPI s’affichent sous la synthèse avec retour à l’indicateur. Les registres Articles et Bons de stock sont paginés/recherchés côté serveur ; Produit 360 et Bon de stock 360 sont raccordés à une consultation commune. Le module Organisation territoriale ouvre le schéma geolocalisation depuis l’accueil. Voir [l’architecture actualisée](../../../frontend/skill/references/architecture.md) et [la terminologie](../../../frontend/skill/references/terminologie-stock.md).
+Le relevé initial ci-dessus reste historique. Le backend actif est Django/DRF, sans Prisma. Le dashboard utilise des agrégats SQL exhaustifs et des critères transmis au serveur. Les détails des KPI s’affichent sous la synthèse avec retour à l’indicateur. Les registres Articles et Bons de stock sont paginés/recherchés côté serveur ; Produit 360 et Bon de stock 360 sont raccordés à une consultation commune. Le module Organisation territoriale ouvre le schéma geolocalisation depuis l’accueil. Voir [l’architecture actualisée](../../../frontend/skills/develop-sauverndeko-frontend/references/architecture.md) et [la terminologie](../../../frontend/skills/develop-sauverndeko-frontend/references/terminologie-stock.md).
 
 Les anciennes listes restantes et les exports de page ne constituent pas des exports exhaustifs ni une comptabilité générale. Aucune table ni donnée métier n’a été modifiée pour cette évolution frontend.

@@ -393,7 +393,7 @@ La présence de tables de paiement ou de caisse ne prouve pas un cycle de tréso
 
 ## Références et prochaines étapes
 
-La [cartographie](skills/sauverndeko-erp/references/cartographie.md) décrit les preuves, limites et écarts ; la [trajectoire ERP](skills/sauverndeko-erp/references/trajectoire-erp.md) définit les lots et leurs critères. Les [skills transverses](skills/sauverndeko-erp/SKILL.md), [backend](backend/skill/SKILL.md) et [frontend](frontend/skill/SKILL.md) servent de consignes de développement.
+La [cartographie](skills/sauverndeko-erp/references/cartographie.md) décrit les preuves, limites et écarts ; la [trajectoire ERP](skills/sauverndeko-erp/references/trajectoire-erp.md) définit les lots et leurs critères. Les [skills transverses](skills/sauverndeko-erp/SKILL.md), [backend](backend/skills/develop-sauverndeko-backend/SKILL.md) et [frontend](frontend/skills/develop-sauverndeko-frontend/SKILL.md) servent de consignes de développement.
 
 La présente intervention livre de la documentation et des skills. Elle ne modifie pas le code exécuté ou la base et ne déclare aucun des parcours 360 ou nouveaux modules comme livré.
 

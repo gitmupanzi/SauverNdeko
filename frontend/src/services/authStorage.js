@@ -1,6 +1,6 @@
 export const AUTH_SESSION_INVALID_EVENT = "sauverndeko:session-invalid";
 
-const AUTH_STORAGE_KEY = "sauverndeko.auth";
+export const AUTH_STORAGE_KEY = "sauverndeko.auth";
 
 function canUseStorage() {
   return typeof window !== "undefined" && Boolean(window.localStorage);

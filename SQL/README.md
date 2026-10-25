@@ -87,3 +87,15 @@ La recette tests/test_articles_postgresql.py couvre le CRUD Article, les révisi
 Recette de livraison : 36 scénarios PostgreSQL, 19 échanges API et 70 assertions Articles/lots/photos passent sur un cluster PostgreSQL indépendant sans données clients. Le diagnostic réel verifier_backend passe sur 146 routes GET en lecture seule. Ces résultats ne constituent pas une validation de tous les modules ERP ni une preuve de restauration complète de la sauvegarde.
 
 Les images de production sont des fichiers privés dans backend/media/Article (ou ARTICLE_MEDIA_ROOT/Article). Elles ne sont pas contenues dans pg_dump : sauvegarder et restaurer ce dossier avec la base. Les anciens fichiers remplacés restent conservés ; leur purge n’est pas automatique.
+
+## Devises logistiques — 25 octobre 2026
+
+La migration `migrations/20261025_04_devises_logistique.sql` est installée dans **SauverNdeko**, après sauvegarde complète `SauverNdeko_avant_devises_20261025_113840.dump` vérifiée par SHA-256 et lecture de son catalogue. Cette vérification ne constitue pas une restauration complète de la sauvegarde.
+
+Le propriétaire a confirmé le rattachement de tous les montants existants à USD : un article, quatre bons, cinq mouvements, aucune écriture de règlement. Les empreintes des cinq tables Article, Commande, CommandeDetail, Mouvement et Règlements sont identiques avant/après, hors nouvelle référence de devise. Prix, quantités, dates et autres valeurs sont conservés. Le défaut USD des créations est résolu depuis le référentiel actif, sans identifiant numérique fixe. Les codes EUR/EURO sont normalisés à la lecture ; aucune conversion ni taux de change n’est créé.
+
+Quatre colonnes `ID_DeviseFk` et leurs FK protègent le catalogue, les bons/factures et les instantanés monétaires des mouvements/règlements. Les vues existantes sont étendues sans modification des colonnes historiques ; `V_Reglements` et `V_ConsoMensuelleDevise` complètent les lectures. La consommation physique reste au grain article/mois et expose les montants séparément par devise. Les nouveaux objets/colonnes/fonctions/triggers/contraintes sont commentés. Les références utilisées et devises des documents avec historique sont protégées ; les prix de ligne sont exprimés dans la devise du bon.
+
+Installation neuve : appliquer cette migration après les migrations 01, 02 et 03 du 25 octobre. **Ne pas la rejouer** sur la base locale : elle refuse un catalogue déjà enrichi. Un retour arrière après usage multidevise exige une restauration contrôlée ; supprimer les colonnes ferait perdre leur signification aux montants.
+
+Recette : 27 scénarios PostgreSQL sur structure réelle restaurée dans un cluster indépendant sans données clients, 40 contrôles backend isolés, 26 contrôles monétaires frontend et vérifications réelles GET/Excel en lecture seule. Le cluster de recette est arrêté et supprimé. Ces contrôles ne certifient ni une fonction de change ni une comptabilité multidevise complète.

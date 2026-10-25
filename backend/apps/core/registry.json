@@ -3283,6 +3283,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Article",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "logistique.fn_devise_usd()",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -3357,6 +3369,18 @@
           "from": [],
           "to": [],
           "relation": "T_ArticleToT_Mouvement"
+        },
+        {
+          "name": "T_Generique_T_Article_ID_DeviseFkToT_Generique",
+          "target": "T_Generique",
+          "many": false,
+          "from": [
+            "ID_DeviseFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ],
+          "relation": "T_Article_ID_DeviseFkToT_Generique"
         }
       ],
       "fields": [
@@ -3499,6 +3523,13 @@
           "required": false,
           "id": false,
           "default": false
+        },
+        {
+          "name": "ID_DeviseFk",
+          "type": "Int",
+          "required": true,
+          "id": false,
+          "default": true
         }
       ]
     },
@@ -3832,6 +3863,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Commande",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "logistique.fn_devise_usd()",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -3918,6 +3961,18 @@
           "from": [],
           "to": [],
           "relation": "T_CommandeToT_Reglements"
+        },
+        {
+          "name": "T_Generique_T_Commande_ID_DeviseFkToT_Generique",
+          "target": "T_Generique",
+          "many": false,
+          "from": [
+            "ID_DeviseFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ],
+          "relation": "T_Commande_ID_DeviseFkToT_Generique"
         }
       ],
       "fields": [
@@ -4109,6 +4164,13 @@
           "required": false,
           "id": false,
           "default": false
+        },
+        {
+          "name": "ID_DeviseFk",
+          "type": "Int",
+          "required": true,
+          "id": false,
+          "default": true
         }
       ]
     },
@@ -4404,6 +4466,18 @@
           "numeric_precision": 12,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Mouvement",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -4442,6 +4516,18 @@
             "ID_Commande"
           ],
           "relation": "T_CommandeToT_Mouvement"
+        },
+        {
+          "name": "T_Generique_T_Mouvement_ID_DeviseFkToT_Generique",
+          "target": "T_Generique",
+          "many": false,
+          "from": [
+            "ID_DeviseFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ],
+          "relation": "T_Mouvement_ID_DeviseFkToT_Generique"
         }
       ],
       "fields": [
@@ -4498,6 +4584,13 @@
           "name": "PUMvt",
           "type": "Decimal",
           "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "ID_DeviseFk",
+          "type": "Int",
+          "required": true,
           "id": false,
           "default": false
         }
@@ -4581,6 +4674,18 @@
           "numeric_precision": 12,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Reglements",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -4607,6 +4712,18 @@
             "ID_Generique"
           ],
           "relation": "ModeReglement"
+        },
+        {
+          "name": "T_Generique_T_Reglements_ID_DeviseFkToT_Generique",
+          "target": "T_Generique",
+          "many": false,
+          "from": [
+            "ID_DeviseFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ],
+          "relation": "T_Reglements_ID_DeviseFkToT_Generique"
         }
       ],
       "fields": [
@@ -4649,6 +4766,13 @@
           "name": "MontantRegle",
           "type": "Decimal",
           "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "ID_DeviseFk",
+          "type": "Int",
+          "required": true,
           "id": false,
           "default": false
         }
@@ -12225,6 +12349,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AlertStock",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AlertStock",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AlertStock",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -12831,6 +12991,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Article",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Article",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Article",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -12969,6 +13165,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -13053,6 +13285,42 @@
           "table_name": "V_AuditStock_Theorique",
           "column_name": "EstStockCoherent",
           "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock_Theorique",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock_Theorique",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock_Theorique",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
@@ -13797,6 +14065,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -14132,6 +14436,42 @@
           "table_schema": "logistique",
           "table_name": "V_CommandeDetail",
           "column_name": "EtatLigne",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
+          "column_name": "DeviseLibelle",
           "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,
@@ -14481,6 +14821,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeOverview",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeOverview",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeOverview",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -14583,6 +14959,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -14648,6 +15060,54 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelle",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelle",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelle",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelle",
+          "column_name": "MontantsParDevise",
+          "data_type": "jsonb",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
           "is_identity": "NO"
         }
       ]
@@ -14756,6 +15216,42 @@
           "table_schema": "logistique",
           "table_name": "V_CouvertureStock",
           "column_name": "EtatCouverture",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CouvertureStock",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CouvertureStock",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CouvertureStock",
+          "column_name": "DeviseLibelle",
           "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,
@@ -14978,6 +15474,42 @@
           "table_schema": "logistique",
           "table_name": "V_Mouvement",
           "column_name": "OrigineMouvement",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
+          "column_name": "DeviseLibelle",
           "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,
@@ -15231,6 +15763,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -15404,6 +15972,42 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
           "is_identity": "NO"
         }
       ]
@@ -19191,6 +19795,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_LotArticleStock",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_LotArticleStock",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_LotArticleStock",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "primaryKey": [
@@ -19346,6 +19986,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementLot",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementLot",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementLot",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "primaryKey": [
@@ -19354,6 +20030,242 @@
       ],
       "relations": [],
       "fields": []
+    },
+    "logistique.V_ConsoMensuelleDevise": {
+      "schema": "logistique",
+      "name": "V_ConsoMensuelleDevise",
+      "columns": [
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "ID_Article",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "NomArticle",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "Mois",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "ConsoMensuelle",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "ValeurConsoMensuelle",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 14,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelleDevise",
+          "column_name": "MontantsParDevise",
+          "data_type": "jsonb",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ],
+      "primaryKey": [
+        "ID_Article",
+        "Mois",
+        "ID_DeviseFk"
+      ]
+    },
+    "logistique.V_Reglements": {
+      "schema": "logistique",
+      "name": "V_Reglements",
+      "columns": [
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "ID_Reglement",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "CodeFactureFk",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "ID_ModeReglementFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "ID_ClientFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "DateReglement",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "MontantRegle",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "DeviseCode",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Reglements",
+          "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ],
+      "primaryKey": [
+        "ID_Reglement"
+      ]
     }
   }
 }

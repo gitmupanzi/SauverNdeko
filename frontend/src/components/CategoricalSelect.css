@@ -1,0 +1,7 @@
+.categorical-select{position:relative;min-width:0;max-width:100%;}
+.categorical-select-native{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;opacity:0;clip-path:inset(50%);overflow:hidden;pointer-events:none;}
+.categorical-select-error{display:block;color:var(--erp-danger);font-size:12px;line-height:1.5;margin-top:5px;}
+.erp-column-filter-row .categorical-select .search-select-trigger{min-height:32px;height:32px;padding:5px 8px;font-size:12px;}
+
+.categorical-select.form-select{padding:0;border:0;border-radius:0;background:none;box-shadow:none;}
+.categorical-select.is-invalid .search-select-trigger{border-color:var(--erp-danger);}

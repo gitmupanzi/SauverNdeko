@@ -7,9 +7,9 @@ export default function SearchSelect({id,label,value,onChange,options=[],disable
  const [open,setOpen]=useState(false),[query,setQuery]=useState(""),[position,setPosition]=useState({left:0,top:0,width:240});
  const selected=options.find(option=>String(option.value)===String(value));
  const normalize=text=>String(text||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
- const filtered=options.filter(option=>normalize(option.label).includes(normalize(query)));
+ const filtered=options.filter(option=>normalize(option.label).includes(normalize(query).trim()));
  function close(restore=false){setOpen(false);if(restore)anchor.current?.focus({preventScroll:true});}
- function choose(option){onChange(String(option.value));close(true);}
+ function choose(option){if(disabled||loading||option.disabled)return;onChange(String(option.value));close(true);}
  useLayoutEffect(()=>{
   if(!open)return;
   const menu=panel.current;
@@ -33,7 +33,7 @@ export default function SearchSelect({id,label,value,onChange,options=[],disable
   event.preventDefault();
   const choices=[...panel.current.querySelectorAll('[role="option"]:not(:disabled)')],index=choices.indexOf(document.activeElement);
   if(!choices.length)return;
-  const next=event.key==="Home"?0:event.key==="End"?choices.length-1:(index+(event.key==="ArrowDown"?1:-1)+choices.length)%choices.length;
+  const next=event.key==="Home"?0:event.key==="End"?choices.length-1:index<0?(event.key==="ArrowUp"?choices.length-1:0):(index+(event.key==="ArrowDown"?1:-1)+choices.length)%choices.length;
   choices[next].focus();
  }
  return <><button ref={anchor} id={id} type="button" role="combobox" aria-label={label} aria-expanded={open} aria-controls={open?listId:undefined} aria-haspopup="listbox" aria-invalid={invalid} aria-describedby={describedBy} disabled={disabled||loading} className={"search-select-trigger"+(!selected?" is-placeholder":"")} onClick={()=>{setQuery("");setOpen(current=>!current);}} onKeyDown={event=>{if(["ArrowDown","ArrowUp"].includes(event.key)){event.preventDefault();setQuery("");setOpen(true);}}}><span>{loading?"Chargement…":selected?.label||placeholder}</span><AppIcon name="chevron-down"/></button>
