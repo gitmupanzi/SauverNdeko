@@ -9,6 +9,7 @@ description: Cartographier et faire évoluer SauverNdeko vers un ERP modulaire, 
 
 - Pour repérer un domaine et son état réel : [cartographie](references/cartographie.md), puis [inventaire technique](references/inventaire-technique.md).
 - Pour prioriser une version client ou un module ERP : [trajectoire ERP](references/trajectoire-erp.md).
+- Pour les droits par entreprise, le compte global, les clients/fournisseurs et le suivi facultatif par lot : [décisions Entités, tiers et stock](references/entites-tiers-et-stock.md). Cette cible reste distincte du comportement installé.
 - Pour reprendre un comportement d’imf_BB : [matrice de transposition](references/transposition-imf-bb.md).
 - Pour PostgreSQL/API : [skill backend](../../backend/skills/develop-sauverndeko-backend/SKILL.md).
 - Pour l’interface : [skill frontend](../../frontend/skills/develop-sauverndeko-frontend/SKILL.md).

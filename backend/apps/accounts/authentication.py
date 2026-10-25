@@ -26,7 +26,7 @@ class Actor:
 
     @property
     def organisation(self):
-        return self.row.get("IdEntiteFk")
+        return getattr(self, "_context_entity", self.row.get("IdEntiteFk"))
 
     @property
     def global_admin(self):
@@ -46,7 +46,7 @@ def actor_by_id(user_id):
         'SELECT u.*,g."NomGenerique" AS "RoleName",g."AbrGenerique" AS "RoleAbr",e."ValideEntite" AS "EntityActive" FROM systeme."T_Utilisateurs" u LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk" LEFT JOIN systeme."T_Entite" e ON e."IdEntite"=u."IdEntiteFk" WHERE u."IdUser"=%s',
         (user_id,),
     )
-    if not row or not row.get("ValideUser") or row.get("EntityActive") is False:
+    if not row or not row.get("ValideUser") or (row.get("EntityActive") is False and row.get("Is_Admin") is not True):
         raise AuthenticationFailed("Session inactive ou utilisateur introuvable.")
     return Actor(row)
 
@@ -241,7 +241,8 @@ class LegacyJWTAuthentication(BaseAuthentication):
             token = parts[1].decode("ascii")
         except UnicodeError:
             raise AuthenticationFailed("Token invalide.")
-        return token_actor(token), token
+        from apps.core.tenancy import bind_context
+        return bind_context(token_actor(token), request), token
 
     def authenticate_header(self, request):
         return "Bearer"

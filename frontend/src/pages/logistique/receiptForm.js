@@ -1,3 +1,4 @@
+import {quantityError} from "../../utils/quantities";
 export function createReceiptRequestId(cryptoSource=globalThis.crypto) {
   if(cryptoSource.randomUUID)return cryptoSource.randomUUID();
   const bytes=cryptoSource.getRandomValues(new Uint8Array(16));
@@ -7,12 +8,13 @@ export function createReceiptRequestId(cryptoSource=globalThis.crypto) {
 }
 export function receiptForm(data) {
   const defaults=data?.defaults||{};
-  return {ID_TypeCmdFk:defaults.ID_TypeCmdFk==null?String(data?.type?.id??""):String(defaults.ID_TypeCmdFk),QteCmdDetail:"",PUCmdDetail:defaults.PUCmdDetail==null?"":String(defaults.PUCmdDetail),ID_DeviseFk:defaults.ID_DeviseFk==null?"":String(defaults.ID_DeviseFk),DateCmd:defaults.DateCmd||"",RefCmd:"",NomClientSaisi:"",ObsCmd:""};
+  return {ID_TypeCmdFk:defaults.ID_TypeCmdFk==null?String(data?.type?.id??""):String(defaults.ID_TypeCmdFk),QteCmdDetail:"",PUCmdDetail:defaults.PUCmdDetail==null?"":String(defaults.PUCmdDetail),ID_DeviseFk:defaults.ID_DeviseFk==null?"":String(defaults.ID_DeviseFk),DateCmd:defaults.DateCmd||"",RefCmd:"",ID_TiersFk:"",NomClientSaisi:"",ObsCmd:""};
 }
 export function receiptErrors(values,typeIds=null) {
   const errors={};
+  if(values.ID_TiersFk&&!/^[1-9]\d*$/.test(values.ID_TiersFk))errors.ID_TiersFk="Choisissez un tiers de la liste.";
   if(!/^[1-9]\d*$/.test(String(values.ID_TypeCmdFk||""))||(typeIds&&!typeIds.some(id=>String(id)===values.ID_TypeCmdFk)))errors.ID_TypeCmdFk="Choisissez un type de bon d’entrée proposé dans la liste.";
-  if(!/^[1-9]\d*$/.test(values.QteCmdDetail.trim())||Number(values.QteCmdDetail)>2147483647)errors.QteCmdDetail="Renseignez une quantité entière supérieure à zéro.";
+  if(quantityError(values.QteCmdDetail))errors.QteCmdDetail=quantityError(values.QteCmdDetail);
   if(!/^\d{1,10}(?:[.,]\d{1,2})?$/.test(values.PUCmdDetail.trim()))errors.PUCmdDetail="Renseignez un prix positif ou nul, avec deux décimales au maximum.";
   if(!/^[1-9]\d*$/.test(values.ID_DeviseFk))errors.ID_DeviseFk="Choisissez une devise.";
   const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(values.DateCmd);
@@ -28,5 +30,5 @@ export function receiptErrors(values,typeIds=null) {
   return errors;
 }
 export function receiptPayload(values,lots) {
-  return {...values,QteCmdDetail:values.QteCmdDetail.trim(),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),RefCmd:values.RefCmd.trim()||null,NomClientSaisi:values.NomClientSaisi.trim()||null,ObsCmd:values.ObsCmd.trim()||null,Lots:lots.map(lot=>({...lot,NumeroLot:lot.NumeroLot.trim(),Quantite:String(lot.Quantite).trim(),DatePeremptionLot:lot.DatePeremptionLot||null}))};
+  return {...values,QteCmdDetail:values.QteCmdDetail.trim().replace(",","."),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),RefCmd:values.RefCmd.trim()||null,NomClientSaisi:values.NomClientSaisi.trim()||null,ObsCmd:values.ObsCmd.trim()||null,Lots:lots.map(lot=>({...lot,NumeroLot:lot.NumeroLot.trim(),Quantite:String(lot.Quantite).trim(),DatePeremptionLot:lot.DatePeremptionLot||null}))};
 }

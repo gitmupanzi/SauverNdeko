@@ -1,5 +1,5 @@
 const TEXT_LIMITS = {RefCmd:255,NomClientSaisi:255,geolocalisationCmd:255,UrlBL:255,ObsCmd:255,CodeFacture:255,StatusFacture:243,UrlFacture:255};
-const REFERENCES = ["ID_TypeCmdFk","ID_StatutCmdFk","ID_ClientFk","ID_ConditionPaiementFk","ID_ModePaiementFk","ID_DeviseFk"];
+const REFERENCES = ["ID_TypeCmdFk","ID_StatutCmdFk","ID_TiersFk","ID_DestinationFk","ID_ConditionPaiementFk","ID_ModePaiementFk","ID_DeviseFk"];
 const DATES = ["DateCmd","DateFacture","DateEcheancePaiement"];
 const FLAGS = ["SelectCmd","ValideRemiseFacture"];
 export const COMMANDE_EDITABLE_FIELDS = [...REFERENCES,...Object.keys(TEXT_LIMITS),...DATES,...FLAGS];

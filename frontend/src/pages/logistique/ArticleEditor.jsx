@@ -126,10 +126,10 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
       <section role="tabpanel" id={prefix+"-panel-stock"} aria-labelledby={prefix+"-tab-stock"} hidden={active!=="stock"} tabIndex={active==="stock"?0:-1}>
       <Section title="Stock et prix" icon="box">
         {select("ID_UniteFk","Unité"+(creating?" *":""),references?.articleUnits,!creating&&meta?.canChangeUnit===false)}
-        {creating?input("QteArticle","Stock initial",{inputMode:"numeric",hint:"Un mouvement d’entrée est créé pour un stock initial positif."}):<Field name={prefix+"stock"} label="Stock actuel" hint="Les entrées et sorties se saisissent dans les bons de stock."><input id={prefix+"stock"} value={record.QteArticle??"—"} readOnly/></Field>}
+        {creating?input("QteArticle","Stock initial",{inputMode:"decimal",hint:"Un mouvement d’entrée est créé pour un stock initial positif."}):<Field name={prefix+"stock"} label="Stock actuel" hint="Les entrées et sorties se saisissent dans les bons de stock."><input id={prefix+"stock"} value={record.QteArticle??"—"} readOnly/></Field>}
         {input("PoidsUnitaire","Poids unitaire",{inputMode:"decimal"})}
         {select("ID_UnitePoidsFk","Unité de poids",references?.weightUnits)}
-        {input("QteMinArticle","Seuil minimum",{inputMode:"numeric"})}
+        {input("QteMinArticle","Seuil minimum",{inputMode:"decimal"})}
         {select("ID_DeviseFk","Devise *",currencyOptions(references).map(option=>({id:option.value,label:option.label})),!creating&&meta?.canChangeCurrency===false)}
         {input("PUArticle","Prix d’achat *",{inputMode:"decimal"})}
         {input("PVArticle","Prix de vente *",{inputMode:"decimal"})}

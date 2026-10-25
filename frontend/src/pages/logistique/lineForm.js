@@ -1,3 +1,4 @@
+import {quantityError,quantityUnits} from "../../utils/quantities";
 import {compareDecimal, multiplyDecimal, sameCurrency} from "../../utils/money";
 
 export function lineKey(row) { return String(row.ID_CmdFk ?? row.ID_Commande)+":"+String(row.ID_ArticleFk); }
@@ -24,7 +25,7 @@ export function lineErrors(values,bon,article,previous=null) {
   const errors={};
   if(!/^[1-9]\d*$/.test(values.ID_CmdFk))errors.ID_CmdFk="Choisissez un bon de stock.";
   if(!/^[1-9]\d*$/.test(values.ID_ArticleFk))errors.ID_ArticleFk="Choisissez un article.";
-  if(!/^[1-9]\d*$/.test(values.QteCmdDetail.trim())||Number(values.QteCmdDetail)>2147483647)errors.QteCmdDetail="Saisissez une quantité entière positive.";
+  if(quantityError(values.QteCmdDetail))errors.QteCmdDetail=quantityError(values.QteCmdDetail);
   const price=values.PUCmdDetail.trim();
   if(!/^\d+(?:[.,]\d{1,2})?$/.test(price)||compareDecimal(price,"9999999999.99")===1)errors.PUCmdDetail="Saisissez un prix positif ou nul, avec deux décimales au maximum.";
   const amount=multiplyDecimal(values.QteCmdDetail,price);
@@ -34,13 +35,13 @@ export function lineErrors(values,bon,article,previous=null) {
   if(bon&&bon.ID_DeviseFk==null)errors.ID_CmdFk="Renseignez la devise du bon avant d’ajouter une ligne.";
   if(article?.ValideArticle===false)errors.ID_ArticleFk="Cet article est inactif.";
   if(lineDirection(bon)==="sortie"&&article?.QteArticle!=null&&!errors.QteCmdDetail) {
-    const available=Number(article.QteArticle)+(previous?Number(previous.QteCmdDetail)||0:0);
-    if(Number.isFinite(available)&&Number(values.QteCmdDetail)>available)errors.QteCmdDetail="La quantité dépasse le stock disponible.";
+    const stock=quantityUnits(article.QteArticle),old=quantityUnits(previous?.QteCmdDetail??"0"),requested=quantityUnits(values.QteCmdDetail);
+    if(stock!=null&&old!=null&&requested!=null&&requested>stock+old)errors.QteCmdDetail="La quantité dépasse le stock disponible.";
   }
   return errors;
 }
 export function linePayload(values,lots,version) {
-  const data={ID_ArticleFk:values.ID_ArticleFk,QteCmdDetail:values.QteCmdDetail.trim(),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),ObsCmdDetail:values.ObsCmdDetail,LieuCmdDetail:values.LieuCmdDetail.trim()||null,RemiseCmdDetail:values.RemiseCmdDetail,SelectCmdDetail:values.SelectCmdDetail,Lots:lots.map(row=>({NumeroLot:row.NumeroLot.trim(),Quantite:String(row.Quantite),DatePeremptionLot:row.DatePeremptionLot||null}))};
+  const data={ID_ArticleFk:values.ID_ArticleFk,QteCmdDetail:values.QteCmdDetail.trim().replace(",","."),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),ObsCmdDetail:values.ObsCmdDetail,LieuCmdDetail:values.LieuCmdDetail.trim()||null,RemiseCmdDetail:values.RemiseCmdDetail,SelectCmdDetail:values.SelectCmdDetail,Lots:lots.map(row=>({NumeroLot:row.NumeroLot.trim(),Quantite:String(row.Quantite),DatePeremptionLot:row.DatePeremptionLot||null}))};
   if(version)data._version=version;
   return data;
 }

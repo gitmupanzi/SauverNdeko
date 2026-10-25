@@ -19,7 +19,7 @@ class CorsMiddleware:
             response["Access-Control-Allow-Origin"] = origin
             response["Vary"] = "Origin"
             response["Access-Control-Allow-Headers"] = (
-                "Authorization,Content-Type,Accept"
+                "Authorization,Content-Type,Accept,X-Entite-ID"
             )
             response["Access-Control-Allow-Methods"] = (
                 "GET,POST,PUT,PATCH,DELETE,OPTIONS"

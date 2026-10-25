@@ -1,3 +1,7 @@
+import Inventaires from "./logistique/Inventaires";
+import Tiers from "./logistique/Tiers";
+import {TIERS_CHANGED} from "../services/tiers";
+import {useEntityScope} from "../contexts/EntityScopeContext";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import {formatDate} from "./logistique/logistiqueShared";
 import ReferenceSettings from "../components/ReferenceSettings";
@@ -480,7 +484,8 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
-    { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements"] },
+    { label: "Relations", keys: ["tiers"] },
+    { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements", "inventaires"] },
     { label: "Finances", keys: ["factures", "reglements"] },
   ];
   return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
@@ -581,16 +586,19 @@ const TAB_GROUPS = LOGISTIQUE_MODULE_SCHEMA.tabGroups;
 const TABLE_FEATURE_CONFIG = LOGISTIQUE_MODULE_SCHEMA.tableFeatures;
 const MAIN_TAB_DEFINITIONS = [
   { key: "dashboard", label: "Tableau de bord", icon: "bi-speedometer2" },
+  { key: "tiers", label: "Clients et fournisseurs", icon: "user" },
   { key: "articles", label: "Articles", icon: "bi-box-seam" },
   { key: "dossiers", label: "Dossiers de suivi", icon: "folder" },
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
   { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
+  { key: "inventaires", label: "Inventaires", icon: "list" },
   { key: "factures", label: "Factures", icon: "document" },
   { key: "reglements", label: "Règlements", icon: "bi-wallet2" },
 ];
 
 export default function Logistique() {
+  const entityScope=useEntityScope();
   const { user } = useAuth();
   const canEditReferences = user?.Is_Admin === true && user?.permissions?.canWriteData === true;
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -613,6 +621,7 @@ export default function Logistique() {
   const [baseReferences, setBaseReferences] = useState(null);
   const [referenceVersion, setReferenceVersion] = useState(0);
   useReferencesRefresh(() => setReferenceVersion(version => version + 1));
+  useEffect(()=>{const refresh=()=>setReferenceVersion(version=>version+1);window.addEventListener(TIERS_CHANGED,refresh);return()=>window.removeEventListener(TIERS_CHANGED,refresh);},[]);
   const [referenceCategories, setReferenceCategories] = useState([]);
   const [genericRows, setGenericRows] = useState([]);
   const [referencesLoading, setReferencesLoading] = useState(true);
@@ -1151,6 +1160,7 @@ export default function Logistique() {
         <div className="page-shell admin-page-shell logistics-page-shell logistics-shell-layout">
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
+            {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
             {referencesLoading ? <section className="table-empty-state">Chargement des references logistiques...</section> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
 
@@ -1160,6 +1170,8 @@ export default function Logistique() {
                   <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={canEditReferences} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setSettingsVersion(version=>version+1)} />
                 ) : null}
 
+                {activeTab === "inventaires" ? <Inventaires/> : null}
+                {activeTab === "tiers" ? <Tiers refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
                 {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"factures":"commandes")}/> : null}
                 {activeTab === "articles" ? (

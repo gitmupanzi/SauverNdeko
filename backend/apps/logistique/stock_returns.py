@@ -47,6 +47,7 @@ def return_feature_ready():
 import hashlib,hmac,json,uuid
 from datetime import datetime,timezone
 from decimal import Decimal
+from .quantities import quantity as exact_quantity, line_amount
 from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.db import DatabaseError,transaction
@@ -65,9 +66,8 @@ def return_error(field,message,code='RETURN_VALIDATION',status=400):
 def source_context(actor,command_id,*,lock=False):
     row=get_record(model('T_Commande'),actor,{'ID_Commande':positive(command_id)},lock=lock)
     if lock:db.one('SELECT "ID_Commande" FROM logistique."T_Commande" WHERE "ID_Commande"=%s FOR UPDATE',[row['ID_Commande']])
-    owner=db.one('SELECT "IdEntiteFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s'+(' FOR SHARE' if lock else ''),[row.get('ID_UserFk')])
-    if not owner or owner['IdEntiteFk']!=actor.organisation:
-        raise APIError('Effectuez le retour dans l’organisation du bon d’origine.','RETURN_ORGANISATION',403)
+    from apps.core.tenancy import assert_document
+    assert_document(actor,row)
     return row
 
 
@@ -155,16 +155,16 @@ def return_data(body):
     for index,row in enumerate(body['lignes']):
         prefix='lignes.'+str(index)
         if not isinstance(row,dict) or set(row)-{'ID_ArticleFk','QteRetour','Lots'}:return_error(prefix,'Informations de restitution non autorisées.')
-        try:identifier=positive(row.get('ID_ArticleFk'),'Article');quantity=positive(row.get('QteRetour'),'Quantité')
+        try:identifier=positive(row.get('ID_ArticleFk'),'Article');quantity=exact_quantity(row.get('QteRetour'),'QteRetour')
         except APIError:return_error(prefix+'.QteRetour','Indiquez un article et une quantité entière strictement positive.')
-        if identifier in seen or quantity>2147483647:return_error(prefix+'.QteRetour','Un article distinct et une quantité entière dans les limites du stock sont requis.')
+        if identifier in seen:return_error(prefix+'.QteRetour','Un article distinct et une quantité entière dans les limites du stock sont requis.')
         seen.add(identifier);lots=[];lot_ids=set();lot_rows=row.get('Lots',[])
         if not isinstance(lot_rows,list) or len(lot_rows)>50:return_error(prefix+'.Lots','Indiquez au maximum 50 lots source par ligne.')
         for lot in lot_rows:
             if not isinstance(lot,dict) or set(lot)!={'ID_LotArticle','Quantite'}:return_error(prefix+'.Lots','Sélectionnez uniquement les lots de la sortie d’origine.')
-            try:lot_id=positive(lot['ID_LotArticle'],'Lot');lot_qty=positive(lot['Quantite'],'Quantité du lot')
+            try:lot_id=positive(lot['ID_LotArticle'],'Lot');lot_qty=exact_quantity(lot['Quantite'],'Quantite')
             except APIError:return_error(prefix+'.Lots','Chaque lot exige une quantité entière strictement positive.')
-            if lot_id in lot_ids or lot_qty>2147483647:return_error(prefix+'.Lots','Un lot source ne doit apparaître qu’une fois dans la ligne.')
+            if lot_id in lot_ids:return_error(prefix+'.Lots','Un lot source ne doit apparaître qu’une fois dans la ligne.')
             lot_ids.add(lot_id);lots.append({'ID_LotArticle':lot_id,'Quantite':lot_qty})
         if sum(lot['Quantite'] for lot in lots)>quantity:return_error(prefix+'.Lots','La ventilation ne peut pas dépasser la quantité rendue.')
         lines.append({'index':index,'ID_ArticleFk':identifier,'QteRetour':quantity,'Lots':sorted(lots,key=lambda lot:lot['ID_LotArticle'])})
@@ -216,11 +216,11 @@ def record_return(actor,command_id,body):
                         return_error(prefix+'.Lots','Ce lot ou sa quantité ne provient pas de la sortie restante.','RETURN_LOT_CONFLICT',409)
                 if row['QteRetour']-sum(lot['Quantite'] for lot in row['Lots'])>Decimal(str(available['QteSansLotRestante'])):
                     return_error(prefix+'.Lots','Précisez les lots d’origine : la part sortie sans lot est insuffisante.','RETURN_LOT_CONFLICT',409)
-                total+=row['QteRetour']*Decimal(str(available['PUHistorique']))
+                total+=line_amount(row['QteRetour'],available['PUHistorique'])
                 if total>Decimal('9999999999.99'):return_error(prefix+'.QteRetour','La valeur de cet événement dépasse la capacité du bon de retour.')
             child=mutate('T_Commande',actor,{'ID_TypeCmdFk':policy['entryType']['id'],'ID_DeviseFk':source['ID_DeviseFk'],
                  'DateCmd':data['DateCmd'],'RefCmd':'Retour de '+str(source.get('CodeCmd') or '#'+str(command_id)),
-                 'ID_ClientFk':source.get('ID_ClientFk'),'NomClientSaisi':source.get('NomClientSaisi'),
+                 'ID_ClientFk':source.get('ID_ClientFk'),'ID_TiersFk':source.get('ID_TiersFk'),'NomClientSaisi':source.get('NomClientSaisi'),
                  'ObsCmd':('Retour de stock — '+data['motif'])[:255]},operation='create')
             from .services import mutate_line
             with _historical_line_scope(child['ID_Commande'],[line['ID_ArticleFk'] for line in data['lignes']]):
@@ -266,14 +266,14 @@ def annotate_return_context(rows,actor):
            'isReturn':False,'hasReturns':False,'allReturned':False,'originId':None,'returnIds':[]}
     if not available or not rows:return [{**row,'returnContext':dict(empty)} for row in rows]
     identifiers=[row['ID_Commande'] for row in rows]
-    contexts=db.query('''SELECT c."ID_Commande",own."IdEntiteFk" AS organisation,t."AbrGenerique" AS direction,
+    contexts=db.query('''SELECT c."ID_Commande",c."IdEntiteFk" AS organisation,t."AbrGenerique" AS direction,
         t."ID_CategorieGeneriqueFk" AS category,
         (SELECT r."ID_CommandeOrigineFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeRetourFk"=c."ID_Commande") AS origin,
         ARRAY(SELECT r."ID_CommandeRetourFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeOrigineFk"=c."ID_Commande" ORDER BY r."ID_RetourBon") AS children,
         (SELECT bool_and(ra."SourceCoherente") AND bool_and(ra."QteRestante">=0) AND bool_and(ra."QteSansLotRestante">=0) FROM logistique."V_RetourArticle" ra WHERE ra."ID_CommandeOrigineFk"=c."ID_Commande") AS coherent,
         (SELECT bool_or(ra."QteRestante">0) FROM logistique."V_RetourArticle" ra WHERE ra."ID_CommandeOrigineFk"=c."ID_Commande") AS remaining,
         (cu."ValideGenerique" IS TRUE AND cat."ValideCategorieGenerique" IS TRUE AND lower(btrim(cat."NomCategorieGenerique"))='devise') AS currency_active
-        FROM logistique."T_Commande" c JOIN systeme."T_Utilisateurs" own ON own."IdUser"=c."ID_UserFk"
+        FROM logistique."T_Commande" c
         LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
         LEFT JOIN referentiel."T_Generique" cu ON cu."ID_Generique"=c."ID_DeviseFk"
         LEFT JOIN referentiel."T_CategorieGenerique" cat ON cat."ID_CategorieGenerique"=cu."ID_CategorieGeneriqueFk"

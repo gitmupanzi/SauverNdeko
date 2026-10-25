@@ -13,7 +13,7 @@ from apps.core.registry import model
 from apps.core.repository import positive,coerce,get_record,predicate,audit,clean
 from apps.core.responses import APIError,ExactEncoder,ok
 
-FIELDS={'CodeFactureFk','ID_ModeReglementFk','ID_ClientFk','DateReglement','MontantRegle','ID_DeviseFk'}
+FIELDS={'ID_TiersFk','CodeFactureFk','ID_ModeReglementFk','ID_ClientFk','DateReglement','MontantRegle','ID_DeviseFk'}
 MAX_AMOUNT=Decimal('9999999999.99')
 
 
@@ -51,13 +51,17 @@ def snapshot(actor,payment_id):
 
 def revision(row):
     parent=row.get('parent') or {};facture=row.get('facture') or {}
-    return digest({'record':row.get('raw'),'parent':{key:parent.get(key) for key in ('ID_Commande','CodeFacture','ID_DeviseFk','ID_ClientFk','StatusFacture')},
+    return digest({'record':row.get('raw'),'parent':{key:parent.get(key) for key in ('ID_Commande','CodeFacture','ID_DeviseFk','ID_ClientFk','ID_TiersFk','IdEntiteFk','StatusFacture')},
       'invoice':{key:facture.get(key) for key in ('ID_Facture','MontantFacture','TotalRegle','Reste')}})
 
 
 def state(row,actor,*,creation=False):
     parent=row.get('parent');facture=row.get('facture') or {};reason=''
-    if not parent or not str(parent.get('CodeFacture') or '').strip() or not facture:
+    if actor.global_admin and not hasattr(actor,'_context_entity'):
+        reason='Choisissez une entreprise avant d’enregistrer un règlement.'
+    elif parent and parent.get('IdEntiteFk')!=actor.organisation:
+        reason='Cette facture appartient à une autre entreprise.'
+    elif not parent or not str(parent.get('CodeFacture') or '').strip() or not facture:
         reason='Ce règlement doit être rattaché à une facture émise.'
     elif parent.get('ID_DeviseFk') is None or row.get('currency_coherent') is not True:
         reason='Les devises de la facture et de ses règlements doivent être rapprochées.'
@@ -102,7 +106,7 @@ def preparation(actor,command_id):
     require_module(actor,'logistique');row=parent_snapshot(actor,command_id);parent=row['parent']
     now=datetime.now(ZoneInfo(settings.TIME_ZONE)).replace(tzinfo=None).isoformat(timespec='seconds')
     data={'facture':row['facture'],'defaults':{'CodeFactureFk':parent.get('CodeFacture'),'ID_DeviseFk':parent.get('ID_DeviseFk'),
-      'ID_ClientFk':parent.get('ID_ClientFk'),'DateReglement':now,'MontantRegle':''},'references':{'reglementModes':modes()}}
+      'ID_ClientFk':parent.get('ID_ClientFk'),'ID_TiersFk':parent.get('ID_TiersFk'),'DateReglement':now,'MontantRegle':''},'references':{'reglementModes':modes()}}
     return clean(data),state(row,actor,creation=True)
 
 
@@ -127,6 +131,8 @@ def request_data(body,operation):
 
 def mutate_payment(actor,body=None,keys=None,operation='create'):
     db.ensure_writable()
+    from apps.core.tenancy import require_entity,assert_document
+    require_entity(actor)
     if not actor.admin:raise APIError('Accès réservé aux gestionnaires autorisés.','FORBIDDEN',403)
     require_module(actor,'logistique','manage')
     if operation not in {'create','update','delete'}:raise APIError('Opération de règlement invalide.')
@@ -151,6 +157,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
         code=old.get('CodeFactureFk') if old else provided.get('CodeFactureFk')
         if not isinstance(code,str) or not code.strip():fail('CodeFactureFk','Choisissez une facture émise.')
         parent=get_record(model('T_Commande'),actor,{'CodeFacture':code},lock=True)
+        assert_document(actor,parent)
         db.one('SELECT "ID_Commande" FROM logistique."T_Commande" WHERE "ID_Commande"=%s FOR UPDATE',[parent['ID_Commande']])
         if old:
             old=get_record(model('T_Reglements'),actor,{'ID_Reglement':payment_id},lock=True)
@@ -164,6 +171,8 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
         if 'CodeFactureFk' in provided and provided['CodeFactureFk']!=code:fail('CodeFactureFk','La facture d’un règlement existant doit être conservée.','PAYMENT_PARENT_LOCKED',409)
         if 'ID_DeviseFk' in provided and provided['ID_DeviseFk']!=parent['ID_DeviseFk']:fail('ID_DeviseFk','La devise est celle de la facture.','CURRENCY_MISMATCH',409)
         expected_client=old.get('ID_ClientFk') if old else parent.get('ID_ClientFk')
+        expected_tiers=old.get('ID_TiersFk') if old else parent.get('ID_TiersFk')
+        if 'ID_TiersFk' in provided and provided['ID_TiersFk']!=expected_tiers:fail('ID_TiersFk','Le tiers est celui de la facture.','PAYMENT_PARENT_LOCKED',409)
         if 'ID_ClientFk' in provided and provided['ID_ClientFk']!=expected_client:fail('ID_ClientFk','Le tiers est celui de la facture ou de l’écriture historique.','PAYMENT_PARENT_LOCKED',409)
         if old and old.get('ID_DeviseFk')!=parent['ID_DeviseFk']:fail('ID_DeviseFk','Les devises de cette écriture doivent être rapprochées.','CURRENCY_MISMATCH',409)
         if operation=='delete':
@@ -189,7 +198,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
                 fail('MontantRegle','Le montant dépasse le solde à régler. Un excédent historique peut seulement être réduit.','PAYMENT_EXCEEDS_BALANCE',409)
             fields={key:value for key,value in provided.items() if key in {'DateReglement','ID_ModeReglementFk','MontantRegle'}}
             if old is None:
-                fields.update(CodeFactureFk=code,ID_DeviseFk=parent['ID_DeviseFk'],ID_ClientFk=expected_client)
+                fields.update(CodeFactureFk=code,ID_DeviseFk=parent['ID_DeviseFk'],ID_ClientFk=expected_client,ID_TiersFk=expected_tiers)
                 columns=list(fields);row=db.one('INSERT INTO logistique."T_Reglements" ('+','.join(db.ident(key) for key in columns)+') VALUES ('+','.join(['%s']*len(columns))+') RETURNING *',list(fields.values()))
             elif fields:row=db.one('UPDATE logistique."T_Reglements" SET '+','.join(db.ident(key)+'=%s' for key in fields)+' WHERE "ID_Reglement"=%s RETURNING *',[*fields.values(),payment_id])
             else:row=old
@@ -251,6 +260,8 @@ def batch_result(actor,identifiers,*,replayed):
 
 def mutate_payment_batch(actor,body):
     db.ensure_writable()
+    from apps.core.tenancy import require_entity,assert_document
+    require_entity(actor)
     if not actor.admin:raise APIError('Accès réservé aux gestionnaires autorisés.','FORBIDDEN',403)
     require_module(actor,'logistique','manage')
     request_id,lines=batch_data(body)

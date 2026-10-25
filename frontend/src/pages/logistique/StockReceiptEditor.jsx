@@ -1,3 +1,4 @@
+import TiersSelect from "../../components/TiersSelect";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
@@ -6,6 +7,7 @@ import SearchSelect from "../../components/SearchSelect";
 import LotFields,{lotErrors} from "../../components/LotFields";
 import AppIcon from "../../components/AppIcon";
 import {fetchArticleReception,receiveArticleStock} from "../../services/logistique";
+import {roundMoney} from "../../utils/quantities";
 import {compareDecimal,currencyOptions,formatCurrency,multiplyDecimal} from "../../utils/money";
 import {formatNumber} from "./logistiqueShared";
 import {createReceiptRequestId,receiptForm,receiptErrors,receiptPayload} from "./receiptForm";
@@ -81,14 +83,15 @@ export default function StockReceiptEditor({articleId,references,onClose,onSaved
         <Field id={prefix+"ID_TypeCmdFk"} label="Type de bon *" error={errors.ID_TypeCmdFk||typeRefreshError} hint={!typeOptions.length?"Aucun type de bon d’entrée disponible.":""}><SearchSelect id={prefix+"ID_TypeCmdFk"} label="Type de bon" value={values.ID_TypeCmdFk} options={typeOptions} onChange={value=>change("ID_TypeCmdFk",value)} disabled={busy||!typeOptions.length} invalid={Boolean(errors.ID_TypeCmdFk||typeRefreshError)} describedBy={errors.ID_TypeCmdFk||typeRefreshError?prefix+"ID_TypeCmdFk-error":!typeOptions.length?prefix+"ID_TypeCmdFk-hint":undefined}/></Field>
         {input("DateCmd","Date et heure du bon *",{type:"datetime-local",step:60,hint:data.timeZone?"Heure de "+data.timeZone.split("/").at(-1).replace(/_/g," "):""})}
         {input("RefCmd","Référence du bon de livraison",{maxLength:255,autoComplete:"off"})}
-        {input("NomClientSaisi","Fournisseur",{maxLength:255,autoComplete:"off"})}
+        <Field id={prefix+"ID_TiersFk"} label="Tiers référencé" error={errors.ID_TiersFk}><TiersSelect id={prefix+"ID_TiersFk"} value={values.ID_TiersFk} references={references?.clients||[]} role="fournisseur" disabled={busy} invalid={Boolean(errors.ID_TiersFk)} onChange={(id,name)=>{change("ID_TiersFk",id);if(name)change("NomClientSaisi",name);}}/></Field>
+        {input("NomClientSaisi","Nom du fournisseur",{maxLength:255,autoComplete:"off"})}
       </div></section>
       <section className="record-editor-section"><h3><AppIcon name="stock-in"/>Quantité et prix d’achat</h3><div className="record-editor-grid">
-        {input("QteCmdDetail","Quantité reçue *",{inputMode:"numeric",maxLength:10,autoComplete:"off"})}
+        {input("QteCmdDetail","Quantité reçue *",{inputMode:"decimal",maxLength:15,autoComplete:"off"})}
         <Field id={prefix+"unit"} label="Unité"><input id={prefix+"unit"} value={article.Unite||"Non renseignée"} readOnly/></Field>
         <Field id={prefix+"ID_DeviseFk"} label="Devise du bon *" error={errors.ID_DeviseFk} hint={!options.length?"Aucune devise disponible. Vérifiez les références.":""}><SearchSelect id={prefix+"ID_DeviseFk"} label="Devise du bon" value={values.ID_DeviseFk} options={options} onChange={changeCurrency} disabled={busy||!options.length} invalid={Boolean(errors.ID_DeviseFk)} describedBy={errors.ID_DeviseFk?prefix+"ID_DeviseFk-error":undefined}/></Field>
         {input("PUCmdDetail","Prix d’achat unitaire *",{inputMode:"decimal",maxLength:13,hint:priceHint,autoComplete:"off"})}
-        <Field id={prefix+"amount"} label="Montant de la réception" wide><output id={prefix+"amount"} className="stock-receipt-total">{formatCurrency(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail),currency?.code)}</output></Field>
+        <Field id={prefix+"amount"} label="Montant de la réception" wide><output id={prefix+"amount"} className="stock-receipt-total">{formatCurrency(roundMoney(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail)),currency?.code)}</output></Field>
       </div></section>
       <LotFields value={lots} onChange={next=>{setLots(next);setLotsError("");}} total={values.QteCmdDetail} disabled={busy} title="Lots reçus" error={lotsError}/>
       <section className="record-editor-section"><h3><AppIcon name="document"/>Observation</h3><div className="record-editor-grid"><Field id={prefix+"ObsCmd"} label="Observation du bon" error={errors.ObsCmd} wide><textarea id={prefix+"ObsCmd"} name="ObsCmd" value={values.ObsCmd} onChange={event=>change("ObsCmd",event.target.value)} disabled={busy} maxLength={255}/></Field></div></section>

@@ -42,7 +42,7 @@ def source(kind):
 def register_source(kind,raw,for_export=False):
     if set(raw)-(COMMON|SPECIFIC[kind]|({'columns'} if for_export else set())):raise APIError('Critère non autorisé.')
     obj=source(kind);filters={};conditions=[obj.get('_base_condition','TRUE')]
-    mapping=({'articleId':'ID_ArticleFk','commandeId':'ID_cmdFk','typeId':'ID_TypeMvtFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='mouvements' else {'commandeId':'ID_Commande','client':'ID_ClientFk'} if kind=='factures' else {'commandeId':'ID_Commande','client':'ID_ClientFk','modeId':'ID_ModeReglementFk'})
+    mapping=({'articleId':'ID_ArticleFk','commandeId':'ID_cmdFk','typeId':'ID_TypeMvtFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='mouvements' else {'commandeId':'ID_Commande','client':'ID_TiersFk'} if kind=='factures' else {'commandeId':'ID_Commande','client':'ID_ClientFk','modeId':'ID_ModeReglementFk'})
     for key,field in mapping.items():
         if raw.get(key) not in (None,'','all'):filters[field]=positive(raw[key])
     if kind=='mouvements':

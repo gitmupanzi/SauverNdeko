@@ -1,4 +1,5 @@
 import {compareDecimal,decimalParts,multiplyDecimal} from "../../utils/money";
+import {quantityError,roundMoney} from "../../utils/quantities";
 import {commandeErrors,commandePayload} from "./commandeForm";
 
 export const MAX_COMPOSITION_LINES=50;
@@ -20,7 +21,7 @@ export function compositionLine(article,values,references,record=null) {return {
 function integerInput(value){if(value==null)return "";const parsed=decimalParts(value),scale=parsed?10n**BigInt(parsed.scale):1n;return parsed&&parsed.units%scale===0n?(parsed.units/scale).toString():String(value);}
 function existingLots(rows){return (rows||[]).map(row=>({NumeroLot:String(row.NumeroLot||""),Quantite:integerInput(row.Quantite),DatePeremptionLot:row.DatePeremptionLot?String(row.DatePeremptionLot).slice(0,10):""}));}
 export function compositionBasket(rows){return (rows||[]).map(row=>({article:row.article||{ID_Article:row.ID_ArticleFk,NomArticle:row.NomArticle||"Article #"+row.ID_ArticleFk,CodeArticleInterne:row.CodeArticleInterne||"",missing:true},original:row,QteCmdDetail:integerInput(row.QteCmdDetail),PUCmdDetail:row.PUCmdDetail==null?"":String(row.PUCmdDetail),ObsCmdDetail:row.ObsCmdDetail??"",LieuCmdDetail:row.LieuCmdDetail==null?"":String(row.LieuCmdDetail),RemiseCmdDetail:row.RemiseCmdDetail??null,SelectCmdDetail:row.SelectCmdDetail??null,Lots:existingLots(row.Lots)}));}
-function linePayload(line){const observation=line.original&&line.ObsCmdDetail===(line.original.ObsCmdDetail??"")?line.original.ObsCmdDetail??null:String(line.ObsCmdDetail??"").trim()||null;return {ID_ArticleFk:String(line.article.ID_Article),QteCmdDetail:String(line.QteCmdDetail).trim(),PUCmdDetail:String(line.PUCmdDetail).trim().replace(",","."),ObsCmdDetail:observation,LieuCmdDetail:String(line.LieuCmdDetail??"").trim()||null,RemiseCmdDetail:line.original?.RemiseCmdDetail??null,SelectCmdDetail:line.SelectCmdDetail??null,Lots:line.Lots.map(lot=>({NumeroLot:lot.NumeroLot.trim(),Quantite:String(lot.Quantite).trim(),DatePeremptionLot:lot.DatePeremptionLot||null}))};}
+function linePayload(line){const observation=line.original&&line.ObsCmdDetail===(line.original.ObsCmdDetail??"")?line.original.ObsCmdDetail??null:String(line.ObsCmdDetail??"").trim()||null;return {ID_ArticleFk:String(line.article.ID_Article),QteCmdDetail:String(line.QteCmdDetail).trim().replace(",","."),PUCmdDetail:String(line.PUCmdDetail).trim().replace(",","."),ObsCmdDetail:observation,LieuCmdDetail:String(line.LieuCmdDetail??"").trim()||null,RemiseCmdDetail:line.original?.RemiseCmdDetail??null,SelectCmdDetail:line.SelectCmdDetail??null,Lots:line.Lots.map(lot=>({NumeroLot:lot.NumeroLot.trim(),Quantite:String(lot.Quantite).trim(),DatePeremptionLot:lot.DatePeremptionLot||null}))};}
 export function compositionBasketSnapshot(lines){return JSON.stringify(lines.map(linePayload));}
 function sameNullableDecimal(left,right){return String(left??"").trim()===""&&String(right??"").trim()===""||compareDecimal(left,right)===0;}
 export function compositionStockChanged(line){return !line.original||!sameNullableDecimal(line.QteCmdDetail,line.original.QteCmdDetail)||!sameNullableDecimal(line.PUCmdDetail,line.original.PUCmdDetail)||JSON.stringify(line.Lots)!==JSON.stringify(existingLots(line.original.Lots));}
@@ -28,7 +29,7 @@ export function compositionLotsUnchanged(line){return Boolean(line.original)&&sa
 export function compositionTotal(lines) {
   let cents=0n;
   for(const line of lines) {
-    const amount=decimalParts(multiplyDecimal(line.QteCmdDetail,line.PUCmdDetail));
+    const amount=decimalParts(roundMoney(multiplyDecimal(line.QteCmdDetail,line.PUCmdDetail)));
     if(!amount||amount.units<0n||amount.scale>2)return null;
     cents+=amount.units*10n**BigInt(2-amount.scale);
   }
@@ -42,7 +43,7 @@ export function compositionHeaderErrors(values,references,record=null) {
 }
 export function compositionLineErrors(line,direction) {
   const errors={},quantity=String(line.QteCmdDetail||"").trim(),price=String(line.PUCmdDetail??"").trim();
-  if(!/^[1-9]\d*$/.test(quantity)||compareDecimal(quantity,"2147483647")===1)errors.QteCmdDetail="Renseignez une quantité entière positive.";
+  if(quantityError(quantity))errors.QteCmdDetail=quantityError(quantity);
   if(!/^\d+(?:[.,]\d{1,2})?$/.test(price)||compareDecimal(price,"9999999999.99")===1)errors.PUCmdDetail="Renseignez le prix du document, avec deux décimales au maximum.";
   const amount=multiplyDecimal(quantity,price);
   if(amount&&compareDecimal(amount,"9999999999.99")===1)errors.PUCmdDetail="Le montant de cette ligne dépasse la limite autorisée.";

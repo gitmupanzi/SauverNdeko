@@ -13,6 +13,7 @@ Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention
 - [Référence visuelle](references/design-reference.md) pour l’accueil, le login, les blocs du tableau de bord et les tableaux inspirés de TailAdmin.
 - [Champs, filtres métier et CRUD Articles](references/formulaires-crud.md) pour le standard SearchSelect, les fenêtres latérales, photos, poids et lots : base des futurs onglets.
 - [Contrats d’interface](references/contrats-interface.md) pour tableaux, indicateurs, fenêtres 360, filtres, exports et recette.
+- [Entités, tiers et stock](../../../skills/sauverndeko-erp/references/entites-tiers-et-stock.md) pour le partage par entreprise/rôle, le futur contexte global, Clients et fournisseurs et la simplicité des lots facultatifs. Distinguer cette cible des écrans installés.
 - [Skill transverse ERP](../../../skills/sauverndeko-erp/SKILL.md) pour un changement entre plusieurs domaines.
 - [Skill backend](../../../backend/skills/develop-sauverndeko-backend/SKILL.md) dès qu’un nouveau filtre, calcul ou détail API est requis.
 

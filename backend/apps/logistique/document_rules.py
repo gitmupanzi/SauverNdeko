@@ -32,12 +32,13 @@ def closed(record):
 def stock_write_state(record):
     """Le panier devient historique après émission ou restitution ; les métadonnées financières restent distinctes."""
     from .stock_returns import return_context
+    inventory=bool(db.one("SELECT to_regclass('logistique.\"T_InventaireLigne\"') IS NOT NULL AS ready")['ready']) and bool(db.one('SELECT EXISTS(SELECT FROM logistique."T_InventaireLigne" l JOIN logistique."T_Inventaire" h ON h."ID_Inventaire"=l."ID_InventaireFk" WHERE l."ID_CommandeCorrectionFk"=%s AND h."Etat"=\'valide\') AS present',[record['ID_Commande']])['present'])
     returns=return_context(record['ID_Commande'])
     invoice=bool(str(record.get('CodeFacture') or '').strip())
     if not invoice and db.one("SELECT to_regclass('logistique.\"T_Facture\"') IS NOT NULL AS ready")['ready']:
         invoice=bool(db.one('SELECT EXISTS(SELECT 1 FROM logistique."T_Facture" WHERE "ID_CommandeFk"=%s) AS present',[record['ID_Commande']])['present'])
     is_closed=closed(record)
-    reason=('Ce bon est clôturé.' if is_closed else
+    reason=('Ce bon corrige un inventaire validé. Créez un nouveau comptage pour le corriger.' if inventory else 'Ce bon est clôturé.' if is_closed else
             'Un bon de retour est conservé avec son historique.' if returns['isReturn'] else
             'Ce bon possède des retours. Son panier est conservé.' if returns['hasReturns'] else
             'Une facture a été émise. Le panier est conservé.' if invoice else '')
@@ -158,12 +159,13 @@ def validate_line_total(commande_id, article_id, quantity, price):
     if article_id is not None:
         where+=' AND "ID_ArticleFk"<>%s'
         values.append(article_id)
-    row=db.one('''SELECT COALESCE(SUM(COALESCE("QteCmdDetail",0)*COALESCE("PUCmdDetail",0)),0) AS total
+    row=db.one('''SELECT COALESCE(SUM(round(COALESCE("QteCmdDetail",0)*COALESCE("PUCmdDetail",0),2)),0) AS total
         FROM logistique."T_CommandeDetail" WHERE '''+where,values)
     other_total=Decimal(str(row['total']))
     if not other_total.is_finite():
         raise APIError('Le montant de ce bon doit être vérifié.','ORDER_AMOUNT_INVALID',409)
-    if other_total+quantity*price>Decimal('9999999999.99'):
+    from .quantities import line_amount
+    if other_total+line_amount(quantity,price)>Decimal('9999999999.99'):
         raise APIError({'PUCmdDetail':'Le total du bon ne peut pas dépasser 9 999 999 999,99 dans sa devise.'},'LINE_AMOUNT_LIMIT',400)
 
 

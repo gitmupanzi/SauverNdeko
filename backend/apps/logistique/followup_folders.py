@@ -187,6 +187,8 @@ def category_exists(actor,pk):
 
 def create_category(actor,body):
     db.ensure_writable();require_storage()
+    from apps.core.tenancy import require_entity
+    require_entity(actor)
     if not isinstance(body,dict) or set(body)-{"name","colour"}:raise APIError("Catégorie invalide.")
     name=text_value(body.get("name"),80,"Nom de catégorie");colour=ensure_colour(body.get("colour","bleu"))
     try:

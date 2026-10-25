@@ -24,7 +24,7 @@ from .lots import normalize as normalize_lots
 from .services import mutate_line
 
 ALLOWED = {"requestId", "QteCmdDetail", "PUCmdDetail", "ID_DeviseFk", "DateCmd", "RefCmd",
-           "ID_ClientFk", "NomClientSaisi", "ObsCmd", "ObsCmdDetail", "Lots", "ID_TypeCmdFk"}
+           "ID_ClientFk", "ID_TiersFk", "NomClientSaisi", "ObsCmd", "ObsCmdDetail", "Lots", "ID_TypeCmdFk"}
 TEXT_LIMITS = {"RefCmd":255, "NomClientSaisi":255, "ObsCmd":255, "ObsCmdDetail":255}
 
 
@@ -79,9 +79,8 @@ def entry_type(identifier=None, *, lock=False):
 
 def article_context(actor, pk, *, active=True):
     record = get_record(view("logistique", "V_Article"), actor, {"ID_Article":positive(pk)})
-    owner = db.one('SELECT "IdEntiteFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s', [record.get("ID_UserFK")])
-    if not owner or owner["IdEntiteFk"] != actor.organisation:
-        raise APIError("Effectuez cette réception dans l’organisation de cet article.", "RECEIPT_ORGANISATION", 403)
+    from apps.core.tenancy import assert_document
+    assert_document(actor,record)
     if active and record.get("ValideArticle") is not True:
         raise APIError("Activez l’article avant d’enregistrer une réception.", "ARTICLE_INACTIVE", 409)
     return record
@@ -117,12 +116,12 @@ def receipt_data(body):
         except APIError:
             field_error(key, label+" : valeur ou précision non valide.")
     quantity, price = data["QteCmdDetail"],data["PUCmdDetail"]
-    if quantity is None or quantity <= 0 or quantity != int(quantity) or quantity > 2147483647:
-        field_error("QteCmdDetail", "Indiquez une quantité entière entre 1 et 2 147 483 647.")
+    from .quantities import quantity as exact_quantity, line_amount
+    quantity=exact_quantity(quantity,"QteCmdDetail")
     if price is None or price < 0:
         field_error("PUCmdDetail", "Indiquez un prix d’achat positif ou nul.")
     try:
-        coerce(command_columns["MontantTTC"], quantity*price)
+        coerce(command_columns["MontantTTC"], line_amount(quantity,price))
     except APIError:
         field_error("PUCmdDetail", "Le montant de la réception dépasse la limite autorisée.")
     try:
@@ -151,6 +150,8 @@ def receipt_data(body):
             maximum=min(maximum,metadata.get("character_maximum_length") or maximum)
             if len(value)>maximum:field_error(key, f"Utilisez au maximum {maximum} caractères.")
             data[key]=value or None
+    if body.get("ID_TiersFk") not in (None, ""):
+        data["ID_TiersFk"]=positive(body["ID_TiersFk"],"Fournisseur")
     if body.get("ID_ClientFk") not in (None, ""):
         try:data["ID_ClientFk"]=positive(body["ID_ClientFk"], "Fournisseur")
         except APIError:field_error("ID_ClientFk", "Choisissez un tiers valide.")
@@ -160,7 +161,7 @@ def receipt_data(body):
         detail=error.detail
         field_error("Lots", str(detail) if isinstance(detail,str) else "Vérifiez les lots et leurs quantités.")
     data["Lots"]=[{**row,"DatePeremptionLot":row["DatePeremptionLot"].isoformat() if row["DatePeremptionLot"] else None} for row in lots]
-    data["QteCmdDetail"]=int(quantity)
+    data["QteCmdDetail"]=quantity
     data["PUCmdDetail"]=price.quantize(Decimal("0.01"))
     return data
 
@@ -216,7 +217,7 @@ def receive_article(actor, pk, body):
         received_type=entry_type(data.get("ID_TypeCmdFk"),lock=True)
         data["ID_TypeCmdFk"]=received_type["id"]
         fingerprint=payload_hash(article_id,data,actor)
-        header={key:data[key] for key in ("ID_DeviseFk","DateCmd","RefCmd","ID_ClientFk","NomClientSaisi","ObsCmd") if key in data}
+        header={key:data[key] for key in ("ID_DeviseFk","DateCmd","RefCmd","ID_ClientFk","ID_TiersFk","NomClientSaisi","ObsCmd") if key in data}
         header.update(ID_TypeCmdFk=received_type["id"],DateHeureAutoCmd=datetime.now(timezone.utc))
         command=mutate("T_Commande",actor,header,operation="create")
         line={"ID_ArticleFk":article_id,"QteCmdDetail":data["QteCmdDetail"],"PUCmdDetail":data["PUCmdDetail"]}

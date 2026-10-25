@@ -194,12 +194,13 @@ def candidate_lines(snapshot,returned):
         quantity=exact(row.get('QteCmdDetail'),'les quantités du bon')
         price=exact(row.get('PUCmdDetail'),'les prix unitaires du bon')
         back=returned.get(row['ID_ArticleFk'],Decimal('0'))
-        if quantity<=0 or quantity!=int(quantity) or price<0 or price!=price.quantize(CENT) or not 0<=back<=quantity:
+        if quantity<=0 or quantity!=quantity.quantize(Decimal('0.001')) or price<0 or price!=price.quantize(CENT) or not 0<=back<=quantity:
             raise APIError('Les lignes et leurs retours doivent être vérifiés avant facturation.','INVOICE_SOURCE_INVALID',409)
-        net=quantity-back;amount=(net*price).quantize(CENT);total+=amount
+        from .quantities import line_amount
+        net=quantity-back;amount=line_amount(net,price);total+=amount
         lines.append({'ID_ArticleFk':row['ID_ArticleFk'],'NomArticle':article.get('NomArticle'),
             'CodeArticleInterne':article.get('CodeArticleInterne'),'Unite':article.get('AbrUnite') or article.get('NomUnite'),
-            'QteSortie':int(quantity),'QteRetourAvantFacture':int(back),'QteFacturee':int(net),
+            'QteSortie':quantity,'QteRetourAvantFacture':back,'QteFacturee':net,
             'PUFacture':price,'MontantLigne':amount,'DeviseCode':snapshot['bon'].get('DeviseCode')})
     if total>MAX_AMOUNT:raise APIError('Le montant net dépasse la capacité d’une facture.','INVOICE_AMOUNT_LIMIT',409)
     return lines,total
@@ -306,14 +307,13 @@ def write_invoice(actor,command_id,body,operation):
     db.ensure_writable()
     if not actor.admin:raise APIError('Accès réservé aux gestionnaires autorisés.','FORBIDDEN',403)
     require_module(actor,'logistique','manage')
-    if not actor.organisation:raise APIError('Une organisation est requise pour facturer.','ORGANISATION_REQUIRED',403)
+    from apps.core.tenancy import require_entity,assert_document
+    require_entity(actor)
     command_id=positive(command_id);data=request_data(body);fingerprint=request_hash(actor,command_id,data,operation)
     with transaction.atomic():
         db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['invoice:'+str(actor.pk)+':'+data['requestId']])
         raw=get_record(model('T_Commande'),actor,{'ID_Commande':command_id},lock=True)
-        owner=db.one('SELECT "IdEntiteFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s FOR SHARE',[raw.get('ID_UserFk')])
-        if not owner or owner['IdEntiteFk']!=actor.organisation:
-            raise APIError('Ce bon appartient à une autre organisation.','INVOICE_ORGANISATION',403)
+        assert_document(actor,raw)
         if not storage_ready():raise APIError('Le socle de facturation n’est pas encore installé.','INVOICE_UNAVAILABLE',503)
         proof=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log"
             WHERE "TableName"='logistique.T_Facture' AND "Operation" IN ('INVOICE_ISSUE','INVOICE_UPDATE')

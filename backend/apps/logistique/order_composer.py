@@ -18,11 +18,12 @@ from apps.core.registry import model, view
 from apps.core.repository import audit, clean, coerce, get_record, mutate, positive, predicate
 from apps.core.responses import APIError, ExactEncoder, ok
 from .lots import normalize as normalize_lots, outgoing_type
+from .quantities import quantity as exact_quantity, line_amount
 from .services import mutate_line
 
 MAX_LINES=50
 MAX_AMOUNT=Decimal('9999999999.99')
-HEADER_GENERATED={'ID_Commande','DateHeureAutoCmd','DateHeureAutoFacture','MontantHT','MontantTTC','MontantRegleFacture','MontantResteFacture'}
+HEADER_GENERATED={'IdEntiteFk','ID_Commande','DateHeureAutoCmd','DateHeureAutoFacture','MontantHT','MontantTTC','MontantRegleFacture','MontantResteFacture'}
 
 
 def composition_error(field,message,code='COMPOSITION_VALIDATION',status=400):
@@ -74,6 +75,8 @@ def composition_data(actor,body,old=None,old_lines=None):
     except APIError:composition_error('bon.ID_UserFk','Le responsable est le compte connecté.')
     if owner!=expected_owner:composition_error('bon.ID_UserFk','Le responsable initial du bon doit être conservé.','COMPOSITION_OWNER',403)
     header['ID_UserFk']=owner
+    from apps.core.tenancy import require_entity
+    header['IdEntiteFk']=require_entity(actor)
     for key in ('ID_TypeCmdFk','ID_DeviseFk'):
         try:header[key]=positive(header[key])
         except APIError:composition_error('bon.'+key,'Choisissez une valeur de la liste.')
@@ -92,20 +95,20 @@ def composition_data(actor,body,old=None,old_lines=None):
         if identifier in seen:composition_error(prefix+'.ID_ArticleFk','Cet article figure déjà dans le panier.')
         seen.add(identifier);line['ID_ArticleFk']=identifier
         quantity,price=line['QteCmdDetail'],line['PUCmdDetail']
-        if quantity is None or quantity<=0 or quantity>2147483647 or quantity!=int(quantity):
-            composition_error(prefix+'.QteCmdDetail','Indiquez une quantité entière entre 1 et 2 147 483 647.')
+        try:quantity=exact_quantity(quantity,'QteCmdDetail')
+        except APIError as error:mapped_error(error,prefix)
         if price is None or price<0:
             composition_error(prefix+'.PUCmdDetail','Renseignez le prix unitaire dans la devise du bon. Le prix peut être nul.')
-        line['QteCmdDetail']=int(quantity);line['PUCmdDetail']=price.quantize(Decimal('0.01'))
+        line['QteCmdDetail']=quantity;line['PUCmdDetail']=price.quantize(Decimal('0.01'))
         total_quantity+=line['QteCmdDetail']
         if total_quantity>99999999999:composition_error(prefix+'.QteCmdDetail','La quantité cumulée dépasse la capacité de ce bon.')
-        total+=line['QteCmdDetail']*line['PUCmdDetail']
+        total+=line_amount(line['QteCmdDetail'],line['PUCmdDetail'])
         if total>MAX_AMOUNT:composition_error(prefix+'.PUCmdDetail','Le total du bon dépasse 9 999 999 999,99 dans sa devise.')
         raw_lots=item.get('Lots',[])
         try:
             # Les anciennes ventilations partielles sont conservables, jamais étendues silencieusement.
             if old is not None and isinstance(raw_lots,list):
-                lot_sum=sum(positive(lot.get('Quantite'),'Quantité du lot') for lot in raw_lots if isinstance(lot,dict))
+                lot_sum=sum(exact_quantity(lot.get('Quantite'),'Quantite') for lot in raw_lots if isinstance(lot,dict))
                 lots=normalize_lots(raw_lots,lot_sum)
                 if lot_sum>line['QteCmdDetail']:raise APIError('La ventilation dépasse la quantité de cette ligne.')
                 previous=next((row for row in (old_lines or []) if row['ID_ArticleFk']==identifier),None)
@@ -136,11 +139,9 @@ def article_contexts(actor,lines,*,active=True):
         prefix='lignes.'+str(item['index'])+'.ID_ArticleFk'
         try:article=get_record(model('T_Article'),actor,{'ID_Article':item['data']['ID_ArticleFk']},lock=True)
         except APIError as error:mapped_error(error,prefix)
-        owner_id=article.get('ID_UserFK')
-        if owner_id not in owners:
-            owners[owner_id]=db.one('SELECT "IdEntiteFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s FOR SHARE',[owner_id])
-        owner=owners[owner_id]
-        if not owner or owner['IdEntiteFk']!=actor.organisation:
+        from apps.core.tenancy import assert_document
+        assert_document(actor,article)
+        if article['IdEntiteFk']!=actor.organisation:
             composition_error(prefix,'Choisissez un article de votre organisation.','COMPOSITION_ORGANISATION',403)
         if active and article.get('ValideArticle') is not True:
             composition_error(prefix,'Cet article est inactif. Actualisez le catalogue.','ARTICLE_INACTIVE',409)
@@ -206,7 +207,7 @@ class OrderComposerView(APIView):
 
 
 def lot_signature(lots):
-    return sorted((str(row['NumeroLot']).casefold(),int(row['Quantite']),
+    return sorted((str(row['NumeroLot']).casefold(),Decimal(str(row['Quantite'])),
                    row.get('DatePeremptionLot').isoformat() if hasattr(row.get('DatePeremptionLot'),'isoformat') else row.get('DatePeremptionLot'))
                   for row in lots)
 
@@ -231,7 +232,7 @@ def composition_snapshot(actor,command_id):
     invoice_ready=db.one("SELECT to_regclass('logistique.\"T_Facture\"') IS NOT NULL AS ready")['ready']
     invoice=('EXISTS(SELECT 1 FROM logistique."T_Facture" f WHERE f."ID_CommandeFk"=v."ID_Commande")' if invoice_ready else 'FALSE')
     row=db.one('''SELECT (to_jsonb(cv)||to_jsonb(v)) AS bon,
-        (SELECT own."IdEntiteFk" FROM systeme."T_Utilisateurs" own WHERE own."IdUser"=v."ID_UserFk") AS owner_entity,
+        v."IdEntiteFk" AS owner_entity,
         (SELECT COALESCE(jsonb_agg((COALESCE(to_jsonb(dv),'{}'::jsonb)||to_jsonb(d))||jsonb_build_object(
             'Lots',(SELECT COALESCE(jsonb_agg(jsonb_build_object('ID_LotArticle',lot."ID_LotArticle",'NumeroLot',lot."NumeroLot",
                         'DatePeremptionLot',lot."DatePeremptionLot",'Quantite',ml."Quantite") ORDER BY lot."NumeroLot",lot."ID_LotArticle"),'[]'::jsonb)
@@ -289,8 +290,9 @@ def update_composition(actor,command_id,body):
         db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['compose-update:'+str(actor.pk)+':'+request_id])
         current=get_record(model('T_Commande'),actor,{'ID_Commande':command_id},lock=True)
         snapshot=composition_snapshot(actor,command_id)
-        owner=db.one('SELECT "IdEntiteFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s FOR SHARE',[current.get('ID_UserFk')])
-        if not owner or owner['IdEntiteFk']!=actor.organisation:
+        from apps.core.tenancy import assert_document
+        assert_document(actor,current)
+        if current['IdEntiteFk']!=actor.organisation:
             composition_error('bon','Ce bon appartient à une autre organisation.','COMPOSITION_ORGANISATION',403)
         data=composition_data(actor,body,old=current,old_lines=snapshot['lignes'])
         fingerprint=edit_composition_hash(actor,data,command_id)
@@ -311,6 +313,7 @@ def update_composition(actor,command_id,body):
         patch=dict(data['_providedHeader'])
         protect_command_code(patch,current)
         patch.pop('ID_UserFk',None)
+        patch.pop('IdEntiteFk',None)
         existing={row['ID_ArticleFk']:row for row in snapshot['lignes']}
         requested={item['data']['ID_ArticleFk']:item for item in data['lignes']}
         # Verrouiller tous les articles une seule fois, dans l’ordre, avant la première écriture.

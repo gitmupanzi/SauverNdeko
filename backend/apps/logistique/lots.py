@@ -4,6 +4,7 @@ from decimal import Decimal
 from apps.core import db
 from apps.core.responses import APIError
 from apps.core.repository import positive
+from .quantities import quantity as exact_quantity
 
 def line_lots(commande_id,article_id):
     return db.query('''SELECT l."ID_LotArticle",l."NumeroLot",l."DatePeremptionLot",ml."Quantite"
@@ -20,7 +21,7 @@ def normalize(rows,quantity,*,allow_partial=False):
         if not isinstance(number,str) or not number.strip() or len(number.strip())>100:raise APIError("Renseignez un numéro de lot de 100 caractères au maximum.","LOT_VALIDATION",400)
         number=number.strip();key=number.casefold()
         if key in seen:raise APIError("Un numéro de lot ne doit apparaître qu’une fois dans la ligne.","LOT_VALIDATION",400)
-        seen.add(key);qty=positive(row.get("Quantite"),"Quantité du lot")
+        seen.add(key);qty=exact_quantity(row.get("Quantite"),"Quantite")
         expiry=row.get("DatePeremptionLot")
         try:expiry=date.fromisoformat(expiry) if expiry else None
         except (ValueError,TypeError):raise APIError("Date de péremption du lot invalide.","LOT_VALIDATION",400)
@@ -32,7 +33,7 @@ def normalize(rows,quantity,*,allow_partial=False):
 def unchanged(rows,previous,quantity):
     values=normalize(rows,quantity,allow_partial=True)
     def signature(items):
-        return sorted((str(row["NumeroLot"]).strip().casefold(),int(row["Quantite"]),
+        return sorted((str(row["NumeroLot"]).strip().casefold(),Decimal(str(row["Quantite"])),
             row["DatePeremptionLot"].isoformat() if hasattr(row.get("DatePeremptionLot"),"isoformat") else row.get("DatePeremptionLot")) for row in items)
     return signature(values)==signature(previous)
 

@@ -1,3 +1,4 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
@@ -32,7 +33,7 @@ function Badge({value}){return value==null||value===""?"—":<span className={"e
 
 export default function Commandes({references,refreshKey,onDataChanged,onOpenDetails,sharedTable,onToggleFkMappings}) {
   const {user}=useAuth(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
-  const canWrite=user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false;
+  const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false;
   const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateCmd",sortDir:"desc"}),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
   const [search,setSearch]=useState(sharedTable?.searchValue||""),[criteria,setCriteria]=useState(()=>({...EMPTY_FILTERS,q:sharedTable?.searchValue||""})),[filters,setFilters]=useState(EMPTY_FILTERS),[filtersOpen,setFiltersOpen]=useState(false),[filtersError,setFiltersError]=useState("");
   const [columnsOpen,setColumnsOpen]=useState(false),columnsAnchorRef=useRef(null),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS);
@@ -87,7 +88,7 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
     {key:"RefCmd",label:"Référence",width:170},
     {key:"DateCmd",label:"Date et heure",width:180,render:row=>formatDate(row.DateCmd)},
     {key:"TypeCmd",label:"Type de bon",width:160,render:row=>row.TypeCmd||options.typeId.find(option=>option.value===String(row.ID_TypeCmdFk))?.label||"—"},
-    {key:"NomClientSaisi",label:"Tiers",width:185,render:row=>row.NomClientSaisi||options.client.find(option=>option.value===String(row.ID_ClientFk))?.label||"—"},
+    {key:"NomClientSaisi",label:"Tiers",width:185,render:row=>row.NomClientSaisi||options.client.find(option=>option.value===String(row.ID_TiersFk))?.label||"—"},
     {key:"StatutCmd",label:"Statut du bon",width:160,render:row=><Badge value={row.StatutCmd||options.statutId.find(option=>option.value===String(row.ID_StatutCmdFk))?.label}/>},
     {key:"NbLignes",label:"Lignes",width:100,align:"right",render:row=><button type="button" className="erp-object-link" aria-label={"Voir les lignes du bon "+(row.CodeCmd||"sans code")} onClick={event=>{event.stopPropagation();openLines(row);}}>{formatNumber(row.NbLignes)}</button>,renderText:row=>formatNumber(row.NbLignes)},
     {key:"NbArticlesDistincts",label:"Articles",width:110,align:"right",render:row=>formatNumber(row.NbArticlesDistincts)},

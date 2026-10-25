@@ -199,6 +199,7 @@ class T_Niveau_5(models.Model):
 
 
 class T_Article(models.Model):
+    IdEntiteFk = models.IntegerField(null=True)
     ID_DeviseFk = models.IntegerField()
     PoidsUnitaire = models.DecimalField(max_digits=14, decimal_places=6, null=True)
     ID_UnitePoidsFk = models.IntegerField(null=True)
@@ -215,7 +216,7 @@ class T_Article(models.Model):
     QteArticle = models.DecimalField(max_digits=14, decimal_places=3)
     PUArticle = models.DecimalField(max_digits=12, decimal_places=2)
     PVArticle = models.DecimalField(max_digits=12, decimal_places=2)
-    QteMinArticle = models.IntegerField(null=True)
+    QteMinArticle = models.DecimalField(max_digits=14, decimal_places=3, null=True)
     PhotoArticle = models.TextField(null=True)
     ObsArticle = models.TextField(null=True)
     ValideArticle = models.BooleanField()
@@ -230,6 +231,9 @@ class T_Article(models.Model):
 
 
 class T_Commande(models.Model):
+    ID_DestinationFk = models.IntegerField(null=True)
+    IdEntiteFk = models.IntegerField(null=True)
+    ID_TiersFk = models.BigIntegerField(null=True)
     ID_DeviseFk = models.IntegerField()
     ID_Commande = models.AutoField(primary_key=True)
     ID_TypeCmdFk = models.IntegerField(null=True)
@@ -292,7 +296,7 @@ class T_Mouvement(models.Model):
     ID_cmdFk = models.IntegerField(null=True)
     DateHeureAutoMvt = models.DateTimeField(null=True)
     DateMvt = models.DateTimeField(null=True)
-    QteMvt = models.IntegerField(null=True)
+    QteMvt = models.DecimalField(max_digits=14, decimal_places=3, null=True)
     PUMvt = models.DecimalField(max_digits=12, decimal_places=2, null=True)
 
     class Meta:
@@ -301,6 +305,7 @@ class T_Mouvement(models.Model):
 
 
 class T_Reglements(models.Model):
+    ID_TiersFk = models.BigIntegerField(null=True)
     ID_DeviseFk = models.IntegerField()
     ID_Reglement = models.AutoField(primary_key=True)
     CodeFactureFk = models.TextField(null=True)
@@ -624,7 +629,31 @@ class T_MouvementLot(models.Model):
     pk = models.CompositePrimaryKey("ID_MvtFk", "ID_LotArticleFk")
     ID_MvtFk = models.IntegerField()
     ID_LotArticleFk = models.IntegerField()
-    Quantite = models.IntegerField()
+    Quantite = models.DecimalField(max_digits=14, decimal_places=3)
     class Meta:
         managed = False
         db_table = '"logistique"."T_MouvementLot"'
+
+class T_Client(models.Model):
+    ID_Client=models.BigAutoField(primary_key=True)
+    IdEntiteFk=models.IntegerField()
+    Nom=models.TextField()
+    Nature=models.TextField()
+    ID_TypeClientFk=models.IntegerField()
+    Email=models.TextField(null=True)
+    Telephone=models.TextField(null=True)
+    Adresse=models.TextField(null=True)
+    IdUserFk=models.IntegerField(null=True)
+    IdProfessionnelFk=models.IntegerField(null=True)
+    IdEntiteRepresenteeFk=models.IntegerField(null=True)
+    ObsClient=models.TextField(null=True)
+    Actif=models.BooleanField(default=True)
+    CreeParUserFk=models.IntegerField()
+    ModifieParUserFk=models.IntegerField()
+    DateCreation=models.DateTimeField()
+    DateModification=models.DateTimeField()
+    class Meta:
+        managed=False
+        db_table='"logistique"."T_Client"'
+
+from .inventory_models import T_UniteStockPrecision, T_Inventaire, T_InventaireLigne

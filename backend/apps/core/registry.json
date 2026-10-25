@@ -3156,12 +3156,12 @@
           "table_schema": "logistique",
           "table_name": "T_Article",
           "column_name": "QteMinArticle",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -3295,6 +3295,18 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "T_Article"
         }
       ],
       "relations": [
@@ -3875,6 +3887,42 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "T_Commande"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "T_Commande"
+        },
+        {
+          "column_name": "ID_DestinationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "T_Commande"
         }
       ],
       "relations": [
@@ -4447,12 +4495,12 @@
           "table_schema": "logistique",
           "table_name": "T_Mouvement",
           "column_name": "QteMvt",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -4686,6 +4734,18 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "T_Reglements"
         }
       ],
       "relations": [
@@ -9418,12 +9478,12 @@
           "table_schema": "logistique",
           "table_name": "T_MouvementLot",
           "column_name": "Quantite",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "NO",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         }
       ],
@@ -12222,12 +12282,12 @@
           "table_schema": "logistique",
           "table_name": "V_AlertStock",
           "column_name": "QteMinArticle",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -12385,6 +12445,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_AlertStock"
         }
       ]
     },
@@ -12624,12 +12696,12 @@
           "table_schema": "logistique",
           "table_name": "V_Article",
           "column_name": "QteMinArticle",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -13027,6 +13099,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Article"
         }
       ]
     },
@@ -13201,6 +13285,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_AuditStock"
         }
       ]
     },
@@ -14161,6 +14257,66 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "ID_DestinationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "DestinationLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
         }
       ]
     },
@@ -14539,6 +14695,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail"
         }
       ]
     },
@@ -15055,6 +15247,66 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails"
+        },
+        {
+          "column_name": "ID_DestinationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails"
+        },
+        {
+          "column_name": "DestinationLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CommandesSansDetails"
         }
       ]
     },
@@ -15169,6 +15421,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_ConsoMensuelle"
         }
       ]
     },
@@ -15319,6 +15583,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_CouvertureStock"
         }
       ]
     },
@@ -15474,12 +15750,12 @@
           "table_schema": "logistique",
           "table_name": "V_Mouvement",
           "column_name": "QteMvt",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -15577,6 +15853,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement"
         }
       ]
     },
@@ -15744,12 +16056,12 @@
           "table_schema": "logistique",
           "table_name": "V_MouvementStock",
           "column_name": "QteMvt",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -15859,6 +16171,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock"
         }
       ]
     },
@@ -16141,6 +16489,66 @@
           "numeric_precision": 12,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "ID_DestinationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "DestinationLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
         }
       ]
     },
@@ -20039,12 +20447,12 @@
           "table_schema": "logistique",
           "table_name": "V_MouvementLot",
           "column_name": "Quantite",
-          "data_type": "integer",
+          "data_type": "numeric",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 32,
-          "numeric_scale": 0,
+          "numeric_precision": 14,
+          "numeric_scale": 3,
           "is_identity": "NO"
         },
         {
@@ -20393,6 +20801,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Reglements"
+        },
+        {
+          "column_name": "ID_TiersFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Reglements"
+        },
+        {
+          "column_name": "TiersNom",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Reglements"
         }
       ],
       "primaryKey": [

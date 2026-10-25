@@ -14,6 +14,15 @@ from apps.core.responses import APIError
 
 def validate_header(obj, data, old, actor):
     name = obj["name"]
+    from apps.core.tenancy import require_entity,assert_document,validate_tiers
+    if name in {'T_Article','T_Commande'}:
+        require_entity(actor)
+        if old:assert_document(actor,old)
+        else:data['IdEntiteFk']=actor.organisation
+    if name=='T_Commande':
+        validate_tiers(actor,data,old)
+        from .destinations import validate_destination
+        validate_destination(data,old)
     effective = {**(old or {}), **data}
     rules = {
         "T_Article": {
@@ -84,10 +93,7 @@ def validate_header(obj, data, old, actor):
         for field in ["QteArticle", "PUArticle", "PVArticle", "QteMinArticle"]:
             if effective.get(field) is not None and effective[field] < 0:
                 raise APIError(field + " ne peut pas être négatif.")
-        if effective.get("QteArticle") is not None and effective["QteArticle"] != int(
-            effective["QteArticle"]
-        ):
-            raise APIError("Stock entier requis par T_Mouvement.QteMvt.")
+        # La précision explicite de l’unité est vérifiée par article_rules et PostgreSQL.
     if name == "T_Reglements":
         code = effective.get("CodeFactureFk")
         if not isinstance(code, str) or not code.strip():
@@ -119,6 +125,8 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         commande = get_record(
             model("T_Commande"), actor, {"ID_Commande": commande_id}, lock=True
         )
+        from apps.core.tenancy import assert_document
+        assert_document(actor,commande)
         from .document_rules import assert_stock_editable
         from .stock_returns import is_historical_return_line
         assert_stock_editable(commande)
@@ -158,6 +166,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             article = get_record(
                 model("T_Article"), actor, {"ID_Article": current_id}, lock=True
             )
+            assert_document(actor,article)
             if current_id == next_id:
                 selected_article = article
             if (
@@ -173,8 +182,8 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             if selected_article.get("ID_DeviseFk") != commande.get("ID_DeviseFk") and (old is None or next_id != article_id) and data.get("PUCmdDetail") is None:
                 raise APIError("Saisissez le prix de cette ligne dans la devise du bon.", "CURRENCY_PRICE_REQUIRED", 400)
             qty = effective.get("QteCmdDetail")
-            if qty is None or qty <= 0 or qty > 2147483647 or qty != int(qty):
-                raise APIError("QteCmdDetail doit être un entier strictement positif.")
+            from .quantities import for_unit
+            qty=for_unit(qty,selected_article["ID_UniteFk"],"QteCmdDetail")
             price = effective.get("PUCmdDetail")
             if price is None:
                 raise APIError({"PUCmdDetail":"Renseignez le prix unitaire dans la devise du bon."},"LINE_VALIDATION",400)
@@ -389,12 +398,9 @@ def references(actor):
         'SELECT DISTINCT "CodeFacture" AS code FROM logistique."T_Commande" WHERE "CodeFacture" IS NOT NULL AND trim("CodeFacture")<>\'\' ORDER BY "CodeFacture"',
         actor,
     )
-    # Le modèle installé ne possède pas T_Personne : conserver les clients déjà utilisés,
-    # filtrés par les commandes/règlements autorisés avant la jointure du libellé public.
-    clients = scoped_query(
-        'SELECT DISTINCT s.value AS id,COALESCE(NULLIF(trim(e."NomEntite"),\'\'),\'Client #\'||s.value::text) AS label FROM (SELECT "ID_ClientFk" AS value FROM logistique."T_Commande" UNION SELECT "ID_ClientFk" AS value FROM logistique."T_Reglements") s LEFT JOIN systeme."T_Entite" e ON e."IdEntite"=s.value WHERE s.value IS NOT NULL ORDER BY label,id',
-        actor,
-    )
+    from .tiers import scope as tiers_scope
+    tiers_where,tiers_args=tiers_scope(actor)
+    clients=db.query('SELECT t."ID_Client" AS id,t."Nom" AS label,t."ID_TypeClientFk" AS "typeId",t."TypeClient" AS "typeLabel" FROM logistique."V_Client" t WHERE '+tiers_where+' AND t."Actif" ORDER BY t."Nom",t."ID_Client"',tiers_args)
     result["weightUnits"] = db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr
         FROM referentiel."T_Generique" g
         JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"

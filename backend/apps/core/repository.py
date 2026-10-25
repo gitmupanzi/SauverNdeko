@@ -275,6 +275,10 @@ def payload(obj, body, actor, creating=False):
             or columns[key]["is_identity"] == "YES"
         ):
             raise APIError("Champ calculé ou identifiant non modifiable : " + key)
+        if obj["schema"]=="logistique" and obj["name"] in {"T_Article","T_Commande"} and key=="IdEntiteFk":
+            from .tenancy import require_entity
+            if value is not None and coerce(columns[key],value)!=require_entity(actor):raise APIError("Entreprise propriétaire non modifiable.","ENTITY_MISMATCH",403)
+            continue
         if key in {"ID_UserFK", "ID_UserFk"} and not actor.global_admin:
             if coerce(columns[key], value) != actor.pk:
                 raise APIError(
@@ -305,6 +309,9 @@ def payload(obj, body, actor, creating=False):
             raise APIError("Le mot de passe doit comporter au moins 12 caractères.")
         result["MotdepasseUser"] = make_password(result["MotdepasseUser"])
     if creating:
+        if obj['schema']=='logistique' and obj['name'] in {'T_Article','T_Commande'}:
+            from .tenancy import require_entity
+            result['IdEntiteFk']=require_entity(actor)
         if "ID_UserFK" in columns:
             result["ID_UserFK"] = actor.pk
         if "ID_UserFk" in columns:
@@ -312,6 +319,8 @@ def payload(obj, body, actor, creating=False):
         if "IdEntiteFk" in columns and not actor.global_admin:
             result["IdEntiteFk"] = actor.organisation
     for relation in obj["relations"]:
+        if obj['schema']=='logistique' and obj['name'] in {'T_Article','T_Commande'} and relation['from'] in [['ID_UserFK'],['ID_UserFk']]:
+            continue  # Auteur authentifié à la création, immuable ensuite ; indépendant de l'entreprise active.
         if (
             len(relation["from"]) == 1
             and relation["from"][0] in result
@@ -370,6 +379,16 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if name in {"T_Article","T_Commande"}:
+        from .tenancy import require_entity,assert_document
+        require_entity(actor)
+        if old:
+            assert_document(actor,old)
+            body=dict(body or {})
+            for creator in ('ID_UserFK','ID_UserFk'):
+                if creator in body:
+                    if str(body[creator])!=str(old.get(creator)):raise APIError('L’auteur initial est conservé.','AUTHOR_IMMUTABLE',409)
+                    del body[creator]
     if name == "T_Commande":
         from apps.logistique.document_rules import check_revision, assert_deletable, protect_command_code
         if not isinstance(body or {},dict):raise APIError("Objet JSON attendu.")

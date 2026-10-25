@@ -1,3 +1,4 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
 import { currencyOptions } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
 import ArticleEditor from "./ArticleEditor";
@@ -51,7 +52,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const [serverMeta, setServerMeta] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
-  const canWrite = currentUser?.permissions?.canWriteData === true;
+  const canWrite = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
   const canExport = currentUser?.permissions?.canExportData !== false;
   const [search, setSearch] = useState(sharedTable?.searchValue || "");
   const [criteria, setCriteria] = useState(() => ({ ...EMPTY_FILTERS, q:sharedTable?.searchValue || "" }));

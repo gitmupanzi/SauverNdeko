@@ -9,8 +9,9 @@ import SearchSelect from "../../components/SearchSelect";
 import LotFields,{lotErrors} from "../../components/LotFields";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import {formatCurrency,formatDate,formatNumber,asArrayPayload} from "./logistiqueShared";
+import {roundMoney} from "../../utils/quantities";
 import {multiplyDecimal} from "../../utils/money";
-import {lotAvailability,wholeQuantity,unchangedLotAllocation} from "../../utils/lotAllocation";
+import {lotAvailability,wholeQuantity,quantityString,unchangedLotAllocation} from "../../utils/lotAllocation";
 import {lineForm,lineLots,linePrice,lineErrors,linePayload,lineDirection,closedBon} from "./lineForm";
 
 const read=(path)=>requestJson("/api/logistique"+path,{requiresAuth:true});
@@ -68,8 +69,8 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   Promise.all([read("/commandes/"+line.ID_CmdFk),read("/commande-details/"+line.ID_CmdFk+"/"+line.ID_ArticleFk),read("/articles/"+line.ID_ArticleFk)]).then(([parent,current,product])=>{
    if(!active)return;
    if(!parent?.success||!current?.success||!product?.success){setError([parent,current,product].find(response=>!response?.success)?.message||"La ligne n’a pas pu être chargée.");setRecord(null);setMeta(null);setLoading(false);return;}
-   const next=lineForm(current.data),nextLots=lineLots(current.data?.Lots||[]).map(row=>({...row,Quantite:wholeQuantity(row.Quantite)?.toString()??row.Quantite}));
-   next.QteCmdDetail=wholeQuantity(next.QteCmdDetail)?.toString()??next.QteCmdDetail;
+   const next=lineForm(current.data),nextLots=lineLots(current.data?.Lots||[]).map(row=>({...row,Quantite:quantityString(wholeQuantity(row.Quantite))??row.Quantite}));
+   next.QteCmdDetail=quantityString(wholeQuantity(next.QteCmdDetail))??next.QteCmdDetail;
    setBon(parent.data);setBonMeta(parent.meta);setRecord(current.data);setMeta(current.meta);setArticle(product.data);setValues(next);setLots(nextLots);setInitial(JSON.stringify({values:next,lots:nextLots}));setLoading(false);
   });return()=>{active=false;};
  },[creating,line?.ID_CmdFk,line?.ID_ArticleFk,reload]);
@@ -149,11 +150,11 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
      <Field id={prefix+"devise"} label="Devise du bon"><input id={prefix+"devise"} readOnly value={bon?.DeviseCode||"Non renseignée"}/></Field>
     </Section>
     <Section title="Quantité et prix" icon="cash">
-     {input("QteCmdDetail","Quantité *",{inputMode:"numeric",maxLength:10})}
+     {input("QteCmdDetail","Quantité *",{inputMode:"decimal",maxLength:15})}
      {input("PUCmdDetail","Prix unitaire *"+(bon?.DeviseCode?" · "+bon.DeviseCode:""),{inputMode:"decimal",hint:direction==="entree"?"Prix d’achat dans la devise du bon.":"Prix dans la devise du bon, sans conversion automatique."})}
-     <Field id={prefix+"total"} label="Montant de la ligne" wide><output id={prefix+"total"} className="stock-receipt-total">{formatCurrency(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail),bon?.DeviseCode)}</output></Field>
+     <Field id={prefix+"total"} label="Montant de la ligne" wide><output id={prefix+"total"} className="stock-receipt-total">{formatCurrency(roundMoney(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail)),bon?.DeviseCode)}</output></Field>
     </Section>
-    <div id={prefix+"Lots"} tabIndex={-1}><LotFields value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>
+    <div id={prefix+"Lots"} tabIndex={-1}><LotFields articleId={article?.ID_Article} value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>
     <Section title="Informations complémentaires" icon="document">
      <Field id={prefix+"ObsCmdDetail"} label="Observation" wide><textarea id={prefix+"ObsCmdDetail"} name="ObsCmdDetail" value={values.ObsCmdDetail} onChange={e=>change("ObsCmdDetail",e.target.value)} disabled={blocked||Boolean(reason)}/></Field>
      {input("LieuCmdDetail","Identifiant du lieu",{inputMode:"numeric",hint:"Facultatif, selon le paramétrage de votre organisation."})}

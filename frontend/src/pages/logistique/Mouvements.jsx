@@ -1,3 +1,4 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
@@ -81,7 +82,7 @@ export default function Mouvements({references,refreshKey,sharedTable,onToggleFk
  const rights=moduleRights(user,"logistique"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
  const scopeKey=JSON.stringify([user?.IdUser,user?.IdEntiteFk,user?.permissions?.canAccessAdmin,user?.permissions?.canWriteData,user?.permissions?.canExportData,accessSignature(user)]);
  const canExport=canRead&&Boolean(user?.permissions)&&user.permissions.canExportData!==false&&rights.canExport===true;
- const canManage=canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;
+ const canManage=useEntityScope().canWrite&&canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;
  const managePermission=useRef(canManage);managePermission.current=canManage;
  const shared=useRef(sharedTable);shared.current=sharedTable;
  const previousScope=useRef(scopeKey),columnsAnchorRef=useRef(null),exportRequest=useRef(null);

@@ -1,5 +1,6 @@
 import { ThemeProvider } from "./contexts/ThemeContext";
 import React from "react";
+import {EntityScopeProvider,useEntityScope} from "./contexts/EntityScopeContext";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -11,11 +12,13 @@ import { ConsultationProvider } from "./components/ConsultationProvider";
 import "./styles.css";
 import "./theme.css";
 
+function EntityWorkspace(){const {scopeKey}=useEntityScope();return <FollowupFoldersProvider key={scopeKey}><ConsultationProvider><App /></ConsultationProvider></FollowupFoldersProvider>;}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ThemeProvider><BrowserRouter>
       <AuthProvider>
-        <FollowupFoldersProvider><ConsultationProvider><App /></ConsultationProvider></FollowupFoldersProvider>
+        <EntityScopeProvider><EntityWorkspace /></EntityScopeProvider>
       </AuthProvider>
     </BrowserRouter></ThemeProvider>
   </React.StrictMode>

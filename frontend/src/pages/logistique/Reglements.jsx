@@ -1,3 +1,4 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useConsultations} from "../../components/ConsultationProvider";
@@ -28,7 +29,7 @@ function State({value}){if(value==null||value==="")return "—";const label=norm
 
 export default function Reglements({references,refreshKey,onDataChanged,onToggleFkMappings,section,onSectionChange}){
  const {user}=useAuth(),rights=moduleRights(user,"logistique"),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),tabsId=useId();
- const canWrite=user?.permissions?.canWriteData===true&&rights.canManage===true,canExport=user?.permissions?.canExportData!==false&&rights.canExport===true;
+ const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true&&rights.canManage===true,canExport=user?.permissions?.canExportData!==false&&rights.canExport===true;
  const [batch,setBatch]=useState(null),[selectedInvoices,setSelectedInvoices]=useState([]),[localSection,setLocalSection]=useState("factures"),[invoiceTarget,setInvoiceTarget]=useState(null),[selectedInvoice,setSelectedInvoice]=useState(null),[editor,setEditor]=useState(null),[deleting,setDeleting]=useState(null),[invoiceEditor,setInvoiceEditor]=useState(null),[revision,setRevision]=useState(0),[feedback,setFeedback]=useState(null);
  const controlledSection=["factures","reglements"].includes(section)?section:null,active=controlledSection||localSection;
  function setActive(next){if(!["factures","reglements"].includes(next))return;setLocalSection(next);onSectionChange?.(next);}

@@ -62,8 +62,11 @@ def validate(data, old, actor):
         if value is not None and value < 0:
             errors[key] = label + " : la valeur doit être positive ou nulle."
     stock = effective.get("QteArticle")
-    if stock is not None and (stock != int(stock) or stock > 2147483647):
-        errors["QteArticle"] = "Renseignez un stock entier entre 0 et 2 147 483 647."
+    from .quantities import for_unit
+    for key in ("QteArticle","QteMinArticle"):
+        if effective.get(key) is not None:
+            try:for_unit(effective[key],effective.get("ID_UniteFk"),key,zero=True)
+            except APIError as error:errors[key]=str(error.detail.get(key,error.detail)) if isinstance(error.detail,dict) else str(error.detail)
     if old:
         if "QteArticle" in data:
             if data["QteArticle"] != old["QteArticle"]:

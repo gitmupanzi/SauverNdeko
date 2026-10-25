@@ -13,6 +13,7 @@ Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/
 
 - Lire [l’architecture](references/architecture.md) pour les points d’entrée et les responsabilités.
 - Lire [messagerie et réinitialisation](references/messagerie-reinitialisation.md) pour l’expéditeur, les secrets SMTP locaux et la récupération sécurisée des comptes.
+- Pour la propriété durable des documents, T_Client et les opérations du compte global, lire les [décisions Entités, tiers et stock](../../../skills/sauverndeko-erp/references/entites-tiers-et-stock.md).
 - Lire [Articles, photos et lots](references/articles-lots-photos.md) pour les écritures avec révision, poids, informations et ventilation des mouvements par lot.
 - Lire [la décision d’accès PostgreSQL](references/decision-acces-postgresql.md) pour la décision mise à jour.
 - Lire [le bilan métier et technique](../../../SQL/documentation/Audit_Metier_20261024.md) pour les vérifications et limites.
@@ -31,8 +32,8 @@ Utiliser la connexion Django unique ; pas de Prisma ni de deuxième pool dans le
 
 - Priorité aux vues PostgreSQL communes ; droits, filtres, comptages et agrégats côté serveur avant pagination.
 - Contrôler utilisateur actif, rôle, organisation, objet et FK sur chaque chemin. Is_staff ne donne pas un périmètre global. Les objets sans règle locale démontrée sont refusés aux gestionnaires locaux.
-- L’organisation actuelle provient du créateur, faute de FK immuable dans les tables. Ne présenter cette solution comme une isolation historique définitive. La propriété d’un objet ne doit pas être modifiée par un gestionnaire local.
-- Les lignes commande verrouillent le parent puis les articles dans un ordre stable. Les triggers réalisent stock/mouvements/totaux ; ne pas appliquer un deuxième effet en Python. Quantités entières selon T_Mouvement.QteMvt.
+- Les migrations 09/13 installent une Entité propriétaire durable sur Article/Commande et T_Client. Le contexte global X-Entite-ID est validé par tenancy ; il ne change pas l’auteur réel. Les objets sont partagés dans leur entreprise selon les droits, et les dossiers personnels restent privés. Les anciens ID_ClientFk ne sont pas convertis par égalité numérique ; les nouvelles références utilisent ID_TiersFk.
+- Les lignes commande verrouillent le parent puis les articles dans un ordre stable. Les triggers réalisent stock/mouvements/totaux ; ne pas appliquer un deuxième effet en Python. Quantités exactes à trois décimales au maximum selon la précision explicite de l’unité (défaut zéro). La migration 10 harmonise mouvements, lignes, lots et factures ; arrondir les montants par ligne à deux décimales.
 - T_Mouvement, les journaux et archives sont en lecture seule. Préserver désactivation et suppression définitive distinctes.
 - Les montants sont des Decimal et des chaînes JSON exactes ; les absences restent distinctes de zéro. Ne pas inventer de devise ou additionner des unités incompatibles. Les JSON/JSONB des curseurs bruts sont décodés par db.query avant nettoyage récursif ; les UUID sont pris en charge par ExactEncoder. Ne pas retourner une image JSON comme simple texte qui contournerait le masquage des secrets.
 - Écriture métier et audit partagent la transaction. Masquer mots de passe et secrets dans réponses/journaux.

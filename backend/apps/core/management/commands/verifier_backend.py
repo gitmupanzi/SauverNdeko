@@ -1,6 +1,7 @@
 """Diagnostic GET uniquement, avec connexion PostgreSQL en lecture seule obligatoire."""
 
 import json
+import re
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.db import connection
@@ -108,6 +109,26 @@ class Command(BaseCommand):
                 ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]
             ):
                 for url in urls:
+                    # Les préparations nécessitent un contexte explicite, même pour le compte global.
+                    actor._context_entity = None
+                    required = 'contexte=composition' in url or '/receptions' in url or '/retours' in url
+                    if required:
+                        match = re.search(r'/articles/([0-9]+)/', url)
+                        command = re.search(r'/commandes/([0-9]+)/', url)
+                        with connection.cursor() as owner_cursor:
+                            if match:
+                                owner_cursor.execute('SELECT "IdEntiteFk" FROM logistique."T_Article" WHERE "ID_Article"=%s', [int(match.group(1))])
+                            elif command:
+                                owner_cursor.execute('SELECT "IdEntiteFk" FROM logistique."T_Commande" WHERE "ID_Commande"=%s', [int(command.group(1))])
+                            else:
+                                owner_cursor.execute('SELECT "IdEntite" FROM systeme."T_Entite" ORDER BY "IdEntite" LIMIT 1')
+                            owner = owner_cursor.fetchone()
+                        if owner and owner[0] is not None:
+                            refusal = client.get(url)
+                            results.append({"url": "sans-entreprise:"+url, "status": refusal.status_code, "attendu": 409})
+                            if refusal.status_code != 409:
+                                raise CommandError("Une préparation exige une entreprise active.")
+                            actor._context_entity = int(owner[0])
                     response = client.get(url)
                     results.append({"url": url, "status": response.status_code})
                     if response.status_code != 200:

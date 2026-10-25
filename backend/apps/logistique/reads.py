@@ -66,10 +66,9 @@ def read_predicate(obj, actor, raw=None, fixed_filters=None):
     params["filters"] = fixed_filters or {}
     where, values = predicate(obj, actor, params)
     if obj.get("_composition_scope"):
-        where += ''' AND EXISTS (SELECT 1 FROM systeme."T_Utilisateurs" composition_owner
-            WHERE composition_owner."IdUser"=v."ID_UserFK"
-            AND composition_owner."IdEntiteFk" IS NOT DISTINCT FROM %s)'''
-        values.append(actor.organisation)
+        from apps.core.tenancy import require_entity
+        where += ' AND v."IdEntiteFk"=%s'
+        values.append(require_entity(actor))
     from .ledger_registers import period_clause
     columns = {col['column_name'] for col in obj['columns']}
     field=obj.get('_date_field') or next((key for key in ['DateMvt','DateCmd','DateReglement','DateFacture','Mois'] if key in columns),None)
@@ -190,7 +189,7 @@ def register_source(kind, raw, for_export=False):
         if context not in (None,"","composition"):
             raise APIError("Contexte de catalogue non autorisé.")
         if context == "composition":obj = {**obj,"_composition_scope":True}
-    mapping = {"typeId": "ID_TypeArticleFk", "categorieId": "ID_CategorieArticleFk", "uniteId": "ID_UniteFk"} if article else {"typeId": "ID_TypeCmdFk", "statutId": "ID_StatutCmdFk", "client": "ID_ClientFk"}
+    mapping = {"typeId": "ID_TypeArticleFk", "categorieId": "ID_CategorieArticleFk", "uniteId": "ID_UniteFk"} if article else {"typeId": "ID_TypeCmdFk", "statutId": "ID_StatutCmdFk", "client": "ID_TiersFk"}
     for key, field in mapping.items():
         if raw.get(key) not in (None, ""):
             filters[field] = positive(raw[key])

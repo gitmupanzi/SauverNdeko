@@ -1,0 +1,6 @@
+.entity-scope-picker{display:flex;align-items:center;gap:.5rem;margin-left:auto;min-width:180px;max-width:290px;color:var(--erp-muted,#64748b)}
+.entity-scope-picker>.search-select-trigger{min-width:0;font-size:.82rem;min-height:36px;background:var(--erp-surface,#fff)}
+.entity-scope-picker>button:not(.search-select-trigger){border:0;background:transparent;color:inherit;display:grid;place-items:center}
+.entity-scope-note{display:flex;align-items:center;gap:.55rem;padding:.65rem .9rem;margin:0 0 1rem;border:1px solid var(--erp-border,#dbe3ef);border-radius:10px;background:var(--erp-surface,#fff);font-size:.82rem;color:var(--erp-muted,#64748b)}
+@media(max-width:780px){.entity-scope-picker{min-width:130px;max-width:190px}.entity-scope-picker>.app-icon{display:none}}
+@media(max-width:480px){.entity-scope-picker{max-width:150px}.entity-scope-picker>.search-select-trigger{font-size:.72rem}}

@@ -1,3 +1,4 @@
+import {captureEntityScope,entityScopeIsCurrent} from "./entityScope";
 import { notifyReferencesMutation } from "./referencesRefresh";
 import { AUTH_SESSION_INVALID_EVENT, getAccessToken } from "./authStorage";
 
@@ -10,6 +11,7 @@ async function safeFetchJson(path) {
 
 async function requestJson(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
+  const entityScope=captureEntityScope(path);
   const { requiresAuth = false, ...fetchOptions } = options;
   const accessToken = requiresAuth ? getAccessToken() : "";
 
@@ -18,6 +20,7 @@ async function requestJson(path, options = {}) {
       ...fetchOptions,
       headers: {
         Accept: "application/json",
+        ...entityScope.headers,
         ...(fetchOptions.body && !(fetchOptions.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(fetchOptions.headers || {}),
@@ -25,6 +28,7 @@ async function requestJson(path, options = {}) {
     });
 
     const payload = await response.json().catch(() => null);
+    if(!entityScopeIsCurrent(entityScope))return {success:false,status:409,message:"Le contexte de travail a changé.",error:{code:"CONTEXT_CHANGED"},data:null};
 
     if (!response.ok) {
       if (response.status === 401 && accessToken && accessToken === getAccessToken()) {
@@ -346,17 +350,21 @@ export function saveAdminUiSettings(payload) {
   });
 }
 
-export async function downloadApiFile(path, { signal, filename = "SauverNdeko_Export_Complet.xlsx" } = {}) {
+export async function downloadApiFile(path, { signal, filename = "SauverNdeko_Export_Complet.xlsx", contentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } = {}) {
+  const allowedTypes=new Set(["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/pdf","image/jpeg","image/png","image/webp"]);
+  const expectedType=String(contentType).toLowerCase();
+  if(!allowedTypes.has(expectedType))throw new Error("Ce format de fichier n’est pas autorisé.");
+  const entityScope=captureEntityScope(path);
   const accessToken = getAccessToken();
-  const response = await fetch(API_BASE_URL + path, { signal, headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ...(accessToken ? { Authorization: "Bearer " + accessToken } : {}) } });
+  const response = await fetch(API_BASE_URL + path, { signal, headers: { ...entityScope.headers, Accept: expectedType, ...(accessToken ? { Authorization: "Bearer " + accessToken } : {}) } });
   if (!response.ok) {
     if (response.status === 401 && accessToken && accessToken === getAccessToken()) window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT,{detail:{accessToken}}));
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.message || (response.status === 403 ? "Accès à l’export refusé." : "L’export n’a pas pu être préparé."));
   }
-  if (!response.headers.get("Content-Type")?.includes("spreadsheetml.sheet")) throw new Error("Le fichier Excel reçu est invalide.");
+  if (response.headers.get("Content-Type")?.split(";",1)[0].trim().toLowerCase() !== expectedType) throw new Error("Le fichier reçu n’est pas au format attendu.");
   const blob = await response.blob();
-  if (signal?.aborted || accessToken !== getAccessToken()) throw new DOMException("Export annulé","AbortError");
+  if (signal?.aborted || accessToken !== getAccessToken() || !entityScopeIsCurrent(entityScope)) throw new DOMException("Export annulé","AbortError");
   const disposition = response.headers.get("Content-Disposition") || "";
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
   const plain = disposition.match(/filename="([^"]+)"/i);

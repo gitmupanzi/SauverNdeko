@@ -1,3 +1,7 @@
+from apps.logistique.inventories import InventoriesView, UnitPrecisionView
+from apps.logistique.lot_fefo import LotFefoView
+from apps.logistique.destinations import DestinationsView
+from apps.logistique.tiers import EntreprisesView,TiersView,TiersReferencesView,TiersConsultationView
 from apps.accounts.mail_settings import MailSettingsView
 from apps.accounts.password_reset import PasswordResetView, PasswordResetCheckView, PasswordResetConfirmView
 from apps.accounts.passwords import PasswordChangeView
@@ -40,6 +44,17 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/inventaires/unites/?$", UnitPrecisionView.as_view()),
+    re_path(r"^api/logistique/inventaires/catalogue/?$", InventoriesView.as_view(), {"action":"catalogue"}),
+    re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/valider/?$", InventoriesView.as_view(), {"action":"valider"}),
+    re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/?$", InventoriesView.as_view()),
+    re_path(r"^api/logistique/inventaires/?$", InventoriesView.as_view()),
+    re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/lots/fefo/?$", LotFefoView.as_view()),
+    re_path(r"^api/logistique/destinations/?$",DestinationsView.as_view()),
+    re_path(r"^api/logistique/entreprises/?$",EntreprisesView.as_view()),
+    re_path(r"^api/logistique/tiers/references/?$",TiersReferencesView.as_view()),
+    re_path(r"^api/logistique/tiers(?:/(?P<pk>[0-9]+))?/?$",TiersView.as_view()),
+    re_path(r"^api/logistique/consultations/tiers/(?P<pk>[0-9]+)(?:/(?P<section>identite|bons|factures|reglements))?/?$",TiersConsultationView.as_view()),
     re_path(r"^api/logistique/reglements/groupes/?$", PaymentBatchView.as_view()),
     re_path(r"^api/logistique/reglements/preparation/?$", PaymentPreparationView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/retours/?$", StockReturnsView.as_view()),
