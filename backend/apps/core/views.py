@@ -85,9 +85,16 @@ class ModuleView(APIView):
                 if obj["primaryKey"][0] in {c["column_name"] for c in source["columns"]}
                 else obj
             )
-            record = get_record(source, request.user, {obj["primaryKey"][0]: positive(pk)})
+            if obj["name"] == "T_Commande":
+                from apps.logistique.document_rules import editable_record
+                record = editable_record(obj,source,request.user,{obj["primaryKey"][0]:positive(pk)})
+            else:
+                record = get_record(source, request.user, {obj["primaryKey"][0]: positive(pk)})
             if obj["name"] == "T_Article":
                 from apps.logistique.article_rules import usage
+                return ok(clean(record), meta=usage(record, request.user))
+            if obj["name"] == "T_Commande":
+                from apps.logistique.document_rules import usage
                 return ok(clean(record), meta=usage(record, request.user))
             return ok(clean(record))
         rows, meta = listing(source, request.user, params)
@@ -129,7 +136,7 @@ class ModuleView(APIView):
             mutate(
                 obj["name"],
                 request.user,
-                body=request.data if obj["name"] == "T_Article" else None,
+                body=request.data if obj["name"] in {"T_Article","T_Commande"} else None,
                 keys={obj["primaryKey"][0]: positive(pk)},
                 operation="delete",
                 hard=request.query_params.get("mode") == "hard",

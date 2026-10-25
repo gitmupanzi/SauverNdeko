@@ -11,7 +11,7 @@ from .permissions import scope_for, check_global_write
 from .responses import APIError
 
 PRIVATE = {"MotdepasseUser", "password", "Password", "MotDePasse"}
-READONLY = {"T_Mouvement", "T_Login", "T_Audit_Log", "T_Paiement_Archive"}
+READONLY = {"T_Mouvement", "T_Login", "T_Audit_Log", "T_Paiement_Archive", "T_RetourBon", "T_Facture", "T_FactureLigne"}
 
 
 def clean(value):
@@ -366,6 +366,19 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if name == "T_Commande":
+        from apps.logistique.document_rules import check_revision, assert_deletable, protect_command_code
+        if not isinstance(body or {},dict):raise APIError("Objet JSON attendu.")
+        body=dict(body or {})
+        received=body.pop("_version",None)
+        protect_command_code(body,old)
+        from apps.logistique.invoices import protect_invoice_fields
+        protect_invoice_fields(body,old)
+        if old:check_revision(old,received)
+        elif received is not None:raise APIError("Version inattendue à la création.")
+        if operation == "delete":
+            db.one('SELECT "ID_Commande" FROM logistique."T_Commande" WHERE "ID_Commande"=%s FOR UPDATE',[old["ID_Commande"]])
+            assert_deletable(old,actor)
     if name == "T_Article":
         from apps.logistique.article_rules import check_revision, assert_deletable
         if not isinstance(body or {}, dict):
@@ -414,6 +427,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
         validate_header(obj, data, old, actor)
     table = db.qualified(obj["schema"], obj["name"])
     if operation == "create":
+        if name == "T_Commande":
+            from apps.logistique.document_rules import generate_command_identity
+            data.update(generate_command_identity())
         for col in obj["columns"]:
             key = col["column_name"]
             if (

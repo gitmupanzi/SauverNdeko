@@ -4,9 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { RecordFolderLinks } from "./FollowupFolderWidgets";
 import { useFollowupFolders } from "../contexts/FollowupFoldersContext";
 import ProductOverview, { ProductHeading } from "./ProductOverview";
+import OrderOverview, { OrderHeading, OrderBillingHeading, OrderControl, ORDER_SECTION_FIELDS, hasOrderInvoice, orderConsultationTabs, orderReadSection } from "./OrderOverview";
 import AppIcon from "./AppIcon";
+import ActionButton from "./ActionButton";
+import OrderReturnHistory from "./OrderReturnHistory";
+import InvoiceEditor from "../pages/logistique/InvoiceEditor";
+import BonReturnEditor from "../pages/logistique/BonReturnEditor";
 import DataTableToolbar from "./DataTableToolbar";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import DrawerDialog from "./DrawerDialog";
 import ConsultationTabs from "./ConsultationTabs";
 import { useAuth } from "../contexts/AuthContext";
@@ -17,7 +22,7 @@ import "./Consultation.css";
 const Context = createContext(null);
 const PRODUCT_INDICATORS = new Set(["articles","articlesCategorie","alertesStock","ruptures","auditTotal","auditCoherents","auditEcarts","coherenceRate","couvertureCritique","peremptionProche","articlesPerimes"]);
 const LABELS = {lots:"Lots", identite: "Synthèse", commandes: "Bons de stock", lignes: "Lignes", mouvements: "Mouvements", consommation: "Consommation", couverture: "Couverture", controle: "Contrôle", reglements: "Règlements", facture: "Facture" };
-const FIELD_LABELS = {DeviseCode:"Devise",MontantsParDevise:"Valeurs par devise",NumeroLot:"N° de lot",StockLot:"Stock du lot",Quantite:"Quantité",QuantiteSignee:"Quantité signée",DatePeremptionLot:"Péremption du lot",QuantiteEntree:"Entrées",QuantiteSortie:"Sorties", CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur du stock", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
+const FIELD_LABELS = {MontantFacture:"Montant facturé",DeviseCode:"Devise",MontantsParDevise:"Valeurs par devise",NumeroLot:"N° de lot",StockLot:"Stock du lot",Quantite:"Quantité",QuantiteSignee:"Quantité signée",DatePeremptionLot:"Péremption du lot",QuantiteEntree:"Entrées",QuantiteSortie:"Sorties", CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur du stock", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
 const SECTION_FIELDS = {lots:["NomArticle","NumeroLot","StockLot","Quantite","DateMvt","CodeCmd","DatePeremptionLot","QuantiteEntree","QuantiteSortie"],
   commandes: ["CodeCmd", "DateCmd", "NomArticle", "QteCmdDetail", "AbrUnite", "PUCmdDetail", "MontantLigne"],
   lignes: ["CodeArticleInterne", "NomArticle", "QteCmdDetail", "AbrUnite", "PUCmdDetail", "MontantLigne"],
@@ -131,7 +136,7 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
   </div>;
 }
 
-function ObjectContent({ entry, update, open, openFolder }) {
+function ProductObjectContent({ entry, update, open, openFolder }) {
   const {version}=useFollowupFolders();
   const base = "/api/logistique/consultations/" + entry.kind + "/" + entry.id;
   const header = useRead(base,version);
@@ -155,12 +160,95 @@ function ObjectContent({ entry, update, open, openFolder }) {
     </section>)}
   </>;
 }
+
+function OrderObjectContent({entry,update,open,openFolder}){
+  const {version,refresh}=useFollowupFolders();
+  const {user}=useAuth();
+  const [editor,setEditor]=useState(null),[workflowVersion,setWorkflowVersion]=useState(0);
+  const canWrite=user?.permissions?.canWriteData===true&&moduleRights(user,"logistique").canManage;
+  useEffect(()=>{setEditor(null);},[entry.id]);
+  const root=useRef(null),restored=useRef(false);
+  const base="/api/logistique/consultations/commande/"+entry.id;
+  const header=useRead(base,version+":"+workflowVersion);
+  const record=header.payload?.data?.record;
+  const sections=header.payload?.data?.sections || [];
+  const features=header.payload?.meta?.features||{},returnContext=header.payload?.meta?.returnContext||{};
+  const tabs=orderConsultationTabs(sections,{returns:features.returns===true&&record?.EstCommandeSortie===true&&!returnContext.isReturn});
+  const requested=["facture","reglements"].includes(entry.section)?"facturation":entry.section || "identite";
+  const section=tabs.some(tab=>tab.key===requested)?requested:"identite";
+  const invoiceTabs=[{key:"facture",label:"Facture",icon:"document"},{key:"reglements",label:"Règlements",icon:"wallet"}].filter(tab=>sections.includes(tab.key));
+  const preferredInvoice=["facture","reglements"].includes(entry.section)?entry.section:entry.invoiceSection;
+  const invoiceSection=invoiceTabs.some(tab=>tab.key===preferredInvoice)?preferredInvoice:invoiceTabs[0]?.key;
+  const dataSection=orderReadSection(section,invoiceSection,record,sections);
+  const queryKey=section==="facturation"?section+"."+invoiceSection:section;
+  const query=entry.query;
+  const details=useRead(dataSection?base+"/"+dataSection+"?"+new URLSearchParams(query):null,workflowVersion);
+  const returns=useRead(section==="retours"?"/api/logistique/commandes/"+entry.id+"/retours":null,version+":"+workflowVersion);
+  const prefix="consultation-commande-"+entry.id;
+  function restoreContext(){
+    if(restored.current || !record || (dataSection && details.loading))return;
+    const body=root.current?.closest(".consult-content");
+    if(!body)return;
+    const focusIndex=entry.returnFocusIndex;
+    if(Number.isInteger(focusIndex))root.current.querySelectorAll("button.erp-object-link")[focusIndex]?.focus({preventScroll:true});
+    body.scrollTop=entry.scrollTop || 0;
+    restored.current=true;
+  }
+  useLayoutEffect(()=>{restoreContext();},[record,details.loading]);
+  function changeSection(key,preferred){
+    if(!tabs.some(tab=>tab.key===key))return;
+    const invoice=preferred || invoiceSection;
+    const nextKey=key==="facturation"?key+"."+invoice:key;
+    if(nextKey===queryKey)return;
+    const queries={...entry.sectionQueries,[queryKey]:query};
+    update({section:key,invoiceSection:invoice,sectionQueries:queries,query:queries[nextKey] || {take:25,skip:0},scrollTop:0,returnFocusIndex:null});
+  }
+  function changeQuery(patch){
+    const next={...query,...patch};
+    update({query:next,sectionQueries:{...entry.sectionQueries,[queryKey]:next}});
+  }
+  function openRelated(kind,id,label){
+    const body=root.current?.closest(".consult-content");
+    const index=Array.from(root.current?.querySelectorAll("button.erp-object-link") || []).indexOf(document.activeElement);
+    update({scrollTop:body?.scrollTop || 0,returnFocusIndex:index>=0?index:null});
+    open(kind,id,label);
+  }
+  if(header.loading && !record)return <div className="commande360" aria-busy="true"><div className="commande360-placeholder" role="status"><p>Chargement du bon…</p><div aria-hidden="true"><span/><span/><span/></div></div></div>;
+  if(!header.payload?.success)return <div className="commande360"><ErrorState payload={header.payload} retry={header.retry}/></div>;
+  const invoiced=hasOrderInvoice(record);
+  function workflowSaved(){setEditor(null);setWorkflowVersion(value=>value+1);refresh();}
+  return <div ref={root} className="commande360">
+    <div className="consult-object-overview commande360-heading"><OrderHeading record={record}/><RecordFolderLinks data={header.payload.data.dossiers} recordId={entry.id} objectType="bon" hasInvoice={invoiced} onOpen={openFolder}/></div>
+    <div className="commande360-workflow-actions">
+      {returnContext.isReturn&&returnContext.originId?<ActionButton icon="receipt" onClick={()=>openRelated("commande",returnContext.originId,"Bon d’origine")}>Voir le bon d’origine</ActionButton>:null}
+      {canWrite&&features.returns===true&&record.EstCommandeSortie===true&&!returnContext.isReturn?<ActionButton icon="stock-in" onClick={()=>setEditor("retour")}>Restituer des articles</ActionButton>:null}
+      {canWrite&&features.invoices===true&&record.EstCommandeSortie===true&&!returnContext.isReturn?<ActionButton icon="document" onClick={()=>setEditor("facture")}>{invoiced?"Consulter la facture":"Créer la facture"}</ActionButton>:null}
+    </div>
+    {record.AvoirAEtablir===true?<p className="commande360-return-notice"><AppIcon name="alert"/>Avoir à établir · {formatCurrency(record.MontantAvoirAEtablir,record.DeviseCode)}. La facture émise reste conservée.</p>:null}
+    <ConsultationTabs tabs={tabs} value={section} onChange={changeSection} label="Rubriques du bon de stock" idPrefix={prefix}/>
+    {tabs.map(tab=><section key={tab.key} className="commande360-tabpanel consultation-tabpanel" role="tabpanel" id={prefix+"-panel-"+tab.key} aria-labelledby={prefix+"-tab-"+tab.key} tabIndex={tab.key===section?0:-1} hidden={tab.key!==section}>
+      {tab.key===section?<>
+        {section==="identite"?<OrderOverview record={record} onSection={changeSection}/>:section==="retours"?<OrderReturnHistory remote={returns} onOpen={openRelated} onReturn={()=>setEditor("retour")} canWrite={canWrite}/>:section==="controle"?<OrderControl record={record} onSection={changeSection}/>:section==="facturation"?<>
+          <OrderBillingHeading record={record}/>
+          {invoiced?<><div className="commande360-invoice-tabs"><ConsultationTabs tabs={invoiceTabs} value={invoiceSection} onChange={key=>changeSection("facturation",key)} label="Facture et règlements du bon" idPrefix={prefix+"-billing"}/></div>
+            {invoiceTabs.map(item=><section key={item.key} role="tabpanel" id={prefix+"-billing-panel-"+item.key} aria-labelledby={prefix+"-billing-tab-"+item.key} tabIndex={item.key===invoiceSection?0:-1} hidden={item.key!==invoiceSection}>{item.key===invoiceSection?<ResultTable key={dataSection} remote={details} query={query} onQueryChange={changeQuery} fields={ORDER_SECTION_FIELDS[dataSection] || []} open={openRelated} onReady={restoreContext}/>:null}</section>)}
+          </>:null}
+        </>:<ResultTable key={dataSection} remote={details} query={query} onQueryChange={changeQuery} fields={ORDER_SECTION_FIELDS[dataSection] || []} open={openRelated} onReady={restoreContext}/>}
+      </>:null}
+    </section>)}
+    {editor==="facture"?<InvoiceEditor commandeId={entry.id} onClose={()=>setEditor(null)} onSaved={workflowSaved}/>:editor==="retour"?<BonReturnEditor commandeId={entry.id} onClose={()=>setEditor(null)} onSaved={workflowSaved}/>:null}
+  </div>;
+}
+function ObjectContent(props){
+  return props.entry.kind==="commande"?<OrderObjectContent {...props}/>:<ProductObjectContent {...props}/>;
+}
+
 function IndicatorContent({ entry, update, open, inline = false, onReady }) {
   const remote = useRead("/api/logistique/indicateurs/" + entry.id + "?" + new URLSearchParams(entry.query));
   const indicator = remote.payload?.meta?.indicator;
   const kind = indicator?.kind || (PRODUCT_INDICATORS.has(entry.id) ? "produit" : "commande");
   const isInvoice = entry.id.startsWith("factures") || ["montantTotalFacture", "montantTotalRegle", "montantRestant"].includes(entry.id);
-  const fields = kind === "produit" ? ["CodeArticleInterne", "NomArticle", "QteArticle", "QteMinArticle", "EtatStock", "StockArticle", "StockMouvements", "Ecart", "EtatAuditStock", "CouvertureMois"] : isInvoice ? ["CodeFacture", "CodeCmd", "DateFacture", "DateEcheancePaiement", "NomClientSaisi", "MontantTTC", "MontantRegleFacture", "TotalRegle", "MontantResteFacture", "Reste"] : ["CodeCmd", "DateCmd", "TypeCmd", "StatutCmd", "NomClientSaisi", "NbLignes", "MontantTTC", "EtatPaiement"];
+  const fields = kind === "produit" ? ["CodeArticleInterne", "NomArticle", "QteArticle", "QteMinArticle", "EtatStock", "StockArticle", "StockMouvements", "Ecart", "EtatAuditStock", "CouvertureMois"] : isInvoice ? ["CodeFacture", "CodeCmd", "DateFacture", "DateEcheancePaiement", "NomClientSaisi", "MontantFacture", "MontantRegleFacture", "TotalRegle", "MontantResteFacture", "Reste"] : ["CodeCmd", "DateCmd", "TypeCmd", "StatutCmd", "NomClientSaisi", "NbLignes", "MontantTTC", "EtatPaiement"];
   return <>{!inline && indicator ? <div className="consult-indicator"><strong>{indicator.amountsByCurrency?.length ? formatCurrencyGroups(indicator.amountsByCurrency) : formatNumber(indicator.value)}{indicator.unit ? " " + indicator.unit : ""}</strong><span>{indicator.label}</span></div> : null}
     <ResultTable remote={remote} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={fields} open={open} showControls={inline} kind={kind} onReady={onReady} exportPath={"/api/logistique/indicateurs/" + entry.id + "/export.xlsx"} />
   </>;
@@ -190,7 +278,7 @@ export function ConsultationProvider({ children }) {
   }, [user?.permissions?.canAccessAdmin, accessSignature(user)]);
   const update = (patch) => setHistory((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...patch } : item));
   const entry = history[history.length - 1];
-  return <Context.Provider value={{ openProductLots:(row)=>open("produit",row.ID_Article,row.NomArticle,{},"lots"), openProduct: (row) => open("produit", typeof row === "object" ? row.ID_Article || row.ID_ArticleFk : row, row?.NomArticle || ""), openOrder: (row) => open("commande", typeof row === "object" ? row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk : row, row?.CodeCmd || ""), openFolder, openMetric: (key, criteria = {}, label = "") => open("indicateur", key, label, criteria) }}>{children}
+  return <Context.Provider value={{ openProductLots:(row)=>open("produit",row.ID_Article,row.NomArticle,{},"lots"), openProduct: (row) => open("produit", typeof row === "object" ? row.ID_Article || row.ID_ArticleFk : row, row?.NomArticle || ""), openOrder: (row) => open("commande", typeof row === "object" ? row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk : row, row?.CodeCmd || ""), openOrderLines: (row) => open("commande", typeof row === "object" ? row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk : row, row?.CodeCmd || "", {}, "lignes"), openFolder, openMetric: (key, criteria = {}, label = "") => open("indicateur", key, label, criteria) }}>{children}
     {entry && isAuthenticated ? <Dialog title={entry.kind === "produit" ? "Produit 360" + (entry.label ? " · " + entry.label : "") : entry.kind === "commande" ? "Bon de stock 360" + (entry.label ? " · " + entry.label : "") : entry.label || "Détail de l’indicateur"} onClose={() => setHistory([])} onBack={history.length > 1 ? () => setHistory((current) => current.slice(0, -1)) : null}>
       {entry.kind === "indicateur" ? <IndicatorContent key={entry.kind + entry.id} entry={entry} update={update} open={open} /> : <ObjectContent key={entry.kind + entry.id} entry={entry} update={update} open={open} openFolder={openFolder} />}
     </Dialog> : null}

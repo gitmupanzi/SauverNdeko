@@ -1,5 +1,8 @@
 import { newCurrencyId, currencyOptions } from "../../utils/money";
 import SearchSelect from "../../components/SearchSelect";
+import ConsultationTabs from "../../components/ConsultationTabs";
+import ActionButton from "../../components/ActionButton";
+import {useConsultations} from "../../components/ConsultationProvider";
 import LotFields, {lotErrors} from "../../components/LotFields";
 import ProductPhotoPicker from "../../components/ProductPhotoPicker";
 import {useEffect,useId,useRef,useState} from "react";
@@ -9,6 +12,7 @@ import AppIcon from "../../components/AppIcon";
 import {fetchLogistiqueArticle,createLogistiqueArticle,updateLogistiqueArticle} from "../../services/logistique";
 import {buildReferenceOptions,formatDate} from "./logistiqueShared";
 import {articleForm,articleErrors,articlePayload,alertDate} from "./articleForm";
+import "./ArticleEditor.css";
 
 function Field({name,label,error,hint,wide=false,children}) {
   return <div className={"record-field"+(wide?" is-wide":"")}><label htmlFor={name}>{label}</label>{children}{error?<small className="record-field-error" id={name+"-error"}>{error}</small>:hint?<small id={name+"-hint"}>{hint}</small>:null}</div>;
@@ -16,6 +20,8 @@ function Field({name,label,error,hint,wide=false,children}) {
 function Section({icon,title,children}) {return <section className="record-editor-section"><h3><AppIcon name={icon}/>{title}</h3><div className="record-editor-grid">{children}</div></section>;}
 export default function ArticleEditor({articleId,onClose,onSaved,references}) {
   const {user}=useAuth(),creating=!articleId;
+  const {openProductLots}=useConsultations();
+  const [active,setActive]=useState("article");
   const prefix=useId(),mounted=useRef(true),saving=useRef(false),focusRef=useRef(null);
   const createForm=()=>({...articleForm(null),ID_DeviseFk:newCurrencyId(references)});
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState(createForm);
@@ -43,23 +49,30 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
     const frame=requestAnimationFrame(()=>focusRef.current?.focus({preventScroll:true}));
     return()=>cancelAnimationFrame(frame);
   },[loading]);
-  function change(name,value){setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));}
+  function change(name,value){if(busy||!canWrite)return;setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));if(name==="QteArticle")setLotsError("");}
+  function fieldTab(name){
+    if(["ID_UniteFk","QteArticle","QteMinArticle","PoidsUnitaire","ID_UnitePoidsFk","ID_DeviseFk","PUArticle","PVArticle"].includes(name))return "stock";
+    if(["DatePeremptionArticle","NbreJoursAlerteArticle","DatePeremptionAlerteArticle"].includes(name))return "conservation";
+    if(["InformationArticle","ObsArticle"].includes(name))return "informations";
+    return "article";
+  }
   function focusInvalid(fields){
+    const name=Object.keys(fields)[0];setActive(fieldTab(name));
     requestAnimationFrame(()=>{
-      const form=focusRef.current?.form,name=Object.keys(fields)[0];
-      const field=form&&Array.from(form.elements).find(element=>element.id===prefix+name||element.name===name);
-      field?.focus();
+      const target=document.getElementById(prefix+name);
+      (name==="photo"?target?.querySelector("button:not(:disabled)")||target:target)?.focus({preventScroll:true});
     });
   }
+  function focusLots(){setActive("lots");requestAnimationFrame(()=>{const target=document.getElementById(prefix+"initial-lots");(target?.querySelector("input:not(:disabled)")||target)?.focus({preventScroll:true});});}
   function input(name,label,options={}){
     const {hint,wide,type="text",...attributes}=options,id=prefix+name;
-    return <Field name={id} label={label} wide={wide} error={errors[name]} hint={hint}><input id={id} name={name} ref={name==="NomArticle"?focusRef:null} type={type} value={values[name]??""} onChange={e=>change(name,e.target.value)} disabled={busy} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name]?id+"-error":hint?id+"-hint":undefined} {...attributes}/></Field>;
+    return <Field name={id} label={label} wide={wide} error={errors[name]} hint={hint}><input id={id} name={name} ref={name==="NomArticle"?focusRef:null} type={type} value={values[name]??""} onChange={e=>change(name,e.target.value)} disabled={busy||!canWrite} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name]?id+"-error":hint?id+"-hint":undefined} {...attributes}/></Field>;
   }
   function select(name,label,source,locked=false){
     const id=prefix+name,options=buildReferenceOptions(source,label),known=options.some(x=>String(x.value)===String(values[name]));
     const choices=!known&&values[name]?[{value:values[name],label:record?.[{ID_TypeArticleFk:"TypeArticle",ID_CategorieArticleFk:"CategorieArticle",ID_UniteFk:"Unite",ID_UnitePoidsFk:"UnitePoids",ID_DeviseFk:"DeviseCode"}[name]]||"Valeur actuelle"},...options]:options;
     const hint=locked?(name==="ID_DeviseFk"?"La devise est conservée après une opération de stock.":"L’unité est conservée après le premier mouvement."):!options.length?"Aucune valeur disponible. Vérifiez les références.":"";
-    return <Field name={id} label={label} error={errors[name]} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={name==="ID_UnitePoidsFk"?[{value:"",label:"Non renseignée"},...choices]:choices} onChange={next=>change(name,next)} disabled={busy||locked||!options.length} invalid={Boolean(errors[name])} describedBy={errors[name]?id+"-error":hint?id+"-hint":undefined}/></Field>;
+    return <Field name={id} label={label} error={errors[name]} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={name==="ID_UnitePoidsFk"?[{value:"",label:"Non renseignée"},...choices]:choices} onChange={next=>change(name,next)} disabled={busy||!canWrite||locked||!options.length} invalid={Boolean(errors[name])} describedBy={errors[name]?id+"-error":hint?id+"-hint":undefined}/></Field>;
   }
   function readOnly(name,label,value,hint="") {
     const id=prefix+name;
@@ -69,10 +82,11 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
   const ownerName=creating?[user?.PrenomUser,user?.NomUser].filter(Boolean).join(" "):record?.NomComplet || references?.users?.find(item=>String(item.id)===String(ownerId))?.label;
   const owner=ownerName?ownerName+(ownerId!=null?" · #"+ownerId:""):ownerId!=null?"Utilisateur #"+ownerId:"Non renseigné";
   async function submit(){
-    if(saving.current||!canWrite||(!creating&&!meta?.revision))return;
+    if(saving.current||busy||loading||!canWrite||(!creating&&!meta?.revision))return;
     const invalid=articleErrors(values,creating);
-    const lotError=creating?lotErrors(initialLots,values.QteArticle):"";setLotsError(lotError);if(lotError)return;setErrors(invalid);setError("");setConflict(false);
+    const lotError=creating?lotErrors(initialLots,values.QteArticle):"";setLotsError(lotError);setErrors(invalid);setError("");setConflict(false);
     if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
+    if(lotError){setError("Vérifiez les lots du stock initial.");focusLots();return;}
     saving.current=true;setBusy(true);
     const payload=articlePayload(values,record,meta?.revision);
     delete payload.PhotoArticle;
@@ -84,17 +98,20 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
     if(!response?.success){
       const details=response?.error?.details;
       const fieldErrors=details&&typeof details==="object"&&!Array.isArray(details)?Object.fromEntries(Object.entries(details).filter(([key])=>key in values||key==="photo").map(([key,value])=>[key,String(value)])):{};
-      setErrors(fieldErrors);
-      setError(Object.keys(fieldErrors).length?"Vérifiez les champs indiqués.":response?.message||"L’article n’a pas pu être enregistré.");
+      const serverLots=details&&typeof details==="object"?Object.entries(details).filter(([key])=>/^LotsInitiaux(?:\.|$)/.test(key)).map(([,value])=>String(value)).join(" "):"";
+      setErrors(fieldErrors);if(serverLots)setLotsError(serverLots);
+      setError(Object.keys(fieldErrors).length||serverLots?"Vérifiez les champs indiqués.":response?.message||"L’article n’a pas pu être enregistré.");
       setConflict(response?.error?.code==="ARTICLE_CONFLICT");
-      if(Object.keys(fieldErrors).length)focusInvalid(fieldErrors);
+      if(Object.keys(fieldErrors).length)focusInvalid(fieldErrors);else if(serverLots)focusLots();
       return;
     }
     onSaved(response.data,creating?"created":"updated");
   }
-  return <RecordEditorFrame title={creating?"Nouvel article":"Modifier l’article"} subtitle={record?.NomArticle||"Identité, stock et prix"} icon="box" onClose={onClose} onSubmit={submit} busy={busy} loading={loading} dirty={dirty} canSubmit={canWrite&&(creating||Boolean(record&&meta?.revision))&&(creating||dirty)} error={error} onReload={!creating&&(conflict||(!record&&!loading))?()=>setReload(x=>x+1):null} storageKey="sauverndeko.article-editor.width">
-    {!loading&&(creating||record)?<>
-      <ProductPhotoPicker record={record} value={photo} onChange={setPhoto} disabled={busy} error={errors.photo}/>
+  return <RecordEditorFrame title={creating?"Nouvel article":"Modifier l’article"} subtitle={record?.NomArticle||"Identité, stock et prix"} icon="box" onClose={onClose} onSubmit={submit} busy={busy} loading={loading} dirty={dirty} canSubmit={canWrite&&(creating||Boolean(record&&meta?.revision))&&(creating||dirty)} error={error} onReload={!creating&&(conflict||(!record&&!loading))?()=>setReload(x=>x+1):null} className="article-editor-dialog" storageKey="sauverndeko.article-editor.width">
+    {!loading&&(creating||record)?<div className="article-editor">
+      <ConsultationTabs tabs={[{key:"article",label:"Article",icon:"tag"},{key:"stock",label:"Stock et prix",icon:"box"},{key:"lots",label:"Lots",icon:"box"},{key:"conservation",label:"Conservation",icon:"calendar"},{key:"informations",label:"Informations",icon:"document"},{key:"tracabilite",label:"Traçabilité",icon:"user"}]} value={active} onChange={setActive} label="Rubriques de l’article" idPrefix={prefix}/>
+      <section role="tabpanel" id={prefix+"-panel-article"} aria-labelledby={prefix+"-tab-article"} hidden={active!=="article"} tabIndex={active==="article"?0:-1}>
+        <div id={prefix+"photo"} tabIndex={-1}>{active==="article"?<ProductPhotoPicker record={record} value={photo} onChange={next=>{if(busy||!canWrite)return;setPhoto(next);setErrors(current=>({...current,photo:""}));}} disabled={busy||!canWrite} error={errors.photo}/>:null}</div>
       {!creating?<div className="record-editor-identity"><AppIcon name="box"/><div><strong>{record.NomArticle}</strong><small>{record.CodeArticleInterne||record.RefArticle||"Code non renseigné"}</small></div></div>:null}
       <Section title="Identification" icon="tag">
         {input("NomArticle","Nom de l’article *",{maxLength:100,autoComplete:"off",wide:true})}
@@ -103,7 +120,10 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
         {input("RefArticle","Référence",{maxLength:255,wide:true})}
         {select("ID_CategorieArticleFk","Catégorie"+(creating?" *":""),references?.articleCategories)}
         {select("ID_TypeArticleFk","Type"+(creating?" *":""),references?.articleTypes)}
+        <div className="record-field"><span>État de l’article</span><label className="record-editor-check" htmlFor={prefix+"ValideArticle"}><input id={prefix+"ValideArticle"} name="ValideArticle" type="checkbox" checked={values.ValideArticle===true} onChange={event=>change("ValideArticle",event.target.checked)} disabled={busy||!canWrite}/>Article actif</label></div>
       </Section>
+      </section>
+      <section role="tabpanel" id={prefix+"-panel-stock"} aria-labelledby={prefix+"-tab-stock"} hidden={active!=="stock"} tabIndex={active==="stock"?0:-1}>
       <Section title="Stock et prix" icon="box">
         {select("ID_UniteFk","Unité"+(creating?" *":""),references?.articleUnits,!creating&&meta?.canChangeUnit===false)}
         {creating?input("QteArticle","Stock initial",{inputMode:"numeric",hint:"Un mouvement d’entrée est créé pour un stock initial positif."}):<Field name={prefix+"stock"} label="Stock actuel" hint="Les entrées et sorties se saisissent dans les bons de stock."><input id={prefix+"stock"} value={record.QteArticle??"—"} readOnly/></Field>}
@@ -114,22 +134,30 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
         {input("PUArticle","Prix d’achat *",{inputMode:"decimal"})}
         {input("PVArticle","Prix de vente *",{inputMode:"decimal"})}
       </Section>
-      {creating?<LotFields title="Lots du stock initial" value={initialLots} onChange={setInitialLots} total={values.QteArticle} disabled={busy} error={lotsError}/>:null}
+      </section>
+      <section role="tabpanel" id={prefix+"-panel-lots"} aria-labelledby={prefix+"-tab-lots"} hidden={active!=="lots"} tabIndex={active==="lots"?0:-1}>
+        {creating?<div id={prefix+"initial-lots"} tabIndex={-1}><LotFields title="Lots du stock initial" value={initialLots} onChange={next=>{if(busy||!canWrite)return;setInitialLots(next);setLotsError("");}} total={values.QteArticle} disabled={busy||!canWrite} error={lotsError}/></div>:<section className="record-editor-section article-editor-lots"><h3><AppIcon name="box"/>Lots de l’article</h3><p>Les entrées et sorties par lot se saisissent dans les bons de stock.</p>{openProductLots?<ActionButton icon="eye" onClick={()=>openProductLots(record)} disabled={busy}>Consulter les lots</ActionButton>:null}</section>}
+      </section>
+      <section role="tabpanel" id={prefix+"-panel-conservation"} aria-labelledby={prefix+"-tab-conservation"} hidden={active!=="conservation"} tabIndex={active==="conservation"?0:-1}>
       <Section title="Conservation" icon="calendar">
         {input("DatePeremptionArticle","Date de péremption",{type:"date"})}
         {input("NbreJoursAlerteArticle","Alerte avant péremption (jours)",{inputMode:"numeric"})}
         <Field name={prefix+"alert"} label="Début de l’alerte" hint="Calculé à partir de la péremption et du délai d’alerte." wide><input id={prefix+"alert"} type="date" value={alertDate(values,record)} readOnly aria-describedby={prefix+"alert-hint"}/></Field>
       </Section>
+      </section>
+      <section role="tabpanel" id={prefix+"-panel-informations"} aria-labelledby={prefix+"-tab-informations"} hidden={active!=="informations"} tabIndex={active==="informations"?0:-1}>
       <Section title="Informations complémentaires" icon="document">
-        <Field name={prefix+"InformationArticle"} label="Informations sur l’article" wide><textarea id={prefix+"InformationArticle"} name="InformationArticle" value={values.InformationArticle} disabled={busy} maxLength={20000} onChange={e=>change("InformationArticle",e.target.value)}/></Field>
-        <Field name={prefix+"ObsArticle"} label="Observation" wide><textarea id={prefix+"ObsArticle"} name="ObsArticle" value={values.ObsArticle} disabled={busy} onChange={e=>change("ObsArticle",e.target.value)}/></Field>
+        <Field name={prefix+"InformationArticle"} label="Informations sur l’article" error={errors.InformationArticle} wide><textarea id={prefix+"InformationArticle"} name="InformationArticle" value={values.InformationArticle} aria-invalid={Boolean(errors.InformationArticle)} aria-describedby={errors.InformationArticle?prefix+"InformationArticle-error":undefined} disabled={busy||!canWrite} maxLength={20000} onChange={e=>change("InformationArticle",e.target.value)}/></Field>
+        <Field name={prefix+"ObsArticle"} label="Observation" error={errors.ObsArticle} wide><textarea id={prefix+"ObsArticle"} name="ObsArticle" value={values.ObsArticle} aria-invalid={Boolean(errors.ObsArticle)} aria-describedby={errors.ObsArticle?prefix+"ObsArticle-error":undefined} disabled={busy||!canWrite} onChange={e=>change("ObsArticle",e.target.value)}/></Field>
       </Section>
-      <Section title="Suivi de l’article" icon="document">
+      </section>
+      <section role="tabpanel" id={prefix+"-panel-tracabilite"} aria-labelledby={prefix+"-tab-tracabilite"} hidden={active!=="tracabilite"} tabIndex={active==="tracabilite"?0:-1}>
+      <Section title="Traçabilité" icon="user">
         {readOnly("ID_Article","Identifiant",creating?"Attribué à l’enregistrement":record?.ID_Article)}
         {readOnly("DateHeureAuto","Créé le",creating?"À l’enregistrement":record?.DateHeureAuto?formatDate(record.DateHeureAuto):"Non renseigné")}
         {readOnly("ID_UserFK","Responsable",owner,"Le responsable d’origine est conservé.")}
-        <div className="record-field"><span>État de l’article</span><label className="record-editor-check" htmlFor={prefix+"ValideArticle"}><input id={prefix+"ValideArticle"} name="ValideArticle" type="checkbox" checked={values.ValideArticle===true} onChange={event=>change("ValideArticle",event.target.checked)} disabled={busy}/>Article actif</label></div>
       </Section>
-    </>:null}
+      </section>
+    </div>:null}
   </RecordEditorFrame>;
 }

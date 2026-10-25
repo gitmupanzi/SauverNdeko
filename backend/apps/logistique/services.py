@@ -30,14 +30,21 @@ def validate_header(obj, data, old, actor):
         "T_Reglements": {"ID_ModeReglementFk": 36},
     }
     for field, category in rules.get(name, {}).items():
-        if field in data and data[field] is not None:
+        if field in data and data[field] is not None and (old is None or data[field] != old.get(field)):
             row = db.one(
-                'SELECT "ID_CategorieGeneriqueFk" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',
+                '''SELECT g."ID_CategorieGeneriqueFk",g."ValideGenerique",c."ValideCategorieGenerique"
+                   FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
+                   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+                   WHERE g."ID_Generique"=%s FOR SHARE OF g,c''',
                 [data[field]],
             )
             if not row or row["ID_CategorieGeneriqueFk"] != category:
                 raise APIError("Référence incompatible : " + field)
+            if row["ValideGenerique"] is not True or row["ValideCategorieGenerique"] is not True:
+                raise APIError({field:"Cette référence n’est plus disponible. Actualisez la liste."},"REFERENCE_INACTIVE",400)
     if name == "T_Commande":
+        from .document_rules import validate_header as validate_document
+        validate_document(data,old,actor)
         from .currency import write_currency
         write_currency(data, old)
         effective = {**(old or {}), **data}
@@ -48,6 +55,8 @@ def validate_header(obj, data, old, actor):
                 [old["ID_Commande"],old["ID_Commande"],old.get("CodeFacture")])["present"]
             if linked or old.get("CodeFacture"):
                 raise APIError("La devise du bon ne peut plus changer après une ligne, un mouvement ou une facture.", "CURRENCY_LOCKED", 409)
+        if str(effective.get("CodeFacture") or "").strip() and not str((old or {}).get("CodeFacture") or "").strip():
+            data["DateHeureAutoFacture"]=datetime.now(timezone.utc)
         if old is None:
             if not effective.get("ID_TypeCmdFk"):
                 raise APIError("ID_TypeCmdFk obligatoire.")
@@ -99,6 +108,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
     commande_id = positive(commande_id)
     body = dict(body or {})
     lots = body.pop("Lots", None)
+    received = body.pop("_version", None)
     obj = model("T_CommandeDetail")
     allowed = {c["column_name"] for c in obj["columns"]} - {"ID_CmdFk"}
     if set(body) - allowed - {"ID_CmdFk"}:
@@ -109,11 +119,9 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         commande = get_record(
             model("T_Commande"), actor, {"ID_Commande": commande_id}, lock=True
         )
-        if db.one(
-            "SELECT logistique.fn_commande_cloturee(%s) AS closed",
-            [commande.get("StatusFacture")],
-        )["closed"]:
-            raise APIError("Commande clôturée.", "CLOSED_ORDER", 409)
+        from .document_rules import assert_stock_editable
+        from .stock_returns import is_historical_return_line
+        assert_stock_editable(commande)
         old = (
             get_record(
                 obj,
@@ -133,6 +141,12 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         effective = {**(old or {}), **data}
         from .lots import line_lots, sync_movement
         previous_lots = line_lots(commande_id, positive(article_id)) if old else []
+        if old:
+            from .document_rules import check_revision
+            check_revision({**old,"Lots":previous_lots},received,"ligne")
+            if "ID_ArticleFk" in data and data["ID_ArticleFk"] != old["ID_ArticleFk"]:
+                raise APIError("L’article d’une ligne existante doit être conservé.","LINE_IDENTITY_LOCKED",409)
+        elif received is not None:raise APIError("Version inattendue à la création.")
         next_id = positive(effective.get("ID_ArticleFk"))
         if previous_lots and operation != "delete" and lots is None and (next_id != positive(article_id) or effective.get("QteCmdDetail") != old.get("QteCmdDetail")):
             raise APIError("Répartissez la nouvelle quantité entre les lots de cette ligne.", "LOT_REQUIRED", 409)
@@ -150,6 +164,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
                 operation != "delete"
                 and current_id == next_id
                 and article.get("ValideArticle") is False
+                and not is_historical_return_line(commande_id,current_id)
             ):
                 raise APIError("Article inactif.")
         if operation != "delete":
@@ -161,8 +176,12 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             if qty is None or qty <= 0 or qty > 2147483647 or qty != int(qty):
                 raise APIError("QteCmdDetail doit être un entier strictement positif.")
             price = effective.get("PUCmdDetail")
-            if price is not None and price < 0:
+            if price is None:
+                raise APIError({"PUCmdDetail":"Renseignez le prix unitaire dans la devise du bon."},"LINE_VALIDATION",400)
+            if price < 0:
                 raise APIError("PUCmdDetail ne peut pas être négatif.")
+            from .document_rules import validate_line_total
+            validate_line_total(commande_id, positive(article_id) if old else None, qty, price)
         if operation == "create":
             fields = ["ID_CmdFk", *data]
             row = db.one(

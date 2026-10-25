@@ -24,7 +24,8 @@ ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
 MAX_EXPORT_ROWS = 100000
 DEFAULT_FIELDS = {
     "V_Article":["CodeArticleInterne","NomArticle","TypeArticle","CategorieArticle","Unite","QteArticle","QteMinArticle","PUArticle","PVArticle","DatePeremptionArticle","EtatStock","EtatPeremption"],
-    "V_Commande":["CodeCmd","RefCmd","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","MontantHT","MontantTTC","CodeFacture","DateFacture","MontantRegleFacture","MontantResteFacture","EtatPaiement"],
+    "V_CommandeDetail":["CodeCmd","DateCmd","TypeCmd","StatutCmd","CodeArticleInterne","NomArticle","QteCmdDetail","AbrUnite","PUCmdDetail","MontantLigne","EtatLigne"],
+    "V_Commande":["CodeCmd","RefCmd","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","MontantHT","MontantTTC","MontantFacture","CodeFacture","DateFacture","MontantRegleFacture","MontantResteFacture","EtatPaiement"],
     "V_SuiviReglements":["CodeFacture","CodeCmd","DateFacture","DateEcheancePaiement","NomClientSaisi","MontantTTC","TotalRegle","Reste","EtatReglement"],
     "V_AuditStock":["NomArticle","StockArticle","StockMouvements","Ecart","EtatAuditStock"],
     "V_CouvertureStock":["NomArticle","StockActuel","ConsoMoyMensuelle","CouvertureMois","EtatCouverture"],
@@ -180,7 +181,7 @@ def indicator_workbook(actor, key, raw):
 def register_workbook(actor, kind, raw):
     obj,condition,fixed = register_source(kind,raw,for_export=True)
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
-    label = "Registre des articles" if kind == "articles" else "Registre des bons de stock"
+    label = {"articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label)
 
 def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label):

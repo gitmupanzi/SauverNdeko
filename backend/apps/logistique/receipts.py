@@ -216,9 +216,8 @@ def receive_article(actor, pk, body):
         received_type=entry_type(data.get("ID_TypeCmdFk"),lock=True)
         data["ID_TypeCmdFk"]=received_type["id"]
         fingerprint=payload_hash(article_id,data,actor)
-        code="REC-"+hashlib.sha256(operation_key.encode("utf8")).hexdigest()[:16].upper()
         header={key:data[key] for key in ("ID_DeviseFk","DateCmd","RefCmd","ID_ClientFk","NomClientSaisi","ObsCmd") if key in data}
-        header.update(ID_TypeCmdFk=received_type["id"],CodeCmd=code,DateHeureAutoCmd=datetime.now(timezone.utc))
+        header.update(ID_TypeCmdFk=received_type["id"],DateHeureAutoCmd=datetime.now(timezone.utc))
         command=mutate("T_Commande",actor,header,operation="create")
         line={"ID_ArticleFk":article_id,"QteCmdDetail":data["QteCmdDetail"],"PUCmdDetail":data["PUCmdDetail"]}
         if data.get("ObsCmdDetail") is not None:line["ObsCmdDetail"]=data["ObsCmdDetail"]

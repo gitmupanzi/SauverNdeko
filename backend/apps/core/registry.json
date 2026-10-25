@@ -14101,6 +14101,66 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "ID_Facture",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "EstFactureSnapshot",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "MontantFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "MontantAvoirAEtablir",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "AvoirAEtablir",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -16008,6 +16068,78 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "ID_Facture",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "EstFactureSnapshot",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "MontantFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "MontantAvoirAEtablir",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "AvoirAEtablir",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements",
+          "column_name": "MontantBon",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
           "is_identity": "NO"
         }
       ]

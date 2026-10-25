@@ -71,7 +71,7 @@ Lire [la terminologie du stock](references/terminologie-stock.md) pour les noms 
 
 TailAdmin React est la référence visuelle demandée par le propriétaire pour le login, Vos applications et les modules. Conserver les principes d’interaction d’imf_BB : indicateurs vers liste intégrée, puis fiche 360 d’un enregistrement. Préserver la marque SauverNdeko, les mini-indicateurs compacts, le menu bleu ardoise et les styles partagés. Lire la référence visuelle avant une évolution de présentation.
 
-La charte commune couvre les sept écrans de référence : Connexion, Vos applications, Découvrir les applications, Licences et applications, Tableau de bord logistique, Articles et Dossiers de suivi. Les futurs écrans reprennent leurs composants, tokens, états et interactions ; éviter une variante de présentation propre à chaque onglet.
+La charte commune couvre Connexion, Vos applications, Découvrir les applications, Licences et applications, Tableau de bord logistique, Articles, Dossiers de suivi, Bons de stock, Lignes des bons et les consultations 360. Les futurs écrans reprennent leurs composants, tokens, états et interactions ; éviter une variante de présentation propre à chaque onglet.
 
 Les sous-onglets de consultation utilisent [ConsultationTabs](../../src/components/ConsultationTabs.jsx), partagé entre profil et fiches métier : barre compacte, icônes communes, onglet actif visible et navigation au clavier. La modernité comprend le contenu lié à l’objet sélectionné, le chargement à la demande et la conservation du contexte, au-delà du seul style. Voir les [références et le contrat des onglets](references/design-reference.md#sous-onglets-de-consultation).
 

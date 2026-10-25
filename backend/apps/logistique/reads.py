@@ -41,7 +41,7 @@ INDICATORS.update({
     "facturesPartielles": ("V_Commande", INVOICE + ' AND "MontantRegleFacture">0 AND "MontantResteFacture">0', "COUNT(*)", "Partiellement réglées", "commande", "Factures avec un règlement positif et un solde restant positif."),
     "facturesARegler": ("V_Commande", INVOICE + ' AND "MontantResteFacture">0', "COUNT(*)", "Factures à régler", "commande", "Factures dont le solde restant est positif."),
     "facturesEnRetard": ("V_Commande", INVOICE + ' AND "DateEcheancePaiement"<CURRENT_TIMESTAMP AND "MontantResteFacture">0', "COUNT(*)", "Factures en retard", "commande", "Factures à solde positif dont l’échéance est dépassée."),
-    "montantTotalFacture": ("V_Commande", INVOICE, 'SUM("MontantTTC")', "Montant facturé", "commande", "Somme TTC des seuls bons portant une référence de facture."),
+    "montantTotalFacture": ("V_Commande", INVOICE, 'SUM("MontantFacture")', "Montant facturé", "commande", "Somme des factures émises : quantités nettes lors de l’émission, hors avoirs à établir."),
     "montantTotalRegle": ("V_SuiviReglements", INVOICE, 'SUM("TotalRegle")', "Montant réglé", "commande", "Somme des règlements des factures du périmètre."),
     "montantRestant": ("V_SuiviReglements", INVOICE, 'SUM("Reste")', "Solde à régler", "commande", "Somme des soldes restants des factures du périmètre."),
 })
@@ -65,6 +65,11 @@ def read_predicate(obj, actor, raw=None, fixed_filters=None):
     period = {key: params.pop(key) for key in ["dateFrom", "dateTo"] if params.get(key)}
     params["filters"] = fixed_filters or {}
     where, values = predicate(obj, actor, params)
+    if obj.get("_composition_scope"):
+        where += ''' AND EXISTS (SELECT 1 FROM systeme."T_Utilisateurs" composition_owner
+            WHERE composition_owner."IdUser"=v."ID_UserFK"
+            AND composition_owner."IdEntiteFk" IS NOT DISTINCT FROM %s)'''
+        values.append(actor.organisation)
     dates = {}
     for key, value in period.items():
         try:
@@ -103,7 +108,7 @@ def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popula
     take, skip = page(params)
     columns = [col["column_name"] for col in obj["columns"]]
     source = row_source(obj)
-    scope, scope_values = scope_for(obj, actor)
+    scope, scope_values = read_predicate(obj, actor, {}) if obj.get("_composition_scope") else scope_for(obj, actor)
     total = db.one("SELECT COUNT(*) AS n FROM " + source + " WHERE " + scope, scope_values)["n"]
     count = db.one("SELECT COUNT(*) AS n FROM " + source + " WHERE " + where, values)["n"]
     rows = db.query("SELECT v.* FROM " + source + " WHERE " + where + " ORDER BY " + order + " LIMIT %s OFFSET %s", [*values,take,skip])
@@ -169,14 +174,26 @@ def overview(actor, raw):
     return {"totals": totals, "amountsByCurrency": grouped, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
-    if kind not in {"articles", "commandes"}:
+    if kind not in {"articles", "commandes", "lignes"}:
         raise APIError("Registre introuvable.", "NOT_FOUND", 404)
-    unknown = set(raw) - (BASE_QUERY_KEYS | ({"columns"} if for_export else set()))
+    unknown = set(raw) - (BASE_QUERY_KEYS | ({"contexte"} if kind == "articles" else set()) | ({"commandeId","articleId","etat"} if kind == "lignes" else set()) | ({"columns"} if for_export else set()))
     if unknown:
         raise APIError("Critère non autorisé.")
+    if kind == "lignes":
+        obj = view("logistique", "V_CommandeDetail")
+        filters = {field:positive(raw[key]) for key,field in {"commandeId":"ID_CmdFk","articleId":"ID_ArticleFk","typeId":"ID_TypeCmdFk","statutId":"ID_StatutCmdFk"}.items() if raw.get(key) not in (None,"")}
+        states={"all":"TRUE","conforme":'"EtatLigne"=\'Valide\'',"incoherente":'"EtatLigne"<>\'Valide\''}
+        state=raw.get("etat") or "all"
+        if state not in states:raise APIError("État de ligne invalide.")
+        return obj,states[state],filters
     article = kind == "articles"
     obj = view("logistique", "V_Article" if article else "V_Commande")
     filters = {}
+    if article:
+        context = raw.get("contexte")
+        if context not in (None,"","composition"):
+            raise APIError("Contexte de catalogue non autorisé.")
+        if context == "composition":obj = {**obj,"_composition_scope":True}
     mapping = {"typeId": "ID_TypeArticleFk", "categorieId": "ID_CategorieArticleFk", "uniteId": "ID_UniteFk"} if article else {"typeId": "ID_TypeCmdFk", "statutId": "ID_StatutCmdFk", "client": "ID_ClientFk"}
     for key, field in mapping.items():
         if raw.get(key) not in (None, ""):
@@ -213,6 +230,12 @@ def register(actor, kind, raw):
     obj, condition, filters = register_source(kind, raw)
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
+    if kind == "commandes":
+        from .stock_returns import annotate_return_context
+        rows=annotate_return_context(rows,actor)
+    if kind == "lignes":
+        meta["summary"] = db.one('SELECT COUNT(*) AS total,COUNT(DISTINCT "ID_CmdFk") AS bons,COUNT(DISTINCT "ID_ArticleFk") AS articles FROM '+row_source(obj)+" WHERE "+where,values)
+        return rows,meta
     expression = 'COUNT(*) AS total, COUNT(*) FILTER(WHERE "EstRupture"=true) AS rupture, COUNT(*) FILTER(WHERE "EstAlerteStock"=true AND "EstRupture"=false) AS faible, COUNT(*) FILTER(WHERE "QteArticle">0 AND ("QteMinArticle" IS NULL OR "QteArticle">"QteMinArticle")) AS disponible' if article else 'COUNT(*) AS total, SUM("NbLignes") AS totalLignes, COUNT(*) FILTER(WHERE "EstCommandeSansDetails"=true) AS sansDetails, COUNT(*) FILTER(WHERE "EstPaiementEnRetard"=true) AS enRetard'
     meta["summary"] = db.one("SELECT " + expression + " FROM " + row_source(obj) + " WHERE " + where, values)
     return rows, meta
@@ -233,7 +256,12 @@ def consultation(actor, kind, pk, section, raw):
         if kind=="commande":
             invoices=record_folders(actor,"facture",pk)
             data["dossiers"]["items"].extend(invoices["items"])
-        return clean(data), None
+        meta=None
+        if kind=="commande":
+            from .stock_returns import return_context,return_feature_ready
+            from .invoices import storage_ready as invoice_storage_ready
+            meta={"features":{"returns":return_feature_ready(),"invoices":invoice_storage_ready()},"returnContext":return_context(pk)}
+        return clean(data), meta
     if section not in SECTIONS[kind]:
         raise APIError("Rubrique introuvable.", "NOT_FOUND", 404)
     name, field = SECTIONS[kind][section]

@@ -18,3 +18,15 @@
 /* Le statut de synthèse ne déplace pas les indicateurs pendant une lecture. */
 .erp-dashboard { position:relative; }
 .erp-dashboard-loading { position:absolute; top:5px; right:0; z-index:2; padding:4px 8px; border:1px solid var(--erp-border); border-radius:5px; background:var(--erp-surface); color:var(--erp-muted); font-size:11px; line-height:1.4; pointer-events:none; }
+
+/* Le bon de stock partage les mêmes commandes et tokens que la consultation produit. */
+.consultation-dialog:has(.commande360) { background:var(--erp-raised); color:var(--erp-text); border-color:var(--erp-border); }
+.consultation-dialog:has(.commande360) .consult-header { background:var(--erp-surface); color:var(--erp-text); border-color:var(--erp-border); padding:16px 22px; }
+.consultation-dialog:has(.commande360) .consult-header h2 { font-size:16px; }
+.consultation-dialog:has(.commande360) .consult-actions button { border:1px solid var(--erp-border); background:var(--erp-surface); color:var(--erp-muted); }
+.consultation-dialog:has(.commande360) .consult-actions button:hover { background:var(--erp-hover); color:var(--erp-text); }
+.consultation-dialog:has(.commande360) .consult-width-actions { border-color:var(--erp-border); }
+.consultation-dialog:has(.commande360) .consult-back { color:var(--erp-link); }
+.consultation-dialog:has(.commande360) .consult-state { border-color:var(--erp-border); background:var(--erp-surface); color:var(--erp-text); }
+.consultation-dialog:has(.commande360) .consult-state button { background:var(--erp-action-soft); color:var(--erp-action); }
+@media(max-width:640px) { .consultation-dialog:has(.commande360) .consult-content { padding:16px; } }

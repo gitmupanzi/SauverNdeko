@@ -1182,6 +1182,7 @@ export default function Logistique() {
                 {activeTab === "details" ? (
                   <CommandeDetails
                     selectedCommande={selectedCommande}
+                    onClearCommande={() => setSelectedCommande(null)}
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}

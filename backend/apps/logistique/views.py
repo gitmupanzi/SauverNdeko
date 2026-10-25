@@ -11,9 +11,10 @@ class DetailView(APIView):
 
     def get(self, request, commande=None, article=None, search=False):
         if article is not None:
-            record=get_record(view("logistique","V_CommandeDetail"),request.user,{"ID_CmdFk":positive(commande),"ID_ArticleFk":positive(article)})
-            from .lots import line_lots
-            return ok(clean({**record,"Lots":line_lots(positive(commande),positive(article))}))
+            from .document_rules import editable_record, line_usage
+            record=editable_record(model("T_CommandeDetail"),view("logistique","V_CommandeDetail"),request.user,{"ID_CmdFk":positive(commande),"ID_ArticleFk":positive(article)})
+            parent=get_record(model("T_Commande"),request.user,{"ID_Commande":positive(commande)})
+            return ok(clean(record),meta=line_usage(record,parent))
         params = request.query_params.dict()
         if commande:
             params["commande"] = commande
@@ -44,7 +45,7 @@ class DetailView(APIView):
     def delete(self, request, commande, article):
         return ok(
             mutate_line(
-                request.user, commande, article_id=positive(article), operation="delete"
+                request.user, commande, body=request.data, article_id=positive(article), operation="delete"
             )
         )
 

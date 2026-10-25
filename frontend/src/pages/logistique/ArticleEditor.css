@@ -1,0 +1,6 @@
+.article-editor{min-width:0;color:var(--erp-text);}
+.article-editor>.consultation-tabs{margin-bottom:18px;}
+.article-editor>[role=tabpanel]{min-width:0;}
+.article-editor>[role=tabpanel]>.record-editor-section:last-child{margin-bottom:0;}
+.article-editor-lots p{margin:0 0 16px;font-size:12px;line-height:1.6;color:var(--erp-muted);}
+.article-editor [id$=initial-lots]:focus-visible,.article-editor [id$=photo]:focus-visible{outline:2px solid var(--erp-link);outline-offset:3px;border-radius:10px;}

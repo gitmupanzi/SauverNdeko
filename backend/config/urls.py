@@ -1,6 +1,9 @@
 from apps.accounts.mail_settings import MailSettingsView
 from apps.accounts.password_reset import PasswordResetView, PasswordResetCheckView, PasswordResetConfirmView
 from apps.accounts.passwords import PasswordChangeView
+from apps.logistique.invoices import InvoiceView
+from apps.logistique.stock_returns import StockReturnsView
+from apps.logistique.order_composer import OrderComposerView, OrderCompositionView
 from apps.logistique.receipts import ArticleReceiptView
 from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
@@ -36,6 +39,10 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/retours/?$", StockReturnsView.as_view()),
+    re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/facture/?$", InvoiceView.as_view()),
+    re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/composition/?$", OrderCompositionView.as_view()),
+    re_path(r"^api/logistique/commandes/composees/?$", OrderComposerView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/receptions/?$", ArticleReceiptView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/photo/?$", ArticlePhotoView.as_view()),
     re_path(r"^api/public/articles/(?P<pk>[0-9]+)/photo/?$", PublicArticlePhotoView.as_view(), {"kind":"articles"}),
@@ -50,8 +57,8 @@ urlpatterns = [
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/export\.xlsx/?$", FolderExcelView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/membres/?$", FolderMembersView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi(?:/(?P<key>[a-z0-9-]+))?/?$", FoldersView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes)/?$", RegisterReadView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes)/export\.xlsx/?$", RegisterExcelView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes|lignes)/?$", RegisterReadView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes|lignes)/export\.xlsx/?$", RegisterExcelView.as_view()),
     re_path(r"^api/logistique/synthese/?$", OverviewReadView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/export\.xlsx/?$", IndicatorExcelView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),

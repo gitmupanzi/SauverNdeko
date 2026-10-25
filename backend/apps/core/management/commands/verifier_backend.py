@@ -68,7 +68,8 @@ class Command(BaseCommand):
                 "/api/recherches",
                 "/api/geolocalisation/hierarchie",
             ]
-            urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1"])
+            urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1"])
+            urls.append("/api/logistique/registre/articles?contexte=composition&take=1")
             urls.append("/api/logistique/dossiers-suivi")
             urls.extend("/api/logistique/dossiers-suivi/"+folder["key"]+"?take=1" for folder in AUTOMATIC)
             urls.extend("/api/logistique/indicateurs/" + key + "?take=1" for key in INDICATORS)
@@ -83,6 +84,18 @@ class Command(BaseCommand):
                 receipt_article = cursor.fetchone()
             if receipt_article:
                 urls.append("/api/logistique/articles/"+str(receipt_article[0])+"/receptions")
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT "ID_Commande" FROM logistique."T_Commande" ORDER BY "ID_Commande" LIMIT 1')
+                sample_order = cursor.fetchone()
+                cursor.execute('SELECT c."ID_Commande" FROM logistique."T_Commande" c JOIN systeme."T_Utilisateurs" u ON u."IdUser"=c."ID_UserFk" WHERE u."IdEntiteFk" IS NULL ORDER BY c."ID_Commande" LIMIT 1')
+                platform_order = cursor.fetchone()
+                cursor.execute('SELECT "ID_CmdFk","ID_ArticleFk" FROM logistique."T_CommandeDetail" ORDER BY "ID_CmdFk","ID_ArticleFk" LIMIT 1')
+                sample_line = cursor.fetchone()
+            if sample_order:urls.append("/api/logistique/commandes/"+str(sample_order[0]))
+            if platform_order:
+                for suffix in ("composition","retours","facture"):
+                    urls.append("/api/logistique/commandes/"+str(platform_order[0])+"/"+suffix)
+            if sample_line:urls.append("/api/logistique/commande-details/"+str(sample_line[0])+"/"+str(sample_line[1]))
             results = []
             with override_settings(
                 ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]
@@ -125,11 +138,14 @@ class Command(BaseCommand):
                 for url in [
                     "/api/logistique/synthese",
                     "/api/logistique/registre/articles?take=1",
-                    "/api/logistique/registre/commandes?take=1",
+                    "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1",
                     "/api/logistique/dossiers-suivi",
                     "/api/logistique/articles",
                     "/api/logistique/articles/1/receptions",
                     "/api/logistique/commandes",
+                    "/api/logistique/commandes/1/composition",
+                    "/api/logistique/commandes/1/retours",
+                    "/api/logistique/commandes/1/facture",
                     "/api/logistique/commande-details",
                     "/api/logistique/mouvements",
                     "/api/logistique/reglements",

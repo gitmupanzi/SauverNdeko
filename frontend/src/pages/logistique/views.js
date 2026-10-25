@@ -533,7 +533,6 @@ const LOGISTIQUE_CRUD_CONFIGS = {
       ID_ConditionPaiementFk: "",
       ID_ModePaiementFk: "",
       DateCmd: "",
-      CodeCmd: "",
       RefCmd: "",
       ID_DeviseFk: "",
       MontantHT: "",
@@ -560,7 +559,6 @@ const LOGISTIQUE_CRUD_CONFIGS = {
       ID_ConditionPaiementFk: commande.ID_ConditionPaiementFk ? String(commande.ID_ConditionPaiementFk) : "",
       ID_ModePaiementFk: commande.ID_ModePaiementFk ? String(commande.ID_ModePaiementFk) : "",
       DateCmd: commande.DateCmd ? new Date(new Date(commande.DateCmd).getTime() - new Date(commande.DateCmd).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "",
-      CodeCmd: commande.CodeCmd || "",
       RefCmd: commande.RefCmd || "",
       ID_DeviseFk: commande.ID_DeviseFk == null ? "" : String(commande.ID_DeviseFk),
       MontantHT: commande.MontantHT != null ? String(commande.MontantHT) : "",
@@ -599,6 +597,8 @@ const LOGISTIQUE_CRUD_CONFIGS = {
         MontantHT: values.MontantHT || null,
         MontantTTC: values.MontantTTC || null,
       };
+
+      delete payload.CodeCmd;
 
       if (mode === "create" || values.ID_UserFk || record?.ID_UserFk != null) {
         payload.ID_UserFk = values.ID_UserFk || null;
