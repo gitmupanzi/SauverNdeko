@@ -1,5 +1,7 @@
+import ReferenceSettings from "../components/ReferenceSettings";
+import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ModuleHeader from "../components/ModuleHeader";
 import "./logistique/LogistiqueModern.css";
 import { startTransition, useEffect, useMemo, useState } from "react";
@@ -13,6 +15,7 @@ import {
 import { fetchLogistiqueReferences } from "../services/logistique";
 import AlertesStock from "./logistique/AlertesStock";
 import Articles from "./logistique/Articles";
+import DossiersSuivi from "./logistique/DossiersSuivi";
 import CommandeDetails from "./logistique/CommandeDetails";
 import Commandes from "./logistique/Commandes";
 import ConsommationMensuelle from "./logistique/ConsommationMensuelle";
@@ -232,74 +235,6 @@ function formatDisplayDateTime(value) {
     minute: "2-digit",
     second: "2-digit",
   }).format(parsed);
-}
-
-function formatSyncLabel(meta) {
-  if (!meta?.updatedAt) {
-    return "Aucune synchronisation serveur enregistree";
-  }
-
-  const dateLabel = formatDisplayDateTime(meta.updatedAt) || String(meta.updatedAt);
-  return meta.updatedByName ? `Synchronise le ${dateLabel} par ${meta.updatedByName}` : `Synchronise le ${dateLabel}`;
-}
-
-function buildLogistiqueFkSyncStatus({
-  loading,
-  saving,
-  error,
-  meta,
-  hasServerSettings,
-  hasDirtyDrafts,
-  hasInvalidDrafts,
-}) {
-  if (loading) {
-    return {
-      tone: "info",
-      title: "Chargement des reglages partages...",
-      details: [{ tone: "muted", text: "Les categories FK logistiques sont en cours de lecture." }],
-    };
-  }
-
-  if (saving) {
-    return {
-      tone: "info",
-      title: "Enregistrement serveur en cours...",
-      details: [{ tone: "info", text: "Les correspondances FK logistiques sont en cours de synchronisation." }],
-    };
-  }
-
-  if (error) {
-    return {
-      tone: "danger",
-      title: "Synchronisation serveur indisponible",
-      details: [
-        { tone: "danger", text: error },
-        { tone: "warning", text: "Les reglages visibles restent actifs localement dans cette session." },
-      ],
-    };
-  }
-
-  const details = [];
-
-  if (hasServerSettings) {
-    details.push({ tone: "success", text: "Les reglages affiches proviennent du serveur et sont deja actifs." });
-    details.push({ tone: "muted", text: formatSyncLabel(meta) });
-  } else {
-    details.push({ tone: "muted", text: "Aucun parametrage serveur logistique n'est encore enregistre." });
-    details.push({ tone: "warning", text: "Les reglages affiches restent locaux jusqu'au premier enregistrement." });
-  }
-
-  if (hasInvalidDrafts) {
-    details.push({ tone: "danger", text: "Certaines categories saisies sont invalides." });
-  } else if (hasDirtyDrafts) {
-    details.push({ tone: "warning", text: "Des modifications locales attendent encore d'etre appliquees." });
-  }
-
-  return {
-    tone: hasServerSettings ? "success" : "warning",
-    title: hasServerSettings ? "Reglages synchronises via le serveur admin" : "Reglages locaux actifs",
-    details,
-  };
 }
 
 function parseAuditPayload(rawValue) {
@@ -549,7 +484,7 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
 function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
-    { label: "Pilotage", keys: ["dashboard"] },
+    { label: "Pilotage", keys: ["dashboard", "dossiers"] },
     { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements"] },
     { label: "Finances", keys: ["reglements"] },
   ];
@@ -575,7 +510,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
         })}
       </div>)}
     </nav>
-    <div className="logistics-app-switcher"><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
+    <div className="logistics-app-switcher"><Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
   </aside>;
 }
 
@@ -652,6 +587,7 @@ const TABLE_FEATURE_CONFIG = LOGISTIQUE_MODULE_SCHEMA.tableFeatures;
 const MAIN_TAB_DEFINITIONS = [
   { key: "dashboard", label: "Tableau de bord", icon: "bi-speedometer2" },
   { key: "articles", label: "Articles", icon: "bi-box-seam" },
+  { key: "dossiers", label: "Dossiers de suivi", icon: "folder" },
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
   { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
@@ -659,7 +595,13 @@ const MAIN_TAB_DEFINITIONS = [
 ];
 
 export default function Logistique() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const { user } = useAuth();
+  const canEditReferences = user?.Is_Admin === true && user?.permissions?.canWriteData === true;
+  const [settingsVersion, setSettingsVersion] = useState(0);
+  const [navigation,setNavigation]=useSearchParams();
+  const requestedTab=navigation.get("onglet");
+  const [activeTab, setActiveTab] = useState(()=>MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab)?requestedTab:"dashboard");
+  useEffect(()=>{if(MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab))setActiveTab(requestedTab);},[requestedTab]);
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [activeTab]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -672,6 +614,12 @@ export default function Logistique() {
     reglements: { search: "", selectedRow: null },
   });
   const [baseReferences, setBaseReferences] = useState(null);
+  useEffect(()=>{
+    if(!refreshKey)return;
+    let active=true;
+    fetchLogistiqueReferences().then(result=>{if(active&&result?.success)setBaseReferences(result.data);});
+    return()=>{active=false;};
+  },[refreshKey]);
   const [referenceCategories, setReferenceCategories] = useState([]);
   const [genericRows, setGenericRows] = useState([]);
   const [referencesLoading, setReferencesLoading] = useState(true);
@@ -784,6 +732,7 @@ export default function Logistique() {
             updatedByName: response.data.updatedByName || null,
           });
         } else {
+          if (!response?.success) setSharedFkSettingsError(response?.message || "Les réglages n’ont pas pu être chargés.");
           setAllServerGenericOverrides({});
           setServerHierarchyModes({});
           setSharedFkSettingsMeta({
@@ -797,7 +746,7 @@ export default function Logistique() {
           return;
         }
 
-        setSharedFkSettingsError("Impossible de charger les reglages partages du panneau FK.");
+        setSharedFkSettingsError("Les réglages n’ont pas pu être chargés.");
       } finally {
         if (isMounted) {
           setLoadingSharedFkSettings(false);
@@ -810,7 +759,7 @@ export default function Logistique() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [settingsVersion]);
 
   useEffect(() => {
     let isMounted = true;
@@ -854,6 +803,7 @@ export default function Logistique() {
   }
 
   function handleNavigate(tabKey, options = {}) {
+    setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet",tabKey);if(tabKey!=="dossiers")next.delete("dossier");return next;},{replace:true});
     if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
     startTransition(() => {
       setActiveTab(tabKey);
@@ -1016,37 +966,13 @@ export default function Logistique() {
     [activeGenericMappings, categoryNameById, genericCategoryDrafts, genericCategoryOverrides, references]
   );
 
-  const hasInvalidGenericDrafts = genericMappingStates.some((item) => !item.isValid);
-  const hasDirtyGenericDrafts = genericMappingStates.some((item) => item.isDirty);
-  const hasCustomFkSettings = genericMappingStates.some((item) => item.isCustom);
-
-  const sharedFkSyncStatus = useMemo(
-    () =>
-      buildLogistiqueFkSyncStatus({
-        loading: loadingSharedFkSettings,
-        saving: savingSharedFkSettings,
-        error: sharedFkSettingsError,
-        meta: sharedFkSettingsMeta,
-        hasServerSettings: Boolean(sharedFkSettingsMeta.updatedAt),
-        hasDirtyDrafts: hasDirtyGenericDrafts,
-        hasInvalidDrafts: hasInvalidGenericDrafts,
-      }),
-    [
-      hasDirtyGenericDrafts,
-      hasInvalidGenericDrafts,
-      loadingSharedFkSettings,
-      savingSharedFkSettings,
-      sharedFkSettingsError,
-      sharedFkSettingsMeta,
-    ]
-  );
-
   const visibleSharedFkAuditRows = useMemo(
     () => sharedFkAuditRows.filter(hasLogistiqueAuditChange).slice(0, 4),
     [sharedFkAuditRows]
   );
 
   async function persistSharedFkSettings(nextLogistiqueOverrides) {
+    if (!canEditReferences || savingSharedFkSettings || loadingSharedFkSettings) return false;
     setSavingSharedFkSettings(true);
     setSharedFkSettingsError("");
 
@@ -1145,7 +1071,7 @@ export default function Logistique() {
       return;
     }
 
-    const nextOverrides = {};
+    const nextOverrides = { ...genericCategoryOverrides };
     const nextDrafts = {};
 
     genericMappingStates.forEach((item) => {
@@ -1159,6 +1085,8 @@ export default function Logistique() {
 
       if (serializedValue !== item.defaultValue) {
         nextOverrides[item.sourceKey] = serializedValue;
+      } else {
+        delete nextOverrides[item.sourceKey];
       }
     });
 
@@ -1172,9 +1100,11 @@ export default function Logistique() {
 
   async function handleResetAllFkSettings() {
     const nextDrafts = {};
+    const nextOverrides = { ...genericCategoryOverrides };
 
     genericMappingStates.forEach((item) => {
       nextDrafts[item.sourceKey] = item.defaultValue;
+      if (!item.isLocked) delete nextOverrides[item.sourceKey];
     });
 
     setGenericCategoryDrafts((current) => ({
@@ -1182,7 +1112,7 @@ export default function Logistique() {
       ...nextDrafts,
     }));
 
-    await persistSharedFkSettings({});
+    await persistSharedFkSettings(nextOverrides);
   }
 
   const mainTabs = useMemo(
@@ -1237,104 +1167,11 @@ export default function Logistique() {
             {!referencesLoading && !referencesError ? (
               <div className="logistics-shell-view">
                 {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
-                  <section className="logistics-screen-filter-card">
-                    <div className="logistics-card-head">
-                      <div className="section-head">
-                        <h3>Réglages des références</h3>
-
-                      </div>
-                      <div className="logistics-card-actions">
-                        <button
-                          type="button"
-                          className="secondary-action"
-                          onClick={() => setShowFkMappingPanel((current) => !current)}
-                        >
-                          {showFkMappingPanel ? "Fermer" : "Réglages"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {showFkMappingPanel ? (
-                      <div className="logistics-fk-grid">
-                        {genericMappingStates.map((item) => (
-                          <article key={item.sourceKey} className="logistics-fk-item">
-                            <strong>{item.labels.join(", ")}</strong>
-                            <p>{item.fieldNames.join(", ")}</p>
-                            <small>{item.source}</small>
-                            <small>{`Categorie(s) actives: ${item.effectiveCategoryLabels || "Aucune"}`}</small>
-                            <small>{`${item.optionsCount} option(s) disponible(s)`}</small>
-                            <label className="admin-form-field">
-                              <span>IDs categorie</span>
-                              <input
-                                type="text"
-                                value={item.inputValue}
-                                onChange={(event) => handleGenericCategoryDraftChange(item.sourceKey, event.target.value)}
-                                disabled={item.isLocked}
-                              />
-                            </label>
-                            <div className="admin-editor-actions">
-                              <button
-                                type="button"
-                                className="secondary-action"
-                                onClick={() => handleResetGenericCategoryOverride(item.sourceKey)}
-                                disabled={item.isLocked}
-                              >
-                                Reinitialiser
-                              </button>
-                              <button
-                                type="button"
-                                className="primary-action"
-                                onClick={() => handleApplyGenericCategoryOverride(item.sourceKey)}
-                                disabled={item.isLocked || !item.isValid}
-                              >
-                                Appliquer
-                              </button>
-                            </div>
-                          </article>
-                        ))}
-
-                        {activeDirectMappings.map((mapping) => (
-                          <article key={`${mapping.field}-${mapping.label}`} className="logistics-fk-item">
-                            <strong>{mapping.label}</strong>
-                            <p>{mapping.field}</p>
-                            <small>{mapping.source}</small>
-                          </article>
-                        ))}
-
-                        <article className="logistics-fk-item">
-                          <strong>{sharedFkSyncStatus.title}</strong>
-                          {sharedFkSyncStatus.details.map((detail, index) => (
-                            <small key={`${detail.text}-${index}`}>{detail.text}</small>
-                          ))}
-                          <div className="admin-editor-actions">
-                            <button
-                              type="button"
-                              className="secondary-action"
-                              onClick={handleResetAllFkSettings}
-                              disabled={!hasCustomFkSettings && !hasDirtyGenericDrafts}
-                            >
-                              Tout reinitialiser
-                            </button>
-                            <button
-                              type="button"
-                              className="primary-action"
-                              onClick={handleApplyAllGenericCategoryOverrides}
-                              disabled={hasInvalidGenericDrafts || !hasDirtyGenericDrafts}
-                            >
-                              Tout appliquer
-                            </button>
-                          </div>
-                        </article>
-                      </div>
-                    ) : (
-                      <section className="table-empty-state logistics-collapsed-state">
-                        Ouvrez le panneau pour gerer les correspondances FK de la vue active.
-                      </section>
-                    )}
-                  </section>
+                  <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={canEditReferences} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setSettingsVersion(version=>version+1)} />
                 ) : null}
 
                 {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
+                {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"reglements":"commandes")}/> : null}
                 {activeTab === "articles" ? (
                   <Articles
                     references={references}

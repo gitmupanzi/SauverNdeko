@@ -1,111 +1,88 @@
+import ArticleEditor from "./ArticleEditor";
+import ArticleActionDrawer from "./ArticleActionDrawer";
+import { useFollowupFolders } from "../../contexts/FollowupFoldersContext";
+import RowActionsMenu from "../../components/RowActionsMenu";
+import AppIcon from "../../components/AppIcon";
+import RegisterSurface from "../../components/RegisterSurface";
+import DataTableToolbar from "../../components/DataTableToolbar";
+import { downloadApiFile } from "../../services/api";
 import ActionButton from "../../components/ActionButton";
 import { useConsultations } from "../../components/ConsultationProvider";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   asArrayPayload,
+  exportRowsToCsv,
   buildReferenceLabelMap,
   buildReferenceOptions,
-  exportRowsToCsv,
-  exportRowsToPdf,
   formatCurrency,
   formatDate,
   formatNumber,
   getApiMessage,
-  LoadingErrorEmpty,
-  SectionCard,
-  SelectionStrip,
-  SelectField,
   SimpleTable,
-  SummaryCard,
   StatusBanner,
-  TableToolbar,
-  ToneBadge,
 } from "./logistiqueShared";
 import {
-  computeArticleAlertDate,
-  computeArticleAlertDays,
-  getLogistiqueCrudConfig,
-  getLogistiqueGenericSourceHint,
   getLogistiqueViewConfig,
 } from "./views";
 
 const ARTICLES_VIEW_CONFIG = getLogistiqueViewConfig("articles");
-const ARTICLES_CRUD_CONFIG = getLogistiqueCrudConfig("articles");
+const EMPTY_FILTERS = { categorieId:"", typeId:"", uniteId:"", stockState:"all", peremption:"all", statut:"" };
+const DEFAULT_COLUMNS = ["NomArticle","CategorieArticle","QteArticle","EtatStock","PUArticle","DatePeremptionArticle","actions"];
 
-function buildReferenceHelperText(sourceKey, options) {
-  const count = Array.isArray(options) ? options.length : 0;
-  return `${getLogistiqueGenericSourceHint(sourceKey)} | ${count} option(s) chargee(s)`;
+function stockTone(value) {
+  const label = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  return label.includes("rupture") ? "danger" : label.includes("faible") ? "warning" : label.includes("disponible") ? "success" : "neutral";
 }
-
-function formatUserDisplayName(user) {
-  if (!user) {
-    return "";
-  }
-
-  return [user.NomUser, user.PrenomUser].filter(Boolean).join(" ").trim() || user.EmailUser || "Utilisateur connecte";
+function expiryTone(value) {
+  const label = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  return label.includes("perime") ? "danger" : /alerte|proche/.test(label) ? "warning" : label.includes("valide") ? "success" : "neutral";
 }
-
-function getArticleStockState(article) {
-  const quantity = Number(article?.QteArticle ?? 0);
-  const minQuantity = article?.QteMinArticle == null || article?.QteMinArticle === "" ? null : Number(article.QteMinArticle);
-
-  if (quantity <= 0) {
-    return {
-      key: "rupture",
-      label: "Rupture",
-      tone: "danger",
-    };
-  }
-
-  if (Number.isFinite(minQuantity) && quantity <= minQuantity) {
-    return {
-      key: "faible",
-      label: "Stock faible",
-      tone: "warning",
-    };
-  }
-
-  return {
-    key: "disponible",
-    label: "Disponible",
-    tone: "success",
-  };
-}
-
-function getArticleExpirationState(article) {
-  const label = String(article?.EtatPeremption || "");
-
-  if (label.toLowerCase().includes("perim")) {
-    return { key: "perime", label: label || "Perime", tone: "danger" };
-  }
-
-  if (label.toLowerCase().includes("alerte")) {
-    return { key: "alerte", label: label || "Alerte peremption", tone: "warning" };
-  }
-
-  if (label.toLowerCase().includes("non")) {
-    return { key: "non-renseignee", label: label || "Non renseignee", tone: "info" };
-  }
-
-  return { key: "valide", label: label || "Valide", tone: "success" };
-}
-
-function getArticleRecordState(article) {
-  return article?.ValideArticle
-    ? { key: "actif", label: "Actif", tone: "success" }
-    : { key: "inactif", label: "Inactif", tone: "info" };
-}
+function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
 export default function Articles({ references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
   const { user: currentUser } = useAuth();
-  const { openProduct } = useConsultations();
+  const { openProduct, openProductLots } = useConsultations();
+  const {assign,refresh:refreshFolders}=useFollowupFolders();
   const [gridState, setGridState] = useState({ take: 25, skip: 0, sortBy: "NomArticle", sortDir: "asc" });
   const [serverMeta, setServerMeta] = useState(null);
-  const canWrite = currentUser?.permissions?.canWriteData !== false;
-  function changeGrid(patch) {
-    if ("q" in patch) { sharedTable?.setSearchValue?.(patch.q); delete patch.q; }
-    setGridState((current) => ({ ...current, ...patch }));
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const canWrite = currentUser?.permissions?.canWriteData === true;
+  const [search, setSearch] = useState(sharedTable?.searchValue || "");
+  const [criteria, setCriteria] = useState(() => ({ ...EMPTY_FILTERS, q:sharedTable?.searchValue || "" }));
+  const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const columnsAnchorRef = useRef(null);
+  const [visibleColumns, setVisibleColumns] = useState(DEFAULT_COLUMNS);
+  const [density, setDensity] = useState(() => { try { return localStorage.getItem("sauverndeko.table.density") === "airy" ? "airy" : "compact"; } catch { return "compact"; } });
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const exportRequest = useRef(null);
+  const activeFilters = Object.entries(criteria).filter(([key,value]) => key !== "q" && value !== EMPTY_FILTERS[key]).length + Number(Boolean(criteria.q));
+  const pending = search.trim() !== criteria.q || Object.keys(EMPTY_FILTERS).some(key => draftFilters[key] !== criteria[key]);
+  function changeGrid(patch) { setGridState(current => ({ ...current, ...patch })); }
+  function applyFilters() { const q = search.trim(); setCriteria({ ...draftFilters,q }); sharedTable?.setSearchValue?.(q); changeGrid({skip:0}); }
+  function resetFilters() { setSearch(""); setDraftFilters(EMPTY_FILTERS); setCriteria({ ...EMPTY_FILTERS,q:"" }); sharedTable?.setSearchValue?.(""); changeGrid({skip:0}); }
+  function removeFilter(key) {
+    if(key === "q") { setSearch(""); sharedTable?.setSearchValue?.(""); }
+    else setDraftFilters(current => ({...current,[key]:EMPTY_FILTERS[key]}));
+    setCriteria(current => ({...current,[key]:key === "q" ? "" : EMPTY_FILTERS[key]})); changeGrid({skip:0});
+  }
+  function chooseStock(stockState) { setDraftFilters(current => ({...current,stockState})); setCriteria(current => ({...current,stockState})); changeGrid({skip:0}); }
+  useEffect(() => { try { localStorage.setItem("sauverndeko.table.density",density); } catch { /* Préférence facultative. */ } },[density]);
+  useEffect(() => { setExportError(""); exportRequest.current?.abort(); setExporting(false); return () => exportRequest.current?.abort(); },[criteria,gridState.sortBy,gridState.sortDir]);
+  async function exportArticles() {
+    const controller = new AbortController(); exportRequest.current?.abort(); exportRequest.current = controller;
+    setExporting(true); setExportError("");
+    const columns = visibleColumns.filter(key => key !== "actions");
+    if(columns.includes("NomArticle") && !columns.includes("CodeArticleInterne")) columns.unshift("CodeArticleInterne");
+    if(columns.includes("PoidsUnitaire")&&!columns.includes("UnitePoids"))columns.push("UnitePoids");
+    const params = new URLSearchParams({...criteria,sortBy:gridState.sortBy,sortDir:gridState.sortDir,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,columns:JSON.stringify(columns)});
+    try { await downloadApiFile("/api/logistique/registre/articles/export.xlsx?"+params,{signal:controller.signal}); }
+    catch(error) { if(!controller.signal.aborted) setExportError(error.message || "L’export a échoué."); }
+    finally { if(!controller.signal.aborted) setExporting(false); }
   }
   useEffect(() => {
     if (sharedTable?.composerMode === "create") {
@@ -117,147 +94,61 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
-  const [articleStateFilter, setArticleStateFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [unitFilter, setUnitFilter] = useState("");
-  const [stockStateFilter, setStockStateFilter] = useState("all");
-  const [peremptionFilter, setPeremptionFilter] = useState("all");
-  const [editorMode, setEditorMode] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formValues, setFormValues] = useState(() => ARTICLES_CRUD_CONFIG.createFormState());
-  const deferredSearch = useDeferredValue(sharedTable?.searchValue || "");
+  const [editor,setEditor]=useState(null);
+  const [action,setAction]=useState(null);
+  const [savedRecord,setSavedRecord]=useState(null);
   const selectedArticle = sharedTable?.selectedRow || null;
-  const currentUserId = currentUser?.IdUser != null ? String(currentUser.IdUser) : "";
-  const currentUserDisplayName = useMemo(() => formatUserDisplayName(currentUser), [currentUser]);
+  function handleNewArticle(){if(canWrite)setEditor({mode:"create"});}
+  function handleEditArticle(article){if(canWrite)setEditor({mode:"edit",id:article.ID_Article});}
+  function handleDisableArticle(article){if(canWrite)setAction({id:article.ID_Article,kind:article.ValideArticle===false?"enable":"disable"});}
+  function handleDeleteArticle(article){if(canWrite&&currentUser?.Is_Admin&&article.ValideArticle===false)setAction({id:article.ID_Article,kind:"delete"});}
+  function saved(record,operation){
+    setEditor(null);setAction(null);
+    setSavedRecord(operation==="deleted"?null:record);
+    setFeedback({type:"success",message:{created:"Article créé.",updated:"Article mis à jour.",disabled:"Article désactivé.",enabled:"Article réactivé.",deleted:"Article supprimé."}[operation]});
+    if(operation==="deleted"){sharedTable?.clearSelectedRow?.();setSelectionResetKey(x=>x+1);}
+    refreshFolders();
+    onDataChanged?.();
+  }
 
   const articleTypeOptions = useMemo(() => buildReferenceOptions(references?.articleTypes, "Type"), [references]);
   const articleCategoryOptions = useMemo(
     () => buildReferenceOptions(references?.articleCategories, "Categorie"),
     [references]
   );
-  const userOptions = useMemo(() => buildReferenceOptions(references?.users, "Utilisateur"), [references]);
   const articleUnitOptions = useMemo(() => buildReferenceOptions(references?.articleUnits, "Unite"), [references]);
-  const articleReferenceWarnings = useMemo(
-    () =>
-      [
-        articleTypeOptions.length === 0 ? "La liste Type d'article est vide." : "",
-        articleCategoryOptions.length === 0 ? "La liste Categorie d'article est vide." : "",
-        articleUnitOptions.length === 0 ? "La liste Unite est vide." : "",
-      ].filter(Boolean),
-    [articleCategoryOptions.length, articleTypeOptions.length, articleUnitOptions.length]
-  );
   const typeLabelMap = useMemo(() => buildReferenceLabelMap(articleTypeOptions), [articleTypeOptions]);
   const categoryLabelMap = useMemo(() => buildReferenceLabelMap(articleCategoryOptions), [articleCategoryOptions]);
   const unitLabelMap = useMemo(() => buildReferenceLabelMap(articleUnitOptions), [articleUnitOptions]);
-  const userLabelMap = useMemo(() => buildReferenceLabelMap(userOptions), [userOptions]);
-  const computedAlertDate = useMemo(
-    () => computeArticleAlertDate(formValues.DatePeremptionArticle, formValues.NbreJoursAlerteArticle),
-    [formValues.DatePeremptionArticle, formValues.NbreJoursAlerteArticle]
-  );
-  const articleEditorUserLabel = useMemo(() => {
-    if (editorMode === "create") {
-      return currentUserDisplayName || "Utilisateur connecte indisponible";
-    }
-
-    return (
-      userLabelMap.get(String(formValues.ID_UserFK || "")) ||
-      selectedArticle?.NomComplet ||
-      currentUserDisplayName ||
-      "-"
-    );
-  }, [currentUserDisplayName, editorMode, formValues.ID_UserFK, selectedArticle, userLabelMap]);
   const visibleRows = rows;
 
-  const stockStateSummary = useMemo(
-    () =>
-      visibleRows.reduce(
-        (summary, row) => {
-          const state = getArticleStockState(row);
-          summary[state.key] += 1;
-          return summary;
-        },
-        { rupture: 0, faible: 0, disponible: 0 }
-      ),
-    [visibleRows]
-  );
-  const tableColumns = useMemo(
-    () => [
-      { key: "CodeArticleInterne", label: "Code interne" },
-      { key: "NomArticle", label: "Article" },
-      {
-        key: "ID_CategorieArticleFk",
-        label: "Categorie",
-        render: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
-        renderText: (row) => categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || row.CategorieArticle || "-",
-      },
-      {
-        key: "ID_TypeArticleFk",
-        label: "Type",
-        render: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || row.TypeArticle || "-",
-        renderText: (row) => typeLabelMap.get(String(row.ID_TypeArticleFk)) || row.TypeArticle || "-",
-      },
-      {
-        key: "ID_UniteFk",
-        label: "Unite",
-        render: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || row.Unite || "-",
-        renderText: (row) => unitLabelMap.get(String(row.ID_UniteFk)) || row.Unite || "-",
-      },
-      { key: "QteArticle", label: "Stock", render: (row) => formatNumber(row.QteArticle), renderText: (row) => formatNumber(row.QteArticle) },
-      { key: "QteMinArticle", label: "Stock min", render: (row) => formatNumber(row.QteMinArticle), renderText: (row) => formatNumber(row.QteMinArticle) },
-      { key: "QteACommander", label: "A commander", render: (row) => formatNumber(row.QteACommander), renderText: (row) => formatNumber(row.QteACommander) },
-      { key: "PUArticle", label: "PU", render: (row) => formatCurrency(row.PUArticle), renderText: (row) => formatCurrency(row.PUArticle) },
-      { key: "PVArticle", label: "PV", render: (row) => formatCurrency(row.PVArticle), renderText: (row) => formatCurrency(row.PVArticle) },
-      {
-        key: "ValeurStockAchat",
-        label: "Valeur stock achat",
-        render: (row) => formatCurrency(row.ValeurStockAchat),
-        renderText: (row) => formatCurrency(row.ValeurStockAchat),
-      },
-      {
-        key: "MargeUnitaire",
-        label: "Marge",
-        render: (row) => formatCurrency(row.MargeUnitaire),
-        renderText: (row) => formatCurrency(row.MargeUnitaire),
-      },
-      {
-        key: "stockState", sortable: false,
-        label: "Etat stock",
-        render: (row) => <ToneBadge tone={getArticleStockState(row).tone}>{getArticleStockState(row).label}</ToneBadge>,
-        renderText: (row) => getArticleStockState(row).label,
-      },
-      {
-        key: "EtatPeremption",
-        label: "Etat peremption",
-        render: (row) => <ToneBadge tone={getArticleExpirationState(row).tone}>{getArticleExpirationState(row).label}</ToneBadge>,
-        renderText: (row) => getArticleExpirationState(row).label,
-      },
-      {
-        key: "ValideArticle",
-        label: "Etat article",
-        render: (row) => <ToneBadge tone={getArticleRecordState(row).tone}>{getArticleRecordState(row).label}</ToneBadge>,
-        renderText: (row) => getArticleRecordState(row).label,
-      },
-      {
-        key: "actions", sortable: false,
-        label: "Actions",
-        render: (row) => (
-          <div className="logistics-table-actions" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className="logistics-kebab-button"
-              onClick={() => sharedTable?.setSelectedRow?.(row)}
-              aria-label={`Actions ${row.NomArticle || "article"}`}
-            >
-              ⋮
-            </button>
-          </div>
-        ),
-        exportValue: () => "",
-      },
-    ],
-    [categoryLabelMap, sharedTable, typeLabelMap, unitLabelMap]
-  );
+  const tableColumns = useMemo(() => [
+    { key:"NomArticle", label:"Article", width:270, render:row => <span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle || "Article sans nom"}</strong><small>{row.CodeArticleInterne || row.RefArticle || "Code non renseigné"}</small>{row.ValideArticle===false?<small>Inactif</small>:null}</span></span>, renderText:row => row.NomArticle || "—" },
+    { key:"CodeArticleInterne", label:"Code interne", width:150 },
+    { key:"CategorieArticle", label:"Catégorie", width:160, render:row => row.CategorieArticle || categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || "—" },
+    { key:"TypeArticle", label:"Type", width:140, render:row => row.TypeArticle || typeLabelMap.get(String(row.ID_TypeArticleFk)) || "—" },
+    { key:"Unite", label:"Unité", width:120, render:row => row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || "—" },
+    { key:"QteArticle", label:"Stock actuel", width:130, align:"right", render:row => <span className="erp-stock-quantity">{formatNumber(row.QteArticle)}<small>{row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || ""}</small></span>, renderText:row => formatNumber(row.QteArticle) },
+    { key:"QteMinArticle", label:"Seuil minimum", align:"right", render:row => formatNumber(row.QteMinArticle) },
+    { key:"QteACommander", label:"À commander", align:"right", render:row => formatNumber(row.QteACommander) },
+    { key:"EtatStock", label:"État du stock", width:150, render:row => <ArticleStatus value={row.EtatStock} tone={stockTone(row.EtatStock)}/> },
+    { key:"PUArticle", label:"Prix d’achat", width:130, align:"right", render:row => formatCurrency(row.PUArticle) },
+    { key:"PoidsUnitaire",label:"Poids unitaire",width:145,align:"right",render:row=>row.PoidsUnitaire==null?"—":formatNumber(row.PoidsUnitaire)+(row.UnitePoids?" "+row.UnitePoids:"") },
+    { key:"NombreLots",label:"Lots",width:110,align:"right",render:row=><button type="button" className="erp-object-link" onClick={event=>{event.stopPropagation();openProductLots(row);}}>{formatNumber(row.NombreLots)}</button> },
+    { key:"InformationArticle",label:"Informations",width:240 },
+    { key:"PVArticle", label:"Prix de vente", width:130, align:"right", render:row => formatCurrency(row.PVArticle) },
+    { key:"ValeurStockAchat", label:"Valeur du stock", width:150, align:"right", render:row => formatCurrency(row.ValeurStockAchat) },
+    { key:"MargeUnitaire", label:"Marge unitaire", align:"right", render:row => formatCurrency(row.MargeUnitaire) },
+    { key:"DatePeremptionArticle", label:"Péremption", width:140, render:row => row.DatePeremptionArticle ? formatDate(row.DatePeremptionArticle) : "—" },
+    { key:"EtatPeremption", label:"État de péremption", width:170, render:row => <ArticleStatus value={row.EtatPeremption} tone={expiryTone(row.EtatPeremption)}/> },
+    { key:"ValideArticle", label:"État de l’article", width:145, render:row => <ArticleStatus value={row.ValideArticle == null ? null : row.ValideArticle ? "Actif" : "Inactif"} tone={row.ValideArticle ? "success" : "neutral"}/> },
+    { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={row.NomArticle || "Article"} items={[
+      {label:"Consulter",icon:"eye",onSelect:()=>openProduct(row)},
+      {label:"Modifier",icon:"edit",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleEditArticle(row)},
+      {label:row.ValideArticle===false?"Réactiver":"Désactiver",icon:row.ValideArticle===false?"check-circle":"close",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleDisableArticle(row)},
+      {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite || !currentUser?.Is_Admin || row.ValideArticle !== false,reason:!canWrite?"Accès en consultation":!currentUser?.Is_Admin?"Réservé à l’administration de la plateforme":row.ValideArticle !== false?"Désactivez d’abord l’article.":"",onSelect:()=>handleDeleteArticle(row)},
+    ]}/></div> },
+  ],[categoryLabelMap,typeLabelMap,unitLabelMap,openProduct,openProductLots,canWrite,currentUser?.Is_Admin]);
 
   useEffect(() => {
     let isMounted = true;
@@ -266,16 +157,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
       setLoading(true);
       setError("");
 
-      const response = await ARTICLES_VIEW_CONFIG.fetchRows({
-        q: deferredSearch,
-        typeId: typeFilter,
-        categorieId: categoryFilter,
-        statut: articleStateFilter === "all" ? "" : articleStateFilter === "actif" ? "true" : "false",
-        uniteId: unitFilter,
-        stockState: stockStateFilter,
-        peremption: peremptionFilter,
-        ...gridState,
-      });
+      const response = await ARTICLES_VIEW_CONFIG.fetchRows({ ...criteria, ...gridState });
 
       if (!isMounted) {
         return;
@@ -283,6 +165,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
 
       if (!response?.success) {
         setRows([]);
+        setServerMeta(null);
         setError(response?.message || "Impossible de charger les articles.");
         setLoading(false);
         return;
@@ -307,487 +190,45 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     return () => {
       isMounted = false;
     };
-  }, [articleStateFilter, categoryFilter, deferredSearch, refreshKey, typeFilter, unitFilter, stockStateFilter, peremptionFilter, gridState]);
-
-  useEffect(() => {
-    if (editorMode !== "create" || !currentUserId) {
-      return;
-    }
-
-    setFormValues((current) =>
-      current.ID_UserFK === currentUserId
-        ? current
-        : {
-            ...current,
-            ID_UserFK: currentUserId,
-          }
-    );
-  }, [currentUserId, editorMode]);
-
-  useEffect(() => {
-    if (!editorMode) {
-      return;
-    }
-
-    const nextValue = computedAlertDate || "";
-
-    setFormValues((current) =>
-      current.DatePeremptionAlerteArticle === nextValue
-        ? current
-        : {
-            ...current,
-            DatePeremptionAlerteArticle: nextValue,
-          }
-    );
-  }, [computedAlertDate, editorMode]);
-
-  function resetEditor() {
-    setEditorMode("");
-    setFormValues(ARTICLES_CRUD_CONFIG.createFormState());
-  }
-
-  function handleNewArticle() {
-    sharedTable?.clearSelectedRow?.();
-    setEditorMode("create");
-    setFormValues({
-      ...ARTICLES_CRUD_CONFIG.createFormState(),
-      ID_UserFK: currentUserId,
-    });
-  }
-
-  function handleEditArticle(article) {
-    sharedTable?.setSelectedRow?.(article);
-    setEditorMode("edit");
-    setFormValues(ARTICLES_CRUD_CONFIG.mapRecordToForm(article));
-  }
-
-  async function handleDisableArticle(article) {
-    if (!window.confirm(`Desactiver l'article "${article.NomArticle}" ?`)) {
-      return;
-    }
-
-    const response = await ARTICLES_CRUD_CONFIG.deleteRecord({ record: article });
-
-    if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Impossible de desactiver l'article.") });
-      return;
-    }
-
-    setFeedback({ type: "success", message: ARTICLES_CRUD_CONFIG.messages.deleteSuccess });
-    onDataChanged?.();
-  }
-
-  async function handleDeleteArticle(article) {
-    if (!window.confirm(`Supprimer definitivement l'article "${article.NomArticle}" ?`)) {
-      return;
-    }
-
-    const response = await ARTICLES_CRUD_CONFIG.hardDeleteRecord({ record: article });
-
-    if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Suppression de l'article impossible.") });
-      return;
-    }
-
-    sharedTable?.clearSelectedRow?.();
-    setFeedback({ type: "success", message: getApiMessage(response, "Article supprime avec succes.") });
-    onDataChanged?.();
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setSubmitting(true);
-
-    const payload = ARTICLES_CRUD_CONFIG.buildPayload(formValues, {
-      mode: editorMode,
-      record: selectedArticle,
-    });
-
-    const response =
-      editorMode === "edit" && selectedArticle
-        ? await ARTICLES_CRUD_CONFIG.updateRecord({ record: selectedArticle, payload })
-        : await ARTICLES_CRUD_CONFIG.createRecord({ payload });
-
-    setSubmitting(false);
-
-    if (!response?.success) {
-      setFeedback({ type: "error", message: getApiMessage(response, "Enregistrement de l'article impossible.") });
-      return;
-    }
-
-    setFeedback({
-      type: "success",
-      message:
-        editorMode === "edit"
-          ? ARTICLES_CRUD_CONFIG.messages.updateSuccess
-          : ARTICLES_CRUD_CONFIG.messages.createSuccess,
-    });
-    resetEditor();
-    onDataChanged?.();
-  }
+  }, [criteria, refreshKey, gridState]);
 
   return (
     <div className="logistics-screen">
-      <StatusBanner feedback={feedback} />
-      <header className="logistics-screen-copy">
-        <h1>Articles</h1>
-        <p>Catalogue, stock, valorisation et peremption des articles</p>
-      </header>
-
-      <section className="logistics-screen-search-card">
-        <label className="admin-form-field logistics-screen-search-field">
-          <span>{sharedTable?.searchLabel || "Recherche"}</span>
-          <input
-            type="search"
-            value={sharedTable?.searchValue || ""}
-            onChange={(event) => sharedTable?.setSearchValue?.(event.target.value)}
-            placeholder="Rechercher un article, code, reference ou categorie..."
-          />
-        </label>
-      </section>
-
-      <section className="logistics-top-actions">
-        <button type="button" className="logistics-top-action is-blue" onClick={handleNewArticle} disabled={!canWrite}>
-          Ajouter
-        </button>
-        <button type="button" className="logistics-top-action is-indigo" onClick={() => selectedArticle && handleEditArticle(selectedArticle)} disabled={!canWrite || !selectedArticle}>
-          Modifier
-        </button>
-        <button
-          type="button"
-          className="logistics-top-action is-red"
-          onClick={() => selectedArticle && handleDeleteArticle(selectedArticle)}
-          disabled={!selectedArticle || selectedArticle.ValideArticle !== false}
-          title={!selectedArticle ? "Selectionnez un article" : selectedArticle.ValideArticle !== false ? "Desactivez d'abord la fiche avant la suppression definitive." : "Suppression definitive"}
-        >
-          Supprimer
-        </button>
-        <button type="button" className="logistics-top-action is-orange" onClick={() => selectedArticle && handleDisableArticle(selectedArticle)} disabled={!canWrite || !selectedArticle}>
-          Desactiver
-        </button>
-        <button type="button" className="logistics-top-action is-cyan" onClick={() => selectedArticle && openProduct(selectedArticle)} disabled={!selectedArticle}>Consulter</button>
-        <ActionButton icon="download"
-          type="button"
-
-          onClick={() => exportRowsToCsv("logistique-articles.csv", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
-          disabled={visibleRows.length === 0}
-        >CSV · page</ActionButton>
-        <ActionButton icon="print"
-          type="button"
-
-          onClick={() => exportRowsToPdf("logistique-articles", tableColumns.filter((column) => column.key !== "actions"), visibleRows)}
-          disabled={visibleRows.length === 0}
-        >Imprimer · page</ActionButton>
-        <button type="button" className="logistics-top-action is-sky" onClick={onToggleFkMappings}>Réglages</button>
-      </section>
-
-      <section className="logistics-screen-filter-card">
-        <div className="logistics-mockup-filter-grid">
-          <SelectField
-            label="Categorie article"
-            value={categoryFilter}
-            onChange={(event) => { setCategoryFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
-            options={articleCategoryOptions}
-          />
-
-          <SelectField
-            label="Type article"
-            value={typeFilter}
-            onChange={(event) => { setTypeFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
-            options={articleTypeOptions}
-          />
-
-          <SelectField
-            label="Unite"
-            value={unitFilter}
-            onChange={(event) => { setUnitFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}
-            options={articleUnitOptions}
-          />
-
-          <label className="admin-form-field">
-            <span>Etat stock</span>
-            <select value={stockStateFilter} onChange={(event) => { setStockStateFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
-              <option value="all">Toutes</option>
-              <option value="disponible">Disponible</option>
-              <option value="faible">Stock faible</option>
-              <option value="rupture">Rupture</option>
-            </select>
-          </label>
-
-          <label className="admin-form-field">
-            <span>Etat peremption</span>
-            <select value={peremptionFilter} onChange={(event) => { setPeremptionFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
-              <option value="all">Toutes</option>
-              <option value="valide">Valide</option>
-              <option value="alerte">Alerte peremption</option>
-              <option value="perime">Perime</option>
-              <option value="non-renseignee">Non renseignee</option>
-            </select>
-          </label>
-
-          <label className="admin-form-field">
-            <span>Etat article</span>
-            <select value={articleStateFilter} onChange={(event) => { setArticleStateFilter(event.target.value); setGridState((current) => ({ ...current, skip: 0 })); }}>
-              <option value="all">Toutes</option>
-              <option value="actif">Actif</option>
-              <option value="inactif">Inactif</option>
-            </select>
-          </label>
+      <div aria-live="polite"><StatusBanner feedback={feedback} />{savedRecord?<button type="button" className="application-back" onClick={()=>openProduct(savedRecord)}>Consulter l’article<AppIcon name="arrow-up-right"/></button>:null}</div>
+      <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
+        <ActionButton icon="settings" onClick={onToggleFkMappings} title="Réglages des références">Réglages</ActionButton>
+        <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
+      </>} tabs={<nav className="erp-register-tabs" aria-label="État du stock">
+        {[["all","Tous les articles","box"],["disponible","Disponibles","check-circle"],["faible","Stock faible","alert"],["rupture","Ruptures","box"]].map(([key,label,icon]) => <button key={key} type="button" aria-pressed={criteria.stockState === key} onClick={() => chooseStock(key)}><AppIcon name={icon}/>{label}</button>)}
+      </nav>}>
+        <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
+          {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
+            {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}
+            {canWrite ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
+            <ActionButton icon="download" onClick={() => exportRowsToCsv("Articles_selection.csv",tableColumns.filter(column => column.key !== "actions"),selectedRows)}>CSV · sélection</ActionButton>
+            {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
+            <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>
+          </div> : null}
+          {error ? <div className="erp-table-error" role="alert">{error}</div> : null}
+          {loading ? <span className="erp-grid-loading" role="status">Chargement des articles…</span> : null}
+          <SimpleTable rows={error ? [] : visibleRows} columns={tableColumns} selectedRowId={selectedArticle?.ID_Article ?? null} enableSelection onSelectionChange={selected => { setSelectedRows(selected); sharedTable?.setSelectedRow?.(selected.length === 1 ? selected[0] : null); }} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={serverMeta} serverState={gridState} onServerChange={changeGrid} onRowConsult={openProduct} consultColumns={["NomArticle","CodeArticleInterne"]} isCellConsultable={(row,key) => row[key] != null && row[key] !== ""} loading={loading} emptyMessage={error ? "Les articles ne sont pas disponibles." : "Aucun article pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns}
+            toolbar={<>
+              <DataTableToolbar search={search} setSearch={setSearch} onApply={applyFilters} onReset={resetFilters} pending={pending} take={gridState.take} onTake={take => changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId="article-filters" toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher un article, un code ou une référence…" exportFile={exportArticles} exporting={exporting} exportDisabled={Boolean(error) || !serverMeta?.filteredCount || !visibleColumns.some(key => key !== "actions")} error={exportError}/>
+              {filtersOpen ? <form id="article-filters" className="erp-register-filters" onSubmit={event => {event.preventDefault();applyFilters();}}><div className="erp-register-filter-grid">
+                {[{key:"categorieId",label:"Catégorie",options:articleCategoryOptions},{key:"typeId",label:"Type",options:articleTypeOptions},{key:"uniteId",label:"Unité",options:articleUnitOptions},{key:"stockState",label:"État du stock",options:[{value:"disponible",label:"Disponible"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Rupture"}]},{key:"peremption",label:"Péremption",options:[{value:"valide",label:"Valide"},{value:"alerte",label:"Alerte de péremption"},{value:"perime",label:"Périmé"},{value:"non-renseignee",label:"Non renseignée"}]},{key:"statut",label:"État de l’article",options:[{value:"true",label:"Actif"},{value:"false",label:"Inactif"}]}].map(({key,label,options}) => <label key={key}><span>{label}</span><select aria-label={label} value={draftFilters[key]} onChange={event => setDraftFilters(current => ({...current,[key]:event.target.value}))}><option value={EMPTY_FILTERS[key]}>Tous</option>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+              </div><div className="erp-register-filters-footer"><ActionButton type="submit" variant="primary" disabled={loading}>Appliquer les filtres</ActionButton></div></form> : null}
+              {activeFilters ? <div className="erp-register-chips">{Object.entries(criteria).filter(([key,value]) => key === "q" ? Boolean(value) : value !== EMPTY_FILTERS[key]).map(([key,value]) => {
+                const labels = {q:"Recherche",categorieId:"Catégorie",typeId:"Type",uniteId:"Unité",stockState:"Stock",peremption:"Péremption",statut:"Article"};
+                const values = {categorieId:categoryLabelMap.get(String(value)),typeId:typeLabelMap.get(String(value)),uniteId:unitLabelMap.get(String(value)),stockState:{disponible:"Disponible",faible:"Stock faible",rupture:"Rupture"}[value],peremption:{valide:"Valide",alerte:"Alerte",perime:"Périmé","non-renseignee":"Non renseignée"}[value],statut:value === "true" ? "Actif" : "Inactif"};
+                return <span key={key} className="erp-register-chip">{labels[key]} : {values[key] || value}<button type="button" aria-label={"Retirer le filtre "+labels[key]} onClick={() => removeFilter(key)}><AppIcon name="close" size={13}/></button></span>;
+              })}</div> : null}
+            </>}/>
+          <p className="erp-register-hint">Montants sans devise précisée.</p>
         </div>
-      </section>
+      </RegisterSurface>
 
-      <section className="logistics-screen-table-card">
-        <p className="erp-result-count" role="status">{serverMeta?.filteredCount ?? "—"} résultat(s)</p>
-        <LoadingErrorEmpty loading={loading} error={error} rows={visibleRows} emptyMessage="Aucun article a afficher." />
-
-        {!error ? (
-          <SimpleTable
-            rows={visibleRows}
-            columns={tableColumns}
-            selectedRowId={selectedArticle?.ID_Article || null}
-            onRowSelect={sharedTable?.setSelectedRow}
-            enableSelection
-            showControls
-            serverMeta={serverMeta}
-            serverState={{ ...gridState, q: sharedTable?.searchValue || "" }}
-            onServerChange={changeGrid}
-            onRowConsult={openProduct}
-            consultColumns={["CodeArticleInterne", "NomArticle"]}
-            loading={loading}
-            defaultPinnedColumns={["CodeArticleInterne", "NomArticle"]}
-            defaultSortColumn="NomArticle"
-            defaultRowsPerPage={10}
-            exportFilename={sharedTable?.exportFilename || "logistique-v_article.csv"}
-          />
-        ) : null}
-      </section>
-
-
-
-      {editorMode ? (
-        <SectionCard
-          title={editorMode === "edit" ? "Modifier l'article" : "Creer un article"}
-          subtitle="Le formulaire ecrit directement dans T_Article sans toucher aux triggers existants."
-        >
-                {articleReferenceWarnings.length > 0 ? (
-                  <section className="table-empty-state">
-                    {`References logistiques a completer: ${articleReferenceWarnings.join(" ")}`}
-                  </section>
-                ) : null}
-
-                <form className="admin-editor-form" onSubmit={handleSubmit}>
-            <div className="admin-editor-grid">
-              <label className="admin-form-field">
-                <span>Nom article</span>
-                <input
-                  type="text"
-                  value={formValues.NomArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, NomArticle: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Reference</span>
-                <input
-                  type="text"
-                  value={formValues.RefArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, RefArticle: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Code interne</span>
-                <input
-                  type="text"
-                  value={formValues.CodeArticleInterne}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, CodeArticleInterne: event.target.value }))
-                  }
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Code externe</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={formValues.CodeArticleExterne}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, CodeArticleExterne: event.target.value }))
-                  }
-                />
-              </label>
-
-              <SelectField
-                label="Type article"
-                value={formValues.ID_TypeArticleFk}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_TypeArticleFk: event.target.value }))}
-                options={articleTypeOptions}
-                disabled={articleTypeOptions.length === 0}
-                emptyLabel={articleTypeOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
-                helperText={buildReferenceHelperText("logistique.articleTypes", articleTypeOptions)}
-              />
-
-              <SelectField
-                label="Categorie article"
-                value={formValues.ID_CategorieArticleFk}
-                onChange={(event) =>
-                  setFormValues((current) => ({ ...current, ID_CategorieArticleFk: event.target.value }))
-                }
-                options={articleCategoryOptions}
-                disabled={articleCategoryOptions.length === 0}
-                emptyLabel={articleCategoryOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
-                helperText={buildReferenceHelperText("logistique.articleCategories", articleCategoryOptions)}
-              />
-
-              <label className="admin-form-field">
-                <span>Utilisateur</span>
-                <input type="text" value={articleEditorUserLabel} disabled readOnly />
-                <small>
-                  {editorMode === "create"
-                    ? `Attribue automatiquement a l'utilisateur connecte${currentUserId ? ` (ID ${currentUserId})` : ""}.`
-                    : `Identifiant utilisateur: ${formValues.ID_UserFK || "-"}.`}
-                </small>
-              </label>
-
-              <SelectField
-                label="Unite"
-                value={formValues.ID_UniteFk}
-                onChange={(event) => setFormValues((current) => ({ ...current, ID_UniteFk: event.target.value }))}
-                options={articleUnitOptions}
-                disabled={articleUnitOptions.length === 0}
-                emptyLabel={articleUnitOptions.length === 0 ? "Aucune option disponible" : "Choisir"}
-                helperText={buildReferenceHelperText("logistique.articleUnits", articleUnitOptions)}
-              />
-
-              <label className="admin-form-field">
-                <span>Stock initial</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={formValues.QteArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, QteArticle: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Seuil minimum</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={formValues.QteMinArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, QteMinArticle: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Prix achat</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formValues.PUArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, PUArticle: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Prix vente</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formValues.PVArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, PVArticle: event.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Date peremption</span>
-                <input
-                  type="date"
-                  value={formValues.DatePeremptionArticle}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, DatePeremptionArticle: event.target.value }))
-                  }
-                />
-              </label>
-
-              <label className="admin-form-field">
-                <span>Date alerte peremption</span>
-                <input
-                  type="date"
-                  value={formValues.DatePeremptionAlerteArticle}
-                  disabled
-                  readOnly
-                />
-                <small>
-                  {computedAlertDate
-                    ? "Calculee automatiquement a partir de la date de peremption et du nombre de jours."
-                    : "Renseignez la date de peremption et le nombre de jours pour calculer automatiquement la date d'alerte."}
-                </small>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Nb jours alerte</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={formValues.NbreJoursAlerteArticle}
-                  onChange={(event) =>
-                    setFormValues((current) => ({ ...current, NbreJoursAlerteArticle: event.target.value }))
-                  }
-                />
-                <small>
-                  La date d'alerte de peremption est calculee automatiquement a partir de cette valeur.
-                </small>
-              </label>
-
-              <label className="admin-form-field">
-                <span>Photo URL</span>
-                <input
-                  type="url"
-                  value={formValues.PhotoArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, PhotoArticle: event.target.value }))}
-                />
-              </label>
-
-              <label className="admin-checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={formValues.ValideArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, ValideArticle: event.target.checked }))}
-                />
-                <span>Article actif</span>
-              </label>
-
-              <label className="admin-form-field admin-form-field-wide">
-                <span>Observation</span>
-                <textarea
-                  value={formValues.ObsArticle}
-                  onChange={(event) => setFormValues((current) => ({ ...current, ObsArticle: event.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className="admin-editor-actions">
-              <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
-                Annuler
-              </button>
-              <button type="submit" className="primary-action" disabled={submitting}>
-                {submitting ? "Enregistrement..." : "Enregistrer"}
-              </button>
-            </div>
-                </form>
-        </SectionCard>
-      ) : null}
+      {editor?<ArticleEditor key={editor.id||"new"} articleId={editor.id} references={references} onClose={()=>setEditor(null)} onSaved={saved}/>:null}
+      {action?<ArticleActionDrawer key={action.id+action.kind} articleId={action.id} action={action.kind} onClose={()=>setAction(null)} onSaved={saved}/>:null}
     </div>
   );
 }

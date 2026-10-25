@@ -9,6 +9,7 @@ description: Faire évoluer les interfaces React de SauverNdeko vers des parcour
 
 - [Architecture existante](references/architecture.md) pour les composants, routes, helpers et limites du code actuel.
 - [Référence visuelle](references/design-reference.md) pour l’accueil, le login, les blocs du tableau de bord et les tableaux inspirés de TailAdmin.
+- [Formulaires et CRUD Articles](references/formulaires-crud.md) pour sélecteurs recherchables, fenêtres latérales, photos, poids et lots : base des futurs onglets.
 - [Contrats d’interface](references/contrats-interface.md) pour tableaux, indicateurs, fenêtres 360, filtres, exports et recette.
 - [Skill transverse ERP](../../skills/sauverndeko-erp/SKILL.md) pour un changement entre plusieurs domaines.
 - [Skill backend](../../backend/skill/SKILL.md) dès qu’un nouveau filtre, calcul ou détail API est requis.
@@ -30,7 +31,7 @@ React présente les données autorisées et pilote les interactions. Les mesures
 - Le code/nom d’un objet et son bouton Consulter ouvrent la même fiche 360 depuis liste, recherche ou détail lié.
 - Une valeur d’indicateur ayant un détail ouvre cette population exacte, ou son registre avec un filtre visible et effaçable. La carte et le lien de détail partagent le même contrat.
 - ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Les fiches Facture/Règlement et Tiers dédiées restent à construire.
-- Les fenêtres partagent réduire/élargir/rétablir/fermer, poignée, clavier, adaptation mobile et retour au contexte, conformément à la référence.
+- Toute fenêtre latérale métier de ce type utilise DrawerDialog et propose les commandes communes Réduire, Élargir, Rétablir la largeur et Fermer, avec les mêmes icônes. Conserver poignée, clavier, adaptation mobile et retour au contexte, conformément à la référence. Cette règle couvre aussi les réglages, pas seulement les consultations 360.
 - La consultation charge uniquement l’objet sélectionné, puis ses rubriques à la demande si volumineuses. Ne pas lancer une requête 360 pour chaque ligne du tableau.
 
 ## Invariants d’interface

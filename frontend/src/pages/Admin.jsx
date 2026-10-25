@@ -1,3 +1,4 @@
+import { useAuth } from "../contexts/AuthContext";
 import ActionButton from "../components/ActionButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -10,7 +11,6 @@ import {
   fetchViewData,
   saveAdminUiSettings,
 } from "../services/api";
-import { getStoredAuth } from "../services/authStorage";
 import { GEOLOCALISATION_ADMIN_SCHEMA } from "./admin/geolocalisation";
 import { REFERENTIEL_ADMIN_SCHEMA } from "./admin/referentiel";
 import { SYSTEME_ADMIN_SCHEMA } from "./admin/systeme";
@@ -1483,8 +1483,9 @@ function AdminViewButton({ view, isActive, onSelect }) {
 }
 
 export default function Admin({ schemaOnly = "", moduleTitle = "Administration" }) {
+  const { user: currentUser } = useAuth();
   const [availableViews, setAvailableViews] = useState([]);
-  const [selectedViewKey, setSelectedViewKey] = useState(schemaOnly ? schemaOnly + ".V_Niveau_0" : DEFAULT_ADMIN_VIEW_KEY);
+  const [selectedViewKey, setSelectedViewKey] = useState(() => schemaOnly ? (() => { const first = ADMIN_VIEWS.find(view => view.schema === schemaOnly); return first ? normalizeViewKey(first.schema,first.name) : ""; })() : DEFAULT_ADMIN_VIEW_KEY);
   const [rows, setRows] = useState([]);
   const [viewMeta, setViewMeta] = useState({
     totalCount: 0,
@@ -1611,7 +1612,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     [adminViews]
   );
 
-  const storedAuthUser = useMemo(() => getStoredAuth()?.user || null, []);
+  const storedAuthUser = currentUser;
   const adminUiScopeCandidates = useMemo(() => buildAdminUiScopeCandidates(storedAuthUser), [storedAuthUser]);
 
   const selectedView = useMemo(
@@ -1619,7 +1620,8 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     [adminViews, selectedViewKey]
   );
 
-  const selectedCrudConfig = selectedView
+  const canManageView = currentUser?.permissions?.canWriteData && (currentUser?.Is_Admin || (selectedView?.schema !== "geolocalisation" && selectedView?.schema !== "referentiel" && !selectedView?.name?.includes("Licence")));
+  const selectedCrudConfig = selectedView && canManageView
     ? CRUD_CONFIGS[selectedView.crudConfigKey || normalizeViewKey(selectedView.schema, selectedView.name)] || null
     : null;
 
@@ -2592,6 +2594,15 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       setLoadingSupport(true);
       setSupportError("");
 
+      if (schemaOnly === "referentiel") {
+        const payload = await fetchAdminModelList("T_CategorieGenerique", { take:200 });
+        if (!active) return;
+        setSupportData(current => ({...current,categories:extractPayloadRows(payload)}));
+        if (!payload?.success) setSupportError("La liste des catégories n’a pas pu être chargée.");
+        setLoadingSupport(false);
+        return;
+      }
+
       const [
         entitiesPayload,
         categoriesPayload,
@@ -2736,7 +2747,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     return () => {
       active = false;
     };
-  }, [genericCategoryOverrides]);
+  }, [genericCategoryOverrides,schemaOnly]);
 
   useEffect(() => {
     if (adminViews.length === 0) {
@@ -2994,7 +3005,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       const nextState = {};
 
       schemaGroups.forEach((group) => {
-        nextState[group.schema] = current[group.schema] ?? true;
+        nextState[group.schema] = current[group.schema] ?? (group.schema !== schemaOnly);
       });
 
       return nextState;

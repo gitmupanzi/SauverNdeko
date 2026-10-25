@@ -1,3 +1,5 @@
+import "./Applications.css";
+import { accessSignature } from "../services/moduleAccess";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
 import ThemePicker from "../components/ThemePicker";
@@ -34,7 +36,7 @@ export default function WorkspaceHome() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [version, user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin]);
+  }, [version, user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin, accessSignature(user)]);
 
   const query = search.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const visible = modules.filter((module) =>
@@ -70,7 +72,7 @@ export default function WorkspaceHome() {
 
       <main className="workspace-main" id="workspace-main">
         <div className="workspace-title-row">
-          <div><p className="workspace-kicker">VOTRE ESPACE</p><h1>Vos applications</h1><p>Choisissez un module pour commencer.</p></div>
+          <div><p className="workspace-kicker">VOTRE ESPACE</p><h1>Vos applications</h1><p>{user?.entite?.NomEntite || (user?.moduleAccess?.platformAdmin ? "Administration de la plateforme" : "Choisissez un module pour commencer.")}</p></div>
           <form className="workspace-search" role="search" onSubmit={(event) => event.preventDefault()}>
             <label className="workspace-sr-only" htmlFor="workspace-search">Rechercher une application</label>
             <AppIcon name="search" />
@@ -78,6 +80,7 @@ export default function WorkspaceHome() {
           </form>
         </div>
 
+        <div className="application-links workspace-offer-links"><Link to="/applications" className="ui-action is-secondary"><AppIcon name="apps"/>Découvrir les applications</Link>{user?.permissions?.canAccessAdmin ? <Link to="/abonnements" className="ui-action is-secondary"><AppIcon name="settings"/>Licences et applications</Link> : null}</div>
         {loading ? <p className="workspace-state" role="status">Chargement de vos applications…</p> : null}
         {!loading && error ? <div className="workspace-state" role="alert"><i className="bi bi-exclamation-circle" aria-hidden="true" /><p>{error}</p><button type="button" onClick={() => setVersion((current) => current + 1)}>Réessayer</button></div> : null}
         {!loading && !error ? (
@@ -96,7 +99,7 @@ export default function WorkspaceHome() {
             {!visible.length ? <div className="workspace-state"><AppIcon name="search" /><p>{query ? "Aucune application ne correspond à votre recherche." : "Aucune application n’est attribuée à ce compte."}</p>{query ? <ActionButton icon="reset" type="button" onClick={() => setSearch("")}>Effacer la recherche</ActionButton> : null}</div> : null}
           </>
         ) : null}
-        <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Les applications affichées correspondent à vos autorisations.</p>
+        <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Applications incluses dans l’offre de votre organisation et autorisées pour votre rôle.</p>
       </main>
     </div>
   );

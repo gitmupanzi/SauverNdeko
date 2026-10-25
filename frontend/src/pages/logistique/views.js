@@ -394,7 +394,7 @@ export function computeArticleAlertDate(datePeremption, alertDays) {
   const peremptionDate = normalizeDateValueForDiff(datePeremption);
   const parsedDays = Number(alertDays);
 
-  if (!peremptionDate || !Number.isInteger(parsedDays) || parsedDays < 0) {
+  if (alertDays == null || String(alertDays).trim() === "" || !peremptionDate || !Number.isInteger(parsedDays) || parsedDays < 0 || parsedDays > 36500) {
     return "";
   }
 
@@ -416,6 +416,9 @@ const LOGISTIQUE_CRUD_CONFIGS = {
     },
     createFormState: () => ({
       NomArticle: "",
+      InformationArticle: "",
+      PoidsUnitaire: "",
+      ID_UnitePoidsFk: "",
       RefArticle: "",
       CodeArticleInterne: "",
       CodeArticleExterne: "",
@@ -436,6 +439,9 @@ const LOGISTIQUE_CRUD_CONFIGS = {
     }),
     mapRecordToForm: (article) => ({
       NomArticle: article.NomArticle || "",
+      InformationArticle: article.InformationArticle || "",
+      PoidsUnitaire: article.PoidsUnitaire == null ? "" : String(article.PoidsUnitaire),
+      ID_UnitePoidsFk: article.ID_UnitePoidsFk == null ? "" : String(article.ID_UnitePoidsFk),
       RefArticle: article.RefArticle || "",
       CodeArticleInterne: article.CodeArticleInterne || "",
       CodeArticleExterne: stringifyNullableValue(article.CodeArticleExterne),

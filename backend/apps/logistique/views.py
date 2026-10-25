@@ -11,18 +11,9 @@ class DetailView(APIView):
 
     def get(self, request, commande=None, article=None, search=False):
         if article is not None:
-            return ok(
-                clean(
-                    get_record(
-                        view("logistique", "V_CommandeDetail"),
-                        request.user,
-                        {
-                            "ID_CmdFk": positive(commande),
-                            "ID_ArticleFk": positive(article),
-                        },
-                    )
-                )
-            )
+            record=get_record(view("logistique","V_CommandeDetail"),request.user,{"ID_CmdFk":positive(commande),"ID_ArticleFk":positive(article)})
+            from .lots import line_lots
+            return ok(clean({**record,"Lots":line_lots(positive(commande),positive(article))}))
         params = request.query_params.dict()
         if commande:
             params["commande"] = commande

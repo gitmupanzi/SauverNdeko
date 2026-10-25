@@ -58,3 +58,8 @@ html[data-theme]:not([data-theme="light"]) .logistics-modern .admin-table tbody 
 html[data-theme]:not([data-theme="light"]) .logistics-modern .admin-table tbody tr:hover td { background:var(--erp-hover); }
 html[data-theme]:not([data-theme="light"]) .logistics-modern .admin-table tbody tr.logistics-row-selected td { background:var(--erp-active); }
 html[data-theme]:not([data-theme="light"]) .consult-record-heading > span { color:var(--erp-on-mint); background:var(--erp-mint); }
+
+/* Erreurs des formulaires métier : contraste adapté à chaque thème. */
+:root{--erp-danger:#b8324b;}
+:root[data-theme="dark"]{--erp-danger:#ff9aaf;}
+:root[data-theme="contrast"]{--erp-danger:#ffb3bf;}

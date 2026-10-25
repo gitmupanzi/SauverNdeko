@@ -1,3 +1,5 @@
+import LotFields, {lotErrors} from "../../components/LotFields";
+import {requestJson} from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useConsultations } from "../../components/ConsultationProvider";
 import { useEffect, useMemo, useState } from "react";
@@ -81,7 +83,7 @@ function getDetailLineState(detail) {
 export default function CommandeDetails({ selectedCommande, references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
   const { openProduct, openOrder } = useConsultations();
   const { user } = useAuth();
-  const canWrite = user?.permissions?.canWriteData !== false;
+  const canWrite = user?.permissions?.canWriteData === true;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -89,6 +91,8 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const [editorMode, setEditorMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formValues, setFormValues] = useState(() => COMMANDE_DETAILS_CRUD_CONFIG.createFormState());
+  const [lotsLoaded,setLotsLoaded]=useState(false),[lotsRevision,setLotsRevision]=useState(0);
+  const [lots,setLots]=useState([]),[lotsLoading,setLotsLoading]=useState(false),[lotsError,setLotsError]=useState(""),[knownLots,setKnownLots]=useState([]);
   const [articleSearch, setArticleSearch] = useState("");
   const [commandeFilter, setCommandeFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -163,18 +167,20 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
   const unitPriceNumber = Number(formValues.PUCmdDetail || 0);
   const selectedArticleStock = Number(selectedArticle?.stock || 0);
   const lineTotal = Number.isFinite(quantityNumber) && Number.isFinite(unitPriceNumber) ? quantityNumber * unitPriceNumber : 0;
+  const previousQuantity=editorMode==="edit" && String(selectedDetail?.ID_ArticleFk)===String(selectedArticle?.id)?Number(selectedDetail.QteCmdDetail||0):0;
+  const quantityDelta=quantityNumber-previousQuantity;
   const projectedStock =
     commandeDirection === "sortie"
-      ? selectedArticleStock - quantityNumber
+      ? selectedArticleStock - quantityDelta
       : commandeDirection === "entree"
-        ? selectedArticleStock + quantityNumber
+        ? selectedArticleStock + quantityDelta
         : selectedArticleStock;
   const stockError =
     commandeDirection === "sortie" &&
     selectedArticle &&
     Number.isFinite(quantityNumber) &&
     quantityNumber > 0 &&
-    quantityNumber > selectedArticleStock;
+    projectedStock < 0;
   const duplicateArticleInCommande = useMemo(
     () =>
       selectedArticle
@@ -346,6 +352,22 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
     }
   }, [composerMode, selectedCommande?.ID_Commande]);
 
+  useEffect(()=>{
+    if(!editorMode||!formValues.ID_ArticleFk){setLots([]);setKnownLots([]);return;}
+    let active=true;setLotsLoading(true);setLotsLoaded(false);setLotsError("");setLots([]);
+    const articleId=formValues.ID_ArticleFk;
+    const url=editorMode==="edit"&&selectedDetail&&String(selectedDetail.ID_ArticleFk)===String(articleId)
+      ?"/api/logistique/commande-details/"+selectedDetail.ID_CmdFk+"/"+articleId:null;
+    Promise.all([requestJson("/api/logistique/consultations/produit/"+articleId+"/lots?take=500",{requiresAuth:true}),url?requestJson(url,{requiresAuth:true}):Promise.resolve(null)]).then(([available,current])=>{
+      if(!active)return;
+      if(!available?.success || (url&&!current?.success)){setLotsError("Les lots n’ont pas pu être chargés.");setLotsLoading(false);return;}
+      setKnownLots(available.data || []);setLotsLoaded(true);
+      setLots((current?.data?.Lots || []).map(row=>({NumeroLot:row.NumeroLot,Quantite:String(row.Quantite),DatePeremptionLot:row.DatePeremptionLot?String(row.DatePeremptionLot).slice(0,10):""})));
+      setLotsLoading(false);
+    });
+    return()=>{active=false;};
+  },[editorMode,formValues.ID_ArticleFk,selectedDetail?.ID_CmdFk,selectedDetail?.ID_ArticleFk,lotsRevision]);
+
   function resetEditor() {
     sharedTable?.setComposerMode?.("view");
     setEditorMode("");
@@ -418,6 +440,8 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       return;
     }
 
+    if(!canWrite||submitting||lotsLoading||!lotsLoaded)return;
+    const lotError=lotErrors(lots,formValues.QteCmdDetail);setLotsError(lotError);if(lotError)return;
     setSubmitting(true);
 
     const payload = COMMANDE_DETAILS_CRUD_CONFIG.buildPayload(formValues, {
@@ -426,6 +450,7 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
       parentRecord: selectedCommande,
     });
 
+    payload.Lots=lots;
     const response =
       editorMode === "edit" && selectedDetail
         ? await COMMANDE_DETAILS_CRUD_CONFIG.updateRecord({
@@ -775,8 +800,8 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                       <span>Quantite</span>
                       <input
                         type="number"
-                        min="0.001"
-                        step="0.001"
+                        min="1"
+                        step="1"
                         value={formValues.QteCmdDetail}
                         onChange={(event) => setFormValues((current) => ({ ...current, QteCmdDetail: event.target.value }))}
                         required
@@ -834,11 +859,13 @@ export default function CommandeDetails({ selectedCommande, references, refreshK
                     </label>
                   </div>
 
+                  <LotFields value={lots} onChange={setLots} total={formValues.QteCmdDetail} disabled={submitting||lotsLoading} known={knownLots} outgoing={commandeDirection==="sortie"} title={commandeDirection==="sortie"?"Lots à sortir":"Lots reçus"} error={lotsError}/>
+                  {lotsLoading?<p role="status">Chargement des lots…</p>:!lotsLoaded?<button type="button" className="secondary-action" onClick={()=>setLotsRevision(x=>x+1)}>Recharger les lots</button>:null}
                   <div className="admin-editor-actions">
                     <button type="button" className="secondary-action" onClick={resetEditor} disabled={submitting}>
                       Annuler
                     </button>
-                    <button type="submit" className="primary-action" disabled={submitting || stockError || duplicateArticleInCommande}>
+                    <button type="submit" className="primary-action" disabled={!canWrite || submitting || lotsLoading || !lotsLoaded || stockError || duplicateArticleInCommande}>
                       {submitting
                         ? "Enregistrement..."
                         : editorMode === "edit"

@@ -448,6 +448,9 @@ export function SimpleTable({
   getRowId = resolveTableRowId,
   enableSelection = Boolean(onRowSelect),
   defaultPinnedColumns = [],
+  defaultVisibleColumns = null,
+  onSelectionChange,
+  selectionResetKey = 0,
   defaultSortColumn = "",
   defaultRowsPerPage = DEFAULT_ROWS_PER_PAGE,
   rowsPerPageOptions = [10, 25, 50, 100],
@@ -471,6 +474,7 @@ export function SimpleTable({
   onApplyColumnFilters,
 }) {
   const tableWrapRef = useRef(null);
+  const selectPageRef = useRef(null);
   const localColumnsAnchor=useRef(null);
   const columnsTrigger=columnsAnchorRef || localColumnsAnchor;
   function closeColumns(returnFocus=false){
@@ -501,8 +505,13 @@ export function SimpleTable({
   const pinnedDefaultsKey = defaultPinnedColumns.join("|");
   const knownColumnKeys = useRef(columns.map((column) => column.key));
   const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const selectionCallback = useRef(onSelectionChange);
+  selectionCallback.current = onSelectionChange;
+  useEffect(() => { setSelectedRowIds([]); },[selectionResetKey]);
+  const selectionKey = selectedRowIds.join("|");
+  useEffect(() => { selectionCallback.current?.(rows.filter((row,index) => selectedRowIds.includes(String(getRowId(row,index))))); },[selectionKey,rows]);
   const [pinnedColumns, setPinnedColumns] = useState(defaultPinnedColumns);
-  const [visibleColumns, setVisibleColumns] = useState(() => columns.map((column) => column.key));
+  const [visibleColumns, setVisibleColumns] = useState(() => columns.filter((column) => !defaultVisibleColumns || defaultVisibleColumns.includes(column.key)).map((column) => column.key));
   const [columnWidths, setColumnWidths] = useState(() =>
     Object.fromEntries(columns.map((column) => [column.key, getColumnDefaultWidth(column)]))
   );
@@ -639,6 +648,10 @@ export function SimpleTable({
     () => paginatedRowEntries.map((entry) => String(getRowId(entry.row, entry.index))).filter(Boolean),
     [getRowId, paginatedRowEntries]
   );
+
+  useEffect(() => {
+    if(selectPageRef.current) { const count = selectedPageIds.filter(id => selectedRowIds.includes(id)).length; selectPageRef.current.indeterminate = count > 0 && count < selectedPageIds.length; }
+  },[selectedPageIds,selectionKey]);
 
   useEffect(() => {
     const wrapElement = tableWrapRef.current;
@@ -1043,6 +1056,7 @@ export function SimpleTable({
                     type="checkbox"
                     checked={selectedPageIds.length > 0 && selectedPageIds.every((rowId) => selectedRowIds.includes(String(rowId)))}
                     onChange={handleTogglePageSelection}
+                    ref={selectPageRef}
                     aria-label="Selectionner la page"
                   />
                 </th>
@@ -1142,7 +1156,7 @@ export function SimpleTable({
                         }`.trim()}
                         style={getCellStyle(column)}
                       >
-                        {onRowConsult && consultColumns.includes(column.key) && isCellConsultable(row, column.key) ? <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); onRowConsult(row, column.key); }}>{column.render ? column.render(row, rowIndex) : row[column.key] ?? "Consulter"}</button> : column.render ? column.render(row, rowIndex) : row[column.key] ?? "—"}
+                        {onRowConsult && consultColumns.includes(column.key) && isCellConsultable(row, column.key) ? <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); onRowConsult(row, column.key); }}>{column.render ? column.render(row, rowIndex) : (row[column.key] == null || row[column.key] === "" ? "—" : row[column.key])}</button> : column.render ? column.render(row, rowIndex) : row[column.key] ?? "—"}
                       </td>
                     );
                   })}

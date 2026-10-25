@@ -1,5 +1,17 @@
 import "./AppIcon.css";
 const paths = {
+  camera:"M3 7h4l2-3h6l2 3h4v14H3V7Zm13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
+  "rows-compact":"M4 6h16M4 10h16M4 14h16M4 18h16",
+  table:"M3 4h18v16H3V4Zm0 5h18M9 9v11M3 14h18",
+  folder:"M3 6h6l2 3h10v12H3V6Zm0 3h18",
+  "panel-narrow":"M19 4v16M7 6l6 6-6 6",
+  "panel-widen":"M5 4v16m12-14-6 6 6 6",
+  user:"M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2",
+  more:"M5 11a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z",
+  eye:"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
+  edit:"m16 3 5 5-12 12-6 1 1-6L16 3ZM13 6l5 5",
+  settings:"M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3Z",
+  trash:"M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7",
   pin:"m16 3 5 5-3 1-3 6v3l-3-3H9l6-6 1-6ZM3 21l6-6",
   search:"m21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
   reset:"M3 10a9 9 0 1 1 2.4 8.1M3 4v6h6",

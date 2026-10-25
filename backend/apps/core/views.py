@@ -1,3 +1,5 @@
+from rest_framework.parsers import MultiPartParser
+from apps.core.parsers import ExactJSONParser
 import json
 from pathlib import Path
 from rest_framework.views import APIView
@@ -6,6 +8,7 @@ from django.db import transaction
 from . import db
 from .registry import MODELS, VIEWS, model, view
 from .permissions import IsERPAdmin, scope_for
+from .module_access import module_for_object, require_module
 from .repository import listing, get_record, mutate, positive, clean
 from .responses import ok, APIError
 
@@ -33,6 +36,7 @@ class HealthView(APIView):
 
 class ModuleView(APIView):
     permission_classes = [IsERPAdmin]
+    parser_classes = [ExactJSONParser, MultiPartParser]
 
     def objects(self, module=None, model_name=None):
         conf = MODULES.get(module) if module else {"model": model_name, "view": None}
@@ -81,24 +85,30 @@ class ModuleView(APIView):
                 if obj["primaryKey"][0] in {c["column_name"] for c in source["columns"]}
                 else obj
             )
-            return ok(
-                clean(
-                    get_record(
-                        source, request.user, {obj["primaryKey"][0]: positive(pk)}
-                    )
-                )
-            )
+            record = get_record(source, request.user, {obj["primaryKey"][0]: positive(pk)})
+            if obj["name"] == "T_Article":
+                from apps.logistique.article_rules import usage
+                return ok(clean(record), meta=usage(record, request.user))
+            return ok(clean(record))
         rows, meta = listing(source, request.user, params)
         return ok(rows, meta=meta)
 
     def post(self, request, module=None, model_name=None):
         obj, _ = self.objects(module, model_name)
+        if obj["name"] == "T_Article":
+            from apps.logistique.photos import request_data, save_article
+            body, photo = request_data(request)
+            return ok(save_article(request.user, body, photo), status=201)
         return ok(mutate(obj["name"], request.user, request.data), status=201)
 
     def put(self, request, module=None, model_name=None, pk=None):
         obj, _ = self.objects(module, model_name)
         if pk is None or len(obj["primaryKey"]) != 1:
             raise APIError("Identifiant requis.")
+        if obj["name"] == "T_Article":
+            from apps.logistique.photos import request_data, save_article
+            body, photo = request_data(request)
+            return ok(save_article(request.user, body, photo, positive(pk)))
         return ok(
             mutate(
                 obj["name"],
@@ -119,6 +129,7 @@ class ModuleView(APIView):
             mutate(
                 obj["name"],
                 request.user,
+                body=request.data if obj["name"] == "T_Article" else None,
                 keys={obj["primaryKey"][0]: positive(pk)},
                 operation="delete",
                 hard=request.query_params.get("mode") == "hard",
@@ -163,6 +174,7 @@ class ViewsView(APIView):
         for obj in VIEWS.values():
             try:
                 scope_for(obj, request.user)
+                require_module(request.user,module_for_object(obj))
             except APIError:
                 continue
             result.append(

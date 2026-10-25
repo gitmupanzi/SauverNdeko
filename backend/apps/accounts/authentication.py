@@ -144,6 +144,8 @@ def profile(actor):
             "Is_Admin",
         ]
     }
+    from apps.core.module_access import access_snapshot
+    result["moduleAccess"] = access_snapshot(actor)
     result["canAccessAdmin"] = actor.admin
     result["permissions"] = {"canAccessAdmin": actor.admin, "canWriteData": not settings.DB_READ_ONLY}
     result["role"] = (

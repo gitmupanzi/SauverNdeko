@@ -1,10 +1,20 @@
 # Intégration dans SauverNdeko
 
-## État vérifié le 24/10/2026
+## Export Excel livré — 25/10/2026
+
+backend/apps/logistique/excel.py produit les fichiers XLSX natifs des registres Articles/Bons de stock, des détails d’indicateurs et des dossiers de suivi. Les mêmes critères et le même tri stable que les listes sont appliqués avant pagination. Le téléchargement est limité à 100 000 lignes ; au-delà, la demande est refusée plutôt que tronquée.
+
+Les vues HTTP partagent ExcelDownloadView : accepter le type application/vnd.openxmlformats-officedocument.spreadsheetml.sheet et conserver les erreurs en JSON. Tester avec l’en-tête Accept réellement envoyé par downloadApiFile ; une recette utilisant uniquement le défaut JSON ne couvre pas ce contrat. La recette SQL/tests/test_exports_excel.py vérifie les trois routes sans connexion PostgreSQL.
+
+Pour les listes, la feuille Données commence directement par les en-têtes en ligne 1, en gris clair à texte sombre. Aucun logo, titre, préambule ni décompte n’entre dans cette plage. Informations conserve portée, filtres, source, fuseau et nombre de lignes. L’export est complet sur le résultat filtré, pas limité à la page affichée.
+
+Le moteur serveur XlsxWriter existant est conservé pour cette correction ; aucun moteur Word/PDF serveur ou job asynchrone n’est ajouté.
+
+## Relevé initial du 24/10/2026
 
 SauverNdeko utilise Django/DRF/PostgreSQL et React JSX/Vite/Bootstrap. Les règles métier sont portées par les services et vues SQL ; le dossier de mise en forme fournit des règles et exemples, sans moteur Office intégré.
 
-| Élément actuel | Fichier | Conséquence pour l’export |
+| Élément relevé initialement | Fichier | Conséquence pour l’export |
 |---|---|---|
 | Requêtes privées et vues | frontend/src/services/api.js | Réutiliser la session et les erreurs ; ne pas transformer un refus en fichier vide |
 | API logistique | frontend/src/services/logistique.js | Conserver les critères effectivement appliqués |

@@ -1,3 +1,4 @@
+import { mayOpen } from "../services/moduleAccess";
 import AppIcon from "./AppIcon";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -37,10 +38,10 @@ export default function Navbar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
   const pageTitle = TITLE_BY_PATH[currentPath] || "SauverNdeko";
-  const showSearch = currentPath !== "/discussions";
+  const showSearch = currentPath !== "/discussions" && ["/produits","/pharmacies","/experts"].some(path => mayOpen(user,path));
   const displayName = user?.PrenomUser || user?.NomUser || "Mon profil";
   const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
-  const navItems = canAccessAdmin ? [...NAV_ITEMS, { label: "Logistique", path: "/logistique" }] : NAV_ITEMS;
+  const navItems = (canAccessAdmin ? [...NAV_ITEMS, { label: "Logistique", path: "/logistique" }] : NAV_ITEMS).filter(item => mayOpen(user,item.path));
 
   useEffect(() => {
     setIsUserMenuOpen(false);
@@ -147,12 +148,12 @@ export default function Navbar({
                   <NavLink className="desktop-user-option" to="/profil">
                     Profil
                   </NavLink>
-                  {canAccessAdmin ? (
+                  {canAccessAdmin && mayOpen(user,"/admin") ? (
                     <NavLink className="desktop-user-option" to="/admin">
                       Administration
                     </NavLink>
                   ) : null}
-                  {canAccessAdmin ? (
+                  {canAccessAdmin && mayOpen(user,"/logistique") ? (
                     <NavLink className="desktop-user-option" to="/logistique">
                       Logistique
                     </NavLink>

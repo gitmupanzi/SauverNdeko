@@ -21,3 +21,6 @@ __pycache__/
 # Sauvegardes locales de donnees
 *.backup
 *.dump
+
+# Photos privées des produits
+/backend/media/

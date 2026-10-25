@@ -60,6 +60,8 @@ def validate_header(obj, data, old, actor):
             # Les formulaires historiques renvoient ces champs même sans modification.
             del data[field]
     if name == "T_Article":
+        from .article_rules import validate
+        validate(data, old, actor)
         for field in ["QteArticle", "PUArticle", "PVArticle", "QteMinArticle"]:
             if effective.get(field) is not None and effective[field] < 0:
                 raise APIError(field + " ne peut pas être négatif.")
@@ -79,7 +81,8 @@ def validate_header(obj, data, old, actor):
 def mutate_line(actor, commande_id, body=None, article_id=None, operation="create"):
     db.ensure_writable()
     commande_id = positive(commande_id)
-    body = body or {}
+    body = dict(body or {})
+    lots = body.pop("Lots", None)
     obj = model("T_CommandeDetail")
     allowed = {c["column_name"] for c in obj["columns"]} - {"ID_CmdFk"}
     if set(body) - allowed - {"ID_CmdFk"}:
@@ -112,7 +115,11 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             if key in allowed
         }
         effective = {**(old or {}), **data}
+        from .lots import line_lots, sync_movement
+        previous_lots = line_lots(commande_id, positive(article_id)) if old else []
         next_id = positive(effective.get("ID_ArticleFk"))
+        if previous_lots and operation != "delete" and lots is None and (next_id != positive(article_id) or effective.get("QteCmdDetail") != old.get("QteCmdDetail")):
+            raise APIError("Répartissez la nouvelle quantité entre les lots de cette ligne.", "LOT_REQUIRED", 409)
         # Parent commande puis articles dans un ordre stable, comme les triggers existants.
         for current_id in sorted(
             {next_id, *([positive(article_id)] if article_id is not None else [])}
@@ -128,7 +135,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
                 raise APIError("Article inactif.")
         if operation != "delete":
             qty = effective.get("QteCmdDetail")
-            if qty is None or qty <= 0 or qty != int(qty):
+            if qty is None or qty <= 0 or qty > 2147483647 or qty != int(qty):
                 raise APIError("QteCmdDetail doit être un entier strictement positif.")
             price = effective.get("PUCmdDetail")
             if price is not None and price < 0:
@@ -171,8 +178,13 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             )
         else:
             row = old
-        audit(obj, operation.upper(), old, row, actor)
-        return clean(row)
+        if operation != "delete" and lots is not None:
+            movement = db.one('SELECT "ID_Mvt" FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=%s AND "ID_ArticleFk"=%s',[commande_id,next_id])
+            if not movement:raise APIError("Mouvement source introuvable.", "LOT_MOVEMENT_MISSING", 409)
+            sync_movement(next_id,movement["ID_Mvt"],lots,effective["QteCmdDetail"])
+        next_lots=line_lots(commande_id,next_id) if operation!="delete" else []
+        audit(obj, operation.upper(), {**old,"Lots":previous_lots} if old else None, {**row,"Lots":next_lots}, actor)
+        return clean({**row,"Lots":next_lots})
 
 
 def scoped_query(sql, actor, params=None):
@@ -313,6 +325,7 @@ def references(actor):
         'SELECT DISTINCT s.value AS id,COALESCE(NULLIF(trim(e."NomEntite"),\'\'),\'Client #\'||s.value::text) AS label FROM (SELECT "ID_ClientFk" AS value FROM logistique."T_Commande" UNION SELECT "ID_ClientFk" AS value FROM logistique."T_Reglements") s LEFT JOIN systeme."T_Entite" e ON e."IdEntite"=s.value WHERE s.value IS NOT NULL ORDER BY label,id',
         actor,
     )
+    result["weightUnits"] = db.query('SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=34 AND "ValideGenerique" IS TRUE AND lower(btrim("AbrGenerique")) IN (%s,%s,%s,%s) ORDER BY "NomGenerique"',["mg","g","kg","t"])
     result.update(
         users=[
             {"id": x["IdUser"], "label": (x["NomUser"] + " " + x["PrenomUser"]).strip()}

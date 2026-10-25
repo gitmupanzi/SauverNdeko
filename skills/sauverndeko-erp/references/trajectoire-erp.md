@@ -53,3 +53,13 @@ Critères : nouvelle installation reproductible, restauration prouvée, rôles d
 ## Ordre conseillé
 
 A précède la livraison d’un accès privé. B rend les mesures fiables et prépare C. C peut progresser sur données fictives pendant B, avec un contrat API explicite. D constitue la première tranche métier complète ; E accompagne sa livraison. Le nombre de modules visibles n’est pas un critère suffisant de maturité ERP.
+
+## État livré le 25 octobre 2026 — accès aux applications
+
+La licence appartient à l’Entité : T_Utilisateurs.IdEntiteFk et T_Licence.IdEntiteFk sont les relations existantes utilisées. Les activations sont dans T_LicenceModule, le catalogue dans T_ModuleApplication et les restrictions dans T_RoleModule. Aucun abonnement individuel ni nouveau contrat commercial n’est créé. La migration 20261025_02_modules_entites et les services dédiés assurent le contrôle serveur.
+
+L’accueil est limité aux applications effectives. Le catalogue est séparé. L’administration de plateforme configure les modules et restrictions ; l’administrateur d’entreprise voit sa propre offre. Les droits antérieurs forment une limite supérieure : aucune règle de module ne donne le statut d’administrateur. Les référentiels partagés restent au socle.
+
+Le socle actuel comprend Discussions, Organisation territoriale et Administration ; Catalogue inclut Produits, Structures, Professionnels et Informations santé. Logistique est activable séparément. Ces choix sont versionnés dans la migration, sans prix ni facturation automatique. Pour une nouvelle licence, activer explicitement les modules contractuels ; la reprise des accès n’est exécutée qu’à la migration initiale.
+
+La recette comprend les refus serveur, les périodes simulées par le SQL réel des vues, les restrictions de rôle et l’interface. Les tests d’écriture des réglages sont simulés ; aucun cycle de modification réel de licence n’a été réalisé pendant la recette. La garantie d’isolation métier reste limitée par la propriété déduite du créateur actuel, décrite dans le guide backend.

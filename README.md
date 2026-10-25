@@ -1,6 +1,6 @@
 # SauverNdeko
 
-## Évolution ERP — état du 24 octobre 2026
+## Évolution ERP — socle du 24 octobre 2026
 
 La cible produit est désormais un ERP modulaire commercialisable. La logistique en constitue un domaine, aux côtés du catalogue santé/services, des discussions et de l’administration. Multi-organisation et multi-pays sont des objectifs à valider dans les droits, les données et la recette.
 
@@ -309,3 +309,9 @@ Les fichiers demarrer.bat, arreter.bat, redemarrer.bat et adresse-reseau.bat son
 ## Tables natives Django
 
 Les tables auth/admin/contenttypes/sessions sont installées et commentées dans public ; les données des 30 tables métier sont inchangées. Voir [le bilan PostgreSQL](SQL/documentation/Django_Public_20261024.md) et [la recommandation de séparation public/systeme](SQL/documentation/Decision_Systeme_Public_20261024.md).
+
+## Applications sous licence — 25 octobre 2026
+
+Les modules sont désormais attribués à une licence d’Entité, puis filtrés selon les droits du rôle. L’accueil « Vos applications » affiche seulement les accès autorisés ; le catalogue et la gestion des licences disposent d’écrans séparés. Les contrôles sont appliqués côté Django, y compris aux vues, exports et consultations 360.
+
+La migration 20261025_02_modules_entites conserve les accès existants sans modifier les comptes ni les dates des licences. Voir les règles, la reprise et les limites de recette dans [le guide backend](backend/README.md) et [le guide SQL](SQL/README.md).

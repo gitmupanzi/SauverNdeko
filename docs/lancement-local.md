@@ -107,3 +107,24 @@ Les contrôles précédents du 24 octobre 2026 ont couvert le démarrage réel, 
 Voir aussi le [guide backend](../backend/README.md) et le [guide SQL](../SQL/README.md).
 
 L’ouverture sans session présente la connexion. Après authentification, l’accueil affiche les applications autorisées par Django. La création des comptes est réservée à l’administration.
+
+
+### Écritures métier et dossiers de suivi
+
+Le 25 octobre 2026, le propriétaire a autorisé l’installation des dossiers de suivi et l’activation du CRUD local. La migration 20261025_01_dossiers_suivi.sql est installée sur SauverNdeko après sauvegarde. backend/.env contient SAUVERNDEKO_DB_READ_ONLY=0 : les comptes déjà habilités peuvent créer et modifier les objets permis par leur rôle et leur organisation. Aucun rôle n’a été ajouté par cette activation.
+
+Le diagnostic manage.py verifier_backend exige toujours SAUVERNDEKO_DB_READ_ONLY=1. Lancer ce contrôle dans un processus distinct en imposant cette variable uniquement pour le diagnostic ; ne pas changer le service ni sa configuration pour les tests. Les nouvelles installations gardent la lecture seule par défaut tant qu’une politique d’écriture n’a pas été choisie.
+
+### Applications et licences des organisations
+
+L’accueil affiche les modules compris dans le socle et la licence de l’Entité, puis autorisés par le rôle de l’utilisateur. « Découvrir les applications » présente le catalogue séparément. « Licences et applications » permet à l’administration de plateforme de sélectionner une Entité, sa licence et les modules activés ; un administrateur d’entreprise consulte uniquement sa propre offre. Les droits de rôle peuvent être limités par application sans créer de privilège administratif.
+
+La migration 20261025_02_modules_entites.sql est installée sur la base locale SauverNdeko après sauvegarde vérifiée. Les dates contractuelles et les comptes existants sont conservés. Les nouvelles installations doivent recevoir les migrations SQL nécessaires avant le démarrage ; les lanceurs ne les appliquent pas. Après une modification de code backend ou de configuration, utiliser redemarrer.bat.
+
+Une licence inactive ou expirée bloque les modules optionnels côté serveur, y compris leurs URL directes, exports et fiches 360. Le profil et le socle autorisé restent accessibles. L’administrateur global conserve l’accès de maintenance à la plateforme.
+
+## Photos des articles
+
+Le CRUD Articles accepte le choix ou la capture d’une photo. Les fichiers privés sont enregistrés dans backend/media/Article par défaut ; ARTICLE_MEDIA_ROOT peut définir un autre répertoire local. Conserver les droits d’accès de ce dossier et ne pas l’exposer comme répertoire statique ouvert. Les routes authentifiées de l’application fournissent les images autorisées.
+
+Une sauvegarde PostgreSQL ne contient pas ces fichiers : sauvegarder également media et conserver les chemins avec la base lors de la restauration. Les anciens fichiers remplacés restent conservés pour récupération ; aucune purge automatique n’est activée.

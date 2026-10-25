@@ -1,5 +1,11 @@
 # Historique du skill
 
+## 3.1 — 25 octobre 2026 — Tableaux Excel
+
+- Préférence explicite du propriétaire : en-têtes en première ligne, données dès la deuxième, sans logo ou bandeau ; gris clair et texte sombre au lieu du bleu.
+- Contexte conservé dans Informations ; présentation de la feuille principale limitée au tableau.
+- Contrat HTTP XLSX/erreurs JSON, tri stable partagé et recette de téléchargement des exports applicatifs.
+
 ## 3.0 — 24 octobre 2026 — SauverNdeko
 
 - Adaptation de la copie initiale du skill d’imf_BB à l’ERP SauverNdeko.

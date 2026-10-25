@@ -154,10 +154,10 @@ def overview(actor, raw):
     categories = db.query('SELECT "ID_CategorieArticleFk" AS id, COALESCE(NULLIF(BTRIM("CategorieArticle"),\'\'),\'Sans catégorie\') AS label, COUNT(*) AS count FROM ' + row_source(article_source) + ' WHERE ' + where + ' GROUP BY "ID_CategorieArticleFk", "CategorieArticle" ORDER BY label', values)
     return {"totals": totals, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
-def register(actor, kind, raw):
+def register_source(kind, raw, for_export=False):
     if kind not in {"articles", "commandes"}:
         raise APIError("Registre introuvable.", "NOT_FOUND", 404)
-    unknown = set(raw) - BASE_QUERY_KEYS
+    unknown = set(raw) - (BASE_QUERY_KEYS | ({"columns"} if for_export else set()))
     if unknown:
         raise APIError("Critère non autorisé.")
     article = kind == "articles"
@@ -193,14 +193,19 @@ def register(actor, kind, raw):
         if control not in controls:
             raise APIError("Contrôle invalide.")
         conditions.append(controls[control])
-    rows, meta, (where, values) = read_page(obj, actor, raw, " AND ".join(conditions), filters)
+    return obj, " AND ".join(conditions), filters
+
+def register(actor, kind, raw):
+    obj, condition, filters = register_source(kind, raw)
+    article = kind == "articles"
+    rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
     expression = 'COUNT(*) AS total, COUNT(*) FILTER(WHERE "EstRupture"=true) AS rupture, COUNT(*) FILTER(WHERE "EstAlerteStock"=true AND "EstRupture"=false) AS faible, COUNT(*) FILTER(WHERE "QteArticle">0 AND ("QteMinArticle" IS NULL OR "QteArticle">"QteMinArticle")) AS disponible' if article else 'COUNT(*) AS total, SUM("NbLignes") AS totalLignes, COUNT(*) FILTER(WHERE "EstCommandeSansDetails"=true) AS sansDetails, COUNT(*) FILTER(WHERE "EstPaiementEnRetard"=true) AS enRetard'
     meta["summary"] = db.one("SELECT " + expression + " FROM " + row_source(obj) + " WHERE " + where, values)
     return rows, meta
 
 SECTIONS = {
-    "produit": {"commandes": ("V_CommandeDetail", "ID_ArticleFk"), "mouvements": ("V_Mouvement", "ID_ArticleFk"), "consommation": ("V_ConsoMensuelle", "ID_Article"), "couverture": ("V_CouvertureStock", "ID_Article"), "controle": ("V_AuditStock", "ID_Article")},
-    "commande": {"lignes": ("V_CommandeDetail", "ID_CmdFk"), "mouvements": ("V_Mouvement", "ID_cmdFk"), "reglements": ("T_Reglements", "CodeFactureFk"), "facture": ("V_SuiviReglements", "ID_Commande")},
+    "produit": {"lots": ("V_LotArticleStock", "ID_ArticleFk"), "commandes": ("V_CommandeDetail", "ID_ArticleFk"), "mouvements": ("V_Mouvement", "ID_ArticleFk"), "consommation": ("V_ConsoMensuelle", "ID_Article"), "couverture": ("V_CouvertureStock", "ID_Article"), "controle": ("V_AuditStock", "ID_Article")},
+    "commande": {"lots": ("V_MouvementLot", "ID_cmdFk"), "lignes": ("V_CommandeDetail", "ID_CmdFk"), "mouvements": ("V_Mouvement", "ID_cmdFk"), "reglements": ("T_Reglements", "CodeFactureFk"), "facture": ("V_SuiviReglements", "ID_Commande")},
 }
 def consultation(actor, kind, pk, section, raw):
     if kind not in SECTIONS:
@@ -208,7 +213,13 @@ def consultation(actor, kind, pk, section, raw):
     pk = positive(pk)
     header = get_record(view("logistique", "V_Article" if kind == "produit" else "V_Commande"), actor, {"ID_Article" if kind == "produit" else "ID_Commande": pk})
     if not section or section == "identite":
-        return clean({"record": header, "sections": ["identite", *SECTIONS[kind]]}), None
+        data = {"record": header, "sections": ["identite", *SECTIONS[kind]]}
+        from .followup_folders import record_folders
+        data["dossiers"] = record_folders(actor,"article" if kind=="produit" else "bon",pk)
+        if kind=="commande":
+            invoices=record_folders(actor,"facture",pk)
+            data["dossiers"]["items"].extend(invoices["items"])
+        return clean(data), None
     if section not in SECTIONS[kind]:
         raise APIError("Rubrique introuvable.", "NOT_FOUND", 404)
     name, field = SECTIONS[kind][section]
@@ -216,7 +227,11 @@ def consultation(actor, kind, pk, section, raw):
     if section == "reglements" and not value:
         return [], {"filteredCount": 0, "totalCount": 0, "count": 0, "take": 25, "skip": 0, "columns": []}
     obj = model(name) if name.startswith("T_") else view("logistique", name)
-    rows, meta, _ = read_page(obj, actor, raw, fixed_filters={field: value})
+    fixed = {field: value}
+    rows, meta, _ = read_page(obj, actor, raw, fixed_filters=fixed)
+    # Le total de la rubrique reste celui de cet objet, avant sa recherche locale.
+    parent_where, parent_values = read_predicate(obj, actor, {}, fixed)
+    meta["totalCount"] = db.one("SELECT COUNT(*) AS n FROM " + row_source(obj) + " WHERE " + parent_where, parent_values)["n"]
     return rows, meta
 
 class RegisterReadView(APIView):

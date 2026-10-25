@@ -6,7 +6,10 @@ class IsERPAdmin(BasePermission):
     message = "Accès réservé aux gestionnaires autorisés."
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.admin)
+        if not (request.user and request.user.admin):return False
+        from .module_access import enforce_request
+        enforce_request(request.user,request,view)
+        return True
 
 
 def scope_for(obj, actor, alias="v"):
@@ -90,3 +93,12 @@ def check_global_write(obj, actor):
             "GLOBAL_ADMIN_REQUIRED",
             403,
         )
+
+
+class HasModuleAccess(BasePermission):
+    message="Connexion et accès à l’application requis."
+    def has_permission(self,request,view):
+        if not request.user or not request.user.is_authenticated:return False
+        from .module_access import enforce_request
+        enforce_request(request.user,request,view)
+        return True

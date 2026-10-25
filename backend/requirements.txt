@@ -11,3 +11,4 @@ sqlparse==0.6.0
 typing_extensions==4.16.0
 tzdata==2026.5
 XlsxWriter==3.2.9
+Pillow==13.0.0

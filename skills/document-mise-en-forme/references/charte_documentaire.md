@@ -30,7 +30,7 @@ Pour les titres, Raleway rappelle l’interface lorsqu’elle est disponible. Po
 
 Word/PDF : A4 portrait, marges gauche 2,5 cm et autres 2 cm, texte 11 pt, titre 18 pt et niveaux 14/12/11 pt, interligne 1,15, espace après 6 pt. Paysage pour les tableaux larges ; garder une taille lisible, normalement au moins 9 pt dans les tableaux. Le logo carré a une largeur de référence de 2 cm, hauteur proportionnelle. Adapter un gabarit client fourni sans changer les données.
 
-Excel : texte 11 pt, en-têtes bleu soutenu à texte blanc, alternance légère, bordures fines. Les couleurs ne rendent jamais un montant ou statut implicite.
+Excel : texte 11 pt, en-têtes gris clair (#F3F4F6) à texte sombre (#374151), alternance très légère et bordures grises fines. Pour les exports de listes, les en-têtes occupent la première ligne, les données commencent à la deuxième ; aucun logo, titre, bandeau ou bloc de contexte ne précède le tableau. Le contexte reste dans la feuille Informations. Cette préférence explicite du propriétaire du 25/10/2026 remplace les anciens en-têtes bleus pour Excel. Les couleurs ne rendent jamais un montant ou statut implicite.
 
 ## Valeurs et contexte
 

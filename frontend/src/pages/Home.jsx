@@ -23,19 +23,15 @@ function VerificationCard({ health }) {
       </div>
       <div className="d-flex align-items-center gap-2">
         <span className={`badge rounded-pill ${health.ok ? "text-bg-success" : "text-bg-secondary"}`}>
-          {health.ok ? "Connecte" : "Demo"}
+          {health.loading ? "Chargement" : health.ok ? "À jour" : "Indisponible"}
         </span>
         <p className="verify-date">{formatDateLabel()}</p>
       </div>
       <p className="verify-text">
         {health.ok
-          ? "Les dernieres donnees publiques sont disponibles."
-          : "Mode demonstration actif. Les donnees reelles s'afficheront automatiquement des que l'API publique sera disponible."}
+          ? "Les données du catalogue sont disponibles."
+          : health.loading ? "Chargement du catalogue…" : health.error || "Le catalogue est momentanément indisponible."}
       </p>
-      <button className="verify-button d-inline-flex align-items-center gap-2" type="button">
-        <i className="bi bi-arrow-repeat" aria-hidden="true" />
-        Verifier
-      </button>
     </section>
   );
 }

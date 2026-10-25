@@ -8,7 +8,7 @@ from django.conf import settings
 from apps.core import db
 from apps.core.responses import APIError
 
-LABELS = {"CodeArticleInterne":"Code article","NomArticle":"Article","RefArticle":"Référence","TypeArticle":"Type","CategorieArticle":"Catégorie","Unite":"Unité","AbrUnite":"Unité","QteArticle":"Stock actuel","QteMinArticle":"Seuil","QteACommander":"À commander","PUArticle":"Prix d’achat","PVArticle":"Prix de vente","ValeurStockAchat":"Valeur au prix d’achat","MargeUnitaire":"Marge unitaire","DatePeremptionArticle":"Péremption","EtatStock":"État du stock","EtatPeremption":"Péremption","ValideArticle":"Actif","CodeCmd":"Bon de stock","RefCmd":"Référence","DateCmd":"Date du bon","TypeCmd":"Type","StatutCmd":"Statut","NomClientSaisi":"Tiers","NbLignes":"Lignes","NbArticlesDistincts":"Articles distincts","QteTotale":"Quantité totale","MontantHT":"Montant HT","MontantTTC":"Montant TTC","CodeFacture":"Facture","DateFacture":"Date de facture","DateEcheancePaiement":"Échéance","MontantRegleFacture":"Réglé","MontantResteFacture":"Solde à régler","TotalRegleReel":"Réglé","ResteReel":"Solde à régler","EtatPaiement":"Paiement","EtatControleCommande":"Contrôle","QteCmdDetail":"Quantité","PUCmdDetail":"Prix unitaire","MontantLigne":"Montant","DateMvt":"Date du mouvement","NomTypeMvt":"Type de mouvement","QteMvtSigned":"Quantité signée","PUMvt":"Prix unitaire","MontantMvt":"Montant","OrigineMouvement":"Origine","Mois":"Mois","ConsoMensuelle":"Consommation","ValeurConsoMensuelle":"Valeur","StockActuel":"Stock actuel","ConsoMoyMensuelle":"Consommation moyenne","CouvertureMois":"Couverture en mois","EtatCouverture":"Couverture","StockArticle":"Stock courant","StockMouvements":"Stock des mouvements","Ecart":"Écart","EtatAuditStock":"Contrôle","DateReglement":"Date de règlement","MontantRegle":"Réglé","CodeFactureFk":"Facture","TotalRegle":"Réglé","Reste":"Solde à régler","EtatReglement":"Paiement"}
+LABELS = {"PoidsUnitaire":"Poids unitaire","UnitePoids":"Unité de poids","NombreLots":"Nombre de lots","InformationArticle":"Informations sur l’article","CodeArticleInterne":"Code article","NomArticle":"Article","RefArticle":"Référence","TypeArticle":"Type","CategorieArticle":"Catégorie","Unite":"Unité","AbrUnite":"Unité","QteArticle":"Stock actuel","QteMinArticle":"Seuil","QteACommander":"À commander","PUArticle":"Prix d’achat","PVArticle":"Prix de vente","ValeurStockAchat":"Valeur au prix d’achat","MargeUnitaire":"Marge unitaire","DatePeremptionArticle":"Péremption","EtatStock":"État du stock","EtatPeremption":"État de péremption","ValideArticle":"Actif","CodeCmd":"Bon de stock","RefCmd":"Référence","DateCmd":"Date du bon","TypeCmd":"Type","StatutCmd":"Statut","NomClientSaisi":"Tiers","NbLignes":"Lignes","NbArticlesDistincts":"Articles distincts","QteTotale":"Quantité totale","MontantHT":"Montant HT","MontantTTC":"Montant TTC","CodeFacture":"Facture","DateFacture":"Date de facture","DateEcheancePaiement":"Échéance","MontantRegleFacture":"Réglé","MontantResteFacture":"Solde à régler","TotalRegleReel":"Réglé","ResteReel":"Solde à régler","EtatPaiement":"Paiement","EtatControleCommande":"Contrôle","QteCmdDetail":"Quantité","PUCmdDetail":"Prix unitaire","MontantLigne":"Montant","DateMvt":"Date du mouvement","NomTypeMvt":"Type de mouvement","QteMvtSigned":"Quantité signée","PUMvt":"Prix unitaire","MontantMvt":"Montant","OrigineMouvement":"Origine","Mois":"Mois","ConsoMensuelle":"Consommation","ValeurConsoMensuelle":"Valeur","StockActuel":"Stock actuel","ConsoMoyMensuelle":"Consommation moyenne","CouvertureMois":"Couverture en mois","EtatCouverture":"Couverture","StockArticle":"Stock courant","StockMouvements":"Stock des mouvements","Ecart":"Écart","EtatAuditStock":"Contrôle","DateReglement":"Date de règlement","MontantRegle":"Réglé","CodeFactureFk":"Facture","TotalRegle":"Réglé","Reste":"Solde à régler","EtatReglement":"Paiement"}
 NUMERIC = {"smallint","integer","bigint","numeric","decimal","real","double precision"}
 DATES = {"date","timestamp without time zone","timestamp with time zone"}
 
@@ -80,13 +80,27 @@ def parse_column_filters(obj, raw):
     return " AND ".join(clauses), params, applied
 
 def query_order(obj, raw):
-    columns = {col["column_name"] for col in obj["columns"]}
-    sort = raw.get("sortBy") or (obj.get("primaryKey") or list(columns))[0]
+    column_names = [col["column_name"] for col in obj["columns"]]
+    columns = set(column_names)
+    view_keys = {
+        "V_Article":["ID_Article"], "V_Commande":["ID_Commande"],
+        "V_SuiviReglements":["ID_Commande"], "V_CommandeOverview":["ID_Commande"],
+        "V_CommandesSansDetails":["ID_Commande"],
+        "V_CommandeDetail":["ID_CmdFk","ID_ArticleFk"],
+        "V_Mouvement":["ID_Mvt"], "V_MouvementStock":["ID_Mvt"],
+        "V_ConsoMensuelle":["ID_Article","Mois"],
+        "V_CouvertureStock":["ID_Article"], "V_AuditStock":["ID_Article"],
+        "V_LotArticleStock":["ID_LotArticle"],
+        "V_MouvementLot":["ID_MvtFk","ID_LotArticleFk"],
+    }
+    # Une clé stable départage les valeurs identiques entre page affichée et export.
+    keys = obj.get("primaryKey") or [key for key in view_keys.get(obj["name"],[]) if key in columns] or column_names[:1]
+    sort = raw.get("sortBy") or keys[0]
     direction = str(raw.get("sortDir","desc")).lower()
     if sort not in columns or direction not in {"asc","desc"}:
         raise APIError("Tri non autorisé.")
     order = "v." + db.ident(sort) + " " + direction.upper() + " NULLS LAST"
-    for key in obj.get("primaryKey",[]):
+    for key in keys:
         if key != sort:
             order += ",v." + db.ident(key) + " ASC"
     return order, sort, direction

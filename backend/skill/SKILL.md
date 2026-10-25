@@ -10,6 +10,7 @@ description: Maintenir le backend Django et Django REST Framework de SauverNdeko
 Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/10/2026, puis a limité initialement le travail aux fichiers. Il a ensuite explicitement autorisé les tables natives Django dans le schéma public et demandé une intervention d’administrateur de base de données. Django/DRF est le seul backend. Le propriétaire a ensuite demandé la suppression d’Express/Prisma, de son client généré, de ses dépendances et des lanceurs npm du backend. React et les contrats d’URL restent en place.
 
 - Lire [l’architecture](references/architecture.md) pour les points d’entrée et les responsabilités.
+- Lire [Articles, photos et lots](references/articles-lots-photos.md) pour les écritures avec révision, poids, informations et ventilation des mouvements par lot.
 - Lire [la décision d’accès PostgreSQL](references/decision-acces-postgresql.md) pour la décision mise à jour.
 - Lire [le bilan métier et technique](../../SQL/documentation/Audit_Metier_20261024.md) pour les vérifications et limites.
 - Lire [vues et commentaires](references/vues-et-commentaires.md) pour les sources SQL ; ses évolutions déjà appliquées sont historiques et ne doivent pas être rejouées pendant une conversion de code.
@@ -46,7 +47,7 @@ public contient le socle natif Django ; systeme conserve entités, utilisateurs/
 
 ## Entrée ERP fermée
 
-À la demande du propriétaire, les projections du catalogue exigent aussi une session JWT valide, malgré le préfixe /api/public conservé pour compatibilité. L’inscription libre renvoie REGISTRATION_DISABLED ; les comptes sont gérés dans l’administration. /api/workspace/modules retourne uniquement les modules permis par les droits existants, sans accorder de permission supplémentaire. Les réponses API et authentification sont sans cache. /health contrôle PostgreSQL avec SELECT 1, sans exposer de données métier ; le lanceur ne teste plus le catalogue en anonyme. La configuration PostgreSQL reste en lecture seule.
+À la demande du propriétaire, les projections du catalogue exigent aussi une session JWT valide, malgré le préfixe /api/public conservé pour compatibilité. L’inscription libre renvoie REGISTRATION_DISABLED ; les comptes sont gérés dans l’administration. /api/workspace/modules retourne uniquement les modules permis par les droits existants, sans accorder de permission supplémentaire. Les réponses API et authentification sont sans cache. /health contrôle PostgreSQL avec SELECT 1, sans exposer de données métier ; le lanceur ne teste plus le catalogue en anonyme. Les nouvelles installations restent en lecture seule par défaut. Le 25/10/2026, après sauvegarde et accord explicite du propriétaire portant sur toute l’application, le réglage local backend/.env passe SAUVERNDEKO_DB_READ_ONLY à 0 pour autoriser le CRUD des comptes déjà habilités. Conserver les droits serveur et périmètres ; cette activation n’accorde aucun rôle supplémentaire. Les diagnostics continuent dans un processus distinct avec SAUVERNDEKO_DB_READ_ONLY=1.
 
 ## Lectures logistiques ERP
 

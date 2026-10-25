@@ -1,7 +1,7 @@
 {
-  "version": "3.0",
+  "version": "3.1",
   "projet": "SauverNdeko",
-  "date": "2026-10-24",
+  "date": "2026-10-25",
   "identite": {
     "application": "SauverNdeko",
     "logo": "assets/sauverndeko-logo.jpg",
@@ -54,8 +54,8 @@
     "extension": ".xlsx",
     "police": "Aptos",
     "texte_pt": 11,
-    "entete_fond": "2F67D6",
-    "entete_texte": "FFFFFF",
+    "entete_fond": "F3F4F6",
+    "entete_texte": "374151",
     "figer_entete": true,
     "filtres": true,
     "formats": {
@@ -65,7 +65,12 @@
       "date": "dd/mm/yyyy",
       "horodatage": "dd/mm/yyyy hh:mm",
       "identifiant": "@"
-    }
+    },
+    "fond_alterne": "FAFBFC",
+    "bordure": "E5E7EB",
+    "ligne_entete": 1,
+    "presentation_registre": "tableau_sans_bandeau",
+    "contexte": "feuille_Informations"
   },
   "semantique": {
     "devise_par_defaut": null,

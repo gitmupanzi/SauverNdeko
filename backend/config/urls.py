@@ -1,3 +1,4 @@
+from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
 from django.contrib import admin
 from django.urls import re_path
 from apps.accounts.views import (
@@ -18,16 +19,32 @@ from apps.core.views import (
     MODULES,
 )
 from apps.core.ui_settings import UISettingsView
-from apps.core.workspace import WorkspaceModulesView
+from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
+from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.catalogue.views import PublicView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
-from apps.logistique.excel import IndicatorExcelView
+from apps.logistique.excel import IndicatorExcelView, RegisterExcelView, FolderExcelView
+from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, FolderMembersView, FolderPreviewView
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/photo/?$", ArticlePhotoView.as_view()),
+    re_path(r"^api/public/articles/(?P<pk>[0-9]+)/photo/?$", PublicArticlePhotoView.as_view(), {"kind":"articles"}),
+    re_path(r"^api/workspace/catalogue/?$", WorkspaceCatalogueView.as_view()),
+    re_path(r"^api/workspace/organisations/?$", OrganisationApplicationsView.as_view()),
+    re_path(r"^api/workspace/licences/?$", LicenceApplicationsView.as_view()),
+    re_path(r"^api/workspace/licences/(?P<pk>[0-9]+)/modules/?$", LicenceModulesView.as_view()),
+    re_path(r"^api/workspace/roles/?$", RoleApplicationsView.as_view()),
+    re_path(r"^api/workspace/roles/(?P<pk>[0-9]+)/?$", RoleApplicationsView.as_view()),
+    re_path(r"^api/logistique/dossiers-suivi/apercu/?$", FolderPreviewView.as_view()),
+    re_path(r"^api/logistique/dossiers-suivi/categories/?$", FolderCategoriesView.as_view()),
+    re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/export\.xlsx/?$", FolderExcelView.as_view()),
+    re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/membres/?$", FolderMembersView.as_view()),
+    re_path(r"^api/logistique/dossiers-suivi(?:/(?P<key>[a-z0-9-]+))?/?$", FoldersView.as_view()),
     re_path(r"^api/logistique/registre/(?P<kind>articles|commandes)/?$", RegisterReadView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes)/export\.xlsx/?$", RegisterExcelView.as_view()),
     re_path(r"^api/logistique/synthese/?$", OverviewReadView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/export\.xlsx/?$", IndicatorExcelView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),

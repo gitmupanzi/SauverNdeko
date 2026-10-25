@@ -1,106 +1,40 @@
 import { useEffect, useState } from "react";
-import {
-  fetchPublicArticles,
-  fetchPublicExperts,
-  fetchPublicMaladies,
-  fetchPublicPharmacies,
-  fetchPublicStats,
-} from "../services/api";
-import {
-  getCollection,
-  mapArticlePublic,
-  mapDiseasePublic,
-  mapExpertPublic,
-  mapPharmacyPublic,
-  mapStatsPublic,
-} from "../services/mappers";
-import {
-  mockArticles,
-  mockDiseases,
-  mockExperts,
-  mockPharmacies,
-  mockStats,
-} from "../data/mockData";
+import { useAuth } from "../contexts/AuthContext";
+import { moduleRights, accessSignature } from "../services/moduleAccess";
+import { requestJson } from "../services/api";
+import { getCollection, mapArticlePublic, mapDiseasePublic, mapExpertPublic, mapPharmacyPublic } from "../services/mappers";
 
+const EMPTY_STATS={productsCount:"—",pharmaciesCount:"—",expertsCount:"—",diseasesCount:"—",activeStructures:"—",latestAnnouncements:"—",responseLabel:""};
+const EMPTY={articles:[],pharmacies:[],experts:[],diseases:[],stats:EMPTY_STATS};
+const SOURCES=[
+  ["catalogue","stats","stats",null],
+  ["produits","articles","articles",mapArticlePublic],
+  ["structures","pharmacies","pharmacies",mapPharmacyPublic],
+  ["professionnels","experts","experts",mapExpertPublic],
+  ["sante","diseases","maladies",mapDiseasePublic],
+];
 export function usePublicCatalogue() {
-  const [health, setHealth] = useState({ loading: true, ok: false, source: "mock" });
-  const [catalogue, setCatalogue] = useState({
-    articles: mockArticles,
-    pharmacies: mockPharmacies,
-    experts: mockExperts,
-    diseases: mockDiseases,
-    stats: mockStats,
-  });
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadData() {
-      const [statsResult, articlesResult, pharmaciesResult, expertsResult, diseasesResult] =
-        await Promise.allSettled([
-          fetchPublicStats(),
-          fetchPublicArticles(),
-          fetchPublicPharmacies(),
-          fetchPublicExperts(),
-          fetchPublicMaladies(),
-        ]);
-
-      if (!active) {
-        return;
-      }
-
-      const articlesPayload = articlesResult.status === "fulfilled" ? articlesResult.value : null;
-      const pharmaciesPayload = pharmaciesResult.status === "fulfilled" ? pharmaciesResult.value : null;
-      const expertsPayload = expertsResult.status === "fulfilled" ? expertsResult.value : null;
-      const diseasesPayload = diseasesResult.status === "fulfilled" ? diseasesResult.value : null;
-      const statsPayload = statsResult.status === "fulfilled" ? statsResult.value : null;
-
-      const articles = getCollection(articlesPayload).map(mapArticlePublic);
-      const pharmacies = getCollection(pharmaciesPayload).map(mapPharmacyPublic);
-      const experts = getCollection(expertsPayload).map(mapExpertPublic);
-      const diseases = getCollection(diseasesPayload).map(mapDiseasePublic);
-
-      const usingArticles = articlesPayload?.success === true ? articles : mockArticles;
-      const usingPharmacies = pharmaciesPayload?.success === true ? pharmacies : mockPharmacies;
-      const usingExperts = expertsPayload?.success === true ? experts : mockExperts;
-      const usingDiseases = diseasesPayload?.success === true ? diseases : mockDiseases;
-      const usingStats = mapStatsPublic(
-        statsPayload,
-        mockStats,
-        usingArticles,
-        usingPharmacies,
-        usingExperts,
-        usingDiseases
-      );
-
-      const liveEndpointAvailable =
-        Boolean(statsPayload) ||
-        articles.length > 0 ||
-        pharmacies.length > 0 ||
-        experts.length > 0 ||
-        diseases.length > 0;
-
-      setHealth({
-        loading: false,
-        ok: liveEndpointAvailable,
-        source: liveEndpointAvailable ? "api" : "mock",
+  const {user}=useAuth();
+  const scope=[user?.IdUser,user?.IdEntiteFk,accessSignature(user)].join(":");
+  const [state,setState]=useState({scope:"",health:{loading:true,ok:false},catalogue:EMPTY});
+  useEffect(()=>{
+    let active=true;
+    const allowed=SOURCES.filter(([key])=>moduleRights(user,key).canRead);
+    setState({scope,health:{loading:true,ok:false},catalogue:EMPTY});
+    async function load() {
+      const results=await Promise.allSettled(allowed.map(([, ,endpoint])=>requestJson("/api/public/"+endpoint,{requiresAuth:true})));
+      if(!active)return;
+      const catalogue={...EMPTY},errors=[];
+      results.forEach((result,index)=>{
+        const [,field,,mapper]=allowed[index],payload=result.status==="fulfilled"?result.value:null;
+        if(!payload?.success){errors.push(payload?.message || "Certaines données sont indisponibles.");return;}
+        if(mapper)catalogue[field]=getCollection(payload).map(mapper);
+        else catalogue.stats={...EMPTY_STATS,...payload.data};
       });
-
-      setCatalogue({
-        articles: usingArticles,
-        pharmacies: usingPharmacies,
-        experts: usingExperts,
-        diseases: usingDiseases,
-        stats: usingStats,
-      });
+      setState({scope,catalogue,health:{loading:false,ok:errors.length===0,source:"api",error:errors[0] || ""}});
     }
-
-    loadData();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return { health, catalogue };
+    void load();
+    return()=>{active=false;};
+  },[scope]);
+  return state.scope===scope ? state : {health:{loading:true,ok:false},catalogue:EMPTY};
 }

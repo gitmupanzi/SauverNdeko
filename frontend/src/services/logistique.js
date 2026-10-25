@@ -41,25 +41,32 @@ export function fetchLogistiqueArticles(options = {}) {
   return logistiqueGet("/registre/articles", options);
 }
 
-export function createLogistiqueArticle(payload) {
-  return logistiqueWrite("/articles", "POST", payload);
+export function fetchLogistiqueArticle(id) {
+  return logistiqueGet("/articles/"+id);
 }
 
-export function updateLogistiqueArticle(id, payload) {
-  return logistiqueWrite(`/articles/${id}`, "PUT", payload);
+function articleWrite(path, method, payload, photo) {
+  if(!photo)return logistiqueWrite(path,method,payload);
+  const body=new FormData();body.set("payload",JSON.stringify(payload));body.set("photo",photo,"photo.jpg");
+  return requestJson("/api/logistique"+path,{method,requiresAuth:true,body});
 }
+export function createLogistiqueArticle(payload, photo) {return articleWrite("/articles","POST",payload,photo);}
 
-export function deleteLogistiqueArticle(id) {
+export function updateLogistiqueArticle(id, payload, photo) {return articleWrite("/articles/"+id,"PUT",payload,photo);}
+
+export function deleteLogistiqueArticle(id, version) {
   return requestJson(`/api/logistique/articles/${id}`, {
     method: "DELETE",
     requiresAuth: true,
+    body: JSON.stringify({ _version: version }),
   });
 }
 
-export function hardDeleteLogistiqueArticle(id) {
+export function hardDeleteLogistiqueArticle(id, version) {
   return requestJson(`/api/logistique/articles/${id}${buildQueryString({ mode: "hard" })}`, {
     method: "DELETE",
     requiresAuth: true,
+    body: JSON.stringify({ _version: version }),
   });
 }
 

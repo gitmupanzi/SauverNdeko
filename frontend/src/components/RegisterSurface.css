@@ -1,0 +1,57 @@
+.erp-register { min-width:0; width:100%; font-family:"Segoe UI",sans-serif; }
+.erp-register-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:22px; }
+.erp-register-heading h1 { margin:0; color:var(--erp-text); font-size:26px; line-height:1.3; font-weight:650; letter-spacing:-.6px; }
+.erp-register-heading p { margin:6px 0 0; color:var(--erp-muted); font-size:13px; }
+.erp-register-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.erp-register-card { min-width:0; background:var(--erp-surface); border:1px solid var(--erp-border); border-radius:14px; box-shadow:0 1px 3px rgb(16 24 40 / 3%); overflow:hidden; }
+.erp-register-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:16px 20px; border-bottom:1px solid var(--erp-border); }
+.erp-register-tabs button { display:flex; align-items:center; gap:7px; min-height:36px; padding:7px 13px; border:1px solid transparent; border-radius:7px; color:var(--erp-muted); background:transparent; font:600 12px "Segoe UI",sans-serif; }
+.erp-register-tabs button[aria-pressed="true"] { color:var(--erp-action); background:var(--erp-action-soft); border-color:var(--erp-action-border); }
+.erp-register-tabs button:hover { background:var(--erp-hover); }.erp-register-tabs button:focus-visible { outline:2px solid var(--erp-link); outline-offset:2px; }
+.erp-register-table { padding:20px; }.erp-register-table .erp-data-grid>.logistics-table-controls { padding-bottom:18px; }
+.erp-register-table .erp-data-grid .logistics-table-wrap { border-radius:0; border-left:0; border-right:0; }
+.erp-register-table .erp-data-grid table.admin-table thead tr:first-child th { background:var(--erp-raised) !important; }
+.erp-register-table .erp-data-grid table.admin-table tbody td { padding-top:14px; padding-bottom:14px; }
+.erp-register-table .erp-data-grid table.admin-table tbody tr:nth-child(even) td { background:var(--erp-surface); }
+.erp-register-table .erp-data-grid table.admin-table tbody tr:hover td { background:var(--erp-hover); }
+.erp-register-table .erp-data-grid table.admin-table .admin-select-column { width:44px; min-width:44px; padding:10px; }
+.erp-register-table .erp-data-grid input[type="checkbox"] { width:16px; height:16px; border-radius:4px; accent-color:var(--erp-action); }
+.erp-register-table .erp-data-grid .logistics-row-selected td { background:var(--erp-active) !important; }
+.erp-register-table .erp-data-grid .admin-table-head-cell.is-pinned,.erp-register-table .erp-data-grid .admin-table-cell.is-pinned { box-shadow:none; }
+.erp-register-table .erp-data-grid .admin-header-cell { min-width:0; }.erp-register-table .erp-data-grid .admin-header-label { white-space:nowrap; }
+.erp-register-table .erp-data-grid .logistics-table-wrap { scrollbar-width:thin; scrollbar-color:var(--erp-border) transparent; }
+.erp-register-table .erp-data-grid .logistics-table-wrap::-webkit-scrollbar { height:7px; width:7px; }.erp-register-table .erp-data-grid .logistics-table-wrap::-webkit-scrollbar-thumb { background:var(--erp-border); border-radius:9px; }
+.erp-register-filters { margin:0 0 16px; padding:16px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-raised); }
+.erp-register-filter-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 18px; }
+.erp-register-filters label { display:grid; gap:6px; margin:0; color:var(--erp-muted); font-size:12px; }
+.erp-register-filters select { width:100%; min-width:0; height:40px; padding:0 10px; border:1px solid var(--erp-border); border-radius:6px; color:var(--erp-text); background:var(--erp-surface); font:13px "Segoe UI",sans-serif; }
+.erp-register-filters-footer { display:flex; justify-content:flex-end; margin-top:14px; }
+.erp-register-chips { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 15px; }
+.erp-register-chip { display:flex; align-items:center; gap:7px; padding:5px 9px; border:1px solid var(--erp-action-border); border-radius:6px; background:var(--erp-action-soft); color:var(--erp-action); font:12px "Segoe UI",sans-serif; }
+.erp-register-chip button { display:grid; place-items:center; padding:1px; color:inherit; border-radius:3px; }.erp-register-chip button:hover { background:var(--erp-surface); }
+.erp-register-selection { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:12px 14px; margin:0 0 16px; border:1px solid var(--erp-action-border); border-radius:8px; background:var(--erp-action-soft); }
+.erp-register-selection>strong { margin-right:auto; font-size:13px; color:var(--erp-text); }.erp-register-selection .ui-action { height:34px; min-height:34px; }
+.erp-register-hint { margin:14px 0 0; font-size:11px; color:var(--erp-muted); }
+.erp-product-cell { display:flex; align-items:center; gap:11px; min-width:0; }
+.erp-product-avatar { display:grid; place-items:center; flex:none; width:38px; height:38px; color:var(--erp-link); background:var(--erp-active); border:1px solid var(--erp-border); border-radius:9px; }
+.erp-product-identity { display:grid; gap:3px; min-width:0; }.erp-product-identity strong { color:var(--erp-text); font-size:13px; font-weight:600; line-height:1.4; }.erp-product-identity small { color:var(--erp-muted); font-size:11px; font-weight:400; }
+.erp-product-cell:hover strong { color:var(--erp-link); }.erp-register .erp-object-link:hover { text-decoration:none; }
+.erp-stock-quantity { display:flex; justify-content:flex-end; align-items:baseline; flex-wrap:wrap; gap:5px; font-weight:600; }.erp-stock-quantity small { font-size:11px; color:var(--erp-muted); font-weight:400; }
+.erp-register .erp-row-consult { display:grid; place-items:center; width:32px; height:32px; margin:auto; border:1px solid var(--erp-border); border-radius:7px; background:var(--erp-surface); color:var(--erp-muted); }.erp-register .erp-row-consult:hover { color:var(--erp-action); border-color:var(--erp-action-border); background:var(--erp-action-soft); }
+@media(min-width:1450px) { .erp-register-table .erp-table-toolbar .erp-table-search { flex-basis:260px; } }
+@media(max-width:850px) { .erp-register-heading { align-items:flex-start; }.erp-register-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.erp-register-table { padding:14px; }.erp-register-tabs { padding:12px 14px; }.erp-register-heading h1 { font-size:23px; } }
+@media(max-width:520px) { .erp-register-heading { flex-direction:column; gap:12px; }.erp-register-filter-grid { grid-template-columns:1fr; }.erp-register-tabs { gap:3px; }.erp-register-tabs button { padding:6px 8px; font-size:11px; }.erp-register-selection { align-items:flex-start; }.erp-register-selection>strong { width:100%; } }
+
+.erp-register-table .erp-data-grid .admin-actions-cell::after { display:none; }
+.erp-register-table .erp-register-filters { margin-top:16px; }
+
+.erp-register-table .erp-data-grid table.admin-table tbody td.admin-actions-cell { background:var(--erp-surface) !important; }.erp-register-table .erp-data-grid table.admin-table tbody tr:hover td.admin-actions-cell { background:var(--erp-hover) !important; }
+
+.erp-register-table .erp-data-grid table.admin-table :is(td,th).admin-actions-cell { position:static; right:auto; }
+@media(max-width:640px) { .erp-register-table .erp-data-grid table.admin-table td.is-pinned { position:static; left:auto !important; }.erp-register-table .erp-data-grid table.admin-table th.is-pinned { left:auto !important; }.erp-register-table .erp-table-toolbar .ui-action[data-action="download"] { min-width:88px; } }
+
+.erp-register-table .erp-data-grid .admin-actions-cell::before { display:none; }
+
+.erp-register-table .erp-data-grid table.admin-table :is(th,td)+:is(th,td) { border-left:1px solid color-mix(in srgb,var(--erp-border) 55%,transparent); }.erp-register-table .erp-data-grid table.admin-table tbody td { line-height:1.5; }
+
+.erp-register-table .erp-data-grid table.admin-table tbody tr.is-selected td { background:var(--erp-active) !important; }

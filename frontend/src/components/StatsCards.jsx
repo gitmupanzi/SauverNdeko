@@ -14,8 +14,8 @@ export default function StatsCards({ stats, health }) {
         <span>Experts disponibles</span>
       </article>
       <article>
-        <strong>{health.ok ? "API OK" : "MODE DÉMO"}</strong>
-        <span>{health.ok ? "Données publiques synchronisées" : "Données mock utilisées temporairement"}</span>
+        <strong>{health.loading ? "Chargement…" : health.ok ? "À jour" : "Indisponible"}</strong>
+        <span>{health.ok ? "Catalogue actualisé" : "Réessayez dans un instant"}</span>
       </article>
     </div>
   );

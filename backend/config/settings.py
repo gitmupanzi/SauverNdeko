@@ -88,7 +88,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.accounts.authentication.LegacyJWTAuthentication"
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PERMISSION_CLASSES": ["apps.core.permissions.HasModuleAccess"],
     "UNAUTHENTICATED_USER": None,
     "DEFAULT_RENDERER_CLASSES": ["apps.core.responses.ExactJSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["apps.core.parsers.ExactJSONParser"],
@@ -135,3 +135,7 @@ CSRF_TRUSTED_ORIGINS = [
     for x in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if x.strip()
 ]
+
+# Stockage local privé ; aucun répertoire média n’est exposé par un serveur statique.
+ARTICLE_MEDIA_ROOT = Path(os.getenv("SAUVERNDEKO_MEDIA_ROOT", str(BASE_DIR / "media")))
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024

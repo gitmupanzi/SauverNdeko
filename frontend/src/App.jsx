@@ -1,3 +1,7 @@
+import ModuleGate from "./components/ModuleGate";
+import Applications from "./pages/Applications";
+import ApplicationLicences from "./pages/ApplicationLicences";
+import { mayOpen, accessSignature } from "./services/moduleAccess";
 import AppIcon from "./components/AppIcon";
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
@@ -17,6 +21,7 @@ import Profile from "./pages/Profile";
 import WorkspaceHome from "./pages/WorkspaceHome";
 import Admin from "./pages/Admin";
 import Logistique from "./pages/Logistique";
+import Referentiels from "./pages/Referentiels";
 import OrganisationTerritoriale from "./pages/OrganisationTerritoriale";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
 import { buildDiscussionPath, matchesSearch, normalizeText } from "./services/mappers";
@@ -113,7 +118,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     ...(isAuthenticated ? [{ label: "Profil", path: "/profil", icon: "bi-person-circle" }] : []),
     ...(canAccessAdmin ? [{ label: "Logistique", path: "/logistique", icon: "bi-box-seam" }] : []),
     ...(canAccessAdmin ? [{ label: "Administration", path: "/admin", icon: "bi-shield-lock" }] : []),
-  ];
+  ].filter(item => mayOpen(user,item.path));
 
   return (
     <aside className={`sidebar-drawer ${isOpen ? "is-open" : ""}`} aria-hidden={!isOpen}>
@@ -440,7 +445,7 @@ export default function App() {
   const isLoginRoute = useMatch("/login");
   const isRegisterRoute = useMatch("/register");
   const { loading, isAuthenticated, user } = useAuth();
-  const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin].join(":");
+  const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.IdRoleFk, user?.permissions?.canAccessAdmin, accessSignature(user)].join(":");
 
   if (isLoginRoute) return <Login />;
   if (isRegisterRoute) return <Navigate to="/login" replace />;
@@ -448,8 +453,11 @@ export default function App() {
   if (!isAuthenticated) {
     return <Navigate to={loginPathFor(location)} replace />;
   }
-  if (location.pathname === "/") return <WorkspaceHome />;
-  if (location.pathname === "/logistique") return <AdminRoute><Logistique key={scopeKey} /></AdminRoute>;
-  if (location.pathname === "/territoires") return <AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute>;
-  return <ApplicationShell key={scopeKey} />;
+  if (location.pathname === "/") return <WorkspaceHome key={scopeKey} />;
+  if (location.pathname === "/applications") return <Applications key={scopeKey} />;
+  if (location.pathname === "/abonnements") return <AdminRoute><ApplicationLicences key={scopeKey} /></AdminRoute>;
+  if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
+  if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
+  if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
+  return <ModuleGate><ApplicationShell key={scopeKey} /></ModuleGate>;
 }

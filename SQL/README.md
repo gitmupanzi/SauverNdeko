@@ -59,3 +59,31 @@ Les fichiers conservés ont un rôle distinct :
 Le nettoyage porte uniquement sur les fichiers du projet : la base PostgreSQL et ses données n’ont pas été modifiées.
 
 Voir le [bilan de l’audit et des corrections](documentation/Audit_Metier_20261024.md) pour les résultats et les limites.
+
+## Évolutions du 25 octobre 2026
+
+Les exports canoniques ci-dessus restent des instantanés du socle du 24 octobre. Sur une installation issue de ces fichiers, appliquer ensuite, dans cet ordre :
+
+1. migrations/20261025_01_dossiers_suivi.sql : trois tables, trois vues et les contrôles de classement dans logistique.
+2. migrations/20261025_02_modules_entites.sql : trois tables, trois vues, une fonction et deux triggers dans systeme pour les applications des licences d’Entité.
+3. migrations/20261025_03_articles_poids_lots.sql : poids unitaire, unité de masse, InformationArticle, deux tables et deux vues de ventilation par lot, contrôles et commentaires ; extension de V_Article sans changement des colonnes historiques.
+
+Ces migrations sont installées sur la base locale SauverNdeko. Ne pas les rejouer sur cette base. La migration 02 conserve les licences, leurs dates, les utilisateurs et les privilèges ; elle reprend seulement les six applications optionnelles sur chaque licence existante avec Origine=reprise. L’accès effectif reste conditionné à l’Entité active, à la validité de la licence et au rôle.
+
+Les objets et toutes leurs colonnes métier sont commentés par COMMENT ON. Les vues V_LicenceModule et V_EntiteModuleActif évaluent la période à la lecture ; aucun traitement planifié de renouvellement ou de paiement n’est ajouté. Le socle est déclaré dans T_ModuleApplication et les restrictions dans T_RoleModule. Les activations sont gérées par le service de plateforme, pas par le CRUD générique.
+
+Le rollback de la migration 02 est séparé dans migrations/rollback/ et refuse la suppression si des réglages ont été modifiés après la reprise initiale. Revenir au backend compatible avant tout retour arrière. La sauvegarde complète SauverNdeko_avant_modules_20261025_032147.dump a été contrôlée par empreinte et lecture de son catalogue ; elle n’est pas une preuve de restauration complète.
+
+Les anciens scripts de recette sur base dédiée décrivent le socle historique. Ils ne constituent pas la recette de la politique de licences ajoutée le 25 octobre. Pour ce lot, la base applicative a été interrogée en lecture seule ; les changements de configuration et d’interface ont été vérifiés en simulation sans créer de base de test ni de données métier fictives dans SauverNdeko.
+
+## Articles et lots — 25 octobre 2026
+
+La migration 20261025_03 est installée dans SauverNdeko après sauvegarde complète vérifiée par empreinte et catalogue : SauverNdeko_avant_articles_lots_20261025_040824.dump. Les empreintes des six tables existantes contrôlées sont identiques avant/après, en excluant seulement les trois nouvelles colonnes NULL de T_Article. Aucun lot historique n’est inventé.
+
+Les numéros reçus sont identifiés par article, puis ventilés sur les mouvements déjà créés par le stock. Une sortie ne peut pas rendre un lot négatif. Les données anciennes sans numéro restent sans lot. La migration n’est pas réexécutable : contrôler les préconditions plutôt que la rejouer. Les colonnes ajoutées sont conservées en fin de table pour préserver les dépendances ; leur ordre de présentation est défini dans le formulaire. Aucun retour arrière destructeur automatique n’est fourni.
+
+La recette tests/test_articles_postgresql.py couvre le CRUD Article, les révisions concurrentes, le poids, les informations, les photos privées et les lots : création, réception, sortie, correction, annulation, quantités incorrectes et concurrence sur un lot épuisé. Définir SAUVERNDEKO_TEST_DATABASE_URL vers une base dédiée à jour, puis exécuter avec le Python du backend. Les photos fictives sont écrites dans un répertoire temporaire. Ne jamais viser la base applicative pour ces écritures.
+
+Recette de livraison : 36 scénarios PostgreSQL, 19 échanges API et 70 assertions Articles/lots/photos passent sur un cluster PostgreSQL indépendant sans données clients. Le diagnostic réel verifier_backend passe sur 146 routes GET en lecture seule. Ces résultats ne constituent pas une validation de tous les modules ERP ni une preuve de restauration complète de la sauvegarde.
+
+Les images de production sont des fichiers privés dans backend/media/Article (ou ARTICLE_MEDIA_ROOT/Article). Elles ne sont pas contenues dans pg_dump : sauvegarder et restaurer ce dossier avec la base. Les anciens fichiers remplacés restent conservés ; leur purge n’est pas automatique.

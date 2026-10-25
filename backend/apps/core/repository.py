@@ -3,7 +3,7 @@
 import json, math, re
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, date
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.contrib.auth.hashers import make_password
 from . import db
 from .registry import model, MODELS
@@ -361,6 +361,19 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if name == "T_Article":
+        from apps.logistique.article_rules import check_revision, assert_deletable
+        if not isinstance(body or {}, dict):
+            raise APIError("Objet JSON attendu.")
+        body = dict(body or {})
+        received = body.pop("_version", None)
+        if old:
+            check_revision(old, received)
+        elif received is not None:
+            raise APIError("Version inattendue à la création.")
+        if operation == "delete" and hard:
+            if not actor.global_admin:raise APIError("Suppression définitive réservée à un administrateur global.", "GLOBAL_ADMIN_REQUIRED", 403)
+            assert_deletable(old, actor)
     if name == "T_Commande" and old:
         locked = db.one(
             "SELECT logistique.fn_commande_cloturee(%s) AS closed",
@@ -444,4 +457,10 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
 
 def mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     db.ensure_writable()
-    return _mutate(name, actor, body, keys, operation, hard)
+    try:
+        return _mutate(name, actor, body, keys, operation, hard)
+    except IntegrityError as exc:
+        constraint = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", "")
+        if name == "T_Article" and constraint == "uq_article_codeinterne":
+            raise APIError({"CodeArticleInterne": "Ce code interne est déjà utilisé."}, "ARTICLE_VALIDATION", 409) from exc
+        raise

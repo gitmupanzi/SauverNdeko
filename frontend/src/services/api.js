@@ -17,7 +17,7 @@ async function requestJson(path, options = {}) {
       ...fetchOptions,
       headers: {
         Accept: "application/json",
-        ...(fetchOptions.body ? { "Content-Type": "application/json" } : {}),
+        ...(fetchOptions.body && !(fetchOptions.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(fetchOptions.headers || {}),
       },

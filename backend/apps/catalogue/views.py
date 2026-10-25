@@ -1,6 +1,6 @@
 from django.conf import settings
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import HasModuleAccess
 from apps.core import db
 from apps.core.repository import page, positive
 from apps.core.responses import ok, APIError
@@ -57,7 +57,7 @@ def recipient(kind, target_id):
 
 class PublicView(APIView):
     # Le nom conserve le contrat des projections ; leur accès ERP exige un compte actif.
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasModuleAccess]
 
     def get(self, request, kind):
         params = request.query_params.dict()

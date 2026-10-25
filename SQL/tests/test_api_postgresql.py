@@ -45,6 +45,11 @@ from rest_framework.test import APIClient
 from test_metier_postgresql import Metier
 
 Metier.setUpClass()
+from apps.core.module_access import WORKSPACE_MODULES, BASE_MODULES
+for item in WORKSPACE_MODULES:
+    Metier.c.execute('INSERT INTO systeme."T_ModuleApplication" ("CodeModule","Nom","EstSocle") VALUES (%s,%s,%s) ON CONFLICT DO NOTHING',[item["key"],item["label"],item["key"] in BASE_MODULES])
+for gid,category,label in [(1101,46,"Type de recette API"),(1102,40,"Catégorie de recette API"),(1103,34,"Pièce de recette API")]:
+    Metier.c.execute('INSERT INTO referentiel."T_Generique" ("ID_Generique","ID_CategorieGeneriqueFk","NomGenerique","AbrGenerique") OVERRIDING SYSTEM VALUE VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING',[gid,category,label,label])
 checks = []
 
 
@@ -108,6 +113,9 @@ try:
             "/api/logistique/articles",
             {
                 "NomArticle": "Article API fictif",
+                "ID_TypeArticleFk": 1101,
+                "ID_CategorieArticleFk": 1102,
+                "ID_UniteFk": 1103,
                 "PUArticle": "2.00",
                 "PVArticle": "3.00",
                 "QteArticle": "0",

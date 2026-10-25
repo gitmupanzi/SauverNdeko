@@ -4,7 +4,7 @@
 
 Produire un véritable .xlsx. Un CSV reste un export de données sans charte ; un tableau HTML renommé .xls n’est pas le format natif attendu. Préserver les classeurs existants et leurs formules lorsque la demande porte seulement sur leur mise en forme.
 
-Choisir des feuilles utiles au livrable : Synthèse, Articles, Commandes, Lignes, Mouvements, Règlements, Contrôles ou Paramètres selon le besoin. Ne pas créer de feuilles vides ou une longue notice de sources sur chaque export. Le contexte essentiel peut tenir dans un bloc compact avant le tableau ; une annexe technique n’est ajoutée que si elle est utile et autorisée.
+Choisir des feuilles utiles au livrable : Synthèse, Articles, Commandes, Lignes, Mouvements, Règlements, Contrôles ou Paramètres selon le besoin. Ne pas créer de feuilles vides ou une longue notice de sources sur chaque export. Pour les exports de listes, le propriétaire exige les en-têtes dès la première ligne et les données dès la deuxième, sans logo, titre, bandeau ni bloc de contexte au-dessus. Ne pas ajouter un décompte au milieu de la plage de données. Les informations de portée, filtres, fuseau, source et nombre de lignes restent dans la feuille Informations. Les en-têtes sont gris clair à texte sombre, selon la charte Excel 3.1.
 
 Pour une feuille de données : une ligne par objet au grain annoncé, une colonne par information, en-têtes non vides et uniques, aucune fusion au milieu des données. Utiliser un tableau structuré et ses filtres lorsque le volume et le moteur le permettent.
 

@@ -1,16 +1,21 @@
+import { accessSignature, moduleRights } from "../services/moduleAccess";
+import { useNavigate } from "react-router-dom";
+import { RecordFolderLinks } from "./FollowupFolderWidgets";
+import { useFollowupFolders } from "../contexts/FollowupFoldersContext";
+import ProductOverview, { ProductHeading } from "./ProductOverview";
 import AppIcon from "./AppIcon";
 import DataTableToolbar from "./DataTableToolbar";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import DrawerDialog from "./DrawerDialog";
 import { useAuth } from "../contexts/AuthContext";
 import { requestJson, downloadApiFile } from "../services/api";
 import { SimpleTable, formatNumber, formatDate } from "../pages/logistique/logistiqueShared";
 import "./Consultation.css";
 
 const Context = createContext(null);
-const LABELS = { identite: "Synthèse", commandes: "Bons de stock", lignes: "Lignes", mouvements: "Mouvements", consommation: "Consommation", couverture: "Couverture", controle: "Contrôle", reglements: "Règlements", facture: "Facture" };
-const FIELD_LABELS = { CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur du stock", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
-const SECTION_FIELDS = {
+const LABELS = {lots:"Lots", identite: "Synthèse", commandes: "Bons de stock", lignes: "Lignes", mouvements: "Mouvements", consommation: "Consommation", couverture: "Couverture", controle: "Contrôle", reglements: "Règlements", facture: "Facture" };
+const FIELD_LABELS = {NumeroLot:"N° de lot",StockLot:"Stock du lot",Quantite:"Quantité",QuantiteSignee:"Quantité signée",DatePeremptionLot:"Péremption du lot",QuantiteEntree:"Entrées",QuantiteSortie:"Sorties", CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur du stock", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
+const SECTION_FIELDS = {lots:["NomArticle","NumeroLot","StockLot","Quantite","DateMvt","CodeCmd","DatePeremptionLot","QuantiteEntree","QuantiteSortie"],
   commandes: ["CodeCmd", "DateCmd", "NomArticle", "QteCmdDetail", "AbrUnite", "PUCmdDetail", "MontantLigne"],
   lignes: ["CodeArticleInterne", "NomArticle", "QteCmdDetail", "AbrUnite", "PUCmdDetail", "MontantLigne"],
   mouvements: ["DateMvt", "NomArticle", "CodeCmd", "NomTypeMvt", "QteMvtSigned", "PUMvt", "MontantMvt"],
@@ -20,7 +25,7 @@ const SECTION_FIELDS = {
   reglements: ["DateReglement", "MontantRegle", "CodeFactureFk"],
   facture: ["CodeFacture", "DateEcheancePaiement", "MontantTTC", "TotalRegle", "Reste", "EtatReglement"],
 };
-const PRODUCT_FIELDS = ["CodeArticleInterne", "NomArticle", "RefArticle", "TypeArticle", "CategorieArticle", "Unite", "QteArticle", "QteMinArticle", "QteACommander", "EtatStock", "PUArticle", "PVArticle", "ValeurStockAchat", "MargeUnitaire", "DatePeremptionArticle", "EtatPeremption", "NomComplet", "ObsArticle"];
+
 const ORDER_FIELDS = ["CodeCmd", "RefCmd", "TypeCmd", "StatutCmd", "DateCmd", "NomClientSaisi", "NbLignes", "MontantTTC", "TotalRegleReel", "ResteReel", "EtatPaiement", "CodeFacture", "DateEcheancePaiement", "EtatControleCommande", "NomComplet", "ObsCmd"];
 
 function display(field, value) {
@@ -35,19 +40,20 @@ function StatusValue({ field, value }) {
   const tones = { "Rupture":"danger", "Périmé":"danger", "Périmés":"danger", "En retard":"danger", "Stock faible":"warning", "Faible":"warning", "En attente":"warning", "Partiel":"warning", "Partiellement réglée":"warning", "À régler":"warning", "Non facturée":"warning", "Disponible":"success", "Normal":"success", "Cohérent":"success", "Soldée":"success", "Réglée":"success", "Validée":"success", "En cours":"info", "Entrée":"info", "Sortie":"neutral" };
   return <span className={"erp-status is-" + (tones[label] || "neutral")}>{display(field,value)}</span>;
 }
-function useRead(url) {
+export function useRead(url,externalVersion=0) {
   const [version, setVersion] = useState(0);
-  const [state, setState] = useState({ loading: Boolean(url), payload: null });
+  const source = url?.split("?")[0] || null;
+  const [state, setState] = useState({ source, loading: Boolean(url), payload: null });
   useEffect(() => {
-    if (!url) { setState({ loading: false, payload: null }); return; }
+    if (!url) { setState({ source:null, loading: false, payload: null }); return; }
     const controller = new AbortController();
-    setState((current) => ({ ...current, loading: true }));
+    setState((current) => ({ source, payload:current.source === source ? current.payload : null, loading:true }));
     requestJson(url, { requiresAuth: true, signal: controller.signal }).then((payload) => {
-      if (!controller.signal.aborted) setState({ loading: false, payload });
+      if (!controller.signal.aborted) setState({ source, loading: false, payload });
     });
     return () => controller.abort();
-  }, [url, version]);
-  return { ...state, retry: () => setVersion((value) => value + 1) };
+  }, [url, version, externalVersion]);
+  return { ...state, payload:state.source === source ? state.payload : null, retry: () => setVersion((value) => value + 1) };
 }
 function ErrorState({ payload, retry }) {
   return <div className="consult-state" role="alert"><p>{payload?.status === 403 ? "Accès refusé." : payload?.status === 404 ? "Fiche introuvable." : "Le chargement a échoué."}</p><button type="button" onClick={retry}>Réessayer</button></div>;
@@ -55,7 +61,7 @@ function ErrorState({ payload, retry }) {
 
 function parseFilters(value) { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { return {}; } }
 function compactFilters(filters) { return Object.fromEntries(Object.entries(filters).filter(([,value]) => String(value).trim()).map(([key,value]) => [key,String(value).trim()])); }
-function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null }) {
+export function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null, onSelectionChange, selectionResetKey=0 }) {
   const data = remote.payload;
   const available = data?.meta?.columns || Object.keys(data?.data?.[0] || {});
   const types = data?.meta?.columnTypes || {};
@@ -110,13 +116,14 @@ function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, 
   return <div className="erp-results" data-density={density} aria-busy={remote.loading}>
     {remote.loading ? <span className="erp-grid-loading" role="status">Actualisation…</span> : null}
     {data && !data.success ? <ErrorState payload={data} retry={remote.retry} /> : null}
-    <SimpleTable columns={columns} rows={data?.success ? data.data || [] : []} toolbar={toolbar} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={filters} onColumnFilterChange={(key,value) => setFilters(current => ({...current,[key]:value}))} onApplyColumnFilters={apply} showControls serverMeta={data?.meta} serverState={query} onServerChange={onQueryChange} enableSelection={false} loading={remote.loading} getRowId={(row,index) => [row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || "",index].join(":")} />
+    <SimpleTable columns={columns} rows={data?.success ? data.data || [] : []} toolbar={toolbar} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={filters} onColumnFilterChange={(key,value) => setFilters(current => ({...current,[key]:value}))} onApplyColumnFilters={apply} showControls serverMeta={data?.meta} serverState={query} onServerChange={onQueryChange} enableSelection={Boolean(onSelectionChange)} onSelectionChange={onSelectionChange} selectionResetKey={selectionResetKey} loading={remote.loading} getRowId={(row,index) => ([row.ID_LotArticle || row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].some(Boolean) ? [row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].join(":") : "row:"+index)} />
   </div>;
 }
 
-function ObjectContent({ entry, update, open }) {
+function ObjectContent({ entry, update, open, openFolder }) {
+  const {version}=useFollowupFolders();
   const base = "/api/logistique/consultations/" + entry.kind + "/" + entry.id;
-  const header = useRead(base);
+  const header = useRead(base,version);
   const queryString = new URLSearchParams(entry.query).toString();
   const section = entry.section || "identite";
   const details = useRead(section === "identite" ? null : base + "/" + section + "?" + queryString);
@@ -124,11 +131,13 @@ function ObjectContent({ entry, update, open }) {
   if (header.loading && !record) return <p className="consult-loading" role="status">Chargement…</p>;
   if (!header.payload?.success) return <ErrorState payload={header.payload} retry={header.retry} />;
   return <>
-    <div className="consult-record-heading"><h3>{record.NomArticle || record.CodeCmd || (entry.kind === "produit" ? "Produit" : "Bon de stock")}</h3><span>{record.EtatStock || record.StatutCmd || ""}</span></div>
+    <div className="consult-object-overview">{entry.kind === "produit" ? <ProductHeading record={record}/> : <div className="consult-record-heading"><h3>{record.CodeCmd || "Bon de stock"}</h3><span>{record.StatutCmd || ""}</span></div>}
+    <RecordFolderLinks data={header.payload.data.dossiers} recordId={entry.id} objectType={entry.kind === "produit"?"article":"bon"} hasInvoice={entry.kind==="commande" && Boolean(record.CodeFacture?.trim())} onOpen={openFolder}/></div>
     <nav className="consult-tabs" aria-label="Rubriques">
-      {header.payload.data.sections.map((key) => <button key={key} type="button" aria-current={key === section ? "page" : undefined} onClick={() => update({ section: key, query: { take: 25, skip: 0 } })}>{LABELS[key] || key}</button>)}
+      {header.payload.data.sections.map((key) => <button key={key} type="button" aria-current={key === section ? "page" : undefined} onClick={() => update({ section: key, query: { take: 25, skip: 0 } })}>{entry.kind === "produit" ? <AppIcon name={({identite:"box",lots:"box",commandes:"receipt",mouvements:"movements",consommation:"chart",couverture:"clock",controle:"check-circle"})[key] || "list"}/> : null}{LABELS[key] || key}</button>)}
     </nav>
-    {section === "identite" ? <><dl className="consult-fields">{(entry.kind === "produit" ? PRODUCT_FIELDS : ORDER_FIELDS).map((field) => <div key={field}><dt>{FIELD_LABELS[field]}</dt><dd>{display(field, record[field])}</dd></div>)}</dl><p className="consult-note">Montants sans devise précisée.</p></> :
+    {section==="lots"&&entry.kind==="produit"?<p className="consult-note">Stock identifié par lot : {formatNumber(record.StockVentileLots)} · Stock sans lot : {formatNumber(record.StockSansLot)}{record.Unite?" "+record.Unite:""}</p>:null}
+    {section === "identite" ? entry.kind === "produit" ? <ProductOverview record={record}/> : <><dl className="consult-fields">{ORDER_FIELDS.map((field) => <div key={field}><dt>{FIELD_LABELS[field]}</dt><dd>{display(field, record[field])}</dd></div>)}</dl><p className="consult-note">Montants sans devise précisée.</p></> :
       <ResultTable key={section} remote={details} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={SECTION_FIELDS[section] || []} open={open} />}
   </>;
 }
@@ -151,58 +160,24 @@ export function IndicatorDetails({ metricKey, criteria }) {
 }
 
 function Dialog({ children, title, onClose, onBack }) {
-  const dialog = useRef(null);
-  const origin = useRef(null);
-  const drag = useRef(null);
-  const [width, setWidth] = useState(() => {
-    try { return Number(localStorage.getItem("sauverndeko.consultation.width")) || 680; } catch { return 680; }
-  });
-  const [viewport, setViewport] = useState(window.innerWidth);
-  const limits = { min: Math.min(480, viewport), max: Math.max(Math.min(480, viewport), Math.floor(viewport * .94)) };
-  const actual = Math.min(limits.max, Math.max(limits.min, width));
-  const resize = useCallback((next) => setWidth(Math.min(limits.max, Math.max(limits.min, next))), [limits.min, limits.max]);
-  useEffect(() => { const listener = () => setViewport(window.innerWidth); window.addEventListener("resize", listener); return () => window.removeEventListener("resize", listener); }, []);
-  useEffect(() => {
-    origin.current = document.activeElement;
-    const element = dialog.current;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    element.showModal();
-    element.querySelector(".consult-close")?.focus();
-    return () => { document.body.style.overflow = previousOverflow; element.close(); if (origin.current?.isConnected) origin.current.focus({ preventScroll: true }); };
-  }, []);
-  useEffect(() => { try { localStorage.setItem("sauverndeko.consultation.width", String(actual)); } catch { /* Préférence facultative. */ } }, [actual]);
-  return createPortal(<dialog ref={dialog} id="consultation-dialog" className="consultation-dialog" style={{ "--consultation-width": actual + "px" }} aria-labelledby="consult-title" onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => {
-    if (event.target !== event.currentTarget || drag.current) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right) onClose();
-  }}>
-    <header className="consult-header"><div>{onBack ? <button type="button" className="consult-back" onClick={onBack}><i className="bi bi-arrow-left" aria-hidden="true" /> Retour</button> : null}<h2 id="consult-title">{title}</h2></div>
-      <div className="consult-actions"><div className="consult-width-actions" role="group" aria-label="Largeur de la consultation"><button type="button" aria-label="Réduire" disabled={actual <= limits.min} onClick={() => resize(actual - 160)}><i className="bi bi-chevron-bar-right" aria-hidden="true" /></button><button type="button" aria-label="Élargir" disabled={actual >= limits.max} onClick={() => resize(actual + 160)}><i className="bi bi-chevron-bar-left" aria-hidden="true" /></button><button type="button" aria-label="Rétablir la largeur" onClick={() => resize(680)}><AppIcon name="reset" /></button></div><button type="button" aria-label="Fermer la consultation" className="consult-close" onClick={onClose}><i className="bi bi-x-lg" aria-hidden="true" /></button></div>
-    </header>
-    <div className="consult-resize" role="separator" tabIndex="0" aria-label="Redimensionner la consultation" aria-orientation="vertical" aria-controls="consultation-dialog" aria-valuetext={actual + " pixels"} aria-valuemin={limits.min} aria-valuemax={limits.max} aria-valuenow={actual}
-      onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); drag.current = { x: event.clientX, width: actual }; }}
-      onPointerMove={(event) => { if (drag.current) resize(drag.current.width + drag.current.x - event.clientX); }}
-      onPointerUp={(event) => { drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId); }}
-      onPointerCancel={() => { drag.current = null; }} onDoubleClick={() => resize(680)}
-      onKeyDown={(event) => { const step = event.shiftKey ? 128 : 32; if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); resize(event.key === "Home" ? limits.min : event.key === "End" ? limits.max : actual + (event.key === "ArrowLeft" ? step : -step)); } }} />
-    <div className="consult-content">{children}</div>
-  </dialog>, document.body);
+  return <DrawerDialog id="consultation-dialog" titleId="consult-title" title={title} onClose={onClose} onBack={onBack} className="consultation-dialog" headerClassName="consult-header" bodyClassName="consult-content" closeClassName="consult-close" closeLabel="Fermer la consultation" storageKey="sauverndeko.consultation.width">{children}</DrawerDialog>;
 }
 
 export function ConsultationProvider({ children }) {
+  const navigate=useNavigate();
+  const openFolder=(key)=>{setHistory([]);navigate("/logistique?onglet=dossiers&dossier="+encodeURIComponent(key));};
   const { user, isAuthenticated } = useAuth();
   const [history, setHistory] = useState([]);
-  useEffect(() => { setHistory([]); }, [user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin, isAuthenticated]);
-  const open = useCallback((kind, id, label = "", criteria = {}) => {
-    if (!user?.permissions?.canAccessAdmin || !id || !["produit", "commande", "indicateur"].includes(kind)) return;
-    setHistory((current) => [...current.slice(-7), { kind, id, label, section: "identite", query: { ...criteria, take: 25, skip: 0 } }]);
-  }, [user?.permissions?.canAccessAdmin]);
+  useEffect(() => { setHistory([]); }, [user?.IdUser, user?.IdEntiteFk, user?.permissions?.canAccessAdmin, isAuthenticated, accessSignature(user)]);
+  const open = useCallback((kind, id, label = "", criteria = {}, section = "identite") => {
+    if (!user?.permissions?.canAccessAdmin || !moduleRights(user,"logistique").canRead || !id || !["produit", "commande", "indicateur"].includes(kind)) return;
+    setHistory((current) => [...current.slice(-7), { kind, id, label, section, query: { ...criteria, take: 25, skip: 0 } }]);
+  }, [user?.permissions?.canAccessAdmin, accessSignature(user)]);
   const update = (patch) => setHistory((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...patch } : item));
   const entry = history[history.length - 1];
-  return <Context.Provider value={{ openProduct: (row) => open("produit", typeof row === "object" ? row.ID_Article || row.ID_ArticleFk : row, row?.NomArticle || ""), openOrder: (row) => open("commande", typeof row === "object" ? row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk : row, row?.CodeCmd || ""), openMetric: (key, criteria = {}, label = "") => open("indicateur", key, label, criteria) }}>{children}
+  return <Context.Provider value={{ openProductLots:(row)=>open("produit",row.ID_Article,row.NomArticle,{},"lots"), openProduct: (row) => open("produit", typeof row === "object" ? row.ID_Article || row.ID_ArticleFk : row, row?.NomArticle || ""), openOrder: (row) => open("commande", typeof row === "object" ? row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk : row, row?.CodeCmd || ""), openFolder, openMetric: (key, criteria = {}, label = "") => open("indicateur", key, label, criteria) }}>{children}
     {entry && isAuthenticated ? <Dialog title={entry.kind === "produit" ? "Produit 360" + (entry.label ? " · " + entry.label : "") : entry.kind === "commande" ? "Bon de stock 360" + (entry.label ? " · " + entry.label : "") : entry.label || "Détail de l’indicateur"} onClose={() => setHistory([])} onBack={history.length > 1 ? () => setHistory((current) => current.slice(0, -1)) : null}>
-      {entry.kind === "indicateur" ? <IndicatorContent key={entry.kind + entry.id} entry={entry} update={update} open={open} /> : <ObjectContent key={entry.kind + entry.id} entry={entry} update={update} open={open} />}
+      {entry.kind === "indicateur" ? <IndicatorContent key={entry.kind + entry.id} entry={entry} update={update} open={open} /> : <ObjectContent key={entry.kind + entry.id} entry={entry} update={update} open={open} openFolder={openFolder} />}
     </Dialog> : null}
   </Context.Provider>;
 }

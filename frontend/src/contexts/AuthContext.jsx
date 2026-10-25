@@ -1,3 +1,5 @@
+import { useLocation } from "react-router-dom";
+import { moduleForPath, moduleRights } from "../services/moduleAccess";
 import { createContext, startTransition, useContext, useEffect, useState } from "react";
 import {
   fetchCurrentUser,
@@ -30,6 +32,7 @@ function persistSessionUser(user) {
 }
 
 export function AuthProvider({ children }) {
+  const location = useLocation();
   const [authState, setAuthState] = useState({
     loading: true,
     isAuthenticated: false,
@@ -119,10 +122,14 @@ export function AuthProvider({ children }) {
 
     // Les droits viennent du serveur, y compris pour une session déjà ouverte.
     void synchronizeProfile();
+    const timer = window.setInterval(synchronizeProfile, 60000);
+    window.addEventListener("sauverndeko:applications-changed", synchronizeProfile);
     window.addEventListener("focus", synchronizeProfile);
     document.addEventListener("visibilitychange", synchronizeProfile);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("sauverndeko:applications-changed", synchronizeProfile);
       window.removeEventListener("focus", synchronizeProfile);
       document.removeEventListener("visibilitychange", synchronizeProfile);
     };
@@ -212,10 +219,22 @@ export function AuthProvider({ children }) {
     return payload;
   }
 
+  const key = moduleForPath(location.pathname);
+  const rights = key ? moduleRights(authState.user,key) : null;
+  const sharedReferences = location.pathname === "/referentiels";
+  const user = authState.user ? {
+    ...authState.user,
+    permissions: {
+      ...authState.user.permissions,
+      canWriteData: Boolean(authState.user.permissions?.canWriteData && (rights ? rights.canManage : sharedReferences ? authState.user.moduleAccess?.platformAdmin : true)),
+      canExportData: rights ? rights.canExport : true,
+    },
+  } : null;
   return (
     <AuthContext.Provider
       value={{
         ...authState,
+        user,
         login,
         register,
         logout,

@@ -10,6 +10,7 @@ from apps.accounts.authentication import Actor
 from apps.core.views import MODULES
 from apps.core.registry import VIEWS
 from apps.logistique.reads import INDICATORS
+from apps.logistique.followup_folders import AUTOMATIC
 
 
 class Command(BaseCommand):
@@ -48,6 +49,8 @@ class Command(BaseCommand):
             urls = [
                 "/health",
                 "/api/workspace/modules",
+                "/api/workspace/catalogue",
+                "/api/workspace/organisations",
                 "/api/public/stats",
                 "/api/public/articles",
                 "/api/public/pharmacies",
@@ -64,6 +67,8 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1"])
+            urls.append("/api/logistique/dossiers-suivi")
+            urls.extend("/api/logistique/dossiers-suivi/"+folder["key"]+"?take=1" for folder in AUTOMATIC)
             urls.extend("/api/logistique/indicateurs/" + key + "?take=1" for key in INDICATORS)
             urls.extend("/api/" + name + "?take=1" for name in MODULES)
             urls.extend(
@@ -88,7 +93,7 @@ class Command(BaseCommand):
                                 ensure_ascii=False,
                             )
                         )
-            # Vérifier aussi le SQL de périmètre d'une organisation fictive sans données.
+            # Une organisation fictive sans offre doit être refusée avant toute lecture métier.
             client.force_authenticate(
                 Actor(
                     {
@@ -106,6 +111,7 @@ class Command(BaseCommand):
                     "/api/logistique/synthese",
                     "/api/logistique/registre/articles?take=1",
                     "/api/logistique/registre/commandes?take=1",
+                    "/api/logistique/dossiers-suivi",
                     "/api/logistique/articles",
                     "/api/logistique/commandes",
                     "/api/logistique/commande-details",
@@ -120,27 +126,12 @@ class Command(BaseCommand):
                     "/api/systeme/licences",
                 ]:
                     response = client.get(url)
-                    results.append(
-                        {"url": "organisation:" + url, "status": response.status_code}
-                    )
-                    if response.status_code != 200:
-                        self.stderr.write("Échec du périmètre local : " + url)
-                    elif url.endswith(("/dashboard", "/synthese")):
-                        if (
-                            response.data["data"]["totals"]["articles"] != 0
-                            or response.data["data"]["totals"]["commandes"] != 0
-                        ):
-                            raise CommandError(
-                                "Fuite de compteurs entre organisations."
-                            )
-                    elif (
-                        isinstance(response.data["data"], list)
-                        and response.data["data"]
-                    ):
-                        raise CommandError("Fuite de lignes entre organisations.")
+                    results.append({"url":"organisation-sans-offre:"+url,"status":response.status_code,"attendu":403})
+                    if response.status_code != 403 or response.data.get("data"):
+                        raise CommandError("Accès inattendu pour une organisation sans offre : "+url)
             report = {
                 "routesGET": len(results),
-                "reussies": sum(r["status"] == 200 for r in results),
+                "reussies": sum(r["status"] == r.get("attendu",200) for r in results),
                 "ecritureBase": False,
                 "connexionLectureSeule": True,
                 "details": results,

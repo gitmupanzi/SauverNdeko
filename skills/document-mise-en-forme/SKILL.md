@@ -33,6 +33,8 @@ La [configuration de charte](assets/charte_sauverndeko.json) porte les valeurs c
 8. Réutiliser la charte commune, en adaptant seulement les données d’identité autorisées et les besoins du document. Ne pas inventer une adresse, une signature, un numéro de facture ou une validation.
 9. Vérifier le rendu des fichiers effectivement générés : toutes les pages Word/PDF des cas de recette, cellules et impression Excel. Une génération ou une extraction de texte réussie ne prouve pas le rendu.
 
+Pour les exports Excel de listes, appliquer la préférence explicite du 25/10/2026 : en-têtes à la première ligne, données dès la deuxième, gris clair et texte sombre. Aucun logo ou bloc de présentation au-dessus du tableau ; conserver le contexte dans Informations. Cette règle remplace la présentation bleue antérieure pour Excel.
+
 ## Sources et intégration
 
 Lire [le skill ERP](../sauverndeko-erp/SKILL.md), [le backend](../../backend/skill/SKILL.md) ou [le frontend](../../frontend/skill/SKILL.md) selon la couche touchée. Conserver Django/DRF, PostgreSQL et React existants ; aucun exporteur ou système de jobs d’un autre projet n’est supposé disponible.

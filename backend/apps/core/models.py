@@ -199,6 +199,9 @@ class T_Niveau_5(models.Model):
 
 
 class T_Article(models.Model):
+    PoidsUnitaire = models.DecimalField(max_digits=14, decimal_places=6, null=True)
+    ID_UnitePoidsFk = models.IntegerField(null=True)
+    InformationArticle = models.TextField(null=True)
     ID_Article = models.AutoField(primary_key=True)
     ID_TypeArticleFk = models.IntegerField(null=True)
     ID_CategorieArticleFk = models.IntegerField(null=True)
@@ -601,3 +604,23 @@ class T_Recherche(models.Model):
     class Meta:
         managed = False
         db_table = '"analytics"."T_Recherche"'
+
+class T_LotArticle(models.Model):
+    ID_LotArticle = models.AutoField(primary_key=True)
+    ID_ArticleFk = models.IntegerField()
+    NumeroLot = models.CharField(max_length=100)
+    DatePeremptionLot = models.DateField(null=True)
+    Actif = models.BooleanField()
+    CreeLe = models.DateTimeField()
+    class Meta:
+        managed = False
+        db_table = '"logistique"."T_LotArticle"'
+
+class T_MouvementLot(models.Model):
+    pk = models.CompositePrimaryKey("ID_MvtFk", "ID_LotArticleFk")
+    ID_MvtFk = models.IntegerField()
+    ID_LotArticleFk = models.IntegerField()
+    Quantite = models.IntegerField()
+    class Meta:
+        managed = False
+        db_table = '"logistique"."T_MouvementLot"'

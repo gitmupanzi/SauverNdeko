@@ -1,30 +1,18 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from .responses import ok
-
-WORKSPACE_MODULES = (
-    {"key": "catalogue", "label": "Catalogue", "description": "Produits, structures et informations de santé.", "path": "/catalogue", "icon": "grid", "tone": "blue"},
-    {"key": "produits", "label": "Produits", "description": "Rechercher et consulter les produits disponibles.", "path": "/produits", "icon": "capsule", "tone": "teal"},
-    {"key": "structures", "label": "Structures", "description": "Pharmacies, dépôts et établissements.", "path": "/pharmacies", "icon": "hospital", "tone": "coral"},
-    {"key": "professionnels", "label": "Professionnels", "description": "Consulter les profils des professionnels.", "path": "/experts", "icon": "people", "tone": "purple"},
-    {"key": "sante", "label": "Informations santé", "description": "Consulter les informations par maladie.", "path": "/maladies", "icon": "heart-pulse", "tone": "rose"},
-    {"key": "discussions", "label": "Discussions", "description": "Retrouver vos échanges et messages.", "path": "/discussions", "icon": "chat-dots", "tone": "sky"},
-    {"key": "logistique", "label": "Logistique", "description": "Articles, stock, bons et factures.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
-    {"key": "territoires", "label": "Organisation territoriale", "description": "Découpage administratif et pyramide sanitaire.", "path": "/territoires", "icon": "diagram-3", "tone": "teal", "admin": True},
-    {"key": "administration", "label": "Administration", "description": "Utilisateurs, organisations et paramètres.", "path": "/admin", "icon": "sliders", "tone": "slate", "admin": True},
-)
-
+from .module_access import WORKSPACE_MODULES, access_snapshot
 
 def available_modules(actor):
-    return [
-        {key: value for key, value in module.items() if key != "admin"}
-        for module in WORKSPACE_MODULES
-        if not module.get("admin") or actor.admin
-    ]
-
+    snapshot=access_snapshot(actor)
+    return [{**{key:value for key,value in module.items() if key!="admin"},"base":snapshot["modules"][module["key"]]["base"]} for module in WORKSPACE_MODULES if snapshot["modules"][module["key"]]["canRead"]]
 
 class WorkspaceModulesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated]
+    def get(self,request):return ok(available_modules(request.user))
 
-    def get(self, request):
-        return ok(available_modules(request.user))
+class WorkspaceCatalogueView(APIView):
+    permission_classes=[IsAuthenticated]
+    def get(self,request):
+        snapshot=access_snapshot(request.user)
+        return ok({"platformAdmin":snapshot["platformAdmin"],"entityId":snapshot["entityId"],"modules":[{**{key:value for key,value in module.items() if key!="admin"},**snapshot["modules"][module["key"]]} for module in WORKSPACE_MODULES]})
