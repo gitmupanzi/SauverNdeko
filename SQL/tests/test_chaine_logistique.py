@@ -94,7 +94,8 @@ ordinary=actor_by_id(ordinary_id)
 def supplier(entity,uid,label):
  return insert('logistique','T_Client',{'IdEntiteFk':entity,'Nature':'entreprise','ID_TypeClientFk':ref(30,'Fournisseur'),'Nom':'Fournisseur fictif '+label+' '+tag,'CreeParUserFk':uid,'ModifieParUserFk':uid,'Actif':True},'ID_Client')
 suppliers={entity_a:supplier(entity_a,uid_a,'A'),entity_b:supplier(entity_b,uid_b,'B')}
-unit=insert('referentiel','T_Generique',{'ID_CategorieGeneriqueFk':34,'NomGenerique':'Kilogramme de recette '+tag,'AbrGenerique':'kg','DecimalesStock':3,'ValideGenerique':True},'ID_Generique')
+unit=insert('referentiel','T_Generique',{'ID_CategorieGeneriqueFk':34,'NomGenerique':'Kilogramme de recette '+tag,'AbrGenerique':'kg','ValideGenerique':True},'ID_Generique')
+db.query('INSERT INTO logistique."T_PrecisionStock" ("ID_UniteFk","DecimalesStock") VALUES (%s,3) ON CONFLICT ("ID_UniteFk") DO UPDATE SET "DecimalesStock"=EXCLUDED."DecimalesStock"',[unit])
 category,kind,currency,entry,outgoing,mode=ref(40),ref(46),ref(42,'USD'),ref(64,'Entrée'),ref(64,'Sortie'),ref(36)
 def article(actor,label):
  return repository.mutate('T_Article',actor,{'NomArticle':label+' '+tag,'ID_TypeArticleFk':kind,'ID_CategorieArticleFk':category,'ID_UniteFk':unit,'ID_DeviseFk':currency,'QteArticle':'0','PUArticle':'4.00','PVArticle':'8.00','ValideArticle':True})['ID_Article']

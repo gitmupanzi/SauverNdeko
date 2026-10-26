@@ -73,7 +73,7 @@ Les sections de conception précédentes restent la justification du choix ; leu
 
 ## Références et inventaires — règles appliquées le 26 octobre 2026
 
-La précision du stock appartient aux unités de referentiel.T_Generique (DecimalesStock et PrecisionStockModifieLe). Ne pas recréer T_UniteStockPrecision ou une table de catégories parallèle. Le réglage global, les contrôles SQL de compatibilité et la validation décimale côté serveur restent obligatoires.
+La précision du stock appartient à logistique.T_PrecisionStock : exactement quatre colonnes, ID_PrecisionStock, ID_UniteFk, DecimalesStock et ModifieLe. La FK réelle ID_UniteFk désigne la même valeur de la catégorie Unités de referentiel.T_Generique que T_Article.ID_UniteFk. La vue commune V_PrecisionStock fournit la précision, avec zéro décimale pour une nouvelle unité non paramétrée. Ne pas réintroduire ces paramètres dans T_Generique ni créer une autre nomenclature d’unités. Le réglage est partagé, verrouillé avec les validations de quantités et compatible avec l’historique ; sa modification ne produit aucun effet de stock. La migration 20261026_10 conserve les réglages existants, initialise les unités actives sans réglage explicite à zéro et ne retire les anciennes colonnes qu’après reprise contrôlée ; vérifier son installation avant d’utiliser le nouveau contrat.
 
 Les destinations se lisent dans V_DestinationLogistique : chaque niveau présente son type provenant de la FK réelle vers T_Generique, puis son nom. Ne pas supposer que tous les niveaux sont des AS ou ZS ; conserver les abréviations renseignées et la hiérarchie pour distinguer les homonymes.
 

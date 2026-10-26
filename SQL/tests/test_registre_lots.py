@@ -144,7 +144,7 @@ check(register(unbound,'lots',{'q':marker})[1]['filteredCount']==5,'Global unsco
 check(lot_detail(unbound,foreign_lot)['IdEntiteFk']==other_entity,'Global header can read second enterprise')
 # Quantités fractionnaires et unités distinctes : aucun total arithmétique entre lots.
 original_unit=unit;unit=generic(34,'Masse de recette '+uuid.uuid4().hex,'kg')
-db.query('UPDATE referentiel."T_Generique" SET "DecimalesStock"=3 WHERE "ID_Generique"=%s',[unit])
+db.query('INSERT INTO logistique."T_PrecisionStock" ("ID_UniteFk","DecimalesStock") VALUES (%s,3) ON CONFLICT ("ID_UniteFk") DO UPDATE SET "DecimalesStock"=EXCLUDED."DecimalesStock"',[unit])
 fractional=article();bon(fractional,'1.250',[lot(marker+'-MASS',Decimal('1.250'))]);unit=original_unit
 fractional_rows,_=only(fractional);check(fractional_rows[0]['StockLot']==Decimal('1.250') and fractional_rows[0]['AbrUnite']=='kg','Fractional lot stock stays exact with its unit')
 stream,count,name=register_workbook(g,'lots',{'articleId':str(fractional),'columns':'["NumeroLot","StockLot"]'});fractional_xlsx=as_rows(stream);stream.close()

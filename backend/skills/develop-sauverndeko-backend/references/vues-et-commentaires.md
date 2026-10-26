@@ -101,3 +101,10 @@ Consulter le [bilan de fiabilisation](../../../../SQL/documentation/Logistique_F
 Le propriétaire a autorisé l’amélioration des schémas métier. La base comporte maintenant 31 tables métier et 48 vues ; les neuf schémas, public inclus, portent 1 893 commentaires sans manque. Les stocks appliquent des deltas nets par article ; ne pas réintroduire une annulation intermédiaire qui rendrait artificiellement le stock négatif. Les agrégats géographiques incluent les sites directement rattachés au niveau 3. Les vues publiques excluent les données privées et les réponses JSON des curseurs bruts sont décodées avant nettoyage.
 
 Lire le [bilan et les limites](../../../../SQL/documentation/Audit_Metier_20261024.md) puis le [guide SQL](../../../../SQL/README.md). Les snapshots canoniques sont destinés aux bases vides ; une base existante reçoit uniquement une migration contrôlée. Les migrations historiques 01 à 03 ne doivent pas être rejouées après la version 04 sans examen de leurs effets.
+
+
+## Politique de précision des quantités — contrat 20261026_10
+
+Lire `logistique.V_PrecisionStock` pour la précision d’une unité. `logistique.T_PrecisionStock` contient uniquement ID_PrecisionStock, ID_UniteFk, DecimalesStock et ModifieLe ; sa FK désigne la même valeur Unités de referentiel.T_Generique que l’article. Les libellés et abréviations restent dans le référentiel ; aucune précision logistique n’y est dupliquée. Vérifier la migration installée avant d’employer ce contrat.
+
+Le défaut d’une nouvelle unité non configurée est zéro décimale. Le réglage partagé est réservé à l’administrateur global et ne change aucun stock. Les protections PostgreSQL conservent identité, catégorie et historique ; les contrôles de quantité et de configuration verrouillent la même unité. Conserver l’alias API Decimales et l’audit avant/après, y compris la date et l’identité de politique. Ne pas réécrire les migrations historiques qui portaient ce réglage dans le référentiel.

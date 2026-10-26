@@ -191,13 +191,13 @@ def catalogue(actor,params):
     try:take=min(100,max(1,int(params.get('take',25))));skip=max(0,int(params.get('skip',0)))
     except (ValueError,TypeError):raise APIError('Pagination invalide.')
     sort=params.get('sortBy','NomArticle');direction=params.get('sortDir','asc')
-    sorts={'NomArticle':'a."NomArticle"','QteArticle':'a."QteArticle"','Decimales':'COALESCE(g."DecimalesStock",0)'}
+    sorts={'NomArticle':'a."NomArticle"','QteArticle':'a."QteArticle"','Decimales':'COALESCE(p."DecimalesStock",0)'}
     if sort not in sorts or direction not in ('asc','desc'):raise APIError('Tri invalide.')
     where='a."IdEntiteFk"=%s AND a."ValideArticle" IS TRUE';values=[entity]
     if q:where+=' AND (a."NomArticle" ILIKE %s OR a."CodeArticleInterne" ILIKE %s OR a."RefArticle" ILIKE %s)';values += ['%'+q+'%']*3
     total=db.one('SELECT count(*) n FROM logistique."T_Article" a WHERE '+where,values)['n']
-    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle",a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(g."DecimalesStock",0) AS "Decimales"
-      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk" WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[*values,take,skip])
+    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle",a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(p."DecimalesStock",0) AS "Decimales"
+      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk" LEFT JOIN logistique."V_PrecisionStock" p ON p."ID_UniteFk"=a."ID_UniteFk" WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[*values,take,skip])
     return clean(rows),{'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction}
 
 
@@ -233,14 +233,24 @@ class UnitPrecisionView(APIView):
     permission_classes=[IsERPAdmin]
     def get(self,request):
         access(request.user)
-        return ok(db.query('''SELECT g."ID_Generique" AS "ID_UniteFk",g."NomGenerique" AS "Unite",g."AbrGenerique" AS "Abreviation",COALESCE(g."DecimalesStock",0) AS "Decimales",g."PrecisionStockModifieLe" AS "ModifieLe" FROM referentiel."T_Generique" g WHERE g."ID_CategorieGeneriqueFk"=34 ORDER BY g."NomGenerique"'''))
+        return ok(db.query('''SELECT "ID_PrecisionStock","ID_UniteFk","Unite","Abreviation",
+          "DecimalesStock" AS "Decimales","ModifieLe"
+          FROM logistique."V_PrecisionStock" ORDER BY "Unite","ID_UniteFk"'''))
     def put(self,request):
         access(request.user,True)
         if not request.user.global_admin:raise APIError('Le paramétrage partagé des unités exige un administrateur de plateforme.','GLOBAL_ADMIN_REQUIRED',403)
         body=request.data
         if not isinstance(body,dict) or set(body)!={'ID_UniteFk','Decimales'} or type(body['Decimales']) is not int or body['Decimales'] not in range(4):raise APIError('Choisissez une unité et une précision de zéro à trois décimales.')
+        unit_id=positive(body['ID_UniteFk'])
         with transaction.atomic():
-            row=db.one('''UPDATE referentiel."T_Generique" SET "DecimalesStock"=%s WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=34 RETURNING "ID_Generique" AS "ID_UniteFk","DecimalesStock" AS "Decimales","PrecisionStockModifieLe" AS "ModifieLe"''',[body['Decimales'],positive(body['ID_UniteFk'])])
+            previous=db.one('''SELECT * FROM logistique."T_PrecisionStock" WHERE "ID_UniteFk"=%s FOR UPDATE''',[unit_id])
+            if previous:
+                row=db.one('''UPDATE logistique."T_PrecisionStock" SET "DecimalesStock"=%s
+                  WHERE "ID_UniteFk"=%s RETURNING *''',[body['Decimales'],unit_id])
+            else:
+                row=db.one('''INSERT INTO logistique."T_PrecisionStock"("ID_UniteFk","DecimalesStock")
+                  SELECT "ID_Generique",%s FROM referentiel."T_Generique"
+                  WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=34 RETURNING *''',[body['Decimales'],unit_id])
             if not row:raise APIError('Unité introuvable.','NOT_FOUND',404)
-            audit({'schema':'referentiel','name':'T_Generique'},'UPDATE',new=row,actor=request.user)
-            return ok(clean(row))
+            audit({'schema':'logistique','name':'T_PrecisionStock'},'UPDATE' if previous else 'INSERT',old=previous,new=row,actor=request.user)
+            return ok(clean({'ID_PrecisionStock':row['ID_PrecisionStock'],'ID_UniteFk':row['ID_UniteFk'],'Decimales':row['DecimalesStock'],'ModifieLe':row['ModifieLe']}))

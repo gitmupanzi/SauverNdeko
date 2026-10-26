@@ -1,3 +1,4 @@
+from apps.core.reference_exports import ReferenceExcelView
 from apps.logistique.expiry import ExpiryPolicyView
 from apps.logistique.entity_documents import EntityDocumentIdentityView
 from apps.logistique.valuation import ArticleValuationView, ArticleValuationExcelView
@@ -50,6 +51,7 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/referentiel/exports/(?P<kind>categories|valeurs)\.xlsx/?$", ReferenceExcelView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/export\.xlsx/?$", ArticleValuationExcelView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/?$", ArticleValuationView.as_view()),
     re_path(r"^api/logistique/entreprise/identite/?$", EntityDocumentIdentityView.as_view()),

@@ -93,9 +93,9 @@ c=APIClient();resp=c.post('/api/logistique/inventaires/'+str(r['ID_Inventaire'])
 c.force_authenticate(g);resp=c.post('/api/logistique/inventaires/'+str(r['ID_Inventaire'])+'/annuler',req(r,''),format='json');check(resp.status_code==400,'API validation')
 # Precision shared reference.
 with transaction.atomic():
- db.query('UPDATE referentiel."T_Generique" SET "DecimalesStock"=3 WHERE "ID_Generique"=%s',[unit])
+ db.query('INSERT INTO logistique."T_PrecisionStock" ("ID_UniteFk","DecimalesStock") VALUES (%s,3) ON CONFLICT ("ID_UniteFk") DO UPDATE SET "DecimalesStock"=EXCLUDED."DecimalesStock"',[unit])
  check(for_unit('1.125',unit,'q')==Decimal('1.125'),'fractional quantity')
  a=art();db.query('UPDATE logistique."T_Article" SET "QteArticle"=10.125 WHERE "ID_Article"=%s',[a])
- reject(lambda:db.query('UPDATE referentiel."T_Generique" SET "DecimalesStock"=0 WHERE "ID_Generique"=%s',[unit]),'incompatible precision reduction')
+ reject(lambda:db.query('UPDATE logistique."T_PrecisionStock" SET "DecimalesStock"=0 WHERE "ID_UniteFk"=%s',[unit]),'incompatible precision reduction')
  transaction.set_rollback(True)
 print('PASS',len(checks),checks)

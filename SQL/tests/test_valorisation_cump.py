@@ -110,7 +110,7 @@ from apps.logistique.lots import line_lots
 mutate_line(g,r,{'QteCmdDetail':'10','PUCmdDetail':'30','_version':document_revision({**row,'Lots':line_lots(r,fresh)},'ligne')},article_id=fresh,operation='update')
 equal(position(fresh)['ValeurStock'],'375','retroactive purchase correction recalculates following costs')
 # Decimal arithmetic, zero stock and separate currency balances.
-db.query('UPDATE referentiel."T_Generique" SET "DecimalesStock"=3 WHERE "ID_Generique"=%s',[unit])
+db.query('INSERT INTO logistique."T_PrecisionStock" ("ID_UniteFk","DecimalesStock") VALUES (%s,3) ON CONFLICT ("ID_UniteFk") DO UPDATE SET "DecimalesStock"=EXCLUDED."DecimalesStock"',[unit])
 fraction=a('0');movement(fraction,1,'1.125','0.10');movement(fraction,-1,'0.125','5');equal(position(fraction)['CoutUnitaireMoyen'],'0.1','fraction mean exact');equal(position(fraction)['QteValorisee'],'1','fraction stock exact');movement(fraction,-1,'1','5');equal(position(fraction)['ValeurStock'],'0','zero stock no residual value')
 second_currency=generic(42,'Monnaie fictive','ZQT');movement(fresh,1,'2','7',second_currency)
 check(len(valuation(g,fresh)['positions'])==2,'currencies remain separate')

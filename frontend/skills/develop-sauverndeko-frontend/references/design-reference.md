@@ -37,7 +37,7 @@ RowActionsMenu fournit le bouton ⋯ par ligne, avec Consulter, Modifier, Désac
 
 ProductHeading et ProductOverview structurent Produit 360 : identité, situation du stock, informations générales, prix et valorisation, conservation et observation. Les rubriques liées sont chargées à la demande et restent limitées à l’identifiant du produit. Changer de rubrique ne présente pas les données de la rubrique précédente. Conserver le conteneur commun, ses largeurs, son clavier et le retour au déclencheur.
 
-Le lien Référentiels du menu logistique ouvre /referentiels, protégé par AdminRoute. Admin y est limité au schéma referentiel et charge seulement les catégories utiles aux formulaires. Ce lien ne rend pas tout le module d’administration public.
+Le lien Référentiels du menu logistique ouvre /referentiels, protégé par AdminRoute. Referentiels.jsx présente désormais un registre dédié aux catégories et valeurs partagées ; ne pas y réintroduire le shell historique Admin. Ce lien ne rend pas tout le module d’administration public.
 
 ## Réglages et fenêtres latérales — 25 octobre 2026
 
@@ -98,3 +98,16 @@ Le pied du menu Logistique ouvre `EntityDocumentIdentity` pour l’entreprise ac
 `AdminMailSettings` prend les valeurs par défaut dans `data.defaults`, sans adresse codée en dur. « Tester la connexion » vérifie uniquement le transport courant et n’envoie aucun e-mail. Le bouton suit `canTest`, ses états attente/échec/reprise/succès sont distincts de la sauvegarde de l’expéditeur. Rappeler sobrement que les modifications du formulaire ne sont pas enregistrées. Les tests UI de ce bouton utilisent une réponse simulée et ne contactent jamais un service SMTP réel.
 
 Tous les exports de lignes, listes, dossiers et consultations respectent à la fois le droit global et `moduleRights(user,"logistique").canExport`. Un accès de consultation ne donne pas le droit de créer une ligne : réutiliser `useEntityScope().canWrite`, qui tient compte du rôle et de l’entreprise active. Le serveur reste l’autorité sur chaque opération.
+
+
+## Référentiels — 26 octobre 2026
+
+Réutiliser le shell bleu ardoise, ModuleHeader, RegisterSurface, SimpleTable, DataTableToolbar et les menus communs. Deux entrées : Valeurs de référence et Catégories. Les identifiants et règles de visibilité restent des colonnes facultatives, sans cartes techniques de résumé.
+
+Ordre initial des valeurs : Catégorie, Libellé, Abréviation ou code, Modules associés, État, Actions. Modules associés affiche exactement ModuleCategorieGenerique reçu du serveur, sans traduction codée dans React. Un libellé supplémentaire doit venir d’une source de référence centrale.
+
+V_Generique et V_CategorieGenerique fournissent recherche, filtres, tri et pagination serveur. L’Excel natif /api/referentiel/exports/(valeurs|categories).xlsx reprend les mêmes critères, toutes les lignes filtrées et les colonnes choisies. Le CSV de sélection reste limité à celle-ci et neutralise les cellules pouvant être interprétées comme des formules.
+
+Un clic, Consulter et Modifier emploient ID_Generique ou ID_CategorieGenerique de l’objet réel, jamais l’index de page. ReferenceEditor relit la fiche brute par cet identifiant, propose le formulaire commun Identification/Visibilité et protège le brouillon. En édition, envoyer uniquement les champs modifiés ; préserver les booléens NULL non touchés. Une perte de droits vide les données et la sélection devenues interdites.
+
+Le DELETE standard du référentiel désactive : le menu et la confirmation disent Désactiver, sans annoncer une suppression définitive. La réactivation passe par le même formulaire. useReferencesRefresh garde les consommateurs à jour après une mutation réussie.
