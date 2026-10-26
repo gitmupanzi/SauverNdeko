@@ -12,6 +12,7 @@ Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention
 Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/10/2026, puis a limité initialement le travail aux fichiers. Il a ensuite explicitement autorisé les tables natives Django dans le schéma public et demandé une intervention d’administrateur de base de données. Django/DRF est le seul backend. Le propriétaire a ensuite demandé la suppression d’Express/Prisma, de son client généré, de ses dépendances et des lanceurs npm du backend. React et les contrats d’URL restent en place.
 
 - Lire [l’architecture](references/architecture.md) pour les points d’entrée et les responsabilités.
+- Lire [le portail d’administration](references/administration-portail.md) pour la synthèse, les registres, leurs exports, la confidentialité des journaux et les paramètres protégés.
 - Lire [messagerie et réinitialisation](references/messagerie-reinitialisation.md) pour l’expéditeur, les secrets SMTP locaux et la récupération sécurisée des comptes.
 - Pour la propriété durable des documents, T_Client et les opérations du compte global, lire les [décisions Entités, tiers et stock](../../../skills/sauverndeko-erp/references/entites-tiers-et-stock.md).
 - Lire [Articles, photos et lots](references/articles-lots-photos.md) pour les écritures avec révision, poids, informations et ventilation des mouvements par lot.

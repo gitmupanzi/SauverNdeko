@@ -1,0 +1,9 @@
+.admin-record-context{display:flex;align-items:center;gap:12px;margin-bottom:20px;min-width:0;}
+.admin-record-symbol{display:grid;place-items:center;flex:none;width:44px;height:44px;border:1px solid var(--erp-border);border-radius:12px;background:var(--erp-active);color:var(--erp-link);}
+.admin-record-context>div{min-width:0;flex:1;}.admin-record-context strong{display:block;font-size:16px;color:var(--erp-text);overflow-wrap:anywhere;}.admin-record-context small{display:block;margin-top:5px;font-size:12px;color:var(--erp-muted);overflow-wrap:anywhere;}
+.admin-record-editor .consultation-tabs{margin-bottom:20px;}.admin-record-editor .record-editor-section{margin-top:18px;}
+.admin-record-check{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid var(--erp-border);border-radius:8px;background:var(--erp-raised);min-height:52px;color:var(--erp-text);}
+.admin-record-check strong{font-size:12px;font-weight:600;}.admin-record-check small{display:block;font-size:11px;color:var(--erp-muted);margin-top:3px;}.admin-record-check input{width:17px;height:17px;min-height:17px;flex:none;accent-color:var(--erp-action);}
+.admin-record-inline{display:flex;gap:8px;flex-wrap:wrap;}.admin-record-protected{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px solid var(--erp-border);border-radius:8px;color:var(--erp-muted);background:var(--erp-raised);font-size:12px;}
+.admin-record-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:0;}.admin-record-facts dt{font-size:11px;font-weight:400;color:var(--erp-muted);}.admin-record-facts dd{font-size:13px;color:var(--erp-text);margin:5px 0 0;font-variant-numeric:tabular-nums;}
+@container(max-width:540px){.admin-record-facts{grid-template-columns:1fr;}.admin-record-context{flex-wrap:wrap;}}

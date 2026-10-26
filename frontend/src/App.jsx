@@ -463,6 +463,7 @@ export default function App() {
   if (location.pathname === "/profil") return <div className="applications-page"><ModuleHeader title="Mon profil" /><Profile key={scopeKey} /></div>;
   if (location.pathname === "/applications") return <Applications key={scopeKey} />;
   if (location.pathname === "/abonnements") return <AdminRoute><ApplicationLicences key={scopeKey} /></AdminRoute>;
+  if (location.pathname === "/admin") return <ModuleGate><AdminRoute><Admin key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;

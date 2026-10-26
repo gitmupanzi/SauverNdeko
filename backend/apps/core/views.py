@@ -9,7 +9,7 @@ from . import db
 from .registry import MODELS, VIEWS, model, view
 from .permissions import IsERPAdmin, scope_for
 from .module_access import module_for_object, require_module
-from .repository import listing, get_record, mutate, positive, clean
+from .repository import listing, get_record, mutate, positive, clean, secret_key
 from .responses import ok, APIError
 
 MODULES = json.loads(
@@ -85,6 +85,10 @@ class ModuleView(APIView):
                 if obj["primaryKey"][0] in {c["column_name"] for c in source["columns"]}
                 else obj
             )
+            # Le formulaire recharge les valeurs brutes de ses FK. Les vues de
+            # présentation ne contiennent pas toutes les clés d’édition.
+            if obj["name"] in {"T_Utilisateurs", "T_Licence"}:
+                source = obj
             if obj["name"]=="T_Reglements":
                 from apps.logistique.payments import get_payment
                 data,meta=get_payment(request.user,positive(pk));response=ok(data,meta=meta);response["ETag"]='"'+meta["revision"]+'"';return response
@@ -99,6 +103,8 @@ class ModuleView(APIView):
             if obj["name"] == "T_Commande":
                 from apps.logistique.document_rules import usage
                 return ok(clean(record), meta=usage(record, request.user))
+            if obj["name"] == "T_Admin_UI_Setting":
+                return ok(clean(record), meta={"sensitive": secret_key(record.get("SettingKey", ""))})
             return ok(clean(record))
         rows, meta = listing(source, request.user, params)
         return ok(rows, meta=meta)

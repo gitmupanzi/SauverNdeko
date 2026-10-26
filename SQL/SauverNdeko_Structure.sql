@@ -1,11 +1,11 @@
--- Structure canonique SauverNdeko vérifiée le 24/10/2026 ; AUCUNE donnée.
+-- Structure canonique SauverNdeko vérifiée le 26/10/2026 ; AUCUNE donnée.
 -- Installation sur base vide uniquement, avec psql -X -v ON_ERROR_STOP=1 -f.
 -- Une base existante reçoit uniquement les migrations versionnées, pas ce fichier.
 --
 -- PostgreSQL database dump
 --
 
-\restrict QcTvq6nIiuAKibRtvlSjg0Q3e2roDAToefnWTAAe1cQWx8wAongWG0uOxg1HgUq
+\restrict OqGfx9U036Z5k5uMLRMVr2XfUoX3ECNJtVm53eek7rzIisPl3SWmCOIXItXEp6v
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -205,6 +205,279 @@ COMMENT ON FUNCTION communication.fn_sync_dernier_message() IS 'Maintient Dernie
 
 
 --
+-- Name: controler_inventaire_valide(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.controler_inventaire_valide() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ DECLARE h record;l record;o record;n record; BEGIN
+ IF TG_TABLE_NAME='T_Inventaire' THEN
+  SELECT * INTO h FROM logistique."T_Inventaire" WHERE "ID_Inventaire"=NEW."ID_Inventaire";
+ ELSE
+  SELECT * INTO h FROM logistique."T_Inventaire" WHERE "ID_Inventaire"=COALESCE(NEW."ID_InventaireFk",OLD."ID_InventaireFk");
+ END IF;
+ IF h."Etat" IN ('valide','annule') AND (NOT EXISTS(SELECT FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=h."ID_Inventaire") OR
+  EXISTS(SELECT FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=h."ID_Inventaire" AND ("QteComptee"<>"QteTheorique")<>("ID_CommandeCorrectionFk" IS NOT NULL))) THEN
+ RAISE EXCEPTION 'Chaque écart doit posséder son bon correcteur unique' USING ERRCODE='23514';END IF;
+ IF h."Etat"<>'annule' THEN RETURN NULL;END IF;
+ FOR l IN SELECT * FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=h."ID_Inventaire" LOOP
+  IF (l."QteComptee"<>l."QteTheorique")<>(l."ID_CommandeAnnulationFk" IS NOT NULL) THEN RAISE EXCEPTION 'Compensation manquante ou superflue' USING ERRCODE='23514';END IF;
+  IF l."ID_CommandeAnnulationFk" IS NULL THEN CONTINUE;END IF;
+  SELECT m.* INTO o FROM logistique."V_MouvementStock" m WHERE "ID_cmdFk"=l."ID_CommandeCorrectionFk" AND "ID_ArticleFk"=l."ID_ArticleFk";
+  SELECT m.* INTO n FROM logistique."V_MouvementStock" m WHERE "ID_cmdFk"=l."ID_CommandeAnnulationFk" AND "ID_ArticleFk"=l."ID_ArticleFk";
+  IF o."ID_Mvt" IS NULL OR n."ID_Mvt" IS NULL OR n."SigneStock"<>-o."SigneStock" OR n."QteMvt"<>o."QteMvt" OR NOT EXISTS(
+   SELECT FROM logistique."T_Commande" c JOIN logistique."T_Commande" oldc ON oldc."ID_Commande"=l."ID_CommandeCorrectionFk"
+   JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=c."ID_Commande"
+   JOIN logistique."T_CommandeDetail" od ON od."ID_CmdFk"=oldc."ID_Commande" AND od."ID_ArticleFk"=d."ID_ArticleFk"
+   WHERE c."ID_Commande"=l."ID_CommandeAnnulationFk" AND c."IdEntiteFk"=h."IdEntiteFk" AND c."ID_DeviseFk"=oldc."ID_DeviseFk"
+    AND d."ID_ArticleFk"=l."ID_ArticleFk" AND d."PUCmdDetail" IS NOT DISTINCT FROM od."PUCmdDetail"
+    AND (SELECT count(*) FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=c."ID_Commande")=1)
+  THEN RAISE EXCEPTION 'Compensation incompatible avec le bon d’origine' USING ERRCODE='23514';END IF;
+  IF EXISTS((SELECT "ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=o."ID_Mvt" EXCEPT SELECT "ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=n."ID_Mvt")
+   UNION ALL (SELECT "ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=n."ID_Mvt" EXCEPT SELECT "ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=o."ID_Mvt"))
+  THEN RAISE EXCEPTION 'La compensation conserve les lots d’origine' USING ERRCODE='23514';END IF;
+ END LOOP;RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION controler_inventaire_valide(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.controler_inventaire_valide() IS 'Contrôle différé de complétude et inversion exacte des mouvements, prix, devise et lots lors de l’annulation.';
+
+
+--
+-- Name: controler_propriete_logistique(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.controler_propriete_logistique() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE parent_entity integer; article_entity integer; client_entity integer; parent_tiers bigint;
+BEGIN
+ IF TG_TABLE_NAME IN('T_Article','T_Commande','T_Client') THEN
+  IF NEW."IdEntiteFk" IS NULL THEN RAISE EXCEPTION 'Entreprise propriétaire requise.' USING ERRCODE='23514';END IF;
+  IF TG_OP='UPDATE' AND NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" AND NOT (OLD."IdEntiteFk" IS NULL AND NEW."IdEntiteFk" IS NOT NULL AND current_setting('sauverndeko.owner_assignment',true)='on') THEN RAISE EXCEPTION 'Entreprise propriétaire immuable.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF TG_TABLE_NAME='T_Client' THEN
+  IF TG_OP='UPDATE' AND (NEW."CreeParUserFk" IS DISTINCT FROM OLD."CreeParUserFk" OR NEW."DateCreation" IS DISTINCT FROM OLD."DateCreation") THEN RAISE EXCEPTION 'Auteur et date de création immuables.' USING ERRCODE='23514';END IF;
+  IF NEW."IdProfessionnelFk" IS NOT NULL AND NEW."IdUserFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM professionnel."T_Professionnel" p WHERE p."IdProfessionnel"=NEW."IdProfessionnelFk" AND p."IdUserFk"=NEW."IdUserFk") THEN RAISE EXCEPTION 'Identités du tiers incompatibles.' USING ERRCODE='23514';END IF;
+  IF NEW."ID_TypeClientFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_TypeClientFk" AND lower(btrim(c."NomCategorieGenerique"))='type de personne') THEN RAISE EXCEPTION 'Type de client incompatible.' USING ERRCODE='23514';END IF;
+ ELSIF TG_TABLE_NAME='T_Commande' THEN
+  IF NEW."ID_TiersFk" IS NOT NULL THEN SELECT "IdEntiteFk" INTO client_entity FROM logistique."T_Client" WHERE "ID_Client"=NEW."ID_TiersFk" FOR SHARE;IF client_entity IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Tiers d’une autre entreprise.' USING ERRCODE='23514';END IF;END IF;
+ ELSIF TG_TABLE_NAME='T_CommandeDetail' OR TG_TABLE_NAME='T_Mouvement' THEN
+  SELECT "IdEntiteFk" INTO article_entity FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk" FOR SHARE;
+  IF TG_TABLE_NAME='T_CommandeDetail' THEN SELECT "IdEntiteFk" INTO parent_entity FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_CmdFk" FOR SHARE;
+  ELSIF NEW."ID_cmdFk" IS NOT NULL THEN SELECT "IdEntiteFk" INTO parent_entity FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_cmdFk" FOR SHARE;
+  ELSE parent_entity:=article_entity;END IF;
+  IF article_entity IS NULL OR article_entity IS DISTINCT FROM parent_entity THEN RAISE EXCEPTION 'Article et bon doivent appartenir à la même entreprise.' USING ERRCODE='23514';END IF;
+ ELSIF TG_TABLE_NAME='T_Reglements' THEN
+  SELECT "ID_TiersFk" INTO parent_tiers FROM logistique."T_Commande" WHERE "CodeFacture"=NEW."CodeFactureFk" FOR SHARE;
+  IF NEW."ID_TiersFk" IS DISTINCT FROM parent_tiers THEN RAISE EXCEPTION 'Le règlement conserve le tiers de sa facture.' USING ERRCODE='23514';END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION controler_propriete_logistique(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.controler_propriete_logistique() IS 'Conserve les entreprises propriétaires et interdit les liens de tiers, articles, bons et règlements entre entreprises.';
+
+
+--
+-- Name: controler_retour_bon(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.controler_retour_bon() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE origine record; entree record; source_entite integer; acteur_entite integer; candidat record; disponible record; lot record; lignes integer;
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Un retour validé est conservé dans son historique.' USING ERRCODE='23514';END IF;
+ SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO origine
+ FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
+ WHERE c."ID_Commande"=NEW."ID_CommandeOrigineFk" FOR UPDATE OF c;
+ IF NOT FOUND OR origine.categorie<>64 OR origine.sens NOT ILIKE 'sort%' OR origine.sens IS NULL THEN
+  RAISE EXCEPTION 'Le retour exige un bon de sortie historique.' USING ERRCODE='23514';END IF;
+ SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO entree
+ FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
+ WHERE c."ID_Commande"=NEW."ID_CommandeRetourFk" FOR UPDATE OF c;
+ IF NOT FOUND OR entree.categorie<>64 OR entree.sens NOT ILIKE 'entr%' OR entree.sens IS NULL THEN
+  RAISE EXCEPTION 'Le document compensateur doit être un bon d’entrée.' USING ERRCODE='23514';END IF;
+ IF EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=origine."ID_Commande" OR "ID_CommandeOrigineFk"=entree."ID_Commande") THEN
+  RAISE EXCEPTION 'Un retour ne peut pas devenir une nouvelle origine.' USING ERRCODE='23514';END IF;
+ SELECT "IdEntiteFk" INTO source_entite FROM logistique."T_Commande" WHERE "ID_Commande"=origine."ID_Commande" FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Organisation source introuvable.' USING ERRCODE='23514';END IF;
+ SELECT "IdEntiteFk" INTO acteur_entite FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."ID_UserFk" FOR SHARE;
+ IF NOT FOUND OR source_entite IS DISTINCT FROM NEW."IdEntiteFk" OR (acteur_entite IS DISTINCT FROM NEW."IdEntiteFk" AND NOT EXISTS(SELECT 1 FROM systeme."T_Utilisateurs" u WHERE u."IdUser"=NEW."ID_UserFk" AND u."Is_Admin" IS TRUE)) OR entree."ID_UserFk" IS DISTINCT FROM NEW."ID_UserFk" THEN
+  RAISE EXCEPTION 'Retour et sortie doivent appartenir à la même organisation.' USING ERRCODE='23514';END IF;
+ IF origine."ID_DeviseFk" IS NULL OR entree."ID_DeviseFk" IS DISTINCT FROM origine."ID_DeviseFk" THEN
+  RAISE EXCEPTION 'La contre-écriture conserve la devise de la sortie.' USING ERRCODE='23514';END IF;
+ IF NULLIF(btrim(entree."CodeFacture"),'') IS NOT NULL OR logistique.fn_commande_cloturee(entree."StatusFacture") OR entree."DateCmd" IS DISTINCT FROM NEW."DateRetour" THEN
+  RAISE EXCEPTION 'Le bon de retour conserve sa date et ne porte pas de facture.' USING ERRCODE='23514';END IF;
+ IF EXISTS(SELECT 1 FROM logistique."V_RetourArticle" WHERE "ID_CommandeOrigineFk"=origine."ID_Commande" AND NOT "SourceCoherente") THEN
+  RAISE EXCEPTION 'La sortie doit être rapprochée de ses mouvements avant un retour.' USING ERRCODE='23514';END IF;
+ lignes=0;
+ FOR candidat IN SELECT d.*,m."ID_Mvt",m."QteMvt",m."PUMvt",m."ID_DeviseFk",m."ID_TypeMvtFk",
+   COALESCE((SELECT sum(ml."Quantite") FROM logistique."T_MouvementLot" ml WHERE ml."ID_MvtFk"=m."ID_Mvt"),0) AS lots_qte
+   FROM logistique."T_CommandeDetail" d LEFT JOIN logistique."T_Mouvement" m ON m."ID_cmdFk"=d."ID_CmdFk" AND m."ID_ArticleFk"=d."ID_ArticleFk"
+   WHERE d."ID_CmdFk"=entree."ID_Commande" ORDER BY d."ID_ArticleFk"
+ LOOP
+  lignes=lignes+1;
+  SELECT * INTO disponible FROM logistique."V_RetourArticle" WHERE "ID_CommandeOrigineFk"=origine."ID_Commande" AND "ID_ArticleFk"=candidat."ID_ArticleFk";
+  IF NOT FOUND OR NOT disponible."SourceCoherente" OR candidat."QteCmdDetail" IS NULL OR candidat."QteCmdDetail"<=0 OR candidat."QteCmdDetail">disponible."QteRestante" THEN
+   RAISE EXCEPTION 'La quantité rendue dépasse la sortie restante.' USING ERRCODE='23514';END IF;
+  IF candidat."PUCmdDetail" IS DISTINCT FROM disponible."PUHistorique" OR candidat."PUMvt" IS DISTINCT FROM disponible."PUHistorique" OR candidat."QteMvt" IS DISTINCT FROM candidat."QteCmdDetail" OR candidat."ID_DeviseFk" IS DISTINCT FROM origine."ID_DeviseFk" OR candidat."ID_TypeMvtFk" IS DISTINCT FROM entree."ID_TypeCmdFk" THEN
+   RAISE EXCEPTION 'La contre-écriture conserve le prix, la devise et la quantité historiques.' USING ERRCODE='23514';END IF;
+  IF candidat.lots_qte>candidat."QteCmdDetail" OR candidat."QteCmdDetail"-candidat.lots_qte>disponible."QteSansLotRestante" THEN
+   RAISE EXCEPTION 'La quantité sans lot dépasse la quantité sortie sans lot.' USING ERRCODE='23514';END IF;
+  FOR lot IN SELECT ml."ID_LotArticleFk",ml."Quantite" FROM logistique."T_MouvementLot" ml WHERE ml."ID_MvtFk"=candidat."ID_Mvt"
+  LOOP
+   IF NOT EXISTS(SELECT 1 FROM logistique."V_RetourLot" rl WHERE rl."ID_CommandeOrigineFk"=origine."ID_Commande" AND rl."ID_ArticleFk"=candidat."ID_ArticleFk" AND rl."ID_LotArticle"=lot."ID_LotArticleFk" AND rl."QteRestante">=lot."Quantite") THEN
+    RAISE EXCEPTION 'La quantité ou le lot ne provient pas de la sortie restante.' USING ERRCODE='23514';END IF;
+  END LOOP;
+ END LOOP;
+ IF lignes=0 OR EXISTS(SELECT 1 FROM logistique."T_Mouvement" m WHERE m."ID_cmdFk"=entree."ID_Commande" AND NOT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" d WHERE d."ID_CmdFk"=m."ID_cmdFk" AND d."ID_ArticleFk"=m."ID_ArticleFk")) THEN
+  RAISE EXCEPTION 'Un retour exige ses lignes et leurs seuls mouvements source.' USING ERRCODE='23514';END IF;
+ IF entree."MontantHT" IS DISTINCT FROM (SELECT sum(round("QteCmdDetail"*"PUCmdDetail",2)) FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=entree."ID_Commande") OR entree."MontantTTC" IS DISTINCT FROM entree."MontantHT" THEN
+  RAISE EXCEPTION 'La valeur du retour doit correspondre à ses quantités et prix historiques.' USING ERRCODE='23514';END IF;
+ NEW."CreeLe"=clock_timestamp();
+ NEW."Motif"=btrim(NEW."Motif");
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION controler_retour_bon(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.controler_retour_bon() IS 'Sérialise chaque retour sur la sortie source et contrôle les budgets restants par article, lot et quantité sans lot ; conserve le PU mouvement et la devise, sans modifier le stock lui-même.';
+
+
+--
+-- Name: controler_sortie_lot_perime(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.controler_sortie_lot_perime() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE s integer; expiration date; bloque boolean; BEGIN
+ IF TG_OP='UPDATE' AND NEW IS NOT DISTINCT FROM OLD THEN RETURN NEW; END IF;
+ SELECT v."SigneStock",l."DatePeremptionLot",e."BloquerLotsPerimes" INTO s,expiration,bloque
+ FROM logistique."T_Mouvement" m JOIN logistique."V_MouvementStock" v ON v."ID_Mvt"=m."ID_Mvt"
+ JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=NEW."ID_LotArticleFk"
+ JOIN logistique."T_Article" a ON a."ID_Article"=l."ID_ArticleFk" JOIN systeme."T_Entite" e ON e."IdEntite"=a."IdEntiteFk"
+ WHERE m."ID_Mvt"=NEW."ID_MvtFk";
+ IF NEW."MotifDerogationPeremption" IS NOT NULL THEN
+  IF s<>-1 OR expiration IS NULL OR expiration>=(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa')::date OR NOT EXISTS(SELECT FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."ID_DerogationUserFk" AND "ValideUser" IS TRUE AND "Is_Admin" IS TRUE) THEN
+   RAISE EXCEPTION 'Dérogation de péremption réservée à un administrateur global actif et à un lot périmé sortant' USING ERRCODE='23514'; END IF;
+  NEW."MotifDerogationPeremption"=btrim(NEW."MotifDerogationPeremption");
+  NEW."DateDerogationPeremption"=clock_timestamp();
+ ELSIF s=-1 AND expiration<(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa')::date AND bloque IS TRUE THEN
+  RAISE EXCEPTION 'Lot périmé : sortie bloquée ; dérogation motivée requise' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION controler_sortie_lot_perime(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.controler_sortie_lot_perime() IS 'Défense SQL des prélèvements sur lots périmés selon l’entreprise ; contrôle l’auteur global et conserve le motif sur la ventilation.';
+
+
+--
+-- Name: controler_stock_lots(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.controler_stock_lots() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE article_id integer; mvt_id integer; linked_total numeric; global_stock numeric; lot_stock numeric;
+BEGIN
+ IF TG_TABLE_NAME='T_Article' THEN article_id=NEW."ID_Article";
+ ELSIF TG_TABLE_NAME='T_LotArticle' THEN article_id=NEW."ID_ArticleFk";
+ ELSIF TG_TABLE_NAME='T_Mouvement' THEN
+  IF TG_OP='DELETE' THEN article_id=OLD."ID_ArticleFk";mvt_id=OLD."ID_Mvt";ELSE article_id=NEW."ID_ArticleFk";mvt_id=NEW."ID_Mvt";END IF;
+ ELSE
+  IF TG_OP='DELETE' THEN mvt_id=OLD."ID_MvtFk";SELECT "ID_ArticleFk" INTO article_id FROM logistique."T_LotArticle" WHERE "ID_LotArticle"=OLD."ID_LotArticleFk";
+  ELSE mvt_id=NEW."ID_MvtFk";SELECT "ID_ArticleFk" INTO article_id FROM logistique."T_LotArticle" WHERE "ID_LotArticle"=NEW."ID_LotArticleFk";END IF;
+ END IF;
+ IF EXISTS(SELECT 1 FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk"
+ JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=ml."ID_LotArticleFk" WHERE m."ID_ArticleFk"=article_id AND l."ID_ArticleFk"<>m."ID_ArticleFk") THEN
+ RAISE EXCEPTION 'Lot et mouvement incompatibles.' USING ERRCODE='23514';END IF;
+ IF EXISTS(SELECT 1 FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
+ WHERE m."ID_ArticleFk"=article_id GROUP BY m."ID_Mvt",m."QteMvt" HAVING sum(ml."Quantite")>m."QteMvt") THEN
+ RAISE EXCEPTION 'La ventilation par lot dépasse la quantité du mouvement.' USING ERRCODE='23514';END IF;
+ IF EXISTS(SELECT 1 FROM logistique."V_LotArticleStock" WHERE "ID_ArticleFk"=article_id AND "StockLot"<0) THEN
+ RAISE EXCEPTION 'Stock de lot insuffisant.' USING ERRCODE='23514';END IF;
+ SELECT "QteArticle" INTO global_stock FROM logistique."T_Article" WHERE "ID_Article"=article_id;
+ SELECT COALESCE(sum("StockLot"),0) INTO lot_stock FROM logistique."V_LotArticleStock" WHERE "ID_ArticleFk"=article_id;
+ IF global_stock IS NOT NULL AND lot_stock>global_stock THEN
+ RAISE EXCEPTION 'Une sortie doit préciser ses lots : le stock sans lot est insuffisant.' USING ERRCODE='23514';END IF;
+ RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION controler_stock_lots(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.controler_stock_lots() IS 'Contrôle différé en fin de transaction : ventilation bornée par le mouvement, lots non négatifs et stock total ventilé inférieur ou égal au stock global. Aucun second effet sur le stock.';
+
+
+--
+-- Name: enregistrer_cout_ouverture(integer, integer, numeric, text, integer, bigint, uuid, integer, text); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.enregistrer_cout_ouverture(p_article integer, p_devise integer, p_cout numeric, p_motif text, p_auteur integer, p_version bigint, p_request uuid, p_entite integer, p_revision text DEFAULT NULL::text) RETURNS void
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE a record;u record;o record;lastid integer;qty numeric;costs jsonb;last_request record;priorflag text;newrow jsonb;
+BEGIN
+ IF p_request IS NULL OR p_revision IS NULL OR p_version IS NULL OR p_version<0 OR p_cout IS NULL OR p_cout<0 OR p_cout>9999999999.999999 OR p_cout<>round(p_cout,6) OR p_cout::text IN ('NaN','Infinity','-Infinity') OR p_motif IS NULL OR length(btrim(p_motif)) NOT BETWEEN 1 AND 1000 THEN RAISE EXCEPTION 'Coût, motif et demande valides requis' USING ERRCODE='23514';END IF;
+ SELECT x.*,g."NomGenerique" AS role INTO u FROM systeme."T_Utilisateurs" x LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=x."IdRoleFk" WHERE x."IdUser"=p_auteur;
+ IF u."ValideUser" IS NOT TRUE OR (u."Is_Admin" IS TRUE OR u."IdEntiteFk"=p_entite AND (u."Is_staff" IS TRUE OR lower(u.role) IN ('admin','administrateur'))) IS NOT TRUE THEN RAISE EXCEPTION 'Droits de valorisation requis' USING ERRCODE='42501';END IF;
+ SELECT * INTO a FROM logistique."T_Article" WHERE "ID_Article"=p_article AND "IdEntiteFk"=p_entite FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Article hors entreprise' USING ERRCODE='42501';END IF;
+ SELECT * INTO last_request FROM logistique."T_ValorisationEvenement" WHERE "ID_UserFk"=p_auteur AND "RequestId"=p_request;
+ IF FOUND THEN
+  IF last_request."ID_ArticleFk"=p_article AND (last_request."Apres"->>'ID_DeviseFk')::integer=p_devise AND (last_request."Apres"->>'CoutOuverture')::numeric=p_cout AND last_request."Motif"=btrim(p_motif) AND (last_request."Apres"->>'RevisionDemande') IS NOT DISTINCT FROM p_revision AND (last_request."Avant"->>'Version')::bigint=p_version THEN RETURN;END IF;
+  RAISE EXCEPTION 'Cette demande possède un autre contenu' USING ERRCODE='23505';
+ END IF;
+ SELECT * INTO o FROM logistique."T_ValorisationOuverture" WHERE "ID_ArticleFk"=p_article AND "ID_DeviseFk"=p_devise;
+ IF COALESCE(o."Version",0)<>p_version THEN RAISE EXCEPTION 'Valorisation modifiée : rechargez la fiche' USING ERRCODE='40001';END IF;
+ IF p_revision<>logistique.fn_revision_valorisation(p_article,p_devise,p_version) THEN RAISE EXCEPTION 'La source du coût a changé : rechargez la fiche' USING ERRCODE='40001';END IF;
+ SELECT coalesce(max(m."ID_Mvt"),0),coalesce(sum(m."QteMvt"*CASE WHEN g."AbrGenerique" ILIKE 'entr%' THEN 1 WHEN g."AbrGenerique" ILIKE 'sort%' THEN -1 ELSE 0 END),0)
+ INTO lastid,qty FROM logistique."T_Mouvement" m JOIN referentiel."T_Generique" g ON g."ID_Generique"=m."ID_TypeMvtFk" WHERE m."ID_ArticleFk"=p_article AND m."ID_DeviseFk"=p_devise;
+ IF qty<0 THEN RAISE EXCEPTION 'Stock négatif dans cette devise : rapprochez les documents avant valorisation' USING ERRCODE='23514';END IF;
+ SELECT coalesce(jsonb_object_agg(f."ID_Mvt"::text,to_jsonb(f."CoutUnitaire")) FILTER(WHERE f."CoutUnitaire" IS NOT NULL),'{}'::jsonb) INTO costs FROM logistique.fn_cout_mouvements(p_article,p_devise) f;
+ priorflag=coalesce(current_setting('logistique.allow_valuation_write',true),'off');PERFORM set_config('logistique.allow_valuation_write','on',true);
+ INSERT INTO logistique."T_ValorisationOuverture"("ID_ArticleFk","ID_DeviseFk","IdEntiteFk","ID_MvtArrete","QuantiteOuverture","CoutOuverture","CoutsAnterieurs") VALUES(p_article,p_devise,p_entite,lastid,qty,p_cout,costs)
+ ON CONFLICT("ID_ArticleFk","ID_DeviseFk") DO UPDATE SET "ID_MvtArrete"=excluded."ID_MvtArrete","QuantiteOuverture"=excluded."QuantiteOuverture","CoutOuverture"=excluded."CoutOuverture","CoutsAnterieurs"=excluded."CoutsAnterieurs","Version"=logistique."T_ValorisationOuverture"."Version"+1,"ModifieLe"=clock_timestamp();
+ PERFORM set_config('logistique.allow_valuation_write',priorflag,true);
+ SELECT to_jsonb(x)||jsonb_build_object('RevisionDemande',p_revision) INTO newrow FROM logistique."T_ValorisationOuverture" x WHERE x."ID_ArticleFk"=p_article AND x."ID_DeviseFk"=p_devise;
+ INSERT INTO logistique."T_ValorisationEvenement"("ID_ArticleFk","IdEntiteFk","ID_UserFk","RequestId","Operation","Motif","Avant","Apres") VALUES(p_article,p_entite,p_auteur,p_request,CASE WHEN o."CoutOuverture" IS NULL THEN 'ouverture' ELSE 'reevaluation' END,btrim(p_motif),coalesce(to_jsonb(o),'{}'::jsonb)||jsonb_build_object('Version',coalesce(o."Version",0)),newrow);
+END $$;
+
+
+--
+-- Name: FUNCTION enregistrer_cout_ouverture(p_article integer, p_devise integer, p_cout numeric, p_motif text, p_auteur integer, p_version bigint, p_request uuid, p_entite integer, p_revision text); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.enregistrer_cout_ouverture(p_article integer, p_devise integer, p_cout numeric, p_motif text, p_auteur integer, p_version bigint, p_request uuid, p_entite integer, p_revision text) IS 'Confirme ou réévalue le stock courant dans une devise, sous verrou article, avec droit gestionnaire, motif, version et demande idempotente. Conserve les coûts prouvés antérieurs et journalise avant/après. Aucun mouvement de quantité et aucune écriture de comptabilité générale.';
+
+
+--
 -- Name: fn_assert_generique_category(integer, integer, text, text); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -308,6 +581,82 @@ COMMENT ON FUNCTION logistique.fn_audit_stock(p_id_article integer, p_date_max t
 
 
 --
+-- Name: fn_bon_inventaire(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_bon_inventaire(p_commande integer) RETURNS boolean
+    LANGUAGE sql
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT EXISTS(SELECT FROM logistique."V_BonInventaire" WHERE "ID_Commande"=p_commande) $$;
+
+
+--
+-- Name: FUNCTION fn_bon_inventaire(p_commande integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_bon_inventaire(p_commande integer) IS 'Classe un bon selon ses liens de comptage, sans heuristique de référence texte. VOLATILE conserve un instantané frais après attente du verrou concurrent.';
+
+
+--
+-- Name: fn_code_commande(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_code_commande(p_id integer) RETURNS character varying
+    LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF p_id<=0 THEN RAISE EXCEPTION 'Identité de bon positive requise.' USING ERRCODE='23514'; END IF;
+ RETURN 'cmd-'||p_id::text;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_code_commande(p_id integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_code_commande(p_id integer) IS 'Code déterministe court cmd-ID_Commande, sans padding ni réservation de séquence.';
+
+
+--
+-- Name: fn_code_devise(text); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_code_devise(p_abreviation text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT CASE upper(btrim(p_abreviation)) WHEN 'EURO' THEN 'EUR' ELSE upper(btrim(p_abreviation)) END $$;
+
+
+--
+-- Name: FUNCTION fn_code_devise(p_abreviation text); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_code_devise(p_abreviation text) IS 'Code de devise normalisé du référentiel ; EURO est présenté EUR, sans conversion monétaire.';
+
+
+--
+-- Name: fn_code_facture(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_code_facture(p_id_commande integer) RETURNS character varying
+    LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF p_id_commande<=0 THEN RAISE EXCEPTION 'Identité du bon facturé positive requise.' USING ERRCODE='23514'; END IF;
+ RETURN 'fac-'||p_id_commande::text;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_code_facture(p_id_commande integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_code_facture(p_id_commande integer) IS 'Code déterministe court fac-ID_Commande du bon facturé ; ne consomme aucune identité.';
+
+
+--
 -- Name: fn_commande_cloturee(text); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -324,6 +673,488 @@ $$;
 --
 
 COMMENT ON FUNCTION logistique.fn_commande_cloturee(p_statut text) IS 'Prédicat commun de clôture : normalise espaces, casse et accents français du statut ; vrai pour Clôturée/cloturee. Sans lecture de données ni effet de bord.';
+
+
+--
+-- Name: fn_cout_mouvements(integer, integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_cout_mouvements(p_article integer, p_devise integer) RETURNS TABLE("ID_Mvt" integer, "ID_ArticleFk" integer, "ID_DeviseFk" integer, "IdEntiteFk" integer, "QteSignee" numeric, "CoutUnitaire" numeric, "ValeurMouvement" numeric, "StockApres" numeric, "ValeurApres" numeric, "OrigineCout" text, "EtatValorisation" text)
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE o record;m record; q numeric:=0;v numeric:=0;cu numeric;sgn integer;known boolean:=true;arret integer:=0;costs jsonb:='{}';source_id integer;tag text;entity integer;origins jsonb:='{}';needed integer[]:=ARRAY[]::integer[];corrections integer[]:=ARRAY[]::integer[];
+BEGIN
+ SELECT a."IdEntiteFk" INTO entity FROM logistique."T_Article" a WHERE a."ID_Article"=p_article;
+ SELECT * INTO o FROM logistique."T_ValorisationOuverture" x WHERE x."ID_ArticleFk"=p_article AND x."ID_DeviseFk"=p_devise;
+ IF FOUND THEN q=o."QuantiteOuverture";v=q*o."CoutOuverture";known=o."CoutOuverture" IS NOT NULL;arret=o."ID_MvtArrete";costs=o."CoutsAnterieurs";END IF;
+ -- Préparer les liens réellement utilisés dans cet historique, une fois par article/devise.
+ -- Le calcul est relu après un futur retour : son coût d’origine sera alors mis en cache.
+ WITH child_commands AS (SELECT DISTINCT x."ID_cmdFk" AS child FROM logistique."T_Mouvement" x WHERE x."ID_ArticleFk"=p_article AND x."ID_DeviseFk"=p_devise AND x."ID_cmdFk" IS NOT NULL),
+ links AS (SELECT r."ID_CommandeRetourFk" AS child,r."ID_CommandeOrigineFk" AS origin,0 AS priority FROM logistique."T_RetourBon" r JOIN child_commands c ON c.child=r."ID_CommandeRetourFk"
+ UNION ALL SELECT i."ID_CommandeAnnulationFk",i."ID_CommandeCorrectionFk",1 FROM logistique."T_InventaireLigne" i WHERE i."ID_ArticleFk"=p_article AND i."ID_CommandeAnnulationFk" IS NOT NULL),
+ chosen AS (SELECT DISTINCT ON (x.child) x.child,x.origin FROM links x ORDER BY x.child,x.priority)
+ SELECT coalesce(jsonb_object_agg(x.child::text,to_jsonb((SELECT y."ID_Mvt" FROM logistique."T_Mouvement" y WHERE y."ID_cmdFk"=x.origin AND y."ID_ArticleFk"=p_article AND y."ID_DeviseFk"=p_devise ORDER BY y."ID_Mvt" LIMIT 1))),'{}'::jsonb) INTO origins FROM chosen x;
+ SELECT coalesce(array_agg(DISTINCT x.value::integer) FILTER(WHERE x.value IS NOT NULL),ARRAY[]::integer[]) INTO needed FROM jsonb_each_text(origins) x;
+ SELECT coalesce(array_agg(DISTINCT i."ID_CommandeCorrectionFk") FILTER(WHERE i."ID_CommandeCorrectionFk" IS NOT NULL),ARRAY[]::integer[]) INTO corrections FROM logistique."T_InventaireLigne" i WHERE i."ID_ArticleFk"=p_article;
+ FOR m IN SELECT x.*,g."AbrGenerique" AS sens FROM logistique."T_Mouvement" x JOIN referentiel."T_Generique" g ON g."ID_Generique"=x."ID_TypeMvtFk"
+  WHERE x."ID_ArticleFk"=p_article AND x."ID_DeviseFk"=p_devise ORDER BY x."ID_Mvt" LOOP
+  "ID_Mvt"=m."ID_Mvt";"ID_ArticleFk"=p_article;"ID_DeviseFk"=p_devise;"IdEntiteFk"=entity;
+  sgn=CASE WHEN m.sens ILIKE 'entr%' THEN 1 WHEN m.sens ILIKE 'sort%' THEN -1 ELSE 0 END;
+  "QteSignee"=m."QteMvt"*sgn;cu=NULL;tag=NULL;
+  IF m."ID_Mvt"<=arret THEN
+   "CoutUnitaire"=(costs->>m."ID_Mvt"::text)::numeric;"ValeurMouvement"="QteSignee"*"CoutUnitaire";"StockApres"=NULL;"ValeurApres"=NULL;
+   "OrigineCout"='Avant arrêté';"EtatValorisation"=CASE WHEN "CoutUnitaire" IS NULL THEN 'Historique non valorisé' ELSE 'Coût conservé' END;RETURN NEXT;CONTINUE;
+  END IF;
+  source_id=(origins->>m."ID_cmdFk"::text)::integer;
+  IF origins ? coalesce(m."ID_cmdFk"::text,'') THEN
+   -- Un lien sans mouvement source reste sans coût, sans repli sur le prix commercial.
+   cu=(costs->>source_id::text)::numeric;tag='Coût du mouvement d’origine';
+  ELSIF sgn=1 THEN
+   -- Un gain d’inventaire utilise le coût moyen, une réception son prix d’achat réel.
+   IF m."ID_cmdFk"=ANY(corrections) THEN cu=CASE WHEN q>0 THEN v/q ELSE NULL END;tag='Correction d’inventaire';
+   ELSE cu=m."PUMvt";tag='Prix d’achat de réception';END IF;
+  ELSIF sgn=-1 THEN cu=CASE WHEN q>0 THEN v/q ELSE NULL END;tag='CUMP avant sortie';
+  ELSE cu=0;tag='Sans effet de stock';END IF;
+  IF NOT known OR cu IS NULL OR cu<0 OR cu::text IN ('NaN','Infinity','-Infinity') THEN known=false;END IF;
+  IF known THEN v=v+"QteSignee"*cu;END IF;
+  q=q+"QteSignee";
+  IF q<0 OR (known AND v< -0.000000000001) THEN known=false;END IF;
+  IF q=0 THEN v=0;known=true;END IF;
+  IF known AND cu IS NOT NULL AND m."ID_Mvt"=ANY(needed) THEN costs=jsonb_set(costs,ARRAY[m."ID_Mvt"::text],to_jsonb(cu));END IF;
+  "CoutUnitaire"=CASE WHEN known THEN cu ELSE NULL END;"ValeurMouvement"=CASE WHEN known THEN round("QteSignee"*cu,2) ELSE NULL END;
+  "StockApres"=q;"ValeurApres"=CASE WHEN known THEN round(v,12) ELSE NULL END;"OrigineCout"=tag;
+  "EtatValorisation"=CASE WHEN known THEN 'Calculé' WHEN o."CoutOuverture" IS NULL AND arret>0 THEN 'À initialiser' ELSE 'Coût à vérifier' END;
+  RETURN NEXT;
+ END LOOP;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_cout_mouvements(p_article integer, p_devise integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_cout_mouvements(p_article integer, p_devise integer) IS 'CUMP par ordre stable d’enregistrement ID_Mvt, indépendant des dates métier rétroactives. Entrées au prix d’achat ; sorties au coût moyen ; retours/annulations au coût prouvé d’origine. Calcul numeric sans conversion ; absence de coût, stock négatif par devise ou coût incohérent restent indéterminables. Aucun stock modifié.';
+
+
+--
+-- Name: fn_devise_usd(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_devise_usd() RETURNS integer
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE identifiant integer; nombre bigint;
+BEGIN
+ SELECT min(g."ID_Generique"),count(*) INTO identifiant,nombre
+ FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
+  ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+ WHERE lower(btrim(c."NomCategorieGenerique"))='devise'
+   AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE
+   AND logistique.fn_code_devise(g."AbrGenerique")='USD';
+ IF nombre<>1 THEN
+  RAISE EXCEPTION 'Une seule devise USD active est requise dans la catégorie Devise active (trouvées : %).',nombre USING ERRCODE='23514';
+ END IF;
+ RETURN identifiant;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION fn_devise_usd(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Résout exactement une référence USD active dans la catégorie Devise active ; aucun identifiant numérique codé en dur.';
+
+
+--
+-- Name: fn_entite_document(text, bigint); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_entite_document(kind text, object_id bigint) RETURNS integer
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE result integer;
+BEGIN
+ IF kind='bon' THEN SELECT "IdEntiteFk" INTO result FROM logistique."T_Commande" WHERE "ID_Commande"=object_id;
+ ELSIF kind='facture' THEN SELECT "IdEntiteFk" INTO result FROM logistique."T_Facture" WHERE "ID_CommandeFk"=object_id;
+ ELSIF kind='reglement' THEN SELECT c."IdEntiteFk" INTO result FROM logistique."T_Reglements" p JOIN logistique."T_Commande" c ON c."CodeFacture"=p."CodeFactureFk" WHERE p."ID_Reglement"=object_id;
+ ELSIF kind='avoir' AND to_regclass('logistique."T_Avoir"') IS NOT NULL THEN EXECUTE 'SELECT "IdEntiteFk" FROM logistique."T_Avoir" WHERE "ID_Avoir"=$1' INTO result USING object_id;
+ END IF;
+ RETURN result;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_entite_document(kind text, object_id bigint); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout uniquement les types de documents autorisés et leur entreprise propriétaire durable.';
+
+
+--
+-- Name: fn_identite_commande_deja_utilisee(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_identite_commande_deja_utilisee(p_id integer) RETURNS boolean
+    LANGUAGE sql STABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT EXISTS(SELECT 1 FROM logistique."T_Commande" c WHERE c."ID_Commande"=p_id
+  OR c."CodeCmd"=logistique.fn_code_commande(p_id) OR c."CodeFacture"=logistique.fn_code_facture(p_id))
+ OR EXISTS(SELECT 1 FROM systeme."T_Audit_Log" a WHERE a."TableName" IN ('logistique.T_Commande','T_Commande','logistique.T_Facture') AND logistique.fn_identites_audit(a."OldData") @> ARRAY[p_id::numeric])
+ OR EXISTS(SELECT 1 FROM systeme."T_Audit_Log" a WHERE a."TableName" IN ('logistique.T_Commande','T_Commande','logistique.T_Facture') AND logistique.fn_identites_audit(a."NewData") @> ARRAY[p_id::numeric]);
+$$;
+
+
+--
+-- Name: FUNCTION fn_identite_commande_deja_utilisee(p_id integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_identite_commande_deja_utilisee(p_id integer) IS 'Détecte les identités/références courantes ou historiques via deux index GIN des audits, anciens formats et zéros initiaux inclus ; aucun parcours intégral par nouveau bon.';
+
+
+--
+-- Name: fn_identites_audit(jsonb); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_identites_audit(p_document jsonb) RETURNS numeric[]
+    LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE result numeric[]:=ARRAY[]::numeric[]; raw text; digits text; key text; value numeric;
+BEGIN
+ IF jsonb_typeof(p_document)<>'object' THEN RETURN result;END IF;
+ FOREACH key IN ARRAY ARRAY['ID_Commande','ID_CommandeFk','ID_CommandeRetourFk','CodeCmd','CodeFacture'] LOOP
+  raw=p_document->>key;
+  IF raw IS NULL THEN CONTINUE; END IF;
+  IF key='CodeCmd' THEN
+   IF raw ~* '^C_[0-9]+$' THEN digits=substr(raw,3);
+   ELSIF raw ~* '^cmd-[0-9]+$' THEN digits=substr(raw,5);ELSE CONTINUE; END IF;
+  ELSIF key='CodeFacture' THEN
+   IF raw ~* '^F_[0-9]+$' THEN digits=substr(raw,3);
+   ELSIF raw ~* '^fac-[0-9]+$' THEN digits=substr(raw,5);ELSE CONTINUE; END IF;
+  ELSE
+   IF raw !~ '^[0-9]+$' THEN CONTINUE; END IF;
+   digits=raw;
+  END IF;
+  digits=ltrim(digits,'0');
+  -- Aucun identifiant public integer ne dépasse 10 chiffres. Conserver aussi les
+  -- grands nombres historiques usuels sans permettre une clé GIN démesurée.
+  IF digits='' OR length(digits)>1000 THEN CONTINUE; END IF;
+  value=digits::numeric;
+  result=array_append(result,value);
+ END LOOP;
+ SELECT coalesce(array_agg(DISTINCT x ORDER BY x),ARRAY[]::numeric[]) INTO result FROM unnest(result) x;
+ RETURN result;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_identites_audit(p_document jsonb); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_identites_audit(p_document jsonb) IS 'Extraction immuable indexable des identités top-level ID_Commande/ID_CommandeFk/ID_CommandeRetourFk et codes C_/cmd-/F_/fac-. Normalise les zéros initiaux, déduplique, ignore données non numériques ou non objet ; numeric évite le débordement des anciens grands identifiants. Les chaînes de plus de 1000 chiffres significatifs, impossibles pour une identité integer publique, sont ignorées pour borner la taille GIN.';
+
+
+--
+-- Name: fn_montant_avoir_attente(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_montant_avoir_attente(command_id integer) RETURNS numeric
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT COALESCE(sum(round(greatest(COALESCE(r.qty,0)-l."QteRetourAvantFacture"-COALESCE(c.qty,0),0)*l."PUFacture",2)),0)::numeric(12,2)
+ FROM logistique."T_Facture" f JOIN logistique."T_FactureLigne" l ON l."ID_FactureFk"=f."ID_Facture"
+ LEFT JOIN LATERAL(SELECT sum(d."QteCmdDetail") AS qty FROM logistique."T_RetourBon" b JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=b."ID_CommandeRetourFk" WHERE b."ID_CommandeOrigineFk"=command_id AND d."ID_ArticleFk"=l."ID_ArticleFk") r ON true
+ LEFT JOIN LATERAL(SELECT sum(al."Quantite") AS qty FROM logistique."T_Avoir" a JOIN logistique."T_AvoirLigne" al ON al."ID_AvoirFk"=a."ID_Avoir" WHERE a."ID_CommandeFk"=command_id AND al."ID_ArticleFk"=l."ID_ArticleFk") c ON true
+ WHERE f."ID_CommandeFk"=command_id
+$$;
+
+
+--
+-- Name: FUNCTION fn_montant_avoir_attente(command_id integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS 'Montant exact des retours après facture qui ne sont pas encore couverts par un avoir émis.';
+
+
+--
+-- Name: fn_precision_stock_compatible(integer, integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_precision_stock_compatible(p_unite integer, p_decimales integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF p_decimales IS NULL OR p_decimales NOT BETWEEN 0 AND 3 THEN
+  RAISE EXCEPTION 'Précision de zéro à trois décimales requise' USING ERRCODE='23514';
+ END IF;
+ IF EXISTS(SELECT FROM logistique."T_Article" a WHERE a."ID_UniteFk"=p_unite AND
+  (a."QteArticle"<>round(a."QteArticle",p_decimales) OR a."QteMinArticle"<>round(a."QteMinArticle",p_decimales)))
+ OR EXISTS(SELECT FROM logistique."T_CommandeDetail" d JOIN logistique."T_Article" a ON a."ID_Article"=d."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND d."QteCmdDetail"<>round(d."QteCmdDetail",p_decimales))
+ OR EXISTS(SELECT FROM logistique."T_Mouvement" m JOIN logistique."T_Article" a ON a."ID_Article"=m."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND m."QteMvt"<>round(m."QteMvt",p_decimales))
+ OR EXISTS(SELECT FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk"
+  JOIN logistique."T_Article" a ON a."ID_Article"=m."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND ml."Quantite"<>round(ml."Quantite",p_decimales))
+ OR EXISTS(SELECT FROM logistique."T_InventaireLigne" l JOIN logistique."T_Article" a ON a."ID_Article"=l."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND
+  (l."QteTheorique"<>round(l."QteTheorique",p_decimales) OR l."QteComptee"<>round(l."QteComptee",p_decimales)))
+ OR EXISTS(SELECT FROM logistique."T_FactureLigne" l JOIN logistique."T_Article" a ON a."ID_Article"=l."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND
+  (l."QteSortie"<>round(l."QteSortie",p_decimales)
+   OR l."QteRetourAvantFacture"<>round(l."QteRetourAvantFacture",p_decimales)
+   OR l."QteFacturee"<>round(l."QteFacturee",p_decimales)))
+ OR EXISTS(SELECT FROM logistique."T_AvoirLigne" l JOIN logistique."T_Article" a ON a."ID_Article"=l."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND l."Quantite"<>round(l."Quantite",p_decimales))
+ OR EXISTS(SELECT FROM logistique."T_ValorisationOuverture" o JOIN logistique."T_Article" a ON a."ID_Article"=o."ID_ArticleFk"
+  WHERE a."ID_UniteFk"=p_unite AND o."QuantiteOuverture"<>round(o."QuantiteOuverture",p_decimales)) THEN
+  RAISE EXCEPTION 'La précision est incompatible avec les quantités historiques' USING ERRCODE='23514';
+ END IF;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_precision_stock_compatible(p_unite integer, p_decimales integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_precision_stock_compatible(p_unite integer, p_decimales integer) IS 'Contrôle sans écriture de la compatibilité d’une précision avec stock, seuils, lignes, mouvements, lots, comptages, instantanés de facture, avoirs et arrêtés de valorisation de l’unité.';
+
+
+--
+-- Name: fn_reserver_identite_commande(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_reserver_identite_commande() RETURNS TABLE("ID_Commande" integer, "CodeCmd" character varying)
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE candidate bigint; attempt integer;
+BEGIN
+ FOR attempt IN 1..1000 LOOP
+  SELECT nextval(pg_get_serial_sequence('logistique."T_Commande"','ID_Commande')::regclass) INTO candidate;
+  IF candidate IS NULL OR candidate<=0 OR candidate>2147483647 THEN RAISE EXCEPTION 'Séquence de bons hors limites.' USING ERRCODE='22003'; END IF;
+  IF NOT logistique.fn_identite_commande_deja_utilisee(candidate::integer) THEN
+   RETURN QUERY SELECT candidate::integer,logistique.fn_code_commande(candidate::integer);RETURN;
+  END IF;
+ END LOOP;
+ RAISE EXCEPTION 'La numérotation des bons doit être contrôlée.' USING ERRCODE='23514';
+END $$;
+
+
+--
+-- Name: FUNCTION fn_reserver_identite_commande(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_reserver_identite_commande() IS 'Réserve une identité dans la séquence existante puis retourne cmd-ID ; saute les identités déjà utilisées, jamais MAX+1 ni réutilisation après suppression.';
+
+
+--
+-- Name: fn_revision_valorisation(integer, integer, bigint); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_revision_valorisation(p_article integer, p_devise integer, p_version bigint) RETURNS text
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT p_version::text||':'||md5(jsonb_build_object(
+ 'article',(SELECT jsonb_build_object('stock',a."QteArticle",'unite',a."ID_UniteFk",'proprietaire',a."IdEntiteFk") FROM logistique."T_Article" a WHERE a."ID_Article"=p_article),
+ 'mouvements',(SELECT COALESCE(jsonb_agg(to_jsonb(m) ORDER BY m."ID_Mvt"),'[]'::jsonb) FROM logistique."T_Mouvement" m WHERE m."ID_ArticleFk"=p_article AND m."ID_DeviseFk"=p_devise),
+ 'retours',(SELECT COALESCE(jsonb_agg(to_jsonb(r) ORDER BY r."ID_RetourBon"),'[]'::jsonb) FROM logistique."T_RetourBon" r WHERE EXISTS(SELECT FROM logistique."T_Mouvement" m WHERE m."ID_ArticleFk"=p_article AND m."ID_DeviseFk"=p_devise AND m."ID_cmdFk" IN (r."ID_CommandeOrigineFk",r."ID_CommandeRetourFk"))),
+ 'inventaires',(SELECT COALESCE(jsonb_agg(jsonb_build_array(i."ID_InventaireFk",i."ID_CommandeCorrectionFk",i."ID_CommandeAnnulationFk") ORDER BY i."ID_InventaireFk"),'[]'::jsonb) FROM logistique."T_InventaireLigne" i WHERE i."ID_ArticleFk"=p_article)
+ )::text)
+$$;
+
+
+--
+-- Name: FUNCTION fn_revision_valorisation(p_article integer, p_devise integer, p_version bigint); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_revision_valorisation(p_article integer, p_devise integer, p_version bigint) IS 'Révision opaque commune à la lecture et à la confirmation : arrêté, stock physique, mouvements et liens de retours/corrections qui déterminent le coût. STABLE conserve le même instantané que les positions affichées ; ne remplace pas les contrôles de droits.';
+
+
+--
+-- Name: fn_verifier_devise(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_verifier_devise(p_id integer) RETURNS void
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+BEGIN
+ PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
+   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+  WHERE g."ID_Generique"=p_id AND g."ValideGenerique" IS TRUE
+   AND c."ValideCategorieGenerique" IS TRUE AND lower(btrim(c."NomCategorieGenerique"))='devise'
+   AND logistique.fn_code_devise(g."AbrGenerique") ~ '^[A-Z]{3}$'
+ FOR SHARE OF g,c;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Une devise active du référentiel Devise est requise.' USING ERRCODE='23514'; END IF;
+END;
+$_$;
+
+
+--
+-- Name: FUNCTION fn_verifier_devise(p_id integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_verifier_devise(p_id integer) IS 'Verrouille la référence et sa catégorie contre une reclassification concurrente ; refuse devise absente, inactive ou sans code de trois lettres.';
+
+
+--
+-- Name: fn_verifier_quantite(integer, numeric); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE d integer;
+BEGIN
+ IF p_qte IS NULL THEN RETURN;END IF;
+ IF p_qte<0 OR p_qte::text IN ('NaN','Infinity','-Infinity') OR p_qte>99999999999.999 OR p_qte<>round(p_qte,3) THEN
+  RAISE EXCEPTION 'Quantité hors précision' USING ERRCODE='23514';
+ END IF;
+ PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=p_unite AND "ID_CategorieGeneriqueFk"=34 FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Unité de stock requise' USING ERRCODE='23514';END IF;
+ SELECT "DecimalesStock" INTO d FROM logistique."V_PrecisionStock" WHERE "ID_UniteFk"=p_unite;
+ IF d IS NULL OR p_qte<>round(p_qte,d) THEN
+  RAISE EXCEPTION 'Quantité incompatible avec la précision de son unité' USING ERRCODE='23514';
+ END IF;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_verifier_quantite(p_unite integer, p_qte numeric); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) IS 'Validation exacte d’une quantité physique par la politique logistique de son unité ; verrou partagé commun à la configuration, zéro décimale si aucune politique.';
+
+
+--
+-- Name: proteger_bon_inventaire(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.proteger_bon_inventaire() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ DECLARE targets integer[]; BEGIN
+ IF TG_TABLE_NAME='T_Commande' THEN targets=ARRAY[OLD."ID_Commande"];
+ ELSIF TG_TABLE_NAME='T_CommandeDetail' THEN targets=ARRAY[NEW."ID_CmdFk",OLD."ID_CmdFk"];
+ ELSIF TG_TABLE_NAME='T_MouvementLot' THEN SELECT array_agg("ID_cmdFk") INTO targets FROM logistique."T_Mouvement" WHERE "ID_Mvt" IN (NEW."ID_MvtFk",OLD."ID_MvtFk");
+ ELSE targets=ARRAY[NEW."ID_cmdFk",OLD."ID_cmdFk"];END IF;
+ IF EXISTS(SELECT FROM logistique."T_InventaireLigne" l JOIN logistique."T_Inventaire" h ON h."ID_Inventaire"=l."ID_InventaireFk"
+  WHERE (l."ID_CommandeCorrectionFk"=ANY(targets) OR l."ID_CommandeAnnulationFk"=ANY(targets)) AND h."Etat" IN ('valide','annule')) THEN
+ RAISE EXCEPTION 'Les bons et mouvements de cet inventaire sont conservés' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION proteger_bon_inventaire(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.proteger_bon_inventaire() IS 'Préserve les bons originaux et inverses, leurs lignes, mouvements et ventilations de lots.';
+
+
+--
+-- Name: proteger_bon_retour(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.proteger_bon_retour() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE ids integer[]; command_id integer; child boolean; linked boolean; financial text[];
+BEGIN
+ IF TG_TABLE_NAME='T_Commande' THEN
+  SELECT EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=OLD."ID_Commande"),
+         EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeOrigineFk"=OLD."ID_Commande") INTO child,linked;
+  IF NOT child AND NOT linked THEN IF TG_OP='DELETE' THEN RETURN OLD;ELSE RETURN NEW;END IF;END IF;
+  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Un bon lié à un retour ne peut pas être supprimé.' USING ERRCODE='23514';END IF;
+  IF to_jsonb(NEW)=to_jsonb(OLD) THEN RETURN NEW;END IF;
+  financial=ARRAY['CodeFacture','DateFacture','DateHeureAutoFacture','StatusFacture','ID_ModePaiementFk','ID_ConditionPaiementFk','DateEcheancePaiement','MontantRegleFacture','MontantResteFacture','UrlFacture'];
+  IF child OR (to_jsonb(NEW)-financial) IS DISTINCT FROM (to_jsonb(OLD)-financial) THEN
+   RAISE EXCEPTION 'Les données de stock d’un bon lié à un retour sont conservées.' USING ERRCODE='23514';END IF;
+  RETURN NEW;
+ ELSIF TG_TABLE_NAME='T_CommandeDetail' THEN
+  ids=ARRAY[CASE WHEN TG_OP<>'INSERT' THEN OLD."ID_CmdFk" END,CASE WHEN TG_OP<>'DELETE' THEN NEW."ID_CmdFk" END];
+ ELSIF TG_TABLE_NAME='T_Mouvement' THEN
+  ids=ARRAY[CASE WHEN TG_OP<>'INSERT' THEN OLD."ID_cmdFk" END,CASE WHEN TG_OP<>'DELETE' THEN NEW."ID_cmdFk" END];
+ ELSE
+  SELECT array_agg(DISTINCT "ID_cmdFk") INTO ids FROM logistique."T_Mouvement" WHERE "ID_Mvt"=ANY(ARRAY[CASE WHEN TG_OP<>'INSERT' THEN OLD."ID_MvtFk" END,CASE WHEN TG_OP<>'DELETE' THEN NEW."ID_MvtFk" END]);
+ END IF;
+ FOR command_id IN SELECT DISTINCT i FROM unnest(ids) AS t(i) WHERE i IS NOT NULL ORDER BY i
+ LOOP
+  PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=command_id FOR UPDATE;
+  IF EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeOrigineFk"=command_id OR "ID_CommandeRetourFk"=command_id) THEN
+   RAISE EXCEPTION 'Les lignes, mouvements et lots d’un bon restitué sont conservés.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ IF TG_OP='DELETE' THEN RETURN OLD;ELSE RETURN NEW;END IF;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION proteger_bon_retour(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.proteger_bon_retour() IS 'Conserve les données de stock de toute source et contre-document validés. Les seules métadonnées financières de la source restent modifiables pour une facture nette et ses règlements ; le retour reste non facturable.';
+
+
+--
+-- Name: proteger_identite_lot_retour(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.proteger_identite_lot_retour() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF (NEW."NumeroLot",NEW."DatePeremptionLot",NEW."ID_ArticleFk") IS DISTINCT FROM (OLD."NumeroLot",OLD."DatePeremptionLot",OLD."ID_ArticleFk") AND EXISTS(
+ SELECT 1 FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk"
+ JOIN logistique."T_RetourBon" r ON r."ID_CommandeOrigineFk"=m."ID_cmdFk" OR r."ID_CommandeRetourFk"=m."ID_cmdFk"
+ WHERE ml."ID_LotArticleFk"=OLD."ID_LotArticle") THEN
+  RAISE EXCEPTION 'L’identité d’un lot restitué est conservée dans l’historique.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION proteger_identite_lot_retour(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.proteger_identite_lot_retour() IS 'Conserve numéro, péremption et article des lots présents dans un retour historique ; leur archivage reste possible.';
+
+
+--
+-- Name: proteger_valorisation(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.proteger_valorisation() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$ BEGIN
+ IF TG_TABLE_NAME='T_ValorisationEvenement' THEN
+  IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Journal de valorisation conservé' USING ERRCODE='23514';END IF;RETURN NEW;
+ END IF;
+ IF current_setting('logistique.allow_valuation_write',true) IS DISTINCT FROM 'on' THEN RAISE EXCEPTION 'Utilisez la procédure de valorisation motivée' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Un arrêté de coût est conservé' USING ERRCODE='23514';END IF;
+ IF NOT EXISTS(SELECT FROM logistique."T_Article" a WHERE a."ID_Article"=NEW."ID_ArticleFk" AND a."IdEntiteFk"=NEW."IdEntiteFk") OR
+ NOT EXISTS(SELECT FROM referentiel."T_Generique" g WHERE g."ID_Generique"=NEW."ID_DeviseFk" AND g."ID_CategorieGeneriqueFk"=42) THEN RAISE EXCEPTION 'Propriété ou devise incohérente' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND (NEW."ID_ArticleFk",NEW."ID_DeviseFk",NEW."IdEntiteFk") IS DISTINCT FROM (OLD."ID_ArticleFk",OLD."ID_DeviseFk",OLD."IdEntiteFk") THEN RAISE EXCEPTION 'Identité de valorisation immuable' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION proteger_valorisation(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.proteger_valorisation() IS 'Protège identité, devise et caractère append-only des preuves ; les arrêtés sont écrits par la procédure motivée.';
 
 
 --
@@ -436,7 +1267,7 @@ BEGIN
   RAISE EXCEPTION 'Opération de ligne inconnue.' USING ERRCODE='23514';
  END IF;
  IF op IN ('UPDATE','DELETE') THEN
-  IF p_old_qte IS NULL OR p_old_qte<=0 OR p_old_qte<>trunc(p_old_qte) THEN
+  IF p_old_qte IS NULL OR p_old_qte<=0 THEN
    RAISE EXCEPTION 'Ancienne quantité de ligne invalide.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO old_type,old_abr
@@ -451,7 +1282,7 @@ BEGIN
   IF old_sign=0 THEN RAISE EXCEPTION 'Ancien type de mouvement inconnu.' USING ERRCODE='23514'; END IF;
  END IF;
  IF op IN ('INSERT','UPDATE') THEN
-  IF p_new_qte IS NULL OR p_new_qte<=0 OR p_new_qte<>trunc(p_new_qte) OR p_new_pu<0 THEN
+  IF p_new_qte IS NULL OR p_new_qte<=0 OR p_new_pu<0 THEN
    RAISE EXCEPTION 'Quantité entière positive et prix non négatif requis.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO new_type,new_abr
@@ -479,7 +1310,7 @@ BEGIN
  PERFORM set_config('logistique.allow_t_mouvement_write','on',true);
  IF op='UPDATE' AND p_old_cmd_fk=p_new_cmd_fk AND p_old_article_fk=p_new_article_fk THEN
   IF p_old_qte IS DISTINCT FROM p_new_qte OR p_old_pu IS DISTINCT FROM p_new_pu THEN
-   UPDATE logistique."T_Mouvement" SET "QteMvt"=p_new_qte::integer,"PUMvt"=coalesce(p_new_pu,0),"ID_TypeMvtFk"=new_type
+   UPDATE logistique."T_Mouvement" SET "QteMvt"=p_new_qte,"PUMvt"=coalesce(p_new_pu,0),"ID_TypeMvtFk"=new_type
    WHERE "ID_cmdFk"=p_old_cmd_fk AND "ID_ArticleFk"=p_old_article_fk;
    GET DIAGNOSTICS touched=ROW_COUNT;
    IF touched<>1 THEN RAISE EXCEPTION 'La ligne doit posséder exactement un mouvement source.' USING ERRCODE='23514'; END IF;
@@ -492,7 +1323,7 @@ BEGIN
   END IF;
   IF op IN ('INSERT','UPDATE') THEN
    INSERT INTO logistique."T_Mouvement"("ID_TypeMvtFk","ID_ArticleFk","ID_cmdFk","DateHeureAutoMvt","DateMvt","QteMvt","PUMvt")
-   VALUES(new_type,p_new_article_fk,p_new_cmd_fk,now(),now(),p_new_qte::integer,coalesce(p_new_pu,0));
+   VALUES(new_type,p_new_article_fk,p_new_cmd_fk,now(),now(),p_new_qte,coalesce(p_new_pu,0));
   END IF;
  END IF;
  PERFORM set_config('logistique.allow_t_mouvement_write',prior_write,true);
@@ -504,7 +1335,7 @@ $$;
 -- Name: PROCEDURE ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying) IS 'Applique le delta net de stock par article verrouillé ; INSERT/UPDATE/DELETE maintiennent un mouvement unique par ligne, son prix et sa quantité. Refuse le stock final négatif, les fractions et les prix négatifs. Les totaux sont recalculés par les triggers de fin d’instruction.';
+COMMENT ON PROCEDURE logistique.ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying) IS 'Delta exact sous verrou et mouvement unique par ligne ; fractions selon politique explicite d’unité ; lots contrôlés séparément en fin de transaction.';
 
 
 --
@@ -590,7 +1421,7 @@ BEGIN
  PERFORM 1 FROM logistique."T_Commande"
  WHERE "ID_Commande" = p_id_commande FOR NO KEY UPDATE;
  IF NOT FOUND THEN RETURN; END IF;
- SELECT COALESCE(sum(COALESCE(d."QteCmdDetail",0) * COALESCE(d."PUCmdDetail",0)),0)
+ SELECT COALESCE(sum(round(COALESCE(d."QteCmdDetail",0) * COALESCE(d."PUCmdDetail",0),2)),0)
  INTO v_montant FROM logistique."T_CommandeDetail" d WHERE d."ID_CmdFk" = p_id_commande;
  UPDATE logistique."T_Commande"
  SET "MontantHT" = v_montant, "MontantTTC" = v_montant
@@ -604,7 +1435,119 @@ $$;
 -- Name: PROCEDURE ps_update_totaux_commande(IN p_id_commande integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_update_totaux_commande(IN p_id_commande integer) IS 'Verrouille une commande puis recalcule la somme quantité × prix des lignes. Écrit cette somme dans HT et TTC uniquement si nécessaire ; aucun calcul de taxe distinct. Parent absent lors d’une cascade : aucune écriture.';
+COMMENT ON PROCEDURE logistique.ps_update_totaux_commande(IN p_id_commande integer) IS 'Somme des montants quantité exacte fois prix, arrondis par ligne à deux décimales ; pas de taxe ni conversion implicite.';
+
+
+--
+-- Name: tr_audit_numero_document(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_audit_numero_document() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE payload jsonb; entity_id integer;
+BEGIN
+ IF TG_TABLE_NAME='T_Commande' THEN
+  payload=jsonb_build_object('ID_Commande',NEW."ID_Commande",'CodeCmd',NEW."CodeCmd");
+  SELECT "IdEntiteFk" INTO entity_id FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."ID_UserFk";
+ ELSE
+  payload=jsonb_build_object('ID_Facture',NEW."ID_Facture",'ID_CommandeFk',NEW."ID_CommandeFk",'CodeFacture',NEW."CodeFacture");
+  entity_id=NEW."IdEntiteFk";
+ END IF;
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","NewData","IdEntiteFk")
+ VALUES('logistique.'||TG_TABLE_NAME,'DOCUMENT_NUMBER',payload||jsonb_build_object('version','20261025_08','sqlUser',current_user),entity_id);
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_audit_numero_document(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_audit_numero_document() IS 'Mémorise uniquement identité, code et organisation, même pour une création SQL directe, pour prévenir leur réutilisation.';
+
+
+--
+-- Name: tr_avoir_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_avoir_immuable() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE f logistique."T_Facture";
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Un avoir émis est conservé.' USING ERRCODE='23514'; END IF;
+ SELECT * INTO f FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_FactureFk";
+ IF NOT FOUND OR NEW."ID_CommandeFk"<>f."ID_CommandeFk" OR NEW."IdEntiteFk"<>f."IdEntiteFk" OR NEW."ID_DeviseFk"<>f."ID_DeviseFk" OR NEW."DeviseCode"<>f."DeviseCode" THEN RAISE EXCEPTION 'Avoir incompatible avec sa facture.' USING ERRCODE='23514'; END IF;
+ PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=f."ID_CommandeFk" FOR UPDATE;
+ IF NEW."DateAvoir"<f."DateFacture" THEN RAISE EXCEPTION 'La date d’avoir précède la facture.' USING ERRCODE='23514'; END IF;
+ NEW."CodeAvoir"='avr-'||NEW."ID_Avoir"::text;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_avoir_immuable(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_avoir_immuable() IS 'Valide entreprise, devise et facture, attribue avr-ID et conserve l’avoir émis.';
+
+
+--
+-- Name: tr_avoir_ligne_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_avoir_ligne_immuable() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE a logistique."T_Avoir"; f logistique."T_FactureLigne"; available numeric; credited numeric;
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Les lignes d’avoir sont conservées.' USING ERRCODE='23514'; END IF;
+ SELECT * INTO a FROM logistique."T_Avoir" WHERE "ID_Avoir"=NEW."ID_AvoirFk";
+ IF a."TransactionCreation"<>txid_current() THEN RAISE EXCEPTION 'Un avoir émis ne reçoit pas de nouvelle ligne.' USING ERRCODE='23514'; END IF;
+ PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=a."ID_CommandeFk" FOR UPDATE;
+ SELECT * INTO f FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=a."ID_FactureFk" AND "ID_ArticleFk"=NEW."ID_ArticleFk";
+ IF NOT FOUND OR NEW."PUAvoir"<>f."PUFacture" OR NEW."NomArticle"<>f."NomArticle" OR NEW."Unite" IS DISTINCT FROM f."Unite" THEN RAISE EXCEPTION 'La ligne d’avoir reprend l’instantané facturé.' USING ERRCODE='23514'; END IF;
+ SELECT COALESCE(sum(d."QteCmdDetail"),0)-f."QteRetourAvantFacture" INTO available FROM logistique."T_RetourBon" r JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=r."ID_CommandeRetourFk" WHERE r."ID_CommandeOrigineFk"=a."ID_CommandeFk" AND d."ID_ArticleFk"=NEW."ID_ArticleFk";
+ SELECT COALESCE(sum(l."Quantite"),0) INTO credited FROM logistique."T_AvoirLigne" l JOIN logistique."T_Avoir" n ON n."ID_Avoir"=l."ID_AvoirFk" WHERE n."ID_FactureFk"=a."ID_FactureFk" AND l."ID_ArticleFk"=NEW."ID_ArticleFk";
+ IF NEW."Quantite"+credited>available OR NEW."Quantite"+credited>f."QteFacturee" THEN RAISE EXCEPTION 'Quantité retournée déjà créditée ou insuffisante.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_avoir_ligne_immuable(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_avoir_ligne_immuable() IS 'Empêche la double créditation des retours après facturation et conserve le prix facturé.';
+
+
+--
+-- Name: tr_avoir_total(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_avoir_total() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE key_id bigint; total numeric; expected numeric;
+BEGIN
+ key_id=COALESCE((to_jsonb(NEW)->>'ID_Avoir')::bigint,(to_jsonb(NEW)->>'ID_AvoirFk')::bigint);
+ SELECT "MontantTTC" INTO expected FROM logistique."T_Avoir" WHERE "ID_Avoir"=key_id;
+ SELECT sum("MontantLigne") INTO total FROM logistique."T_AvoirLigne" WHERE "ID_AvoirFk"=key_id;
+ IF total IS NULL OR total<>expected THEN RAISE EXCEPTION 'Le montant de l’avoir doit correspondre à ses lignes.' USING ERRCODE='23514'; END IF;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_avoir_total(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_avoir_total() IS 'Vérifie au commit que les lignes couvrent exactement le montant émis.';
 
 
 --
@@ -618,7 +1561,7 @@ DECLARE v_new_qte numeric(14, 3);
 v_old_qte numeric(14, 3);
 v_delta numeric(14, 3);
 v_type_mvt integer;
-v_qte_mvt integer;
+v_qte_mvt numeric(14,3);
 v_skip_report_mvt boolean;
 BEGIN v_skip_report_mvt := COALESCE(
     current_setting('logistique.skip_article_report_mvt', true),
@@ -629,9 +1572,7 @@ END IF;
 IF TG_OP = 'INSERT' THEN v_new_qte := COALESCE(NEW."QteArticle", 0)::numeric(14, 3);
 IF v_new_qte = 0 THEN RETURN NEW;
 END IF;
-IF v_new_qte <> trunc(v_new_qte) THEN RAISE EXCEPTION 'tr_crud_article_after(INSERT) : QteArticle=% ne peut pas etre historisee dans T_Mouvement.QteMvt entier.',
-v_new_qte;
-END IF;
+
 SELECT g."ID_Generique" INTO v_type_mvt
 FROM referentiel."T_Generique" g
 WHERE g."AbrGenerique" ILIKE 'entr%'
@@ -640,15 +1581,13 @@ ORDER BY g."ID_Generique"
 LIMIT 1;
 IF v_type_mvt IS NULL THEN RAISE EXCEPTION 'tr_crud_article_after(INSERT) : type de mouvement Entree introuvable.';
 END IF;
-v_qte_mvt := v_new_qte::integer;
+v_qte_mvt := v_new_qte;
 ELSIF TG_OP = 'UPDATE' THEN v_old_qte := COALESCE(OLD."QteArticle", 0)::numeric(14, 3);
 v_new_qte := COALESCE(NEW."QteArticle", 0)::numeric(14, 3);
 v_delta := v_new_qte - v_old_qte;
 IF v_delta = 0 THEN RETURN NEW;
 END IF;
-IF abs(v_delta) <> trunc(abs(v_delta)) THEN RAISE EXCEPTION 'tr_crud_article_after(UPDATE) : delta=% ne peut pas etre historise dans T_Mouvement.QteMvt entier.',
-v_delta;
-END IF;
+
 IF v_delta > 0 THEN
 SELECT g."ID_Generique" INTO v_type_mvt
 FROM referentiel."T_Generique" g
@@ -658,7 +1597,7 @@ ORDER BY g."ID_Generique"
 LIMIT 1;
 IF v_type_mvt IS NULL THEN RAISE EXCEPTION 'tr_crud_article_after(UPDATE) : type de mouvement Entree introuvable.';
 END IF;
-v_qte_mvt := v_delta::integer;
+v_qte_mvt := v_delta;
 ELSE
 SELECT g."ID_Generique" INTO v_type_mvt
 FROM referentiel."T_Generique" g
@@ -668,7 +1607,7 @@ ORDER BY g."ID_Generique"
 LIMIT 1;
 IF v_type_mvt IS NULL THEN RAISE EXCEPTION 'tr_crud_article_after(UPDATE) : type de mouvement Sortie introuvable.';
 END IF;
-v_qte_mvt := abs(v_delta)::integer;
+v_qte_mvt := abs(v_delta);
 END IF;
 ELSE RETURN NEW;
 END IF;
@@ -689,7 +1628,7 @@ VALUES (
         now()::timestamp without time zone,
         now()::timestamp without time zone,
         v_qte_mvt,
-        COALESCE(NEW."PVArticle", 0)
+        CASE WHEN TG_OP = 'INSERT' OR v_delta > 0 THEN COALESCE(NEW."PUArticle", 0) ELSE COALESCE(NEW."PVArticle", 0) END
     );
 PERFORM set_config(
     'logistique.allow_t_mouvement_write',
@@ -705,7 +1644,7 @@ $$;
 -- Name: FUNCTION tr_crud_article_after(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_crud_article_after() IS 'Après INSERT/UPDATE d’article, historise le stock initial non nul ou le delta direct en mouvement sans commande, valorisé avec PVArticle. Refuse les deltas fractionnaires ; le drapeau transactionnel skip_article_report_mvt évite le double report depuis les lignes.';
+COMMENT ON FUNCTION logistique.tr_crud_article_after() IS 'Après INSERT/UPDATE d’article, historise uniquement le stock initial non nul ou le delta direct : les entrées utilisent PUArticle (prix d’achat), les sorties conservent PVArticle. Aucun mouvement historique réécrit. Le drapeau skip_article_report_mvt évite tout double report depuis les lignes de bon, dont PUMvt reste leur PUCmdDetail explicite.';
 
 
 --
@@ -913,6 +1852,209 @@ COMMENT ON FUNCTION logistique.tr_delete_commande() IS 'Compatibilité de la fon
 
 
 --
+-- Name: tr_destination_commande(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_destination_commande() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF NEW."ID_DestinationFk" IS NULL OR (TG_OP='UPDATE' AND NEW."ID_DestinationFk" IS NOT DISTINCT FROM OLD."ID_DestinationFk") THEN RETURN NEW;END IF;
+ PERFORM 1 FROM geolocalisation."T_Niveau_5" WHERE "ID_Niveau_5"=NEW."ID_DestinationFk" FOR KEY SHARE;
+ IF NOT EXISTS(SELECT 1 FROM geolocalisation."V_DestinationLogistique" d WHERE d.id=NEW."ID_DestinationFk" AND d."EstCoherente") THEN RAISE EXCEPTION 'Destination géographique absente ou hiérarchie incohérente.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_destination_commande(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_destination_commande() IS 'Vérifie le lieu choisi et la cohérence de sa hiérarchie ; conserve les anciennes références inchangées.';
+
+
+--
+-- Name: tr_devise_article(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_devise_article() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ PERFORM logistique.fn_verifier_devise(NEW."ID_DeviseFk");
+ IF TG_OP='UPDATE' AND NEW."ID_DeviseFk" IS DISTINCT FROM OLD."ID_DeviseFk" AND (
+  EXISTS (SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_ArticleFk"=OLD."ID_Article")
+  OR EXISTS (SELECT 1 FROM logistique."T_Mouvement" WHERE "ID_ArticleFk"=OLD."ID_Article")
+ ) THEN RAISE EXCEPTION 'La devise d’un article déjà utilisé ne peut plus être changée.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION tr_devise_article(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_devise_article() IS 'Valide la devise du catalogue et interdit sa réinterprétation après usage, sans écrire de stock.';
+
+
+--
+-- Name: tr_devise_commande(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_devise_commande() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ PERFORM logistique.fn_verifier_devise(NEW."ID_DeviseFk");
+ IF TG_OP='UPDATE' AND NEW."ID_DeviseFk" IS DISTINCT FROM OLD."ID_DeviseFk" AND (
+  EXISTS (SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=OLD."ID_Commande")
+  OR EXISTS (SELECT 1 FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=OLD."ID_Commande")
+  OR EXISTS (SELECT 1 FROM logistique."T_Reglements" WHERE "CodeFactureFk"=OLD."CodeFacture")
+ ) THEN RAISE EXCEPTION 'La devise d’un bon comportant des lignes ou des flux ne peut plus être changée.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION tr_devise_commande(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_devise_commande() IS 'Verrouille la devise du bon et de sa facture dès usage ; les prix des lignes sont exprimés dans cette devise sans conversion automatique.';
+
+
+--
+-- Name: tr_devise_mouvement(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_devise_mouvement() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE devise_source integer;
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  IF NEW."ID_DeviseFk" IS DISTINCT FROM OLD."ID_DeviseFk" THEN
+   RAISE EXCEPTION 'La devise historique d’un mouvement est immuable.' USING ERRCODE='23514';
+  END IF;
+  -- ON DELETE SET NULL du bon ne doit jamais réinterpréter l’instantané.
+  IF NEW."ID_cmdFk" IS NULL AND OLD."ID_cmdFk" IS NOT NULL THEN RETURN NEW; END IF;
+ END IF;
+ IF NEW."ID_cmdFk" IS NOT NULL THEN
+  SELECT "ID_DeviseFk" INTO devise_source FROM logistique."T_Commande"
+   WHERE "ID_Commande"=NEW."ID_cmdFk" FOR NO KEY UPDATE;
+ ELSE
+  SELECT "ID_DeviseFk" INTO devise_source FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk";
+ END IF;
+ IF devise_source IS NULL THEN RAISE EXCEPTION 'Source de devise du mouvement introuvable.' USING ERRCODE='23503'; END IF;
+ IF TG_OP='INSERT' AND NEW."ID_DeviseFk" IS NULL THEN NEW."ID_DeviseFk"=devise_source; END IF;
+ IF NEW."ID_DeviseFk" IS DISTINCT FROM devise_source THEN
+  RAISE EXCEPTION 'La devise du mouvement doit correspondre à son bon ou à son article source.' USING ERRCODE='23514';
+ END IF;
+ PERFORM logistique.fn_verifier_devise(NEW."ID_DeviseFk");
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION tr_devise_mouvement(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_devise_mouvement() IS 'Affecte une seule fois la devise du bon, ou de l’article initial/direct ; ne modifie ni quantité, ni prix, ni effet stock.';
+
+
+--
+-- Name: tr_devise_reglement(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_devise_reglement() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE devise_source integer;
+BEGIN
+ SELECT "ID_DeviseFk" INTO devise_source FROM logistique."T_Commande"
+  WHERE "CodeFacture"=NEW."CodeFactureFk" FOR NO KEY UPDATE;
+ IF devise_source IS NULL THEN RAISE EXCEPTION 'Une facture existante est requise pour le règlement.' USING ERRCODE='23503'; END IF;
+ IF TG_OP='INSERT' AND NEW."ID_DeviseFk" IS NULL THEN NEW."ID_DeviseFk"=devise_source; END IF;
+ IF TG_OP='UPDATE' AND NEW."ID_DeviseFk" IS DISTINCT FROM OLD."ID_DeviseFk" THEN
+  RAISE EXCEPTION 'La devise historique d’un règlement est immuable.' USING ERRCODE='23514';
+ END IF;
+ IF NEW."ID_DeviseFk" IS DISTINCT FROM devise_source THEN
+  RAISE EXCEPTION 'Le règlement doit être exprimé dans la devise de sa facture.' USING ERRCODE='23514';
+ END IF;
+ PERFORM logistique.fn_verifier_devise(NEW."ID_DeviseFk");
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION tr_devise_reglement(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_devise_reglement() IS 'Rattache le règlement à la devise de sa facture unique, verrouille le parent et refuse tout paiement implicite en autre devise.';
+
+
+--
+-- Name: tr_document_identite(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_document_identite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE kind text; key_id bigint; company integer; entity jsonb; third_id bigint; third_party jsonb;
+BEGIN
+ kind=CASE TG_TABLE_NAME WHEN 'T_Commande' THEN 'bon' WHEN 'T_Facture' THEN 'facture' WHEN 'T_Reglements' THEN 'reglement' ELSE 'avoir' END;
+ key_id=CASE kind WHEN 'bon' THEN (to_jsonb(NEW)->>'ID_Commande')::bigint WHEN 'facture' THEN (to_jsonb(NEW)->>'ID_CommandeFk')::bigint WHEN 'reglement' THEN (to_jsonb(NEW)->>'ID_Reglement')::bigint ELSE (to_jsonb(NEW)->>'ID_Avoir')::bigint END;
+ company=logistique.fn_entite_document(kind,key_id);
+ IF company IS NULL THEN RETURN NEW; END IF;
+ entity:=systeme.fn_identite_documentaire(company);
+ third_id=NULLIF(to_jsonb(NEW)->>'ID_TiersFk','')::bigint;
+ IF third_id IS NULL AND kind IN ('facture','reglement','avoir') THEN
+  SELECT c."ID_TiersFk" INTO third_id FROM logistique."T_Commande" c WHERE c."ID_Commande"=CASE WHEN kind='facture' THEN key_id WHEN kind='avoir' THEN (to_jsonb(NEW)->>'ID_CommandeFk')::bigint ELSE (SELECT "ID_Commande" FROM logistique."T_Commande" WHERE "CodeFacture"=to_jsonb(NEW)->>'CodeFactureFk') END;
+ END IF;
+ IF third_id IS NOT NULL THEN SELECT to_jsonb(t)-ARRAY['ID_UserFk','IdUserFk','IdProfessionnelFk'] INTO third_party FROM logistique."T_Client" t WHERE t."ID_Client"=third_id AND t."IdEntiteFk"=company; END IF;
+ INSERT INTO logistique."T_DocumentIdentite"("TypeObjet","ID_Objet","IdEntiteFk","IdentiteEmetteur","IdentiteTiers") VALUES(kind,key_id,company,entity,third_party) ON CONFLICT("TypeObjet","ID_Objet") DO NOTHING;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_document_identite(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_document_identite() IS 'Fige le profil documentaire canonique et le tiers à la création seulement ; les instantanés existants, stocks et montants restent inchangés.';
+
+
+--
+-- Name: tr_facture_apres_avoir(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_facture_apres_avoir() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM logistique."T_Avoir" WHERE "ID_FactureFk"=OLD."ID_Facture") OR EXISTS(SELECT 1 FROM logistique."T_AvoirAffectation" WHERE "ID_CommandeCibleFk"=OLD."ID_CommandeFk") THEN RAISE EXCEPTION 'Un avoir existe : la facture d’origine est conservée.' USING ERRCODE='23514'; END IF;
+ RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_facture_apres_avoir(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_facture_apres_avoir() IS 'Conserve l’identité et les dates de la facture après émission d’un avoir.';
+
+
+--
 -- Name: tr_guard_commandedetail(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -961,6 +2103,24 @@ $$;
 --
 
 COMMENT ON FUNCTION logistique.tr_guard_commandedetail() IS 'Avant chaque mutation de ligne, verrouille les commandes concernées par identifiant croissant et refuse les commandes clôturées. Sérialise les saisies pour éviter les totaux perdus ; accepte la disparition du parent lors d’un DELETE en cascade déjà autorisé.';
+
+
+--
+-- Name: tr_identite_document_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_identite_document_immuable() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN RAISE EXCEPTION 'L’identité documentaire est conservée.' USING ERRCODE='23514'; END $$;
+
+
+--
+-- Name: FUNCTION tr_identite_document_immuable(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_identite_document_immuable() IS 'Conserve les identités des documents émis.';
 
 
 --
@@ -1020,6 +2180,417 @@ COMMENT ON FUNCTION logistique.tr_lock_mouvement_direct() IS 'Bloque les écritu
 
 
 --
+-- Name: tr_numero_commande(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_numero_commande() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE expected_code varchar;
+BEGIN
+ expected_code=logistique.fn_code_commande(NEW."ID_Commande");
+ IF TG_OP='INSERT' THEN
+  IF expected_code IS NULL OR logistique.fn_identite_commande_deja_utilisee(NEW."ID_Commande") THEN
+   RAISE EXCEPTION 'Cette identité de bon a déjà été utilisée.' USING ERRCODE='23514'; END IF;
+  IF NULLIF(btrim(NEW."CodeCmd"),'') IS NOT NULL AND NEW."CodeCmd"<>expected_code THEN
+   RAISE EXCEPTION 'Le code du bon est attribué automatiquement.' USING ERRCODE='23514'; END IF;
+  NEW."CodeCmd"=expected_code;
+  IF NULLIF(btrim(NEW."CodeFacture"),'') IS NOT NULL THEN
+   RAISE EXCEPTION 'Une facture est émise par le service dédié après création du bon.' USING ERRCODE='23514'; END IF;
+  NEW."CodeFacture"=NULL;
+ ELSE
+  IF NEW."ID_Commande" IS DISTINCT FROM OLD."ID_Commande" OR NEW."CodeCmd" IS DISTINCT FROM OLD."CodeCmd" THEN
+   RAISE EXCEPTION 'Identité et code du bon sont immuables.' USING ERRCODE='23514'; END IF;
+  IF NEW."CodeFacture" IS DISTINCT FROM OLD."CodeFacture" THEN
+   IF NULLIF(btrim(OLD."CodeFacture"),'') IS NOT NULL OR NEW."CodeFacture" IS DISTINCT FROM logistique.fn_code_facture(NEW."ID_Commande")
+    OR NOT EXISTS(SELECT 1 FROM logistique."T_Facture" f WHERE f."ID_CommandeFk"=NEW."ID_Commande" AND f."CodeFacture"=NEW."CodeFacture") THEN
+    RAISE EXCEPTION 'Le numéro de facture est automatique et immuable après émission.' USING ERRCODE='23514'; END IF;
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_numero_commande(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_numero_commande() IS 'Génère le code du bon depuis son identité et impose l’immutabilité des identités/références ; une facture exige son snapshot dédié.';
+
+
+--
+-- Name: tr_numero_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_numero_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE expected_code varchar;
+BEGIN
+ expected_code=logistique.fn_code_facture(NEW."ID_CommandeFk");
+ IF TG_OP='INSERT' THEN
+  IF expected_code IS NULL OR (NULLIF(btrim(NEW."CodeFacture"),'') IS NOT NULL AND NEW."CodeFacture"<>expected_code) THEN
+   RAISE EXCEPTION 'Le numéro de facture est attribué depuis le bon.' USING ERRCODE='23514'; END IF;
+  NEW."CodeFacture"=expected_code;
+ ELSE
+  IF NEW."ID_CommandeFk" IS DISTINCT FROM OLD."ID_CommandeFk" OR NEW."CodeFacture" IS DISTINCT FROM OLD."CodeFacture" THEN
+   RAISE EXCEPTION 'La référence et le bon d’une facture émise sont immuables.' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_numero_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_numero_facture() IS 'Génère fac-IDBon lors de l’émission et conserve la référence et le parent ensuite.';
+
+
+--
+-- Name: tr_piece_coherente(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_piece_coherente() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Les justificatifs sont archivés et conservés.' USING ERRCODE='23514'; END IF;
+ IF TG_OP='UPDATE' AND (to_jsonb(NEW)-'Archive') IS DISTINCT FROM (to_jsonb(OLD)-'Archive') THEN RAISE EXCEPTION 'Le justificatif est immuable.' USING ERRCODE='23514'; END IF;
+ IF NEW."IdEntiteFk" IS DISTINCT FROM logistique.fn_entite_document(NEW."TypeObjet",NEW."ID_Objet") THEN RAISE EXCEPTION 'Justificatif hors entreprise du document.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_piece_coherente(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_piece_coherente() IS 'Interdit les justificatifs interentreprises et la modification des fichiers déjà enregistrés.';
+
+
+--
+-- Name: tr_precision_stock(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_precision_stock() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  RAISE EXCEPTION 'Conservez la politique ; choisissez explicitement zéro décimale si nécessaire' USING ERRCODE='23514';
+ END IF;
+ IF TG_OP='UPDATE' AND
+ (NEW."ID_PrecisionStock"<>OLD."ID_PrecisionStock" OR NEW."ID_UniteFk"<>OLD."ID_UniteFk") THEN
+  RAISE EXCEPTION 'L’identité et l’unité de la politique sont conservées' USING ERRCODE='23514';
+ END IF;
+ -- Même clé de verrou que fn_verifier_quantite : la réduction attend les opérations en cours.
+ PERFORM 1 FROM referentiel."T_Generique"
+  WHERE "ID_Generique"=NEW."ID_UniteFk" AND "ID_CategorieGeneriqueFk"=34 FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Une unité du référentiel Unités est requise' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND NEW."DecimalesStock" IS NOT DISTINCT FROM OLD."DecimalesStock" THEN
+  NEW."ModifieLe"=OLD."ModifieLe";RETURN NEW;
+ END IF;
+ PERFORM logistique.fn_precision_stock_compatible(NEW."ID_UniteFk",NEW."DecimalesStock");
+ NEW."ModifieLe"=clock_timestamp();
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_precision_stock(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_precision_stock() IS 'Verrouille l’unité, protège l’identité, interdit la suppression et toute précision incompatible ; horodate seulement les changements effectifs, sans effet de stock.';
+
+
+--
+-- Name: tr_proteger_bon_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_bon_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE invoice logistique."T_Facture";
+BEGIN
+ SELECT * INTO invoice FROM logistique."T_Facture" WHERE "ID_CommandeFk"=OLD."ID_Commande";
+ IF NOT FOUND THEN RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END; END IF;
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Le bon d’une facture émise est conservé.' USING ERRCODE='23514'; END IF;
+ IF (to_jsonb(NEW)-ARRAY['DateFacture','DateEcheancePaiement','CodeFacture','ID_ModePaiementFk','ID_ConditionPaiementFk','DateHeureAutoFacture','StatusFacture','MontantRegleFacture','MontantResteFacture']) IS DISTINCT FROM
+    (to_jsonb(OLD)-ARRAY['DateFacture','DateEcheancePaiement','CodeFacture','ID_ModePaiementFk','ID_ConditionPaiementFk','DateHeureAutoFacture','StatusFacture','MontantRegleFacture','MontantResteFacture']) THEN
+   RAISE EXCEPTION 'Le panier et les informations de stock d’un bon facturé sont conservés.' USING ERRCODE='23514'; END IF;
+ IF NEW."CodeFacture" IS DISTINCT FROM invoice."CodeFacture" OR NEW."DateFacture" IS DISTINCT FROM invoice."DateFacture"
+ OR NEW."DateEcheancePaiement" IS DISTINCT FROM invoice."DateEcheancePaiement"
+ OR NEW."ID_ModePaiementFk" IS DISTINCT FROM invoice."ID_ModePaiementFk" OR NEW."ID_ConditionPaiementFk" IS DISTINCT FROM invoice."ID_ConditionPaiementFk" THEN
+   RAISE EXCEPTION 'Utilisez le service de facturation pour modifier ses métadonnées.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_bon_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_bon_facture() IS 'Conserve les valeurs du bon facturé et vérifie le miroir financier sans mise à jour de stock.';
+
+
+--
+-- Name: tr_proteger_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE parent logistique."T_Commande"; source_entity integer;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Une facture émise est conservée.' USING ERRCODE='23514'; END IF;
+ SELECT * INTO parent FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_CommandeFk" FOR UPDATE;
+ IF NOT FOUND OR logistique.fn_commande_cloturee(parent."StatusFacture") THEN RAISE EXCEPTION 'Bon absent ou clôturé.' USING ERRCODE='23514'; END IF;
+ IF TG_OP='UPDATE' THEN
+  IF (to_jsonb(NEW)-ARRAY['DateFacture','DateEcheancePaiement','ID_ModePaiementFk','ID_ConditionPaiementFk','DelaiJours','ModifieLe']) IS DISTINCT FROM
+     (to_jsonb(OLD)-ARRAY['DateFacture','DateEcheancePaiement','ID_ModePaiementFk','ID_ConditionPaiementFk','DelaiJours','ModifieLe']) THEN
+     RAISE EXCEPTION 'Identité, devise et montants facturés immuables.' USING ERRCODE='23514'; END IF;
+  IF EXISTS(SELECT 1 FROM logistique."T_Reglements" WHERE "CodeFactureFk"=OLD."CodeFacture") THEN
+     RAISE EXCEPTION 'Facture réglée en tout ou partie : métadonnées conservées.' USING ERRCODE='23514'; END IF;
+ ELSE
+  IF NULLIF(btrim(parent."CodeFacture"),'') IS NOT NULL THEN RAISE EXCEPTION 'Une facture historique existe déjà.' USING ERRCODE='23514'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=parent."ID_TypeCmdFk"
+    AND "ID_CategorieGeneriqueFk"=64 AND "AbrGenerique" ILIKE 'sort%')
+    OR EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=parent."ID_Commande") THEN
+    RAISE EXCEPTION 'Seul un bon de sortie original peut être facturé.' USING ERRCODE='23514'; END IF;
+  source_entity:=parent."IdEntiteFk";
+  IF NEW."IdEntiteFk" IS DISTINCT FROM source_entity OR NEW."ID_DeviseFk" IS DISTINCT FROM parent."ID_DeviseFk" THEN
+     RAISE EXCEPTION 'Organisation ou devise incompatible avec le bon.' USING ERRCODE='23514'; END IF;
+  PERFORM logistique.fn_verifier_devise(NEW."ID_DeviseFk");
+  IF NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_DeviseFk"
+    AND logistique.fn_code_devise("AbrGenerique")=NEW."DeviseCode") THEN
+    RAISE EXCEPTION 'Le code de devise doit correspondre au référentiel.' USING ERRCODE='23514'; END IF;
+ END IF;
+ PERFORM logistique.fn_assert_generique_category(NEW."ID_ModePaiementFk",36,'Facture','ID_ModePaiementFk');
+ PERFORM logistique.fn_assert_generique_category(NEW."ID_ConditionPaiementFk",37,'Facture','ID_ConditionPaiementFk');
+ IF (TG_OP='INSERT' OR NEW."ID_ModePaiementFk" IS DISTINCT FROM OLD."ID_ModePaiementFk") AND NEW."ID_ModePaiementFk" IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+   WHERE g."ID_Generique"=NEW."ID_ModePaiementFk" AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) THEN
+  RAISE EXCEPTION 'Mode de paiement inactif.' USING ERRCODE='23514'; END IF;
+ IF (TG_OP='INSERT' OR NEW."ID_ConditionPaiementFk" IS DISTINCT FROM OLD."ID_ConditionPaiementFk") AND NEW."ID_ConditionPaiementFk" IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+   WHERE g."ID_Generique"=NEW."ID_ConditionPaiementFk" AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) THEN
+  RAISE EXCEPTION 'Condition de paiement inactive.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_facture() IS 'Interdit suppression et modification du snapshot ; seules les métadonnées restent modifiables avant règlement.';
+
+
+--
+-- Name: tr_proteger_identite_lot_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_identite_lot_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF (NEW."NumeroLot",NEW."DatePeremptionLot",NEW."ID_ArticleFk") IS DISTINCT FROM
+    (OLD."NumeroLot",OLD."DatePeremptionLot",OLD."ID_ArticleFk") THEN
+  PERFORM 1 FROM logistique."T_Commande" c WHERE c."ID_Commande" IN
+    (SELECT m."ID_cmdFk" FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk"
+     WHERE ml."ID_LotArticleFk"=OLD."ID_LotArticle") ORDER BY c."ID_Commande" FOR UPDATE;
+  IF EXISTS(SELECT 1 FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk"
+    JOIN logistique."T_Facture" f ON f."ID_CommandeFk"=m."ID_cmdFk" WHERE ml."ID_LotArticleFk"=OLD."ID_LotArticle") THEN
+    RAISE EXCEPTION 'L’identité d’un lot présent sur une facture est conservée.' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_identite_lot_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_identite_lot_facture() IS 'Conserve numéro, péremption et article des lots ventilés sur un bon facturé ; leur stock futur reste géré par de nouveaux mouvements.';
+
+
+--
+-- Name: tr_proteger_ligne_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_ligne_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE invoice logistique."T_Facture"; created_xid bigint;
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Les lignes d’une facture émise sont immuables.' USING ERRCODE='23514'; END IF;
+ SELECT f.* INTO invoice FROM logistique."T_Facture" f WHERE f."ID_Facture"=NEW."ID_FactureFk";
+ SELECT f."TransactionCreation" INTO created_xid FROM logistique."T_Facture" f WHERE f."ID_Facture"=NEW."ID_FactureFk";
+ IF created_xid IS DISTINCT FROM txid_current() OR NEW."ID_CmdFk" IS DISTINCT FROM invoice."ID_CommandeFk" THEN
+    RAISE EXCEPTION 'Les lignes sont figées lors de l’émission.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_ligne_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_ligne_facture() IS 'Les lignes sont créées dans la transaction de leur facture puis conservées sans modification.';
+
+
+--
+-- Name: tr_proteger_reference_devise(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_reference_devise() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE utilisee boolean;
+BEGIN
+ SELECT EXISTS (SELECT 1 FROM logistique."T_Article" WHERE "ID_DeviseFk"=OLD."ID_Generique")
+  OR EXISTS (SELECT 1 FROM logistique."T_Commande" WHERE "ID_DeviseFk"=OLD."ID_Generique")
+  OR EXISTS (SELECT 1 FROM logistique."T_Mouvement" WHERE "ID_DeviseFk"=OLD."ID_Generique")
+  OR EXISTS (SELECT 1 FROM logistique."T_Reglements" WHERE "ID_DeviseFk"=OLD."ID_Generique") INTO utilisee;
+ IF utilisee AND (NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM OLD."ID_CategorieGeneriqueFk"
+  OR logistique.fn_code_devise(NEW."AbrGenerique") IS DISTINCT FROM logistique.fn_code_devise(OLD."AbrGenerique")) THEN
+  RAISE EXCEPTION 'Le code et la catégorie d’une devise utilisée sont immuables.' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION tr_proteger_reference_devise(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_reference_devise() IS 'Empêche de renommer le code ou de reclasser une devise déjà utilisée ; la désactivation ne supprime pas l’historique.';
+
+
+--
+-- Name: tr_proteger_stock_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_stock_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE old_id integer; new_id integer; command_ids integer[];
+BEGIN
+ IF TG_TABLE_NAME='T_CommandeDetail' THEN
+   IF TG_OP<>'INSERT' THEN old_id:=OLD."ID_CmdFk"; END IF;
+   IF TG_OP<>'DELETE' THEN new_id:=NEW."ID_CmdFk"; END IF;
+ ELSIF TG_TABLE_NAME='T_Mouvement' THEN
+   IF TG_OP<>'INSERT' THEN old_id:=OLD."ID_cmdFk"; END IF;
+   IF TG_OP<>'DELETE' THEN new_id:=NEW."ID_cmdFk"; END IF;
+ ELSE
+   IF TG_OP<>'INSERT' THEN SELECT "ID_cmdFk" INTO old_id FROM logistique."T_Mouvement" WHERE "ID_Mvt"=OLD."ID_MvtFk"; END IF;
+   IF TG_OP<>'DELETE' THEN SELECT "ID_cmdFk" INTO new_id FROM logistique."T_Mouvement" WHERE "ID_Mvt"=NEW."ID_MvtFk"; END IF;
+ END IF;
+ command_ids:=ARRAY[old_id,new_id];
+ PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=ANY(command_ids) ORDER BY "ID_Commande" FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM logistique."T_Facture" WHERE "ID_CommandeFk"=ANY(command_ids)) THEN
+   RAISE EXCEPTION 'Les lignes et mouvements d’un bon facturé sont immuables.' USING ERRCODE='23514'; END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_stock_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_stock_facture() IS 'Refuse les écritures de lignes et mouvements d’un bon déjà facturé.';
+
+
+--
+-- Name: tr_proteger_unite_precision_stock(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_proteger_unite_precision_stock() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' AND NEW."ID_Generique"=OLD."ID_Generique" AND NEW."ID_CategorieGeneriqueFk"=OLD."ID_CategorieGeneriqueFk" THEN RETURN NEW;END IF;
+ IF OLD."ID_CategorieGeneriqueFk"=34 AND
+ (EXISTS(SELECT FROM logistique."T_PrecisionStock" WHERE "ID_UniteFk"=OLD."ID_Generique")
+ OR EXISTS(SELECT FROM logistique."T_Article" WHERE "ID_UniteFk"=OLD."ID_Generique")) THEN
+  RAISE EXCEPTION 'La catégorie et l’identité d’une unité utilisée sont conservées' USING ERRCODE='23514';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_proteger_unite_precision_stock(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_proteger_unite_precision_stock() IS 'Conserve la catégorie et l’identité d’une unité référencée par une politique ou un article, sans bloquer la modification de son libellé.';
+
+
+--
+-- Name: tr_quantite_unite(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_quantite_unite() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ DECLARE u integer; BEGIN
+ IF TG_TABLE_NAME='T_Article' THEN u=NEW."ID_UniteFk";PERFORM logistique.fn_verifier_quantite(u,NEW."QteArticle");PERFORM logistique.fn_verifier_quantite(u,NEW."QteMinArticle");
+ ELSIF TG_TABLE_NAME='T_CommandeDetail' THEN SELECT "ID_UniteFk" INTO u FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk";PERFORM logistique.fn_verifier_quantite(u,NEW."QteCmdDetail");
+ ELSIF TG_TABLE_NAME='T_Mouvement' THEN SELECT "ID_UniteFk" INTO u FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk";PERFORM logistique.fn_verifier_quantite(u,NEW."QteMvt");
+ ELSE SELECT a."ID_UniteFk" INTO u FROM logistique."T_Mouvement" m JOIN logistique."T_Article" a ON a."ID_Article"=m."ID_ArticleFk" WHERE m."ID_Mvt"=NEW."ID_MvtFk";PERFORM logistique.fn_verifier_quantite(u,NEW."Quantite");END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_quantite_unite(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_quantite_unite() IS 'Défense SQL commune article, ligne, mouvement et ventilation ; aucun effet de stock supplémentaire.';
+
+
+--
+-- Name: tr_reglement_apres_avoir(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_reglement_apres_avoir() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE code text; command_id integer; invoice numeric; credit numeric; paid numeric;
+BEGIN
+ code=CASE WHEN TG_OP='DELETE' THEN OLD."CodeFactureFk" ELSE NEW."CodeFactureFk" END;
+ SELECT "ID_Commande" INTO command_id FROM logistique."T_Commande" WHERE "CodeFacture"=code FOR UPDATE;
+ IF TG_OP IN ('UPDATE','DELETE') AND (EXISTS(SELECT 1 FROM logistique."T_Avoir" WHERE "ID_CommandeFk"=command_id) OR EXISTS(SELECT 1 FROM logistique."T_AvoirAffectation" WHERE "ID_CommandeCibleFk"=command_id)) THEN RAISE EXCEPTION 'Un avoir existe : le règlement doit être conservé.' USING ERRCODE='23514'; END IF;
+ IF TG_OP='INSERT' THEN
+  SELECT "MontantTTC" INTO invoice FROM logistique."T_Facture" WHERE "ID_CommandeFk"=command_id;
+  SELECT COALESCE(sum("Montant"),0) INTO credit FROM logistique."T_AvoirAffectation" WHERE "ID_CommandeCibleFk"=command_id;
+  SELECT COALESCE(sum("MontantRegle"),0) INTO paid FROM logistique."T_Reglements" WHERE "CodeFactureFk"=code;
+  IF invoice IS NOT NULL AND paid+NEW."MontantRegle">invoice-credit THEN RAISE EXCEPTION 'Le règlement dépasse le solde net des avoirs.' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_reglement_apres_avoir(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_reglement_apres_avoir() IS 'Protège les règlements déjà liés à un avoir et borne les nouveaux paiements au solde net.';
+
+
+--
 -- Name: tr_totaux_commande(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -1050,6 +2621,341 @@ $$;
 --
 
 COMMENT ON FUNCTION logistique.tr_totaux_commande() IS 'Fonction des trois triggers AFTER STATEMENT de lignes : utilise les tables de transition pour recalculer une seule fois chaque commande affectée, y compris ancien/nouveau parent en UPDATE. Aucune boucle de recalcul par ligne.';
+
+
+--
+-- Name: tr_utilisation_avoir(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_utilisation_avoir() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE a logistique."T_Avoir"; target logistique."T_Facture"; source_client bigint; target_client bigint; used numeric; due numeric; target_id integer;
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'L’historique des imputations et remboursements est conservé.' USING ERRCODE='23514'; END IF;
+ SELECT * INTO a FROM logistique."T_Avoir" WHERE "ID_Avoir"=NEW."ID_AvoirFk";
+ IF TG_TABLE_NAME='T_AvoirAffectation' THEN target_id=NEW."ID_CommandeCibleFk"; END IF;
+ PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande" IN (a."ID_CommandeFk",target_id) ORDER BY "ID_Commande" FOR UPDATE;
+ SELECT * INTO a FROM logistique."T_Avoir" WHERE "ID_Avoir"=NEW."ID_AvoirFk" FOR UPDATE;
+ SELECT COALESCE((SELECT sum("Montant") FROM logistique."T_AvoirAffectation" WHERE "ID_AvoirFk"=a."ID_Avoir"),0)+COALESCE((SELECT sum("Montant") FROM logistique."T_Remboursement" WHERE "ID_AvoirFk"=a."ID_Avoir"),0) INTO used;
+ IF used+NEW."Montant">a."MontantTTC" THEN RAISE EXCEPTION 'Le disponible de l’avoir est insuffisant.' USING ERRCODE='23514'; END IF;
+ IF target_id IS NOT NULL THEN
+  SELECT * INTO target FROM logistique."T_Facture" WHERE "ID_CommandeFk"=target_id;
+  IF NOT FOUND OR target."IdEntiteFk"<>a."IdEntiteFk" OR target."ID_DeviseFk"<>a."ID_DeviseFk" THEN RAISE EXCEPTION 'Facture cible d’entreprise ou devise différente.' USING ERRCODE='23514'; END IF;
+  IF target_id<>a."ID_CommandeFk" THEN
+   SELECT "ID_TiersFk" INTO source_client FROM logistique."T_Commande" WHERE "ID_Commande"=a."ID_CommandeFk";
+   SELECT "ID_TiersFk" INTO target_client FROM logistique."T_Commande" WHERE "ID_Commande"=target_id;
+   IF source_client IS NULL OR source_client IS DISTINCT FROM target_client THEN RAISE EXCEPTION 'L’imputation concerne le même tiers référencé.' USING ERRCODE='23514'; END IF;
+  END IF;
+  SELECT target."MontantTTC"-COALESCE((SELECT sum("MontantRegle") FROM logistique."T_Reglements" WHERE "CodeFactureFk"=target."CodeFacture"),0)-COALESCE((SELECT sum("Montant") FROM logistique."T_AvoirAffectation" WHERE "ID_CommandeCibleFk"=target_id),0) INTO due;
+  IF NEW."Montant">due THEN RAISE EXCEPTION 'L’imputation dépasse le solde de la facture cible.' USING ERRCODE='23514'; END IF;
+ ELSE
+  PERFORM logistique.fn_assert_generique_category(NEW."ID_ModePaiementFk",36,'Remboursement','ID_ModePaiementFk');
+  IF NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_ModePaiementFk" AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) THEN RAISE EXCEPTION 'Mode de remboursement inactif.' USING ERRCODE='23514'; END IF;
+  IF NEW."DateRemboursement"<a."DateAvoir" THEN RAISE EXCEPTION 'Le remboursement précède l’avoir.' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_utilisation_avoir(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_utilisation_avoir() IS 'Sérialise l’utilisation des avoirs, vérifie disponible, solde cible, tiers, devise et mode de remboursement.';
+
+
+--
+-- Name: tr_verifier_snapshot_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_verifier_snapshot_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE invoice logistique."T_Facture"; parent logistique."T_Commande"; total numeric;
+BEGIN
+ IF TG_TABLE_NAME='T_FactureLigne' THEN
+  SELECT * INTO invoice FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_FactureFk";
+ ELSE SELECT * INTO invoice FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_Facture"; END IF;
+ SELECT * INTO parent FROM logistique."T_Commande" WHERE "ID_Commande"=invoice."ID_CommandeFk";
+ IF parent."CodeFacture" IS DISTINCT FROM invoice."CodeFacture" OR parent."DateFacture" IS DISTINCT FROM invoice."DateFacture"
+ OR parent."DateEcheancePaiement" IS DISTINCT FROM invoice."DateEcheancePaiement"
+ OR parent."ID_ModePaiementFk" IS DISTINCT FROM invoice."ID_ModePaiementFk"
+ OR parent."ID_ConditionPaiementFk" IS DISTINCT FROM invoice."ID_ConditionPaiementFk" THEN
+   RAISE EXCEPTION 'Le miroir de facture du bon doit rester cohérent.' USING ERRCODE='23514'; END IF;
+ IF TG_OP='INSERT' THEN
+  SELECT sum("MontantLigne") INTO total FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=invoice."ID_Facture";
+  IF total IS DISTINCT FROM invoice."MontantTTC" THEN RAISE EXCEPTION 'Total de facture différent de ses lignes.' USING ERRCODE='23514'; END IF;
+  IF EXISTS(
+   WITH returned AS (SELECT d."ID_ArticleFk",sum(d."QteCmdDetail") AS n FROM logistique."T_RetourBon" r
+     JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=r."ID_CommandeRetourFk"
+     WHERE r."ID_CommandeOrigineFk"=invoice."ID_CommandeFk" GROUP BY d."ID_ArticleFk")
+   SELECT 1 FROM (SELECT * FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=invoice."ID_CommandeFk") d
+   LEFT JOIN returned r ON r."ID_ArticleFk"=d."ID_ArticleFk"
+   FULL JOIN (SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=invoice."ID_Facture") l ON l."ID_ArticleFk"=d."ID_ArticleFk"
+   WHERE (d."ID_CmdFk"=invoice."ID_CommandeFk" OR l."ID_FactureFk"=invoice."ID_Facture")
+    AND ((COALESCE(d."QteCmdDetail",0)-COALESCE(r.n,0)>0 AND
+          (l."ID_FactureLigne" IS NULL OR l."ID_CmdFk"<>invoice."ID_CommandeFk"
+           OR l."QteSortie" IS DISTINCT FROM d."QteCmdDetail" OR l."PUFacture" IS DISTINCT FROM d."PUCmdDetail"
+           OR l."QteRetourAvantFacture" IS DISTINCT FROM COALESCE(r.n,0)))
+         OR (COALESCE(d."QteCmdDetail",0)-COALESCE(r.n,0)<=0 AND l."ID_FactureLigne" IS NOT NULL))) THEN
+   RAISE EXCEPTION 'Les lignes facturées doivent correspondre aux quantités nettes du bon.' USING ERRCODE='23514'; END IF;
+ END IF;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_verifier_snapshot_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_verifier_snapshot_facture() IS 'Contrôle différé du miroir, du total et des quantités nettes avant émission ; aucun mouvement de stock.';
+
+
+--
+-- Name: tracer_source_cout(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tracer_source_cout() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE a record;m record;bound integer;BEGIN
+ IF TG_OP='DELETE' THEN m=OLD;ELSE m=NEW;END IF;
+ SELECT * INTO a FROM logistique."T_Article" WHERE "ID_Article"=m."ID_ArticleFk" FOR NO KEY UPDATE;
+ IF TG_OP IN ('UPDATE','DELETE') THEN
+  SELECT "ID_MvtArrete" INTO bound FROM logistique."T_ValorisationOuverture" WHERE "ID_ArticleFk"=OLD."ID_ArticleFk" AND "ID_DeviseFk"=OLD."ID_DeviseFk" AND "CoutOuverture" IS NOT NULL;
+  IF bound IS NOT NULL AND OLD."ID_Mvt"<=bound THEN RAISE EXCEPTION 'Ce mouvement appartient à un arrêté de coût ; corrigez par un bon compensateur' USING ERRCODE='23514';END IF;
+ END IF;
+ INSERT INTO logistique."T_ValorisationEvenement"("ID_ArticleFk","IdEntiteFk","ID_UserFk","Operation","Avant","Apres")
+ VALUES(a."ID_Article",a."IdEntiteFk",NULL,'mouvement_'||lower(TG_OP),CASE WHEN TG_OP<>'INSERT' THEN to_jsonb(OLD) END,CASE WHEN TG_OP<>'DELETE' THEN to_jsonb(NEW) END);
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tracer_source_cout(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tracer_source_cout() IS 'Trace chaque changement de source et refuse la réécriture d’un mouvement déjà inclus dans un arrêté confirmé. Les corrections postérieures restent recalculées dans les vues CUMP.';
+
+
+--
+-- Name: verifier_article_poids(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verifier_article_poids() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF NEW."ID_UnitePoidsFk" IS NOT NULL AND NOT EXISTS (
+ SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_UnitePoidsFk" AND "ID_CategorieGeneriqueFk"=34 AND lower(btrim("AbrGenerique")) IN ('mg','g','kg','t')) THEN
+ RAISE EXCEPTION 'Unité de masse requise pour le poids unitaire.' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verifier_article_poids(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verifier_article_poids() IS 'Contrôle l’unité de masse sans transformer les quantités ni les prix.';
+
+
+--
+-- Name: verifier_bon_inventaire_non_commercial(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verifier_bon_inventaire_non_commercial() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE targets integer[];identifier integer;
+BEGIN
+ IF TG_TABLE_NAME='T_Facture' THEN targets=ARRAY[NEW."ID_CommandeFk"];
+ ELSIF TG_TABLE_NAME='T_RetourBon' THEN targets=ARRAY[NEW."ID_CommandeOrigineFk",NEW."ID_CommandeRetourFk"];
+ ELSIF TG_TABLE_NAME='T_Commande' THEN
+  IF NEW."CodeFacture" IS NOT DISTINCT FROM OLD."CodeFacture" OR NULLIF(btrim(NEW."CodeFacture"),'') IS NULL THEN RETURN NEW;END IF;
+  targets=ARRAY[NEW."ID_Commande"];
+ ELSE targets=ARRAY[NEW."ID_CommandeCorrectionFk",NEW."ID_CommandeAnnulationFk",OLD."ID_CommandeCorrectionFk",OLD."ID_CommandeAnnulationFk"];
+ END IF;
+ -- Un verrou commun aux deux sens empêche facture et rattachement concurrents.
+ PERFORM 1 FROM logistique."T_Commande" c WHERE c."ID_Commande"=ANY(targets) ORDER BY c."ID_Commande" FOR UPDATE;
+ IF TG_TABLE_NAME IN('T_Facture','T_RetourBon','T_Commande') THEN
+  FOREACH identifier IN ARRAY targets LOOP
+   IF logistique.fn_bon_inventaire(identifier) THEN RAISE EXCEPTION 'Un bon d’inventaire ne peut pas être facturé ou restitué comme une opération commerciale.' USING ERRCODE='23514',CONSTRAINT='inventaire_bon_non_commercial';END IF;
+  END LOOP;
+ ELSE
+  FOREACH identifier IN ARRAY targets LOOP
+   IF identifier IS NOT NULL AND (
+     EXISTS(SELECT FROM logistique."T_Facture" f WHERE f."ID_CommandeFk"=identifier)
+     OR EXISTS(SELECT FROM logistique."T_RetourBon" r WHERE identifier IN(r."ID_CommandeOrigineFk",r."ID_CommandeRetourFk"))
+     OR EXISTS(SELECT FROM logistique."T_Commande" c WHERE c."ID_Commande"=identifier AND NULLIF(btrim(c."CodeFacture"),'') IS NOT NULL))
+   THEN RAISE EXCEPTION 'Un bon commercial ne peut pas servir de correction ou d’annulation d’inventaire.' USING ERRCODE='23514',CONSTRAINT='inventaire_bon_non_commercial';END IF;
+  END LOOP;
+ END IF;
+ IF TG_WHEN='AFTER' THEN RETURN NULL;ELSIF TG_OP='DELETE' THEN RETURN OLD;ELSE RETURN NEW;END IF;
+END $$;
+
+
+--
+-- Name: FUNCTION verifier_bon_inventaire_non_commercial(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verifier_bon_inventaire_non_commercial() IS 'Verrouille les bons dans un ordre stable et refuse les liens commerciaux dans les deux sens, y compris les rattachements différés de la transaction.';
+
+
+--
+-- Name: verifier_dossier_suivi(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verifier_dossier_suivi() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE parent logistique."T_DossierSuivi"; permitted boolean;
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  IF TG_TABLE_NAME IN ('T_DossierSuivi','T_CategorieDossierSuivi') THEN
+   IF OLD."ID_UserFk" IS DISTINCT FROM NEW."ID_UserFk" OR OLD."IdEntiteFk" IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Le propriétaire et le périmètre du dossier sont immuables.'; END IF;
+  ELSE
+   IF OLD."ID_Membre"<>NEW."ID_Membre" OR OLD."ID_DossierSuiviFk"<>NEW."ID_DossierSuiviFk" OR OLD."ID_ArticleFk" IS DISTINCT FROM NEW."ID_ArticleFk" OR OLD."ID_CommandeFk" IS DISTINCT FROM NEW."ID_CommandeFk" THEN RAISE EXCEPTION 'Le rattachement ne peut pas être transféré.'; END IF;
+  END IF;
+ END IF;
+ IF TG_TABLE_NAME='T_DossierSuivi' THEN
+  IF TG_OP='UPDATE' AND (OLD."Mode"<>NEW."Mode" OR OLD."TypeObjet"<>NEW."TypeObjet") THEN RAISE EXCEPTION 'Le type et le mode du dossier sont immuables.'; END IF;
+  IF NEW."ID_CategorieDossierSuiviFk" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM logistique."T_CategorieDossierSuivi" c WHERE c."ID_CategorieDossierSuivi"=NEW."ID_CategorieDossierSuiviFk" AND c."ID_UserFk"=NEW."ID_UserFk" AND c."IdEntiteFk" IS NOT DISTINCT FROM NEW."IdEntiteFk" AND c."Actif") THEN RAISE EXCEPTION 'La catégorie n’appartient pas au périmètre du dossier.'; END IF;
+ ELSIF TG_TABLE_NAME='T_DossierSuiviMembre' THEN
+  SELECT * INTO parent FROM logistique."T_DossierSuivi" WHERE "ID_DossierSuivi"=NEW."ID_DossierSuiviFk" FOR UPDATE;
+  IF NOT FOUND OR parent."Mode"<>'manuel' OR NOT parent."Actif" THEN RAISE EXCEPTION 'Seul un dossier manuel actif accepte un rattachement.'; END IF;
+  IF parent."TypeObjet"='article' THEN
+   IF NEW."ID_ArticleFk" IS NULL OR NEW."ID_CommandeFk" IS NOT NULL THEN RAISE EXCEPTION 'Ce dossier accepte uniquement des articles.'; END IF;
+   SELECT EXISTS (SELECT 1 FROM logistique."T_Article" a JOIN systeme."T_Utilisateurs" owner_u ON owner_u."IdUser"=parent."ID_UserFk" WHERE a."ID_Article"=NEW."ID_ArticleFk" AND (parent."IdEntiteFk" IS NOT NULL AND a."IdEntiteFk"=parent."IdEntiteFk")) INTO permitted;
+  ELSE
+   IF NEW."ID_CommandeFk" IS NULL OR NEW."ID_ArticleFk" IS NOT NULL THEN RAISE EXCEPTION 'Ce dossier accepte uniquement des documents de stock ou de facturation.'; END IF;
+   SELECT EXISTS (SELECT 1 FROM logistique."T_Commande" c JOIN systeme."T_Utilisateurs" owner_u ON owner_u."IdUser"=parent."ID_UserFk" WHERE c."ID_Commande"=NEW."ID_CommandeFk" AND (parent."TypeObjet"='bon' OR (c."CodeFacture" IS NOT NULL AND btrim(c."CodeFacture")<>'')) AND (parent."IdEntiteFk" IS NOT NULL AND c."IdEntiteFk"=parent."IdEntiteFk")) INTO permitted;
+  END IF;
+  IF NOT permitted THEN RAISE EXCEPTION 'L’enregistrement ne fait pas partie du périmètre autorisé du dossier.'; END IF;
+ END IF;
+ NEW."ModifieLe"=CURRENT_TIMESTAMP;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verifier_dossier_suivi(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verifier_dossier_suivi() IS 'Contrôle le périmètre propriétaire/catégorie, le mode immuable et les rattachements manuels. Ne modifie jamais le stock ni les mouvements.';
+
+
+--
+-- Name: verifier_inventaire(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verifier_inventaire() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ DECLARE h record; a record; BEGIN
+ IF TG_TABLE_NAME='T_Inventaire' THEN
+  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Inventaire historique conservé' USING ERRCODE='23514';END IF;
+  IF TG_OP='INSERT' AND NEW."Etat"<>'brouillon' THEN RAISE EXCEPTION 'Créez un comptage avant sa validation' USING ERRCODE='23514';END IF;
+  IF TG_OP='UPDATE' THEN
+   IF OLD."IdEntiteFk"<>NEW."IdEntiteFk" OR OLD."ID_UserFk"<>NEW."ID_UserFk" OR OLD."Etat"='annule' OR
+    (OLD."Etat"='valide' AND (NEW."Etat"<>'annule' OR
+      (to_jsonb(OLD)-ARRAY['Etat','AnnuleLe','ID_AnnulateurFk','MotifAnnulation','AnnulationRequest','AnnulationHash']) IS DISTINCT FROM
+      (to_jsonb(NEW)-ARRAY['Etat','AnnuleLe','ID_AnnulateurFk','MotifAnnulation','AnnulationRequest','AnnulationHash']))) OR
+    (OLD."Etat"='brouillon' AND NEW."Etat"='annule')
+   THEN RAISE EXCEPTION 'Inventaire historique ou propriétaire immuable' USING ERRCODE='23514';END IF;
+   NEW."Version"=OLD."Version"+1;NEW."ModifieLe"=clock_timestamp();
+  END IF;RETURN NEW;
+ END IF;
+ IF TG_OP='UPDATE' AND (OLD."ID_InventaireFk"<>NEW."ID_InventaireFk" OR OLD."ID_ArticleFk"<>NEW."ID_ArticleFk") THEN
+  RAISE EXCEPTION 'Identité de ligne conservée' USING ERRCODE='23514';END IF;
+ SELECT * INTO h FROM logistique."T_Inventaire" WHERE "ID_Inventaire"=COALESCE(NEW."ID_InventaireFk",OLD."ID_InventaireFk") FOR UPDATE;
+ IF h."Etat"='annule' AND TG_OP='UPDATE' AND OLD."ID_CommandeAnnulationFk" IS NULL AND NEW."ID_CommandeAnnulationFk" IS NOT NULL AND
+  (to_jsonb(OLD)-'ID_CommandeAnnulationFk')=(to_jsonb(NEW)-'ID_CommandeAnnulationFk') THEN RETURN NEW;END IF;
+ IF h."Etat"<>'brouillon' THEN RAISE EXCEPTION 'Un inventaire validé est conservé' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ IF NEW."ID_CommandeAnnulationFk" IS NOT NULL THEN RAISE EXCEPTION 'Annulation réservée à un inventaire validé' USING ERRCODE='23514';END IF;
+ SELECT * INTO a FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk";
+ IF a."IdEntiteFk"<>h."IdEntiteFk" THEN RAISE EXCEPTION 'Article hors entreprise de l’inventaire' USING ERRCODE='23514';END IF;
+ PERFORM logistique.fn_verifier_quantite(a."ID_UniteFk",NEW."QteTheorique");PERFORM logistique.fn_verifier_quantite(a."ID_UniteFk",NEW."QteComptee");
+ IF NEW."ID_CommandeCorrectionFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Commande" c JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=c."ID_Commande"
+  JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk"
+  WHERE c."ID_Commande"=NEW."ID_CommandeCorrectionFk" AND c."IdEntiteFk"=h."IdEntiteFk" AND d."ID_ArticleFk"=NEW."ID_ArticleFk"
+  AND d."QteCmdDetail"=abs(NEW."QteComptee"-NEW."QteTheorique") AND
+   (NEW."QteComptee">NEW."QteTheorique" AND g."AbrGenerique" ILIKE 'entr%' OR NEW."QteComptee"<NEW."QteTheorique" AND g."AbrGenerique" ILIKE 'sort%')) THEN RAISE EXCEPTION 'Bon d’écart incompatible' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION verifier_inventaire(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verifier_inventaire() IS 'Autorise une unique annulation motivée, conserve comptage et validation, verrouille le propriétaire et les lignes historiques.';
+
+
+--
+-- Name: verifier_lot_rattachement(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verifier_lot_rattachement() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' AND (OLD."ID_ArticleFk"<>NEW."ID_ArticleFk" OR OLD."ID_LotArticle"<>NEW."ID_LotArticle") THEN
+ RAISE EXCEPTION 'Un lot ne peut pas être déplacé vers un autre article.' USING ERRCODE='23514';
+ END IF;
+ NEW."NumeroLot"=btrim(NEW."NumeroLot");
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verifier_lot_rattachement(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verifier_lot_rattachement() IS 'Normalise le numéro du lot et interdit son transfert vers un autre article.';
+
+
+--
+-- Name: verrouiller_ventilation_lot(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.verrouiller_ventilation_lot() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE lot_id integer; article_id integer; mvt_article integer; mvt_id integer; mvt_sign integer;
+BEGIN
+ IF TG_OP='UPDATE' AND (OLD."ID_MvtFk"<>NEW."ID_MvtFk" OR OLD."ID_LotArticleFk"<>NEW."ID_LotArticleFk") THEN
+ RAISE EXCEPTION 'Un rattachement de lot ne peut pas être transféré.' USING ERRCODE='23514';
+ END IF;
+ IF TG_OP='DELETE' THEN lot_id=OLD."ID_LotArticleFk";mvt_id=OLD."ID_MvtFk";ELSE lot_id=NEW."ID_LotArticleFk";mvt_id=NEW."ID_MvtFk";END IF;
+ SELECT "ID_ArticleFk" INTO article_id FROM logistique."T_LotArticle" WHERE "ID_LotArticle"=lot_id;
+ PERFORM 1 FROM logistique."T_Article" WHERE "ID_Article"=article_id FOR NO KEY UPDATE;
+ PERFORM 1 FROM logistique."T_LotArticle" WHERE "ID_LotArticle"=lot_id FOR NO KEY UPDATE;
+ IF TG_OP<>'DELETE' THEN
+ SELECT "ID_ArticleFk","SigneStock" INTO mvt_article,mvt_sign FROM logistique."V_MouvementStock" WHERE "ID_Mvt"=mvt_id;
+ IF mvt_sign IS NULL OR mvt_sign NOT IN (-1,1) THEN RAISE EXCEPTION 'Sens du mouvement de lot inconnu.' USING ERRCODE='23514';END IF;
+ IF article_id IS DISTINCT FROM mvt_article THEN RAISE EXCEPTION 'Le lot et le mouvement doivent concerner le même article.' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+ END IF;
+ RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verrouiller_ventilation_lot(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.verrouiller_ventilation_lot() IS 'Verrouille article puis lot ; vérifie leur cohérence avec le mouvement et conserve le rattachement.';
 
 
 --
@@ -1490,7 +3396,7 @@ COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Après mutation 
 CREATE FUNCTION operations.notification_payment_success() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-DECLARE 
+DECLARE
     utilisateur_id INT;
     montant        NUMERIC(10,2);
     devise_nom     VARCHAR;
@@ -1522,7 +3428,7 @@ BEGIN
 
     utilisateur_id := NEW."IdUserFk";
     montant        := NEW."MontantPaiement";
-    
+
     -- Vérifier que le statut n'est pas "En attente"
     IF statut_nom NOT IN ('En attente') THEN
         INSERT INTO communication."T_Communication" (
@@ -1535,8 +3441,8 @@ BEGIN
             "IdEntiteFk"
         )
         VALUES (
-            utilisateur_id, 
-            type_notif, 
+            utilisateur_id,
+            type_notif,
             'Votre paiement de ' || montant || ' ' || devise_nom ||
             ' a été reçu avec succès. Statut: ' || statut_nom ||
             ', Mouvement: ' || mouvement_nom || '.',
@@ -1667,6 +3573,134 @@ COMMENT ON FUNCTION systeme.audit_log_function() IS 'Audit AFTER INSERT/UPDATE/D
 
 
 --
+-- Name: fn_admin_actor_user_id(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_actor_user_id() RETURNS integer
+    LANGUAGE plpgsql STABLE
+    AS $_$
+DECLARE v_raw text:=nullif(current_setting('systeme.actor_user_id',true),''); v_id integer;
+BEGIN
+ IF v_raw IS NULL OR v_raw !~ '^[1-9][0-9]{0,9}$' THEN RETURN NULL; END IF;
+ BEGIN v_id:=v_raw::integer;
+ EXCEPTION WHEN numeric_value_out_of_range THEN RETURN NULL; END;
+ IF EXISTS (SELECT 1 FROM systeme."T_Utilisateurs"
+            WHERE "IdUser"=v_id AND "ValideUser" IS TRUE) THEN RETURN v_id; END IF;
+ RETURN NULL;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_admin_actor_user_id(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_actor_user_id() IS 'Auteur actif existant de la GUC transactionnelle systeme.actor_user_id ; NULL si absence ou valeur invalide. Métadonnée de traçabilité, jamais autorisation SQL.';
+
+
+--
+-- Name: fn_admin_cle_sensible(text); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_cle_sensible(p_cle text) RETURNS boolean
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $_$
+ SELECT CASE WHEN p_cle IS NULL THEN false ELSE
+  regexp_replace(lower(p_cle),'[^a-z0-9]','','g') ~
+  '(password|motdepasse|privatekey|apikey|accesstoken|refreshtoken|idtoken|secret$)'
+  OR regexp_replace(lower(p_cle),'[^a-z0-9]','','g') IN
+   ('token','authorization','credential','credentials') END;
+$_$;
+
+
+--
+-- Name: FUNCTION fn_admin_cle_sensible(p_cle text); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_cle_sensible(p_cle text) IS 'Détecte les noms de mots de passe, jetons et secrets sans dépendre de la casse ni des séparateurs.';
+
+
+--
+-- Name: fn_admin_reglage_audit(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_reglage_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE v_before jsonb; v_after jsonb; v_actor integer:=systeme.fn_admin_actor_user_id();
+        v_identity jsonb:=jsonb_build_object('IdUser',NULL,'NomComplet',NULL);
+        v_scope text; v_scope_value text; v_entity integer;
+BEGIN
+ IF v_actor IS NOT NULL THEN
+  SELECT jsonb_build_object('IdUser',"IdUser",'NomComplet',
+         concat_ws(' ',"PrenomUser","NomUser")) INTO v_identity
+   FROM systeme."T_Utilisateurs" WHERE "IdUser"=v_actor;
+ END IF;
+ IF TG_OP IN ('DELETE','UPDATE') THEN
+  v_before:=systeme.fn_audit_sans_secrets(to_jsonb(OLD));
+  IF v_identity IS NOT NULL THEN v_before:=v_before||jsonb_build_object('_actor',v_identity); END IF;
+ END IF;
+ IF TG_OP IN ('INSERT','UPDATE') THEN
+  v_after:=systeme.fn_audit_sans_secrets(to_jsonb(NEW));
+  IF v_identity IS NOT NULL THEN v_after:=v_after||jsonb_build_object('_actor',v_identity); END IF;
+ END IF;
+ v_scope:=coalesce(v_after->>'SettingScope',v_before->>'SettingScope');
+ v_scope_value:=coalesce(v_after->>'ScopeValue',v_before->>'ScopeValue');
+ IF v_scope IN ('entity','entite') AND v_scope_value ~ '^[1-9][0-9]{0,9}$' THEN
+  BEGIN v_entity:=v_scope_value::integer;
+  EXCEPTION WHEN numeric_value_out_of_range THEN v_entity:=NULL; END;
+  IF NOT EXISTS(SELECT 1 FROM systeme."T_Entite" WHERE "IdEntite"=v_entity) THEN v_entity:=NULL; END IF;
+ END IF;
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk")
+ VALUES(TG_TABLE_NAME,TG_OP,v_before,v_after,CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa',v_entity);
+ RETURN NULL;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_admin_reglage_audit(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_reglage_audit() IS 'Un événement SQL par écriture de réglage ou correspondance, avec images nettoyées et auteur de l’opération, y compris suppression.';
+
+
+--
+-- Name: fn_admin_ui_setting_proteger(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_ui_setting_proteger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF OLD."IsEditable" IS NOT TRUE OR OLD."IsSystem" IS TRUE THEN
+   RAISE EXCEPTION 'Ce paramètre ne peut pas être supprimé' USING ERRCODE='23514';
+  END IF;
+  RETURN OLD;
+ END IF;
+ IF OLD."IsEditable" IS NOT TRUE AND
+  (to_jsonb(NEW)-ARRAY['UpdatedAt','UpdatedByUserFk']) IS DISTINCT FROM
+  (to_jsonb(OLD)-ARRAY['UpdatedAt','UpdatedByUserFk']) THEN
+  RAISE EXCEPTION 'Ce paramètre est protégé contre les modifications' USING ERRCODE='23514';
+ END IF;
+ IF OLD."IsSystem" IS TRUE AND
+  ROW(NEW."IdAdminUISetting",NEW."SettingKey",NEW."SettingType",NEW."SettingScope",
+      NEW."ScopeValue",NEW."IsEditable",NEW."IsSystem",NEW."CreatedAt") IS DISTINCT FROM
+  ROW(OLD."IdAdminUISetting",OLD."SettingKey",OLD."SettingType",OLD."SettingScope",
+      OLD."ScopeValue",OLD."IsEditable",OLD."IsSystem",OLD."CreatedAt") THEN
+  RAISE EXCEPTION 'Identité et protections du paramètre système immuables' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_admin_ui_setting_proteger(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_ui_setting_proteger() IS 'Refuse les modifications d’un paramètre non éditable et la suppression/altération d’identité d’un paramètre système ; sa valeur reste modifiable si IsEditable=true.';
+
+
+--
 -- Name: fn_admin_ui_setting_set_updated_at(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -1674,17 +3708,19 @@ CREATE FUNCTION systeme.fn_admin_ui_setting_set_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    NEW."UpdatedAt" = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$;
+ NEW."UpdatedAt":=CURRENT_TIMESTAMP;
+ NEW."UpdatedByUserFk":=systeme.fn_admin_actor_user_id();
+ IF TG_OP='INSERT' THEN NEW."CreatedAt":=CURRENT_TIMESTAMP;
+ ELSE NEW."CreatedAt":=OLD."CreatedAt"; END IF;
+ RETURN NEW;
+END $$;
 
 
 --
 -- Name: FUNCTION fn_admin_ui_setting_set_updated_at(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Avant UPDATE d’un paramètre d’interface, remplace UpdatedAt par CURRENT_TIMESTAMP et renvoie NEW.';
+COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Horodate et attribue les paramètres à l’auteur transactionnel validé ; conserve CreatedAt après création.';
 
 
 --
@@ -1692,17 +3728,126 @@ COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Avant UPDAT
 --
 
 CREATE FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) RETURNS jsonb
-    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
     AS $$
- SELECT p_data - ARRAY['MotdepasseUser','password','Password','MotDePasse','accessToken','refreshToken'];
-$$;
+DECLARE v_type text; v_result jsonb; v_key text; v_value jsonb;
+        v_setting_secret boolean:=false; v_decoded jsonb; v_string text;
+BEGIN
+ IF p_data IS NULL THEN RETURN NULL; END IF;
+ v_type:=jsonb_typeof(p_data);
+ IF v_type='object' THEN
+  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value #>> '{}')),false)
+   INTO v_setting_secret FROM jsonb_each(p_data)
+   WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
+  v_result:='{}'::jsonb;
+  FOR v_key,v_value IN SELECT key,value FROM jsonb_each(p_data) LOOP
+   IF systeme.fn_admin_cle_sensible(v_key) THEN CONTINUE; END IF;
+   IF v_setting_secret AND regexp_replace(lower(v_key),'[^a-z0-9]','','g')
+      IN ('settingvalue','settingvaluejson') THEN
+    v_result:=v_result||jsonb_build_object(v_key,'[Masqué]');
+   ELSE
+    v_result:=v_result||jsonb_build_object(v_key,systeme.fn_audit_sans_secrets(v_value));
+   END IF;
+  END LOOP;
+  RETURN v_result;
+ ELSIF v_type='array' THEN
+  SELECT coalesce(jsonb_agg(systeme.fn_audit_sans_secrets(value) ORDER BY ord),'[]'::jsonb)
+   INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);
+  RETURN v_result;
+ ELSIF v_type='string' THEN
+  -- Les anciennes images JSON parfois doublement encodées restent nettoyables.
+  v_string:=btrim(p_data #>> '{}');
+  IF left(v_string,1) IN ('{','[') THEN
+   BEGIN v_decoded:=v_string::jsonb;
+   EXCEPTION WHEN invalid_text_representation THEN RETURN p_data; END;
+   RETURN systeme.fn_audit_sans_secrets(v_decoded);
+  END IF;
+ END IF;
+ RETURN p_data;
+END $$;
 
 
 --
 -- Name: FUNCTION fn_audit_sans_secrets(p_data jsonb); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Retire les champs de mot de passe et jetons d’une image de ligne JSON d’audit ; conserve NULL et les autres données de traçabilité.';
+COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement objets, listes et images JSON encodées ; retire les clés secrètes et masque les valeurs des SettingKey sensibles sans réécrire les journaux historiques.';
+
+
+--
+-- Name: fn_fk_correspondance_actualiser(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_fk_correspondance_actualiser() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ -- Le type existant reste timestamp sans fuseau ; heure civile métier de Kinshasa.
+ NEW."UpdatedAt":=CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa';
+ NEW."UpdatedByUserFk":=systeme.fn_admin_actor_user_id();
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_fk_correspondance_actualiser(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_fk_correspondance_actualiser() IS 'Actualise la date civile de Kinshasa et l’auteur transactionnel de chaque correspondance écrite.';
+
+
+--
+-- Name: fn_identifiants_legaux_valides(jsonb); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_identifiants_legaux_valides(p_value jsonb) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE item jsonb; labels text[]:='{}'; label text; value text;
+BEGIN
+ IF p_value IS NULL OR jsonb_typeof(p_value)<>'array' THEN RETURN false; END IF;
+ IF jsonb_array_length(p_value)>10 THEN RETURN false; END IF;
+ FOR item IN SELECT jsonb_array_elements(p_value) LOOP
+  IF jsonb_typeof(item)<>'object' OR (SELECT count(*) FROM jsonb_object_keys(item))<>2
+     OR NOT item ?& ARRAY['libelle','valeur'] THEN RETURN false; END IF;
+  IF jsonb_typeof(item->'libelle')<>'string' OR jsonb_typeof(item->'valeur')<>'string' THEN RETURN false; END IF;
+  label:=item->>'libelle'; value:=item->>'valeur';
+  IF char_length(btrim(label)) NOT BETWEEN 1 AND 60 OR char_length(btrim(value)) NOT BETWEEN 1 AND 180
+     OR label ~ '[[:cntrl:]]' OR value ~ '[[:cntrl:]]' THEN RETURN false; END IF;
+  IF lower(btrim(label))=ANY(labels) THEN RETURN false; END IF;
+  labels:=array_append(labels,lower(btrim(label)));
+ END LOOP;
+ RETURN true;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_identifiants_legaux_valides(p_value jsonb); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_identifiants_legaux_valides(p_value jsonb) IS 'Contrôle la structure, les longueurs, les libellés uniques et les caractères de contrôle des identifiants déclaratifs, y compris en SQL direct.';
+
+
+--
+-- Name: fn_identite_documentaire(integer); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_identite_documentaire(p_entite integer) RETURNS jsonb
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT jsonb_build_object('IdEntite',"IdEntite",'NomEntite',"NomEntite",'AdresseEntite',"AdresseEntite",
+ 'EmailEntite',"EmailEntite",'PhoneEntite',"PhoneEntite",'IdentifiantsLegauxEntite',"IdentifiantsLegauxEntite",
+ 'MentionDocumentaireEntite',"MentionDocumentaireEntite") FROM systeme."T_Entite" WHERE "IdEntite"=p_entite
+$$;
+
+
+--
+-- Name: FUNCTION fn_identite_documentaire(p_entite integer); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Source canonique de l’identité documentaire actuelle d’une entreprise. Ne modifie jamais les identités déjà émises.';
 
 
 --
@@ -1899,6 +4044,40 @@ BEGIN NEW."ExpireeLicence":=NEW."DateFin"<=current_timestamp; RETURN NEW; END;$$
 COMMENT ON FUNCTION systeme.update_licence_status() IS 'Calcule le drapeau d’expiration au moment de l’écriture. La vue calcule l’état courant à la lecture pour tenir compte du passage du temps.';
 
 
+--
+-- Name: verifier_activation_module(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.verifier_activation_module() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  IF TG_TABLE_NAME='T_LicenceModule' THEN
+   IF OLD."IdLicenceFk"<>NEW."IdLicenceFk" OR OLD."CodeModule"<>NEW."CodeModule" OR OLD."Origine"<>NEW."Origine" THEN RAISE EXCEPTION 'Le rattachement et son origine sont immuables.'; END IF;
+  ELSE
+   IF OLD."IdEntiteFk"<>NEW."IdEntiteFk" OR OLD."IdRoleFk"<>NEW."IdRoleFk" OR OLD."CodeModule"<>NEW."CodeModule" THEN RAISE EXCEPTION 'Le périmètre du rôle est immuable.'; END IF;
+  END IF;
+  NEW."Version"=OLD."Version"+1;
+ ELSE
+  NEW."Version"=1;
+ END IF;
+ IF TG_TABLE_NAME='T_RoleModule' THEN
+  IF NOT EXISTS (SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."IdRoleFk" AND "ID_CategorieGeneriqueFk"=39) THEN RAISE EXCEPTION 'Référence de rôle invalide.'; END IF;
+ END IF;
+ NEW."ModifieLe"=CURRENT_TIMESTAMP;
+ RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verifier_activation_module(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.verifier_activation_module() IS 'Préserve les rattachements et leur provenance, contrôle la catégorie de rôle et fixe version et horodatage ; ne crée aucune licence.';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -2081,7 +4260,7 @@ CREATE TABLE logistique."T_Article" (
     "QteArticle" numeric(14,3) DEFAULT 0 CONSTRAINT "T_Article_QteArticle_not_null" NOT NULL,
     "PUArticle" numeric(12,2) CONSTRAINT "T_Article_PUArticle_not_null" NOT NULL,
     "PVArticle" numeric(12,2) CONSTRAINT "T_Article_PVArticle_not_null" NOT NULL,
-    "QteMinArticle" integer,
+    "QteMinArticle" numeric(14,3),
     "PhotoArticle" character varying(255),
     "ObsArticle" text,
     "ValideArticle" boolean DEFAULT true CONSTRAINT "T_Article_ValideArticle_not_null" NOT NULL,
@@ -2089,8 +4268,14 @@ CREATE TABLE logistique."T_Article" (
     "DatePeremptionAlerteArticle" timestamp with time zone,
     "NbreJoursAlerteArticle" integer,
     "CodeArticleInterne" character varying(243),
+    "PoidsUnitaire" numeric(14,6),
+    "ID_UnitePoidsFk" integer,
+    "InformationArticle" text,
+    "ID_DeviseFk" integer DEFAULT logistique.fn_devise_usd() NOT NULL,
+    "IdEntiteFk" integer,
+    CONSTRAINT article_poids_coherent CHECK (((("PoidsUnitaire" IS NULL) = ("ID_UnitePoidsFk" IS NULL)) AND (("PoidsUnitaire" IS NULL) OR ("PoidsUnitaire" >= (0)::numeric)))),
     CONSTRAINT chk_article_qte_non_negative CHECK ((("QteArticle" IS NULL) OR ("QteArticle" >= (0)::numeric))),
-    CONSTRAINT chk_article_qtemin_non_negative CHECK ((("QteMinArticle" IS NULL) OR ("QteMinArticle" >= 0))),
+    CONSTRAINT chk_article_qtemin_non_negative CHECK ((("QteMinArticle" IS NULL) OR ("QteMinArticle" >= (0)::numeric))),
     CONSTRAINT ck_article_prix_positifs CHECK (((("PUArticle" IS NULL) OR ("PUArticle" >= (0)::numeric)) AND (("PVArticle" IS NULL) OR ("PVArticle" >= (0)::numeric))))
 );
 
@@ -2190,7 +4375,7 @@ COMMENT ON COLUMN logistique."T_Article"."PVArticle" IS 'Prix unitaire de vente 
 -- Name: COLUMN "T_Article"."QteMinArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Article"."QteMinArticle" IS 'Seuil minimal de stock de l’article ; NULL signifie absence de seuil renseigné.';
+COMMENT ON COLUMN logistique."T_Article"."QteMinArticle" IS 'Seuil minimum exact dans l’unité de stock ; précision identique au stock, NULL signifie absence de seuil.';
 
 
 --
@@ -2240,6 +4425,41 @@ COMMENT ON COLUMN logistique."T_Article"."NbreJoursAlerteArticle" IS 'Nombre de 
 --
 
 COMMENT ON COLUMN logistique."T_Article"."CodeArticleInterne" IS 'Référence interne unique de l’article.';
+
+
+--
+-- Name: COLUMN "T_Article"."PoidsUnitaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."PoidsUnitaire" IS 'Masse d’une unité de stock ; inconnue si NULL, indépendante de la quantité en stock.';
+
+
+--
+-- Name: COLUMN "T_Article"."ID_UnitePoidsFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."ID_UnitePoidsFk" IS 'Unité de masse du référentiel catégorie 34 (mg, g, kg ou t), distincte de l’unité de stock.';
+
+
+--
+-- Name: COLUMN "T_Article"."InformationArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."InformationArticle" IS 'Description complémentaire et caractéristiques libres du produit, distinctes des remarques ObsArticle. Ne remplace aucune donnée structurée de stock.';
+
+
+--
+-- Name: COLUMN "T_Article"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."ID_DeviseFk" IS 'Devise des prix achat/vente et valorisations du catalogue ; USD historique confirmé. Immuable dès usage par ligne ou mouvement.';
+
+
+--
+-- Name: COLUMN "T_Article"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."IdEntiteFk" IS 'Entreprise propriétaire obligatoire et immuable ; indépendante de l’affectation future de l’auteur.';
 
 
 --
@@ -2775,7 +4995,15 @@ CREATE TABLE systeme."T_Entite" (
     "AdresseEntite" text,
     "DateCreationEntite" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     "IdTypeEntiteFk" integer,
-    "ValideEntite" boolean DEFAULT true
+    "ValideEntite" boolean DEFAULT true,
+    "AlertePeremptionJours" smallint DEFAULT 30 NOT NULL,
+    "BloquerLotsPerimes" boolean DEFAULT false NOT NULL,
+    "IdentifiantsLegauxEntite" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    "MentionDocumentaireEntite" character varying(1000),
+    CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
+    CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
+    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))
 );
 
 
@@ -2843,6 +5071,34 @@ COMMENT ON COLUMN systeme."T_Entite"."ValideEntite" IS 'Indique si l’entité e
 
 
 --
+-- Name: COLUMN "T_Entite"."AlertePeremptionJours"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."AlertePeremptionJours" IS 'Délai d’alerte par défaut de cette entreprise, en jours ; le seuil explicite de l’article prime.';
+
+
+--
+-- Name: COLUMN "T_Entite"."BloquerLotsPerimes"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."BloquerLotsPerimes" IS 'Refuse les nouveaux prélèvements sur des lots périmés, sauf dérogation motivée d’un administrateur global ; false conserve le mode informatif.';
+
+
+--
+-- Name: COLUMN "T_Entite"."IdentifiantsLegauxEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."IdentifiantsLegauxEntite" IS 'Identifiants déclarés par l’entreprise, sans pays ni régime fiscal imposé : liste facultative de dix couples libelle/valeur. Figés lors de la création de chaque nouveau document.';
+
+
+--
+-- Name: COLUMN "T_Entite"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."MentionDocumentaireEntite" IS 'Mention libre facultative de l’émetteur, limitée à 1000 caractères, conservée dans les nouveaux instantanés documentaires. Aucun taux ou texte légal n’est inventé.';
+
+
+--
 -- Name: CONSTRAINT "T_Entite_IdEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
@@ -2861,6 +5117,20 @@ COMMENT ON CONSTRAINT "T_Entite_NomEntite_not_null" ON systeme."T_Entite" IS 'No
 --
 
 COMMENT ON CONSTRAINT "T_Entite_EmailEntite_not_null" ON systeme."T_Entite" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite". Définition : NOT NULL "EmailEntite".';
+
+
+--
+-- Name: CONSTRAINT ck_entite_identifiants_legaux ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_identifiants_legaux ON systeme."T_Entite" IS 'Identifiants facultatifs génériques, sans doublon de libellé ni structure JSON arbitraire.';
+
+
+--
+-- Name: CONSTRAINT ck_entite_mention_documentaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_mention_documentaire ON systeme."T_Entite" IS 'Mention documentaire sans caractères de contrôle, à l’exception du saut de ligne pour sa mise en forme.';
 
 
 --
@@ -4951,6 +7221,102 @@ COMMENT ON COLUMN geolocalisation."V_AS_sans_Site"."NomNiveau_4" IS 'Nom de l’
 
 
 --
+-- Name: V_DestinationLogistique; Type: VIEW; Schema: geolocalisation; Owner: -
+--
+
+CREATE VIEW geolocalisation."V_DestinationLogistique" AS
+ SELECT n5."ID_Niveau_5" AS id,
+    n5."NomNiveau_5",
+    n5."CodeNiveau_5",
+    concat_ws(' / '::text, NULLIF(btrim((n0."NomNiveau_0")::text), ''::text), NULLIF(btrim((n1."NomNiveau_1")::text), ''::text),
+        CASE
+            WHEN (NULLIF(btrim((n2."NomNiveau_2")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t2."AbrGenerique")::text), ''::text), NULLIF(btrim((t2."NomGenerique")::text), ''::text), 'Niveau 2'::text), ' · ', btrim((n2."NomNiveau_2")::text))
+            ELSE NULL::text
+        END,
+        CASE
+            WHEN (NULLIF(btrim((n3."NomNiveau_3")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t3."AbrGenerique")::text), ''::text), NULLIF(btrim((t3."NomGenerique")::text), ''::text), 'Niveau 3'::text), ' · ', btrim((n3."NomNiveau_3")::text))
+            ELSE NULL::text
+        END,
+        CASE
+            WHEN (NULLIF(btrim((n4."NomNiveau_4")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t4."AbrGenerique")::text), ''::text), NULLIF(btrim((t4."NomGenerique")::text), ''::text), 'Niveau 4'::text), ' · ', btrim((n4."NomNiveau_4")::text))
+            ELSE NULL::text
+        END,
+        CASE
+            WHEN (NULLIF(btrim((n5."NomNiveau_5")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t5."AbrGenerique")::text), ''::text), NULLIF(btrim((t5."NomGenerique")::text), ''::text), 'Niveau 5'::text), ' · ', btrim((n5."NomNiveau_5")::text))
+            ELSE NULL::text
+        END) AS label,
+    n3."ID_Niveau_3" AS "ID_Niveau_3_Fk",
+    n4."ID_Niveau_4" AS "ID_Niveau_4_Fk",
+    ((NULLIF(btrim((n5."NomNiveau_5")::text), ''::text) IS NOT NULL) AND (n3."ID_Niveau_3" IS NOT NULL) AND (n2."ID_Niveau_2" IS NOT NULL) AND (n1."ID_Niveau_1" IS NOT NULL) AND (n0."ID_Niveau_0" IS NOT NULL) AND ((n5."ID_Niveau_4_Fk" IS NULL) OR (n4."ID_Niveau_4" IS NOT NULL)) AND ((n5."ID_Niveau_3_Fk" IS NULL) OR (n5."ID_Niveau_4_Fk" IS NULL) OR (n5."ID_Niveau_3_Fk" = n4."ID_Niveau_3_Fk"))) AS "EstCoherente"
+   FROM (((((((((geolocalisation."T_Niveau_5" n5
+     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n4."ID_Niveau_4" = n5."ID_Niveau_4_Fk")))
+     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk"))))
+     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n2."ID_Niveau_2" = n3."ID_Niveau_2_FK")))
+     LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n1."ID_Niveau_1" = n2."ID_Niveau_1_FK")))
+     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n0."ID_Niveau_0" = n1."ID_Niveau_0_Fk")))
+     LEFT JOIN referentiel."T_Generique" t2 ON ((t2."ID_Generique" = n2."ID_TypeNiveau_2_Fk")))
+     LEFT JOIN referentiel."T_Generique" t3 ON ((t3."ID_Generique" = n3."ID_TypeNiveau_2_Fk")))
+     LEFT JOIN referentiel."T_Generique" t4 ON ((t4."ID_Generique" = n4."ID_TypeNiveau_4_Fk")))
+     LEFT JOIN referentiel."T_Generique" t5 ON ((t5."ID_Generique" = n5."ID_TypeNiveau_5_Fk")));
+
+
+--
+-- Name: VIEW "V_DestinationLogistique"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON VIEW geolocalisation."V_DestinationLogistique" IS 'Destinations avec types géographiques et sanitaires issus du référentiel commun ; chemin hiérarchique conservé et cohérence des parents contrôlée.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique".id; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique".id IS 'Lieu référencé ou chemin géographique existant : id. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique"."NomNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."NomNiveau_5" IS 'Lieu référencé ou chemin géographique existant : NomNiveau_5. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique"."CodeNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."CodeNiveau_5" IS 'Lieu référencé ou chemin géographique existant : CodeNiveau_5. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique".label; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique".label IS 'Chemin hiérarchique : chaque niveau typé porte l’abréviation réelle du référentiel (AS, ZS, etc.), ou son libellé de type ; aucune classification déduite du nom du lieu.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique"."ID_Niveau_3_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."ID_Niveau_3_Fk" IS 'Lieu référencé ou chemin géographique existant : ID_Niveau_3_Fk. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique"."ID_Niveau_4_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."ID_Niveau_4_Fk" IS 'Lieu référencé ou chemin géographique existant : ID_Niveau_4_Fk. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_DestinationLogistique"."EstCoherente"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."EstCoherente" IS 'Lieu référencé ou chemin géographique existant : EstCoherente. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
 -- Name: V_Niveau_0; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
@@ -6950,6 +9316,672 @@ COMMENT ON SEQUENCE logistique."T_Article_ID_Article_seq" IS 'Séquence de gén�
 
 
 --
+-- Name: T_Avoir; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Avoir" (
+    "ID_Avoir" bigint NOT NULL,
+    "ID_FactureFk" bigint NOT NULL,
+    "ID_CommandeFk" integer NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "CodeAvoir" text NOT NULL,
+    "DateAvoir" timestamp with time zone NOT NULL,
+    "Motif" text NOT NULL,
+    "ID_DeviseFk" integer NOT NULL,
+    "DeviseCode" text NOT NULL,
+    "MontantTTC" numeric(12,2) NOT NULL,
+    "RequestId" uuid NOT NULL,
+    "PayloadHash" text NOT NULL,
+    "TransactionCreation" bigint DEFAULT txid_current() NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_Avoir_MontantTTC_check" CHECK (("MontantTTC" > (0)::numeric)),
+    CONSTRAINT "T_Avoir_Motif_check" CHECK (((length(btrim("Motif")) >= 3) AND (length(btrim("Motif")) <= 2000))),
+    CONSTRAINT "T_Avoir_PayloadHash_check" CHECK (("PayloadHash" ~ '^[a-f0-9]{64}$'::text))
+);
+
+
+--
+-- Name: TABLE "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Avoir" IS 'Avoir immuable correspondant aux retours postérieurs à une facture émise ; sans effet de stock supplémentaire.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."ID_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."ID_Avoir" IS 'Identifiant interne et stable de l’avoir émis.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."ID_FactureFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."ID_FactureFk" IS 'Facture originale et immuable à laquelle se rapporte l’avoir.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."ID_CommandeFk" IS 'Bon original facturé dont les articles ont été retournés.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."IdEntiteFk" IS 'Entreprise propriétaire durable de l’avoir et de sa facture.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."ID_UserFk" IS 'Auteur réel de l’émission, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."CodeAvoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."CodeAvoir" IS 'Référence automatique et immuable avr-identifiant.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."DateAvoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."DateAvoir" IS 'Date et heure effectives de l’émission de l’avoir.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."Motif" IS 'Justification métier de l’avoir après retour facturé.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."ID_DeviseFk" IS 'Devise de la facture d’origine, issue du référentiel.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."DeviseCode" IS 'Code de la devise de la facture, conservé à l’émission.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."MontantTTC" IS 'Montant émis égal à la somme des lignes.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."RequestId" IS 'Identifiant unique du traitement empêchant les doubles envois.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."PayloadHash" IS 'Empreinte canonique à comparer lors du rejeu d’une demande.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."TransactionCreation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."TransactionCreation" IS 'Transaction autorisée à insérer les lignes du nouvel avoir.';
+
+
+--
+-- Name: COLUMN "T_Avoir"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."CreeLe" IS 'Horodatage serveur de l’enregistrement.';
+
+
+--
+-- Name: T_AvoirAffectation; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_AvoirAffectation" (
+    "ID_Affectation" bigint NOT NULL,
+    "ID_AvoirFk" bigint NOT NULL,
+    "ID_CommandeCibleFk" integer NOT NULL,
+    "Montant" numeric(12,2) NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "RequestId" uuid NOT NULL,
+    "PayloadHash" text NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_AvoirAffectation_Montant_check" CHECK (("Montant" > (0)::numeric))
+);
+
+
+--
+-- Name: TABLE "T_AvoirAffectation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_AvoirAffectation" IS 'Imputation immuable d’un avoir sur un solde de facture de même entreprise, devise et tiers.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."ID_Affectation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."ID_Affectation" IS 'Identifiant stable de l’imputation.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."ID_AvoirFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."ID_AvoirFk" IS 'Avoir émis dont dépend cette ligne, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."ID_CommandeCibleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."ID_CommandeCibleFk" IS 'Bon dont la facture reçoit une imputation, sans effet de stock.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."Montant"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."Montant" IS 'Montant positif dans la devise de l’avoir.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."ID_UserFk" IS 'Auteur réel de l’émission, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."RequestId" IS 'Identifiant unique du traitement empêchant les doubles envois.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."PayloadHash" IS 'Empreinte canonique à comparer lors du rejeu d’une demande.';
+
+
+--
+-- Name: COLUMN "T_AvoirAffectation"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirAffectation"."CreeLe" IS 'Horodatage serveur de l’enregistrement.';
+
+
+--
+-- Name: T_AvoirAffectation_ID_Affectation_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_AvoirAffectation" ALTER COLUMN "ID_Affectation" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_AvoirAffectation_ID_Affectation_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_AvoirLigne; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_AvoirLigne" (
+    "ID_AvoirFk" bigint NOT NULL,
+    "ID_ArticleFk" integer NOT NULL,
+    "NomArticle" text NOT NULL,
+    "Unite" text,
+    "Quantite" numeric(14,3) NOT NULL,
+    "PUAvoir" numeric(12,2) NOT NULL,
+    "MontantLigne" numeric(12,2) NOT NULL,
+    CONSTRAINT "T_AvoirLigne_PUAvoir_check" CHECK (("PUAvoir" >= (0)::numeric)),
+    CONSTRAINT "T_AvoirLigne_Quantite_check" CHECK (("Quantite" > (0)::numeric)),
+    CONSTRAINT "T_AvoirLigne_check" CHECK (("MontantLigne" = round(("Quantite" * "PUAvoir"), 2)))
+);
+
+
+--
+-- Name: TABLE "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_AvoirLigne" IS 'Quantités retournées après facturation, au prix de l’instantané original, créditées une seule fois.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."ID_AvoirFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."ID_AvoirFk" IS 'Avoir émis dont dépend cette ligne, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."ID_ArticleFk" IS 'Article de la ligne facturée à l’origine.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."NomArticle" IS 'Désignation figée sur la facture d’origine.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."Unite" IS 'Unité figée sur la facture d’origine.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."Quantite" IS 'Quantité retournée après émission, non encore créditée, dans l’unité facturée.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."PUAvoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."PUAvoir" IS 'Prix unitaire figé de la facture d’origine.';
+
+
+--
+-- Name: COLUMN "T_AvoirLigne"."MontantLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."MontantLigne" IS 'Quantité au prix facturé, arrondie à deux décimales.';
+
+
+--
+-- Name: T_Avoir_ID_Avoir_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Avoir" ALTER COLUMN "ID_Avoir" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Avoir_ID_Avoir_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_CategorieDossierSuivi; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_CategorieDossierSuivi" (
+    "ID_CategorieDossierSuivi" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "IdEntiteFk" integer,
+    "Nom" character varying(80) NOT NULL,
+    "Couleur" character varying(10) DEFAULT 'bleu'::character varying NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_CategorieDossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
+    CONSTRAINT "T_CategorieDossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text))
+);
+
+
+--
+-- Name: TABLE "T_CategorieDossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_CategorieDossierSuivi" IS 'Dossiers de suivi privés : articles, bons de stock ou factures ; aucun effet sur les écritures métier.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."ID_CategorieDossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."ID_CategorieDossierSuivi" IS 'Identifiant permanent de la catégorie de dossiers.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."ID_UserFk" IS 'Propriétaire du classement ; imposé par le compte authentifié et immuable.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."IdEntiteFk" IS 'Organisation du contexte à la création ; nullable et immuable.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."Nom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."Nom" IS 'Libellé métier du dossier ou de sa catégorie.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."Couleur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."Couleur" IS 'Repère visuel de palette ; ne déclenche aucune action sur le stock.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."CreeLe" IS 'Instant de création.';
+
+
+--
+-- Name: COLUMN "T_CategorieDossierSuivi"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_CategorieDossierSuivi"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: T_CategorieDossierSuivi_ID_CategorieDossierSuivi_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_CategorieDossierSuivi" ALTER COLUMN "ID_CategorieDossierSuivi" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_CategorieDossierSuivi_ID_CategorieDossierSuivi_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_Client; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Client" (
+    "ID_Client" bigint CONSTRAINT "T_Client_ID_Client_not_null" NOT NULL,
+    "IdEntiteFk" integer CONSTRAINT "T_Client_IdEntiteFk_not_null" NOT NULL,
+    "Nature" text DEFAULT 'personne'::text CONSTRAINT "T_Client_Nature_not_null" NOT NULL,
+    "ID_TypeClientFk" integer CONSTRAINT "T_Client_ID_TypeClientFk_not_null" NOT NULL,
+    "Nom" text CONSTRAINT "T_Client_Nom_not_null" NOT NULL,
+    "Email" text,
+    "Telephone" text,
+    "Adresse" text,
+    "IdUserFk" integer,
+    "IdProfessionnelFk" integer,
+    "IdEntiteRepresenteeFk" integer,
+    "ObsClient" text,
+    "Actif" boolean DEFAULT true CONSTRAINT "T_Client_Actif_not_null" NOT NULL,
+    "CreeParUserFk" integer CONSTRAINT "T_Client_CreeParUserFk_not_null" NOT NULL,
+    "ModifieParUserFk" integer CONSTRAINT "T_Client_ModifieParUserFk_not_null" NOT NULL,
+    "DateCreation" timestamp with time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Client_DateCreation_not_null" NOT NULL,
+    "DateModification" timestamp with time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Client_DateModification_not_null" NOT NULL,
+    CONSTRAINT "T_Client_Nature_check" CHECK (("Nature" = ANY (ARRAY['personne'::text, 'entreprise'::text]))),
+    CONSTRAINT "T_Client_Nom_check" CHECK ((btrim("Nom") <> ''::text))
+);
+
+
+--
+-- Name: TABLE "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Client" IS 'Tiers collaboratif appartenant durablement à une entreprise, utilisable comme client et fournisseur, sans compte obligatoire.';
+
+
+--
+-- Name: COLUMN "T_Client"."ID_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."ID_Client" IS 'Attribut du tiers : ID_Client. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."IdEntiteFk" IS 'Attribut du tiers : IdEntiteFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Nature"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Nature" IS 'Attribut du tiers : Nature. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."ID_TypeClientFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."ID_TypeClientFk" IS 'Attribut du tiers : ID_TypeClientFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Nom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Nom" IS 'Attribut du tiers : Nom. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Email"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Email" IS 'Attribut du tiers : Email. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Telephone"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Telephone" IS 'Attribut du tiers : Telephone. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Adresse"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Adresse" IS 'Attribut du tiers : Adresse. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."IdUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."IdUserFk" IS 'Attribut du tiers : IdUserFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."IdProfessionnelFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."IdProfessionnelFk" IS 'Attribut du tiers : IdProfessionnelFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."IdEntiteRepresenteeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."IdEntiteRepresenteeFk" IS 'Attribut du tiers : IdEntiteRepresenteeFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."ObsClient"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."ObsClient" IS 'Attribut du tiers : ObsClient. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."Actif" IS 'Attribut du tiers : Actif. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."CreeParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."CreeParUserFk" IS 'Attribut du tiers : CreeParUserFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."ModifieParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."ModifieParUserFk" IS 'Attribut du tiers : ModifieParUserFk. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."DateCreation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."DateCreation" IS 'Attribut du tiers : DateCreation. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: COLUMN "T_Client"."DateModification"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Client"."DateModification" IS 'Attribut du tiers : DateModification. La propriété de l’entreprise est distincte du compte ou professionnel facultatif.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_ID_Client_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_ID_Client_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_IdEntiteFk_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_IdEntiteFk_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_Nature_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_Nature_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_ID_TypeClientFk_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_ID_TypeClientFk_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_Nom_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_Nom_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_Actif_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_Actif_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_CreeParUserFk_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_CreeParUserFk_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_ModifieParUserFk_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_ModifieParUserFk_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_DateCreation_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_DateCreation_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_DateModification_not_null" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_DateModification_not_null" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_Nature_check" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_Nature_check" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: CONSTRAINT "T_Client_Nom_check" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_Nom_check" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client_ID_Client_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Client" ALTER COLUMN "ID_Client" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Client_ID_Client_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: T_Commande; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -6981,6 +10013,10 @@ CREATE TABLE logistique."T_Commande" (
     "DateEcheancePaiement" timestamp with time zone,
     "ID_ModePaiementFk" integer,
     "NomClientSaisi" character varying(255),
+    "ID_DeviseFk" integer DEFAULT logistique.fn_devise_usd() NOT NULL,
+    "IdEntiteFk" integer,
+    "ID_TiersFk" bigint,
+    "ID_DestinationFk" integer,
     CONSTRAINT chk_cmd_montants_non_negatifs CHECK (((("MontantHT" IS NULL) OR ("MontantHT" >= (0)::numeric)) AND (("MontantTTC" IS NULL) OR ("MontantTTC" >= (0)::numeric)) AND (("MontantRegleFacture" IS NULL) OR ("MontantRegleFacture" >= (0)::numeric)) AND (("MontantResteFacture" IS NULL) OR ("MontantResteFacture" >= (0)::numeric))))
 );
 
@@ -7052,7 +10088,7 @@ COMMENT ON COLUMN logistique."T_Commande"."DateCmd" IS 'Date métier de la comma
 -- Name: COLUMN "T_Commande"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Référence métier unique de la commande ; les codes C_000E et C_000S sont exclus de la vue des commandes sans lignes.';
+COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Référence serveur courte immuable : cmd-ID_Commande ; anciens codes conservés dans l’audit de migration20261025_08.';
 
 
 --
@@ -7115,7 +10151,7 @@ COMMENT ON COLUMN logistique."T_Commande"."DateFacture" IS 'Date métier de fact
 -- Name: COLUMN "T_Commande"."CodeFacture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Commande"."CodeFacture" IS 'Référence unique de la facture attachée à la commande ; utilisée pour rattacher les règlements.';
+COMMENT ON COLUMN logistique."T_Commande"."CodeFacture" IS 'Miroir du numéro de facture fac-ID_Commande ; NULL avant émission ; immuable ensuite.';
 
 
 --
@@ -7182,6 +10218,34 @@ COMMENT ON COLUMN logistique."T_Commande"."NomClientSaisi" IS 'Nom du client sai
 
 
 --
+-- Name: COLUMN "T_Commande"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Commande"."ID_DeviseFk" IS 'Devise unique des prix de ligne, totaux du bon et de sa facture ; aucun taux implicite. Immuable dès ligne, mouvement ou règlement.';
+
+
+--
+-- Name: COLUMN "T_Commande"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Commande"."IdEntiteFk" IS 'Entreprise propriétaire obligatoire et immuable ; indépendante de l’affectation future de l’auteur.';
+
+
+--
+-- Name: COLUMN "T_Commande"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Commande"."ID_TiersFk" IS 'Nouvelle FK explicite vers T_Client ; ne convertit pas les anciens ID_ClientFk ambigus.';
+
+
+--
+-- Name: COLUMN "T_Commande"."ID_DestinationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Commande"."ID_DestinationFk" IS 'Destination facultative référencée au dernier niveau géographique existant ; le texte historique geolocalisationCmd reste conservé sans conversion.';
+
+
+--
 -- Name: CONSTRAINT "T_Commande_ID_Commande_not_null" ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
@@ -7238,7 +10302,7 @@ COMMENT ON COLUMN logistique."T_CommandeDetail"."ID_ArticleFk" IS 'Article ratta
 -- Name: COLUMN "T_CommandeDetail"."QteCmdDetail"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_CommandeDetail"."QteCmdDetail" IS 'Quantité de l’article sur la ligne ; les routines installées exigent une quantité strictement positive et entière pour l’impact stock.';
+COMMENT ON COLUMN logistique."T_CommandeDetail"."QteCmdDetail" IS 'Quantité strictement positive exacte, précision0..3 autorisée explicitement par unité de stock.';
 
 
 --
@@ -7326,6 +10390,1300 @@ COMMENT ON SEQUENCE logistique."T_Commande_ID_Commande_seq" IS 'Séquence de gé
 
 
 --
+-- Name: T_DocumentIdentite; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_DocumentIdentite" (
+    "ID_DocumentIdentite" bigint NOT NULL,
+    "TypeObjet" text NOT NULL,
+    "ID_Objet" bigint NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "IdentiteEmetteur" jsonb NOT NULL,
+    "IdentiteTiers" jsonb,
+    "RepriseHistorique" boolean DEFAULT false NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_DocumentIdentite_ID_Objet_check" CHECK (("ID_Objet" > 0)),
+    CONSTRAINT "T_DocumentIdentite_IdentiteEmetteur_check" CHECK ((jsonb_typeof("IdentiteEmetteur") = 'object'::text)),
+    CONSTRAINT "T_DocumentIdentite_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text])))
+);
+
+
+--
+-- Name: TABLE "T_DocumentIdentite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_DocumentIdentite" IS 'Instantané privé de l’identité de l’émetteur et du tiers à la création du document ; reprises historiques signalées.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."ID_DocumentIdentite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."ID_DocumentIdentite" IS 'Champ documentaire ID_DocumentIdentite du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."TypeObjet" IS 'Champ documentaire TypeObjet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."ID_Objet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."ID_Objet" IS 'Champ documentaire ID_Objet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."IdEntiteFk" IS 'Entreprise propriétaire du document, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."IdentiteEmetteur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."IdentiteEmetteur" IS 'Nom et coordonnées de l’entreprise figés pour l’édition du document.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."IdentiteTiers"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."IdentiteTiers" IS 'Identité facultative du client ou fournisseur à la création du document.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."RepriseHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."RepriseHistorique" IS 'Identité reprise lors de l’installation, sans prétendre connaître l’identité antérieure.';
+
+
+--
+-- Name: COLUMN "T_DocumentIdentite"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DocumentIdentite"."CreeLe" IS 'Champ documentaire CreeLe du justificatif ou de son identité historique.';
+
+
+--
+-- Name: T_DocumentIdentite_ID_DocumentIdentite_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_DocumentIdentite" ALTER COLUMN "ID_DocumentIdentite" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_DocumentIdentite_ID_DocumentIdentite_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_DossierSuivi; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_DossierSuivi" (
+    "ID_DossierSuivi" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "IdEntiteFk" integer,
+    "ID_CategorieDossierSuiviFk" integer,
+    "Nom" character varying(120) NOT NULL,
+    "Description" character varying(1000) DEFAULT ''::character varying NOT NULL,
+    "Couleur" character varying(10) DEFAULT 'bleu'::character varying NOT NULL,
+    "TypeObjet" character varying(10) NOT NULL,
+    "Mode" character varying(12) NOT NULL,
+    "Regles" jsonb DEFAULT '{}'::jsonb NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Version" integer DEFAULT 1 NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_DossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_Mode_check" CHECK ((("Mode")::text = ANY ((ARRAY['manuel'::character varying, 'automatique'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
+    CONSTRAINT "T_DossierSuivi_TypeObjet_check" CHECK ((("TypeObjet")::text = ANY ((ARRAY['article'::character varying, 'bon'::character varying, 'facture'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_Version_check" CHECK (("Version" > 0)),
+    CONSTRAINT "T_DossierSuivi_check" CHECK (((jsonb_typeof("Regles") = 'object'::text) AND (("Regles" -
+CASE "TypeObjet"
+    WHEN 'article'::text THEN ARRAY['q'::text, 'categorieId'::text, 'typeId'::text, 'uniteId'::text, 'statut'::text, 'stockState'::text, 'peremption'::text]
+    WHEN 'bon'::text THEN ARRAY['q'::text, 'client'::text, 'typeId'::text, 'statutId'::text, 'etatBon'::text]
+    ELSE ARRAY['q'::text, 'client'::text, 'etatFacture'::text]
+END) = '{}'::jsonb))),
+    CONSTRAINT "T_DossierSuivi_check1" CHECK ((((("Mode")::text = 'manuel'::text) AND ("Regles" = '{}'::jsonb)) OR ((("Mode")::text = 'automatique'::text) AND ("Regles" <> '{}'::jsonb))))
+);
+
+
+--
+-- Name: TABLE "T_DossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_DossierSuivi" IS 'Dossiers de suivi privés : articles, bons de stock ou factures ; aucun effet sur les écritures métier.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."ID_DossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."ID_DossierSuivi" IS 'Identifiant permanent du dossier ; indépendant de son libellé.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."ID_UserFk" IS 'Propriétaire du classement ; imposé par le compte authentifié et immuable.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."IdEntiteFk" IS 'Organisation du contexte à la création ; nullable et immuable.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."ID_CategorieDossierSuiviFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."ID_CategorieDossierSuiviFk" IS 'Catégorie de classement du même propriétaire et du même périmètre.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Nom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Nom" IS 'Libellé métier du dossier ou de sa catégorie.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Description"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Description" IS 'Description facultative du suivi.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Couleur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Couleur" IS 'Repère visuel de palette ; ne déclenche aucune action sur le stock.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."TypeObjet" IS 'Type immuable du dossier : article, bon ou facture. Une facture correspond au bon portant sa référence de facture dans le modèle actuel.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Mode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Mode" IS 'manuel pour les rattachements explicites, automatique pour une sélection dynamique.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Regles"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Regles" IS 'Critères JSON autorisés selon TypeObjet, interprétés par le serveur ; aucun fragment SQL utilisateur.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."Version" IS 'Version de concurrence optimiste des métadonnées du dossier.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."CreeLe" IS 'Instant de création.';
+
+
+--
+-- Name: COLUMN "T_DossierSuivi"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuivi"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: T_DossierSuiviMembre; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_DossierSuiviMembre" (
+    "ID_DossierSuiviFk" integer NOT NULL,
+    "ID_ArticleFk" integer,
+    "ID_CommandeFk" integer,
+    "ID_Membre" integer NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "AjouteLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_DossierSuiviMembre_check" CHECK ((num_nonnulls("ID_ArticleFk", "ID_CommandeFk") = 1))
+);
+
+
+--
+-- Name: TABLE "T_DossierSuiviMembre"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_DossierSuiviMembre" IS 'Dossiers de suivi privés : articles, bons de stock ou factures ; aucun effet sur les écritures métier.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."ID_DossierSuiviFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."ID_DossierSuiviFk" IS 'Dossier manuel actif du rattachement.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."ID_ArticleFk" IS 'Article classé ; clé de la vue et de la table article existantes.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."ID_CommandeFk" IS 'Bon classé, ou bon portant la facture classée ; exclusif de ID_ArticleFk. La facture reste soumise à son existence actuelle.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."ID_Membre"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."ID_Membre" IS 'Identifiant permanent du rattachement ; unicité par dossier et objet classé.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."AjouteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."AjouteLe" IS 'Date du premier rattachement manuel ; conservée lors d’une réactivation.';
+
+
+--
+-- Name: COLUMN "T_DossierSuiviMembre"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_DossierSuiviMembre"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: T_DossierSuiviMembre_ID_Membre_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_DossierSuiviMembre" ALTER COLUMN "ID_Membre" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_DossierSuiviMembre_ID_Membre_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_DossierSuivi_ID_DossierSuivi_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_DossierSuivi" ALTER COLUMN "ID_DossierSuivi" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_DossierSuivi_ID_DossierSuivi_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_Facture; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Facture" (
+    "ID_Facture" bigint CONSTRAINT "T_Facture_ID_Facture_not_null" NOT NULL,
+    "ID_CommandeFk" integer CONSTRAINT "T_Facture_ID_CommandeFk_not_null" NOT NULL,
+    "CodeFacture" character varying(255) CONSTRAINT "T_Facture_CodeFacture_not_null" NOT NULL,
+    "ID_UserFk" integer CONSTRAINT "T_Facture_ID_UserFk_not_null" NOT NULL,
+    "IdEntiteFk" integer CONSTRAINT "T_Facture_IdEntiteFk_not_null" NOT NULL,
+    "RequestId" uuid CONSTRAINT "T_Facture_RequestId_not_null" NOT NULL,
+    "PayloadHash" text CONSTRAINT "T_Facture_PayloadHash_not_null" NOT NULL,
+    "DateFacture" timestamp with time zone CONSTRAINT "T_Facture_DateFacture_not_null" NOT NULL,
+    "DateEcheancePaiement" timestamp with time zone CONSTRAINT "T_Facture_DateEcheancePaiement_not_null" NOT NULL,
+    "ID_ModePaiementFk" integer,
+    "ID_ConditionPaiementFk" integer,
+    "DelaiJours" integer,
+    "ID_DeviseFk" integer CONSTRAINT "T_Facture_ID_DeviseFk_not_null" NOT NULL,
+    "DeviseCode" text CONSTRAINT "T_Facture_DeviseCode_not_null" NOT NULL,
+    "DeviseLibelle" text CONSTRAINT "T_Facture_DeviseLibelle_not_null" NOT NULL,
+    "MontantHT" numeric(12,2) CONSTRAINT "T_Facture_MontantHT_not_null" NOT NULL,
+    "MontantTTC" numeric(12,2) CONSTRAINT "T_Facture_MontantTTC_not_null" NOT NULL,
+    "TransactionCreation" bigint DEFAULT txid_current() CONSTRAINT "T_Facture_TransactionCreation_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Facture_CreeLe_not_null" NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Facture_ModifieLe_not_null" NOT NULL,
+    CONSTRAINT "T_Facture_DelaiJours_check" CHECK (("DelaiJours" >= 0)),
+    CONSTRAINT "T_Facture_DeviseCode_check" CHECK (("DeviseCode" ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT "T_Facture_MontantHT_check" CHECK (("MontantHT" > (0)::numeric)),
+    CONSTRAINT "T_Facture_PayloadHash_check" CHECK (("PayloadHash" ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT "T_Facture_check" CHECK (("MontantTTC" = "MontantHT")),
+    CONSTRAINT ck_facture_echeance CHECK (("DateEcheancePaiement" >= "DateFacture"))
+);
+
+
+--
+-- Name: TABLE "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Facture" IS 'Une facture par bon de sortie ; total net figé à l’émission, sans effet de stock ni taxe implicite.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_Facture" IS 'Identité interne de la facture, indépendante du code lisible.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_CommandeFk" IS 'Bon de sortie d’origine ; une seule facture émise par bon.';
+
+
+--
+-- Name: COLUMN "T_Facture"."CodeFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."CodeFacture" IS 'Numéro serveur immuable fac-ID_Commande du bon facturé ; valeurs historiques renommées et mappées dans l’audit08.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_UserFk" IS 'Auteur de l’émission de la facture.';
+
+
+--
+-- Name: COLUMN "T_Facture"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."IdEntiteFk" IS 'Organisation figée lors de l’émission.';
+
+
+--
+-- Name: COLUMN "T_Facture"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."RequestId" IS 'Identifiant de la demande pour les rejeux idempotents.';
+
+
+--
+-- Name: COLUMN "T_Facture"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."PayloadHash" IS 'Empreinte exacte de la demande d’émission, sans secret.';
+
+
+--
+-- Name: COLUMN "T_Facture"."DateFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."DateFacture" IS 'Date et heure d’émission métier, modifiables seulement avant règlement.';
+
+
+--
+-- Name: COLUMN "T_Facture"."DateEcheancePaiement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."DateEcheancePaiement" IS 'Échéance explicite ; jamais déduite d’un identifiant de référence.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_ModePaiementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_ModePaiementFk" IS 'Mode de paiement du référentiel catégorie36.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_ConditionPaiementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_ConditionPaiementFk" IS 'Condition de paiement du référentiel catégorie37.';
+
+
+--
+-- Name: COLUMN "T_Facture"."DelaiJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."DelaiJours" IS 'Nombre de jours uniquement lorsque la condition les écrit explicitement ; NULL sinon.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ID_DeviseFk" IS 'Devise du bon figée à l’émission.';
+
+
+--
+-- Name: COLUMN "T_Facture"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."DeviseCode" IS 'Code de devise copié à l’émission.';
+
+
+--
+-- Name: COLUMN "T_Facture"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."DeviseLibelle" IS 'Libellé de devise copié à l’émission.';
+
+
+--
+-- Name: COLUMN "T_Facture"."MontantHT"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."MontantHT" IS 'Somme des lignes nettes facturées ; aucune taxe créée implicitement.';
+
+
+--
+-- Name: COLUMN "T_Facture"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."MontantTTC" IS 'Montant exigible figé, égal au HT en l’absence de taxe explicite.';
+
+
+--
+-- Name: COLUMN "T_Facture"."TransactionCreation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."TransactionCreation" IS 'Transaction d’émission ; borne la création des lignes à la même transaction.';
+
+
+--
+-- Name: COLUMN "T_Facture"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."CreeLe" IS 'Horodatage technique de création immuable.';
+
+
+--
+-- Name: COLUMN "T_Facture"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."ModifieLe" IS 'Dernière modification autorisée des métadonnées.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_Facture_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_Facture_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_CommandeFk_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_CommandeFk_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_CodeFacture_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_CodeFacture_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_UserFk_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_UserFk_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_IdEntiteFk_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_IdEntiteFk_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_RequestId_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_RequestId_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_PayloadHash_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_PayloadHash_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DateFacture_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DateFacture_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DateEcheancePaiement_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DateEcheancePaiement_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_DeviseFk_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_DeviseFk_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DeviseCode_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DeviseCode_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DeviseLibelle_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DeviseLibelle_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_MontantHT_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_MontantHT_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_MontantTTC_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_MontantTTC_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_TransactionCreation_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_TransactionCreation_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_CreeLe_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_CreeLe_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ModifieLe_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ModifieLe_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DelaiJours_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DelaiJours_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_DeviseCode_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_DeviseCode_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_MontantHT_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_MontantHT_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_PayloadHash_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_PayloadHash_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_Facture_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT ck_facture_echeance ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_facture_echeance ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_FactureLigne; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_FactureLigne" (
+    "ID_FactureLigne" bigint CONSTRAINT "T_FactureLigne_ID_FactureLigne_not_null" NOT NULL,
+    "ID_FactureFk" bigint CONSTRAINT "T_FactureLigne_ID_FactureFk_not_null" NOT NULL,
+    "ID_CmdFk" integer CONSTRAINT "T_FactureLigne_ID_CmdFk_not_null" NOT NULL,
+    "ID_ArticleFk" integer CONSTRAINT "T_FactureLigne_ID_ArticleFk_not_null" NOT NULL,
+    "NomArticle" text CONSTRAINT "T_FactureLigne_NomArticle_not_null" NOT NULL,
+    "CodeArticleInterne" text,
+    "Unite" text,
+    "QteSortie" numeric(14,3) CONSTRAINT "T_FactureLigne_QteSortie_not_null" NOT NULL,
+    "QteRetourAvantFacture" numeric(14,3) CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_not_null" NOT NULL,
+    "QteFacturee" numeric(14,3) CONSTRAINT "T_FactureLigne_QteFacturee_not_null" NOT NULL,
+    "PUFacture" numeric(12,2) CONSTRAINT "T_FactureLigne_PUFacture_not_null" NOT NULL,
+    "MontantLigne" numeric(12,2) CONSTRAINT "T_FactureLigne_MontantLigne_not_null" NOT NULL,
+    CONSTRAINT "T_FactureLigne_PUFacture_check" CHECK (("PUFacture" >= (0)::numeric)),
+    CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_check" CHECK (("QteRetourAvantFacture" >= (0)::numeric)),
+    CONSTRAINT "T_FactureLigne_QteSortie_check" CHECK (("QteSortie" > (0)::numeric)),
+    CONSTRAINT "T_FactureLigne_check" CHECK ((("QteFacturee" > (0)::numeric) AND ("QteFacturee" = ("QteSortie" - "QteRetourAvantFacture")))),
+    CONSTRAINT facture_ligne_montant_arrondi CHECK (("MontantLigne" = round(("QteFacturee" * "PUFacture"), 2)))
+);
+
+
+--
+-- Name: TABLE "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_FactureLigne" IS 'Copie financière des lignes nettes au moment de l’émission ; noms, unité, prix et quantités historiques immuables.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."ID_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."ID_FactureLigne" IS 'Identité interne de la ligne financière.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."ID_FactureFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."ID_FactureFk" IS 'Facture à laquelle appartient la ligne.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."ID_CmdFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."ID_CmdFk" IS 'Bon de sortie de la ligne d’origine.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."ID_ArticleFk" IS 'Article de la ligne d’origine.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."NomArticle" IS 'Désignation copiée lors de l’émission.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."CodeArticleInterne" IS 'Code article copié lors de l’émission.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."Unite" IS 'Unité copiée lors de l’émission ; aucune somme entre unités incompatibles.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."QteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."QteSortie" IS 'Quantité originale exacte de sortie dans l’unité figée sur la facture.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."QteRetourAvantFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."QteRetourAvantFacture" IS 'Quantité exacte restituée avant émission de la facture.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."QteFacturee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."QteFacturee" IS 'Quantité nette exacte facturée après restitutions antérieures.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."PUFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."PUFacture" IS 'Prix unitaire explicite du bon, copié sans conversion.';
+
+
+--
+-- Name: COLUMN "T_FactureLigne"."MontantLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."MontantLigne" IS 'Quantité nette facturée multipliée par le prix historique.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_ID_FactureLigne_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_ID_FactureLigne_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_ID_FactureFk_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_ID_FactureFk_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_ID_CmdFk_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_ID_CmdFk_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_ID_ArticleFk_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_ID_ArticleFk_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_NomArticle_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_NomArticle_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_QteSortie_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_QteSortie_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_QteFacturee_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_QteFacturee_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_PUFacture_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_PUFacture_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_MontantLigne_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_MontantLigne_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_PUFacture_check" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_PUFacture_check" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_check" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_check" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_QteSortie_check" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_QteSortie_check" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_check" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_check" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: CONSTRAINT facture_ligne_montant_arrondi ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT facture_ligne_montant_arrondi ON logistique."T_FactureLigne" IS 'Montant arrondi par ligne à deux décimales selon PostgreSQL numeric, avant sommation.';
+
+
+--
+-- Name: T_FactureLigne_ID_FactureLigne_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_FactureLigne" ALTER COLUMN "ID_FactureLigne" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_FactureLigne_ID_FactureLigne_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_Facture_ID_Facture_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Facture" ALTER COLUMN "ID_Facture" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Facture_ID_Facture_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_Inventaire; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Inventaire" (
+    "ID_Inventaire" bigint NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "DateInventaire" timestamp with time zone NOT NULL,
+    "Motif" text NOT NULL,
+    "Etat" text DEFAULT 'brouillon'::text NOT NULL,
+    "Version" bigint DEFAULT 1 NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "ValideLe" timestamp with time zone,
+    "ID_ValidateurFk" integer,
+    "ValidationRequest" uuid,
+    "ValidationHash" text,
+    "AnnuleLe" timestamp with time zone,
+    "ID_AnnulateurFk" integer,
+    "MotifAnnulation" text,
+    "AnnulationRequest" uuid,
+    "AnnulationHash" text,
+    CONSTRAINT "T_Inventaire_Motif_check" CHECK (((length(btrim("Motif")) >= 1) AND (length(btrim("Motif")) <= 1000))),
+    CONSTRAINT inventaire_annulation CHECK (((("Etat" = 'annule'::text) AND ("AnnuleLe" IS NOT NULL) AND ("ID_AnnulateurFk" IS NOT NULL) AND ("MotifAnnulation" IS NOT NULL) AND ((length(btrim("MotifAnnulation")) >= 1) AND (length(btrim("MotifAnnulation")) <= 1000)) AND ("AnnulationRequest" IS NOT NULL) AND ("AnnulationHash" IS NOT NULL)) OR (("Etat" <> 'annule'::text) AND ("AnnuleLe" IS NULL) AND ("ID_AnnulateurFk" IS NULL) AND ("MotifAnnulation" IS NULL) AND ("AnnulationRequest" IS NULL) AND ("AnnulationHash" IS NULL)))),
+    CONSTRAINT inventaire_etat CHECK (("Etat" = ANY (ARRAY['brouillon'::text, 'valide'::text, 'annule'::text]))),
+    CONSTRAINT inventaire_validation CHECK ((("Etat" = ANY (ARRAY['valide'::text, 'annule'::text])) = (("ValideLe" IS NOT NULL) AND ("ID_ValidateurFk" IS NOT NULL) AND ("ValidationRequest" IS NOT NULL) AND ("ValidationHash" IS NOT NULL))))
+);
+
+
+--
+-- Name: TABLE "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Inventaire" IS 'Comptage physique versionné par entreprise ; validation justifiée et bons compensateurs, sans effacer le journal des mouvements.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ID_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ID_Inventaire" IS 'Donnée ID_Inventaire de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."IdEntiteFk" IS 'Entreprise propriétaire stable ; ne découle jamais du rattachement actuel de l’auteur.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ID_UserFk" IS 'Donnée ID_UserFk de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."DateInventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."DateInventaire" IS 'Donnée DateInventaire de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."Motif" IS 'Donnée Motif de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."Etat"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."Etat" IS 'Donnée Etat de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."Version" IS 'Version optimiste incrémentée à chaque modification, indépendante des variations de stock.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."CreeLe" IS 'Donnée CreeLe de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ModifieLe" IS 'Donnée ModifieLe de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ValideLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ValideLe" IS 'Donnée ValideLe de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ID_ValidateurFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ID_ValidateurFk" IS 'Donnée ID_ValidateurFk de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ValidationRequest"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ValidationRequest" IS 'Identifiant de demande idempotente de validation ; un rejeu identique conserve les mêmes bons.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ValidationHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ValidationHash" IS 'Donnée ValidationHash de T_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."AnnuleLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."AnnuleLe" IS 'Date et heure de l’annulation ; la validation originale reste conservée.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."ID_AnnulateurFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."ID_AnnulateurFk" IS 'Administrateur autorisé ayant demandé l’annulation dans cette entreprise.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."MotifAnnulation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."MotifAnnulation" IS 'Motif obligatoire, conservé avec les bons compensateurs.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."AnnulationRequest"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."AnnulationRequest" IS 'Demande idempotente : un rejeu identique ne recrée pas les mouvements.';
+
+
+--
+-- Name: COLUMN "T_Inventaire"."AnnulationHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Inventaire"."AnnulationHash" IS 'Empreinte de la demande, incluant motif et version initiale.';
+
+
+--
+-- Name: CONSTRAINT inventaire_annulation ON "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT inventaire_annulation ON logistique."T_Inventaire" IS 'Annulation complète, motivée, datée et identifiée ; aucune métadonnée d’annulation sur les autres états.';
+
+
+--
+-- Name: CONSTRAINT inventaire_etat ON "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT inventaire_etat ON logistique."T_Inventaire" IS 'Brouillon, validation conservée ou validation annulée par compensation.';
+
+
+--
+-- Name: CONSTRAINT inventaire_validation ON "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT inventaire_validation ON logistique."T_Inventaire" IS 'Conserve les preuves de validation après annulation.';
+
+
+--
+-- Name: T_InventaireLigne; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_InventaireLigne" (
+    "ID_InventaireFk" bigint NOT NULL,
+    "ID_ArticleFk" integer NOT NULL,
+    "QteTheorique" numeric(14,3) NOT NULL,
+    "QteComptee" numeric(14,3) NOT NULL,
+    "PUCorrection" numeric(12,2),
+    "Lots" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    "Justification" text NOT NULL,
+    "ID_CommandeCorrectionFk" integer,
+    "ID_CommandeAnnulationFk" integer,
+    CONSTRAINT "T_InventaireLigne_Justification_check" CHECK (((length(btrim("Justification")) >= 1) AND (length(btrim("Justification")) <= 1000))),
+    CONSTRAINT "T_InventaireLigne_Lots_check" CHECK ((jsonb_typeof("Lots") = 'array'::text)),
+    CONSTRAINT "T_InventaireLigne_PUCorrection_check" CHECK (("PUCorrection" >= (0)::numeric)),
+    CONSTRAINT "T_InventaireLigne_QteComptee_check" CHECK (("QteComptee" >= (0)::numeric)),
+    CONSTRAINT "T_InventaireLigne_QteTheorique_check" CHECK (("QteTheorique" >= (0)::numeric))
+);
+
+
+--
+-- Name: TABLE "T_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_InventaireLigne" IS 'Stock théorique au comptage, quantité comptée et lots du seul écart ; chaque écart non nul est relié à une ligne de bon correcteur.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."ID_InventaireFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."ID_InventaireFk" IS 'Donnée ID_InventaireFk de T_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."ID_ArticleFk" IS 'Donnée ID_ArticleFk de T_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."QteTheorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."QteTheorique" IS 'Stock exact capturé lors de la préparation du comptage, contrôlé de nouveau sous verrou à la validation.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."QteComptee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."QteComptee" IS 'Quantité physique saisie explicitement ; zéro est un comptage, absence est refusée.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."PUCorrection"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."PUCorrection" IS 'Donnée PUCorrection de T_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."Lots"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."Lots" IS 'Ventilation JSON des seuls écarts : numéro, quantité exacte et péremption facultative ; aucun mouvement autonome.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."Justification"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."Justification" IS 'Donnée Justification de T_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."ID_CommandeCorrectionFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."ID_CommandeCorrectionFk" IS 'Donnée ID_CommandeCorrectionFk de T_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "T_InventaireLigne"."ID_CommandeAnnulationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_InventaireLigne"."ID_CommandeAnnulationFk" IS 'Bon inverse unique de cette ligne ; même quantité, prix, devise et lots que la correction originale.';
+
+
+--
+-- Name: T_Inventaire_ID_Inventaire_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Inventaire" ALTER COLUMN "ID_Inventaire" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Inventaire_ID_Inventaire_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_LotArticle; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_LotArticle" (
+    "ID_LotArticle" integer NOT NULL,
+    "ID_ArticleFk" integer NOT NULL,
+    "NumeroLot" character varying(100) NOT NULL,
+    "DatePeremptionLot" date,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_LotArticle_NumeroLot_check" CHECK ((btrim(("NumeroLot")::text) <> ''::text))
+);
+
+
+--
+-- Name: TABLE "T_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_LotArticle" IS 'Lots identifiés par article et numéro reçu ; aucun stock copié sur cette table.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."ID_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."ID_LotArticle" IS 'Identifiant stable du lot.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."ID_ArticleFk" IS 'Article auquel appartient le lot ; relation immuable.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."NumeroLot" IS 'Numéro communiqué lors de la réception, unique pour cet article sans distinction de casse.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."DatePeremptionLot" IS 'Date propre au lot ; NULL signifie non renseignée.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."Actif" IS 'Disponibilité du lot pour de nouvelles saisies.';
+
+
+--
+-- Name: COLUMN "T_LotArticle"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_LotArticle"."CreeLe" IS 'Instant de première identification du lot.';
+
+
+--
+-- Name: T_LotArticle_ID_LotArticle_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_LotArticle" ALTER COLUMN "ID_LotArticle" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_LotArticle_ID_LotArticle_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: T_Mouvement; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -7336,9 +11694,10 @@ CREATE TABLE logistique."T_Mouvement" (
     "ID_cmdFk" integer,
     "DateHeureAutoMvt" timestamp without time zone,
     "DateMvt" timestamp without time zone,
-    "QteMvt" integer,
+    "QteMvt" numeric(14,3),
     "PUMvt" numeric(12,2),
-    CONSTRAINT chk_mvt_qte_non_negative CHECK ((("QteMvt" IS NULL) OR ("QteMvt" >= 0)))
+    "ID_DeviseFk" integer NOT NULL,
+    CONSTRAINT chk_mvt_qte_non_negative CHECK ((("QteMvt" IS NULL) OR ("QteMvt" >= (0)::numeric)))
 );
 
 
@@ -7395,7 +11754,7 @@ COMMENT ON COLUMN logistique."T_Mouvement"."DateMvt" IS 'Date métier du mouveme
 -- Name: COLUMN "T_Mouvement"."QteMvt"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Mouvement"."QteMvt" IS 'Quantité entière du mouvement ; le signe entrée/sortie vient du type de mouvement, pas du signe de cette quantité.';
+COMMENT ON COLUMN logistique."T_Mouvement"."QteMvt" IS 'Quantité positive exacte à trois décimales au maximum ; sens porté par le type, précision autorisée par l’unité de stock.';
 
 
 --
@@ -7403,6 +11762,13 @@ COMMENT ON COLUMN logistique."T_Mouvement"."QteMvt" IS 'Quantité entière du mo
 --
 
 COMMENT ON COLUMN logistique."T_Mouvement"."PUMvt" IS 'Prix unitaire historique du mouvement : prix de ligne pour une commande, prix de vente article pour l’ajustement direct produit par le trigger actuel.';
+
+
+--
+-- Name: COLUMN "T_Mouvement"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Mouvement"."ID_DeviseFk" IS 'Instantané de la devise du bon source ou de l’article pour un ajustement initial/direct ; conservé même si le bon disparaît.';
 
 
 --
@@ -7417,6 +11783,71 @@ COMMENT ON CONSTRAINT "T_Mouvement_ID_Mvt_not_null" ON logistique."T_Mouvement" 
 --
 
 COMMENT ON CONSTRAINT chk_mvt_qte_non_negative ON logistique."T_Mouvement" IS 'Contrôle de cohérence des valeurs autorisées dans "logistique"."T_Mouvement". Définition : CHECK ("QteMvt" IS NULL OR "QteMvt" >= 0).';
+
+
+--
+-- Name: T_MouvementLot; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_MouvementLot" (
+    "ID_MvtFk" integer NOT NULL,
+    "ID_LotArticleFk" integer NOT NULL,
+    "Quantite" numeric(14,3) NOT NULL,
+    "MotifDerogationPeremption" text,
+    "ID_DerogationUserFk" integer,
+    "DateDerogationPeremption" timestamp with time zone,
+    CONSTRAINT "T_MouvementLot_Quantite_check" CHECK (("Quantite" > (0)::numeric)),
+    CONSTRAINT mouvement_lot_derogation_complete CHECK (((("MotifDerogationPeremption" IS NULL) AND ("ID_DerogationUserFk" IS NULL) AND ("DateDerogationPeremption" IS NULL)) OR (("MotifDerogationPeremption" IS NOT NULL) AND ((length(btrim("MotifDerogationPeremption")) >= 10) AND (length(btrim("MotifDerogationPeremption")) <= 1000)) AND ("ID_DerogationUserFk" IS NOT NULL) AND ("DateDerogationPeremption" IS NOT NULL))))
+);
+
+
+--
+-- Name: TABLE "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_MouvementLot" IS 'Ventilation d’un mouvement existant par lot ; ne modifie jamais une seconde fois le stock global.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."ID_MvtFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."ID_MvtFk" IS 'Mouvement source, créé par les triggers de stock existants.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."ID_LotArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."ID_LotArticleFk" IS 'Lot du même article que le mouvement.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."Quantite" IS 'Quantité positive exacte affectée au lot, même unité et précision que son mouvement, sans second effet sur le stock.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."MotifDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."MotifDerogationPeremption" IS 'Justification explicite d’un prélèvement périmé, conservée avec sa ventilation historique ; aucun effet de stock supplémentaire.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."ID_DerogationUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."ID_DerogationUserFk" IS 'Compte global autorisant le prélèvement périmé ; distinct de l’auteur initial du bon.';
+
+
+--
+-- Name: COLUMN "T_MouvementLot"."DateDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_MouvementLot"."DateDerogationPeremption" IS 'Horodatage serveur de la dérogation de péremption.';
 
 
 --
@@ -7441,6 +11872,214 @@ COMMENT ON SEQUENCE logistique."T_Mouvement_ID_Mvt_seq" IS 'Séquence de génér
 
 
 --
+-- Name: T_PieceJustificative; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_PieceJustificative" (
+    "ID_Piece" bigint NOT NULL,
+    "TypeObjet" text NOT NULL,
+    "ID_Objet" bigint NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "NomFichier" character varying(180) NOT NULL,
+    "MimeType" text NOT NULL,
+    "TailleOctets" integer NOT NULL,
+    "Sha256" text NOT NULL,
+    "Contenu" bytea NOT NULL,
+    "Archive" boolean DEFAULT false NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_PieceJustificative_ID_Objet_check" CHECK (("ID_Objet" > 0)),
+    CONSTRAINT "T_PieceJustificative_MimeType_check" CHECK (("MimeType" = ANY (ARRAY['application/pdf'::text, 'image/jpeg'::text, 'image/png'::text, 'image/webp'::text]))),
+    CONSTRAINT "T_PieceJustificative_NomFichier_check" CHECK ((length(btrim(("NomFichier")::text)) > 0)),
+    CONSTRAINT "T_PieceJustificative_Sha256_check" CHECK (("Sha256" ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT "T_PieceJustificative_TailleOctets_check" CHECK ((("TailleOctets" > 0) AND ("TailleOctets" <= 8388608))),
+    CONSTRAINT "T_PieceJustificative_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text]))),
+    CONSTRAINT "T_PieceJustificative_check" CHECK ((octet_length("Contenu") = "TailleOctets"))
+);
+
+
+--
+-- Name: TABLE "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_PieceJustificative" IS 'Justificatifs privés de documents logistiques, téléchargés après contrôle du parent et conservés après archivage.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."ID_Piece"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."ID_Piece" IS 'Champ documentaire ID_Piece du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."TypeObjet" IS 'Champ documentaire TypeObjet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."ID_Objet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."ID_Objet" IS 'Champ documentaire ID_Objet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."IdEntiteFk" IS 'Entreprise propriétaire du document, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."ID_UserFk" IS 'Champ documentaire ID_UserFk du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."NomFichier"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."NomFichier" IS 'Champ documentaire NomFichier du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."MimeType"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."MimeType" IS 'Champ documentaire MimeType du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."TailleOctets"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."TailleOctets" IS 'Champ documentaire TailleOctets du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."Sha256"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."Sha256" IS 'Empreinte du contenu binaire enregistré.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."Contenu"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."Contenu" IS 'Fichier privé limité à 8 Mo, jamais servi par un chemin public.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."Archive"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."Archive" IS 'Pièce retirée du parcours actif, contenu et historique conservés.';
+
+
+--
+-- Name: COLUMN "T_PieceJustificative"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PieceJustificative"."CreeLe" IS 'Champ documentaire CreeLe du justificatif ou de son identité historique.';
+
+
+--
+-- Name: T_PieceJustificative_ID_Piece_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_PieceJustificative" ALTER COLUMN "ID_Piece" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_PieceJustificative_ID_Piece_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_PrecisionStock; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_PrecisionStock" (
+    "ID_PrecisionStock" integer NOT NULL,
+    "ID_UniteFk" integer NOT NULL,
+    "DecimalesStock" smallint DEFAULT 0 NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT precision_stock_decimales CHECK ((("DecimalesStock" >= 0) AND ("DecimalesStock" <= 3)))
+);
+
+
+--
+-- Name: TABLE "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_PrecisionStock" IS 'Politique logistique partagée de précision des quantités par unité du référentiel ; une ligne au plus par unité, de zéro à trois décimales, sans variation des stocks.';
+
+
+--
+-- Name: COLUMN "T_PrecisionStock"."ID_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PrecisionStock"."ID_PrecisionStock" IS 'Identité technique de la politique ; distincte de l’identifiant de l’unité, attribuée automatiquement et immuable.';
+
+
+--
+-- Name: COLUMN "T_PrecisionStock"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PrecisionStock"."ID_UniteFk" IS 'Unité de stock partagée : FK vers referentiel.T_Generique.ID_Generique, limitée à la catégorie Unités (34), comme T_Article.ID_UniteFk.';
+
+
+--
+-- Name: COLUMN "T_PrecisionStock"."DecimalesStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PrecisionStock"."DecimalesStock" IS 'Nombre explicite de décimales autorisées, entre zéro et trois ; une réduction incompatible avec les quantités courantes ou historiques est refusée.';
+
+
+--
+-- Name: COLUMN "T_PrecisionStock"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_PrecisionStock"."ModifieLe" IS 'Horodatage du dernier changement effectif de précision ; date source conservée à la reprise, ou date réelle d’initialisation en l’absence de réglage antérieur.';
+
+
+--
+-- Name: CONSTRAINT precision_stock_decimales ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT precision_stock_decimales ON logistique."T_PrecisionStock" IS 'Précision physique bornée entre zéro et trois décimales.';
+
+
+--
+-- Name: T_PrecisionStock_ID_PrecisionStock_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_PrecisionStock" ALTER COLUMN "ID_PrecisionStock" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_PrecisionStock_ID_PrecisionStock_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: SEQUENCE "T_PrecisionStock_ID_PrecisionStock_seq"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON SEQUENCE logistique."T_PrecisionStock_ID_PrecisionStock_seq" IS 'Identités techniques des politiques de précision, indépendantes des identifiants d’unités.';
+
+
+--
 -- Name: T_Reglements; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -7451,6 +12090,8 @@ CREATE TABLE logistique."T_Reglements" (
     "ID_ClientFk" integer,
     "DateReglement" timestamp without time zone,
     "MontantRegle" numeric(12,2),
+    "ID_DeviseFk" integer NOT NULL,
+    "ID_TiersFk" bigint,
     CONSTRAINT chk_reglement_montant_non_negatif CHECK ((("MontantRegle" IS NULL) OR ("MontantRegle" >= (0)::numeric)))
 );
 
@@ -7473,7 +12114,7 @@ COMMENT ON COLUMN logistique."T_Reglements"."ID_Reglement" IS 'Identifiant de l�
 -- Name: COLUMN "T_Reglements"."CodeFactureFk"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Reglements"."CodeFactureFk" IS 'Référence de facture de commande à laquelle s’applique le règlement. Relation imposée : FOREIGN KEY ("CodeFactureFk") REFERENCES logistique."T_Commande"("CodeFacture") NOT VALID.';
+COMMENT ON COLUMN logistique."T_Reglements"."CodeFactureFk" IS 'Référence de facture fac-IDBon, conservée atomiquement avec le miroir et le snapshot lors de la renumérotation08.';
 
 
 --
@@ -7502,6 +12143,20 @@ COMMENT ON COLUMN logistique."T_Reglements"."DateReglement" IS 'Date métier du 
 --
 
 COMMENT ON COLUMN logistique."T_Reglements"."MontantRegle" IS 'Montant de cette écriture de règlement ; distinct du cumul des règlements de facture.';
+
+
+--
+-- Name: COLUMN "T_Reglements"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Reglements"."ID_DeviseFk" IS 'Instantané de la devise de la facture rattachée par CodeFactureFk ; règlement en autre devise interdit sans traitement explicite.';
+
+
+--
+-- Name: COLUMN "T_Reglements"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Reglements"."ID_TiersFk" IS 'Tiers explicite conservé depuis le bon de la facture ; distinct de l’ancien identifiant client.';
 
 
 --
@@ -7547,93 +12202,1274 @@ COMMENT ON SEQUENCE logistique."T_Reglements_ID_Reglement_seq" IS 'Séquence de 
 
 
 --
+-- Name: T_Remboursement; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Remboursement" (
+    "ID_Remboursement" bigint NOT NULL,
+    "ID_AvoirFk" bigint NOT NULL,
+    "Montant" numeric(12,2) NOT NULL,
+    "DateRemboursement" timestamp with time zone NOT NULL,
+    "ID_ModePaiementFk" integer NOT NULL,
+    "ReferenceRemboursement" character varying(200),
+    "ID_UserFk" integer NOT NULL,
+    "RequestId" uuid NOT NULL,
+    "PayloadHash" text NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_Remboursement_Montant_check" CHECK (("Montant" > (0)::numeric))
+);
+
+
+--
+-- Name: TABLE "T_Remboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Remboursement" IS 'Remboursement effectivement enregistré contre le disponible d’un avoir ; aucun transfert bancaire automatique.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."ID_Remboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."ID_Remboursement" IS 'Identifiant stable de la preuve de remboursement.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."ID_AvoirFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."ID_AvoirFk" IS 'Avoir émis dont dépend cette ligne, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."Montant"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."Montant" IS 'Montant positif dans la devise de l’avoir.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."DateRemboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."DateRemboursement" IS 'Date et heure du montant effectivement restitué au client.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."ID_ModePaiementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."ID_ModePaiementFk" IS 'Mode de remboursement actif issu du référentiel partagé.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."ReferenceRemboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."ReferenceRemboursement" IS 'Référence de caisse, banque ou autre preuve du paiement restitué.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."ID_UserFk" IS 'Auteur réel de l’émission, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."RequestId" IS 'Identifiant unique du traitement empêchant les doubles envois.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."PayloadHash" IS 'Empreinte canonique à comparer lors du rejeu d’une demande.';
+
+
+--
+-- Name: COLUMN "T_Remboursement"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Remboursement"."CreeLe" IS 'Horodatage serveur de l’enregistrement.';
+
+
+--
+-- Name: T_Remboursement_ID_Remboursement_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Remboursement" ALTER COLUMN "ID_Remboursement" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Remboursement_ID_Remboursement_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_RetourBon; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_RetourBon" (
+    "ID_RetourBon" bigint NOT NULL,
+    "ID_CommandeOrigineFk" integer NOT NULL,
+    "ID_CommandeRetourFk" integer NOT NULL,
+    "ID_UserFk" integer NOT NULL,
+    "IdEntiteFk" integer,
+    "RequestId" uuid NOT NULL,
+    "PayloadHash" text NOT NULL,
+    "Motif" text NOT NULL,
+    "DateRetour" timestamp with time zone NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT ck_retour_bon_distinct CHECK (("ID_CommandeOrigineFk" <> "ID_CommandeRetourFk")),
+    CONSTRAINT ck_retour_bon_empreinte CHECK (("PayloadHash" ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT ck_retour_bon_motif CHECK (((length(btrim("Motif")) >= 1) AND (length(btrim("Motif")) <= 1000)))
+);
+
+
+--
+-- Name: TABLE "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_RetourBon" IS 'Événements validés de retour physique, total ou partiel, d’un bon de sortie. Plusieurs retours peuvent compenser une même origine. Les quantités et valeurs restent dans les lignes et mouvements des bons liés ; aucune annulation de facture ni remboursement n’est implicite.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."ID_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."ID_RetourBon" IS 'Identifiant stable de l’événement de retour physique.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."ID_CommandeOrigineFk" IS 'Bon de sortie historique compensé ; plusieurs événements successifs sont autorisés dans les limites des quantités et lots d’origine.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."ID_CommandeRetourFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."ID_CommandeRetourFk" IS 'Bon d’entrée inverse propre à cet événement ; un bon ne peut représenter deux événements de retour.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."ID_UserFk" IS 'Utilisateur ayant validé le retour ; indépendant de l’auteur conservé sur le bon d’origine.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."IdEntiteFk" IS 'Organisation autorisée au moment du retour, conservée comme instantané ; NULL désigne le contexte de plateforme.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."RequestId" IS 'Identifiant de demande fourni par le formulaire et unique pour son auteur, permettant un rejeu sans nouveau crédit de stock.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."PayloadHash" IS 'Empreinte canonique de la demande validée, hors jetons de session et prix catalogue ; un même UUID ne peut être réutilisé pour un autre retour.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."Motif" IS 'Motif humain obligatoire du retour, conservé sans modifier les observations historiques de la sortie.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."DateRetour"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."DateRetour" IS 'Date et heure métier du retour, correspondant à DateCmd du bon d’entrée ; distinctes de l’instant d’enregistrement.';
+
+
+--
+-- Name: COLUMN "T_RetourBon"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_RetourBon"."CreeLe" IS 'Horodatage d’enregistrement de l’événement dans la transaction.';
+
+
+--
+-- Name: CONSTRAINT ck_retour_bon_distinct ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_retour_bon_distinct ON logistique."T_RetourBon" IS 'Une sortie ne peut pas être son propre bon de retour.';
+
+
+--
+-- Name: CONSTRAINT ck_retour_bon_empreinte ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_retour_bon_empreinte ON logistique."T_RetourBon" IS 'L’empreinte de demande est un SHA-256 hexadécimal.';
+
+
+--
+-- Name: CONSTRAINT ck_retour_bon_motif ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_retour_bon_motif ON logistique."T_RetourBon" IS 'Le motif doit contenir de 1 à 1000 caractères après retrait des espaces de bord.';
+
+
+--
+-- Name: T_RetourBon_ID_RetourBon_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_RetourBon" ALTER COLUMN "ID_RetourBon" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME logistique."T_RetourBon_ID_RetourBon_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_ValorisationEvenement; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_ValorisationEvenement" (
+    "ID_Evenement" bigint NOT NULL,
+    "ID_ArticleFk" integer NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "ID_UserFk" integer,
+    "RequestId" uuid,
+    "Operation" text NOT NULL,
+    "Motif" text,
+    "Avant" jsonb,
+    "Apres" jsonb,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_ValorisationEvenement_Operation_check" CHECK (("Operation" = ANY (ARRAY['ouverture'::text, 'reevaluation'::text, 'mouvement_insert'::text, 'mouvement_update'::text, 'mouvement_delete'::text])))
+);
+
+
+--
+-- Name: TABLE "T_ValorisationEvenement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_ValorisationEvenement" IS 'Journal append-only des ouvertures, réévaluations et modifications de la source de valorisation ; sans mouvement physique supplémentaire. Les coûts antérieurs connus sont conservés pour valoriser les restitutions au coût de sortie.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."ID_Evenement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."ID_Evenement" IS 'ID_Evenement de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."ID_ArticleFk" IS 'ID_Article de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."IdEntiteFk" IS 'IdEntite de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."ID_UserFk" IS 'ID_User de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."RequestId" IS 'RequestId de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."Operation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."Operation" IS 'Operation de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."Motif" IS 'Motif de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."Avant"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."Avant" IS 'Instantané JSON antérieur au changement ; contient les coûts précédents lors d’une réévaluation.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."Apres"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."Apres" IS 'Instantané JSON après changement ; les paramètres comptables et la source restent auditables.';
+
+
+--
+-- Name: COLUMN "T_ValorisationEvenement"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationEvenement"."CreeLe" IS 'CreeLe de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: T_ValorisationEvenement_ID_Evenement_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_ValorisationEvenement" ALTER COLUMN "ID_Evenement" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_ValorisationEvenement_ID_Evenement_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_ValorisationOuverture; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_ValorisationOuverture" (
+    "ID_ArticleFk" integer NOT NULL,
+    "ID_DeviseFk" integer NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "ID_MvtArrete" integer DEFAULT 0 NOT NULL,
+    "QuantiteOuverture" numeric(14,3) NOT NULL,
+    "CoutOuverture" numeric(22,6),
+    "CoutsAnterieurs" jsonb DEFAULT '{}'::jsonb NOT NULL,
+    "Version" bigint DEFAULT 1 NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_ValorisationOuverture_CoutOuverture_check" CHECK ((("CoutOuverture" >= (0)::numeric) AND (("CoutOuverture")::text <> ALL (ARRAY['NaN'::text, 'Infinity'::text, '-Infinity'::text])))),
+    CONSTRAINT "T_ValorisationOuverture_check" CHECK ((("QuantiteOuverture" >= (0)::numeric) OR ("CoutOuverture" IS NULL)))
+);
+
+
+--
+-- Name: TABLE "T_ValorisationOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_ValorisationOuverture" IS 'Dernier arrêté de coût confirmé, par article, propriétaire et devise. Les articles présents avant installation restent à initialiser : aucun coût catalogue ou prix de vente historique n’est accepté implicitement.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."ID_ArticleFk" IS 'ID_Article de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."ID_DeviseFk" IS 'ID_Devise de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."IdEntiteFk" IS 'IdEntite de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."ID_MvtArrete"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."ID_MvtArrete" IS 'Dernier ID_Mvt inclus dans la quantité et le coût d’ouverture ; les événements ultérieurs suivent leur ordre d’enregistrement, même si leur date métier est antérieure.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."QuantiteOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."QuantiteOuverture" IS 'Quantité signée du journal, dans cette devise, au moment de l’arrêté confirmé.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."CoutOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."CoutOuverture" IS 'Coût unitaire explicitement confirmé à six décimales ; NULL signifie ouverture requise et ne vaut jamais zéro.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."CoutsAnterieurs"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."CoutsAnterieurs" IS 'Coûts unitaires prouvés des mouvements antérieurs à l’arrêté, par ID_Mvt ; permet un retour au coût de sortie historique sans prix catalogue.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."Version" IS 'Version de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: COLUMN "T_ValorisationOuverture"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_ValorisationOuverture"."ModifieLe" IS 'ModifieLe de valorisation ; propriété, auteur, révision ou preuve conservée dans la transaction.';
+
+
+--
+-- Name: V_LotArticleStock; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_LotArticleStock" AS
+SELECT
+    NULL::integer AS "ID_LotArticle",
+    NULL::integer AS "ID_ArticleFk",
+    NULL::character varying(100) AS "NumeroLot",
+    NULL::date AS "DatePeremptionLot",
+    NULL::boolean AS "Actif",
+    NULL::timestamp with time zone AS "CreeLe",
+    NULL::numeric AS "StockLot",
+    NULL::numeric AS "QuantiteEntree",
+    NULL::numeric AS "QuantiteSortie",
+    NULL::integer AS "ID_DeviseFk",
+    NULL::text AS "DeviseCode",
+    NULL::text AS "DeviseLibelle",
+    NULL::text AS "EtatPeremptionLot",
+    NULL::boolean AS "EstPerime",
+    NULL::boolean AS "EstProche",
+    NULL::integer AS "SeuilAlerteJours",
+    NULL::boolean AS "BloquerLotsPerimes";
+
+
+--
+-- Name: VIEW "V_LotArticleStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_LotArticleStock" IS 'Stock restant par lot avec conservation et politique d’entreprise ; l’état d’un lot épuisé reste historique et ne déclenche pas une alerte Article.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."ID_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."ID_LotArticle" IS 'Conservation du stock : ID_LotArticle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."ID_ArticleFk" IS 'Conservation du stock : ID_ArticleFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."NumeroLot" IS 'Conservation du stock : NumeroLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."DatePeremptionLot" IS 'Conservation du stock : DatePeremptionLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."Actif" IS 'Conservation du stock : Actif, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."CreeLe" IS 'Conservation du stock : CreeLe, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."StockLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."StockLot" IS 'Conservation du stock : StockLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."QuantiteEntree"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."QuantiteEntree" IS 'Conservation du stock : QuantiteEntree, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."QuantiteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."QuantiteSortie" IS 'Conservation du stock : QuantiteSortie, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."ID_DeviseFk" IS 'Conservation du stock : ID_DeviseFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."DeviseCode" IS 'Conservation du stock : DeviseCode, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."DeviseLibelle" IS 'Conservation du stock : DeviseLibelle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."EtatPeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."EtatPeremptionLot" IS 'Conservation du stock : EtatPeremptionLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."EstPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."EstPerime" IS 'Conservation du stock : EstPerime, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."EstProche"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."EstProche" IS 'Conservation du stock : EstProche, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."SeuilAlerteJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."SeuilAlerteJours" IS 'Conservation du stock : SeuilAlerteJours, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotArticleStock"."BloquerLotsPerimes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotArticleStock"."BloquerLotsPerimes" IS 'Conservation du stock : BloquerLotsPerimes, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: V_LotDisponibilite; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_LotDisponibilite" AS
+ SELECT l."ID_LotArticle",
+    l."ID_ArticleFk",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    l."Actif",
+    l."CreeLe",
+    l."StockLot",
+    l."QuantiteEntree",
+    l."QuantiteSortie",
+    l."ID_DeviseFk",
+    l."DeviseCode",
+    l."DeviseLibelle",
+    a."IdEntiteFk",
+    a."NomArticle",
+    a."ID_UniteFk",
+    u."AbrGenerique" AS "Unite",
+        CASE
+            WHEN (l."DatePeremptionLot" IS NULL) THEN 'Non renseignée'::text
+            WHEN (l."DatePeremptionLot" < ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) THEN 'Périmé'::text
+            WHEN (l."DatePeremptionLot" <= (((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date + COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30))) THEN 'Proche'::text
+            ELSE 'Valide'::text
+        END AS "EtatPeremptionLot",
+    ((l."DatePeremptionLot" < ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) IS TRUE) AS "EstPerime",
+    (((l."DatePeremptionLot" >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) AND (l."DatePeremptionLot" <= (((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date + COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30)))) IS TRUE) AS "EstProche",
+    COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30) AS "SeuilAlerteJours",
+    e."BloquerLotsPerimes"
+   FROM (((logistique."V_LotArticleStock" l
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = l."ID_ArticleFk")))
+     LEFT JOIN referentiel."T_Generique" u ON ((u."ID_Generique" = a."ID_UniteFk")))
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = a."IdEntiteFk")));
+
+
+--
+-- Name: VIEW "V_LotDisponibilite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_LotDisponibilite" IS 'Stock réel par lot, seuil article ou entreprise, état de péremption et politique de sortie ; un lot épuisé conserve son historique.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."ID_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."ID_LotArticle" IS 'Conservation du stock : ID_LotArticle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."ID_ArticleFk" IS 'Conservation du stock : ID_ArticleFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."NumeroLot" IS 'Conservation du stock : NumeroLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."DatePeremptionLot" IS 'Conservation du stock : DatePeremptionLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."Actif" IS 'Conservation du stock : Actif, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."CreeLe" IS 'Conservation du stock : CreeLe, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."StockLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."StockLot" IS 'Conservation du stock : StockLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."QuantiteEntree"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."QuantiteEntree" IS 'Conservation du stock : QuantiteEntree, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."QuantiteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."QuantiteSortie" IS 'Conservation du stock : QuantiteSortie, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."ID_DeviseFk" IS 'Conservation du stock : ID_DeviseFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."DeviseCode" IS 'Conservation du stock : DeviseCode, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."DeviseLibelle" IS 'Conservation du stock : DeviseLibelle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."IdEntiteFk" IS 'Conservation du stock : IdEntiteFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."NomArticle" IS 'Conservation du stock : NomArticle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."ID_UniteFk" IS 'Conservation du stock : ID_UniteFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."Unite" IS 'Conservation du stock : Unite, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."EtatPeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."EtatPeremptionLot" IS 'Conservation du stock : EtatPeremptionLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."EstPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."EstPerime" IS 'Conservation du stock : EstPerime, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."EstProche"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."EstProche" IS 'Conservation du stock : EstProche, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."SeuilAlerteJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."SeuilAlerteJours" IS 'Conservation du stock : SeuilAlerteJours, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_LotDisponibilite"."BloquerLotsPerimes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_LotDisponibilite"."BloquerLotsPerimes" IS 'Conservation du stock : BloquerLotsPerimes, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: V_ArticlePeremption; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_ArticlePeremption" AS
+ WITH lots AS (
+         SELECT "V_LotDisponibilite"."ID_ArticleFk",
+            sum("V_LotDisponibilite"."StockLot") AS total,
+            COALESCE(sum("V_LotDisponibilite"."StockLot") FILTER (WHERE (("V_LotDisponibilite"."StockLot" > (0)::numeric) AND "V_LotDisponibilite"."EstPerime")), (0)::numeric) AS perime,
+            COALESCE(sum("V_LotDisponibilite"."StockLot") FILTER (WHERE (("V_LotDisponibilite"."StockLot" > (0)::numeric) AND "V_LotDisponibilite"."EstProche")), (0)::numeric) AS proche,
+            COALESCE(sum("V_LotDisponibilite"."StockLot") FILTER (WHERE (("V_LotDisponibilite"."StockLot" > (0)::numeric) AND ("V_LotDisponibilite"."DatePeremptionLot" IS NULL))), (0)::numeric) AS sansdate,
+            min("V_LotDisponibilite"."DatePeremptionLot") FILTER (WHERE ("V_LotDisponibilite"."StockLot" > (0)::numeric)) AS dateproche,
+            count(*) FILTER (WHERE (("V_LotDisponibilite"."StockLot" > (0)::numeric) AND "V_LotDisponibilite"."EstPerime")) AS lotsperimes,
+            count(*) FILTER (WHERE (("V_LotDisponibilite"."StockLot" > (0)::numeric) AND "V_LotDisponibilite"."EstProche")) AS lotsproches
+           FROM logistique."V_LotDisponibilite"
+          GROUP BY "V_LotDisponibilite"."ID_ArticleFk"
+        ), stocks AS (
+         SELECT a."ID_Article",
+            a."IdEntiteFk",
+            a."QteArticle",
+            (a."DatePeremptionArticle")::date AS generale,
+            (a."DatePeremptionAlerteArticle")::date AS alertegenerale,
+            COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30) AS seuil,
+            GREATEST((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(l.total, (0)::numeric)), (0)::numeric) AS sanslot,
+            COALESCE(l.perime, (0)::numeric) AS lotperime,
+            COALESCE(l.proche, (0)::numeric) AS lotproche,
+            COALESCE(l.sansdate, (0)::numeric) AS lotsansdate,
+            l.dateproche,
+            COALESCE(l.lotsperimes, (0)::bigint) AS lotsperimes,
+            COALESCE(l.lotsproches, (0)::bigint) AS lotsproches
+           FROM ((logistique."T_Article" a
+             LEFT JOIN lots l ON ((l."ID_ArticleFk" = a."ID_Article")))
+             LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = a."IdEntiteFk")))
+        ), classement AS (
+         SELECT stocks."ID_Article",
+            stocks."IdEntiteFk",
+            stocks."QteArticle",
+            stocks.generale,
+            stocks.alertegenerale,
+            stocks.seuil,
+            stocks.sanslot,
+            stocks.lotperime,
+            stocks.lotproche,
+            stocks.lotsansdate,
+            stocks.dateproche,
+            stocks.lotsperimes,
+            stocks.lotsproches,
+            (stocks.lotperime +
+                CASE
+                    WHEN (stocks.generale < ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) THEN stocks.sanslot
+                    ELSE (0)::numeric
+                END) AS perime,
+            (stocks.lotproche +
+                CASE
+                    WHEN ((stocks.generale >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) AND ((stocks.generale <= (((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date + stocks.seuil)) OR (stocks.alertegenerale <= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date))) THEN stocks.sanslot
+                    ELSE (0)::numeric
+                END) AS proche,
+            (stocks.lotsansdate +
+                CASE
+                    WHEN (stocks.generale IS NULL) THEN stocks.sanslot
+                    ELSE (0)::numeric
+                END) AS sansdate,
+            LEAST(stocks.dateproche,
+                CASE
+                    WHEN (stocks.sanslot > (0)::numeric) THEN stocks.generale
+                    ELSE NULL::date
+                END) AS prochaine
+           FROM stocks
+        )
+ SELECT "ID_Article",
+    "IdEntiteFk",
+    perime AS "StockPerime",
+    proche AS "StockProchePeremption",
+    sansdate AS "StockSansDatePeremption",
+    sanslot AS "StockSansLot",
+    prochaine AS "DateProchainePeremption",
+    lotsperimes AS "LotsPerimes",
+    lotsproches AS "LotsProchesPeremption",
+    seuil AS "SeuilAlerteJours",
+    (perime > (0)::numeric) AS "EstPerime",
+    (proche > (0)::numeric) AS "EstAlertePeremption",
+        CASE
+            WHEN (perime > (0)::numeric) THEN 'Périmé'::text
+            WHEN (proche > (0)::numeric) THEN 'Alerte péremption'::text
+            WHEN (COALESCE("QteArticle", (0)::numeric) <= (0)::numeric) THEN 'Sans stock'::text
+            WHEN (sansdate > (0)::numeric) THEN 'Non renseignée'::text
+            ELSE 'Valide'::text
+        END AS "EtatPeremption",
+    (prochaine - ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) AS "JoursAvantPeremption",
+        CASE
+            WHEN (perime > (0)::numeric) THEN 1
+            WHEN (proche > (0)::numeric) THEN 2
+            WHEN ((sansdate > (0)::numeric) OR (COALESCE("QteArticle", (0)::numeric) <= (0)::numeric)) THEN 4
+            ELSE 3
+        END AS "PrioritePeremption"
+   FROM classement;
+
+
+--
+-- Name: VIEW "V_ArticlePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_ArticlePeremption" IS 'Situation exhaustive de conservation : uniquement les quantités encore en stock, tous lots y compris archivés, et le stock sans lot couvert par la date générale. Une même référence peut avoir simultanément du stock périmé et proche.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."ID_Article" IS 'Conservation du stock : ID_Article, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."IdEntiteFk" IS 'Conservation du stock : IdEntiteFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."StockPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."StockPerime" IS 'Conservation du stock : StockPerime, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."StockProchePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."StockProchePeremption" IS 'Conservation du stock : StockProchePeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."StockSansDatePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."StockSansDatePeremption" IS 'Conservation du stock : StockSansDatePeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."StockSansLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."StockSansLot" IS 'Conservation du stock : StockSansLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."DateProchainePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."DateProchainePeremption" IS 'Conservation du stock : DateProchainePeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."LotsPerimes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."LotsPerimes" IS 'Conservation du stock : LotsPerimes, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."LotsProchesPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."LotsProchesPeremption" IS 'Conservation du stock : LotsProchesPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."SeuilAlerteJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."SeuilAlerteJours" IS 'Conservation du stock : SeuilAlerteJours, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."EstPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."EstPerime" IS 'Conservation du stock : EstPerime, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."EstAlertePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."EstAlertePeremption" IS 'Conservation du stock : EstAlertePeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."EtatPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."EtatPeremption" IS 'Conservation du stock : EtatPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."JoursAvantPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."JoursAvantPeremption" IS 'Conservation du stock : JoursAvantPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_ArticlePeremption"."PrioritePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ArticlePeremption"."PrioritePeremption" IS 'Conservation du stock : PrioritePeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
 -- Name: V_Article; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_Article" AS
- SELECT a."ID_Article",
-    a."DateHeureAuto",
-    a."CodeArticleInterne",
-    a."CodeArticleExterne",
-    a."NomArticle",
-    a."RefArticle",
-    a."PhotoArticle",
-    a."ObsArticle",
-    a."ValideArticle",
-    a."ID_TypeArticleFk",
-    type_article."AbrGenerique" AS "AbrTypeArticle",
-    type_article."NomGenerique" AS "TypeArticle",
-    a."ID_CategorieArticleFk",
-    categorie_article."AbrGenerique" AS "AbrCategorieArticle",
-    categorie_article."NomGenerique" AS "CategorieArticle",
-    a."ID_UniteFk",
-    unite."AbrGenerique" AS "AbrUnite",
-    unite."NomGenerique" AS "Unite",
-    (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "QteArticle",
-    a."QteMinArticle",
-    (GREATEST(((COALESCE(a."QteMinArticle", 0))::numeric - COALESCE(a."QteArticle", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteACommander",
-        CASE
-            WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 'Rupture'::text
-            WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 'Stock faible'::text
-            ELSE 'Disponible'::text
-        END AS "EtatStock",
-    (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) AS "EstRupture",
-    ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) AS "EstAlerteStock",
-        CASE
-            WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 1
-            WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 2
-            ELSE 3
-        END AS "PrioriteStock",
-    (COALESCE(a."PUArticle", (0)::numeric))::numeric(12,2) AS "PUArticle",
-    (COALESCE(a."PVArticle", (0)::numeric))::numeric(12,2) AS "PVArticle",
-    ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PUArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockAchat",
-    ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PVArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockVente",
-    ((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)))::numeric(12,2) AS "MargeUnitaire",
-        CASE
-            WHEN (COALESCE(a."PUArticle", (0)::numeric) = (0)::numeric) THEN NULL::numeric
-            ELSE round((((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)) / NULLIF(a."PUArticle", (0)::numeric)) * (100)::numeric), 2)
-        END AS "TauxMargePct",
-    a."DatePeremptionArticle",
-    a."DatePeremptionAlerteArticle",
-    a."NbreJoursAlerteArticle",
-        CASE
-            WHEN (a."DatePeremptionArticle" IS NULL) THEN 'Non renseignée'::text
-            WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 'Périmé'::text
-            WHEN ((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) THEN 'Alerte péremption'::text
-            WHEN ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))) THEN 'Alerte péremption'::text
-            ELSE 'Valide'::text
-        END AS "EtatPeremption",
-        CASE
-            WHEN (a."DatePeremptionArticle" IS NOT NULL) THEN ((a."DatePeremptionArticle")::date - CURRENT_DATE)
-            ELSE NULL::integer
-        END AS "JoursAvantPeremption",
-    ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date < CURRENT_DATE)) AS "EstPerime",
-    ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date >= CURRENT_DATE) AND (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))))) AS "EstAlertePeremption",
-        CASE
-            WHEN (a."DatePeremptionArticle" IS NULL) THEN 4
-            WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 1
-            WHEN (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")))) THEN 2
-            ELSE 3
-        END AS "PrioritePeremption",
-    a."ID_UserFK",
-    u."IdUser",
-    NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
-        CASE
-            WHEN (COALESCE(a."ValideArticle", true) = false) THEN 'Inactif'::text
-            ELSE 'Actif'::text
-        END AS "EtatArticle"
-   FROM ((((logistique."T_Article" a
-     LEFT JOIN referentiel."T_Generique" type_article ON (((a."ID_TypeArticleFk" = type_article."ID_Generique") AND (type_article."ID_CategorieGeneriqueFk" = 46))))
-     LEFT JOIN referentiel."T_Generique" categorie_article ON (((a."ID_CategorieArticleFk" = categorie_article."ID_Generique") AND (categorie_article."ID_CategorieGeneriqueFk" = 40))))
-     LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))
-     LEFT JOIN systeme."T_Utilisateurs" u ON ((a."ID_UserFK" = u."IdUser")));
+ SELECT source."ID_Article",
+    source."DateHeureAuto",
+    source."CodeArticleInterne",
+    source."CodeArticleExterne",
+    source."NomArticle",
+    source."RefArticle",
+    source."PhotoArticle",
+    source."ObsArticle",
+    source."ValideArticle",
+    source."ID_TypeArticleFk",
+    source."AbrTypeArticle",
+    source."TypeArticle",
+    source."ID_CategorieArticleFk",
+    source."AbrCategorieArticle",
+    source."CategorieArticle",
+    source."ID_UniteFk",
+    source."AbrUnite",
+    source."Unite",
+    source."QteArticle",
+    source."QteMinArticle",
+    source."QteACommander",
+    source."EtatStock",
+    source."EstRupture",
+    source."EstAlerteStock",
+    source."PrioriteStock",
+    source."PUArticle",
+    source."PVArticle",
+    source."ValeurStockAchat",
+    source."ValeurStockVente",
+    source."MargeUnitaire",
+    source."TauxMargePct",
+    source."DatePeremptionArticle",
+    source."DatePeremptionAlerteArticle",
+    source."NbreJoursAlerteArticle",
+    p."EtatPeremption",
+    p."JoursAvantPeremption",
+    p."EstPerime",
+    p."EstAlertePeremption",
+    p."PrioritePeremption",
+    source."ID_UserFK",
+    source."IdUser",
+    source."NomComplet",
+    source."EtatArticle",
+    source."PoidsUnitaire",
+    source."ID_UnitePoidsFk",
+    source."UnitePoids",
+    source."NombreLots",
+    source."StockVentileLots",
+    source."StockSansLot",
+    source."InformationArticle",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    source."IdEntiteFk",
+    p."StockPerime",
+    p."StockProchePeremption",
+    p."StockSansDatePeremption",
+    p."DateProchainePeremption",
+    p."LotsPerimes",
+    p."LotsProchesPeremption",
+    p."SeuilAlerteJours"
+   FROM (( SELECT source_1."ID_Article",
+            source_1."DateHeureAuto",
+            source_1."CodeArticleInterne",
+            source_1."CodeArticleExterne",
+            source_1."NomArticle",
+            source_1."RefArticle",
+            source_1."PhotoArticle",
+            source_1."ObsArticle",
+            source_1."ValideArticle",
+            source_1."ID_TypeArticleFk",
+            source_1."AbrTypeArticle",
+            source_1."TypeArticle",
+            source_1."ID_CategorieArticleFk",
+            source_1."AbrCategorieArticle",
+            source_1."CategorieArticle",
+            source_1."ID_UniteFk",
+            source_1."AbrUnite",
+            source_1."Unite",
+            source_1."QteArticle",
+            source_1."QteMinArticle",
+            source_1."QteACommander",
+            source_1."EtatStock",
+            source_1."EstRupture",
+            source_1."EstAlerteStock",
+            source_1."PrioriteStock",
+            source_1."PUArticle",
+            source_1."PVArticle",
+            source_1."ValeurStockAchat",
+            source_1."ValeurStockVente",
+            source_1."MargeUnitaire",
+            source_1."TauxMargePct",
+            source_1."DatePeremptionArticle",
+            source_1."DatePeremptionAlerteArticle",
+            source_1."NbreJoursAlerteArticle",
+            source_1."EtatPeremption",
+            source_1."JoursAvantPeremption",
+            source_1."EstPerime",
+            source_1."EstAlertePeremption",
+            source_1."PrioritePeremption",
+            source_1."ID_UserFK",
+            source_1."IdUser",
+            source_1."NomComplet",
+            source_1."EtatArticle",
+            source_1."PoidsUnitaire",
+            source_1."ID_UnitePoidsFk",
+            source_1."UnitePoids",
+            source_1."NombreLots",
+            source_1."StockVentileLots",
+            source_1."StockSansLot",
+            source_1."InformationArticle",
+            source_1."ID_DeviseFk",
+            source_1."DeviseCode",
+            source_1."DeviseLibelle",
+            r."IdEntiteFk"
+           FROM (( SELECT historique."ID_Article",
+                    historique."DateHeureAuto",
+                    historique."CodeArticleInterne",
+                    historique."CodeArticleExterne",
+                    historique."NomArticle",
+                    historique."RefArticle",
+                    historique."PhotoArticle",
+                    historique."ObsArticle",
+                    historique."ValideArticle",
+                    historique."ID_TypeArticleFk",
+                    historique."AbrTypeArticle",
+                    historique."TypeArticle",
+                    historique."ID_CategorieArticleFk",
+                    historique."AbrCategorieArticle",
+                    historique."CategorieArticle",
+                    historique."ID_UniteFk",
+                    historique."AbrUnite",
+                    historique."Unite",
+                    historique."QteArticle",
+                    historique."QteMinArticle",
+                    historique."QteACommander",
+                    historique."EtatStock",
+                    historique."EstRupture",
+                    historique."EstAlerteStock",
+                    historique."PrioriteStock",
+                    historique."PUArticle",
+                    historique."PVArticle",
+                    historique."ValeurStockAchat",
+                    historique."ValeurStockVente",
+                    historique."MargeUnitaire",
+                    historique."TauxMargePct",
+                    historique."DatePeremptionArticle",
+                    historique."DatePeremptionAlerteArticle",
+                    historique."NbreJoursAlerteArticle",
+                    historique."EtatPeremption",
+                    historique."JoursAvantPeremption",
+                    historique."EstPerime",
+                    historique."EstAlertePeremption",
+                    historique."PrioritePeremption",
+                    historique."ID_UserFK",
+                    historique."IdUser",
+                    historique."NomComplet",
+                    historique."EtatArticle",
+                    historique."PoidsUnitaire",
+                    historique."ID_UnitePoidsFk",
+                    historique."UnitePoids",
+                    historique."NombreLots",
+                    historique."StockVentileLots",
+                    historique."StockSansLot",
+                    historique."InformationArticle",
+                    source_1_1."ID_DeviseFk",
+                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                    (devise."NomGenerique")::text AS "DeviseLibelle"
+                   FROM ((( SELECT a."ID_Article",
+                            a."DateHeureAuto",
+                            a."CodeArticleInterne",
+                            a."CodeArticleExterne",
+                            a."NomArticle",
+                            a."RefArticle",
+                            a."PhotoArticle",
+                            a."ObsArticle",
+                            a."ValideArticle",
+                            a."ID_TypeArticleFk",
+                            type_article."AbrGenerique" AS "AbrTypeArticle",
+                            type_article."NomGenerique" AS "TypeArticle",
+                            a."ID_CategorieArticleFk",
+                            categorie_article."AbrGenerique" AS "AbrCategorieArticle",
+                            categorie_article."NomGenerique" AS "CategorieArticle",
+                            a."ID_UniteFk",
+                            unite."AbrGenerique" AS "AbrUnite",
+                            unite."NomGenerique" AS "Unite",
+                            (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "QteArticle",
+                            a."QteMinArticle",
+                            (GREATEST((COALESCE(a."QteMinArticle", (0)::numeric) - COALESCE(a."QteArticle", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteACommander",
+                                CASE
+                                    WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 'Rupture'::text
+                                    WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 'Stock faible'::text
+                                    ELSE 'Disponible'::text
+                                END AS "EtatStock",
+                            (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) AS "EstRupture",
+                            ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) AS "EstAlerteStock",
+                                CASE
+                                    WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 1
+                                    WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 2
+                                    ELSE 3
+                                END AS "PrioriteStock",
+                            (COALESCE(a."PUArticle", (0)::numeric))::numeric(12,2) AS "PUArticle",
+                            (COALESCE(a."PVArticle", (0)::numeric))::numeric(12,2) AS "PVArticle",
+                            ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PUArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockAchat",
+                            ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PVArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockVente",
+                            ((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)))::numeric(12,2) AS "MargeUnitaire",
+                                CASE
+                                    WHEN (COALESCE(a."PUArticle", (0)::numeric) = (0)::numeric) THEN NULL::numeric
+                                    ELSE round((((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)) / NULLIF(a."PUArticle", (0)::numeric)) * (100)::numeric), 2)
+                                END AS "TauxMargePct",
+                            a."DatePeremptionArticle",
+                            a."DatePeremptionAlerteArticle",
+                            a."NbreJoursAlerteArticle",
+                                CASE
+                                    WHEN (a."DatePeremptionArticle" IS NULL) THEN 'Non renseignée'::text
+                                    WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 'Périmé'::text
+                                    WHEN ((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) THEN 'Alerte péremption'::text
+                                    WHEN ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))) THEN 'Alerte péremption'::text
+                                    ELSE 'Valide'::text
+                                END AS "EtatPeremption",
+                                CASE
+                                    WHEN (a."DatePeremptionArticle" IS NOT NULL) THEN ((a."DatePeremptionArticle")::date - CURRENT_DATE)
+                                    ELSE NULL::integer
+                                END AS "JoursAvantPeremption",
+                            ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date < CURRENT_DATE)) AS "EstPerime",
+                            ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date >= CURRENT_DATE) AND (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))))) AS "EstAlertePeremption",
+                                CASE
+                                    WHEN (a."DatePeremptionArticle" IS NULL) THEN 4
+                                    WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 1
+                                    WHEN (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")))) THEN 2
+                                    ELSE 3
+                                END AS "PrioritePeremption",
+                            a."ID_UserFK",
+                            u."IdUser",
+                            NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
+                                CASE
+                                    WHEN (COALESCE(a."ValideArticle", true) = false) THEN 'Inactif'::text
+                                    ELSE 'Actif'::text
+                                END AS "EtatArticle",
+                            a."PoidsUnitaire",
+                            a."ID_UnitePoidsFk",
+                            ( SELECT g."AbrGenerique"
+                                   FROM referentiel."T_Generique" g
+                                  WHERE (g."ID_Generique" = a."ID_UnitePoidsFk")) AS "UnitePoids",
+                            ( SELECT (count(*))::integer AS count
+                                   FROM logistique."T_LotArticle" l
+                                  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "NombreLots",
+                            ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
+                                   FROM logistique."V_LotArticleStock" l
+                                  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "StockVentileLots",
+                            (a."QteArticle" - ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
+                                   FROM logistique."V_LotArticleStock" l
+                                  WHERE (l."ID_ArticleFk" = a."ID_Article"))) AS "StockSansLot",
+                            a."InformationArticle"
+                           FROM ((((logistique."T_Article" a
+                             LEFT JOIN referentiel."T_Generique" type_article ON (((a."ID_TypeArticleFk" = type_article."ID_Generique") AND (type_article."ID_CategorieGeneriqueFk" = 46))))
+                             LEFT JOIN referentiel."T_Generique" categorie_article ON (((a."ID_CategorieArticleFk" = categorie_article."ID_Generique") AND (categorie_article."ID_CategorieGeneriqueFk" = 40))))
+                             LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))
+                             LEFT JOIN systeme."T_Utilisateurs" u ON ((a."ID_UserFK" = u."IdUser")))) historique
+                     LEFT JOIN logistique."T_Article" source_1_1 ON ((source_1_1."ID_Article" = historique."ID_Article")))
+                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1
+             LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source_1."ID_Article")))) source
+     JOIN logistique."V_ArticlePeremption" p ON ((p."ID_Article" = source."ID_Article")));
 
 
 --
 -- Name: VIEW "V_Article"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Article" IS 'Catalogue enrichi au grain article : nomenclatures, stock courant, seuils, prix, valorisations, péremption et utilisateur. Les états de stock et de péremption sont calculés à la lecture ; aucune restriction d’organisation n’est intégrée à la vue.';
+COMMENT ON VIEW logistique."V_Article" IS 'Catalogue partagé avec stock et conservation exhaustifs par lots restants et stock sans lot ; les prix catalogue ne constituent pas un coût moyen comptable.';
 
 
 --
@@ -7878,35 +13714,35 @@ COMMENT ON COLUMN logistique."V_Article"."NbreJoursAlerteArticle" IS 'Nombre de 
 -- Name: COLUMN "V_Article"."EtatPeremption"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."EtatPeremption" IS 'Qualification à CURRENT_DATE : non renseignée, périmé, alerte péremption ou valide selon date et délai configurés. Expression projetée : CASE WHEN a."DatePeremptionArticle" IS NULL THEN ''Non renseignée''::text WHEN a."DatePeremptionArticle"::date < CURRENT_DATE THEN ''Périmé''::text WHEN a."DatePeremptionAlerteArticle" IS NOT NULL AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE THEN ''Alerte péremption''::text WHEN a."NbreJoursAlerteArticle" IS NOT NULL AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle") THEN ''Alerte péremption''::text ELSE ''Valide''::text END AS "EtatPeremption".';
+COMMENT ON COLUMN logistique."V_Article"."EtatPeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : EtatPeremption.';
 
 
 --
 -- Name: COLUMN "V_Article"."JoursAvantPeremption"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."JoursAvantPeremption" IS 'Date de péremption moins CURRENT_DATE, en jours ; NULL sans date. Expression projetée : CASE WHEN a."DatePeremptionArticle" IS NOT NULL THEN a."DatePeremptionArticle"::date - CURRENT_DATE ELSE NULL::integer END AS "JoursAvantPeremption".';
+COMMENT ON COLUMN logistique."V_Article"."JoursAvantPeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : JoursAvantPeremption.';
 
 
 --
 -- Name: COLUMN "V_Article"."EstPerime"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."EstPerime" IS 'Vrai si la date de péremption est strictement antérieure à CURRENT_DATE. Expression projetée : a."DatePeremptionArticle" IS NOT NULL AND a."DatePeremptionArticle"::date < CURRENT_DATE AS "EstPerime".';
+COMMENT ON COLUMN logistique."V_Article"."EstPerime" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : EstPerime.';
 
 
 --
 -- Name: COLUMN "V_Article"."EstAlertePeremption"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."EstAlertePeremption" IS 'Vrai pour un article non encore périmé dont la date ou le délai d’alerte est atteint. Expression projetée : a."DatePeremptionArticle" IS NOT NULL AND a."DatePeremptionArticle"::date >= CURRENT_DATE AND (a."DatePeremptionAlerteArticle" IS NOT NULL AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE OR a."NbreJoursAlerteArticle" IS NOT NULL AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")) AS "EstAlertePeremption".';
+COMMENT ON COLUMN logistique."V_Article"."EstAlertePeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : EstAlertePeremption.';
 
 
 --
 -- Name: COLUMN "V_Article"."PrioritePeremption"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."PrioritePeremption" IS 'Priorité : 1 périmé, 2 alerte, 3 valide, 4 date non renseignée. Expression projetée : CASE WHEN a."DatePeremptionArticle" IS NULL THEN 4 WHEN a."DatePeremptionArticle"::date < CURRENT_DATE THEN 1 WHEN a."DatePeremptionAlerteArticle" IS NOT NULL AND a."DatePeremptionAlerteArticle"::date <= CURRENT_DATE OR a."NbreJoursAlerteArticle" IS NOT NULL AND a."DatePeremptionArticle"::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle") THEN 2 ELSE 3 END AS "PrioritePeremption".';
+COMMENT ON COLUMN logistique."V_Article"."PrioritePeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : PrioritePeremption.';
 
 
 --
@@ -7938,35 +13774,203 @@ COMMENT ON COLUMN logistique."V_Article"."EtatArticle" IS 'Actif ou Inactif selo
 
 
 --
+-- Name: COLUMN "V_Article"."PoidsUnitaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."PoidsUnitaire" IS 'Masse d’une unité de stock, inconnue si NULL.';
+
+
+--
+-- Name: COLUMN "V_Article"."ID_UnitePoidsFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."ID_UnitePoidsFk" IS 'Unité de masse du poids unitaire.';
+
+
+--
+-- Name: COLUMN "V_Article"."UnitePoids"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."UnitePoids" IS 'Abréviation de l’unité de masse du référentiel.';
+
+
+--
+-- Name: COLUMN "V_Article"."NombreLots"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."NombreLots" IS 'Nombre de numéros de lot connus pour cet article, actifs ou archivés.';
+
+
+--
+-- Name: COLUMN "V_Article"."StockVentileLots"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."StockVentileLots" IS 'Stock courant identifié par numéro de lot, issu des mouvements ventilés.';
+
+
+--
+-- Name: COLUMN "V_Article"."StockSansLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."StockSansLot" IS 'Part du stock global encore dépourvue de numéro de lot ; aucune attribution inventée.';
+
+
+--
+-- Name: COLUMN "V_Article"."InformationArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."InformationArticle" IS 'Description et caractéristiques complémentaires du produit, distinctes des observations.';
+
+
+--
+-- Name: COLUMN "V_Article"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."ID_DeviseFk" IS 'Référence de devise du catalogue article ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_Article"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_Article"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_Article"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Article"."StockPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."StockPerime" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : StockPerime.';
+
+
+--
+-- Name: COLUMN "V_Article"."StockProchePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."StockProchePeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : StockProchePeremption.';
+
+
+--
+-- Name: COLUMN "V_Article"."StockSansDatePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."StockSansDatePeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : StockSansDatePeremption.';
+
+
+--
+-- Name: COLUMN "V_Article"."DateProchainePeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."DateProchainePeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : DateProchainePeremption.';
+
+
+--
+-- Name: COLUMN "V_Article"."LotsPerimes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."LotsPerimes" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : LotsPerimes.';
+
+
+--
+-- Name: COLUMN "V_Article"."LotsProchesPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."LotsProchesPeremption" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : LotsProchesPeremption.';
+
+
+--
+-- Name: COLUMN "V_Article"."SeuilAlerteJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."SeuilAlerteJours" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : SeuilAlerteJours.';
+
+
+--
 -- Name: V_AlertStock; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_AlertStock" AS
- SELECT "ID_Article",
-    "CodeArticleInterne",
-    "NomArticle",
-    "AbrUnite",
-    "QteArticle",
-    "QteMinArticle",
-    "QteACommander",
-    ((COALESCE("QteArticle", (0)::numeric) - (COALESCE("QteMinArticle", 0))::numeric))::numeric(14,3) AS "Marge",
-    "EtatStock",
-    "EstRupture",
-    "EstAlerteStock",
-    "PrioriteStock",
-    "EtatPeremption",
-    "JoursAvantPeremption",
-    "EstPerime",
-    "EstAlertePeremption"
-   FROM logistique."V_Article" a
-  WHERE (("EstRupture" = true) OR ("EstAlerteStock" = true));
+ SELECT source."ID_Article",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."AbrUnite",
+    source."QteArticle",
+    source."QteMinArticle",
+    source."QteACommander",
+    source."Marge",
+    source."EtatStock",
+    source."EstRupture",
+    source."EstAlerteStock",
+    source."PrioriteStock",
+    source."EtatPeremption",
+    source."JoursAvantPeremption",
+    source."EstPerime",
+    source."EstAlertePeremption",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk"
+   FROM (( SELECT historique."ID_Article",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."AbrUnite",
+            historique."QteArticle",
+            historique."QteMinArticle",
+            historique."QteACommander",
+            historique."Marge",
+            historique."EtatStock",
+            historique."EstRupture",
+            historique."EstAlerteStock",
+            historique."PrioriteStock",
+            historique."EtatPeremption",
+            historique."JoursAvantPeremption",
+            historique."EstPerime",
+            historique."EstAlertePeremption",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT a."ID_Article",
+                    a."CodeArticleInterne",
+                    a."NomArticle",
+                    a."AbrUnite",
+                    a."QteArticle",
+                    a."QteMinArticle",
+                    a."QteACommander",
+                    ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(a."QteMinArticle", (0)::numeric)))::numeric(14,3) AS "Marge",
+                    a."EtatStock",
+                    a."EstRupture",
+                    a."EstAlerteStock",
+                    a."PrioriteStock",
+                    a."EtatPeremption",
+                    a."JoursAvantPeremption",
+                    a."EstPerime",
+                    a."EstAlertePeremption"
+                   FROM logistique."V_Article" a
+                  WHERE ((a."EstRupture" = true) OR (a."EstAlerteStock" = true))) historique
+             LEFT JOIN logistique."T_Article" source_1 ON ((source_1."ID_Article" = historique."ID_Article")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source."ID_Article")));
 
 
 --
 -- Name: VIEW "V_AlertStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_AlertStock" IS 'Articles en rupture ou au seuil minimal depuis V_Article, au grain article. Les ruptures sont incluses même sans seuil renseigné ; les autres alertes exigent le seuil défini dans V_Article.';
+COMMENT ON VIEW logistique."V_AlertStock" IS 'Articles en rupture ou au seuil minimal depuis V_Article, au grain article. Les ruptures sont incluses même sans seuil renseigné ; les autres alertes exigent le seuil défini dans V_Article. Devise du catalogue article explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -8082,33 +14086,93 @@ COMMENT ON COLUMN logistique."V_AlertStock"."EstAlertePeremption" IS 'Vrai pour 
 
 
 --
+-- Name: COLUMN "V_AlertStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AlertStock"."ID_DeviseFk" IS 'Référence de devise du catalogue article ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_AlertStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AlertStock"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_AlertStock"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AlertStock"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_AlertStock"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AlertStock"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
 -- Name: V_AuditStock; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_AuditStock" AS
- SELECT "ID_Article",
-    "CodeArticleInterne",
-    "NomArticle",
-    "StockArticle",
-    "StockMouvements",
-    "Ecart",
-    "N_Mouvements",
-    "QteEntree",
-    "QteSortie",
-    ("Ecart" = (0)::numeric) AS "EstStockCoherent",
-        CASE
-            WHEN ("Ecart" = (0)::numeric) THEN 'Cohérent'::text
-            WHEN ("Ecart" > (0)::numeric) THEN 'Stock article supérieur aux mouvements'::text
-            ELSE 'Stock article inférieur aux mouvements'::text
-        END AS "EtatAuditStock"
-   FROM logistique.fn_audit_stock(NULL::integer, NULL::timestamp without time zone) fn_audit_stock("ID_Article", "CodeArticleInterne", "NomArticle", "StockArticle", "StockMouvements", "Ecart", "N_Mouvements", "QteEntree", "QteSortie");
+ SELECT source."ID_Article",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."StockArticle",
+    source."StockMouvements",
+    source."Ecart",
+    source."N_Mouvements",
+    source."QteEntree",
+    source."QteSortie",
+    source."EstStockCoherent",
+    source."EtatAuditStock",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk"
+   FROM (( SELECT historique."ID_Article",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."StockArticle",
+            historique."StockMouvements",
+            historique."Ecart",
+            historique."N_Mouvements",
+            historique."QteEntree",
+            historique."QteSortie",
+            historique."EstStockCoherent",
+            historique."EtatAuditStock",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT fn_audit_stock."ID_Article",
+                    fn_audit_stock."CodeArticleInterne",
+                    fn_audit_stock."NomArticle",
+                    fn_audit_stock."StockArticle",
+                    fn_audit_stock."StockMouvements",
+                    fn_audit_stock."Ecart",
+                    fn_audit_stock."N_Mouvements",
+                    fn_audit_stock."QteEntree",
+                    fn_audit_stock."QteSortie",
+                    (fn_audit_stock."Ecart" = (0)::numeric) AS "EstStockCoherent",
+                        CASE
+                            WHEN (fn_audit_stock."Ecart" = (0)::numeric) THEN 'Cohérent'::text
+                            WHEN (fn_audit_stock."Ecart" > (0)::numeric) THEN 'Stock article supérieur aux mouvements'::text
+                            ELSE 'Stock article inférieur aux mouvements'::text
+                        END AS "EtatAuditStock"
+                   FROM logistique.fn_audit_stock(NULL::integer, NULL::timestamp without time zone) fn_audit_stock("ID_Article", "CodeArticleInterne", "NomArticle", "StockArticle", "StockMouvements", "Ecart", "N_Mouvements", "QteEntree", "QteSortie")) historique
+             LEFT JOIN logistique."T_Article" source_1 ON ((source_1."ID_Article" = historique."ID_Article")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source."ID_Article")));
 
 
 --
 -- Name: VIEW "V_AuditStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_AuditStock" IS 'Audit courant au grain article depuis fn_audit_stock(NULL,NULL) : stock enregistré, somme des mouvements signés, écart, entrées/sorties et état de cohérence.';
+COMMENT ON VIEW logistique."V_AuditStock" IS 'Audit courant au grain article depuis fn_audit_stock(NULL,NULL) : stock enregistré, somme des mouvements signés, écart, entrées/sorties et état de cohérence. Devise du catalogue article explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -8189,58 +14253,139 @@ COMMENT ON COLUMN logistique."V_AuditStock"."EtatAuditStock" IS 'Libellé de coh
 
 
 --
+-- Name: COLUMN "V_AuditStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock"."ID_DeviseFk" IS 'Référence de devise du catalogue article ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_AuditStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_AuditStock"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_AuditStock"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
 -- Name: V_MouvementStock; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_MouvementStock" AS
- SELECT m."ID_Mvt",
-    m."ID_ArticleFk",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    m."ID_cmdFk",
-    c."CodeCmd",
-    c."DateCmd",
-    c."ID_TypeCmdFk" AS "ID_TypeCmdActuel",
-    m."DateHeureAutoMvt",
-    m."DateMvt",
-    m."ID_TypeMvtFk" AS "ID_TypeMvt",
-    g."AbrGenerique" AS "AbrTypeMvt",
-    g."NomGenerique" AS "TypeMvt",
-    COALESCE(m."QteMvt", 0) AS "QteMvt",
-    (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
-        CASE
-            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END AS "SigneStock",
-    ((COALESCE(m."QteMvt", 0) *
-        CASE
-            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END))::numeric AS "QteMvtSigned",
-    (((COALESCE(m."QteMvt", 0))::numeric * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
-    ((((COALESCE(m."QteMvt", 0))::numeric * COALESCE(m."PUMvt", (0)::numeric)) * (
-        CASE
-            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END)::numeric))::numeric(14,2) AS "MontantMvtSigned",
-        CASE
-            WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
-            ELSE 'Commande'::text
-        END AS "OrigineMouvement"
-   FROM (((logistique."T_Mouvement" m
-     LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = m."ID_ArticleFk")))
-     LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = m."ID_cmdFk")))
-     LEFT JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = m."ID_TypeMvtFk") AND (g."ID_CategorieGeneriqueFk" = 64))));
+ SELECT source."ID_Mvt",
+    source."ID_ArticleFk",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."ID_cmdFk",
+    source."CodeCmd",
+    source."DateCmd",
+    source."ID_TypeCmdActuel",
+    source."DateHeureAutoMvt",
+    source."DateMvt",
+    source."ID_TypeMvt",
+    source."AbrTypeMvt",
+    source."TypeMvt",
+    source."QteMvt",
+    source."PUMvt",
+    source."SigneStock",
+    source."QteMvtSigned",
+    source."MontantMvt",
+    source."MontantMvtSigned",
+    source."OrigineMouvement",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk",
+    r."ID_TiersFk",
+    t."Nom" AS "TiersNom"
+   FROM ((( SELECT historique."ID_Mvt",
+            historique."ID_ArticleFk",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."ID_cmdFk",
+            historique."CodeCmd",
+            historique."DateCmd",
+            historique."ID_TypeCmdActuel",
+            historique."DateHeureAutoMvt",
+            historique."DateMvt",
+            historique."ID_TypeMvt",
+            historique."AbrTypeMvt",
+            historique."TypeMvt",
+            historique."QteMvt",
+            historique."PUMvt",
+            historique."SigneStock",
+            historique."QteMvtSigned",
+            historique."MontantMvt",
+            historique."MontantMvtSigned",
+            historique."OrigineMouvement",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT m."ID_Mvt",
+                    m."ID_ArticleFk",
+                    a."CodeArticleInterne",
+                    a."NomArticle",
+                    m."ID_cmdFk",
+                    c."CodeCmd",
+                    c."DateCmd",
+                    c."ID_TypeCmdFk" AS "ID_TypeCmdActuel",
+                    m."DateHeureAutoMvt",
+                    m."DateMvt",
+                    m."ID_TypeMvtFk" AS "ID_TypeMvt",
+                    g."AbrGenerique" AS "AbrTypeMvt",
+                    g."NomGenerique" AS "TypeMvt",
+                    COALESCE(m."QteMvt", (0)::numeric) AS "QteMvt",
+                    (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
+                        CASE
+                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END AS "SigneStock",
+                    (COALESCE(m."QteMvt", (0)::numeric) * (
+                        CASE
+                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END)::numeric) AS "QteMvtSigned",
+                    ((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
+                    (((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)) * (
+                        CASE
+                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END)::numeric))::numeric(14,2) AS "MontantMvtSigned",
+                        CASE
+                            WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
+                            ELSE 'Commande'::text
+                        END AS "OrigineMouvement"
+                   FROM (((logistique."T_Mouvement" m
+                     LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = m."ID_ArticleFk")))
+                     LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = m."ID_cmdFk")))
+                     LEFT JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = m."ID_TypeMvtFk") AND (g."ID_CategorieGeneriqueFk" = 64))))) historique
+             LEFT JOIN logistique."T_Mouvement" source_1 ON ((source_1."ID_Mvt" = historique."ID_Mvt")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_cmdFk")))
+     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")));
 
 
 --
 -- Name: VIEW "V_MouvementStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_MouvementStock" IS 'Source commune au grain mouvement pour les calculs de stock : signe tiré du type historique catégorie 64, quantité/valeur signées et origine. Le type de commande actuel est exposé séparément.';
+COMMENT ON VIEW logistique."V_MouvementStock" IS 'Source commune au grain mouvement pour les calculs de stock : signe tiré du type historique catégorie 64, quantité/valeur signées et origine. Le type de commande actuel est exposé séparément. Devise du mouvement historique explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -8384,32 +14529,86 @@ COMMENT ON COLUMN logistique."V_MouvementStock"."OrigineMouvement" IS 'Commande 
 
 
 --
+-- Name: COLUMN "V_MouvementStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."ID_DeviseFk" IS 'Référence de devise du mouvement historique ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_MouvementStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_MouvementStock"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_MouvementStock"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_MouvementStock"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_MouvementStock"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementStock"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
 -- Name: V_AuditStock_Theorique; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_AuditStock_Theorique" AS
- WITH mvt AS (
-         SELECT v."ID_ArticleFk",
-            sum(v."QteMvtSigned") AS stock_mouvement
-           FROM logistique."V_MouvementStock" v
-          GROUP BY v."ID_ArticleFk"
-        )
- SELECT a."ID_Article",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    COALESCE(a."QteArticle", (0)::numeric) AS "StockEnregistre",
-    COALESCE(mvt.stock_mouvement, (0)::numeric) AS "StockCalcule",
-    (COALESCE(a."QteArticle", (0)::numeric) - COALESCE(mvt.stock_mouvement, (0)::numeric)) AS "Ecart",
-    ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(mvt.stock_mouvement, (0)::numeric)) = (0)::numeric) AS "EstStockCoherent"
-   FROM (logistique."T_Article" a
-     LEFT JOIN mvt ON ((mvt."ID_ArticleFk" = a."ID_Article")));
+ SELECT historique."ID_Article",
+    historique."CodeArticleInterne",
+    historique."NomArticle",
+    historique."StockEnregistre",
+    historique."StockCalcule",
+    historique."Ecart",
+    historique."EstStockCoherent",
+    source."ID_DeviseFk",
+    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+    (devise."NomGenerique")::text AS "DeviseLibelle"
+   FROM ((( WITH mvt AS (
+                 SELECT v."ID_ArticleFk",
+                    sum(v."QteMvtSigned") AS stock_mouvement
+                   FROM logistique."V_MouvementStock" v
+                  GROUP BY v."ID_ArticleFk"
+                )
+         SELECT a."ID_Article",
+            a."CodeArticleInterne",
+            a."NomArticle",
+            COALESCE(a."QteArticle", (0)::numeric) AS "StockEnregistre",
+            COALESCE(mvt.stock_mouvement, (0)::numeric) AS "StockCalcule",
+            (COALESCE(a."QteArticle", (0)::numeric) - COALESCE(mvt.stock_mouvement, (0)::numeric)) AS "Ecart",
+            ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(mvt.stock_mouvement, (0)::numeric)) = (0)::numeric) AS "EstStockCoherent"
+           FROM (logistique."T_Article" a
+             LEFT JOIN mvt ON ((mvt."ID_ArticleFk" = a."ID_Article")))) historique
+     LEFT JOIN logistique."T_Article" source ON ((source."ID_Article" = historique."ID_Article")))
+     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source."ID_DeviseFk")));
 
 
 --
 -- Name: VIEW "V_AuditStock_Theorique"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_AuditStock_Theorique" IS 'Rapprochement au grain article entre QteArticle courant et somme de V_MouvementStock.QteMvtSigned ; écart = stock enregistré moins stock calculé.';
+COMMENT ON VIEW logistique."V_AuditStock_Theorique" IS 'Rapprochement au grain article entre QteArticle courant et somme de V_MouvementStock.QteMvtSigned ; écart = stock enregistré moins stock calculé. Devise du catalogue article explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -8462,62 +14661,1247 @@ COMMENT ON COLUMN logistique."V_AuditStock_Theorique"."EstStockCoherent" IS 'Vra
 
 
 --
+-- Name: COLUMN "V_AuditStock_Theorique"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock_Theorique"."ID_DeviseFk" IS 'Référence de devise du catalogue article ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_AuditStock_Theorique"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock_Theorique"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_AuditStock_Theorique"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_AuditStock_Theorique"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: V_Avoir; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Avoir" AS
+ SELECT a."ID_Avoir",
+    a."ID_FactureFk",
+    a."ID_CommandeFk",
+    a."IdEntiteFk",
+    a."ID_UserFk",
+    a."CodeAvoir",
+    a."DateAvoir",
+    a."Motif",
+    a."ID_DeviseFk",
+    a."DeviseCode",
+    a."MontantTTC",
+    a."RequestId",
+    a."PayloadHash",
+    a."TransactionCreation",
+    a."CreeLe",
+    (COALESCE(s.impute, (0)::numeric))::numeric(12,2) AS "MontantImpute",
+    (COALESCE(r.rembourse, (0)::numeric))::numeric(12,2) AS "MontantRembourse",
+    (((a."MontantTTC" - COALESCE(s.impute, (0)::numeric)) - COALESCE(r.rembourse, (0)::numeric)))::numeric(12,2) AS "Disponible"
+   FROM ((logistique."T_Avoir" a
+     LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS impute
+           FROM logistique."T_AvoirAffectation"
+          WHERE ("T_AvoirAffectation"."ID_AvoirFk" = a."ID_Avoir")) s ON (true))
+     LEFT JOIN LATERAL ( SELECT sum("T_Remboursement"."Montant") AS rembourse
+           FROM logistique."T_Remboursement"
+          WHERE ("T_Remboursement"."ID_AvoirFk" = a."ID_Avoir")) r ON (true));
+
+
+--
+-- Name: VIEW "V_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Avoir" IS 'Disponible exact de chaque avoir après imputations et remboursements.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."ID_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."ID_Avoir" IS 'Identifiant interne et stable de l’avoir émis.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."ID_FactureFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."ID_FactureFk" IS 'Facture originale et immuable à laquelle se rapporte l’avoir.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."ID_CommandeFk" IS 'Bon original facturé dont les articles ont été retournés.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."IdEntiteFk" IS 'Entreprise propriétaire durable de l’avoir et de sa facture.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."ID_UserFk" IS 'Auteur réel de l’émission, imputation ou remboursement.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."CodeAvoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."CodeAvoir" IS 'Référence automatique et immuable avr-identifiant.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."DateAvoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."DateAvoir" IS 'Date et heure effectives de l’émission de l’avoir.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."Motif" IS 'Justification métier de l’avoir après retour facturé.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."ID_DeviseFk" IS 'Devise de la facture d’origine, issue du référentiel.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."DeviseCode" IS 'Code de la devise de la facture, conservé à l’émission.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."MontantTTC" IS 'Montant émis égal à la somme des lignes.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."RequestId" IS 'Identifiant unique du traitement empêchant les doubles envois.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."PayloadHash" IS 'Empreinte canonique à comparer lors du rejeu d’une demande.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."TransactionCreation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."TransactionCreation" IS 'Transaction autorisée à insérer les lignes du nouvel avoir.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."CreeLe" IS 'Horodatage serveur de l’enregistrement.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."MontantImpute"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."MontantImpute" IS 'Cumul des imputations sur des factures autorisées.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."MontantRembourse"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."MontantRembourse" IS 'Cumul des remboursements effectivement enregistrés.';
+
+
+--
+-- Name: COLUMN "V_Avoir"."Disponible"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Avoir"."Disponible" IS 'Montant émis non encore imputé ni remboursé.';
+
+
+--
+-- Name: V_BonInventaire; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_BonInventaire" AS
+ SELECT DISTINCT "T_InventaireLigne"."ID_CommandeCorrectionFk" AS "ID_Commande",
+    "T_InventaireLigne"."ID_InventaireFk" AS "ID_Inventaire",
+    'correction'::text AS "RoleBon"
+   FROM logistique."T_InventaireLigne"
+  WHERE ("T_InventaireLigne"."ID_CommandeCorrectionFk" IS NOT NULL)
+UNION
+ SELECT DISTINCT "T_InventaireLigne"."ID_CommandeAnnulationFk" AS "ID_Commande",
+    "T_InventaireLigne"."ID_InventaireFk" AS "ID_Inventaire",
+    'annulation'::text AS "RoleBon"
+   FROM logistique."T_InventaireLigne"
+  WHERE ("T_InventaireLigne"."ID_CommandeAnnulationFk" IS NOT NULL);
+
+
+--
+-- Name: VIEW "V_BonInventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_BonInventaire" IS 'Bons correcteurs et compensateurs rattachés aux comptages ; flux physiques internes sans facturation ni retour commercial.';
+
+
+--
+-- Name: COLUMN "V_BonInventaire"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_BonInventaire"."ID_Commande" IS 'Identité du bon de stock interne ; un bon peut regrouper plusieurs articles comptés.';
+
+
+--
+-- Name: COLUMN "V_BonInventaire"."ID_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_BonInventaire"."ID_Inventaire" IS 'Comptage physique à l’origine du bon ou de sa compensation.';
+
+
+--
+-- Name: COLUMN "V_BonInventaire"."RoleBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_BonInventaire"."RoleBon" IS 'Correction du comptage ou compensation d’une annulation ; ne désigne pas une vente ou un retour client.';
+
+
+--
+-- Name: V_CategorieDossierSuivi; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_CategorieDossierSuivi" AS
+ SELECT "ID_CategorieDossierSuivi",
+    "ID_UserFk",
+    "IdEntiteFk",
+    "Nom",
+    "Couleur",
+    "Actif",
+    "CreeLe",
+    "ModifieLe"
+   FROM logistique."T_CategorieDossierSuivi";
+
+
+--
+-- Name: VIEW "V_CategorieDossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_CategorieDossierSuivi" IS 'Projection de lecture du classement des articles, à filtrer par propriétaire et organisation.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."ID_CategorieDossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."ID_CategorieDossierSuivi" IS 'Identifiant permanent de la catégorie de dossiers.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."ID_UserFk" IS 'Propriétaire du classement ; imposé par le compte authentifié et immuable.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."Nom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."Nom" IS 'Libellé métier du dossier ou de sa catégorie.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."Couleur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."Couleur" IS 'Repère visuel de palette ; ne déclenche aucune action sur le stock.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."CreeLe" IS 'Instant de création.';
+
+
+--
+-- Name: COLUMN "V_CategorieDossierSuivi"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CategorieDossierSuivi"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: T_Professionnel; Type: TABLE; Schema: professionnel; Owner: -
+--
+
+CREATE TABLE professionnel."T_Professionnel" (
+    "IdProfessionnel" integer CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" NOT NULL,
+    "IdUserFk" integer CONSTRAINT "T_Professionnel_IdUserFk_not_null" NOT NULL,
+    "IdTypeProfessionnelFk" integer CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" NOT NULL,
+    "IdSpecialiteFk" integer CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" NOT NULL,
+    "NumeroIdentification" character varying(50),
+    "ExperienceAns" integer,
+    "ObsProfessionnel" text,
+    "ValideProfessionnel" boolean DEFAULT true,
+    CONSTRAINT "Chk_Prof_Experience_NonNegative" CHECK ((("ExperienceAns" IS NULL) OR ("ExperienceAns" >= 0))),
+    CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" CHECK ((("NumeroIdentification" IS NULL) OR (length(TRIM(BOTH FROM "NumeroIdentification")) > 0)))
+);
+
+
+--
+-- Name: TABLE "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TABLE professionnel."T_Professionnel" IS 'Profil professionnel lié à un utilisateur, avec type, spécialité, identification, expérience et validité.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdProfessionnel" IS 'Identifiant du profil professionnel.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdUserFk" IS 'Utilisateur rattaché à l’enregistrement. Relation imposée : FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE RESTRICT.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdTypeProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdTypeProfessionnelFk" IS 'Type du professionnel dans le référentiel. Relation imposée : FOREIGN KEY ("IdTypeProfessionnelFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE RESTRICT.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdSpecialiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdSpecialiteFk" IS 'Spécialité du professionnel dans le référentiel. Relation imposée : FOREIGN KEY ("IdSpecialiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE RESTRICT.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."NumeroIdentification"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."NumeroIdentification" IS 'Numéro d’identification professionnel déclaré ; une chaîne vide est interdite si renseigné.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ExperienceAns"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ExperienceAns" IS 'Nombre d’années d’expérience déclaré pour le professionnel ; valeur négative interdite.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ObsProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ObsProfessionnel" IS 'Observations enregistrées sur le profil professionnel.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ValideProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ValideProfessionnel" IS 'Indique si le profil professionnel est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
+
+
+--
+-- Name: CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdProfessionnel".';
+
+
+--
+-- Name: CONSTRAINT "T_Professionnel_IdUserFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Professionnel_IdUserFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdUserFk".';
+
+
+--
+-- Name: CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdTypeProfessionnelFk".';
+
+
+--
+-- Name: CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdSpecialiteFk".';
+
+
+--
+-- Name: CONSTRAINT "Chk_Prof_Experience_NonNegative" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Chk_Prof_Experience_NonNegative" ON professionnel."T_Professionnel" IS 'Contrôle de cohérence des valeurs autorisées dans "professionnel"."T_Professionnel". Définition : CHECK ("ExperienceAns" IS NULL OR "ExperienceAns" >= 0).';
+
+
+--
+-- Name: CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" ON professionnel."T_Professionnel" IS 'Contrôle de cohérence des valeurs autorisées dans "professionnel"."T_Professionnel". Définition : CHECK ("NumeroIdentification" IS NULL OR length(TRIM(BOTH FROM "NumeroIdentification")) > 0).';
+
+
+--
+-- Name: V_Client; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Client" AS
+ SELECT t."ID_Client",
+    t."IdEntiteFk",
+    t."Nature",
+    t."ID_TypeClientFk",
+    t."Nom",
+    t."Email",
+    t."Telephone",
+    t."Adresse",
+    t."IdUserFk",
+    t."IdProfessionnelFk",
+    t."IdEntiteRepresenteeFk",
+    t."ObsClient",
+    t."Actif",
+    t."CreeParUserFk",
+    t."ModifieParUserFk",
+    t."DateCreation",
+    t."DateModification",
+    g."NomGenerique" AS "TypeClient",
+    e."NomEntite" AS "Entreprise",
+    e."NomEntite",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "NomUtilisateur",
+    concat_ws(' '::text, pu."PrenomUser", pu."NomUser") AS "NomProfessionnel",
+    rep."NomEntite" AS "NomEntiteRepresentee"
+   FROM ((((((logistique."T_Client" t
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = t."IdEntiteFk")))
+     LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = t."ID_TypeClientFk")))
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = t."IdUserFk")))
+     LEFT JOIN professionnel."T_Professionnel" p ON ((p."IdProfessionnel" = t."IdProfessionnelFk")))
+     LEFT JOIN systeme."T_Utilisateurs" pu ON ((pu."IdUser" = p."IdUserFk")))
+     LEFT JOIN systeme."T_Entite" rep ON ((rep."IdEntite" = t."IdEntiteRepresenteeFk")));
+
+
+--
+-- Name: VIEW "V_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Client" IS 'Fiche commune de tiers avec catégorie et entreprise propriétaire ; filtrage serveur obligatoire.';
+
+
+--
+-- Name: COLUMN "V_Client"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Client"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Client"."TypeClient"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Client"."TypeClient" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: V_Facture; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Facture" AS
+ SELECT b."ID_Facture",
+    b."ID_CommandeFk",
+    b."CodeFacture",
+    b."ID_UserFk",
+    b."IdEntiteFk",
+    b."RequestId",
+    b."PayloadHash",
+    b."DateFacture",
+    b."DateEcheancePaiement",
+    b."ID_ModePaiementFk",
+    b."ID_ConditionPaiementFk",
+    b."DelaiJours",
+    b."ID_DeviseFk",
+    b."DeviseCode",
+    b."DeviseLibelle",
+    b."MontantHT",
+    b."MontantTTC",
+    b."TransactionCreation",
+    b."CreeLe",
+    b."ModifieLe",
+    b."MontantFacture",
+    b."TotalRegle",
+    ((b."Reste" - COALESCE(cr.total, (0)::numeric)))::numeric(12,2) AS "Reste",
+    b."NbReglements",
+    b."DernierReglement",
+        CASE
+            WHEN ((b."Reste" - COALESCE(cr.total, (0)::numeric)) <= (0)::numeric) THEN 'Réglée'::text
+            WHEN ((b."TotalRegle" > (0)::numeric) OR (COALESCE(cr.total, (0)::numeric) > (0)::numeric)) THEN 'Partiellement réglée'::text
+            ELSE 'Non réglée'::text
+        END AS "EtatReglement",
+    (b."EstEnRetard" AND ((b."Reste" - COALESCE(cr.total, (0)::numeric)) > (0)::numeric)) AS "EstEnRetard",
+    b."JoursAvantEcheance",
+    (logistique.fn_montant_avoir_attente(b."ID_CommandeFk"))::numeric(12,2) AS "MontantAvoirAEtablir",
+    (logistique.fn_montant_avoir_attente(b."ID_CommandeFk") > (0)::numeric) AS "AvoirAEtablir",
+    (COALESCE(cr.total, (0)::numeric))::numeric(12,2) AS "AvoirImpute",
+    ((b."MontantTTC" - COALESCE(cr.total, (0)::numeric)))::numeric(12,2) AS "MontantNetARegler"
+   FROM (( WITH payments AS (
+                 SELECT "T_Reglements"."CodeFactureFk",
+                    (COALESCE(sum("T_Reglements"."MontantRegle"), (0)::numeric))::numeric(12,2) AS total,
+                    count(*) AS n,
+                    max("T_Reglements"."DateReglement") AS last
+                   FROM logistique."T_Reglements"
+                  GROUP BY "T_Reglements"."CodeFactureFk"
+                ), returned AS (
+                 SELECT r."ID_CommandeOrigineFk" AS command_id,
+                    d."ID_ArticleFk",
+                    sum(d."QteCmdDetail") AS quantity
+                   FROM (logistique."T_RetourBon" r
+                     JOIN logistique."T_CommandeDetail" d ON ((d."ID_CmdFk" = r."ID_CommandeRetourFk")))
+                  GROUP BY r."ID_CommandeOrigineFk", d."ID_ArticleFk"
+                ), credit AS (
+                 SELECT l."ID_FactureFk",
+                    (sum((GREATEST((COALESCE(r.quantity, (0)::numeric) - (l."QteRetourAvantFacture")::numeric), (0)::numeric) * l."PUFacture")))::numeric(12,2) AS total
+                   FROM (logistique."T_FactureLigne" l
+                     LEFT JOIN returned r ON (((r.command_id = l."ID_CmdFk") AND (r."ID_ArticleFk" = l."ID_ArticleFk"))))
+                  GROUP BY l."ID_FactureFk"
+                )
+         SELECT f."ID_Facture",
+            f."ID_CommandeFk",
+            f."CodeFacture",
+            f."ID_UserFk",
+            f."IdEntiteFk",
+            f."RequestId",
+            f."PayloadHash",
+            f."DateFacture",
+            f."DateEcheancePaiement",
+            f."ID_ModePaiementFk",
+            f."ID_ConditionPaiementFk",
+            f."DelaiJours",
+            f."ID_DeviseFk",
+            f."DeviseCode",
+            f."DeviseLibelle",
+            f."MontantHT",
+            f."MontantTTC",
+            f."TransactionCreation",
+            f."CreeLe",
+            f."ModifieLe",
+            f."MontantTTC" AS "MontantFacture",
+            (COALESCE(p.total, (0)::numeric))::numeric(12,2) AS "TotalRegle",
+            ((f."MontantTTC" - COALESCE(p.total, (0)::numeric)))::numeric(12,2) AS "Reste",
+            COALESCE(p.n, (0)::bigint) AS "NbReglements",
+            p.last AS "DernierReglement",
+                CASE
+                    WHEN (COALESCE(p.total, (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
+                    WHEN (p.total < f."MontantTTC") THEN 'Partiellement réglée'::text
+                    ELSE 'Réglée'::text
+                END AS "EtatReglement",
+            (((f."DateEcheancePaiement")::date < CURRENT_DATE) AND (f."MontantTTC" > COALESCE(p.total, (0)::numeric))) AS "EstEnRetard",
+            ((f."DateEcheancePaiement")::date - CURRENT_DATE) AS "JoursAvantEcheance",
+            (COALESCE(c.total, (0)::numeric))::numeric(12,2) AS "MontantAvoirAEtablir",
+            (COALESCE(c.total, (0)::numeric) > (0)::numeric) AS "AvoirAEtablir"
+           FROM ((logistique."T_Facture" f
+             LEFT JOIN payments p ON (((p."CodeFactureFk")::text = (f."CodeFacture")::text)))
+             LEFT JOIN credit c ON ((c."ID_FactureFk" = f."ID_Facture")))) b
+     LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS total
+           FROM logistique."T_AvoirAffectation"
+          WHERE ("T_AvoirAffectation"."ID_CommandeCibleFk" = b."ID_CommandeFk")) cr ON (true));
+
+
+--
+-- Name: VIEW "V_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Facture" IS 'Facture figée et suivi financier calculé depuis les règlements réels ; retours postérieurs signalés comme avoir à établir, sans remboursement automatique.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_Facture" IS 'Projection financière : ID_Facture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_CommandeFk" IS 'Projection financière : ID_CommandeFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."CodeFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."CodeFacture" IS 'Projection financière : CodeFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_UserFk" IS 'Projection financière : ID_UserFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Facture"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."RequestId" IS 'Projection financière : RequestId ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."PayloadHash" IS 'Projection financière : PayloadHash ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DateFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DateFacture" IS 'Projection financière : DateFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DateEcheancePaiement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DateEcheancePaiement" IS 'Projection financière : DateEcheancePaiement ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_ModePaiementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_ModePaiementFk" IS 'Projection financière : ID_ModePaiementFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_ConditionPaiementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_ConditionPaiementFk" IS 'Projection financière : ID_ConditionPaiementFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DelaiJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DelaiJours" IS 'Projection financière : DelaiJours ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ID_DeviseFk" IS 'Projection financière : ID_DeviseFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DeviseCode" IS 'Projection financière : DeviseCode ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DeviseLibelle" IS 'Projection financière : DeviseLibelle ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."MontantHT"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."MontantHT" IS 'Projection financière : MontantHT ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."MontantTTC" IS 'Projection financière : MontantTTC ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."TransactionCreation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."TransactionCreation" IS 'Projection financière : TransactionCreation ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."CreeLe" IS 'Projection financière : CreeLe ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."ModifieLe" IS 'Projection financière : ModifieLe ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."MontantFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."MontantFacture" IS 'Projection financière : MontantFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."TotalRegle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."TotalRegle" IS 'Projection financière : TotalRegle ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."Reste"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."Reste" IS 'Solde unique de référence : montant émis diminué des encaissements et des avoirs imputés.';
+
+
+--
+-- Name: COLUMN "V_Facture"."NbReglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."NbReglements" IS 'Projection financière : NbReglements ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."DernierReglement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."DernierReglement" IS 'Projection financière : DernierReglement ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."EtatReglement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."EtatReglement" IS 'Projection financière : EtatReglement ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."EstEnRetard"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."EstEnRetard" IS 'Projection financière : EstEnRetard ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."JoursAvantEcheance"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."JoursAvantEcheance" IS 'Projection financière : JoursAvantEcheance ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."MontantAvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."MontantAvoirAEtablir" IS 'Projection financière : MontantAvoirAEtablir ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."AvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."AvoirAEtablir" IS 'Projection financière : AvoirAEtablir ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_Facture"."AvoirImpute"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."AvoirImpute" IS 'Imputations d’avoirs distinctes des encaissements.';
+
+
+--
+-- Name: COLUMN "V_Facture"."MontantNetARegler"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Facture"."MontantNetARegler" IS 'Montant émis diminué des imputations avant encaissements.';
+
+
+--
 -- Name: V_Commande; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_Commande" AS
- WITH cd_stats AS (
-         SELECT cd."ID_CmdFk",
-            (count(*))::integer AS "NbLignes",
-            (count(DISTINCT cd."ID_ArticleFk"))::integer AS "NbArticlesDistincts",
-            (COALESCE(sum(COALESCE(cd."QteCmdDetail", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteTotale",
-            (COALESCE(sum((COALESCE(cd."QteCmdDetail", (0)::numeric) * COALESCE(cd."PUCmdDetail", (0)::numeric))), (0)::numeric))::numeric(12,2) AS "MontantDetails",
-            string_agg(DISTINCT (a."NomArticle")::text, ', '::text ORDER BY (a."NomArticle")::text) AS "ListeArticles"
-           FROM (logistique."T_CommandeDetail" cd
-             LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = cd."ID_ArticleFk")))
-          GROUP BY cd."ID_CmdFk"
-        ), reg_stats AS (
-         SELECT r."CodeFactureFk",
-            (COALESCE(sum(COALESCE(r."MontantRegle", (0)::numeric)), (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
-            (count(*))::integer AS "NbReglements",
-            max(r."DateReglement") AS "DernierReglement"
-           FROM logistique."T_Reglements" r
-          GROUP BY r."CodeFactureFk"
-        )
- SELECT c."ID_Commande",
-    c."ID_TypeCmdFk",
-    c."ID_StatutCmdFk",
-    c."ID_ClientFk",
-    c."ID_UserFk",
-    c."geolocalisationCmd",
-    c."DateHeureAutoCmd",
-    c."DateCmd",
-    c."CodeCmd",
-    c."RefCmd",
-    c."MontantHT",
-    c."MontantTTC",
-    c."UrlBL",
-    c."ObsCmd",
-    c."SelectCmd",
-    c."DateHeureAutoFacture",
-    c."DateFacture",
-    c."CodeFacture",
-    c."MontantRegleFacture",
-    c."MontantResteFacture",
-    c."StatusFacture",
-    c."ValideRemiseFacture",
-    c."UrlFacture",
-    c."ID_ConditionPaiementFk",
-    c."DateEcheancePaiement",
-    c."ID_ModePaiementFk",
-    c."NomClientSaisi",
+ SELECT b."ID_Commande",
+    b."ID_TypeCmdFk",
+    b."ID_StatutCmdFk",
+    b."ID_ClientFk",
+    b."ID_UserFk",
+    b."geolocalisationCmd",
+    b."DateHeureAutoCmd",
+    b."DateCmd",
+    b."CodeCmd",
+    b."RefCmd",
+    b."MontantHT",
+    b."MontantTTC",
+    b."UrlBL",
+    b."ObsCmd",
+    b."SelectCmd",
+    b."DateHeureAutoFacture",
+    b."DateFacture",
+    b."CodeFacture",
+    b."MontantRegleFacture",
+    b."MontantResteFacture",
+    b."StatusFacture",
+    b."ValideRemiseFacture",
+    b."UrlFacture",
+    b."ID_ConditionPaiementFk",
+    b."DateEcheancePaiement",
+    b."ID_ModePaiementFk",
+    b."NomClientSaisi",
+    b."AbrTypeCmd",
+    b."TypeCmd",
+    b."SigneCommande",
+    b."EstCommandeEntree",
+    b."EstCommandeSortie",
+    b."AbrStatutCmd",
+    b."StatutCmd",
+    b."NomUser",
+    b."PrenomUser",
+    b."NomComplet",
+    b."AbrConditionPaiement",
+    b."ConditionPaiement",
+    b."AbrModePaiement",
+    b."ModePaiement",
+    b."MontantHTCalc",
+    b."MontantTTCCalc",
+    b."MontantRegleFactureCalc",
+    b."MontantResteFactureCalc",
+    b."TotalRegleReel",
+    b."ResteReel",
+    b."NbReglements",
+    b."DernierReglement",
+    b."EtatPaiement",
+    b."EstPaiementEnRetard",
+    b."JoursAvantEcheance",
+    b."NbLignes",
+    b."NbArticlesDistincts",
+    b."QteTotale",
+    b."MontantDetails",
+    b."ListeArticles",
+    b."EstCommandeSansDetails",
+    b."EcartMontantDetails",
+    b."EstMontantIncoherent",
+    b."EtatControleCommande",
+    b."ID_DeviseFk",
+    b."DeviseCode",
+    b."DeviseLibelle",
+    b."ID_Facture",
+    b."EstFactureSnapshot",
+    b."MontantFacture",
+    (pending.amount)::numeric(12,2) AS "MontantAvoirAEtablir",
+    (pending.amount > (0)::numeric) AS "AvoirAEtablir",
+    b."IdEntiteFk",
+    b."ID_TiersFk",
+    b."TiersNom",
+    b."ID_DestinationFk",
+    b."DestinationLibelle",
+    (COALESCE(cr.total, (0)::numeric))::numeric(12,2) AS "AvoirImpute"
+   FROM ((( SELECT s."ID_Commande",
+            s."ID_TypeCmdFk",
+            s."ID_StatutCmdFk",
+            s."ID_ClientFk",
+            s."ID_UserFk",
+            s."geolocalisationCmd",
+            s."DateHeureAutoCmd",
+            s."DateCmd",
+            s."CodeCmd",
+            s."RefCmd",
+            s."MontantHT",
+            s."MontantTTC",
+            s."UrlBL",
+            s."ObsCmd",
+            s."SelectCmd",
+            s."DateHeureAutoFacture",
+            s."DateFacture",
+            s."CodeFacture",
+            s."MontantRegleFacture",
+            s."MontantResteFacture",
+            s."StatusFacture",
+            s."ValideRemiseFacture",
+            s."UrlFacture",
+            s."ID_ConditionPaiementFk",
+            s."DateEcheancePaiement",
+            s."ID_ModePaiementFk",
+            s."NomClientSaisi",
+            s."AbrTypeCmd",
+            s."TypeCmd",
+            s."SigneCommande",
+            s."EstCommandeEntree",
+            s."EstCommandeSortie",
+            s."AbrStatutCmd",
+            s."StatutCmd",
+            s."NomUser",
+            s."PrenomUser",
+            s."NomComplet",
+            s."AbrConditionPaiement",
+            s."ConditionPaiement",
+            s."AbrModePaiement",
+            s."ModePaiement",
+            s."MontantHTCalc",
+            s."MontantTTCCalc",
+            s."MontantRegleFactureCalc",
+            s."MontantResteFactureCalc",
+            s."TotalRegleReel",
+            s."ResteReel",
+            s."NbReglements",
+            s."DernierReglement",
+            s."EtatPaiement",
+            s."EstPaiementEnRetard",
+            s."JoursAvantEcheance",
+            s."NbLignes",
+            s."NbArticlesDistincts",
+            s."QteTotale",
+            s."MontantDetails",
+            s."ListeArticles",
+            s."EstCommandeSansDetails",
+            s."EcartMontantDetails",
+            s."EstMontantIncoherent",
+            s."EtatControleCommande",
+            s."ID_DeviseFk",
+            s."DeviseCode",
+            s."DeviseLibelle",
+            s."ID_Facture",
+            s."EstFactureSnapshot",
+            s."MontantFacture",
+            s."MontantAvoirAEtablir",
+            s."AvoirAEtablir",
+            s."IdEntiteFk",
+            s."ID_TiersFk",
+            s."TiersNom",
+            c."ID_DestinationFk",
+            d.label AS "DestinationLibelle"
+           FROM ((( SELECT source."ID_Commande",
+                    source."ID_TypeCmdFk",
+                    source."ID_StatutCmdFk",
+                    source."ID_ClientFk",
+                    source."ID_UserFk",
+                    source."geolocalisationCmd",
+                    source."DateHeureAutoCmd",
+                    source."DateCmd",
+                    source."CodeCmd",
+                    source."RefCmd",
+                    source."MontantHT",
+                    source."MontantTTC",
+                    source."UrlBL",
+                    source."ObsCmd",
+                    source."SelectCmd",
+                    source."DateHeureAutoFacture",
+                    source."DateFacture",
+                    source."CodeFacture",
+                    source."MontantRegleFacture",
+                    source."MontantResteFacture",
+                    source."StatusFacture",
+                    source."ValideRemiseFacture",
+                    source."UrlFacture",
+                    source."ID_ConditionPaiementFk",
+                    source."DateEcheancePaiement",
+                    source."ID_ModePaiementFk",
+                    source."NomClientSaisi",
+                    source."AbrTypeCmd",
+                    source."TypeCmd",
+                    source."SigneCommande",
+                    source."EstCommandeEntree",
+                    source."EstCommandeSortie",
+                    source."AbrStatutCmd",
+                    source."StatutCmd",
+                    source."NomUser",
+                    source."PrenomUser",
+                    source."NomComplet",
+                    source."AbrConditionPaiement",
+                    source."ConditionPaiement",
+                    source."AbrModePaiement",
+                    source."ModePaiement",
+                    source."MontantHTCalc",
+                    source."MontantTTCCalc",
+                    source."MontantRegleFactureCalc",
+                    source."MontantResteFactureCalc",
+                    source."TotalRegleReel",
+                    source."ResteReel",
+                    source."NbReglements",
+                    source."DernierReglement",
+                    source."EtatPaiement",
+                    source."EstPaiementEnRetard",
+                    source."JoursAvantEcheance",
+                    source."NbLignes",
+                    source."NbArticlesDistincts",
+                    source."QteTotale",
+                    source."MontantDetails",
+                    source."ListeArticles",
+                    source."EstCommandeSansDetails",
+                    source."EcartMontantDetails",
+                    source."EstMontantIncoherent",
+                    source."EtatControleCommande",
+                    source."ID_DeviseFk",
+                    source."DeviseCode",
+                    source."DeviseLibelle",
+                    source."ID_Facture",
+                    source."EstFactureSnapshot",
+                    source."MontantFacture",
+                    source."MontantAvoirAEtablir",
+                    source."AvoirAEtablir",
+                    r."IdEntiteFk",
+                    r."ID_TiersFk",
+                    t."Nom" AS "TiersNom"
+                   FROM ((( SELECT base."ID_Commande",
+                            base."ID_TypeCmdFk",
+                            base."ID_StatutCmdFk",
+                            base."ID_ClientFk",
+                            base."ID_UserFk",
+                            base."geolocalisationCmd",
+                            base."DateHeureAutoCmd",
+                            base."DateCmd",
+                            base."CodeCmd",
+                            base."RefCmd",
+                            base."MontantHT",
+                            base."MontantTTC",
+                            base."UrlBL",
+                            base."ObsCmd",
+                            base."SelectCmd",
+                            base."DateHeureAutoFacture",
+                            base."DateFacture",
+                            base."CodeFacture",
+                            COALESCE(f."TotalRegle", base."MontantRegleFacture") AS "MontantRegleFacture",
+                            COALESCE(f."Reste", base."MontantResteFacture") AS "MontantResteFacture",
+                            base."StatusFacture",
+                            base."ValideRemiseFacture",
+                            base."UrlFacture",
+                            base."ID_ConditionPaiementFk",
+                            base."DateEcheancePaiement",
+                            base."ID_ModePaiementFk",
+                            base."NomClientSaisi",
+                            base."AbrTypeCmd",
+                            base."TypeCmd",
+                            base."SigneCommande",
+                            base."EstCommandeEntree",
+                            base."EstCommandeSortie",
+                            base."AbrStatutCmd",
+                            base."StatutCmd",
+                            base."NomUser",
+                            base."PrenomUser",
+                            base."NomComplet",
+                            base."AbrConditionPaiement",
+                            base."ConditionPaiement",
+                            base."AbrModePaiement",
+                            base."ModePaiement",
+                            base."MontantHTCalc",
+                            base."MontantTTCCalc",
+                            COALESCE(f."TotalRegle", base."MontantRegleFactureCalc") AS "MontantRegleFactureCalc",
+                            COALESCE(f."Reste", base."MontantResteFactureCalc") AS "MontantResteFactureCalc",
+                            COALESCE(f."TotalRegle", base."TotalRegleReel") AS "TotalRegleReel",
+                            COALESCE(f."Reste", base."ResteReel") AS "ResteReel",
+                            base."NbReglements",
+                            base."DernierReglement",
+                            COALESCE(f."EtatReglement", base."EtatPaiement") AS "EtatPaiement",
+                            COALESCE(f."EstEnRetard", base."EstPaiementEnRetard") AS "EstPaiementEnRetard",
+                            base."JoursAvantEcheance",
+                            base."NbLignes",
+                            base."NbArticlesDistincts",
+                            base."QteTotale",
+                            base."MontantDetails",
+                            base."ListeArticles",
+                            base."EstCommandeSansDetails",
+                            base."EcartMontantDetails",
+                            base."EstMontantIncoherent",
+                            base."EtatControleCommande",
+                            base."ID_DeviseFk",
+                            COALESCE(f."DeviseCode", base."DeviseCode") AS "DeviseCode",
+                            COALESCE(f."DeviseLibelle", base."DeviseLibelle") AS "DeviseLibelle",
+                            f."ID_Facture",
+                            (f."ID_Facture" IS NOT NULL) AS "EstFactureSnapshot",
+                            (
+                                CASE
+                                    WHEN (NULLIF(btrim((base."CodeFacture")::text), ''::text) IS NOT NULL) THEN COALESCE(f."MontantTTC", base."MontantTTC")
+                                    ELSE NULL::numeric
+                                END)::numeric(12,2) AS "MontantFacture",
+                            (COALESCE(f."MontantAvoirAEtablir", (0)::numeric))::numeric(12,2) AS "MontantAvoirAEtablir",
+                            COALESCE(f."AvoirAEtablir", false) AS "AvoirAEtablir"
+                           FROM (( SELECT historique."ID_Commande",
+                                    historique."ID_TypeCmdFk",
+                                    historique."ID_StatutCmdFk",
+                                    historique."ID_ClientFk",
+                                    historique."ID_UserFk",
+                                    historique."geolocalisationCmd",
+                                    historique."DateHeureAutoCmd",
+                                    historique."DateCmd",
+                                    historique."CodeCmd",
+                                    historique."RefCmd",
+                                    historique."MontantHT",
+                                    historique."MontantTTC",
+                                    historique."UrlBL",
+                                    historique."ObsCmd",
+                                    historique."SelectCmd",
+                                    historique."DateHeureAutoFacture",
+                                    historique."DateFacture",
+                                    historique."CodeFacture",
+                                    historique."MontantRegleFacture",
+                                    historique."MontantResteFacture",
+                                    historique."StatusFacture",
+                                    historique."ValideRemiseFacture",
+                                    historique."UrlFacture",
+                                    historique."ID_ConditionPaiementFk",
+                                    historique."DateEcheancePaiement",
+                                    historique."ID_ModePaiementFk",
+                                    historique."NomClientSaisi",
+                                    historique."AbrTypeCmd",
+                                    historique."TypeCmd",
+                                    historique."SigneCommande",
+                                    historique."EstCommandeEntree",
+                                    historique."EstCommandeSortie",
+                                    historique."AbrStatutCmd",
+                                    historique."StatutCmd",
+                                    historique."NomUser",
+                                    historique."PrenomUser",
+                                    historique."NomComplet",
+                                    historique."AbrConditionPaiement",
+                                    historique."ConditionPaiement",
+                                    historique."AbrModePaiement",
+                                    historique."ModePaiement",
+                                    historique."MontantHTCalc",
+                                    historique."MontantTTCCalc",
+                                    historique."MontantRegleFactureCalc",
+                                    historique."MontantResteFactureCalc",
+                                    historique."TotalRegleReel",
+                                    historique."ResteReel",
+                                    historique."NbReglements",
+                                    historique."DernierReglement",
+                                    historique."EtatPaiement",
+                                    historique."EstPaiementEnRetard",
+                                    historique."JoursAvantEcheance",
+                                    historique."NbLignes",
+                                    historique."NbArticlesDistincts",
+                                    historique."QteTotale",
+                                    historique."MontantDetails",
+                                    historique."ListeArticles",
+                                    historique."EstCommandeSansDetails",
+                                    historique."EcartMontantDetails",
+                                    historique."EstMontantIncoherent",
+                                    historique."EtatControleCommande",
+                                    source_1."ID_DeviseFk",
+                                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                                    (devise."NomGenerique")::text AS "DeviseLibelle"
+                                   FROM ((( WITH cd_stats AS (
+   SELECT cd."ID_CmdFk",
+      (count(*))::integer AS "NbLignes",
+      (count(DISTINCT cd."ID_ArticleFk"))::integer AS "NbArticlesDistincts",
+      (COALESCE(sum(COALESCE(cd."QteCmdDetail", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteTotale",
+      (COALESCE(sum(round((COALESCE(cd."QteCmdDetail", (0)::numeric) * COALESCE(cd."PUCmdDetail", (0)::numeric)), 2)), (0)::numeric))::numeric(12,2) AS "MontantDetails",
+      string_agg(DISTINCT (a."NomArticle")::text, ', '::text ORDER BY (a."NomArticle")::text) AS "ListeArticles"
+     FROM (logistique."T_CommandeDetail" cd
+       LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = cd."ID_ArticleFk")))
+    GROUP BY cd."ID_CmdFk"
+  ), reg_stats AS (
+   SELECT r_1."CodeFactureFk",
+      (COALESCE(sum(COALESCE(r_1."MontantRegle", (0)::numeric)), (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
+      (count(*))::integer AS "NbReglements",
+      max(r_1."DateReglement") AS "DernierReglement"
+     FROM logistique."T_Reglements" r_1
+    GROUP BY r_1."CodeFactureFk"
+  )
+ SELECT c_1."ID_Commande",
+    c_1."ID_TypeCmdFk",
+    c_1."ID_StatutCmdFk",
+    c_1."ID_ClientFk",
+    c_1."ID_UserFk",
+    c_1."geolocalisationCmd",
+    c_1."DateHeureAutoCmd",
+    c_1."DateCmd",
+    c_1."CodeCmd",
+    c_1."RefCmd",
+    c_1."MontantHT",
+    c_1."MontantTTC",
+    c_1."UrlBL",
+    c_1."ObsCmd",
+    c_1."SelectCmd",
+    c_1."DateHeureAutoFacture",
+    c_1."DateFacture",
+    c_1."CodeFacture",
+    c_1."MontantRegleFacture",
+    c_1."MontantResteFacture",
+    c_1."StatusFacture",
+    c_1."ValideRemiseFacture",
+    c_1."UrlFacture",
+    c_1."ID_ConditionPaiementFk",
+    c_1."DateEcheancePaiement",
+    c_1."ID_ModePaiementFk",
+    c_1."NomClientSaisi",
     type_cmd."AbrGenerique" AS "AbrTypeCmd",
     type_cmd."NomGenerique" AS "TypeCmd",
-        CASE
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END AS "SigneCommande",
+  CASE
+   WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+   WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+   ELSE 0
+  END AS "SigneCommande",
     COALESCE(((type_cmd."AbrGenerique")::text ~~* 'entr%'::text), false) AS "EstCommandeEntree",
     COALESCE(((type_cmd."AbrGenerique")::text ~~* 'sort%'::text), false) AS "EstCommandeSortie",
     statut_cmd."AbrGenerique" AS "AbrStatutCmd",
@@ -8529,55 +15913,66 @@ CREATE VIEW logistique."V_Commande" AS
     condition_paiement."NomGenerique" AS "ConditionPaiement",
     mode_paiement."AbrGenerique" AS "AbrModePaiement",
     mode_paiement."NomGenerique" AS "ModePaiement",
-    (COALESCE(c."MontantHT", (0)::numeric))::numeric(12,2) AS "MontantHTCalc",
-    (COALESCE(c."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTCCalc",
-    (COALESCE(c."MontantRegleFacture", (0)::numeric))::numeric(12,2) AS "MontantRegleFactureCalc",
-    (COALESCE(c."MontantResteFacture", (0)::numeric))::numeric(12,2) AS "MontantResteFactureCalc",
+    (COALESCE(c_1."MontantHT", (0)::numeric))::numeric(12,2) AS "MontantHTCalc",
+    (COALESCE(c_1."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTCCalc",
+    (COALESCE(c_1."MontantRegleFacture", (0)::numeric))::numeric(12,2) AS "MontantRegleFactureCalc",
+    (COALESCE(c_1."MontantResteFacture", (0)::numeric))::numeric(12,2) AS "MontantResteFactureCalc",
     (COALESCE(reg_stats."TotalRegleReel", (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
-    ((COALESCE(c."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", (0)::numeric)))::numeric(12,2) AS "ResteReel",
+    ((COALESCE(c_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", (0)::numeric)))::numeric(12,2) AS "ResteReel",
     COALESCE(reg_stats."NbReglements", 0) AS "NbReglements",
     reg_stats."DernierReglement",
-        CASE
-            WHEN (c."CodeFacture" IS NULL) THEN 'Non facturée'::text
-            WHEN (COALESCE(c."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
-            WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", (0)::numeric), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
-            WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", (0)::numeric), (0)::numeric) < COALESCE(c."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
-            WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", (0)::numeric), (0)::numeric) >= COALESCE(c."MontantTTC", (0)::numeric)) THEN 'Réglée'::text
-            ELSE 'Indéterminé'::text
-        END AS "EtatPaiement",
-    ((c."DateEcheancePaiement" IS NOT NULL) AND ((c."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", (0)::numeric), (0)::numeric)) > (0)::numeric)) AS "EstPaiementEnRetard",
-        CASE
-            WHEN (c."DateEcheancePaiement" IS NOT NULL) THEN ((c."DateEcheancePaiement")::date - CURRENT_DATE)
-            ELSE NULL::integer
-        END AS "JoursAvantEcheance",
+  CASE
+   WHEN (c_1."CodeFacture" IS NULL) THEN 'Non facturée'::text
+   WHEN (COALESCE(c_1."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
+   WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1."MontantRegleFacture", (0)::numeric), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
+   WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1."MontantRegleFacture", (0)::numeric), (0)::numeric) < COALESCE(c_1."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
+   WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1."MontantRegleFacture", (0)::numeric), (0)::numeric) >= COALESCE(c_1."MontantTTC", (0)::numeric)) THEN 'Réglée'::text
+   ELSE 'Indéterminé'::text
+  END AS "EtatPaiement",
+    ((c_1."DateEcheancePaiement" IS NOT NULL) AND ((c_1."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1."MontantRegleFacture", (0)::numeric), (0)::numeric)) > (0)::numeric)) AS "EstPaiementEnRetard",
+  CASE
+   WHEN (c_1."DateEcheancePaiement" IS NOT NULL) THEN ((c_1."DateEcheancePaiement")::date - CURRENT_DATE)
+   ELSE NULL::integer
+  END AS "JoursAvantEcheance",
     COALESCE(cd_stats."NbLignes", 0) AS "NbLignes",
     COALESCE(cd_stats."NbArticlesDistincts", 0) AS "NbArticlesDistincts",
     (COALESCE(cd_stats."QteTotale", (0)::numeric))::numeric(14,3) AS "QteTotale",
     (COALESCE(cd_stats."MontantDetails", (0)::numeric))::numeric(12,2) AS "MontantDetails",
     cd_stats."ListeArticles",
     (COALESCE(cd_stats."NbLignes", 0) = 0) AS "EstCommandeSansDetails",
-    ((COALESCE(c."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric)))::numeric(12,2) AS "EcartMontantDetails",
-    (abs((COALESCE(c."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) AS "EstMontantIncoherent",
-        CASE
-            WHEN (COALESCE(cd_stats."NbLignes", 0) = 0) THEN 'Sans détails'::text
-            WHEN (abs((COALESCE(c."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) THEN 'Montant incohérent'::text
-            ELSE 'Cohérente'::text
-        END AS "EtatControleCommande"
-   FROM (((((((logistique."T_Commande" c
-     LEFT JOIN systeme."T_Utilisateurs" u ON ((c."ID_UserFk" = u."IdUser")))
-     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-     LEFT JOIN referentiel."T_Generique" condition_paiement ON (((c."ID_ConditionPaiementFk" = condition_paiement."ID_Generique") AND (condition_paiement."ID_CategorieGeneriqueFk" = 37))))
-     LEFT JOIN referentiel."T_Generique" mode_paiement ON (((c."ID_ModePaiementFk" = mode_paiement."ID_Generique") AND (mode_paiement."ID_CategorieGeneriqueFk" = 36))))
-     LEFT JOIN cd_stats ON ((cd_stats."ID_CmdFk" = c."ID_Commande")))
-     LEFT JOIN reg_stats ON (((reg_stats."CodeFactureFk")::text = (c."CodeFacture")::text)));
+    ((COALESCE(c_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric)))::numeric(12,2) AS "EcartMontantDetails",
+    (abs((COALESCE(c_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) AS "EstMontantIncoherent",
+  CASE
+   WHEN (COALESCE(cd_stats."NbLignes", 0) = 0) THEN 'Sans détails'::text
+   WHEN (abs((COALESCE(c_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) THEN 'Montant incohérent'::text
+   ELSE 'Cohérente'::text
+  END AS "EtatControleCommande"
+   FROM (((((((logistique."T_Commande" c_1
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((c_1."ID_UserFk" = u."IdUser")))
+     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c_1."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
+     LEFT JOIN referentiel."T_Generique" condition_paiement ON (((c_1."ID_ConditionPaiementFk" = condition_paiement."ID_Generique") AND (condition_paiement."ID_CategorieGeneriqueFk" = 37))))
+     LEFT JOIN referentiel."T_Generique" mode_paiement ON (((c_1."ID_ModePaiementFk" = mode_paiement."ID_Generique") AND (mode_paiement."ID_CategorieGeneriqueFk" = 36))))
+     LEFT JOIN cd_stats ON ((cd_stats."ID_CmdFk" = c_1."ID_Commande")))
+     LEFT JOIN reg_stats ON (((reg_stats."CodeFactureFk")::text = (c_1."CodeFacture")::text)))) historique
+                                     LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_Commande")))
+                                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) base
+                             LEFT JOIN logistique."V_Facture" f ON ((f."ID_CommandeFk" = base."ID_Commande")))) source
+                     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_Commande")))
+                     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) s
+             JOIN logistique."T_Commande" c ON ((c."ID_Commande" = s."ID_Commande")))
+             LEFT JOIN geolocalisation."V_DestinationLogistique" d ON ((d.id = c."ID_DestinationFk")))) b
+     LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS total
+           FROM logistique."T_AvoirAffectation"
+          WHERE ("T_AvoirAffectation"."ID_CommandeCibleFk" = b."ID_Commande")) cr ON (true))
+     LEFT JOIN LATERAL ( SELECT logistique.fn_montant_avoir_attente(b."ID_Commande") AS amount) pending ON (true));
 
 
 --
 -- Name: VIEW "V_Commande"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Commande" IS 'Suivi au grain commande : en-tête, nomenclatures, agrégats de lignes et règlements, reste, échéance et contrôles de cohérence. L’autorisation et le périmètre d’organisation relèvent du consommateur serveur.';
+COMMENT ON VIEW logistique."V_Commande" IS 'Bons de stock et contrôle des lignes d’origine ; MontantTTC reste le montant du bon, MontantFacture et suivi financier viennent du snapshot émis.';
 
 
 --
@@ -8710,14 +16105,14 @@ COMMENT ON COLUMN logistique."V_Commande"."CodeFacture" IS 'Référence unique d
 -- Name: COLUMN "V_Commande"."MontantRegleFacture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."MontantRegleFacture" IS 'Montant réglé enregistré sur l’en-tête de facture ; distinct de la somme des écritures de règlement. Expression projetée : c."MontantRegleFacture".';
+COMMENT ON COLUMN logistique."V_Commande"."MontantRegleFacture" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_Commande"."MontantResteFacture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."MontantResteFacture" IS 'Reste enregistré sur l’en-tête de facture ; à distinguer du reste recalculé dans les vues. Expression projetée : c."MontantResteFacture".';
+COMMENT ON COLUMN logistique."V_Commande"."MontantResteFacture" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
@@ -8885,28 +16280,28 @@ COMMENT ON COLUMN logistique."V_Commande"."MontantTTCCalc" IS 'MontantTTC de l�
 -- Name: COLUMN "V_Commande"."MontantRegleFactureCalc"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."MontantRegleFactureCalc" IS 'Montant réglé enregistré sur l’en-tête, coalescé à zéro ; distinct du cumul des écritures. Expression projetée : COALESCE(c."MontantRegleFacture", 0::numeric)::numeric(12,2) AS "MontantRegleFactureCalc".';
+COMMENT ON COLUMN logistique."V_Commande"."MontantRegleFactureCalc" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_Commande"."MontantResteFactureCalc"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."MontantResteFactureCalc" IS 'Reste enregistré sur l’en-tête, coalescé à zéro ; distinct du reste recalculé. Expression projetée : COALESCE(c."MontantResteFacture", 0::numeric)::numeric(12,2) AS "MontantResteFactureCalc".';
+COMMENT ON COLUMN logistique."V_Commande"."MontantResteFactureCalc" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_Commande"."TotalRegleReel"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."TotalRegleReel" IS 'Somme des écritures de règlement rattachées à la référence de facture, coalescée à zéro. Expression projetée : COALESCE(reg_stats."TotalRegleReel", 0::numeric)::numeric(12,2) AS "TotalRegleReel".';
+COMMENT ON COLUMN logistique."V_Commande"."TotalRegleReel" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_Commande"."ResteReel"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."ResteReel" IS 'Montant TTC coalescé à zéro moins le cumul réel des règlements ; le résultat peut être négatif. Expression projetée : (COALESCE(c."MontantTTC", 0::numeric) - COALESCE(reg_stats."TotalRegleReel", 0::numeric))::numeric(12,2) AS "ResteReel".';
+COMMENT ON COLUMN logistique."V_Commande"."ResteReel" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
@@ -8927,14 +16322,14 @@ COMMENT ON COLUMN logistique."V_Commande"."DernierReglement" IS 'Date maximale d
 -- Name: COLUMN "V_Commande"."EtatPaiement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."EtatPaiement" IS 'Qualification de paiement de commande selon facture, montant et règlements ; reprend le montant d’en-tête en repli dans le CASE lorsque l’agrégat est absent. Expression projetée : CASE WHEN c."CodeFacture" IS NULL THEN ''Non facturée''::text WHEN COALESCE(c."MontantTTC", 0::numeric) = 0::numeric THEN ''Montant nul''::text WHEN COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", 0::numeric), 0::numeric) <= 0::numeric THEN ''Non réglée''::text WHEN COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", 0::numeric), 0::numeric) < COALESCE(c."MontantTTC", 0::numeric) THEN ''Partiellement réglée''::text WHEN COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", 0::numeric), 0::numeric) >= COALESCE(c."MontantTTC", 0::numeric) THEN ''Réglée''::text ELSE ''Indéterminé''::text END AS "EtatPaiement".';
+COMMENT ON COLUMN logistique."V_Commande"."EtatPaiement" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_Commande"."EstPaiementEnRetard"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."EstPaiementEnRetard" IS 'Vrai si échéance renseignée antérieure à CURRENT_DATE et reste positif selon l’expression de contrôle de la vue. Expression projetée : c."DateEcheancePaiement" IS NOT NULL AND c."DateEcheancePaiement"::date < CURRENT_DATE AND (COALESCE(c."MontantTTC", 0::numeric) - COALESCE(reg_stats."TotalRegleReel", COALESCE(c."MontantRegleFacture", 0::numeric), 0::numeric)) > 0::numeric AS "EstPaiementEnRetard".';
+COMMENT ON COLUMN logistique."V_Commande"."EstPaiementEnRetard" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
@@ -9008,63 +16403,230 @@ COMMENT ON COLUMN logistique."V_Commande"."EtatControleCommande" IS 'Sans détai
 
 
 --
+-- Name: COLUMN "V_Commande"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."ID_DeviseFk" IS 'Référence de devise du bon et de sa facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_Commande"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."DeviseCode" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
+
+
+--
+-- Name: COLUMN "V_Commande"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."DeviseLibelle" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
+
+
+--
+-- Name: COLUMN "V_Commande"."ID_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."ID_Facture" IS 'Identité interne de la facture, indépendante du code lisible.';
+
+
+--
+-- Name: COLUMN "V_Commande"."EstFactureSnapshot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."EstFactureSnapshot" IS 'Vrai lorsqu’un instantané financier versionné existe.';
+
+
+--
+-- Name: COLUMN "V_Commande"."MontantFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."MontantFacture" IS 'Montant du snapshot émis, NULL pour un bon non facturé ; historique conservé en compatibilité.';
+
+
+--
+-- Name: COLUMN "V_Commande"."MontantAvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."MontantAvoirAEtablir" IS 'Contrevaleur des retours postérieurs à l’émission ; aucun remboursement créé.';
+
+
+--
+-- Name: COLUMN "V_Commande"."AvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."AvoirAEtablir" IS 'Vrai si des retours postérieurs à la facture ne sont pas encore couverts par un avoir.';
+
+
+--
+-- Name: COLUMN "V_Commande"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Commande"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Commande"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Commande"."ID_DestinationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."ID_DestinationFk" IS 'Lieu référencé ou chemin géographique existant : ID_DestinationFk. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_Commande"."DestinationLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."DestinationLibelle" IS 'Lieu référencé ou chemin géographique existant : DestinationLibelle. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_Commande"."AvoirImpute"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."AvoirImpute" IS 'Imputations d’avoirs au bon facturé, distinctes des encaissements.';
+
+
+--
 -- Name: V_CommandeDetail; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_CommandeDetail" AS
- SELECT d."ID_CmdFk",
-    c."ID_Commande",
-    c."DateCmd",
-    c."CodeCmd",
-    c."CodeFacture",
-    c."ID_TypeCmdFk",
-    type_cmd."AbrGenerique" AS "AbrTypeCmd",
-    type_cmd."NomGenerique" AS "TypeCmd",
-        CASE
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END AS "SigneCommande",
-    c."ID_StatutCmdFk",
-    c."ID_StatutCmdFk" AS "ID_StatutCmd",
-    statut_cmd."AbrGenerique" AS "AbrStatutCmd",
-    statut_cmd."NomGenerique" AS "StatutCmd",
-    d."ID_ArticleFk",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    a."ID_UniteFk",
-    unite."AbrGenerique" AS "AbrUnite",
-    (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "StockActuel",
-        CASE
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) + COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
-            WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
-            ELSE (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3)
-        END AS "StockAvantLigneTheorique",
-    (COALESCE(d."QteCmdDetail", (0)::numeric))::numeric(14,3) AS "QteCmdDetail",
-    (COALESCE(d."PUCmdDetail", (0)::numeric))::numeric(12,2) AS "PUCmdDetail",
-    ((COALESCE(d."QteCmdDetail", (0)::numeric) * COALESCE(d."PUCmdDetail", (0)::numeric)))::numeric(12,2) AS "MontantLigne",
-    d."ObsCmdDetail",
-    d."RemiseCmdDetail",
-    d."LieuCmdDetail",
-    d."SelectCmdDetail",
-        CASE
-            WHEN ((d."QteCmdDetail" IS NULL) OR (d."QteCmdDetail" <= (0)::numeric)) THEN 'Quantité invalide'::text
-            WHEN (d."PUCmdDetail" IS NULL) THEN 'Prix non renseigné'::text
-            ELSE 'Valide'::text
-        END AS "EtatLigne"
-   FROM (((((logistique."T_CommandeDetail" d
-     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = d."ID_CmdFk")))
-     JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
-     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-     LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))));
+ SELECT source."ID_CmdFk",
+    source."ID_Commande",
+    source."DateCmd",
+    source."CodeCmd",
+    source."CodeFacture",
+    source."ID_TypeCmdFk",
+    source."AbrTypeCmd",
+    source."TypeCmd",
+    source."SigneCommande",
+    source."ID_StatutCmdFk",
+    source."ID_StatutCmd",
+    source."AbrStatutCmd",
+    source."StatutCmd",
+    source."ID_ArticleFk",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."ID_UniteFk",
+    source."AbrUnite",
+    source."StockActuel",
+    source."StockAvantLigneTheorique",
+    source."QteCmdDetail",
+    source."PUCmdDetail",
+    source."MontantLigne",
+    source."ObsCmdDetail",
+    source."RemiseCmdDetail",
+    source."LieuCmdDetail",
+    source."SelectCmdDetail",
+    source."EtatLigne",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk",
+    r."ID_TiersFk",
+    t."Nom" AS "TiersNom"
+   FROM ((( SELECT historique."ID_CmdFk",
+            historique."ID_Commande",
+            historique."DateCmd",
+            historique."CodeCmd",
+            historique."CodeFacture",
+            historique."ID_TypeCmdFk",
+            historique."AbrTypeCmd",
+            historique."TypeCmd",
+            historique."SigneCommande",
+            historique."ID_StatutCmdFk",
+            historique."ID_StatutCmd",
+            historique."AbrStatutCmd",
+            historique."StatutCmd",
+            historique."ID_ArticleFk",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."ID_UniteFk",
+            historique."AbrUnite",
+            historique."StockActuel",
+            historique."StockAvantLigneTheorique",
+            historique."QteCmdDetail",
+            historique."PUCmdDetail",
+            historique."MontantLigne",
+            historique."ObsCmdDetail",
+            historique."RemiseCmdDetail",
+            historique."LieuCmdDetail",
+            historique."SelectCmdDetail",
+            historique."EtatLigne",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT d."ID_CmdFk",
+                    c."ID_Commande",
+                    c."DateCmd",
+                    c."CodeCmd",
+                    c."CodeFacture",
+                    c."ID_TypeCmdFk",
+                    type_cmd."AbrGenerique" AS "AbrTypeCmd",
+                    type_cmd."NomGenerique" AS "TypeCmd",
+                        CASE
+                            WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END AS "SigneCommande",
+                    c."ID_StatutCmdFk",
+                    c."ID_StatutCmdFk" AS "ID_StatutCmd",
+                    statut_cmd."AbrGenerique" AS "AbrStatutCmd",
+                    statut_cmd."NomGenerique" AS "StatutCmd",
+                    d."ID_ArticleFk",
+                    a."CodeArticleInterne",
+                    a."NomArticle",
+                    a."ID_UniteFk",
+                    unite."AbrGenerique" AS "AbrUnite",
+                    (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "StockActuel",
+                        CASE
+                            WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) + COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
+                            WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
+                            ELSE (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3)
+                        END AS "StockAvantLigneTheorique",
+                    (COALESCE(d."QteCmdDetail", (0)::numeric))::numeric(14,3) AS "QteCmdDetail",
+                    (COALESCE(d."PUCmdDetail", (0)::numeric))::numeric(12,2) AS "PUCmdDetail",
+                    ((COALESCE(d."QteCmdDetail", (0)::numeric) * COALESCE(d."PUCmdDetail", (0)::numeric)))::numeric(12,2) AS "MontantLigne",
+                    d."ObsCmdDetail",
+                    d."RemiseCmdDetail",
+                    d."LieuCmdDetail",
+                    d."SelectCmdDetail",
+                        CASE
+                            WHEN ((d."QteCmdDetail" IS NULL) OR (d."QteCmdDetail" <= (0)::numeric)) THEN 'Quantité invalide'::text
+                            WHEN (d."PUCmdDetail" IS NULL) THEN 'Prix non renseigné'::text
+                            ELSE 'Valide'::text
+                        END AS "EtatLigne"
+                   FROM (((((logistique."T_CommandeDetail" d
+                     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = d."ID_CmdFk")))
+                     JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
+                     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+                     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
+                     LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))) historique
+             LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_CmdFk")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_Commande")))
+     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")));
 
 
 --
 -- Name: VIEW "V_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Détail au grain couple commande/article : références, quantité et prix de ligne, montant, stock actuel et stock avant ligne théorique reconstruit depuis le stock courant ; ce dernier n’est pas un instantané historique.';
+COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Détail au grain couple commande/article : références, quantité et prix de ligne, montant, stock actuel et stock avant ligne théorique reconstruit depuis le stock courant ; ce dernier n’est pas un instantané historique. Devise du bon et de sa facture explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -9264,46 +16826,121 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."EtatLigne" IS 'Qualification : 
 
 
 --
+-- Name: COLUMN "V_CommandeDetail"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."ID_DeviseFk" IS 'Référence de devise du bon et de sa facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
 -- Name: V_CommandeOverview; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_CommandeOverview" AS
- SELECT "ID_Commande",
-    "DateCmd",
-    "CodeCmd",
-    "ID_TypeCmdFk",
-    "AbrTypeCmd",
-    "TypeCmd",
-    "ID_StatutCmdFk",
-    "AbrStatutCmd",
-    "StatutCmd",
-    "ID_ClientFk",
-    "NomClientSaisi",
-    "MontantHT",
-    "MontantTTC",
-    "MontantRegleFacture",
-    "MontantResteFacture",
-    "EtatPaiement",
-    "StatusFacture",
-    "DateFacture",
-    "CodeFacture",
-    "DateEcheancePaiement",
-    "NbLignes",
-    "NbArticlesDistincts",
-    "QteTotale",
-    "MontantDetails",
-    "ListeArticles",
-    "EstCommandeSansDetails",
-    "EstMontantIncoherent",
-    "EtatControleCommande"
-   FROM logistique."V_Commande" c;
+ SELECT historique."ID_Commande",
+    historique."DateCmd",
+    historique."CodeCmd",
+    historique."ID_TypeCmdFk",
+    historique."AbrTypeCmd",
+    historique."TypeCmd",
+    historique."ID_StatutCmdFk",
+    historique."AbrStatutCmd",
+    historique."StatutCmd",
+    historique."ID_ClientFk",
+    historique."NomClientSaisi",
+    historique."MontantHT",
+    historique."MontantTTC",
+    historique."MontantRegleFacture",
+    historique."MontantResteFacture",
+    historique."EtatPaiement",
+    historique."StatusFacture",
+    historique."DateFacture",
+    historique."CodeFacture",
+    historique."DateEcheancePaiement",
+    historique."NbLignes",
+    historique."NbArticlesDistincts",
+    historique."QteTotale",
+    historique."MontantDetails",
+    historique."ListeArticles",
+    historique."EstCommandeSansDetails",
+    historique."EstMontantIncoherent",
+    historique."EtatControleCommande",
+    source."ID_DeviseFk",
+    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+    (devise."NomGenerique")::text AS "DeviseLibelle"
+   FROM ((( SELECT c."ID_Commande",
+            c."DateCmd",
+            c."CodeCmd",
+            c."ID_TypeCmdFk",
+            c."AbrTypeCmd",
+            c."TypeCmd",
+            c."ID_StatutCmdFk",
+            c."AbrStatutCmd",
+            c."StatutCmd",
+            c."ID_ClientFk",
+            c."NomClientSaisi",
+            c."MontantHT",
+            c."MontantTTC",
+            c."MontantRegleFacture",
+            c."MontantResteFacture",
+            c."EtatPaiement",
+            c."StatusFacture",
+            c."DateFacture",
+            c."CodeFacture",
+            c."DateEcheancePaiement",
+            c."NbLignes",
+            c."NbArticlesDistincts",
+            c."QteTotale",
+            c."MontantDetails",
+            c."ListeArticles",
+            c."EstCommandeSansDetails",
+            c."EstMontantIncoherent",
+            c."EtatControleCommande"
+           FROM logistique."V_Commande" c) historique
+     LEFT JOIN logistique."T_Commande" source ON ((source."ID_Commande" = historique."ID_Commande")))
+     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source."ID_DeviseFk")));
 
 
 --
 -- Name: VIEW "V_CommandeOverview"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandeOverview" IS 'Projection synthétique de V_Commande, au même grain commande, pour le suivi des lignes, montants, facturation et états de contrôle.';
+COMMENT ON VIEW logistique."V_CommandeOverview" IS 'Projection synthétique de V_Commande, au même grain commande, pour le suivi des lignes, montants, facturation et états de contrôle. Devise du bon et de sa facture explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -9503,29 +17140,97 @@ COMMENT ON COLUMN logistique."V_CommandeOverview"."EtatControleCommande" IS 'San
 
 
 --
+-- Name: COLUMN "V_CommandeOverview"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeOverview"."ID_DeviseFk" IS 'Référence de devise du bon et de sa facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_CommandeOverview"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeOverview"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_CommandeOverview"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeOverview"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
 -- Name: V_CommandesSansDetails; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_CommandesSansDetails" AS
- SELECT c."ID_Commande",
-    c."DateCmd",
-    c."CodeCmd",
-    c."ID_TypeCmdFk",
-    type_cmd."AbrGenerique" AS "AbrTypeCmd",
-    type_cmd."NomGenerique" AS "TypeCmd",
-    c."NomClientSaisi",
-    c."ObsCmd"
-   FROM ((logistique."T_Commande" c
-     LEFT JOIN logistique."T_CommandeDetail" d ON ((d."ID_CmdFk" = c."ID_Commande")))
-     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-  WHERE ((d."ID_CmdFk" IS NULL) AND ((COALESCE(c."CodeCmd", ''::character varying))::text <> ALL (ARRAY[('C_000E'::character varying)::text, ('C_000S'::character varying)::text])));
+ SELECT s."ID_Commande",
+    s."DateCmd",
+    s."CodeCmd",
+    s."ID_TypeCmdFk",
+    s."AbrTypeCmd",
+    s."TypeCmd",
+    s."NomClientSaisi",
+    s."ObsCmd",
+    s."ID_DeviseFk",
+    s."DeviseCode",
+    s."DeviseLibelle",
+    s."IdEntiteFk",
+    s."ID_TiersFk",
+    s."TiersNom",
+    c."ID_DestinationFk",
+    d.label AS "DestinationLibelle"
+   FROM ((( SELECT source."ID_Commande",
+            source."DateCmd",
+            source."CodeCmd",
+            source."ID_TypeCmdFk",
+            source."AbrTypeCmd",
+            source."TypeCmd",
+            source."NomClientSaisi",
+            source."ObsCmd",
+            source."ID_DeviseFk",
+            source."DeviseCode",
+            source."DeviseLibelle",
+            r."IdEntiteFk",
+            r."ID_TiersFk",
+            t."Nom" AS "TiersNom"
+           FROM ((( SELECT historique."ID_Commande",
+                    historique."DateCmd",
+                    historique."CodeCmd",
+                    historique."ID_TypeCmdFk",
+                    historique."AbrTypeCmd",
+                    historique."TypeCmd",
+                    historique."NomClientSaisi",
+                    historique."ObsCmd",
+                    source_1."ID_DeviseFk",
+                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                    (devise."NomGenerique")::text AS "DeviseLibelle"
+                   FROM ((( SELECT c_1."ID_Commande",
+                            c_1."DateCmd",
+                            c_1."CodeCmd",
+                            c_1."ID_TypeCmdFk",
+                            type_cmd."AbrGenerique" AS "AbrTypeCmd",
+                            type_cmd."NomGenerique" AS "TypeCmd",
+                            c_1."NomClientSaisi",
+                            c_1."ObsCmd"
+                           FROM ((logistique."T_Commande" c_1
+                             LEFT JOIN logistique."T_CommandeDetail" d_1 ON ((d_1."ID_CmdFk" = c_1."ID_Commande")))
+                             LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+                          WHERE ((d_1."ID_CmdFk" IS NULL) AND ((COALESCE(c_1."CodeCmd", ''::character varying))::text <> ALL (ARRAY[('C_000E'::character varying)::text, ('C_000S'::character varying)::text])))) historique
+                     LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_Commande")))
+                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+             LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_Commande")))
+             LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) s
+     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = s."ID_Commande")))
+     LEFT JOIN geolocalisation."V_DestinationLogistique" d ON ((d.id = c."ID_DestinationFk")));
 
 
 --
 -- Name: VIEW "V_CommandesSansDetails"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandesSansDetails" IS 'Commandes sans aucune ligne dans T_CommandeDetail ; les références C_000E et C_000S sont exclues. Grain : commande.';
+COMMENT ON VIEW logistique."V_CommandesSansDetails" IS 'Commandes sans aucune ligne dans T_CommandeDetail ; les références C_000E et C_000S sont exclues. Grain : commande. Devise du bon et de sa facture explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -9585,68 +17290,422 @@ COMMENT ON COLUMN logistique."V_CommandesSansDetails"."ObsCmd" IS 'Observations 
 
 
 --
--- Name: V_ConsoMensuelle; Type: VIEW; Schema: logistique; Owner: -
+-- Name: COLUMN "V_CommandesSansDetails"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-CREATE VIEW logistique."V_ConsoMensuelle" AS
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."ID_DeviseFk" IS 'Référence de devise du bon et de sa facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."ID_DestinationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."ID_DestinationFk" IS 'Lieu référencé ou chemin géographique existant : ID_DestinationFk. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_CommandesSansDetails"."DestinationLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."DestinationLibelle" IS 'Lieu référencé ou chemin géographique existant : DestinationLibelle. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: V_ConsoMensuelleDevise; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_ConsoMensuelleDevise" AS
  SELECT "ID_ArticleFk" AS "ID_Article",
     "NomArticle",
     (date_trunc('month'::text, "DateMvt"))::date AS "Mois",
-    (sum(
+    sum(
         CASE
-            WHEN ("SigneStock" = '-1'::integer) THEN COALESCE("QteMvt", 0)
-            ELSE 0
-        END))::numeric AS "ConsoMensuelle",
+            WHEN ("SigneStock" = '-1'::integer) THEN COALESCE("QteMvt", (0)::numeric)
+            ELSE (0)::numeric
+        END) AS "ConsoMensuelle",
     (sum(
         CASE
             WHEN ("SigneStock" = '-1'::integer) THEN COALESCE("MontantMvt", (0)::numeric)
             ELSE (0)::numeric
-        END))::numeric(14,2) AS "ValeurConsoMensuelle"
+        END))::numeric(14,2) AS "ValeurConsoMensuelle",
+    "ID_DeviseFk",
+    "DeviseCode",
+    "DeviseLibelle",
+    jsonb_build_array(jsonb_build_object('id', "ID_DeviseFk", 'code', "DeviseCode", 'label', "DeviseLibelle", 'value', ((sum(
+        CASE
+            WHEN ("SigneStock" = '-1'::integer) THEN COALESCE("MontantMvt", (0)::numeric)
+            ELSE (0)::numeric
+        END))::numeric(14,2))::text, 'count', count(*) FILTER (WHERE ("SigneStock" = '-1'::integer)))) AS "MontantsParDevise"
    FROM logistique."V_MouvementStock" v
   WHERE ("DateMvt" IS NOT NULL)
-  GROUP BY "ID_ArticleFk", "NomArticle", ((date_trunc('month'::text, "DateMvt"))::date);
+  GROUP BY "ID_ArticleFk", "NomArticle", ((date_trunc('month'::text, "DateMvt"))::date), "ID_DeviseFk", "DeviseCode", "DeviseLibelle";
+
+
+--
+-- Name: VIEW "V_ConsoMensuelleDevise"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_ConsoMensuelleDevise" IS 'Consommation au grain article/mois/devise historique des mouvements ; source des filtres par devise, sans changement de quantité ni conversion.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."ID_Article" IS 'Article commun aux mouvements de consommation.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."NomArticle" IS 'Nom du catalogue article, sans filtrage métier supplémentaire.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."Mois"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."Mois" IS 'Premier jour du mois de DateMvt ; les dates absentes sont exclues.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."ConsoMensuelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."ConsoMensuelle" IS 'Somme des quantités de sortie, dans l’unité de stock de cet article.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."ValeurConsoMensuelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."ValeurConsoMensuelle" IS 'Valeur des sorties dans la devise indiquée ; NULL si plusieurs devises au grain article/mois. Aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."ID_DeviseFk" IS 'Référence de devise des mouvements du mois ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelleDevise"."MontantsParDevise"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelleDevise"."MontantsParDevise" IS 'Tableau JSON de {id,code,label,value,count} ; value est une chaîne décimale exacte, count le nombre de mouvements de sortie. Ne jamais sommer les devises.';
+
+
+--
+-- Name: V_ConsoMensuelle; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_ConsoMensuelle" AS
+ SELECT source."ID_Article",
+    source."NomArticle",
+    source."Mois",
+    source."ConsoMensuelle",
+    source."ValeurConsoMensuelle",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    source."MontantsParDevise",
+    r."IdEntiteFk"
+   FROM (( SELECT d."ID_Article",
+            d."NomArticle",
+            d."Mois",
+            sum(d."ConsoMensuelle") AS "ConsoMensuelle",
+            (
+                CASE
+                    WHEN (count(*) = 1) THEN min(d."ValeurConsoMensuelle")
+                    ELSE NULL::numeric
+                END)::numeric(14,2) AS "ValeurConsoMensuelle",
+                CASE
+                    WHEN (count(*) = 1) THEN min(d."ID_DeviseFk")
+                    ELSE NULL::integer
+                END AS "ID_DeviseFk",
+                CASE
+                    WHEN (count(*) = 1) THEN min(d."DeviseCode")
+                    ELSE NULL::text
+                END AS "DeviseCode",
+                CASE
+                    WHEN (count(*) = 1) THEN min(d."DeviseLibelle")
+                    ELSE NULL::text
+                END AS "DeviseLibelle",
+            jsonb_agg((d."MontantsParDevise" -> 0) ORDER BY d."DeviseCode", d."ID_DeviseFk") AS "MontantsParDevise"
+           FROM logistique."V_ConsoMensuelleDevise" d
+          GROUP BY d."ID_Article", d."NomArticle", d."Mois") source
+     LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source."ID_Article")));
 
 
 --
 -- Name: VIEW "V_ConsoMensuelle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_ConsoMensuelle" IS 'Consommation au grain article/mois de DateMvt : seules les sorties de V_MouvementStock contribuent aux quantités et valeurs ; les dates absentes sont exclues.';
+COMMENT ON VIEW logistique."V_ConsoMensuelle" IS 'Consommation au grain historique article/mois : quantités toutes devises, valeur scalaire NULL si plusieurs devises ; répartition exacte dans MontantsParDevise. Un filtre devise doit employer V_ConsoMensuelleDevise.';
 
 
 --
 -- Name: COLUMN "V_ConsoMensuelle"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ID_Article" IS 'Identifiant de l’article. Expression projetée : "ID_ArticleFk" AS "ID_Article".';
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ID_Article" IS 'Article commun aux mouvements de consommation.';
 
 
 --
 -- Name: COLUMN "V_ConsoMensuelle"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_ConsoMensuelle"."NomArticle" IS 'Libellé de l’article. Expression projetée : "NomArticle".';
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."NomArticle" IS 'Nom du catalogue article, sans filtrage métier supplémentaire.';
 
 
 --
 -- Name: COLUMN "V_ConsoMensuelle"."Mois"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_ConsoMensuelle"."Mois" IS 'Premier jour du mois de DateMvt ; clé de regroupement de consommation. Expression projetée : date_trunc(''month''::text, "DateMvt")::date AS "Mois".';
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."Mois" IS 'Premier jour du mois de DateMvt ; les dates absentes sont exclues.';
 
 
 --
 -- Name: COLUMN "V_ConsoMensuelle"."ConsoMensuelle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ConsoMensuelle" IS 'Somme mensuelle des quantités de sorties ; les entrées contribuent zéro. Expression projetée : sum( CASE WHEN "SigneStock" = ''-1''::integer THEN COALESCE("QteMvt", 0) ELSE 0 END)::numeric AS "ConsoMensuelle".';
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ConsoMensuelle" IS 'Somme des quantités de sortie, dans l’unité de stock de cet article.';
 
 
 --
 -- Name: COLUMN "V_ConsoMensuelle"."ValeurConsoMensuelle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ValeurConsoMensuelle" IS 'Somme mensuelle des valeurs de sorties au prix historique des mouvements. Expression projetée : sum( CASE WHEN "SigneStock" = ''-1''::integer THEN COALESCE("MontantMvt", 0::numeric) ELSE 0::numeric END)::numeric(14,2) AS "ValeurConsoMensuelle".';
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ValeurConsoMensuelle" IS 'Valeur des sorties dans la devise indiquée ; NULL si plusieurs devises au grain article/mois. Aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelle"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ID_DeviseFk" IS 'Référence de devise des sorties historiques ; NULL scalaire si plusieurs devises dans le mois ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelle"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelle"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelle"."MontantsParDevise"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."MontantsParDevise" IS 'Tableau JSON de {id,code,label,value,count} ; value est une chaîne décimale exacte, count le nombre de mouvements de sortie. Ne jamais sommer les devises.';
+
+
+--
+-- Name: COLUMN "V_ConsoMensuelle"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ConsoMensuelle"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: V_CoutMouvement; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_CoutMouvement" AS
+ SELECT f."ID_Mvt",
+    k."ID_ArticleFk",
+    k."ID_DeviseFk",
+    a."IdEntiteFk",
+    f."QteSignee",
+    round(f."CoutUnitaire", 6) AS "CoutUnitaire",
+    f."ValeurMouvement",
+    f."StockApres",
+    f."ValeurApres",
+    f."OrigineCout",
+    f."EtatValorisation",
+    m."DateMvt",
+    m."ID_cmdFk",
+    c."CodeCmd",
+    g."AbrGenerique" AS "DeviseCode"
+   FROM (((((( SELECT DISTINCT "T_Mouvement"."ID_ArticleFk",
+            "T_Mouvement"."ID_DeviseFk"
+           FROM logistique."T_Mouvement"
+          WHERE ("T_Mouvement"."ID_DeviseFk" IS NOT NULL)) k
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = k."ID_ArticleFk")))
+     CROSS JOIN LATERAL logistique.fn_cout_mouvements(k."ID_ArticleFk", k."ID_DeviseFk") f("ID_Mvt", "ID_ArticleFk", "ID_DeviseFk", "IdEntiteFk", "QteSignee", "CoutUnitaire", "ValeurMouvement", "StockApres", "ValeurApres", "OrigineCout", "EtatValorisation"))
+     JOIN logistique."T_Mouvement" m ON ((m."ID_Mvt" = f."ID_Mvt")))
+     LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = m."ID_cmdFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = k."ID_DeviseFk")));
+
+
+--
+-- Name: VIEW "V_CoutMouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_CoutMouvement" IS 'Justification commune des coûts et valeurs du journal, distincte des prix commerciaux. Une ligne par mouvement avec devise et propriétaire explicites ; les valeurs avant un arrêté sans coût prouvé restent vides.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ID_Mvt"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ID_Mvt" IS 'ID_Mvt : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ID_ArticleFk" IS 'ID_ArticleFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ID_DeviseFk" IS 'ID_DeviseFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."IdEntiteFk" IS 'IdEntiteFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."QteSignee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."QteSignee" IS 'QteSignee : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."CoutUnitaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."CoutUnitaire" IS 'CoutUnitaire : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ValeurMouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ValeurMouvement" IS 'ValeurMouvement : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."StockApres"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."StockApres" IS 'StockApres : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ValeurApres"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ValeurApres" IS 'ValeurApres : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."OrigineCout"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."OrigineCout" IS 'OrigineCout : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."EtatValorisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."EtatValorisation" IS 'EtatValorisation : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."DateMvt"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."DateMvt" IS 'DateMvt : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."ID_cmdFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."ID_cmdFk" IS 'ID_cmdFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."CodeCmd" IS 'CodeCmd : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_CoutMouvement"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CoutMouvement"."DeviseCode" IS 'DeviseCode : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
 
 
 --
@@ -9654,43 +17713,71 @@ COMMENT ON COLUMN logistique."V_ConsoMensuelle"."ValeurConsoMensuelle" IS 'Somme
 --
 
 CREATE VIEW logistique."V_CouvertureStock" AS
- WITH conso AS (
-         SELECT v."ID_ArticleFk",
-            (sum(
-                CASE
-                    WHEN (v."SigneStock" = '-1'::integer) THEN COALESCE(v."QteMvt", 0)
-                    ELSE 0
-                END))::numeric AS conso_6m
-           FROM logistique."V_MouvementStock" v
-          WHERE ((v."DateMvt" >= (CURRENT_DATE - '6 mons'::interval)) AND (v."DateMvt" < (CURRENT_DATE + '1 day'::interval)))
-          GROUP BY v."ID_ArticleFk"
-        )
- SELECT a."ID_Article",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    a."AbrUnite",
-    a."QteArticle" AS "StockActuel",
-    COALESCE(conso.conso_6m, (0)::numeric) AS "Conso6Mois",
-    round((COALESCE(conso.conso_6m, (0)::numeric) / 6.0), 2) AS "ConsoMoyMensuelle",
-        CASE
-            WHEN (COALESCE(conso.conso_6m, (0)::numeric) = (0)::numeric) THEN NULL::numeric
-            ELSE round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1)
-        END AS "CouvertureMois",
-        CASE
-            WHEN (COALESCE(conso.conso_6m, (0)::numeric) = (0)::numeric) THEN 'Aucune consommation récente'::text
-            WHEN (round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1) < (1)::numeric) THEN 'Critique'::text
-            WHEN (round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1) < (3)::numeric) THEN 'Faible'::text
-            ELSE 'Correcte'::text
-        END AS "EtatCouverture"
-   FROM (logistique."V_Article" a
-     LEFT JOIN conso ON ((conso."ID_ArticleFk" = a."ID_Article")));
+ SELECT source."ID_Article",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."AbrUnite",
+    source."StockActuel",
+    source."Conso6Mois",
+    source."ConsoMoyMensuelle",
+    source."CouvertureMois",
+    source."EtatCouverture",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk"
+   FROM (( SELECT historique."ID_Article",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."AbrUnite",
+            historique."StockActuel",
+            historique."Conso6Mois",
+            historique."ConsoMoyMensuelle",
+            historique."CouvertureMois",
+            historique."EtatCouverture",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( WITH conso AS (
+                         SELECT v."ID_ArticleFk",
+                            sum(
+                                CASE
+                                    WHEN (v."SigneStock" = '-1'::integer) THEN COALESCE(v."QteMvt", (0)::numeric)
+                                    ELSE (0)::numeric
+                                END) AS conso_6m
+                           FROM logistique."V_MouvementStock" v
+                          WHERE ((v."DateMvt" >= (CURRENT_DATE - '6 mons'::interval)) AND (v."DateMvt" < (CURRENT_DATE + '1 day'::interval)))
+                          GROUP BY v."ID_ArticleFk"
+                        )
+                 SELECT a."ID_Article",
+                    a."CodeArticleInterne",
+                    a."NomArticle",
+                    a."AbrUnite",
+                    a."QteArticle" AS "StockActuel",
+                    COALESCE(conso.conso_6m, (0)::numeric) AS "Conso6Mois",
+                    round((COALESCE(conso.conso_6m, (0)::numeric) / 6.0), 2) AS "ConsoMoyMensuelle",
+                        CASE
+                            WHEN (COALESCE(conso.conso_6m, (0)::numeric) = (0)::numeric) THEN NULL::numeric
+                            ELSE round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1)
+                        END AS "CouvertureMois",
+                        CASE
+                            WHEN (COALESCE(conso.conso_6m, (0)::numeric) = (0)::numeric) THEN 'Aucune consommation récente'::text
+                            WHEN (round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1) < (1)::numeric) THEN 'Critique'::text
+                            WHEN (round((a."QteArticle" / NULLIF((conso.conso_6m / 6.0), (0)::numeric)), 1) < (3)::numeric) THEN 'Faible'::text
+                            ELSE 'Correcte'::text
+                        END AS "EtatCouverture"
+                   FROM (logistique."V_Article" a
+                     LEFT JOIN conso ON ((conso."ID_ArticleFk" = a."ID_Article")))) historique
+             LEFT JOIN logistique."T_Article" source_1 ON ((source_1."ID_Article" = historique."ID_Article")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source."ID_Article")));
 
 
 --
 -- Name: VIEW "V_CouvertureStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CouvertureStock" IS 'Couverture au grain article : sorties depuis CURRENT_DATE moins six mois et avant le lendemain de CURRENT_DATE. Moyenne divisée par six puis stock/moyenne ; les jours futurs sont exclus, NULL sans consommation.';
+COMMENT ON VIEW logistique."V_CouvertureStock" IS 'Couverture au grain article : sorties depuis CURRENT_DATE moins six mois et avant le lendemain de CURRENT_DATE. Moyenne divisée par six puis stock/moyenne ; les jours futurs sont exclus, NULL sans consommation. Devise du catalogue article explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -9757,51 +17844,957 @@ COMMENT ON COLUMN logistique."V_CouvertureStock"."EtatCouverture" IS 'Aucune con
 
 
 --
+-- Name: COLUMN "V_CouvertureStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CouvertureStock"."ID_DeviseFk" IS 'Référence de devise du catalogue article ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_CouvertureStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CouvertureStock"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_CouvertureStock"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CouvertureStock"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_CouvertureStock"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CouvertureStock"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: V_DossierSuivi; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_DossierSuivi" AS
+ SELECT d."ID_DossierSuivi",
+    d."ID_UserFk",
+    d."IdEntiteFk",
+    d."ID_CategorieDossierSuiviFk",
+    d."Nom",
+    d."Description",
+    d."Couleur",
+    d."TypeObjet",
+    d."Mode",
+    d."Regles",
+    d."Actif",
+    d."Version",
+    d."CreeLe",
+    d."ModifieLe",
+    c."Nom" AS "CategorieDossier"
+   FROM (logistique."T_DossierSuivi" d
+     LEFT JOIN logistique."T_CategorieDossierSuivi" c ON ((c."ID_CategorieDossierSuivi" = d."ID_CategorieDossierSuiviFk")));
+
+
+--
+-- Name: VIEW "V_DossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_DossierSuivi" IS 'Projection de lecture du classement des articles, à filtrer par propriétaire et organisation.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."ID_DossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."ID_DossierSuivi" IS 'Identifiant permanent du dossier ; indépendant de son libellé.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."ID_UserFk" IS 'Propriétaire du classement ; imposé par le compte authentifié et immuable.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."ID_CategorieDossierSuiviFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."ID_CategorieDossierSuiviFk" IS 'Catégorie de classement du même propriétaire et du même périmètre.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Nom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Nom" IS 'Libellé métier du dossier ou de sa catégorie.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Description"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Description" IS 'Description facultative du suivi.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Couleur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Couleur" IS 'Repère visuel de palette ; ne déclenche aucune action sur le stock.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."TypeObjet" IS 'Type immuable du dossier : article, bon ou facture. Une facture correspond au bon portant sa référence de facture dans le modèle actuel.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Mode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Mode" IS 'manuel pour les rattachements explicites, automatique pour une sélection dynamique.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Regles"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Regles" IS 'Critères JSON autorisés selon TypeObjet, interprétés par le serveur ; aucun fragment SQL utilisateur.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."Version" IS 'Version de concurrence optimiste des métadonnées du dossier.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."CreeLe" IS 'Instant de création.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: COLUMN "V_DossierSuivi"."CategorieDossier"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuivi"."CategorieDossier" IS 'Libellé de la catégorie du dossier, sans modifier la catégorie de l’article.';
+
+
+--
+-- Name: V_DossierSuiviMembre; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_DossierSuiviMembre" AS
+ SELECT m."ID_Membre",
+    m."ID_DossierSuiviFk",
+    m."ID_ArticleFk",
+    m."ID_CommandeFk",
+    d."TypeObjet",
+    m."Actif",
+    m."AjouteLe",
+    m."ModifieLe",
+    d."ID_UserFk",
+    d."IdEntiteFk",
+    d."Nom" AS "NomDossier",
+    d."Couleur"
+   FROM (logistique."T_DossierSuiviMembre" m
+     JOIN logistique."T_DossierSuivi" d ON ((d."ID_DossierSuivi" = m."ID_DossierSuiviFk")))
+  WHERE ((d."Mode")::text = 'manuel'::text);
+
+
+--
+-- Name: VIEW "V_DossierSuiviMembre"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_DossierSuiviMembre" IS 'Projection de lecture du classement des articles, à filtrer par propriétaire et organisation.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ID_Membre"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ID_Membre" IS 'Identifiant permanent du rattachement ; unicité par dossier et objet classé.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ID_DossierSuiviFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ID_DossierSuiviFk" IS 'Dossier manuel actif du rattachement.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ID_ArticleFk" IS 'Article classé ; clé de la vue et de la table article existantes.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ID_CommandeFk" IS 'Bon classé, ou bon portant la facture classée ; exclusif de ID_ArticleFk. La facture reste soumise à son existence actuelle.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."TypeObjet" IS 'Type immuable du dossier : article, bon ou facture. Une facture correspond au bon portant sa référence de facture dans le modèle actuel.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."Actif" IS 'État actif ; false conserve le classement archivé.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."AjouteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."AjouteLe" IS 'Date du premier rattachement manuel ; conservée lors d’une réactivation.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ModifieLe" IS 'Instant de dernière modification, fixé par le trigger.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."ID_UserFk" IS 'Propriétaire du classement ; imposé par le compte authentifié et immuable.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."NomDossier"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."NomDossier" IS 'Libellé du dossier manuel associé.';
+
+
+--
+-- Name: COLUMN "V_DossierSuiviMembre"."Couleur"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_DossierSuiviMembre"."Couleur" IS 'Repère visuel de palette ; ne déclenche aucune action sur le stock.';
+
+
+--
+-- Name: V_FactureLigne; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_FactureLigne" AS
+ SELECT l."ID_FactureLigne",
+    l."ID_FactureFk",
+    l."ID_CmdFk",
+    l."ID_ArticleFk",
+    l."NomArticle",
+    l."CodeArticleInterne",
+    l."Unite",
+    l."QteSortie",
+    l."QteRetourAvantFacture",
+    l."QteFacturee",
+    l."PUFacture",
+    l."MontantLigne",
+    f."ID_CommandeFk",
+    f."CodeFacture",
+    f."ID_DeviseFk",
+    f."DeviseCode",
+    f."DeviseLibelle"
+   FROM (logistique."T_FactureLigne" l
+     JOIN logistique."T_Facture" f ON ((f."ID_Facture" = l."ID_FactureFk")));
+
+
+--
+-- Name: VIEW "V_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_FactureLigne" IS 'Lignes financières historiques liées à leur bon, article et devise de facturation.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_FactureLigne" IS 'Projection financière : ID_FactureLigne ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_FactureFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_FactureFk" IS 'Projection financière : ID_FactureFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_CmdFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_CmdFk" IS 'Projection financière : ID_CmdFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_ArticleFk" IS 'Projection financière : ID_ArticleFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."NomArticle" IS 'Projection financière : NomArticle ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."CodeArticleInterne" IS 'Projection financière : CodeArticleInterne ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."Unite" IS 'Projection financière : Unite ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."QteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."QteSortie" IS 'Projection financière : QteSortie ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."QteRetourAvantFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."QteRetourAvantFacture" IS 'Projection financière : QteRetourAvantFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."QteFacturee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."QteFacturee" IS 'Projection financière : QteFacturee ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."PUFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."PUFacture" IS 'Projection financière : PUFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."MontantLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."MontantLigne" IS 'Projection financière : MontantLigne ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_CommandeFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_CommandeFk" IS 'Projection financière : ID_CommandeFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."CodeFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."CodeFacture" IS 'Projection financière : CodeFacture ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."ID_DeviseFk" IS 'Projection financière : ID_DeviseFk ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."DeviseCode" IS 'Projection financière : DeviseCode ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: COLUMN "V_FactureLigne"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_FactureLigne"."DeviseLibelle" IS 'Projection financière : DeviseLibelle ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
+
+
+--
+-- Name: V_Inventaire; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Inventaire" AS
+SELECT
+    NULL::bigint AS "ID_Inventaire",
+    NULL::integer AS "IdEntiteFk",
+    NULL::integer AS "ID_UserFk",
+    NULL::timestamp with time zone AS "DateInventaire",
+    NULL::text AS "Motif",
+    NULL::text AS "Etat",
+    NULL::bigint AS "Version",
+    NULL::timestamp with time zone AS "CreeLe",
+    NULL::timestamp with time zone AS "ModifieLe",
+    NULL::timestamp with time zone AS "ValideLe",
+    NULL::integer AS "ID_ValidateurFk",
+    NULL::uuid AS "ValidationRequest",
+    NULL::text AS "ValidationHash",
+    NULL::text AS "CodeInventaire",
+    NULL::bigint AS "NbArticles",
+    NULL::bigint AS "NbEcarts",
+    NULL::timestamp with time zone AS "AnnuleLe",
+    NULL::integer AS "ID_AnnulateurFk",
+    NULL::text AS "MotifAnnulation",
+    NULL::uuid AS "AnnulationRequest",
+    NULL::text AS "AnnulationHash";
+
+
+--
+-- Name: VIEW "V_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Inventaire" IS 'Registre des comptages, validations et annulations tracées par entreprise.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ID_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ID_Inventaire" IS 'Donnée ID_Inventaire de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."IdEntiteFk" IS 'Entreprise propriétaire stable ; ne découle jamais du rattachement actuel de l’auteur.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ID_UserFk" IS 'Donnée ID_UserFk de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."DateInventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."DateInventaire" IS 'Donnée DateInventaire de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."Motif" IS 'Donnée Motif de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."Etat"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."Etat" IS 'Donnée Etat de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."Version" IS 'Version optimiste incrémentée à chaque modification, indépendante des variations de stock.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."CreeLe" IS 'Donnée CreeLe de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ModifieLe" IS 'Donnée ModifieLe de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ValideLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ValideLe" IS 'Donnée ValideLe de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ID_ValidateurFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ID_ValidateurFk" IS 'Donnée ID_ValidateurFk de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ValidationRequest"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ValidationRequest" IS 'Identifiant de demande idempotente de validation ; un rejeu identique conserve les mêmes bons.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ValidationHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ValidationHash" IS 'Donnée ValidationHash de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."CodeInventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."CodeInventaire" IS 'Donnée CodeInventaire de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."NbArticles"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."NbArticles" IS 'Donnée NbArticles de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."NbEcarts"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."NbEcarts" IS 'Donnée NbEcarts de V_Inventaire, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."AnnuleLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."AnnuleLe" IS 'Date et heure de l’annulation de validation.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."ID_AnnulateurFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."ID_AnnulateurFk" IS 'Administrateur ayant annulé la validation.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."MotifAnnulation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."MotifAnnulation" IS 'Justification obligatoire conservée dans l’historique.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."AnnulationRequest"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."AnnulationRequest" IS 'Identifiant de demande empêchant le double traitement.';
+
+
+--
+-- Name: COLUMN "V_Inventaire"."AnnulationHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Inventaire"."AnnulationHash" IS 'Empreinte du contenu de la demande d’annulation.';
+
+
+--
+-- Name: V_PrecisionStock; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_PrecisionStock" AS
+ SELECT p."ID_PrecisionStock",
+    g."ID_Generique" AS "ID_UniteFk",
+    g."NomGenerique" AS "Unite",
+    g."AbrGenerique" AS "Abreviation",
+    (COALESCE((p."DecimalesStock")::integer, 0))::smallint AS "DecimalesStock",
+    p."ModifieLe",
+    g."ValideGenerique" AS "ValideUnite"
+   FROM (referentiel."T_Generique" g
+     LEFT JOIN logistique."T_PrecisionStock" p ON ((p."ID_UniteFk" = g."ID_Generique")))
+  WHERE (g."ID_CategorieGeneriqueFk" = 34);
+
+
+--
+-- Name: VIEW "V_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_PrecisionStock" IS 'Lecture commune au grain unité de la catégorie Unités : politique explicite, identité et date ; zéro décimale si une nouvelle unité n’est pas encore paramétrée.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."ID_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."ID_PrecisionStock" IS 'Identité de la politique explicite, NULL si l’unité utilise encore le défaut entier.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."ID_UniteFk" IS 'Identité unique de l’unité du référentiel ; clé logique de cette vue.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."Unite" IS 'Libellé courant de l’unité du référentiel.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."Abreviation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."Abreviation" IS 'Abréviation courante de l’unité du référentiel.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."DecimalesStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."DecimalesStock" IS 'Précision appliquée : politique explicite de zéro à trois décimales, ou zéro en l’absence de politique.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."ModifieLe" IS 'Date du réglage explicite ou de son initialisation ; NULL pour une unité encore sans politique.';
+
+
+--
+-- Name: COLUMN "V_PrecisionStock"."ValideUnite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PrecisionStock"."ValideUnite" IS 'Validité courante de la valeur Unité ; les unités inactives restent lisibles pour l’historique.';
+
+
+--
+-- Name: V_InventaireLigne; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_InventaireLigne" AS
+ SELECT l."ID_InventaireFk",
+    l."ID_ArticleFk",
+    l."QteTheorique",
+    l."QteComptee",
+    l."PUCorrection",
+    l."Lots",
+    l."Justification",
+    l."ID_CommandeCorrectionFk",
+    (l."QteComptee" - l."QteTheorique") AS "Ecart",
+    a."IdEntiteFk",
+    a."NomArticle",
+    a."CodeArticleInterne",
+    a."ID_UniteFk",
+    g."AbrGenerique" AS "Unite",
+    a."QteArticle" AS "StockActuel",
+    COALESCE((p."DecimalesStock")::integer, 0) AS "Decimales",
+    c."CodeCmd" AS "CodeCorrection",
+    l."ID_CommandeAnnulationFk",
+    ca."CodeCmd" AS "CodeAnnulation"
+   FROM (((((logistique."T_InventaireLigne" l
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = l."ID_ArticleFk")))
+     LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = a."ID_UniteFk")))
+     LEFT JOIN logistique."V_PrecisionStock" p ON ((p."ID_UniteFk" = a."ID_UniteFk")))
+     LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = l."ID_CommandeCorrectionFk")))
+     LEFT JOIN logistique."T_Commande" ca ON ((ca."ID_Commande" = l."ID_CommandeAnnulationFk")));
+
+
+--
+-- Name: VIEW "V_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_InventaireLigne" IS 'Comptage, écart et bon correcteur au grain article/inventaire ; précision provenant de V_PrecisionStock, sans variation des colonnes historiques.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."ID_InventaireFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."ID_InventaireFk" IS 'Donnée ID_InventaireFk de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."ID_ArticleFk" IS 'Donnée ID_ArticleFk de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."QteTheorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."QteTheorique" IS 'Stock exact capturé lors de la préparation du comptage, contrôlé de nouveau sous verrou à la validation.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."QteComptee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."QteComptee" IS 'Quantité physique saisie explicitement ; zéro est un comptage, absence est refusée.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."PUCorrection"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."PUCorrection" IS 'Donnée PUCorrection de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."Lots"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."Lots" IS 'Ventilation JSON des seuls écarts : numéro, quantité exacte et péremption facultative ; aucun mouvement autonome.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."Justification"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."Justification" IS 'Donnée Justification de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."ID_CommandeCorrectionFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."ID_CommandeCorrectionFk" IS 'Donnée ID_CommandeCorrectionFk de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."Ecart"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."Ecart" IS 'Donnée Ecart de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."IdEntiteFk" IS 'Entreprise propriétaire stable ; ne découle jamais du rattachement actuel de l’auteur.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."NomArticle" IS 'Donnée NomArticle de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."CodeArticleInterne" IS 'Donnée CodeArticleInterne de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."ID_UniteFk" IS 'Donnée ID_UniteFk de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."Unite" IS 'Donnée Unite de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."StockActuel"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."StockActuel" IS 'Donnée StockActuel de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."Decimales"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."Decimales" IS 'Précision de comptage fournie par la politique logistique commune de l’unité ; zéro pour une unité non paramétrée.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."CodeCorrection"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."CodeCorrection" IS 'Donnée CodeCorrection de V_InventaireLigne, consultée dans le périmètre entreprise autorisé.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."ID_CommandeAnnulationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."ID_CommandeAnnulationFk" IS 'Identifiant du bon compensateur de cette ligne.';
+
+
+--
+-- Name: COLUMN "V_InventaireLigne"."CodeAnnulation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_InventaireLigne"."CodeAnnulation" IS 'Code consultable du bon compensateur de cette ligne.';
+
+
+--
 -- Name: V_Mouvement; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_Mouvement" AS
- SELECT m."DateHeureAutoMvt",
-    m."DateMvt",
-    m."ID_Mvt",
-    m."ID_TypeMvtFk",
-    g_typemvt."AbrGenerique" AS "TypeMvt",
-    g_typemvt."NomGenerique" AS "NomTypeMvt",
-    m."ID_ArticleFk",
-    a."CodeArticleInterne",
-    a."NomArticle",
-    m."ID_cmdFk",
-    c."CodeCmd",
-    c."DateCmd",
-    COALESCE(m."QteMvt", 0) AS "QteMvt",
-    (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
-        CASE
-            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END AS "SigneStock",
-    ((COALESCE(m."QteMvt", 0) *
-        CASE
-            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-            ELSE 0
-        END))::numeric AS "QteMvtSigned",
-    (((COALESCE(m."QteMvt", 0))::numeric * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
-        CASE
-            WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
-            ELSE 'Commande'::text
-        END AS "OrigineMouvement"
-   FROM (((logistique."T_Mouvement" m
-     LEFT JOIN logistique."T_Article" a ON ((m."ID_ArticleFk" = a."ID_Article")))
-     LEFT JOIN logistique."T_Commande" c ON ((m."ID_cmdFk" = c."ID_Commande")))
-     LEFT JOIN referentiel."T_Generique" g_typemvt ON (((m."ID_TypeMvtFk" = g_typemvt."ID_Generique") AND (g_typemvt."ID_CategorieGeneriqueFk" = 64))));
+ SELECT source."DateHeureAutoMvt",
+    source."DateMvt",
+    source."ID_Mvt",
+    source."ID_TypeMvtFk",
+    source."TypeMvt",
+    source."NomTypeMvt",
+    source."ID_ArticleFk",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."ID_cmdFk",
+    source."CodeCmd",
+    source."DateCmd",
+    source."QteMvt",
+    source."PUMvt",
+    source."SigneStock",
+    source."QteMvtSigned",
+    source."MontantMvt",
+    source."OrigineMouvement",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk",
+    r."ID_TiersFk",
+    t."Nom" AS "TiersNom"
+   FROM ((( SELECT historique."DateHeureAutoMvt",
+            historique."DateMvt",
+            historique."ID_Mvt",
+            historique."ID_TypeMvtFk",
+            historique."TypeMvt",
+            historique."NomTypeMvt",
+            historique."ID_ArticleFk",
+            historique."CodeArticleInterne",
+            historique."NomArticle",
+            historique."ID_cmdFk",
+            historique."CodeCmd",
+            historique."DateCmd",
+            historique."QteMvt",
+            historique."PUMvt",
+            historique."SigneStock",
+            historique."QteMvtSigned",
+            historique."MontantMvt",
+            historique."OrigineMouvement",
+            source_1."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT m."DateHeureAutoMvt",
+                    m."DateMvt",
+                    m."ID_Mvt",
+                    m."ID_TypeMvtFk",
+                    g_typemvt."AbrGenerique" AS "TypeMvt",
+                    g_typemvt."NomGenerique" AS "NomTypeMvt",
+                    m."ID_ArticleFk",
+                    a."CodeArticleInterne",
+                    a."NomArticle",
+                    m."ID_cmdFk",
+                    c."CodeCmd",
+                    c."DateCmd",
+                    COALESCE(m."QteMvt", (0)::numeric) AS "QteMvt",
+                    (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
+                        CASE
+                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END AS "SigneStock",
+                    (COALESCE(m."QteMvt", (0)::numeric) * (
+                        CASE
+                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+                            ELSE 0
+                        END)::numeric) AS "QteMvtSigned",
+                    ((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
+                        CASE
+                            WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
+                            ELSE 'Commande'::text
+                        END AS "OrigineMouvement"
+                   FROM (((logistique."T_Mouvement" m
+                     LEFT JOIN logistique."T_Article" a ON ((m."ID_ArticleFk" = a."ID_Article")))
+                     LEFT JOIN logistique."T_Commande" c ON ((m."ID_cmdFk" = c."ID_Commande")))
+                     LEFT JOIN referentiel."T_Generique" g_typemvt ON (((m."ID_TypeMvtFk" = g_typemvt."ID_Generique") AND (g_typemvt."ID_CategorieGeneriqueFk" = 64))))) historique
+             LEFT JOIN logistique."T_Mouvement" source_1 ON ((source_1."ID_Mvt" = historique."ID_Mvt")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_cmdFk")))
+     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")));
 
 
 --
 -- Name: VIEW "V_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Mouvement" IS 'Historique enrichi au grain mouvement : article, commande, type historique, quantité, signe, prix et origine. TypeMvt contient ici l’abréviation ; les ajustements directs ont une commande NULL.';
+COMMENT ON VIEW logistique."V_Mouvement" IS 'Historique enrichi au grain mouvement : article, commande, type historique, quantité, signe, prix et origine. TypeMvt contient ici l’abréviation ; les ajustements directs ont une commande NULL. Devise du mouvement historique explicitée ; anciens grain et périmètre conservés.';
 
 
 --
@@ -9931,43 +18924,1628 @@ COMMENT ON COLUMN logistique."V_Mouvement"."OrigineMouvement" IS 'Commande si ID
 
 
 --
+-- Name: COLUMN "V_Mouvement"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."ID_DeviseFk" IS 'Référence de devise du mouvement historique ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_Mouvement"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_Mouvement"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_Mouvement"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Mouvement"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Mouvement"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Mouvement"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: V_MouvementLot; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_MouvementLot" AS
+ SELECT l."ID_MvtFk",
+    l."ID_LotArticleFk",
+    l."ID_ArticleFk",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    l."Quantite",
+    l."DateMvt",
+    l."ID_cmdFk",
+    l."SigneStock",
+    l."QuantiteSignee",
+    l."NomArticle",
+    l."CodeCmd",
+    l."ID_DeviseFk",
+    l."DeviseCode",
+    l."DeviseLibelle",
+    ml."MotifDerogationPeremption",
+    ml."ID_DerogationUserFk",
+    ml."DateDerogationPeremption"
+   FROM (( SELECT historique."ID_MvtFk",
+            historique."ID_LotArticleFk",
+            historique."ID_ArticleFk",
+            historique."NumeroLot",
+            historique."DatePeremptionLot",
+            historique."Quantite",
+            historique."DateMvt",
+            historique."ID_cmdFk",
+            historique."SigneStock",
+            historique."QuantiteSignee",
+            historique."NomArticle",
+            historique."CodeCmd",
+            source."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT ml_1."ID_MvtFk",
+                    ml_1."ID_LotArticleFk",
+                    l_1."ID_ArticleFk",
+                    l_1."NumeroLot",
+                    l_1."DatePeremptionLot",
+                    ml_1."Quantite",
+                    m."DateMvt",
+                    m."ID_cmdFk",
+                    m."SigneStock",
+                    (ml_1."Quantite" * (m."SigneStock")::numeric) AS "QuantiteSignee",
+                    m."NomArticle",
+                    m."CodeCmd"
+                   FROM ((logistique."T_MouvementLot" ml_1
+                     JOIN logistique."T_LotArticle" l_1 ON ((l_1."ID_LotArticle" = ml_1."ID_LotArticleFk")))
+                     JOIN logistique."V_MouvementStock" m ON ((m."ID_Mvt" = ml_1."ID_MvtFk")))) historique
+             LEFT JOIN logistique."T_Mouvement" source ON ((source."ID_Mvt" = historique."ID_MvtFk")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source."ID_DeviseFk")))) l
+     JOIN logistique."T_MouvementLot" ml ON (((ml."ID_MvtFk" = l."ID_MvtFk") AND (ml."ID_LotArticleFk" = l."ID_LotArticleFk"))));
+
+
+--
+-- Name: VIEW "V_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_MouvementLot" IS 'Historique des ventilations avec motif, compte et date de la dérogation de péremption éventuelle ; aucun mouvement supplémentaire.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_MvtFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_MvtFk" IS 'Conservation du stock : ID_MvtFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_LotArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_LotArticleFk" IS 'Conservation du stock : ID_LotArticleFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_ArticleFk" IS 'Conservation du stock : ID_ArticleFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."NumeroLot" IS 'Conservation du stock : NumeroLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."DatePeremptionLot" IS 'Conservation du stock : DatePeremptionLot, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."Quantite" IS 'Conservation du stock : Quantite, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."DateMvt"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."DateMvt" IS 'Conservation du stock : DateMvt, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_cmdFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_cmdFk" IS 'Conservation du stock : ID_cmdFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."SigneStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."SigneStock" IS 'Conservation du stock : SigneStock, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."QuantiteSignee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."QuantiteSignee" IS 'Conservation du stock : QuantiteSignee, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."NomArticle" IS 'Conservation du stock : NomArticle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."CodeCmd" IS 'Conservation du stock : CodeCmd, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_DeviseFk" IS 'Conservation du stock : ID_DeviseFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."DeviseCode" IS 'Conservation du stock : DeviseCode, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."DeviseLibelle" IS 'Conservation du stock : DeviseLibelle, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."MotifDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."MotifDerogationPeremption" IS 'Conservation du stock : MotifDerogationPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."ID_DerogationUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."ID_DerogationUserFk" IS 'Conservation du stock : ID_DerogationUserFk, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: COLUMN "V_MouvementLot"."DateDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_MouvementLot"."DateDerogationPeremption" IS 'Conservation du stock : DateDerogationPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+
+--
+-- Name: V_PieceJustificative; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_PieceJustificative" AS
+ SELECT "ID_Piece",
+    "TypeObjet",
+    "ID_Objet",
+    "IdEntiteFk",
+    "ID_UserFk",
+    "NomFichier",
+    "MimeType",
+    "TailleOctets",
+    "Sha256",
+    "Archive",
+    "CreeLe"
+   FROM logistique."T_PieceJustificative";
+
+
+--
+-- Name: VIEW "V_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_PieceJustificative" IS 'Métadonnées des pièces privées, sans contenu binaire ; le service impose le périmètre du document.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."ID_Piece"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."ID_Piece" IS 'Champ documentaire ID_Piece du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."TypeObjet" IS 'Champ documentaire TypeObjet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."ID_Objet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."ID_Objet" IS 'Champ documentaire ID_Objet du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."IdEntiteFk" IS 'Entreprise propriétaire du document, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."ID_UserFk" IS 'Champ documentaire ID_UserFk du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."NomFichier"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."NomFichier" IS 'Champ documentaire NomFichier du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."MimeType"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."MimeType" IS 'Champ documentaire MimeType du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."TailleOctets"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."TailleOctets" IS 'Champ documentaire TailleOctets du justificatif ou de son identité historique.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."Sha256"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."Sha256" IS 'Empreinte du contenu binaire enregistré.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."Archive"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."Archive" IS 'Pièce retirée du parcours actif, contenu et historique conservés.';
+
+
+--
+-- Name: COLUMN "V_PieceJustificative"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_PieceJustificative"."CreeLe" IS 'Champ documentaire CreeLe du justificatif ou de son identité historique.';
+
+
+--
+-- Name: V_ProprietairesARevoir; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_ProprietairesARevoir" AS
+ SELECT 'article'::text AS "TypeObjet",
+    "T_Article"."ID_Article" AS "Identifiant"
+   FROM logistique."T_Article"
+  WHERE ("T_Article"."IdEntiteFk" IS NULL)
+UNION ALL
+ SELECT 'commande'::text AS "TypeObjet",
+    "T_Commande"."ID_Commande" AS "Identifiant"
+   FROM logistique."T_Commande"
+  WHERE ("T_Commande"."IdEntiteFk" IS NULL);
+
+
+--
+-- Name: VIEW "V_ProprietairesARevoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_ProprietairesARevoir" IS 'Diagnostic de quarantaine des propriétaires historiques non démontrés ; réservé à la plateforme.';
+
+
+--
+-- Name: V_RegistreLots; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_RegistreLots" AS
+ SELECT l."ID_LotArticle",
+    l."ID_ArticleFk",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    l."Actif",
+    l."CreeLe",
+    l."StockLot",
+    l."QuantiteEntree",
+    l."QuantiteSortie",
+    l."ID_DeviseFk",
+    l."DeviseCode",
+    l."DeviseLibelle",
+    l."IdEntiteFk",
+    l."NomArticle",
+    l."ID_UniteFk",
+    l."Unite",
+    l."EtatPeremptionLot",
+    l."EstPerime",
+    l."EstProche",
+    l."SeuilAlerteJours",
+    l."BloquerLotsPerimes",
+    a."CodeArticleInterne",
+    a."RefArticle",
+    a."PhotoArticle",
+    a."ID_CategorieArticleFk",
+    cat."NomGenerique" AS "CategorieArticle",
+    a."ID_TypeArticleFk",
+    typ."NomGenerique" AS "TypeArticle",
+    a."ValideArticle",
+    a."QteArticle" AS "StockArticle",
+    l."Unite" AS "AbrUnite",
+    e."NomEntite",
+        CASE
+            WHEN (l."StockLot" < (0)::numeric) THEN 'Stock négatif'::text
+            WHEN (l."StockLot" = (0)::numeric) THEN 'Épuisé'::text
+            ELSE 'Disponible'::text
+        END AS "EtatStockLot"
+   FROM ((((logistique."V_LotDisponibilite" l
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = l."ID_ArticleFk")))
+     LEFT JOIN referentiel."T_Generique" cat ON ((cat."ID_Generique" = a."ID_CategorieArticleFk")))
+     LEFT JOIN referentiel."T_Generique" typ ON ((typ."ID_Generique" = a."ID_TypeArticleFk")))
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = l."IdEntiteFk")));
+
+
+--
+-- Name: VIEW "V_RegistreLots"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_RegistreLots" IS 'Registre de tous les lots, y compris épuisés ou archivés. Solde réel, péremption en date métier Kinshasa, unité de stock et propriétaire durable de l’article. Source commune écran, fiche et export ; aucun effet de stock.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_LotArticle" IS 'Identifiant interne unique du lot dans le registre.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_ArticleFk" IS 'Article auquel appartient exclusivement le lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."NumeroLot" IS 'Numéro de lot du produit, conservé en texte.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."DatePeremptionLot" IS 'Date civile de péremption propre au lot ; une absence reste inconnue.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."Actif" IS 'Lot actif. Un lot archivé reste visible et ses mouvements sont conservés.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."CreeLe" IS 'Horodatage de création du lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."StockLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."StockLot" IS 'Solde réel du lot : entrées moins sorties dans son unité de stock.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."QuantiteEntree"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."QuantiteEntree" IS 'Quantité cumulée des entrées ventilées sur ce lot, dans son unité.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."QuantiteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."QuantiteSortie" IS 'Quantité cumulée des sorties ventilées sur ce lot, dans son unité.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_DeviseFk" IS 'Devise de référence du mouvement ou de l’article ; aucun total entre devises.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."DeviseCode" IS 'Code de la devise de référence.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."DeviseLibelle" IS 'Libellé de la devise de référence.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."IdEntiteFk" IS 'Entreprise propriétaire durable de l’article ; clé du périmètre de consultation.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."NomArticle" IS 'Désignation actuelle de l’article du lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_UniteFk" IS 'Unité de stock définie dans le référentiel générique.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."Unite" IS 'Abréviation de l’unité de stock associée aux quantités du lot ou de son mouvement.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."EtatPeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."EtatPeremptionLot" IS 'Conservation du lot selon sa date et le seuil article ou entreprise ; indépendante du solde.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."EstPerime"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."EstPerime" IS 'Date du lot antérieure au jour métier Africa/Kinshasa ; inclut les lots épuisés dans ce registre historique.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."EstProche"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."EstProche" IS 'Date du lot entre le jour métier et le seuil d’alerte inclus.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."SeuilAlerteJours"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."SeuilAlerteJours" IS 'Délai d’alerte effectif en jours : article, sinon entreprise, sinon 30.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."BloquerLotsPerimes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."BloquerLotsPerimes" IS 'Politique de blocage des sorties de lots périmés pour cette entreprise.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."CodeArticleInterne" IS 'Code interne actuel de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."RefArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."RefArticle" IS 'Référence actuelle de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."PhotoArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."PhotoArticle" IS 'Photo actuelle de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_CategorieArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_CategorieArticleFk" IS 'Catégorie d’article dans le référentiel générique.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."CategorieArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."CategorieArticle" IS 'Libellé de la catégorie d’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ID_TypeArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ID_TypeArticleFk" IS 'Type d’article dans le référentiel générique.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."TypeArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."TypeArticle" IS 'Libellé du type d’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."ValideArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."ValideArticle" IS 'État actif de l’article. Ne modifie pas le solde historique du lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."StockArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."StockArticle" IS 'Stock courant total de l’article, lots et stock sans lot compris ; non sommable entre unités.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."AbrUnite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."AbrUnite" IS 'Abréviation de l’unité de stock, exportée avec toute quantité.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."NomEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."NomEntite" IS 'Nom de l’entreprise propriétaire de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreLots"."EtatStockLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreLots"."EtatStockLot" IS 'État du solde du lot : Disponible, Épuisé ou Stock négatif.';
+
+
+--
+-- Name: V_RegistreMouvementLot; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_RegistreMouvementLot" AS
+ SELECT l."ID_MvtFk",
+    l."ID_LotArticleFk",
+    l."ID_ArticleFk",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    l."Quantite",
+    l."DateMvt",
+    l."ID_cmdFk",
+    l."SigneStock",
+    l."QuantiteSignee",
+    l."NomArticle",
+    l."CodeCmd",
+    l."ID_DeviseFk",
+    l."DeviseCode",
+    l."DeviseLibelle",
+    l."MotifDerogationPeremption",
+    l."ID_DerogationUserFk",
+    l."DateDerogationPeremption",
+    a."IdEntiteFk",
+    a."CodeArticleInterne",
+    a."RefArticle",
+    u."AbrGenerique" AS "AbrUnite",
+    u."AbrGenerique" AS "Unite",
+    t."NomGenerique" AS "NomTypeMvt",
+        CASE
+            WHEN (l."SigneStock" = 1) THEN 'Entrée'::text
+            WHEN (l."SigneStock" = '-1'::integer) THEN 'Sortie'::text
+            ELSE 'Sans effet'::text
+        END AS "SensMouvement"
+   FROM ((((logistique."V_MouvementLot" l
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = l."ID_ArticleFk")))
+     JOIN logistique."T_Mouvement" m ON ((m."ID_Mvt" = l."ID_MvtFk")))
+     LEFT JOIN referentiel."T_Generique" u ON ((u."ID_Generique" = a."ID_UniteFk")))
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = m."ID_TypeMvtFk")));
+
+
+--
+-- Name: VIEW "V_RegistreMouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_RegistreMouvementLot" IS 'Journal des ventilations de mouvements par lot avec quantité, signe, unité et entreprise. Une ligne par mouvement et lot ; consulter et exporter en filtrant ID_LotArticleFk. Les mouvements d’origine et leurs compensations restent distincts.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_MvtFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_MvtFk" IS 'Identifiant du mouvement source de cette ventilation de lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_LotArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_LotArticleFk" IS 'Lot dont cette écriture ventile une partie du mouvement.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_ArticleFk" IS 'Article auquel appartient exclusivement le lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."NumeroLot" IS 'Numéro de lot du produit, conservé en texte.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."DatePeremptionLot" IS 'Date civile de péremption propre au lot ; une absence reste inconnue.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."Quantite" IS 'Quantité absolue de cette ventilation, dans l’unité de stock de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."DateMvt"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."DateMvt" IS 'Date et heure métier du mouvement source.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_cmdFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_cmdFk" IS 'Bon de stock source, si présent.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."SigneStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."SigneStock" IS 'Effet de stock de la ventilation : 1 entrée, -1 sortie, 0 neutre.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."QuantiteSignee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."QuantiteSignee" IS 'Quantité de ventilation multipliée par son signe de stock.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."NomArticle" IS 'Désignation actuelle de l’article du lot.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."CodeCmd" IS 'Code automatique du bon source, si présent.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_DeviseFk" IS 'Devise de référence du mouvement ou de l’article ; aucun total entre devises.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."DeviseCode" IS 'Code de la devise de référence.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."DeviseLibelle" IS 'Libellé de la devise de référence.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."MotifDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."MotifDerogationPeremption" IS 'Motif obligatoire d’une dérogation autorisée au blocage des lots périmés.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."ID_DerogationUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."ID_DerogationUserFk" IS 'Administrateur global ayant autorisé la dérogation de péremption.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."DateDerogationPeremption"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."DateDerogationPeremption" IS 'Horodatage de l’autorisation de dérogation.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."IdEntiteFk" IS 'Entreprise propriétaire durable de l’article ; clé du périmètre de consultation.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."CodeArticleInterne" IS 'Code interne actuel de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."RefArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."RefArticle" IS 'Référence actuelle de l’article.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."AbrUnite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."AbrUnite" IS 'Abréviation de l’unité de stock, exportée avec toute quantité.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."Unite" IS 'Abréviation de l’unité de stock associée aux quantités du lot ou de son mouvement.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."NomTypeMvt"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."NomTypeMvt" IS 'Type du mouvement source issu du référentiel générique.';
+
+
+--
+-- Name: COLUMN "V_RegistreMouvementLot"."SensMouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RegistreMouvementLot"."SensMouvement" IS 'Sens lisible de l’écriture, dérivé du signe de stock.';
+
+
+--
+-- Name: V_Reglements; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Reglements" AS
+ SELECT source."ID_Reglement",
+    source."CodeFactureFk",
+    source."ID_ModeReglementFk",
+    source."ID_ClientFk",
+    source."DateReglement",
+    source."MontantRegle",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    r."IdEntiteFk",
+    r."ID_TiersFk",
+    t."Nom" AS "TiersNom"
+   FROM ((( SELECT r_1."ID_Reglement",
+            r_1."CodeFactureFk",
+            r_1."ID_ModeReglementFk",
+            r_1."ID_ClientFk",
+            r_1."DateReglement",
+            r_1."MontantRegle",
+            r_1."ID_DeviseFk",
+            logistique.fn_code_devise((g."AbrGenerique")::text) AS "DeviseCode",
+            (g."NomGenerique")::text AS "DeviseLibelle"
+           FROM (logistique."T_Reglements" r_1
+             LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = r_1."ID_DeviseFk")))) source
+     LEFT JOIN logistique."T_Commande" r ON (((r."CodeFacture")::text = (source."CodeFactureFk")::text)))
+     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")));
+
+
+--
+-- Name: VIEW "V_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Reglements" IS 'Écritures unitaires de règlement avec devise historique de la facture ; le service impose utilisateur, organisation et facture autorisés.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."ID_Reglement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."ID_Reglement" IS 'Identifiant unique du règlement.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."CodeFactureFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."CodeFactureFk" IS 'Référence unique de la facture du bon source.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."ID_ModeReglementFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."ID_ModeReglementFk" IS 'Mode de paiement validé par la logique métier existante.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."ID_ClientFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."ID_ClientFk" IS 'Client rattaché au règlement.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."DateReglement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."DateReglement" IS 'Horodatage métier du règlement, sans fuseau dans le modèle existant.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."MontantRegle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."MontantRegle" IS 'Montant exact dans la devise de la facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."ID_DeviseFk" IS 'Référence de devise du règlement historique ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."DeviseCode" IS 'Code monétaire du référentiel ; EURO est normalisé EUR.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."DeviseLibelle" IS 'Libellé de la devise conservée dans le référentiel, y compris après désactivation.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_Reglements"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Reglements"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: V_RetourArticle; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_RetourArticle" AS
+ WITH mouvements AS (
+         SELECT "T_Mouvement"."ID_cmdFk",
+            "T_Mouvement"."ID_ArticleFk",
+            count(*) AS n,
+            max("T_Mouvement"."ID_Mvt") AS mvt,
+            max("T_Mouvement"."QteMvt") AS qte,
+            max("T_Mouvement"."PUMvt") AS pu,
+            max("T_Mouvement"."ID_DeviseFk") AS devise,
+            max("T_Mouvement"."ID_TypeMvtFk") AS type_id
+           FROM logistique."T_Mouvement"
+          WHERE ("T_Mouvement"."ID_cmdFk" IS NOT NULL)
+          GROUP BY "T_Mouvement"."ID_cmdFk", "T_Mouvement"."ID_ArticleFk"
+        ), lots AS (
+         SELECT m_1."ID_cmdFk",
+            m_1."ID_ArticleFk",
+            sum(l_1."Quantite") AS qte
+           FROM (logistique."T_Mouvement" m_1
+             JOIN logistique."T_MouvementLot" l_1 ON ((l_1."ID_MvtFk" = m_1."ID_Mvt")))
+          GROUP BY m_1."ID_cmdFk", m_1."ID_ArticleFk"
+        ), rendus AS (
+         SELECT r_1."ID_CommandeOrigineFk" AS origine,
+            d_1."ID_ArticleFk",
+            sum(d_1."QteCmdDetail") AS qte,
+            sum((d_1."QteCmdDetail" - COALESCE(l_1.qte, ((0)::bigint)::numeric))) AS sans_lot
+           FROM ((logistique."T_RetourBon" r_1
+             JOIN logistique."T_CommandeDetail" d_1 ON ((d_1."ID_CmdFk" = r_1."ID_CommandeRetourFk")))
+             LEFT JOIN lots l_1 ON (((l_1."ID_cmdFk" = d_1."ID_CmdFk") AND (l_1."ID_ArticleFk" = d_1."ID_ArticleFk"))))
+          GROUP BY r_1."ID_CommandeOrigineFk", d_1."ID_ArticleFk"
+        )
+ SELECT c."ID_Commande" AS "ID_CommandeOrigineFk",
+    d."ID_ArticleFk",
+    m.mvt AS "ID_MouvementOrigineFk",
+    a."NomArticle",
+    a."CodeArticleInterne",
+    u."AbrGenerique" AS "AbrUnite",
+    c."ID_DeviseFk",
+    cv."DeviseCode",
+    cv."DeviseLibelle",
+    m.pu AS "PUHistorique",
+    d."QteCmdDetail" AS "QteSortie",
+    COALESCE(r.qte, (0)::numeric) AS "QteDejaRetournee",
+    (d."QteCmdDetail" - COALESCE(r.qte, (0)::numeric)) AS "QteRestante",
+    (d."QteCmdDetail" - COALESCE(l.qte, ((0)::bigint)::numeric)) AS "QteSansLotSortie",
+    COALESCE(r.sans_lot, (0)::numeric) AS "QteSansLotDejaRetournee",
+    ((d."QteCmdDetail" - COALESCE(l.qte, ((0)::bigint)::numeric)) - COALESCE(r.sans_lot, (0)::numeric)) AS "QteSansLotRestante",
+    (((m.n = 1) AND (m.qte = d."QteCmdDetail") AND (m.pu IS NOT NULL) AND (m.pu >= (0)::numeric) AND (m.pu <= 9999999999.99) AND (m.devise = c."ID_DeviseFk") AND (c."ID_DeviseFk" IS NOT NULL) AND (m.type_id = c."ID_TypeCmdFk") AND (d."QteCmdDetail" > (0)::numeric) AND (COALESCE(l.qte, ((0)::bigint)::numeric) <= d."QteCmdDetail")) IS TRUE) AS "SourceCoherente"
+   FROM ((((((((logistique."T_Commande" c
+     JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = c."ID_TypeCmdFk")))
+     JOIN logistique."T_CommandeDetail" d ON ((d."ID_CmdFk" = c."ID_Commande")))
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
+     LEFT JOIN referentiel."T_Generique" u ON ((u."ID_Generique" = a."ID_UniteFk")))
+     LEFT JOIN logistique."V_Commande" cv ON ((cv."ID_Commande" = c."ID_Commande")))
+     LEFT JOIN mouvements m ON (((m."ID_cmdFk" = d."ID_CmdFk") AND (m."ID_ArticleFk" = d."ID_ArticleFk"))))
+     LEFT JOIN lots l ON (((l."ID_cmdFk" = d."ID_CmdFk") AND (l."ID_ArticleFk" = d."ID_ArticleFk"))))
+     LEFT JOIN rendus r ON (((r.origine = d."ID_CmdFk") AND (r."ID_ArticleFk" = d."ID_ArticleFk"))))
+  WHERE ((t."ID_CategorieGeneriqueFk" = 64) AND ((t."AbrGenerique")::text ~~* 'sort%'::text));
+
+
+--
+-- Name: VIEW "V_RetourArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_RetourArticle" IS 'Budget exhaustif par sortie et article : quantité sortie, déjà restituée et restante, prix du mouvement historique, fraction sans lot et indicateur de cohérence ; aucune conversion monétaire.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."ID_CommandeOrigineFk" IS 'Bon de sortie historique.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."ID_ArticleFk" IS 'Article de la ligne d’origine.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."ID_MouvementOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."ID_MouvementOrigineFk" IS 'Mouvement sortant historique unique.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."NomArticle" IS 'Libellé actuel de l’article sans effet sur sa quantité historique.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."CodeArticleInterne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."CodeArticleInterne" IS 'Code interne de l’article.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."AbrUnite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."AbrUnite" IS 'Unité de stock.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."ID_DeviseFk" IS 'Devise conservée du bon d’origine.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."DeviseCode" IS 'Code normalisé de devise, sans conversion.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."DeviseLibelle" IS 'Libellé de la devise.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."PUHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."PUHistorique" IS 'Prix unitaire réellement porté par le mouvement sortant, indépendant du catalogue actuel.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteSortie" IS 'Quantité entière initialement sortie.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteDejaRetournee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteDejaRetournee" IS 'Cumul des événements de retour validés pour cet article.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteRestante"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteRestante" IS 'Quantité sortie encore restituable.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteSansLotSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteSansLotSortie" IS 'Part de la sortie qui ne portait pas de ventilation de lot.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteSansLotDejaRetournee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteSansLotDejaRetournee" IS 'Part déjà restituée sans affectation à un lot.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."QteSansLotRestante"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."QteSansLotRestante" IS 'Part sans lot encore restituable.';
+
+
+--
+-- Name: COLUMN "V_RetourArticle"."SourceCoherente"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourArticle"."SourceCoherente" IS 'Vrai si ligne et mouvement source sont cohérents en quantité, prix, sens et devise.';
+
+
+--
+-- Name: V_RetourBon; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_RetourBon" AS
+ SELECT r."ID_RetourBon",
+    r."ID_CommandeOrigineFk",
+    r."ID_CommandeRetourFk",
+    r."ID_UserFk",
+    r."IdEntiteFk",
+    r."RequestId",
+    r."PayloadHash",
+    r."Motif",
+    r."DateRetour",
+    r."CreeLe",
+    o."CodeCmd" AS "CodeBonOrigine",
+    b."CodeCmd",
+    b."DateCmd",
+    b."NbLignes",
+    b."MontantTTC",
+    b."ID_DeviseFk",
+    b."DeviseCode",
+    b."DeviseLibelle",
+    TRIM(BOTH FROM concat_ws(' '::text, u."PrenomUser", u."NomUser")) AS "NomComplet"
+   FROM (((logistique."T_RetourBon" r
+     JOIN logistique."V_Commande" o ON ((o."ID_Commande" = r."ID_CommandeOrigineFk")))
+     JOIN logistique."V_Commande" b ON ((b."ID_Commande" = r."ID_CommandeRetourFk")))
+     JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = r."ID_UserFk")));
+
+
+--
+-- Name: VIEW "V_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_RetourBon" IS 'Documents compensateurs de retours physiques avec origine, motif, auteur, devise et horodatage ; ne représente ni un avoir ni un remboursement.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."ID_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."ID_RetourBon" IS 'Identifiant de l’événement de retour.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."ID_CommandeOrigineFk" IS 'Sortie compensée.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."ID_CommandeRetourFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."ID_CommandeRetourFk" IS 'Entrée compensatrice.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."ID_UserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."ID_UserFk" IS 'Auteur du retour.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."RequestId"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."RequestId" IS 'Demande idempotente unique pour son auteur.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."PayloadHash"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."PayloadHash" IS 'Empreinte exacte de la demande validée.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."Motif" IS 'Motif humain de restitution.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."DateRetour"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."DateRetour" IS 'Date et heure métier du retour.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."CreeLe" IS 'Horodatage d’enregistrement.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."CodeBonOrigine"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."CodeBonOrigine" IS 'Référence automatique de la sortie.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."CodeCmd" IS 'Référence automatique du bon d’entrée compensateur.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."DateCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."DateCmd" IS 'Date métier du document compensateur.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."NbLignes"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."NbLignes" IS 'Nombre d’articles distincts restitués dans cet événement.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."MontantTTC" IS 'Valeur du retour au prix historique de sortie ; ce montant n’est pas un remboursement.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."ID_DeviseFk" IS 'Devise de la sortie et de la contre-écriture.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."DeviseCode" IS 'Code normalisé de cette devise.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."DeviseLibelle" IS 'Libellé de cette devise.';
+
+
+--
+-- Name: COLUMN "V_RetourBon"."NomComplet"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourBon"."NomComplet" IS 'Nom affiché de l’auteur.';
+
+
+--
+-- Name: V_RetourLot; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_RetourLot" AS
+ WITH rendus AS (
+         SELECT r_1."ID_CommandeOrigineFk" AS origine,
+            m_1."ID_ArticleFk",
+            ml_1."ID_LotArticleFk",
+            sum(ml_1."Quantite") AS qte
+           FROM ((logistique."T_RetourBon" r_1
+             JOIN logistique."T_Mouvement" m_1 ON ((m_1."ID_cmdFk" = r_1."ID_CommandeRetourFk")))
+             JOIN logistique."T_MouvementLot" ml_1 ON ((ml_1."ID_MvtFk" = m_1."ID_Mvt")))
+          GROUP BY r_1."ID_CommandeOrigineFk", m_1."ID_ArticleFk", ml_1."ID_LotArticleFk"
+        )
+ SELECT m."ID_cmdFk" AS "ID_CommandeOrigineFk",
+    m."ID_ArticleFk",
+    l."ID_LotArticle",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    sum(ml."Quantite") AS "QteSortie",
+    COALESCE(max(r.qte), ((0)::bigint)::numeric) AS "QteDejaRetournee",
+    (sum(ml."Quantite") - COALESCE(max(r.qte), ((0)::bigint)::numeric)) AS "QteRestante"
+   FROM (((((logistique."T_Mouvement" m
+     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = m."ID_cmdFk")))
+     JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = c."ID_TypeCmdFk")))
+     JOIN logistique."T_MouvementLot" ml ON ((ml."ID_MvtFk" = m."ID_Mvt")))
+     JOIN logistique."T_LotArticle" l ON ((l."ID_LotArticle" = ml."ID_LotArticleFk")))
+     LEFT JOIN rendus r ON (((r.origine = m."ID_cmdFk") AND (r."ID_ArticleFk" = m."ID_ArticleFk") AND (r."ID_LotArticleFk" = l."ID_LotArticle"))))
+  WHERE ((t."ID_CategorieGeneriqueFk" = 64) AND ((t."AbrGenerique")::text ~~* 'sort%'::text))
+  GROUP BY m."ID_cmdFk", m."ID_ArticleFk", l."ID_LotArticle", l."NumeroLot", l."DatePeremptionLot";
+
+
+--
+-- Name: VIEW "V_RetourLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_RetourLot" IS 'Budget par lot réellement sorti sur un bon ; un lot actuel non présent dans la sortie ne peut pas être emprunté pour un retour.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."ID_CommandeOrigineFk" IS 'Bon de sortie historique.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."ID_ArticleFk" IS 'Article sorti.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."ID_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."ID_LotArticle" IS 'Identifiant du lot réellement sorti.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."NumeroLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."NumeroLot" IS 'Numéro conservé du lot source.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."DatePeremptionLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."DatePeremptionLot" IS 'Péremption historique du lot.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."QteSortie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."QteSortie" IS 'Quantité de ce lot sortie sur le bon.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."QteDejaRetournee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."QteDejaRetournee" IS 'Quantité cumulée rendue de ce lot sur les retours de cette origine.';
+
+
+--
+-- Name: COLUMN "V_RetourLot"."QteRestante"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_RetourLot"."QteRestante" IS 'Quantité de ce lot encore restituable.';
+
+
+--
 -- Name: V_SuiviReglements; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_SuiviReglements" AS
- SELECT c."ID_Commande",
-    c."CodeCmd",
-    c."CodeFacture",
-    c."DateFacture",
-    c."DateEcheancePaiement",
-    c."NomClientSaisi",
-    (COALESCE(c."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTC",
-    (COALESCE(sum(r."MontantRegle"), (0)::numeric))::numeric(12,2) AS "TotalRegle",
-    ((COALESCE(c."MontantTTC", (0)::numeric) - COALESCE(sum(r."MontantRegle"), (0)::numeric)))::numeric(12,2) AS "Reste",
-    count(r."ID_Reglement") AS "NbReglements",
-    max(r."DateReglement") AS "DernierReglement",
-        CASE
-            WHEN (c."CodeFacture" IS NULL) THEN 'Non facturée'::text
-            WHEN (COALESCE(c."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
-            WHEN (COALESCE(sum(r."MontantRegle"), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
-            WHEN (COALESCE(sum(r."MontantRegle"), (0)::numeric) < COALESCE(c."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
-            ELSE 'Réglée'::text
-        END AS "EtatReglement",
-    ((c."DateEcheancePaiement" IS NOT NULL) AND ((c."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c."MontantTTC", (0)::numeric) - COALESCE(sum(r."MontantRegle"), (0)::numeric)) > (0)::numeric)) AS "EstEnRetard",
-        CASE
-            WHEN (c."DateEcheancePaiement" IS NOT NULL) THEN ((c."DateEcheancePaiement")::date - CURRENT_DATE)
-            ELSE NULL::integer
-        END AS "JoursAvantEcheance"
-   FROM (logistique."T_Commande" c
-     LEFT JOIN logistique."T_Reglements" r ON (((r."CodeFactureFk")::text = (c."CodeFacture")::text)))
-  GROUP BY c."ID_Commande", c."CodeCmd", c."CodeFacture", c."DateFacture", c."DateEcheancePaiement", c."NomClientSaisi", c."MontantTTC";
+ SELECT b."ID_Commande",
+    b."CodeCmd",
+    b."CodeFacture",
+    b."DateFacture",
+    b."DateEcheancePaiement",
+    b."NomClientSaisi",
+    b."MontantTTC",
+    b."TotalRegle",
+    b."Reste",
+    b."NbReglements",
+    b."DernierReglement",
+    b."EtatReglement",
+    b."EstEnRetard",
+    b."JoursAvantEcheance",
+    b."ID_DeviseFk",
+    b."DeviseCode",
+    b."DeviseLibelle",
+    b."ID_Facture",
+    b."EstFactureSnapshot",
+    b."MontantFacture",
+    (logistique.fn_montant_avoir_attente(b."ID_Commande"))::numeric(12,2) AS "MontantAvoirAEtablir",
+    (logistique.fn_montant_avoir_attente(b."ID_Commande") > (0)::numeric) AS "AvoirAEtablir",
+    b."MontantBon",
+    b."IdEntiteFk",
+    b."ID_TiersFk",
+    b."TiersNom",
+    b."ID_DestinationFk",
+    b."DestinationLibelle",
+    (COALESCE(cr.total, (0)::numeric))::numeric(12,2) AS "AvoirImpute",
+    ((b."MontantFacture" - COALESCE(cr.total, (0)::numeric)))::numeric(12,2) AS "MontantNetARegler"
+   FROM (( SELECT s."ID_Commande",
+            s."CodeCmd",
+            s."CodeFacture",
+            s."DateFacture",
+            s."DateEcheancePaiement",
+            s."NomClientSaisi",
+            s."MontantTTC",
+            s."TotalRegle",
+            s."Reste",
+            s."NbReglements",
+            s."DernierReglement",
+            s."EtatReglement",
+            s."EstEnRetard",
+            s."JoursAvantEcheance",
+            s."ID_DeviseFk",
+            s."DeviseCode",
+            s."DeviseLibelle",
+            s."ID_Facture",
+            s."EstFactureSnapshot",
+            s."MontantFacture",
+            s."MontantAvoirAEtablir",
+            s."AvoirAEtablir",
+            s."MontantBon",
+            s."IdEntiteFk",
+            s."ID_TiersFk",
+            s."TiersNom",
+            c."ID_DestinationFk",
+            d.label AS "DestinationLibelle"
+           FROM ((( SELECT source."ID_Commande",
+                    source."CodeCmd",
+                    source."CodeFacture",
+                    source."DateFacture",
+                    source."DateEcheancePaiement",
+                    source."NomClientSaisi",
+                    source."MontantTTC",
+                    source."TotalRegle",
+                    source."Reste",
+                    source."NbReglements",
+                    source."DernierReglement",
+                    source."EtatReglement",
+                    source."EstEnRetard",
+                    source."JoursAvantEcheance",
+                    source."ID_DeviseFk",
+                    source."DeviseCode",
+                    source."DeviseLibelle",
+                    source."ID_Facture",
+                    source."EstFactureSnapshot",
+                    source."MontantFacture",
+                    source."MontantAvoirAEtablir",
+                    source."AvoirAEtablir",
+                    source."MontantBon",
+                    r."IdEntiteFk",
+                    r."ID_TiersFk",
+                    t."Nom" AS "TiersNom"
+                   FROM ((( SELECT base."ID_Commande",
+                            base."CodeCmd",
+                            base."CodeFacture",
+                            base."DateFacture",
+                            base."DateEcheancePaiement",
+                            base."NomClientSaisi",
+                            COALESCE(f."MontantTTC", base."MontantTTC") AS "MontantTTC",
+                            COALESCE(f."TotalRegle", base."TotalRegle") AS "TotalRegle",
+                            COALESCE(f."Reste", base."Reste") AS "Reste",
+                            base."NbReglements",
+                            base."DernierReglement",
+                            COALESCE(f."EtatReglement", base."EtatReglement") AS "EtatReglement",
+                            COALESCE(f."EstEnRetard", base."EstEnRetard") AS "EstEnRetard",
+                            base."JoursAvantEcheance",
+                            base."ID_DeviseFk",
+                            COALESCE(f."DeviseCode", base."DeviseCode") AS "DeviseCode",
+                            COALESCE(f."DeviseLibelle", base."DeviseLibelle") AS "DeviseLibelle",
+                            f."ID_Facture",
+                            (f."ID_Facture" IS NOT NULL) AS "EstFactureSnapshot",
+                            (
+                                CASE
+                                    WHEN (NULLIF(btrim((base."CodeFacture")::text), ''::text) IS NOT NULL) THEN COALESCE(f."MontantTTC", base."MontantTTC")
+                                    ELSE NULL::numeric
+                                END)::numeric(12,2) AS "MontantFacture",
+                            (COALESCE(f."MontantAvoirAEtablir", (0)::numeric))::numeric(12,2) AS "MontantAvoirAEtablir",
+                            COALESCE(f."AvoirAEtablir", false) AS "AvoirAEtablir",
+                            base."MontantTTC" AS "MontantBon"
+                           FROM (( SELECT historique."ID_Commande",
+                                    historique."CodeCmd",
+                                    historique."CodeFacture",
+                                    historique."DateFacture",
+                                    historique."DateEcheancePaiement",
+                                    historique."NomClientSaisi",
+                                    historique."MontantTTC",
+                                    historique."TotalRegle",
+                                    historique."Reste",
+                                    historique."NbReglements",
+                                    historique."DernierReglement",
+                                    historique."EtatReglement",
+                                    historique."EstEnRetard",
+                                    historique."JoursAvantEcheance",
+                                    source_1."ID_DeviseFk",
+                                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                                    (devise."NomGenerique")::text AS "DeviseLibelle"
+                                   FROM ((( SELECT c_1."ID_Commande",
+    c_1."CodeCmd",
+    c_1."CodeFacture",
+    c_1."DateFacture",
+    c_1."DateEcheancePaiement",
+    c_1."NomClientSaisi",
+    (COALESCE(c_1."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTC",
+    (COALESCE(sum(r_1."MontantRegle"), (0)::numeric))::numeric(12,2) AS "TotalRegle",
+    ((COALESCE(c_1."MontantTTC", (0)::numeric) - COALESCE(sum(r_1."MontantRegle"), (0)::numeric)))::numeric(12,2) AS "Reste",
+    count(r_1."ID_Reglement") AS "NbReglements",
+    max(r_1."DateReglement") AS "DernierReglement",
+  CASE
+   WHEN (c_1."CodeFacture" IS NULL) THEN 'Non facturée'::text
+   WHEN (COALESCE(c_1."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
+   WHEN (COALESCE(sum(r_1."MontantRegle"), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
+   WHEN (COALESCE(sum(r_1."MontantRegle"), (0)::numeric) < COALESCE(c_1."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
+   ELSE 'Réglée'::text
+  END AS "EtatReglement",
+    ((c_1."DateEcheancePaiement" IS NOT NULL) AND ((c_1."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c_1."MontantTTC", (0)::numeric) - COALESCE(sum(r_1."MontantRegle"), (0)::numeric)) > (0)::numeric)) AS "EstEnRetard",
+  CASE
+   WHEN (c_1."DateEcheancePaiement" IS NOT NULL) THEN ((c_1."DateEcheancePaiement")::date - CURRENT_DATE)
+   ELSE NULL::integer
+  END AS "JoursAvantEcheance"
+   FROM (logistique."T_Commande" c_1
+     LEFT JOIN logistique."T_Reglements" r_1 ON (((r_1."CodeFactureFk")::text = (c_1."CodeFacture")::text)))
+  GROUP BY c_1."ID_Commande", c_1."CodeCmd", c_1."CodeFacture", c_1."DateFacture", c_1."DateEcheancePaiement", c_1."NomClientSaisi", c_1."MontantTTC") historique
+                                     LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_Commande")))
+                                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) base
+                             LEFT JOIN logistique."V_Facture" f ON ((f."ID_CommandeFk" = base."ID_Commande")))) source
+                     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_Commande")))
+                     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) s
+             JOIN logistique."T_Commande" c ON ((c."ID_Commande" = s."ID_Commande")))
+             LEFT JOIN geolocalisation."V_DestinationLogistique" d ON ((d.id = c."ID_DestinationFk")))) b
+     LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS total
+           FROM logistique."T_AvoirAffectation"
+          WHERE ("T_AvoirAffectation"."ID_CommandeCibleFk" = b."ID_Commande")) cr ON (true));
 
 
 --
 -- Name: VIEW "V_SuiviReglements"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_SuiviReglements" IS 'Suivi au grain commande/facture : somme des règlements rattachés par CodeFactureFk, reste TTC moins total réglé, dernière date et retard. Inclut aussi les commandes non facturées.';
+COMMENT ON VIEW logistique."V_SuiviReglements" IS 'Suivi de facturation : montant de facture émise, règlements exhaustifs et solde ; montant du bon disponible séparément.';
 
 
 --
@@ -10016,21 +20594,21 @@ COMMENT ON COLUMN logistique."V_SuiviReglements"."NomClientSaisi" IS 'Nom du cli
 -- Name: COLUMN "V_SuiviReglements"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantTTC" IS 'Montant toutes taxes comprises enregistré sur la commande ; la routine actuelle de totaux le fixe au même montant que MontantHT, sans calcul de taxe distinct. Expression projetée : COALESCE(c."MontantTTC", 0::numeric)::numeric(12,2) AS "MontantTTC".';
+COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantTTC" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_SuiviReglements"."TotalRegle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_SuiviReglements"."TotalRegle" IS 'Cumul des montants des écritures rattachées à la facture ; absence ramenée à zéro dans la vue. Expression projetée : COALESCE(sum(r."MontantRegle"), 0::numeric)::numeric(12,2) AS "TotalRegle".';
+COMMENT ON COLUMN logistique."V_SuiviReglements"."TotalRegle" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_SuiviReglements"."Reste"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_SuiviReglements"."Reste" IS 'Montant TTC de commande moins total des règlements ; peut être négatif. Expression projetée : (COALESCE(c."MontantTTC", 0::numeric) - COALESCE(sum(r."MontantRegle"), 0::numeric))::numeric(12,2) AS "Reste".';
+COMMENT ON COLUMN logistique."V_SuiviReglements"."Reste" IS 'Montant de la facture diminué des règlements et des avoirs imputés.';
 
 
 --
@@ -10051,14 +20629,14 @@ COMMENT ON COLUMN logistique."V_SuiviReglements"."DernierReglement" IS 'Date max
 -- Name: COLUMN "V_SuiviReglements"."EtatReglement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_SuiviReglements"."EtatReglement" IS 'Qualification du règlement de facture à partir de la référence, du montant TTC et du cumul des écritures. Expression projetée : CASE WHEN c."CodeFacture" IS NULL THEN ''Non facturée''::text WHEN COALESCE(c."MontantTTC", 0::numeric) = 0::numeric THEN ''Montant nul''::text WHEN COALESCE(sum(r."MontantRegle"), 0::numeric) <= 0::numeric THEN ''Non réglée''::text WHEN COALESCE(sum(r."MontantRegle"), 0::numeric) < COALESCE(c."MontantTTC", 0::numeric) THEN ''Partiellement réglée''::text ELSE ''Réglée''::text END AS "EtatReglement".';
+COMMENT ON COLUMN logistique."V_SuiviReglements"."EtatReglement" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
 -- Name: COLUMN "V_SuiviReglements"."EstEnRetard"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_SuiviReglements"."EstEnRetard" IS 'Vrai si échéance antérieure à CURRENT_DATE et reste TTC/règlements positif. Expression projetée : c."DateEcheancePaiement" IS NOT NULL AND c."DateEcheancePaiement"::date < CURRENT_DATE AND (COALESCE(c."MontantTTC", 0::numeric) - COALESCE(sum(r."MontantRegle"), 0::numeric)) > 0::numeric AS "EstEnRetard".';
+COMMENT ON COLUMN logistique."V_SuiviReglements"."EstEnRetard" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
 
 
 --
@@ -10066,6 +20644,279 @@ COMMENT ON COLUMN logistique."V_SuiviReglements"."EstEnRetard" IS 'Vrai si éch�
 --
 
 COMMENT ON COLUMN logistique."V_SuiviReglements"."JoursAvantEcheance" IS 'Échéance de paiement moins CURRENT_DATE, en jours ; négatif après échéance et NULL sans date. Expression projetée : CASE WHEN c."DateEcheancePaiement" IS NOT NULL THEN c."DateEcheancePaiement"::date - CURRENT_DATE ELSE NULL::integer END AS "JoursAvantEcheance".';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."ID_DeviseFk" IS 'Référence de devise du bon et de sa facture ; aucune conversion.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."DeviseCode" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."DeviseLibelle" IS 'Suivi financier calculé sur le snapshot émis et ses règlements ; compatibilité des factures historiques sans réécriture.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."ID_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."ID_Facture" IS 'Identité interne de la facture, indépendante du code lisible.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."EstFactureSnapshot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."EstFactureSnapshot" IS 'Vrai lorsqu’un instantané financier versionné existe.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."MontantFacture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantFacture" IS 'Montant du snapshot émis, NULL pour un bon non facturé ; historique conservé en compatibilité.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."MontantAvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantAvoirAEtablir" IS 'Contrevaleur des retours postérieurs à l’émission ; aucun remboursement créé.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."AvoirAEtablir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."AvoirAEtablir" IS 'Des retours postérieurs nécessitent un avoir distinct ; la facture émise reste inchangée.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."MontantBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantBon" IS 'Montant initial du bon de stock, indépendant du net facturé.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."IdEntiteFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."ID_TiersFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."ID_TiersFk" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."TiersNom"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."TiersNom" IS 'Rattachement ou libellé vérifié du propriétaire ou du tiers, utilisé par les lectures communes.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."ID_DestinationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."ID_DestinationFk" IS 'Lieu référencé ou chemin géographique existant : ID_DestinationFk. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."DestinationLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."DestinationLibelle" IS 'Lieu référencé ou chemin géographique existant : DestinationLibelle. Aucun identifiant n’est déduit du texte libre.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."AvoirImpute"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."AvoirImpute" IS 'Total des avoirs imputés à la facture, dans sa devise.';
+
+
+--
+-- Name: COLUMN "V_SuiviReglements"."MontantNetARegler"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_SuiviReglements"."MontantNetARegler" IS 'Montant facturé diminué des imputations d’avoirs, avant déduction des règlements.';
+
+
+--
+-- Name: V_ValorisationStock; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_ValorisationStock" AS
+ WITH keys AS (
+         SELECT "T_ValorisationOuverture"."ID_ArticleFk",
+            "T_ValorisationOuverture"."ID_DeviseFk"
+           FROM logistique."T_ValorisationOuverture"
+        UNION
+         SELECT "T_Mouvement"."ID_ArticleFk",
+            "T_Mouvement"."ID_DeviseFk"
+           FROM logistique."T_Mouvement"
+          WHERE ("T_Mouvement"."ID_DeviseFk" IS NOT NULL)
+        )
+ SELECT a."ID_Article",
+    a."IdEntiteFk",
+    k."ID_DeviseFk",
+    g."AbrGenerique" AS "DeviseCode",
+    a."NomArticle",
+    COALESCE(l."StockApres", o."QuantiteOuverture", (0)::numeric) AS "QteValorisee",
+        CASE
+            WHEN (l."ID_Mvt" IS NOT NULL) THEN
+            CASE
+                WHEN (l."ValeurApres" IS NULL) THEN NULL::numeric
+                WHEN (l."StockApres" > (0)::numeric) THEN round((l."ValeurApres" / l."StockApres"), 6)
+                ELSE (0)::numeric
+            END
+            ELSE o."CoutOuverture"
+        END AS "CoutUnitaireMoyen",
+        CASE
+            WHEN (l."ID_Mvt" IS NOT NULL) THEN round(l."ValeurApres", 2)
+            ELSE round((o."QuantiteOuverture" * o."CoutOuverture"), 2)
+        END AS "ValeurStock",
+        CASE
+            WHEN ((o."ID_ArticleFk" IS NOT NULL) AND (o."CoutOuverture" IS NULL)) THEN 'À initialiser'::text
+            ELSE COALESCE(l."EtatValorisation", 'Calculé'::text)
+        END AS "EtatValorisation",
+    o."CoutOuverture",
+    o."QuantiteOuverture",
+    o."ID_MvtArrete",
+    COALESCE(o."Version", (0)::bigint) AS "Version"
+   FROM ((((keys k
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = k."ID_ArticleFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = k."ID_DeviseFk")))
+     LEFT JOIN logistique."T_ValorisationOuverture" o ON (((o."ID_ArticleFk" = k."ID_ArticleFk") AND (o."ID_DeviseFk" = k."ID_DeviseFk"))))
+     LEFT JOIN LATERAL ( SELECT f."ID_Mvt",
+            f."ID_ArticleFk",
+            f."ID_DeviseFk",
+            f."IdEntiteFk",
+            f."QteSignee",
+            f."CoutUnitaire",
+            f."ValeurMouvement",
+            f."StockApres",
+            f."ValeurApres",
+            f."OrigineCout",
+            f."EtatValorisation"
+           FROM logistique.fn_cout_mouvements(k."ID_ArticleFk", k."ID_DeviseFk") f("ID_Mvt", "ID_ArticleFk", "ID_DeviseFk", "IdEntiteFk", "QteSignee", "CoutUnitaire", "ValeurMouvement", "StockApres", "ValeurApres", "OrigineCout", "EtatValorisation")
+          WHERE (f."StockApres" IS NOT NULL)
+          ORDER BY f."ID_Mvt" DESC
+         LIMIT 1) l ON (true));
+
+
+--
+-- Name: VIEW "V_ValorisationStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_ValorisationStock" IS 'Stock valorisé CUMP par article, entreprise et devise. Aucune somme multidevise ni substitution du prix catalogue. À initialiser indique un coût d’ouverture historique non confirmé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."ID_Article" IS 'ID_Article : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."IdEntiteFk" IS 'IdEntiteFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."ID_DeviseFk" IS 'ID_DeviseFk : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."DeviseCode" IS 'DeviseCode : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."NomArticle" IS 'NomArticle : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."QteValorisee"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."QteValorisee" IS 'QteValorisee : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."CoutUnitaireMoyen"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."CoutUnitaireMoyen" IS 'CoutUnitaireMoyen : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."ValeurStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."ValeurStock" IS 'ValeurStock : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."EtatValorisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."EtatValorisation" IS 'EtatValorisation : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."CoutOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."CoutOuverture" IS 'CoutOuverture : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."QuantiteOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."QuantiteOuverture" IS 'QuantiteOuverture : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."ID_MvtArrete"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."ID_MvtArrete" IS 'ID_MvtArrete : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+
+
+--
+-- Name: COLUMN "V_ValorisationStock"."Version"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_ValorisationStock"."Version" IS 'Version : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
 
 
 --
@@ -10508,129 +21359,6 @@ ALTER TABLE operations."T_Paiement" ALTER COLUMN "IdPaiement" ADD GENERATED ALWA
 --
 
 COMMENT ON SEQUENCE operations."T_Paiement_IdPaiement_seq" IS 'Séquence de génération de "operations"."T_Paiement"."IdPaiement". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
-
---
--- Name: T_Professionnel; Type: TABLE; Schema: professionnel; Owner: -
---
-
-CREATE TABLE professionnel."T_Professionnel" (
-    "IdProfessionnel" integer CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" NOT NULL,
-    "IdUserFk" integer CONSTRAINT "T_Professionnel_IdUserFk_not_null" NOT NULL,
-    "IdTypeProfessionnelFk" integer CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" NOT NULL,
-    "IdSpecialiteFk" integer CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" NOT NULL,
-    "NumeroIdentification" character varying(50),
-    "ExperienceAns" integer,
-    "ObsProfessionnel" text,
-    "ValideProfessionnel" boolean DEFAULT true,
-    CONSTRAINT "Chk_Prof_Experience_NonNegative" CHECK ((("ExperienceAns" IS NULL) OR ("ExperienceAns" >= 0))),
-    CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" CHECK ((("NumeroIdentification" IS NULL) OR (length(TRIM(BOTH FROM "NumeroIdentification")) > 0)))
-);
-
-
---
--- Name: TABLE "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON TABLE professionnel."T_Professionnel" IS 'Profil professionnel lié à un utilisateur, avec type, spécialité, identification, expérience et validité.';
-
-
---
--- Name: COLUMN "T_Professionnel"."IdProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."IdProfessionnel" IS 'Identifiant du profil professionnel.';
-
-
---
--- Name: COLUMN "T_Professionnel"."IdUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."IdUserFk" IS 'Utilisateur rattaché à l’enregistrement. Relation imposée : FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE RESTRICT.';
-
-
---
--- Name: COLUMN "T_Professionnel"."IdTypeProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."IdTypeProfessionnelFk" IS 'Type du professionnel dans le référentiel. Relation imposée : FOREIGN KEY ("IdTypeProfessionnelFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE RESTRICT.';
-
-
---
--- Name: COLUMN "T_Professionnel"."IdSpecialiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."IdSpecialiteFk" IS 'Spécialité du professionnel dans le référentiel. Relation imposée : FOREIGN KEY ("IdSpecialiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE RESTRICT.';
-
-
---
--- Name: COLUMN "T_Professionnel"."NumeroIdentification"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."NumeroIdentification" IS 'Numéro d’identification professionnel déclaré ; une chaîne vide est interdite si renseigné.';
-
-
---
--- Name: COLUMN "T_Professionnel"."ExperienceAns"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."ExperienceAns" IS 'Nombre d’années d’expérience déclaré pour le professionnel ; valeur négative interdite.';
-
-
---
--- Name: COLUMN "T_Professionnel"."ObsProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."ObsProfessionnel" IS 'Observations enregistrées sur le profil professionnel.';
-
-
---
--- Name: COLUMN "T_Professionnel"."ValideProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON COLUMN professionnel."T_Professionnel"."ValideProfessionnel" IS 'Indique si le profil professionnel est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
-
-
---
--- Name: CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdProfessionnel".';
-
-
---
--- Name: CONSTRAINT "T_Professionnel_IdUserFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Professionnel_IdUserFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdUserFk".';
-
-
---
--- Name: CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdTypeProfessionnelFk".';
-
-
---
--- Name: CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdSpecialiteFk".';
-
-
---
--- Name: CONSTRAINT "Chk_Prof_Experience_NonNegative" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "Chk_Prof_Experience_NonNegative" ON professionnel."T_Professionnel" IS 'Contrôle de cohérence des valeurs autorisées dans "professionnel"."T_Professionnel". Définition : CHECK ("ExperienceAns" IS NULL OR "ExperienceAns" >= 0).';
-
-
---
--- Name: CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" ON professionnel."T_Professionnel" IS 'Contrôle de cohérence des valeurs autorisées dans "professionnel"."T_Professionnel". Définition : CHECK ("NumeroIdentification" IS NULL OR length(TRIM(BOTH FROM "NumeroIdentification")) > 0).';
 
 
 --
@@ -12838,6 +23566,7 @@ CREATE TABLE systeme."T_Admin_UI_Setting" (
     "UpdatedByUserFk" integer,
     "ObsSetting" text,
     CONSTRAINT "Ck_Admin_UI_Setting_Scope" CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('entite'::character varying)::text, ('user'::character varying)::text, ('module'::character varying)::text]))),
+    CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT "Ck_Admin_UI_Setting_Type" CHECK ((("SettingType")::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('boolean'::character varying)::text, ('select'::character varying)::text, ('json'::character varying)::text, ('color'::character varying)::text, ('file'::character varying)::text, ('email'::character varying)::text, ('phone'::character varying)::text, ('url'::character varying)::text, ('textarea'::character varying)::text])))
 );
 
@@ -12846,7 +23575,7 @@ CREATE TABLE systeme."T_Admin_UI_Setting" (
 -- Name: TABLE "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TABLE systeme."T_Admin_UI_Setting" IS 'Paramètres d’interface partagés avec portée, clé, groupe, type et valeur texte/JSON. La contrainte installée admet les portées global, entite, user et module ; UpdatedAt est actualisé par trigger.';
+COMMENT ON TABLE systeme."T_Admin_UI_Setting" IS 'Paramètres partagés par portée et clé ; unicité y compris portée globale NULL, protections SQL et audit des écritures. Un paramètre système éditable conserve la modification de sa valeur.';
 
 
 --
@@ -12944,21 +23673,21 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."ValideSetting" IS 'Indique si le
 -- Name: COLUMN "T_Admin_UI_Setting"."CreatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."CreatedAt" IS 'Horodatage de création du paramètre.';
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."CreatedAt" IS 'Instant de création imposé par PostgreSQL ; conservé lors des modifications ultérieures.';
 
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."UpdatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedAt" IS 'Horodatage de dernière mise à jour enregistré.';
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedAt" IS 'Instant de dernière écriture, imposé par PostgreSQL.';
 
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."UpdatedByUserFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedByUserFk" IS 'Utilisateur ayant enregistré la dernière modification du paramètre ou de la correspondance. Relation imposée : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedByUserFk" IS 'Auteur actif validé depuis systeme.actor_user_id ; NULL pour une écriture directe sans acteur applicatif.';
 
 
 --
@@ -12994,6 +23723,13 @@ COMMENT ON CONSTRAINT "T_Admin_UI_Setting_SettingKey_not_null" ON systeme."T_Adm
 --
 
 COMMENT ON CONSTRAINT "Ck_Admin_UI_Setting_Scope" ON systeme."T_Admin_UI_Setting" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Admin_UI_Setting". Définition : CHECK ("SettingScope"::text = ANY (ARRAY[''global''::character varying::text, ''entite''::character varying::text, ''user''::character varying::text, ''module''::character varying::text])).';
+
+
+--
+-- Name: CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" ON systeme."T_Admin_UI_Setting" IS 'Contexte NULL pour global ; contexte non vide pour entite, user ou module.';
 
 
 --
@@ -13191,6 +23927,7 @@ CREATE TABLE systeme."T_Fk_Correspondance" (
     "UpdatedAt" timestamp(6) without time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" NOT NULL,
     "UpdatedByUserFk" integer,
     "ObsFkCorrespondance" text,
+    CONSTRAINT "Ck_FkCorrespondance_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT chk_fkcorrespondance_mappingtype CHECK ((("MappingType")::text = ANY (ARRAY[('generic_category'::character varying)::text, ('direct_source'::character varying)::text, ('hierarchy_mode'::character varying)::text]))),
     CONSTRAINT chk_fkcorrespondance_scope CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('country'::character varying)::text, ('entity'::character varying)::text])))
 );
@@ -13200,7 +23937,7 @@ CREATE TABLE systeme."T_Fk_Correspondance" (
 -- Name: TABLE "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TABLE systeme."T_Fk_Correspondance" IS 'Correspondances configurables des champs et sources de listes : catégorie ou source directe, portée global/country/entity, ordre, validité et auteur de modification.';
+COMMENT ON TABLE systeme."T_Fk_Correspondance" IS 'Correspondances de références par source et portée ; unicité y compris contexte NULL, auteur transactionnel et audit SQL.';
 
 
 --
@@ -13333,14 +24070,14 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."DisplayOrder" IS 'Ordre d’aff
 -- Name: COLUMN "T_Fk_Correspondance"."UpdatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedAt" IS 'Horodatage de dernière mise à jour enregistré.';
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedAt" IS 'Dernière écriture en heure civile Africa/Kinshasa, type historique sans fuseau conservé.';
 
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."UpdatedByUserFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Utilisateur ayant enregistré la dernière modification du paramètre ou de la correspondance. Relation imposée : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Auteur actif validé depuis systeme.actor_user_id ; NULL pour une écriture directe sans acteur applicatif.';
 
 
 --
@@ -13432,6 +24169,13 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_DisplayOrder_not_null" ON systeme."T_
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "UpdatedAt".';
+
+
+--
+-- Name: CONSTRAINT "Ck_FkCorrespondance_ScopeValue" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Ck_FkCorrespondance_ScopeValue" ON systeme."T_Fk_Correspondance" IS 'Contexte NULL pour global ; contexte non vide pour country ou entity.';
 
 
 --
@@ -13585,6 +24329,109 @@ COMMENT ON CONSTRAINT chk_licence_dates ON systeme."T_Licence" IS 'Contrôle de 
 
 
 --
+-- Name: T_LicenceModule; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_LicenceModule" (
+    "IdLicenceModule" integer NOT NULL,
+    "IdLicenceFk" integer NOT NULL,
+    "CodeModule" character varying(32) NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Origine" character varying(12) DEFAULT 'activation'::character varying NOT NULL,
+    "Version" integer DEFAULT 1 NOT NULL,
+    "ModifieParUserFk" integer,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY ((ARRAY['activation'::character varying, 'reprise'::character varying])::text[]))),
+    CONSTRAINT "T_LicenceModule_Version_check" CHECK (("Version" > 0))
+);
+
+
+--
+-- Name: TABLE "T_LicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_LicenceModule" IS 'Modules compris dans une licence existante. L’entité et la période sont celles de T_Licence ; aucun abonnement individuel.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."IdLicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."IdLicenceModule" IS 'Identifiant permanent de la ligne d’activation.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."IdLicenceFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."IdLicenceFk" IS 'Licence de l’entité ; cette relation est immuable.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."CodeModule" IS 'Application activée dans cette licence ; code immuable.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Actif" IS 'Activation explicite du module dans la licence.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."Origine"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Origine" IS 'Reprise identifie les accès conservés lors de la migration ; ce champ ne constitue pas une facturation.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Version" IS 'Version utilisée pour refuser les modifications concurrentes.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification ; NULL pour la migration initiale.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."CreeLe" IS 'Instant de création du rattachement.';
+
+
+--
+-- Name: COLUMN "T_LicenceModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+
+--
+-- Name: T_LicenceModule_IdLicenceModule_seq; Type: SEQUENCE; Schema: systeme; Owner: -
+--
+
+ALTER TABLE systeme."T_LicenceModule" ALTER COLUMN "IdLicenceModule" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME systeme."T_LicenceModule_IdLicenceModule_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: T_Licence_IdLicence_seq; Type: SEQUENCE; Schema: systeme; Owner: -
 --
 
@@ -13707,6 +24554,198 @@ ALTER TABLE systeme."T_Login" ALTER COLUMN "IdLogin" ADD GENERATED ALWAYS AS IDE
 --
 
 COMMENT ON SEQUENCE systeme."T_Login_IdLogin_seq" IS 'Séquence de génération de "systeme"."T_Login"."IdLogin". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
+
+
+--
+-- Name: T_ModuleApplication; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_ModuleApplication" (
+    "CodeModule" character varying(32) NOT NULL,
+    "Nom" character varying(120) NOT NULL,
+    "EstSocle" boolean DEFAULT false NOT NULL,
+    "CodeIncluant" character varying(32),
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Ordre" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
+    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text))
+);
+
+
+--
+-- Name: TABLE "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_ModuleApplication" IS 'Catalogue des applications SauverNdeko ; le socle partagé reste distinct des modules compris dans une licence.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."CodeModule" IS 'Code stable utilisé par les contrôles serveur et la navigation.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Nom"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Nom" IS 'Nom métier de l’application.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."EstSocle"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."EstSocle" IS 'Application incluse au socle d’une entité active ; les droits du rôle restent nécessaires.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."CodeIncluant"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."CodeIncluant" IS 'Application dont la licence inclut aussi ce module, sans créer une seconde souscription.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Actif" IS 'Disponibilité du module dans le catalogue.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Ordre"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Ordre" IS 'Ordre de présentation du catalogue.';
+
+
+--
+-- Name: T_RoleModule; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_RoleModule" (
+    "IdRoleModule" integer NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "IdRoleFk" integer NOT NULL,
+    "CodeModule" character varying(32) NOT NULL,
+    "PeutConsulter" boolean DEFAULT true NOT NULL,
+    "PeutGerer" boolean DEFAULT false NOT NULL,
+    "PeutExporter" boolean DEFAULT false NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Version" integer DEFAULT 1 NOT NULL,
+    "ModifieParUserFk" integer,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_RoleModule_Version_check" CHECK (("Version" > 0)),
+    CONSTRAINT "T_RoleModule_check" CHECK (("PeutConsulter" OR ((NOT "PeutGerer") AND (NOT "PeutExporter"))))
+);
+
+
+--
+-- Name: TABLE "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_RoleModule" IS 'Restrictions par rôle, application et entité. Elles complètent les droits existants sans accorder le rôle d’administrateur.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."IdRoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdRoleModule" IS 'Identifiant permanent du paramétrage.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdEntiteFk" IS 'Entité à laquelle s’applique cette règle ; immuable.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."IdRoleFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdRoleFk" IS 'Rôle du référentiel, catégorie Rôles (39) ; immuable.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."CodeModule" IS 'Application concernée par les restrictions ; code immuable.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutConsulter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutConsulter" IS 'Autorise la consultation si la licence et les droits préexistants l’autorisent aussi.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutGerer"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutGerer" IS 'Autorise les créations, modifications et suppressions permises par les services métier existants.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutExporter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutExporter" IS 'Autorise les exports officiels du module.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."Actif" IS 'Une règle inactive refuse ces accès ; son absence conserve les droits antérieurs.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."Version" IS 'Version du paramétrage pour la concurrence optimiste.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."CreeLe" IS 'Instant de création du paramétrage.';
+
+
+--
+-- Name: COLUMN "T_RoleModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+
+--
+-- Name: T_RoleModule_IdRoleModule_seq; Type: SEQUENCE; Schema: systeme; Owner: -
+--
+
+ALTER TABLE systeme."T_RoleModule" ALTER COLUMN "IdRoleModule" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME systeme."T_RoleModule_IdRoleModule_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 
 --
@@ -13901,136 +24940,147 @@ COMMENT ON COLUMN systeme."V_Admin_UI_Setting"."ObsSetting" IS 'Observations enr
 --
 
 CREATE VIEW systeme."V_Admin_UI_Setting_Audit" AS
- SELECT "IdLog",
-    "TableName",
-    "Operation",
-    "ChangedAt",
-    COALESCE(("NewData" ->> 'settingScope'::text), ("OldData" ->> 'settingScope'::text), 'global'::text) AS "SettingScope",
-    COALESCE(("NewData" ->> 'scopeValue'::text), ("OldData" ->> 'scopeValue'::text)) AS "ScopeValue",
-    COALESCE(("NewData" ->> 'settingKey'::text), ("OldData" ->> 'settingKey'::text)) AS "SettingKey",
-    COALESCE(("NewData" ->> 'settingLabel'::text), ("OldData" ->> 'settingLabel'::text)) AS "SettingLabel",
-    COALESCE(("NewData" ->> 'settingGroup'::text), ("OldData" ->> 'settingGroup'::text)) AS "SettingGroup",
-    COALESCE(("NewData" ->> 'settingValue'::text), ("OldData" ->> 'settingValue'::text)) AS "SettingValue",
-    COALESCE(("NewData" ->> 'updatedByName'::text), ("OldData" ->> 'updatedByName'::text)) AS "UpdatedByName",
-    COALESCE(("NewData" ->> 'updatedByUserId'::text), ("OldData" ->> 'updatedByUserId'::text)) AS "UpdatedByUserId",
-    COALESCE(("NewData" ->> 'updatedAt'::text), ("OldData" ->> 'updatedAt'::text)) AS "UpdatedSettingAt",
-    "OldData",
-    "NewData"
-   FROM systeme."T_Audit_Log" a
-  WHERE ("TableName" = 'T_Admin_UI_Setting'::text)
-  ORDER BY "ChangedAt" DESC;
+ SELECT a."IdLog",
+    a."TableName",
+    a."Operation",
+    a."ChangedAt",
+    COALESCE((cleaned.n ->> 'SettingScope'::text), (cleaned.n ->> 'settingScope'::text), (cleaned.o ->> 'SettingScope'::text), (cleaned.o ->> 'settingScope'::text), 'global'::text) AS "SettingScope",
+    COALESCE((cleaned.n ->> 'ScopeValue'::text), (cleaned.n ->> 'scopeValue'::text), (cleaned.o ->> 'ScopeValue'::text), (cleaned.o ->> 'scopeValue'::text)) AS "ScopeValue",
+    COALESCE((cleaned.n ->> 'SettingKey'::text), (cleaned.n ->> 'settingKey'::text), (cleaned.o ->> 'SettingKey'::text), (cleaned.o ->> 'settingKey'::text)) AS "SettingKey",
+    COALESCE((cleaned.n ->> 'SettingLabel'::text), (cleaned.n ->> 'settingLabel'::text), (cleaned.o ->> 'SettingLabel'::text), (cleaned.o ->> 'settingLabel'::text)) AS "SettingLabel",
+    COALESCE((cleaned.n ->> 'SettingGroup'::text), (cleaned.n ->> 'settingGroup'::text), (cleaned.o ->> 'SettingGroup'::text), (cleaned.o ->> 'settingGroup'::text)) AS "SettingGroup",
+        CASE
+            WHEN (cleaned.n IS NOT NULL) THEN COALESCE((cleaned.n ->> 'SettingValue'::text), (cleaned.n ->> 'settingValue'::text))
+            ELSE COALESCE((cleaned.o ->> 'SettingValue'::text), (cleaned.o ->> 'settingValue'::text))
+        END AS "SettingValue",
+        CASE
+            WHEN (COALESCE(cleaned.n, cleaned.o) ? '_actor'::text) THEN (COALESCE(cleaned.n, cleaned.o) #>> '{_actor,NomComplet}'::text[])
+            ELSE COALESCE((cleaned.n ->> 'updatedByName'::text), (cleaned.o ->> 'updatedByName'::text))
+        END AS "UpdatedByName",
+        CASE
+            WHEN (COALESCE(cleaned.n, cleaned.o) ? '_actor'::text) THEN (COALESCE(cleaned.n, cleaned.o) #>> '{_actor,IdUser}'::text[])
+            ELSE COALESCE((cleaned.n ->> 'UpdatedByUserFk'::text), (cleaned.n ->> 'updatedByUserId'::text), (cleaned.o ->> 'UpdatedByUserFk'::text), (cleaned.o ->> 'updatedByUserId'::text))
+        END AS "UpdatedByUserId",
+    COALESCE((cleaned.n ->> 'UpdatedAt'::text), (cleaned.n ->> 'updatedAt'::text), (cleaned.o ->> 'UpdatedAt'::text), (cleaned.o ->> 'updatedAt'::text)) AS "UpdatedSettingAt",
+    cleaned.o AS "OldData",
+    cleaned.n AS "NewData"
+   FROM (systeme."T_Audit_Log" a
+     CROSS JOIN LATERAL ( SELECT systeme.fn_audit_sans_secrets(a."NewData") AS n,
+            systeme.fn_audit_sans_secrets(a."OldData") AS o) cleaned)
+  WHERE (a."TableName" = 'T_Admin_UI_Setting'::text)
+  ORDER BY a."ChangedAt" DESC;
 
 
 --
 -- Name: VIEW "V_Admin_UI_Setting_Audit"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_Admin_UI_Setting_Audit" IS 'Événements de T_Audit_Log filtrés sur T_Admin_UI_Setting, avec extraction des clés JSON applicatives en camelCase depuis NewData puis OldData. Grain événement ; des clés absentes restent NULL, portée globale en repli.';
+COMMENT ON VIEW systeme."V_Admin_UI_Setting_Audit" IS 'Audit nettoyé des paramètres ; une ligne par événement, contexte PascalCase SQL ou camelCase historique et auteur de l’opération.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."IdLog"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."IdLog" IS 'Identifiant de l’événement d’audit. Expression projetée : "IdLog".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."IdLog" IS 'Identifiant stable de l’événement de T_Audit_Log.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."TableName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."TableName" IS 'Nom de la table à l’origine de l’événement d’audit. Expression projetée : "TableName".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."TableName" IS 'Table de paramètres concernée par l’événement.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."Operation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."Operation" IS 'Nom de l’opération auditée ; le trigger produit INSERT, UPDATE ou DELETE. Expression projetée : "Operation".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."Operation" IS 'Opération SQL INSERT, UPDATE ou DELETE enregistrée.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."ChangedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."ChangedAt" IS 'Horodatage de l’événement d’audit. Expression projetée : "ChangedAt".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."ChangedAt" IS 'Date et heure civiles de l’événement ; les nouveaux triggers utilisent Africa/Kinshasa.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."SettingScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingScope" IS 'Niveau de portée du paramètre ou de la correspondance ; consulter la contrainte de la table pour les valeurs admises. Expression projetée : COALESCE("NewData" ->> ''settingScope''::text, "OldData" ->> ''settingScope''::text, ''global''::text) AS "SettingScope".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingScope" IS 'Portée du paramètre, extraite de la ligne SQL ou de l’image applicative historique.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."ScopeValue"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."ScopeValue" IS 'Identifiant ou valeur du contexte ciblé par SettingScope ; ne constitue pas une autorisation d’accès. Expression projetée : COALESCE("NewData" ->> ''scopeValue''::text, "OldData" ->> ''scopeValue''::text) AS "ScopeValue".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."ScopeValue" IS 'Contexte de la portée ; NULL pour un paramètre global.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."SettingKey"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingKey" IS 'Clé technique stable du paramètre. Expression projetée : COALESCE("NewData" ->> ''settingKey''::text, "OldData" ->> ''settingKey''::text) AS "SettingKey".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingKey" IS 'Clé du paramètre extraite des images avant ou après l’écriture.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."SettingLabel"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingLabel" IS 'Libellé du paramètre présenté dans l’administration. Expression projetée : COALESCE("NewData" ->> ''settingLabel''::text, "OldData" ->> ''settingLabel''::text) AS "SettingLabel".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingLabel" IS 'Libellé du paramètre au moment de l’événement.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."SettingGroup"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingGroup" IS 'Groupe fonctionnel du paramètre d’interface. Expression projetée : COALESCE("NewData" ->> ''settingGroup''::text, "OldData" ->> ''settingGroup''::text) AS "SettingGroup".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingGroup" IS 'Groupe du paramètre au moment de l’événement.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."SettingValue"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingValue" IS 'Valeur du paramètre sous forme textuelle. Expression projetée : COALESCE("NewData" ->> ''settingValue''::text, "OldData" ->> ''settingValue''::text) AS "SettingValue".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."SettingValue" IS 'Valeur après l’écriture, avant pour DELETE ; NULL explicite conservé et valeur sensible masquée.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."UpdatedByName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedByName" IS 'Nom du dernier modificateur ; repli Utilisateur #identifiant lorsque le compte n’est pas résolu. Expression projetée : COALESCE("NewData" ->> ''updatedByName''::text, "OldData" ->> ''updatedByName''::text) AS "UpdatedByName".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedByName" IS 'Nom de l’auteur de l’opération SQL, sinon auteur déclaré par l’ancien format applicatif ; absence conservée.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."UpdatedByUserId"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedByUserId" IS 'Identifiant du modificateur extrait du JSON d’audit applicatif ; représentation textuelle. Expression projetée : COALESCE("NewData" ->> ''updatedByUserId''::text, "OldData" ->> ''updatedByUserId''::text) AS "UpdatedByUserId".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedByUserId" IS 'Identifiant textuel de l’auteur de l’opération, distinct du dernier modificateur de la ligne supprimée.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."UpdatedSettingAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedSettingAt" IS 'Horodatage de modification extrait des clés JSON d’audit ; représentation textuelle. Expression projetée : COALESCE("NewData" ->> ''updatedAt''::text, "OldData" ->> ''updatedAt''::text) AS "UpdatedSettingAt".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."UpdatedSettingAt" IS 'Horodatage de la ligne de paramètre extrait de l’image SQL ou du format historique ; texte conservé.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."OldData"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."OldData" IS 'Valeurs avant l’opération auditable, sérialisées en JSON ; NULL lors d’une insertion par le trigger d’audit. Expression projetée : "OldData".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."OldData" IS 'Image avant l’écriture, nettoyée récursivement à la lecture ; NULL pour INSERT.';
 
 
 --
 -- Name: COLUMN "V_Admin_UI_Setting_Audit"."NewData"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."NewData" IS 'Valeurs après l’opération auditable, sérialisées en JSON ; NULL lors d’une suppression par le trigger d’audit. Expression projetée : "NewData".';
+COMMENT ON COLUMN systeme."V_Admin_UI_Setting_Audit"."NewData" IS 'Image après l’écriture, nettoyée récursivement à la lecture ; NULL pour DELETE.';
 
 
 --
@@ -14161,6 +25211,216 @@ COMMENT ON COLUMN systeme."V_Audit_log"."OldData" IS 'Image avant opération san
 --
 
 COMMENT ON COLUMN systeme."V_Audit_log"."NewData" IS 'Image après opération sans champs de mot de passe ni jetons ; NULL pour une suppression.';
+
+
+--
+-- Name: V_LicenceModule; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_LicenceModule" AS
+ SELECT lm."IdLicenceModule",
+    lm."IdLicenceFk",
+    lm."CodeModule",
+    lm."Actif",
+    lm."Origine",
+    lm."Version",
+    lm."ModifieParUserFk",
+    lm."CreeLe",
+    lm."ModifieLe",
+    l."IdEntiteFk",
+    e."NomEntite",
+    m."Nom" AS "NomModule",
+    m."EstSocle",
+    m."CodeIncluant",
+    l."DateDebut",
+    l."DateFin",
+    ((e."ValideEntite" IS TRUE) AND m."Actif" AND lm."Actif" AND (l."ValideLicence" IS TRUE) AND ((l."DateDebut" IS NULL) OR (l."DateDebut" <= CURRENT_TIMESTAMP)) AND (l."DateFin" > CURRENT_TIMESTAMP)) AS "EstAccesActif",
+        CASE
+            WHEN (e."ValideEntite" IS NOT TRUE) THEN 'Entité inactive'::text
+            WHEN (NOT m."Actif") THEN 'Module indisponible'::text
+            WHEN (NOT lm."Actif") THEN 'Désactivé'::text
+            WHEN (l."ValideLicence" IS NOT TRUE) THEN 'Licence inactive'::text
+            WHEN (l."DateDebut" > CURRENT_TIMESTAMP) THEN 'À venir'::text
+            WHEN (l."DateFin" IS NULL) THEN 'Échéance manquante'::text
+            WHEN (l."DateFin" <= CURRENT_TIMESTAMP) THEN 'Licence expirée'::text
+            ELSE 'Actif'::text
+        END AS "EtatAcces"
+   FROM (((systeme."T_LicenceModule" lm
+     JOIN systeme."T_Licence" l ON ((l."IdLicence" = lm."IdLicenceFk")))
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = l."IdEntiteFk")))
+     JOIN systeme."T_ModuleApplication" m ON (((m."CodeModule")::text = (lm."CodeModule")::text)));
+
+
+--
+-- Name: VIEW "V_LicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_LicenceModule" IS 'Activation effective par licence et entité ; les dates sont évaluées à la lecture sans modifier le contrat.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."IdLicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."IdLicenceModule" IS 'Identifiant permanent de la ligne d’activation.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."IdLicenceFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."IdLicenceFk" IS 'Licence de l’entité ; cette relation est immuable.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."CodeModule" IS 'Application activée dans cette licence ; code immuable.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."Actif" IS 'Activation explicite du module dans la licence.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."Origine"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."Origine" IS 'Reprise identifie les accès conservés lors de la migration ; ce champ ne constitue pas une facturation.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."Version" IS 'Version utilisée pour refuser les modifications concurrentes.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification ; NULL pour la migration initiale.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."CreeLe" IS 'Instant de création du rattachement.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."IdEntiteFk" IS 'Entité propriétaire de la licence, obtenue par la clé étrangère T_Licence.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."NomEntite" IS 'Nom de l’entité propriétaire.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."NomModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."NomModule" IS 'Libellé de l’application.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."EstSocle"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."EstSocle" IS 'Application comprise dans le socle.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."CodeIncluant"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."CodeIncluant" IS 'Application parente qui inclut ce module.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."DateDebut"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."DateDebut" IS 'Début contractuel conservé depuis T_Licence.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."DateFin"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."DateFin" IS 'Échéance contractuelle conservée depuis T_Licence.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."EstAccesActif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."EstAccesActif" IS 'Licence, entité, module et activation valides à l’instant de lecture.';
+
+
+--
+-- Name: COLUMN "V_LicenceModule"."EtatAcces"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_LicenceModule"."EtatAcces" IS 'Motif de disponibilité ou de suspension.';
+
+
+--
+-- Name: V_EntiteModuleActif; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_EntiteModuleActif" AS
+ SELECT e."IdEntite" AS "IdEntiteFk",
+    m."CodeModule"
+   FROM (systeme."T_Entite" e
+     CROSS JOIN systeme."T_ModuleApplication" m)
+  WHERE ((e."ValideEntite" IS TRUE) AND m."Actif" AND m."EstSocle")
+UNION
+ SELECT l."IdEntiteFk",
+    m."CodeModule"
+   FROM (systeme."V_LicenceModule" l
+     JOIN systeme."T_ModuleApplication" m ON ((((m."CodeModule")::text = (l."CodeModule")::text) OR ((m."CodeIncluant")::text = (l."CodeModule")::text))))
+  WHERE (l."EstAccesActif" AND m."Actif");
+
+
+--
+-- Name: VIEW "V_EntiteModuleActif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_EntiteModuleActif" IS 'Modules effectivement disponibles à une entité active : socle, licence valide et inclusions du Catalogue. Les droits du rôle sont vérifiés ensuite.';
+
+
+--
+-- Name: COLUMN "V_EntiteModuleActif"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_EntiteModuleActif"."IdEntiteFk" IS 'Entité autorisée.';
+
+
+--
+-- Name: COLUMN "V_EntiteModuleActif"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_EntiteModuleActif"."CodeModule" IS 'Application comprise dans son socle ou sa licence active.';
 
 
 --
@@ -14558,104 +25818,112 @@ COMMENT ON COLUMN systeme."V_Fk_Correspondance"."UpdatedAt" IS 'Horodatage de de
 --
 
 CREATE VIEW systeme."V_Fk_Correspondance_Audit" AS
- SELECT "IdLog",
-    "TableName",
-    "Operation",
-    "ChangedAt",
-    COALESCE(("NewData" ->> 'settingScope'::text), ("OldData" ->> 'settingScope'::text), 'global'::text) AS "SettingScope",
-    COALESCE(("NewData" ->> 'scopeValue'::text), ("OldData" ->> 'scopeValue'::text)) AS "ScopeValue",
-    COALESCE(("NewData" ->> 'updatedByName'::text), ("OldData" ->> 'updatedByName'::text)) AS "UpdatedByName",
-    COALESCE(("NewData" ->> 'updatedByUserId'::text), ("OldData" ->> 'updatedByUserId'::text)) AS "UpdatedByUserId",
-    COALESCE(("NewData" ->> 'updatedAt'::text), ("OldData" ->> 'updatedAt'::text)) AS "UpdatedSettingAt",
-    "OldData",
-    "NewData"
-   FROM systeme."T_Audit_Log" a
-  WHERE ("TableName" = 'T_Fk_Correspondance'::text)
-  ORDER BY "ChangedAt" DESC;
+ SELECT a."IdLog",
+    a."TableName",
+    a."Operation",
+    a."ChangedAt",
+    COALESCE((cleaned.n ->> 'SettingScope'::text), (cleaned.n ->> 'settingScope'::text), (cleaned.o ->> 'SettingScope'::text), (cleaned.o ->> 'settingScope'::text), 'global'::text) AS "SettingScope",
+    COALESCE((cleaned.n ->> 'ScopeValue'::text), (cleaned.n ->> 'scopeValue'::text), (cleaned.o ->> 'ScopeValue'::text), (cleaned.o ->> 'scopeValue'::text)) AS "ScopeValue",
+        CASE
+            WHEN (COALESCE(cleaned.n, cleaned.o) ? '_actor'::text) THEN (COALESCE(cleaned.n, cleaned.o) #>> '{_actor,NomComplet}'::text[])
+            ELSE COALESCE((cleaned.n ->> 'updatedByName'::text), (cleaned.o ->> 'updatedByName'::text))
+        END AS "UpdatedByName",
+        CASE
+            WHEN (COALESCE(cleaned.n, cleaned.o) ? '_actor'::text) THEN (COALESCE(cleaned.n, cleaned.o) #>> '{_actor,IdUser}'::text[])
+            ELSE COALESCE((cleaned.n ->> 'UpdatedByUserFk'::text), (cleaned.n ->> 'updatedByUserId'::text), (cleaned.o ->> 'UpdatedByUserFk'::text), (cleaned.o ->> 'updatedByUserId'::text))
+        END AS "UpdatedByUserId",
+    COALESCE((cleaned.n ->> 'UpdatedAt'::text), (cleaned.n ->> 'updatedAt'::text), (cleaned.o ->> 'UpdatedAt'::text), (cleaned.o ->> 'updatedAt'::text)) AS "UpdatedSettingAt",
+    cleaned.o AS "OldData",
+    cleaned.n AS "NewData"
+   FROM (systeme."T_Audit_Log" a
+     CROSS JOIN LATERAL ( SELECT systeme.fn_audit_sans_secrets(a."NewData") AS n,
+            systeme.fn_audit_sans_secrets(a."OldData") AS o) cleaned)
+  WHERE (a."TableName" = 'T_Fk_Correspondance'::text)
+  ORDER BY a."ChangedAt" DESC;
 
 
 --
 -- Name: VIEW "V_Fk_Correspondance_Audit"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_Fk_Correspondance_Audit" IS 'Événements d’audit filtrés sur T_Fk_Correspondance ; contexte extrait des clés JSON applicatives en camelCase depuis NewData puis OldData. Grain événement ; pas de filtre d’accès intégré.';
+COMMENT ON VIEW systeme."V_Fk_Correspondance_Audit" IS 'Audit nettoyé des correspondances ; une ligne par événement, contexte PascalCase SQL ou camelCase historique et auteur de l’opération.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."IdLog"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."IdLog" IS 'Identifiant de l’événement d’audit. Expression projetée : "IdLog".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."IdLog" IS 'Identifiant stable de l’événement de T_Audit_Log.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."TableName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."TableName" IS 'Nom de la table à l’origine de l’événement d’audit. Expression projetée : "TableName".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."TableName" IS 'Table de correspondances concernée par l’événement.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."Operation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."Operation" IS 'Nom de l’opération auditée ; le trigger produit INSERT, UPDATE ou DELETE. Expression projetée : "Operation".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."Operation" IS 'Opération SQL INSERT, UPDATE ou DELETE enregistrée.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."ChangedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."ChangedAt" IS 'Horodatage de l’événement d’audit. Expression projetée : "ChangedAt".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."ChangedAt" IS 'Date et heure civiles de l’événement ; les nouveaux triggers utilisent Africa/Kinshasa.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."SettingScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."SettingScope" IS 'Niveau de portée du paramètre ou de la correspondance ; consulter la contrainte de la table pour les valeurs admises. Expression projetée : COALESCE("NewData" ->> ''settingScope''::text, "OldData" ->> ''settingScope''::text, ''global''::text) AS "SettingScope".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."SettingScope" IS 'Portée FK global, country ou entity, compatible avec l’ancien format applicatif.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."ScopeValue"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."ScopeValue" IS 'Identifiant ou valeur du contexte ciblé par SettingScope ; ne constitue pas une autorisation d’accès. Expression projetée : COALESCE("NewData" ->> ''scopeValue''::text, "OldData" ->> ''scopeValue''::text) AS "ScopeValue".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."ScopeValue" IS 'Contexte de la portée FK ; NULL pour une correspondance globale.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."UpdatedByName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedByName" IS 'Nom du dernier modificateur ; repli Utilisateur #identifiant lorsque le compte n’est pas résolu. Expression projetée : COALESCE("NewData" ->> ''updatedByName''::text, "OldData" ->> ''updatedByName''::text) AS "UpdatedByName".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedByName" IS 'Nom de l’auteur de l’opération SQL, sinon auteur déclaré par l’ancien format applicatif ; absence conservée.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."UpdatedByUserId"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedByUserId" IS 'Identifiant du modificateur extrait du JSON d’audit applicatif ; représentation textuelle. Expression projetée : COALESCE("NewData" ->> ''updatedByUserId''::text, "OldData" ->> ''updatedByUserId''::text) AS "UpdatedByUserId".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedByUserId" IS 'Identifiant textuel de l’auteur de l’opération, distinct du dernier modificateur de la ligne supprimée.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."UpdatedSettingAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedSettingAt" IS 'Horodatage de modification extrait des clés JSON d’audit ; représentation textuelle. Expression projetée : COALESCE("NewData" ->> ''updatedAt''::text, "OldData" ->> ''updatedAt''::text) AS "UpdatedSettingAt".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."UpdatedSettingAt" IS 'Horodatage de la correspondance extrait de l’image SQL ou du format historique ; texte conservé.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."OldData"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."OldData" IS 'Valeurs avant l’opération auditable, sérialisées en JSON ; NULL lors d’une insertion par le trigger d’audit. Expression projetée : "OldData".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."OldData" IS 'Image avant l’écriture, nettoyée récursivement à la lecture ; NULL pour INSERT.';
 
 
 --
 -- Name: COLUMN "V_Fk_Correspondance_Audit"."NewData"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."NewData" IS 'Valeurs après l’opération auditable, sérialisées en JSON ; NULL lors d’une suppression par le trigger d’audit. Expression projetée : "NewData".';
+COMMENT ON COLUMN systeme."V_Fk_Correspondance_Audit"."NewData" IS 'Image après l’écriture, nettoyée récursivement à la lecture ; NULL pour DELETE.';
 
 
 --
@@ -14864,6 +26132,85 @@ COMMENT ON COLUMN systeme."V_Fk_Correspondance_Detail"."ObsFkCorrespondance" IS 
 
 
 --
+-- Name: V_IdentiteDocumentaire; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_IdentiteDocumentaire" AS
+ SELECT "IdEntite",
+    "NomEntite",
+    "AdresseEntite",
+    "EmailEntite",
+    "PhoneEntite",
+    "IdentifiantsLegauxEntite",
+    "MentionDocumentaireEntite",
+    (xmin)::text AS _version
+   FROM systeme."T_Entite";
+
+
+--
+-- Name: VIEW "V_IdentiteDocumentaire"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil documentaire courant et révision de l’entreprise. Le service impose une entreprise active et les droits de gestion ; les documents émis lisent leurs instantanés.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."IdEntite" IS 'Entreprise propriétaire dont le profil est consulté.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."NomEntite" IS 'Valeur actuelle NomEntite de l’entreprise émettrice.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."AdresseEntite" IS 'Valeur actuelle AdresseEntite de l’entreprise émettrice.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."EmailEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."EmailEntite" IS 'Valeur actuelle EmailEntite de l’entreprise émettrice.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."PhoneEntite" IS 'Valeur actuelle PhoneEntite de l’entreprise émettrice.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."IdentifiantsLegauxEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."IdentifiantsLegauxEntite" IS 'Couples libelle/valeur facultatifs déclarés par l’entreprise.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" IS 'Mention libre reprise uniquement par les nouveaux documents.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"._version; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"._version IS 'Révision opaque du profil, obligatoire avant modification concurrente.';
+
+
+--
 -- Name: V_Licence_active; Type: VIEW; Schema: systeme; Owner: -
 --
 
@@ -15044,6 +26391,135 @@ COMMENT ON COLUMN systeme."V_Login_history"."IdEntite" IS 'Identifiant de l’en
 --
 
 COMMENT ON COLUMN systeme."V_Login_history"."NomEntite" IS 'Nom de la structure ou organisation. Expression projetée : e."NomEntite".';
+
+
+--
+-- Name: V_RoleModule; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_RoleModule" AS
+ SELECT r."IdRoleModule",
+    r."IdEntiteFk",
+    r."IdRoleFk",
+    r."CodeModule",
+    r."PeutConsulter",
+    r."PeutGerer",
+    r."PeutExporter",
+    r."Actif",
+    r."Version",
+    r."ModifieParUserFk",
+    r."CreeLe",
+    r."ModifieLe",
+    g."NomGenerique" AS "NomRole",
+    m."Nom" AS "NomModule"
+   FROM ((systeme."T_RoleModule" r
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = r."IdRoleFk")))
+     JOIN systeme."T_ModuleApplication" m ON (((m."CodeModule")::text = (r."CodeModule")::text)));
+
+
+--
+-- Name: VIEW "V_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_RoleModule" IS 'Restrictions par rôle d’une entité ; aucune souscription n’est attribuée individuellement aux utilisateurs.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."IdRoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."IdRoleModule" IS 'Identifiant permanent du paramétrage.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."IdEntiteFk" IS 'Entité à laquelle s’applique cette règle ; immuable.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."IdRoleFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."IdRoleFk" IS 'Rôle du référentiel, catégorie Rôles (39) ; immuable.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."CodeModule" IS 'Application concernée par les restrictions ; code immuable.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."PeutConsulter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."PeutConsulter" IS 'Autorise la consultation si la licence et les droits préexistants l’autorisent aussi.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."PeutGerer"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."PeutGerer" IS 'Autorise les créations, modifications et suppressions permises par les services métier existants.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."PeutExporter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."PeutExporter" IS 'Autorise les exports officiels du module.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."Actif" IS 'Une règle inactive refuse ces accès ; son absence conserve les droits antérieurs.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."Version" IS 'Version du paramétrage pour la concurrence optimiste.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."CreeLe" IS 'Instant de création du paramétrage.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."NomRole"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."NomRole" IS 'Libellé du rôle du référentiel.';
+
+
+--
+-- Name: COLUMN "V_RoleModule"."NomModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_RoleModule"."NomModule" IS 'Libellé de l’application.';
 
 
 --
@@ -15355,6 +26831,77 @@ COMMENT ON CONSTRAINT "T_Article_pkey" ON logistique."T_Article" IS 'Clé primai
 
 
 --
+-- Name: T_AvoirAffectation T_AvoirAffectation_ID_UserFk_RequestId_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirAffectation"
+    ADD CONSTRAINT "T_AvoirAffectation_ID_UserFk_RequestId_key" UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: T_AvoirAffectation T_AvoirAffectation_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirAffectation"
+    ADD CONSTRAINT "T_AvoirAffectation_pkey" PRIMARY KEY ("ID_Affectation");
+
+
+--
+-- Name: T_AvoirLigne T_AvoirLigne_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirLigne"
+    ADD CONSTRAINT "T_AvoirLigne_pkey" PRIMARY KEY ("ID_AvoirFk", "ID_ArticleFk");
+
+
+--
+-- Name: T_Avoir T_Avoir_CodeAvoir_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_CodeAvoir_key" UNIQUE ("CodeAvoir");
+
+
+--
+-- Name: T_Avoir T_Avoir_ID_UserFk_RequestId_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_ID_UserFk_RequestId_key" UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: T_Avoir T_Avoir_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_pkey" PRIMARY KEY ("ID_Avoir");
+
+
+--
+-- Name: T_CategorieDossierSuivi T_CategorieDossierSuivi_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_CategorieDossierSuivi"
+    ADD CONSTRAINT "T_CategorieDossierSuivi_pkey" PRIMARY KEY ("ID_CategorieDossierSuivi");
+
+
+--
+-- Name: T_Client T_Client_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_pkey" PRIMARY KEY ("ID_Client");
+
+
+--
+-- Name: CONSTRAINT "T_Client_pkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_pkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
 -- Name: T_CommandeDetail T_CommandeDetail_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -15385,6 +26932,146 @@ COMMENT ON CONSTRAINT "T_Commande_pkey" ON logistique."T_Commande" IS 'Clé prim
 
 
 --
+-- Name: T_DocumentIdentite T_DocumentIdentite_TypeObjet_ID_Objet_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DocumentIdentite"
+    ADD CONSTRAINT "T_DocumentIdentite_TypeObjet_ID_Objet_key" UNIQUE ("TypeObjet", "ID_Objet");
+
+
+--
+-- Name: T_DocumentIdentite T_DocumentIdentite_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DocumentIdentite"
+    ADD CONSTRAINT "T_DocumentIdentite_pkey" PRIMARY KEY ("ID_DocumentIdentite");
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_ID_DossierSuiviFk_ID_ArticleFk_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_ID_DossierSuiviFk_ID_ArticleFk_key" UNIQUE ("ID_DossierSuiviFk", "ID_ArticleFk");
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_ID_DossierSuiviFk_ID_CommandeFk_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_ID_DossierSuiviFk_ID_CommandeFk_key" UNIQUE ("ID_DossierSuiviFk", "ID_CommandeFk");
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_pkey" PRIMARY KEY ("ID_Membre");
+
+
+--
+-- Name: T_DossierSuivi T_DossierSuivi_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuivi"
+    ADD CONSTRAINT "T_DossierSuivi_pkey" PRIMARY KEY ("ID_DossierSuivi");
+
+
+--
+-- Name: T_FactureLigne T_FactureLigne_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_FactureLigne"
+    ADD CONSTRAINT "T_FactureLigne_pkey" PRIMARY KEY ("ID_FactureLigne");
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_pkey" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_pkey" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_CodeFacture_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_CodeFacture_key" UNIQUE ("CodeFacture");
+
+
+--
+-- Name: CONSTRAINT "T_Facture_CodeFacture_key" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_CodeFacture_key" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_CommandeFk_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_CommandeFk_key" UNIQUE ("ID_CommandeFk");
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_CommandeFk_key" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_CommandeFk_key" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_pkey" PRIMARY KEY ("ID_Facture");
+
+
+--
+-- Name: CONSTRAINT "T_Facture_pkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_pkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_InventaireLigne T_InventaireLigne_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_InventaireLigne"
+    ADD CONSTRAINT "T_InventaireLigne_pkey" PRIMARY KEY ("ID_InventaireFk", "ID_ArticleFk");
+
+
+--
+-- Name: T_Inventaire T_Inventaire_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Inventaire"
+    ADD CONSTRAINT "T_Inventaire_pkey" PRIMARY KEY ("ID_Inventaire");
+
+
+--
+-- Name: T_LotArticle T_LotArticle_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_LotArticle"
+    ADD CONSTRAINT "T_LotArticle_pkey" PRIMARY KEY ("ID_LotArticle");
+
+
+--
+-- Name: T_MouvementLot T_MouvementLot_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_MouvementLot"
+    ADD CONSTRAINT "T_MouvementLot_pkey" PRIMARY KEY ("ID_MvtFk", "ID_LotArticleFk");
+
+
+--
 -- Name: T_Mouvement T_Mouvement_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -15400,6 +27087,14 @@ COMMENT ON CONSTRAINT "T_Mouvement_pkey" ON logistique."T_Mouvement" IS 'Clé pr
 
 
 --
+-- Name: T_PieceJustificative T_PieceJustificative_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PieceJustificative"
+    ADD CONSTRAINT "T_PieceJustificative_pkey" PRIMARY KEY ("ID_Piece");
+
+
+--
 -- Name: T_Reglements T_Reglements_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -15412,6 +27107,84 @@ ALTER TABLE ONLY logistique."T_Reglements"
 --
 
 COMMENT ON CONSTRAINT "T_Reglements_pkey" ON logistique."T_Reglements" IS 'Clé primaire : identifie de manière unique chaque ligne dans "logistique"."T_Reglements". Définition : PRIMARY KEY ("ID_Reglement").';
+
+
+--
+-- Name: T_Remboursement T_Remboursement_ID_UserFk_RequestId_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Remboursement"
+    ADD CONSTRAINT "T_Remboursement_ID_UserFk_RequestId_key" UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: T_Remboursement T_Remboursement_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Remboursement"
+    ADD CONSTRAINT "T_Remboursement_pkey" PRIMARY KEY ("ID_Remboursement");
+
+
+--
+-- Name: T_RetourBon T_RetourBon_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT "T_RetourBon_pkey" PRIMARY KEY ("ID_RetourBon");
+
+
+--
+-- Name: T_ValorisationEvenement T_ValorisationEvenement_ID_UserFk_RequestId_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationEvenement"
+    ADD CONSTRAINT "T_ValorisationEvenement_ID_UserFk_RequestId_key" UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: T_ValorisationEvenement T_ValorisationEvenement_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationEvenement"
+    ADD CONSTRAINT "T_ValorisationEvenement_pkey" PRIMARY KEY ("ID_Evenement");
+
+
+--
+-- Name: T_ValorisationOuverture T_ValorisationOuverture_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationOuverture"
+    ADD CONSTRAINT "T_ValorisationOuverture_pkey" PRIMARY KEY ("ID_ArticleFk", "ID_DeviseFk");
+
+
+--
+-- Name: T_PrecisionStock precision_stock_pk; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PrecisionStock"
+    ADD CONSTRAINT precision_stock_pk PRIMARY KEY ("ID_PrecisionStock");
+
+
+--
+-- Name: CONSTRAINT precision_stock_pk ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT precision_stock_pk ON logistique."T_PrecisionStock" IS 'Clé technique unique de politique de précision.';
+
+
+--
+-- Name: T_PrecisionStock precision_stock_unite_unique; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PrecisionStock"
+    ADD CONSTRAINT precision_stock_unite_unique UNIQUE ("ID_UniteFk");
+
+
+--
+-- Name: CONSTRAINT precision_stock_unite_unique ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT precision_stock_unite_unique ON logistique."T_PrecisionStock" IS 'Une politique partagée au plus par unité de stock.';
 
 
 --
@@ -15457,6 +27230,66 @@ ALTER TABLE ONLY logistique."T_Commande"
 --
 
 COMMENT ON CONSTRAINT uq_commande_codefacture ON logistique."T_Commande" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "logistique"."T_Commande". Définition : UNIQUE ("CodeFacture").';
+
+
+--
+-- Name: T_FactureLigne uq_facture_article; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_FactureLigne"
+    ADD CONSTRAINT uq_facture_article UNIQUE ("ID_FactureFk", "ID_ArticleFk");
+
+
+--
+-- Name: CONSTRAINT uq_facture_article ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_facture_article ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture uq_facture_request; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT uq_facture_request UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: CONSTRAINT uq_facture_request ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_facture_request ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_RetourBon uq_retour_bon_demande; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT uq_retour_bon_demande UNIQUE ("ID_UserFk", "RequestId");
+
+
+--
+-- Name: CONSTRAINT uq_retour_bon_demande ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_retour_bon_demande ON logistique."T_RetourBon" IS 'Un auteur et un UUID de demande ne peuvent créditer le stock qu’une fois.';
+
+
+--
+-- Name: T_RetourBon uq_retour_bon_entree; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT uq_retour_bon_entree UNIQUE ("ID_CommandeRetourFk");
+
+
+--
+-- Name: CONSTRAINT uq_retour_bon_entree ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_retour_bon_entree ON logistique."T_RetourBon" IS 'Un bon d’entrée inverse appartient à un seul événement de retour.';
 
 
 --
@@ -16015,18 +27848,58 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_pkey" ON systeme."T_Fk_Correspondance
 
 
 --
+-- Name: T_LicenceModule T_LicenceModule_IdLicenceFk_CodeModule_key; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_IdLicenceFk_CodeModule_key" UNIQUE ("IdLicenceFk", "CodeModule");
+
+
+--
+-- Name: T_LicenceModule T_LicenceModule_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_pkey" PRIMARY KEY ("IdLicenceModule");
+
+
+--
+-- Name: T_ModuleApplication T_ModuleApplication_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT "T_ModuleApplication_pkey" PRIMARY KEY ("CodeModule");
+
+
+--
+-- Name: T_RoleModule T_RoleModule_IdEntiteFk_IdRoleFk_CodeModule_key; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdEntiteFk_IdRoleFk_CodeModule_key" UNIQUE ("IdEntiteFk", "IdRoleFk", "CodeModule");
+
+
+--
+-- Name: T_RoleModule T_RoleModule_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_pkey" PRIMARY KEY ("IdRoleModule");
+
+
+--
 -- Name: T_Fk_Correspondance UQ_FkCorrespondance_SourceValueScope; Type: CONSTRAINT; Schema: systeme; Owner: -
 --
 
 ALTER TABLE ONLY systeme."T_Fk_Correspondance"
-    ADD CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" UNIQUE ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue");
+    ADD CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" UNIQUE NULLS NOT DISTINCT ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue");
 
 
 --
 -- Name: CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Fk_Correspondance". Définition : UNIQUE ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue").';
+COMMENT ON CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" IS 'Une seule correspondance logique, même sans vue ou contexte explicite.';
 
 
 --
@@ -16034,14 +27907,14 @@ COMMENT ON CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Co
 --
 
 ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
-    ADD CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" UNIQUE ("SettingScope", "ScopeValue", "SettingKey");
+    ADD CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" UNIQUE NULLS NOT DISTINCT ("SettingScope", "ScopeValue", "SettingKey");
 
 
 --
 -- Name: CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Admin_UI_Setting". Définition : UNIQUE ("SettingScope", "ScopeValue", "SettingKey").';
+COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" IS 'Une seule clé par portée et contexte ; NULL global est une valeur unique.';
 
 
 --
@@ -16844,6 +28717,34 @@ COMMENT ON INDEX logistique."T_Commande_pkey" IS 'Index support de la clé prima
 
 
 --
+-- Name: INDEX "T_FactureLigne_pkey"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_FactureLigne_pkey" IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
+-- Name: INDEX "T_Facture_CodeFacture_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_Facture_CodeFacture_key" IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
+-- Name: INDEX "T_Facture_ID_CommandeFk_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_Facture_ID_CommandeFk_key" IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
+-- Name: INDEX "T_Facture_pkey"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_Facture_pkey" IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
 -- Name: INDEX "T_Mouvement_pkey"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
@@ -16855,6 +28756,41 @@ COMMENT ON INDEX logistique."T_Mouvement_pkey" IS 'Index support de la clé prim
 --
 
 COMMENT ON INDEX logistique."T_Reglements_pkey" IS 'Index support de la clé primaire sur "logistique"."T_Reglements". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Reglements_pkey" ON logistique."T_Reglements" USING btree ("ID_Reglement").';
+
+
+--
+-- Name: categorie_dossier_suivi_nom_actif; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE UNIQUE INDEX categorie_dossier_suivi_nom_actif ON logistique."T_CategorieDossierSuivi" USING btree ("ID_UserFk", COALESCE("IdEntiteFk", 0), lower(btrim(("Nom")::text))) WHERE "Actif";
+
+
+--
+-- Name: dossier_suivi_categorie; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX dossier_suivi_categorie ON logistique."T_DossierSuivi" USING btree ("ID_CategorieDossierSuiviFk");
+
+
+--
+-- Name: dossier_suivi_membre_article; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX dossier_suivi_membre_article ON logistique."T_DossierSuiviMembre" USING btree ("ID_ArticleFk", "ID_DossierSuiviFk") WHERE "Actif";
+
+
+--
+-- Name: dossier_suivi_membre_bon; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX dossier_suivi_membre_bon ON logistique."T_DossierSuiviMembre" USING btree ("ID_CommandeFk", "ID_DossierSuiviFk") WHERE "Actif";
+
+
+--
+-- Name: dossier_suivi_nom_actif; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE UNIQUE INDEX dossier_suivi_nom_actif ON logistique."T_DossierSuivi" USING btree ("ID_UserFk", COALESCE("IdEntiteFk", 0), lower(btrim(("Nom")::text))) WHERE "Actif";
 
 
 --
@@ -17068,6 +29004,244 @@ COMMENT ON INDEX logistique.idx_reglement_date IS 'Index d’accès sur "logisti
 
 
 --
+-- Name: inventaire_annulation_bon_unique; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE UNIQUE INDEX inventaire_annulation_bon_unique ON logistique."T_InventaireLigne" USING btree ("ID_CommandeAnnulationFk") WHERE ("ID_CommandeAnnulationFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX inventaire_annulation_bon_unique; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.inventaire_annulation_bon_unique IS 'Un bon compensateur par ligne d’inventaire, sans réutilisation.';
+
+
+--
+-- Name: inventaire_entite_date; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX inventaire_entite_date ON logistique."T_Inventaire" USING btree ("IdEntiteFk", "DateInventaire" DESC);
+
+
+--
+-- Name: ix_affectation_avoir; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_affectation_avoir ON logistique."T_AvoirAffectation" USING btree ("ID_AvoirFk");
+
+
+--
+-- Name: ix_affectation_cible; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_affectation_cible ON logistique."T_AvoirAffectation" USING btree ("ID_CommandeCibleFk");
+
+
+--
+-- Name: ix_article_entite; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_article_entite ON logistique."T_Article" USING btree ("IdEntiteFk", "ID_Article");
+
+
+--
+-- Name: INDEX ix_article_entite; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_article_entite IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+
+--
+-- Name: ix_avoir_entite; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_avoir_entite ON logistique."T_Avoir" USING btree ("IdEntiteFk");
+
+
+--
+-- Name: ix_avoir_facture; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_avoir_facture ON logistique."T_Avoir" USING btree ("ID_FactureFk");
+
+
+--
+-- Name: ix_client_entite_nom; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_client_entite_nom ON logistique."T_Client" USING btree ("IdEntiteFk", lower("Nom"), "ID_Client");
+
+
+--
+-- Name: INDEX ix_client_entite_nom; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_client_entite_nom IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+
+--
+-- Name: ix_commande_destination; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_commande_destination ON logistique."T_Commande" USING btree ("ID_DestinationFk") WHERE ("ID_DestinationFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX ix_commande_destination; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_commande_destination IS 'Accélère les recherches de bons par destination géographique référencée.';
+
+
+--
+-- Name: ix_commande_entite; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_commande_entite ON logistique."T_Commande" USING btree ("IdEntiteFk", "DateCmd", "ID_Commande");
+
+
+--
+-- Name: INDEX ix_commande_entite; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_commande_entite IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+
+--
+-- Name: ix_commande_tiers; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_commande_tiers ON logistique."T_Commande" USING btree ("ID_TiersFk") WHERE ("ID_TiersFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX ix_commande_tiers; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_commande_tiers IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+
+--
+-- Name: ix_inventaire_ligne_bon_correction; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_inventaire_ligne_bon_correction ON logistique."T_InventaireLigne" USING btree ("ID_CommandeCorrectionFk") WHERE ("ID_CommandeCorrectionFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX ix_inventaire_ligne_bon_correction; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_inventaire_ligne_bon_correction IS 'Accélère la classification d’un bon d’écart vers son inventaire sans recherche textuelle.';
+
+
+--
+-- Name: ix_piece_entite; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_piece_entite ON logistique."T_PieceJustificative" USING btree ("IdEntiteFk");
+
+
+--
+-- Name: ix_piece_parent; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_piece_parent ON logistique."T_PieceJustificative" USING btree ("TypeObjet", "ID_Objet", "Archive");
+
+
+--
+-- Name: ix_reglement_tiers; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_reglement_tiers ON logistique."T_Reglements" USING btree ("ID_TiersFk") WHERE ("ID_TiersFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX ix_reglement_tiers; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_reglement_tiers IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+
+--
+-- Name: ix_remboursement_avoir; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_remboursement_avoir ON logistique."T_Remboursement" USING btree ("ID_AvoirFk");
+
+
+--
+-- Name: ix_retour_bon_entite_date; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_retour_bon_entite_date ON logistique."T_RetourBon" USING btree ("IdEntiteFk", "DateRetour", "ID_RetourBon");
+
+
+--
+-- Name: INDEX ix_retour_bon_entite_date; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_retour_bon_entite_date IS 'Accélère le suivi chronologique des retours par organisation.';
+
+
+--
+-- Name: ix_retour_bon_origine; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_retour_bon_origine ON logistique."T_RetourBon" USING btree ("ID_CommandeOrigineFk", "ID_RetourBon");
+
+
+--
+-- Name: INDEX ix_retour_bon_origine; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_retour_bon_origine IS 'Accélère le cumul des retours par sortie d’origine sans imposer un retour unique.';
+
+
+--
+-- Name: lot_article_numero_unique; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE UNIQUE INDEX lot_article_numero_unique ON logistique."T_LotArticle" USING btree ("ID_ArticleFk", lower(btrim(("NumeroLot")::text)));
+
+
+--
+-- Name: mouvement_article_devise_ordre; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX mouvement_article_devise_ordre ON logistique."T_Mouvement" USING btree ("ID_ArticleFk", "ID_DeviseFk", "ID_Mvt");
+
+
+--
+-- Name: INDEX mouvement_article_devise_ordre; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.mouvement_article_devise_ordre IS 'Parcours CUMP dans l’ordre d’enregistrement, par article et devise.';
+
+
+--
+-- Name: mouvement_lot_lot; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX mouvement_lot_lot ON logistique."T_MouvementLot" USING btree ("ID_LotArticleFk");
+
+
+--
+-- Name: INDEX precision_stock_pk; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.precision_stock_pk IS 'Accès à une politique par son identité technique.';
+
+
+--
+-- Name: INDEX precision_stock_unite_unique; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.precision_stock_unite_unique IS 'Accès et unicité de la politique par unité du référentiel.';
+
+
+--
 -- Name: INDEX uq_article_codeinterne; Type: COMMENT; Schema: logistique; Owner: -
 --
 
@@ -17089,6 +29263,20 @@ COMMENT ON INDEX logistique.uq_commande_codefacture IS 'Index d’unicité sur "
 
 
 --
+-- Name: INDEX uq_facture_article; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.uq_facture_article IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
+-- Name: INDEX uq_facture_request; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.uq_facture_request IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+
+--
 -- Name: uq_mouvement_ligne_commande; Type: INDEX; Schema: logistique; Owner: -
 --
 
@@ -17100,6 +29288,20 @@ CREATE UNIQUE INDEX uq_mouvement_ligne_commande ON logistique."T_Mouvement" USIN
 --
 
 COMMENT ON INDEX logistique.uq_mouvement_ligne_commande IS 'Un seul mouvement source par paire commande/article ; les ajustements d’article sans commande restent multiples.';
+
+
+--
+-- Name: valorisation_evenement_article; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX valorisation_evenement_article ON logistique."T_ValorisationEvenement" USING btree ("ID_ArticleFk", "ID_Evenement");
+
+
+--
+-- Name: INDEX valorisation_evenement_article; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.valorisation_evenement_article IS 'Historique des coûts et corrections par article, sans lecture interentreprises implicite.';
 
 
 --
@@ -17827,14 +30029,42 @@ COMMENT ON INDEX systeme."T_Fk_Correspondance_pkey" IS 'Index support de la clé
 -- Name: INDEX "UQ_FkCorrespondance_SourceValueScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON INDEX systeme."UQ_FkCorrespondance_SourceValueScope" IS 'Index d’unicité sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" USING btree ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue").';
+COMMENT ON INDEX systeme."UQ_FkCorrespondance_SourceValueScope" IS 'Index unique de la correspondance source/valeur/portée ; une vue ou un contexte NULL ne permet pas de doublon.';
 
 
 --
 -- Name: INDEX "Uq_Admin_UI_Setting_Key_Scope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON INDEX systeme."Uq_Admin_UI_Setting_Key_Scope" IS 'Index d’unicité sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" USING btree ("SettingScope", "ScopeValue", "SettingKey").';
+COMMENT ON INDEX systeme."Uq_Admin_UI_Setting_Key_Scope" IS 'Index unique de la clé de paramètre par portée et contexte ; NULLS NOT DISTINCT interdit aussi les doublons globaux.';
+
+
+--
+-- Name: audit_document_identites_new_gin; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE INDEX audit_document_identites_new_gin ON systeme."T_Audit_Log" USING gin (logistique.fn_identites_audit("NewData")) WHERE ("TableName" = ANY (ARRAY['logistique.T_Commande'::text, 'T_Commande'::text, 'logistique.T_Facture'::text]));
+
+
+--
+-- Name: INDEX audit_document_identites_new_gin; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.audit_document_identites_new_gin IS 'Identités de bons/factures présentes après une écriture auditée ; garde la non-réutilisation après suppression.';
+
+
+--
+-- Name: audit_document_identites_old_gin; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE INDEX audit_document_identites_old_gin ON systeme."T_Audit_Log" USING gin (logistique.fn_identites_audit("OldData")) WHERE ("TableName" = ANY (ARRAY['logistique.T_Commande'::text, 'T_Commande'::text, 'logistique.T_Facture'::text]));
+
+
+--
+-- Name: INDEX audit_document_identites_old_gin; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.audit_document_identites_old_gin IS 'Identités de bons/factures présentes avant une écriture auditée ; évite regex et parcours complet du journal à chaque réservation.';
 
 
 --
@@ -18111,6 +30341,112 @@ COMMENT ON INDEX systeme.utilisateurs_emailuser_key IS 'Index d’unicité sur "
 
 
 --
+-- Name: V_Inventaire _RETURN; Type: RULE; Schema: logistique; Owner: -
+--
+
+CREATE OR REPLACE VIEW logistique."V_Inventaire" AS
+ SELECT v."ID_Inventaire",
+    v."IdEntiteFk",
+    v."ID_UserFk",
+    v."DateInventaire",
+    v."Motif",
+    v."Etat",
+    v."Version",
+    v."CreeLe",
+    v."ModifieLe",
+    v."ValideLe",
+    v."ID_ValidateurFk",
+    v."ValidationRequest",
+    v."ValidationHash",
+    v."CodeInventaire",
+    v."NbArticles",
+    v."NbEcarts",
+    h."AnnuleLe",
+    h."ID_AnnulateurFk",
+    h."MotifAnnulation",
+    h."AnnulationRequest",
+    h."AnnulationHash"
+   FROM (( SELECT h_1."ID_Inventaire",
+            h_1."IdEntiteFk",
+            h_1."ID_UserFk",
+            h_1."DateInventaire",
+            h_1."Motif",
+            h_1."Etat",
+            h_1."Version",
+            h_1."CreeLe",
+            h_1."ModifieLe",
+            h_1."ValideLe",
+            h_1."ID_ValidateurFk",
+            h_1."ValidationRequest",
+            h_1."ValidationHash",
+            ('inv-'::text || h_1."ID_Inventaire") AS "CodeInventaire",
+            count(l."ID_ArticleFk") AS "NbArticles",
+            count(*) FILTER (WHERE (l."QteComptee" <> l."QteTheorique")) AS "NbEcarts"
+           FROM (logistique."T_Inventaire" h_1
+             LEFT JOIN logistique."T_InventaireLigne" l ON ((l."ID_InventaireFk" = h_1."ID_Inventaire")))
+          GROUP BY h_1."ID_Inventaire") v
+     JOIN logistique."T_Inventaire" h USING ("ID_Inventaire"));
+
+
+--
+-- Name: V_LotArticleStock _RETURN; Type: RULE; Schema: logistique; Owner: -
+--
+
+CREATE OR REPLACE VIEW logistique."V_LotArticleStock" AS
+ SELECT l."ID_LotArticle",
+    l."ID_ArticleFk",
+    l."NumeroLot",
+    l."DatePeremptionLot",
+    l."Actif",
+    l."CreeLe",
+    l."StockLot",
+    l."QuantiteEntree",
+    l."QuantiteSortie",
+    l."ID_DeviseFk",
+    l."DeviseCode",
+    l."DeviseLibelle",
+        CASE
+            WHEN (l."DatePeremptionLot" IS NULL) THEN 'Non renseignée'::text
+            WHEN (l."DatePeremptionLot" < ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) THEN 'Périmé'::text
+            WHEN (l."DatePeremptionLot" <= (((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date + COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30))) THEN 'Proche'::text
+            ELSE 'Valide'::text
+        END AS "EtatPeremptionLot",
+    ((l."DatePeremptionLot" < ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) IS TRUE) AS "EstPerime",
+    (((l."DatePeremptionLot" >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date) AND (l."DatePeremptionLot" <= (((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date + COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30)))) IS TRUE) AS "EstProche",
+    COALESCE(a."NbreJoursAlerteArticle", (e."AlertePeremptionJours")::integer, 30) AS "SeuilAlerteJours",
+    e."BloquerLotsPerimes"
+   FROM ((( SELECT historique."ID_LotArticle",
+            historique."ID_ArticleFk",
+            historique."NumeroLot",
+            historique."DatePeremptionLot",
+            historique."Actif",
+            historique."CreeLe",
+            historique."StockLot",
+            historique."QuantiteEntree",
+            historique."QuantiteSortie",
+            source."ID_DeviseFk",
+            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+            (devise."NomGenerique")::text AS "DeviseLibelle"
+           FROM ((( SELECT l_1."ID_LotArticle",
+                    l_1."ID_ArticleFk",
+                    l_1."NumeroLot",
+                    l_1."DatePeremptionLot",
+                    l_1."Actif",
+                    l_1."CreeLe",
+                    COALESCE(sum((ml."Quantite" * (m."SigneStock")::numeric)), ((0)::bigint)::numeric) AS "StockLot",
+                    COALESCE(sum(ml."Quantite") FILTER (WHERE (m."SigneStock" = 1)), ((0)::bigint)::numeric) AS "QuantiteEntree",
+                    COALESCE(sum(ml."Quantite") FILTER (WHERE (m."SigneStock" = '-1'::integer)), ((0)::bigint)::numeric) AS "QuantiteSortie"
+                   FROM ((logistique."T_LotArticle" l_1
+                     LEFT JOIN logistique."T_MouvementLot" ml ON ((ml."ID_LotArticleFk" = l_1."ID_LotArticle")))
+                     LEFT JOIN logistique."V_MouvementStock" m ON ((m."ID_Mvt" = ml."ID_MvtFk")))
+                  GROUP BY l_1."ID_LotArticle") historique
+             LEFT JOIN logistique."T_Article" source ON ((source."ID_Article" = historique."ID_ArticleFk")))
+             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source."ID_DeviseFk")))) l
+     JOIN logistique."T_Article" a ON ((a."ID_Article" = l."ID_ArticleFk")))
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = a."IdEntiteFk")));
+
+
+--
 -- Name: T_Chat tr_00_lock_discussion_message; Type: TRIGGER; Schema: communication; Owner: -
 --
 
@@ -18139,6 +30475,1014 @@ COMMENT ON TRIGGER tr_sync_dernier_message ON communication."T_Chat" IS 'Synchro
 
 
 --
+-- Name: T_Commande a0_numero_commande; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER a0_numero_commande BEFORE INSERT OR UPDATE OF "ID_Commande", "CodeCmd", "CodeFacture" ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_numero_commande();
+
+
+--
+-- Name: TRIGGER a0_numero_commande ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER a0_numero_commande ON logistique."T_Commande" IS 'Référence automatique cmd-ID et immutabilité ; aucun effet stock.';
+
+
+--
+-- Name: T_Facture a0_numero_facture; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER a0_numero_facture BEFORE INSERT OR UPDATE OF "ID_CommandeFk", "CodeFacture" ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_numero_facture();
+
+
+--
+-- Name: TRIGGER a0_numero_facture ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER a0_numero_facture ON logistique."T_Facture" IS 'Référence automatique fac-IDBon ; aucun mouvement ni recalcul financier.';
+
+
+--
+-- Name: T_Commande aa_08_code_facture_inventaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_08_code_facture_inventaire BEFORE UPDATE OF "CodeFacture" ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_bon_inventaire_non_commercial();
+
+
+--
+-- Name: TRIGGER aa_08_code_facture_inventaire ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_08_code_facture_inventaire ON logistique."T_Commande" IS 'Interdit aussi l’attribution directe d’un code de facture à un bon d’inventaire.';
+
+
+--
+-- Name: T_Facture aa_08_facture_inventaire_non_commercial; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_08_facture_inventaire_non_commercial BEFORE INSERT ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_bon_inventaire_non_commercial();
+
+
+--
+-- Name: TRIGGER aa_08_facture_inventaire_non_commercial ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_08_facture_inventaire_non_commercial ON logistique."T_Facture" IS 'Une correction ou compensation d’inventaire ne produit pas de facture commerciale.';
+
+
+--
+-- Name: T_InventaireLigne aa_08_ligne_inventaire_non_commercial; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_08_ligne_inventaire_non_commercial BEFORE INSERT OR UPDATE ON logistique."T_InventaireLigne" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_bon_inventaire_non_commercial();
+
+
+--
+-- Name: TRIGGER aa_08_ligne_inventaire_non_commercial ON "T_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_08_ligne_inventaire_non_commercial ON logistique."T_InventaireLigne" IS 'Refuse un bon déjà facturé ou lié à un retour lors du rattachement au comptage.';
+
+
+--
+-- Name: T_RetourBon aa_08_retour_inventaire_non_commercial; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_08_retour_inventaire_non_commercial BEFORE INSERT ON logistique."T_RetourBon" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_bon_inventaire_non_commercial();
+
+
+--
+-- Name: TRIGGER aa_08_retour_inventaire_non_commercial ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_08_retour_inventaire_non_commercial ON logistique."T_RetourBon" IS 'Les bons d’inventaire sont exclus des origines et des contre-bons des retours clients.';
+
+
+--
+-- Name: T_Commande aa_inventaire_bon_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_inventaire_bon_protection BEFORE DELETE OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_inventaire();
+
+
+--
+-- Name: TRIGGER aa_inventaire_bon_protection ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_inventaire_bon_protection ON logistique."T_Commande" IS 'Contrôle métier aa_inventaire_bon_protection : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_CommandeDetail aa_inventaire_ligne_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_inventaire_ligne_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_CommandeDetail" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_inventaire();
+
+
+--
+-- Name: TRIGGER aa_inventaire_ligne_protection ON "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_inventaire_ligne_protection ON logistique."T_CommandeDetail" IS 'Contrôle métier aa_inventaire_ligne_protection : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_MouvementLot aa_inventaire_lot_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_inventaire_lot_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_inventaire();
+
+
+--
+-- Name: TRIGGER aa_inventaire_lot_protection ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_inventaire_lot_protection ON logistique."T_MouvementLot" IS 'Interdit la modification des lots des corrections et annulations historiques.';
+
+
+--
+-- Name: T_Mouvement aa_inventaire_mouvement_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_inventaire_mouvement_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_inventaire();
+
+
+--
+-- Name: TRIGGER aa_inventaire_mouvement_protection ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_inventaire_mouvement_protection ON logistique."T_Mouvement" IS 'Contrôle métier aa_inventaire_mouvement_protection : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_Article aa_propriete_article; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_article BEFORE INSERT OR UPDATE ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_article ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_article ON logistique."T_Article" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Client aa_propriete_client; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_client BEFORE INSERT OR UPDATE ON logistique."T_Client" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_client ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_client ON logistique."T_Client" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Commande aa_propriete_commande; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_commande BEFORE INSERT OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_commande ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_commande ON logistique."T_Commande" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_CommandeDetail aa_propriete_ligne; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_ligne BEFORE INSERT OR UPDATE ON logistique."T_CommandeDetail" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_ligne ON "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_ligne ON logistique."T_CommandeDetail" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Mouvement aa_propriete_mouvement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_mouvement BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_mouvement ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_mouvement ON logistique."T_Mouvement" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Reglements aa_propriete_reglement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_propriete_reglement BEFORE INSERT OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION logistique.controler_propriete_logistique();
+
+
+--
+-- Name: TRIGGER aa_propriete_reglement ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_propriete_reglement ON logistique."T_Reglements" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Commande aa_retour_commande_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_retour_commande_protection BEFORE DELETE OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_retour();
+
+
+--
+-- Name: TRIGGER aa_retour_commande_protection ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_retour_commande_protection ON logistique."T_Commande" IS 'Conserve les données originales et le document compensateur ; aucune suppression ni réécriture de stock après retour.';
+
+
+--
+-- Name: T_CommandeDetail aa_retour_ligne_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_retour_ligne_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_CommandeDetail" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_retour();
+
+
+--
+-- Name: TRIGGER aa_retour_ligne_protection ON "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_retour_ligne_protection ON logistique."T_CommandeDetail" IS 'Verrouille le parent puis empêche toute modification du panier lié à un retour.';
+
+
+--
+-- Name: T_MouvementLot aa_retour_lot_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_retour_lot_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_retour();
+
+
+--
+-- Name: TRIGGER aa_retour_lot_protection ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_retour_lot_protection ON logistique."T_MouvementLot" IS 'Conserve les quantités ventilées par lot des sorties et retours validés.';
+
+
+--
+-- Name: T_Mouvement aa_retour_mouvement_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_retour_mouvement_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_bon_retour();
+
+
+--
+-- Name: TRIGGER aa_retour_mouvement_protection ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_retour_mouvement_protection ON logistique."T_Mouvement" IS 'Conserve le sens, la quantité et le prix des mouvements source et compensateurs.';
+
+
+--
+-- Name: T_AvoirAffectation affectation_avoir_controle; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER affectation_avoir_controle BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_AvoirAffectation" FOR EACH ROW EXECUTE FUNCTION logistique.tr_utilisation_avoir();
+
+
+--
+-- Name: TRIGGER affectation_avoir_controle ON "T_AvoirAffectation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER affectation_avoir_controle ON logistique."T_AvoirAffectation" IS 'Imputation bornée au disponible et au solde de la facture cible.';
+
+
+--
+-- Name: T_Article article_poids_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER article_poids_integrite BEFORE INSERT OR UPDATE OF "PoidsUnitaire", "ID_UnitePoidsFk" ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_article_poids();
+
+
+--
+-- Name: TRIGGER article_poids_integrite ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER article_poids_integrite ON logistique."T_Article" IS 'Valide les unités de masse lors de la saisie du poids.';
+
+
+--
+-- Name: T_Article article_stock_lots; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER article_stock_lots AFTER INSERT OR UPDATE ON logistique."T_Article" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_stock_lots();
+
+
+--
+-- Name: TRIGGER article_stock_lots ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER article_stock_lots ON logistique."T_Article" IS 'Vérifie que les mises à jour du stock global conservent la cohérence des lots.';
+
+
+--
+-- Name: T_Avoir avoir_immuable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER avoir_immuable BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Avoir" FOR EACH ROW EXECUTE FUNCTION logistique.tr_avoir_immuable();
+
+
+--
+-- Name: TRIGGER avoir_immuable ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER avoir_immuable ON logistique."T_Avoir" IS 'Avoir émis non modifiable ni supprimable.';
+
+
+--
+-- Name: T_AvoirLigne avoir_ligne_immuable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER avoir_ligne_immuable BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_AvoirLigne" FOR EACH ROW EXECUTE FUNCTION logistique.tr_avoir_ligne_immuable();
+
+
+--
+-- Name: TRIGGER avoir_ligne_immuable ON "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER avoir_ligne_immuable ON logistique."T_AvoirLigne" IS 'Instantané des articles et budget retourné.';
+
+
+--
+-- Name: T_AvoirLigne avoir_lignes_total; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER avoir_lignes_total AFTER INSERT ON logistique."T_AvoirLigne" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.tr_avoir_total();
+
+
+--
+-- Name: TRIGGER avoir_lignes_total ON "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER avoir_lignes_total ON logistique."T_AvoirLigne" IS 'Contrôle différé de la somme des lignes d’avoir.';
+
+
+--
+-- Name: T_Avoir avoir_total; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER avoir_total AFTER INSERT ON logistique."T_Avoir" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.tr_avoir_total();
+
+
+--
+-- Name: TRIGGER avoir_total ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER avoir_total ON logistique."T_Avoir" IS 'Contrôle différé de la somme émise.';
+
+
+--
+-- Name: T_CategorieDossierSuivi categorie_dossier_suivi_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER categorie_dossier_suivi_integrite BEFORE INSERT OR UPDATE ON logistique."T_CategorieDossierSuivi" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_dossier_suivi();
+
+
+--
+-- Name: TRIGGER categorie_dossier_suivi_integrite ON "T_CategorieDossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER categorie_dossier_suivi_integrite ON logistique."T_CategorieDossierSuivi" IS 'Préserve les clés et le périmètre du classement et horodate ses modifications ; aucun effet sur le stock.';
+
+
+--
+-- Name: T_Commande destination_commande; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER destination_commande BEFORE INSERT OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_destination_commande();
+
+
+--
+-- Name: TRIGGER destination_commande ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER destination_commande ON logistique."T_Commande" IS 'Contrôle les destinations lors de la création ou d’un changement de lieu référencé, sans modifier le stock.';
+
+
+--
+-- Name: T_Avoir document_identite_avoir; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER document_identite_avoir AFTER INSERT ON logistique."T_Avoir" FOR EACH ROW EXECUTE FUNCTION logistique.tr_document_identite();
+
+
+--
+-- Name: TRIGGER document_identite_avoir ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER document_identite_avoir ON logistique."T_Avoir" IS 'Identité de l’émetteur figée lors de l’émission.';
+
+
+--
+-- Name: T_Commande document_identite_bon; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER document_identite_bon AFTER INSERT ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_document_identite();
+
+
+--
+-- Name: TRIGGER document_identite_bon ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER document_identite_bon ON logistique."T_Commande" IS 'Identité émettrice du bon à sa création.';
+
+
+--
+-- Name: T_Facture document_identite_facture; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER document_identite_facture AFTER INSERT ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_document_identite();
+
+
+--
+-- Name: TRIGGER document_identite_facture ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER document_identite_facture ON logistique."T_Facture" IS 'Identité émettrice de la facture à son émission.';
+
+
+--
+-- Name: T_DocumentIdentite document_identite_immuable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER document_identite_immuable BEFORE DELETE OR UPDATE ON logistique."T_DocumentIdentite" FOR EACH ROW EXECUTE FUNCTION logistique.tr_identite_document_immuable();
+
+
+--
+-- Name: TRIGGER document_identite_immuable ON "T_DocumentIdentite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER document_identite_immuable ON logistique."T_DocumentIdentite" IS 'Interdit la réécriture de l’identité historique d’un document.';
+
+
+--
+-- Name: T_Reglements document_identite_reglement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER document_identite_reglement AFTER INSERT ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION logistique.tr_document_identite();
+
+
+--
+-- Name: TRIGGER document_identite_reglement ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER document_identite_reglement ON logistique."T_Reglements" IS 'Identité émettrice du reçu lors de l’enregistrement du règlement.';
+
+
+--
+-- Name: T_DossierSuivi dossier_suivi_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER dossier_suivi_integrite BEFORE INSERT OR UPDATE ON logistique."T_DossierSuivi" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_dossier_suivi();
+
+
+--
+-- Name: TRIGGER dossier_suivi_integrite ON "T_DossierSuivi"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER dossier_suivi_integrite ON logistique."T_DossierSuivi" IS 'Préserve les clés et le périmètre du classement et horodate ses modifications ; aucun effet sur le stock.';
+
+
+--
+-- Name: T_DossierSuiviMembre dossier_suivi_membre_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER dossier_suivi_membre_integrite BEFORE INSERT OR UPDATE ON logistique."T_DossierSuiviMembre" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_dossier_suivi();
+
+
+--
+-- Name: TRIGGER dossier_suivi_membre_integrite ON "T_DossierSuiviMembre"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER dossier_suivi_membre_integrite ON logistique."T_DossierSuiviMembre" IS 'Préserve les clés et le périmètre du classement et horodate ses modifications ; aucun effet sur le stock.';
+
+
+--
+-- Name: T_Facture facture_apres_avoir; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_apres_avoir BEFORE DELETE OR UPDATE ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_facture_apres_avoir();
+
+
+--
+-- Name: TRIGGER facture_apres_avoir ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_apres_avoir ON logistique."T_Facture" IS 'Protection de la facture d’origine des avoirs.';
+
+
+--
+-- Name: T_Commande facture_bon_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_bon_protection BEFORE DELETE OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_bon_facture();
+
+
+--
+-- Name: TRIGGER facture_bon_protection ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_bon_protection ON logistique."T_Commande" IS 'Immutabilité du bon de stock après émission de sa facture.';
+
+
+--
+-- Name: T_CommandeDetail facture_detail_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_detail_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_CommandeDetail" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_stock_facture();
+
+
+--
+-- Name: TRIGGER facture_detail_protection ON "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_detail_protection ON logistique."T_CommandeDetail" IS 'Empêche une modification du panier après facturation.';
+
+
+--
+-- Name: T_FactureLigne facture_ligne_coherente; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER facture_ligne_coherente AFTER INSERT ON logistique."T_FactureLigne" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.tr_verifier_snapshot_facture();
+
+
+--
+-- Name: TRIGGER facture_ligne_coherente ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_ligne_coherente ON logistique."T_FactureLigne" IS 'Revalide le snapshot après chaque ajout initial, même si un appelant a déjà forcé des contraintes immédiates.';
+
+
+--
+-- Name: T_FactureLigne facture_ligne_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_ligne_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_FactureLigne" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_ligne_facture();
+
+
+--
+-- Name: TRIGGER facture_ligne_protection ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_ligne_protection ON logistique."T_FactureLigne" IS 'Copie initiale unique des lignes nettes.';
+
+
+--
+-- Name: T_LotArticle facture_lot_identite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_lot_identite BEFORE UPDATE ON logistique."T_LotArticle" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_identite_lot_facture();
+
+
+--
+-- Name: TRIGGER facture_lot_identite ON "T_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_lot_identite ON logistique."T_LotArticle" IS 'Empêche un renommage ou une autre identité de lot de modifier les références d’une facture historique.';
+
+
+--
+-- Name: T_MouvementLot facture_mouvement_lot_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_mouvement_lot_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_stock_facture();
+
+
+--
+-- Name: TRIGGER facture_mouvement_lot_protection ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_mouvement_lot_protection ON logistique."T_MouvementLot" IS 'Vérifie les parents ancien et nouveau et conserve les ventilations historiques facturées.';
+
+
+--
+-- Name: T_Mouvement facture_mouvement_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_mouvement_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_stock_facture();
+
+
+--
+-- Name: TRIGGER facture_mouvement_protection ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_mouvement_protection ON logistique."T_Mouvement" IS 'Empêche une modification des mouvements d’origine après facturation.';
+
+
+--
+-- Name: T_Facture facture_protection; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER facture_protection BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_facture();
+
+
+--
+-- Name: TRIGGER facture_protection ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_protection ON logistique."T_Facture" IS 'Protection des données financières historiques.';
+
+
+--
+-- Name: T_Facture facture_snapshot_coherent; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER facture_snapshot_coherent AFTER INSERT OR UPDATE ON logistique."T_Facture" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.tr_verifier_snapshot_facture();
+
+
+--
+-- Name: TRIGGER facture_snapshot_coherent ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER facture_snapshot_coherent ON logistique."T_Facture" IS 'Validation atomique en fin de transaction de l’émission et de son miroir.';
+
+
+--
+-- Name: T_Inventaire inventaire_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER inventaire_integrite BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Inventaire" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_inventaire();
+
+
+--
+-- Name: TRIGGER inventaire_integrite ON "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER inventaire_integrite ON logistique."T_Inventaire" IS 'Contrôle métier inventaire_integrite : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_InventaireLigne inventaire_ligne_compensation_complete; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER inventaire_ligne_compensation_complete AFTER INSERT OR DELETE OR UPDATE ON logistique."T_InventaireLigne" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_inventaire_valide();
+
+
+--
+-- Name: TRIGGER inventaire_ligne_compensation_complete ON "T_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER inventaire_ligne_compensation_complete ON logistique."T_InventaireLigne" IS 'Recontrôle la complétude des corrections et compensations après toute modification des lignes, y compris un accès SQL direct.';
+
+
+--
+-- Name: T_InventaireLigne inventaire_ligne_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER inventaire_ligne_integrite BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_InventaireLigne" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_inventaire();
+
+
+--
+-- Name: TRIGGER inventaire_ligne_integrite ON "T_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER inventaire_ligne_integrite ON logistique."T_InventaireLigne" IS 'Contrôle métier inventaire_ligne_integrite : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_InventaireLigne inventaire_ligne_non_commerciale; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER inventaire_ligne_non_commerciale AFTER INSERT OR UPDATE ON logistique."T_InventaireLigne" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.verifier_bon_inventaire_non_commercial();
+
+
+--
+-- Name: TRIGGER inventaire_ligne_non_commerciale ON "T_InventaireLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER inventaire_ligne_non_commerciale ON logistique."T_InventaireLigne" IS 'Contrôle au terme de la transaction les liens inventaire/facture/retour, quel que soit leur ordre de création.';
+
+
+--
+-- Name: T_Inventaire inventaire_validation_complete; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER inventaire_validation_complete AFTER INSERT OR UPDATE ON logistique."T_Inventaire" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_inventaire_valide();
+
+
+--
+-- Name: TRIGGER inventaire_validation_complete ON "T_Inventaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER inventaire_validation_complete ON logistique."T_Inventaire" IS 'Contrôle métier inventaire_validation_complete : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_LotArticle lot_article_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER lot_article_integrite BEFORE INSERT OR UPDATE ON logistique."T_LotArticle" FOR EACH ROW EXECUTE FUNCTION logistique.verifier_lot_rattachement();
+
+
+--
+-- Name: TRIGGER lot_article_integrite ON "T_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER lot_article_integrite ON logistique."T_LotArticle" IS 'Relation article/lot immuable et numéro nettoyé.';
+
+
+--
+-- Name: T_LotArticle lot_retour_identite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER lot_retour_identite BEFORE UPDATE ON logistique."T_LotArticle" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_identite_lot_retour();
+
+
+--
+-- Name: TRIGGER lot_retour_identite ON "T_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER lot_retour_identite ON logistique."T_LotArticle" IS 'Empêche une nouvelle identité de lot de réécrire l’historique des restitutions.';
+
+
+--
+-- Name: T_LotArticle lot_stock_lots; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER lot_stock_lots AFTER INSERT OR UPDATE ON logistique."T_LotArticle" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_stock_lots();
+
+
+--
+-- Name: TRIGGER lot_stock_lots ON "T_LotArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER lot_stock_lots ON logistique."T_LotArticle" IS 'Contrôle la cohérence du stock du lot après sa création ou sa modification.';
+
+
+--
+-- Name: T_MouvementLot mouvement_lot_verrou; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER mouvement_lot_verrou BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.verrouiller_ventilation_lot();
+
+
+--
+-- Name: TRIGGER mouvement_lot_verrou ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER mouvement_lot_verrou ON logistique."T_MouvementLot" IS 'Sérialise la ventilation par article et lot sans créer un mouvement supplémentaire.';
+
+
+--
+-- Name: T_Mouvement mouvement_stock_lots; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER mouvement_stock_lots AFTER INSERT OR DELETE OR UPDATE ON logistique."T_Mouvement" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_stock_lots();
+
+
+--
+-- Name: TRIGGER mouvement_stock_lots ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER mouvement_stock_lots ON logistique."T_Mouvement" IS 'Vérifie les lots après création, correction, inversion de sens ou annulation de mouvement.';
+
+
+--
+-- Name: T_Commande numero_commande_audit; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER numero_commande_audit AFTER INSERT ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_audit_numero_document();
+
+
+--
+-- Name: TRIGGER numero_commande_audit ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER numero_commande_audit ON logistique."T_Commande" IS 'Trace la première attribution d’une référence dans le journal existant.';
+
+
+--
+-- Name: T_Facture numero_facture_audit; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER numero_facture_audit AFTER INSERT ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_audit_numero_document();
+
+
+--
+-- Name: TRIGGER numero_facture_audit ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER numero_facture_audit ON logistique."T_Facture" IS 'Trace la première attribution du numéro de facture, sans secret ni copie du panier.';
+
+
+--
+-- Name: T_MouvementLot peremption_lot_sortie; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER peremption_lot_sortie BEFORE INSERT OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.controler_sortie_lot_perime();
+
+
+--
+-- Name: TRIGGER peremption_lot_sortie ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER peremption_lot_sortie ON logistique."T_MouvementLot" IS 'Applique la politique de péremption uniquement aux nouveaux prélèvements ou aux modifications de ventilation.';
+
+
+--
+-- Name: T_PieceJustificative piece_coherence; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER piece_coherence BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_PieceJustificative" FOR EACH ROW EXECUTE FUNCTION logistique.tr_piece_coherente();
+
+
+--
+-- Name: TRIGGER piece_coherence ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER piece_coherence ON logistique."T_PieceJustificative" IS 'Fichier immuable et rattachement contrôlé au document de la même entreprise.';
+
+
+--
+-- Name: T_PrecisionStock precision_stock_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER precision_stock_integrite BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_PrecisionStock" FOR EACH ROW EXECUTE FUNCTION logistique.tr_precision_stock();
+
+
+--
+-- Name: TRIGGER precision_stock_integrite ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER precision_stock_integrite ON logistique."T_PrecisionStock" IS 'Protection de la politique par unité, y compris en SQL direct ; insertion et modification sérialisées avec les validations de quantités.';
+
+
+--
+-- Name: T_Article quantite_unite_article; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER quantite_unite_article BEFORE INSERT OR UPDATE OF "QteArticle", "QteMinArticle", "ID_UniteFk" ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION logistique.tr_quantite_unite();
+
+
+--
+-- Name: TRIGGER quantite_unite_article ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER quantite_unite_article ON logistique."T_Article" IS 'Contrôle métier quantite_unite_article : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_CommandeDetail quantite_unite_ligne; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER quantite_unite_ligne BEFORE INSERT OR UPDATE ON logistique."T_CommandeDetail" FOR EACH ROW EXECUTE FUNCTION logistique.tr_quantite_unite();
+
+
+--
+-- Name: TRIGGER quantite_unite_ligne ON "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER quantite_unite_ligne ON logistique."T_CommandeDetail" IS 'Contrôle métier quantite_unite_ligne : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_MouvementLot quantite_unite_lot; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER quantite_unite_lot BEFORE INSERT OR UPDATE ON logistique."T_MouvementLot" FOR EACH ROW EXECUTE FUNCTION logistique.tr_quantite_unite();
+
+
+--
+-- Name: TRIGGER quantite_unite_lot ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER quantite_unite_lot ON logistique."T_MouvementLot" IS 'Contrôle métier quantite_unite_lot : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_Mouvement quantite_unite_mouvement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER quantite_unite_mouvement BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.tr_quantite_unite();
+
+
+--
+-- Name: TRIGGER quantite_unite_mouvement ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER quantite_unite_mouvement ON logistique."T_Mouvement" IS 'Contrôle métier quantite_unite_mouvement : précision exacte ou cohérence du comptage, sans mouvement de stock supplémentaire.';
+
+
+--
+-- Name: T_Reglements reglement_apres_avoir; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER reglement_apres_avoir BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION logistique.tr_reglement_apres_avoir();
+
+
+--
+-- Name: TRIGGER reglement_apres_avoir ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER reglement_apres_avoir ON logistique."T_Reglements" IS 'Contrôle financier des règlements après émission ou imputation d’un avoir.';
+
+
+--
+-- Name: T_Remboursement remboursement_avoir_controle; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER remboursement_avoir_controle BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Remboursement" FOR EACH ROW EXECUTE FUNCTION logistique.tr_utilisation_avoir();
+
+
+--
+-- Name: TRIGGER remboursement_avoir_controle ON "T_Remboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER remboursement_avoir_controle ON logistique."T_Remboursement" IS 'Remboursement borné au disponible de l’avoir.';
+
+
+--
+-- Name: T_RetourBon retour_bon_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER retour_bon_integrite BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_RetourBon" FOR EACH ROW EXECUTE FUNCTION logistique.controler_retour_bon();
+
+
+--
+-- Name: TRIGGER retour_bon_integrite ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER retour_bon_integrite ON logistique."T_RetourBon" IS 'Validation unique du lien après insertion des lignes et de leur ventilation, puis liaison immuable.';
+
+
+--
+-- Name: T_Article tr_00_devise_article; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER tr_00_devise_article BEFORE INSERT OR UPDATE OF "ID_DeviseFk", "PUArticle", "PVArticle" ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION logistique.tr_devise_article();
+
+
+--
+-- Name: TRIGGER tr_00_devise_article ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER tr_00_devise_article ON logistique."T_Article" IS 'Devise active et verrouillage de la dénomination monétaire du catalogue déjà utilisé.';
+
+
+--
+-- Name: T_Commande tr_00_devise_commande; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER tr_00_devise_commande BEFORE INSERT OR UPDATE OF "ID_DeviseFk", "MontantHT", "MontantTTC", "MontantRegleFacture", "MontantResteFacture" ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_devise_commande();
+
+
+--
+-- Name: TRIGGER tr_00_devise_commande ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER tr_00_devise_commande ON logistique."T_Commande" IS 'Contrôle monétaire avant les effets existants de lignes, totaux et mouvements.';
+
+
+--
+-- Name: T_Mouvement tr_00_devise_mouvement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER tr_00_devise_mouvement BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.tr_devise_mouvement();
+
+
+--
+-- Name: TRIGGER tr_00_devise_mouvement ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER tr_00_devise_mouvement ON logistique."T_Mouvement" IS 'Instantané de devise conservé ; le verrou métier existant sur les écritures directes reste actif.';
+
+
+--
+-- Name: T_Reglements tr_00_devise_reglement; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER tr_00_devise_reglement BEFORE INSERT OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION logistique.tr_devise_reglement();
+
+
+--
+-- Name: TRIGGER tr_00_devise_reglement ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER tr_00_devise_reglement ON logistique."T_Reglements" IS 'Conserve la devise de règlement sans second calcul des montants ou du stock.';
+
+
+--
 -- Name: T_CommandeDetail tr_00_guard_commandedetail; Type: TRIGGER; Schema: logistique; Owner: -
 --
 
@@ -18163,7 +31507,7 @@ CREATE TRIGGER tr_crud_article_after AFTER INSERT OR UPDATE ON logistique."T_Art
 -- Name: TRIGGER tr_crud_article_after ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TRIGGER tr_crud_article_after ON logistique."T_Article" IS 'AFTER INSERT OR UPDATE sur "logistique"."T_Article", pour chaque ligne. Appelle "logistique"."tr_crud_article_after" : Après INSERT/UPDATE d’article, historise le stock initial non nul ou le delta direct en mouvement sans commande, valorisé avec PVArticle. Refuse les deltas fractionnaires ; le drapeau transactionnel skip_article_report_mvt évite le double report depuis les lignes.';
+COMMENT ON TRIGGER tr_crud_article_after ON logistique."T_Article" IS 'Historise le stock initial et les deltas directs : entrées au prix d’achat PUArticle, sorties au prix de vente PVArticle ; aucun second mouvement pour les lignes de bon.';
 
 
 --
@@ -18307,6 +31651,62 @@ COMMENT ON TRIGGER tr_totaux_commande_update ON logistique."T_CommandeDetail" IS
 
 
 --
+-- Name: T_ValorisationOuverture valorisation_integrite; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER valorisation_integrite BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_ValorisationOuverture" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_valorisation();
+
+
+--
+-- Name: TRIGGER valorisation_integrite ON "T_ValorisationOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER valorisation_integrite ON logistique."T_ValorisationOuverture" IS 'Contrôle propriétaire, devise et chemin de mise à jour motivé.';
+
+
+--
+-- Name: T_ValorisationEvenement valorisation_journal_immutable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER valorisation_journal_immutable BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_ValorisationEvenement" FOR EACH ROW EXECUTE FUNCTION logistique.proteger_valorisation();
+
+
+--
+-- Name: TRIGGER valorisation_journal_immutable ON "T_ValorisationEvenement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER valorisation_journal_immutable ON logistique."T_ValorisationEvenement" IS 'Les preuves financières de valorisation ne sont jamais modifiées ni supprimées.';
+
+
+--
+-- Name: T_MouvementLot ventilation_stock_lots; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER ventilation_stock_lots AFTER INSERT OR DELETE OR UPDATE ON logistique."T_MouvementLot" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION logistique.controler_stock_lots();
+
+
+--
+-- Name: TRIGGER ventilation_stock_lots ON "T_MouvementLot"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER ventilation_stock_lots ON logistique."T_MouvementLot" IS 'Contrôle final des quantités ventilées dans la transaction source.';
+
+
+--
+-- Name: T_Mouvement zz_cout_source_trace; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER zz_cout_source_trace BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.tracer_source_cout();
+
+
+--
+-- Name: TRIGGER zz_cout_source_trace ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER zz_cout_source_trace ON logistique."T_Mouvement" IS 'Ajoute une preuve de source sans créer de deuxième mouvement physique.';
+
+
+--
 -- Name: T_Paiement trigger_archive_paiements; Type: TRIGGER; Schema: operations; Owner: -
 --
 
@@ -18379,6 +31779,34 @@ COMMENT ON TRIGGER trigger_prevention_delete_caisse ON operations."T_Caisse" IS 
 
 
 --
+-- Name: T_Generique devise_logistique_reference_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER devise_logistique_reference_integrite BEFORE UPDATE OF "ID_CategorieGeneriqueFk", "AbrGenerique" ON referentiel."T_Generique" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_reference_devise();
+
+
+--
+-- Name: TRIGGER devise_logistique_reference_integrite ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER devise_logistique_reference_integrite ON referentiel."T_Generique" IS 'Stabilité du code monétaire des montants historiques logistiques.';
+
+
+--
+-- Name: T_Generique precision_stock_reference_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER precision_stock_reference_integrite BEFORE DELETE OR UPDATE OF "ID_Generique", "ID_CategorieGeneriqueFk" ON referentiel."T_Generique" FOR EACH ROW EXECUTE FUNCTION logistique.tr_proteger_unite_precision_stock();
+
+
+--
+-- Name: TRIGGER precision_stock_reference_integrite ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER precision_stock_reference_integrite ON referentiel."T_Generique" IS 'Protège les unités utilisées sans placer de paramètre logistique dans la table de nomenclature.';
+
+
+--
 -- Name: T_Generique tr_guard_sens_stock; Type: TRIGGER; Schema: referentiel; Owner: -
 --
 
@@ -18393,17 +31821,101 @@ COMMENT ON TRIGGER tr_guard_sens_stock ON referentiel."T_Generique" IS 'Empêche
 
 
 --
+-- Name: T_LicenceModule licence_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER licence_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_LicenceModule" FOR EACH ROW EXECUTE FUNCTION systeme.verifier_activation_module();
+
+
+--
+-- Name: TRIGGER licence_module_integrite ON "T_LicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER licence_module_integrite ON systeme."T_LicenceModule" IS 'Rattachement licence/module immuable et versionné ; les dates de licence ne sont pas modifiées.';
+
+
+--
+-- Name: T_RoleModule role_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER role_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_RoleModule" FOR EACH ROW EXECUTE FUNCTION systeme.verifier_activation_module();
+
+
+--
+-- Name: TRIGGER role_module_integrite ON "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER role_module_integrite ON systeme."T_RoleModule" IS 'Périmètre entité/rôle/module immuable ; les restrictions ne constituent pas un rôle administrateur.';
+
+
+--
+-- Name: T_Admin_UI_Setting tr_admin_ui_setting_audit; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_admin_ui_setting_audit AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_reglage_audit();
+
+
+--
+-- Name: TRIGGER tr_admin_ui_setting_audit ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_admin_ui_setting_audit ON systeme."T_Admin_UI_Setting" IS 'Audit SQL unique des paramètres ; le backend ne produit pas un second événement.';
+
+
+--
+-- Name: T_Admin_UI_Setting tr_admin_ui_setting_proteger; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_admin_ui_setting_proteger BEFORE DELETE OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_proteger();
+
+
+--
+-- Name: TRIGGER tr_admin_ui_setting_proteger ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_admin_ui_setting_proteger ON systeme."T_Admin_UI_Setting" IS 'Protection des identités système et des paramètres non éditables avant toute mise à jour ou suppression.';
+
+
+--
 -- Name: T_Admin_UI_Setting tr_admin_ui_setting_set_updated_at; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
-CREATE TRIGGER tr_admin_ui_setting_set_updated_at BEFORE UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_set_updated_at();
+CREATE TRIGGER tr_admin_ui_setting_set_updated_at BEFORE INSERT OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_set_updated_at();
 
 
 --
 -- Name: TRIGGER tr_admin_ui_setting_set_updated_at ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TRIGGER tr_admin_ui_setting_set_updated_at ON systeme."T_Admin_UI_Setting" IS 'BEFORE UPDATE sur "systeme"."T_Admin_UI_Setting", pour chaque ligne. Appelle "systeme"."fn_admin_ui_setting_set_updated_at" : Avant UPDATE d’un paramètre d’interface, remplace UpdatedAt par CURRENT_TIMESTAMP et renvoie NEW.';
+COMMENT ON TRIGGER tr_admin_ui_setting_set_updated_at ON systeme."T_Admin_UI_Setting" IS 'Date et auteur SQL des paramètres ; les champs fournis par le client ne font pas foi.';
+
+
+--
+-- Name: T_Fk_Correspondance tr_fk_correspondance_actualiser; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_fk_correspondance_actualiser BEFORE INSERT OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.fn_fk_correspondance_actualiser();
+
+
+--
+-- Name: TRIGGER tr_fk_correspondance_actualiser ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_fk_correspondance_actualiser ON systeme."T_Fk_Correspondance" IS 'Date et auteur SQL des correspondances avant insertion ou mise à jour.';
+
+
+--
+-- Name: T_Fk_Correspondance tr_fk_correspondance_audit; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_fk_correspondance_audit AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_reglage_audit();
+
+
+--
+-- Name: TRIGGER tr_fk_correspondance_audit ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_fk_correspondance_audit ON systeme."T_Fk_Correspondance" IS 'Audit SQL unique des correspondances, compatible avec les remplacements transactionnels du réglage historique.';
 
 
 --
@@ -19343,6 +32855,785 @@ COMMENT ON CONSTRAINT "Fk_Reg_Mode" ON logistique."T_Reglements" IS 'Clé étran
 
 
 --
+-- Name: T_Article T_Article_ID_UnitePoidsFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Article"
+    ADD CONSTRAINT "T_Article_ID_UnitePoidsFk_fkey" FOREIGN KEY ("ID_UnitePoidsFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_AvoirAffectation T_AvoirAffectation_ID_AvoirFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirAffectation"
+    ADD CONSTRAINT "T_AvoirAffectation_ID_AvoirFk_fkey" FOREIGN KEY ("ID_AvoirFk") REFERENCES logistique."T_Avoir"("ID_Avoir") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_AvoirAffectation T_AvoirAffectation_ID_CommandeCibleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirAffectation"
+    ADD CONSTRAINT "T_AvoirAffectation_ID_CommandeCibleFk_fkey" FOREIGN KEY ("ID_CommandeCibleFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_AvoirAffectation T_AvoirAffectation_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirAffectation"
+    ADD CONSTRAINT "T_AvoirAffectation_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_AvoirLigne T_AvoirLigne_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirLigne"
+    ADD CONSTRAINT "T_AvoirLigne_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_AvoirLigne T_AvoirLigne_ID_AvoirFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_AvoirLigne"
+    ADD CONSTRAINT "T_AvoirLigne_ID_AvoirFk_fkey" FOREIGN KEY ("ID_AvoirFk") REFERENCES logistique."T_Avoir"("ID_Avoir") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Avoir T_Avoir_ID_CommandeFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_ID_CommandeFk_fkey" FOREIGN KEY ("ID_CommandeFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Avoir T_Avoir_ID_DeviseFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_ID_DeviseFk_fkey" FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Avoir T_Avoir_ID_FactureFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_ID_FactureFk_fkey" FOREIGN KEY ("ID_FactureFk") REFERENCES logistique."T_Facture"("ID_Facture") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Avoir T_Avoir_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Avoir T_Avoir_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Avoir"
+    ADD CONSTRAINT "T_Avoir_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_CategorieDossierSuivi T_CategorieDossierSuivi_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_CategorieDossierSuivi"
+    ADD CONSTRAINT "T_CategorieDossierSuivi_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_CategorieDossierSuivi T_CategorieDossierSuivi_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_CategorieDossierSuivi"
+    ADD CONSTRAINT "T_CategorieDossierSuivi_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Client T_Client_CreeParUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_CreeParUserFk_fkey" FOREIGN KEY ("CreeParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_CreeParUserFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_CreeParUserFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_ID_TypeClientFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_ID_TypeClientFk_fkey" FOREIGN KEY ("ID_TypeClientFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_ID_TypeClientFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_ID_TypeClientFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_IdEntiteFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_IdEntiteFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_IdEntiteRepresenteeFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_IdEntiteRepresenteeFk_fkey" FOREIGN KEY ("IdEntiteRepresenteeFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_IdEntiteRepresenteeFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_IdEntiteRepresenteeFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_IdProfessionnelFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_IdProfessionnelFk_fkey" FOREIGN KEY ("IdProfessionnelFk") REFERENCES professionnel."T_Professionnel"("IdProfessionnel") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_IdProfessionnelFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_IdProfessionnelFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_IdUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_IdUserFk_fkey" FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_IdUserFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_IdUserFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Client T_Client_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Client"
+    ADD CONSTRAINT "T_Client_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Client_ModifieParUserFk_fkey" ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Client_ModifieParUserFk_fkey" ON logistique."T_Client" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Commande T_Commande_ID_DestinationFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Commande"
+    ADD CONSTRAINT "T_Commande_ID_DestinationFk_fkey" FOREIGN KEY ("ID_DestinationFk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Commande_ID_DestinationFk_fkey" ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Commande_ID_DestinationFk_fkey" ON logistique."T_Commande" IS 'Référence facultative à un lieu existant de niveau 5, supprimable seulement lorsqu’aucun bon ne le référence.';
+
+
+--
+-- Name: T_DocumentIdentite T_DocumentIdentite_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DocumentIdentite"
+    ADD CONSTRAINT "T_DocumentIdentite_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE CASCADE;
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_ID_CommandeFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_ID_CommandeFk_fkey" FOREIGN KEY ("ID_CommandeFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE CASCADE;
+
+
+--
+-- Name: T_DossierSuiviMembre T_DossierSuiviMembre_ID_DossierSuiviFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuiviMembre"
+    ADD CONSTRAINT "T_DossierSuiviMembre_ID_DossierSuiviFk_fkey" FOREIGN KEY ("ID_DossierSuiviFk") REFERENCES logistique."T_DossierSuivi"("ID_DossierSuivi") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_DossierSuivi T_DossierSuivi_ID_CategorieDossierSuiviFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuivi"
+    ADD CONSTRAINT "T_DossierSuivi_ID_CategorieDossierSuiviFk_fkey" FOREIGN KEY ("ID_CategorieDossierSuiviFk") REFERENCES logistique."T_CategorieDossierSuivi"("ID_CategorieDossierSuivi") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_DossierSuivi T_DossierSuivi_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuivi"
+    ADD CONSTRAINT "T_DossierSuivi_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_DossierSuivi T_DossierSuivi_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_DossierSuivi"
+    ADD CONSTRAINT "T_DossierSuivi_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_FactureLigne T_FactureLigne_ID_FactureFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_FactureLigne"
+    ADD CONSTRAINT "T_FactureLigne_ID_FactureFk_fkey" FOREIGN KEY ("ID_FactureFk") REFERENCES logistique."T_Facture"("ID_Facture") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_FactureLigne_ID_FactureFk_fkey" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_ID_FactureFk_fkey" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_CommandeFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_CommandeFk_fkey" FOREIGN KEY ("ID_CommandeFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_CommandeFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_CommandeFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_ConditionPaiementFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_ConditionPaiementFk_fkey" FOREIGN KEY ("ID_ConditionPaiementFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_ConditionPaiementFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_ConditionPaiementFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_DeviseFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_DeviseFk_fkey" FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_DeviseFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_DeviseFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_ModePaiementFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_ModePaiementFk_fkey" FOREIGN KEY ("ID_ModePaiementFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_ModePaiementFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_ModePaiementFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_ID_UserFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_ID_UserFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Facture T_Facture_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Facture"
+    ADD CONSTRAINT "T_Facture_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Facture_IdEntiteFk_fkey" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_IdEntiteFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_InventaireLigne T_InventaireLigne_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_InventaireLigne"
+    ADD CONSTRAINT "T_InventaireLigne_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_InventaireLigne T_InventaireLigne_ID_CommandeAnnulationFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_InventaireLigne"
+    ADD CONSTRAINT "T_InventaireLigne_ID_CommandeAnnulationFk_fkey" FOREIGN KEY ("ID_CommandeAnnulationFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_InventaireLigne T_InventaireLigne_ID_CommandeCorrectionFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_InventaireLigne"
+    ADD CONSTRAINT "T_InventaireLigne_ID_CommandeCorrectionFk_fkey" FOREIGN KEY ("ID_CommandeCorrectionFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_InventaireLigne T_InventaireLigne_ID_InventaireFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_InventaireLigne"
+    ADD CONSTRAINT "T_InventaireLigne_ID_InventaireFk_fkey" FOREIGN KEY ("ID_InventaireFk") REFERENCES logistique."T_Inventaire"("ID_Inventaire") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Inventaire T_Inventaire_ID_AnnulateurFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Inventaire"
+    ADD CONSTRAINT "T_Inventaire_ID_AnnulateurFk_fkey" FOREIGN KEY ("ID_AnnulateurFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Inventaire T_Inventaire_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Inventaire"
+    ADD CONSTRAINT "T_Inventaire_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Inventaire T_Inventaire_ID_ValidateurFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Inventaire"
+    ADD CONSTRAINT "T_Inventaire_ID_ValidateurFk_fkey" FOREIGN KEY ("ID_ValidateurFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Inventaire T_Inventaire_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Inventaire"
+    ADD CONSTRAINT "T_Inventaire_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_LotArticle T_LotArticle_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_LotArticle"
+    ADD CONSTRAINT "T_LotArticle_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_MouvementLot T_MouvementLot_ID_DerogationUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_MouvementLot"
+    ADD CONSTRAINT "T_MouvementLot_ID_DerogationUserFk_fkey" FOREIGN KEY ("ID_DerogationUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_MouvementLot T_MouvementLot_ID_LotArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_MouvementLot"
+    ADD CONSTRAINT "T_MouvementLot_ID_LotArticleFk_fkey" FOREIGN KEY ("ID_LotArticleFk") REFERENCES logistique."T_LotArticle"("ID_LotArticle") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_MouvementLot T_MouvementLot_ID_MvtFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_MouvementLot"
+    ADD CONSTRAINT "T_MouvementLot_ID_MvtFk_fkey" FOREIGN KEY ("ID_MvtFk") REFERENCES logistique."T_Mouvement"("ID_Mvt") ON DELETE CASCADE;
+
+
+--
+-- Name: T_PieceJustificative T_PieceJustificative_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PieceJustificative"
+    ADD CONSTRAINT "T_PieceJustificative_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_PieceJustificative T_PieceJustificative_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PieceJustificative"
+    ADD CONSTRAINT "T_PieceJustificative_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Remboursement T_Remboursement_ID_AvoirFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Remboursement"
+    ADD CONSTRAINT "T_Remboursement_ID_AvoirFk_fkey" FOREIGN KEY ("ID_AvoirFk") REFERENCES logistique."T_Avoir"("ID_Avoir") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Remboursement T_Remboursement_ID_ModePaiementFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Remboursement"
+    ADD CONSTRAINT "T_Remboursement_ID_ModePaiementFk_fkey" FOREIGN KEY ("ID_ModePaiementFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Remboursement T_Remboursement_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Remboursement"
+    ADD CONSTRAINT "T_Remboursement_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationEvenement T_ValorisationEvenement_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationEvenement"
+    ADD CONSTRAINT "T_ValorisationEvenement_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationEvenement T_ValorisationEvenement_ID_UserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationEvenement"
+    ADD CONSTRAINT "T_ValorisationEvenement_ID_UserFk_fkey" FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationEvenement T_ValorisationEvenement_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationEvenement"
+    ADD CONSTRAINT "T_ValorisationEvenement_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationOuverture T_ValorisationOuverture_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationOuverture"
+    ADD CONSTRAINT "T_ValorisationOuverture_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationOuverture T_ValorisationOuverture_ID_DeviseFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationOuverture"
+    ADD CONSTRAINT "T_ValorisationOuverture_ID_DeviseFk_fkey" FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ValorisationOuverture T_ValorisationOuverture_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_ValorisationOuverture"
+    ADD CONSTRAINT "T_ValorisationOuverture_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Article article_devise_fk; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Article"
+    ADD CONSTRAINT article_devise_fk FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT article_devise_fk ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT article_devise_fk ON logistique."T_Article" IS 'Conserve la référence monétaire historique du catalogue ; suppression de la devise utilisée refusée.';
+
+
+--
+-- Name: T_Commande commande_devise_fk; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Commande"
+    ADD CONSTRAINT commande_devise_fk FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT commande_devise_fk ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT commande_devise_fk ON logistique."T_Commande" IS 'Conserve la référence monétaire historique du bon et de sa facture.';
+
+
+--
+-- Name: T_Article fk_article_entite; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Article"
+    ADD CONSTRAINT fk_article_entite FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_article_entite ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_article_entite ON logistique."T_Article" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Commande fk_commande_entite; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Commande"
+    ADD CONSTRAINT fk_commande_entite FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_commande_entite ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_commande_entite ON logistique."T_Commande" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_Commande fk_commande_tiers; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Commande"
+    ADD CONSTRAINT fk_commande_tiers FOREIGN KEY ("ID_TiersFk") REFERENCES logistique."T_Client"("ID_Client") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_commande_tiers ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_commande_tiers ON logistique."T_Commande" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_FactureLigne fk_facture_ligne_origine; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_FactureLigne"
+    ADD CONSTRAINT fk_facture_ligne_origine FOREIGN KEY ("ID_CmdFk", "ID_ArticleFk") REFERENCES logistique."T_CommandeDetail"("ID_CmdFk", "ID_ArticleFk") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_facture_ligne_origine ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_facture_ligne_origine ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+
+--
+-- Name: T_Reglements fk_reglement_tiers; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Reglements"
+    ADD CONSTRAINT fk_reglement_tiers FOREIGN KEY ("ID_TiersFk") REFERENCES logistique."T_Client"("ID_Client") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_reglement_tiers ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_reglement_tiers ON logistique."T_Reglements" IS 'Garantie du rattachement durable du tiers, de son identité ou de son entreprise propriétaire.';
+
+
+--
+-- Name: T_RetourBon fk_retour_bon_auteur; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT fk_retour_bon_auteur FOREIGN KEY ("ID_UserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_retour_bon_auteur ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_retour_bon_auteur ON logistique."T_RetourBon" IS 'Conserve l’identité de l’auteur du retour.';
+
+
+--
+-- Name: T_RetourBon fk_retour_bon_entite; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT fk_retour_bon_entite FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_retour_bon_entite ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_retour_bon_entite ON logistique."T_RetourBon" IS 'Conserve le rattachement organisationnel enregistré.';
+
+
+--
+-- Name: T_RetourBon fk_retour_bon_entree; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT fk_retour_bon_entree FOREIGN KEY ("ID_CommandeRetourFk") REFERENCES logistique."T_Commande"("ID_Commande") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_retour_bon_entree ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_retour_bon_entree ON logistique."T_RetourBon" IS 'Conserve le bon d’entrée compensateur et son historique signé.';
+
+
+--
+-- Name: T_RetourBon fk_retour_bon_origine; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_RetourBon"
+    ADD CONSTRAINT fk_retour_bon_origine FOREIGN KEY ("ID_CommandeOrigineFk") REFERENCES logistique."T_Commande"("ID_Commande") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_retour_bon_origine ON "T_RetourBon"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_retour_bon_origine ON logistique."T_RetourBon" IS 'Conserve la sortie d’origine ; sa suppression et la modification de sa clé sont refusées.';
+
+
+--
+-- Name: T_Mouvement mouvement_devise_fk; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Mouvement"
+    ADD CONSTRAINT mouvement_devise_fk FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT mouvement_devise_fk ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT mouvement_devise_fk ON logistique."T_Mouvement" IS 'Conserve la référence monétaire du mouvement sans dépendre de la devise actuelle du catalogue.';
+
+
+--
+-- Name: T_PrecisionStock precision_stock_unite_fk; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_PrecisionStock"
+    ADD CONSTRAINT precision_stock_unite_fk FOREIGN KEY ("ID_UniteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT precision_stock_unite_fk ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT precision_stock_unite_fk ON logistique."T_PrecisionStock" IS 'Référence réelle à la même nomenclature d’unités que les articles ; suppression et changement d’identité refusés.';
+
+
+--
+-- Name: T_Reglements reglement_devise_fk; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Reglements"
+    ADD CONSTRAINT reglement_devise_fk FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT reglement_devise_fk ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT reglement_devise_fk ON logistique."T_Reglements" IS 'Conserve la référence monétaire du règlement après son enregistrement.';
+
+
+--
 -- Name: T_Caisse Fk_IdDevise; Type: FK CONSTRAINT; Schema: operations; Owner: -
 --
 
@@ -19943,7 +34234,71 @@ COMMENT ON CONSTRAINT "Fk_TypeEntite" ON systeme."T_Entite" IS 'Clé étrangère
 
 
 --
+-- Name: T_LicenceModule T_LicenceModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_CodeModule_fkey" FOREIGN KEY ("CodeModule") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_LicenceModule T_LicenceModule_IdLicenceFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_IdLicenceFk_fkey" FOREIGN KEY ("IdLicenceFk") REFERENCES systeme."T_Licence"("IdLicence") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_LicenceModule T_LicenceModule_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;
+
+
+--
+-- Name: T_ModuleApplication T_ModuleApplication_CodeIncluant_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT "T_ModuleApplication_CodeIncluant_fkey" FOREIGN KEY ("CodeIncluant") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_RoleModule T_RoleModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_CodeModule_fkey" FOREIGN KEY ("CodeModule") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_RoleModule T_RoleModule_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_RoleModule T_RoleModule_IdRoleFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdRoleFk_fkey" FOREIGN KEY ("IdRoleFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_RoleModule T_RoleModule_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QcTvq6nIiuAKibRtvlSjg0Q3e2roDAToefnWTAAe1cQWx8wAongWG0uOxg1HgUq
+\unrestrict OqGfx9U036Z5k5uMLRMVr2XfUoX3ECNJtVm53eek7rzIisPl3SWmCOIXItXEp6v

@@ -1,20 +1,20 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les schémas métier sont alignés sur la base locale vérifiée le 24 octobre 2026. La version courante inclut la migration 20261024_04 : 31 tables métier, 48 vues, contrôles de stock et de licences, vues géographiques corrigées, socle analytics et commentaires PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 26 octobre 2026, jusqu’aux contrôles `20261026_11` et à leur complément documentaire `20261026_12`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
 | Fichier | Usage |
 |---|---|
 | SauverNdeko_Metier_Structure.sql | Structure des huit schémas métier, sans données. Pour une base vide ; les tables natives public sont créées séparément par les migrations Django. |
-| SauverNdeko_Structure.sql | Référence complète de structure : 41 tables dont dix natives Django. Sans données ni historique django_migrations ; ce fichier n’est pas un installateur applicatif complet. |
+| SauverNdeko_Structure.sql | Référence complète de structure, y compris les tables natives Django. Sans données ni historique django_migrations ; ce fichier n’est pas un installateur applicatif complet. |
 | Dossiers 0 à 7, fichiers Tables et View/views | Extraits canoniques par domaine : tables, séquences, contraintes, index, fonctions, triggers et vues commentées. Le domaine operations ne possède actuellement aucune vue et conserve uniquement son fichier Tables. Les dépendances entre domaines exigent le fichier global pour une installation complète. |
 | migrations/20261024_04_coherence_schemas_metier.sql | Évolution contrôlée d’une base existante au socle précédent ; déjà appliquée à la base locale. Aucun DML sur les données métier existantes. |
 | migrations/rollback/20261024_04_coherence_schemas_metier.sql | Retour arrière logique testé. Refuse de supprimer analytics si des événements existent et conserve les validations de clés étrangères. Revenir aussi au backend compatible avant de l’utiliser. |
 | controles/Verifier_Commentaires_PostgreSQL.sql | Contrôle des commentaires en lecture seule. |
 | tests/test_metier_postgresql.py et tests/test_api_postgresql.py | Recettes actuelles vérifiées, exclusivement sur une base dédiée contenant la structure et des données fictives. |
 
-Les exports canoniques ne remplacent pas une sauvegarde de données. Les restaurations de structure complète et métier ont été vérifiées dans deux bases vides, ensuite supprimées. Le fichier métier restaure 31 tables et 48 vues ; le fichier complet restaure 41 tables et 48 vues.
+Les exports canoniques ne remplacent pas une sauvegarde de données. Les premières restaurations vérifiées du 24 octobre portaient sur 31 tables métier, 41 tables au total et 48 vues ; ces nombres historiques précèdent les évolutions documentées ci-dessous.
 
 ## Base existante
 
@@ -169,3 +169,15 @@ Recettes privées : identité documentaire37 (révisions, rejeux, concurrence, S
 La migration [20261026_10_precision_stock_table.sql](migrations/20261026_10_precision_stock_table.sql), installée dans SauverNdeko après 01–09, crée `logistique.T_PrecisionStock` avec exactement quatre colonnes : identité technique, `ID_UniteFk`, `DecimalesStock` et `ModifieLe`. La FK pointe vers la même catégorie Unités de T_Generique que les articles. Les lecteurs SQL et backend utilisent la vue commune `V_PrecisionStock`. Les nouvelles unités sans politique conservent zéro décimale implicite.
 
 La reprise conserve les réglages et dates explicites et initialise les huit unités actives à zéro avec une date réelle lorsque le réglage est absent, avant de retirer les deux anciennes colonnes de T_Generique avec RESTRICT. Aucun stock, prix ou document n’est modifié. Les migrations historiques ne sont pas réécrites. La reprise réelle et les quatre colonnes/huit politiques sont vérifiées ; les empreintes des 63 tables source sont identiques hors les deux anciennes colonnes retirées de T_Generique. Sauvegarde vérifiée : `.runtime/backups/avant-precision-stock-20261026-171642`. Les 314 contrôles privés et quatre GET réels en lecture seule sont réussis ; le backend a été relancé sur 5000 et le frontend conservé sur 5174. Voir [la stratégie de reprise et les preuves de recette](documentation/Precision_Stock_20261026.md). Ne pas rejouer cette migration sur la base locale.
+
+## Administration et réglages partagés — installés le 26 octobre 2026
+
+La migration [20261026_11_controles_administration.sql](migrations/20261026_11_controles_administration.sql) est installée dans SauverNdeko. Elle renforce les deux tables existantes de paramètres et correspondances FK : unicité même lorsque le contexte global est NULL, cohérence des portées, protection des paramètres, auteur/date imposés et audit SQL unique par écriture. Un paramètre système éditable conserve la modification de sa valeur. Aucune colonne supplémentaire ni copie des licences, modules ou droits n’est nécessaire : ces informations majeures sont déjà persistées dans `systeme`.
+
+Le complément [20261026_12_commentaires_administration.sql](migrations/20261026_12_commentaires_administration.sql) documente les index implicites recréés et actualise les commentaires des vues d’audit. Il est installé après 11 et ne modifie aucune donnée ni règle.
+
+La sauvegarde `.runtime/backups/avant-controles-admin-20261026-195858` a été vérifiée par empreinte, catalogue et décodage intégral (dump SHA-256 `358305f36d4cfd07643a8e3666cdf384424e28860066bffb66e5f0862b275f28`). Les empreintes des 64 tables sont identiques avant et après la migration ; aucun compte, droit, réglage, stock ou document client n’a été modifié pour les essais. Ne pas rejouer cette migration sur l’instance locale.
+
+Les sources canoniques ont été régénérées depuis cette structure. Elles ont réellement été restaurées dans deux bases isolées : 64 tables/79 vues pour la structure globale ; 54 tables/79 vues pour la structure métier. Cette dernière nécessite l’extension `pg_trgm` dans `public` avant restauration. Ces restaurations de structure ne constituent pas un essai de restauration de la sauvegarde complète avec données et médias.
+
+Recette : 14 contrôles SQL privés, parcours réel API → auteur transactionnel → audit unique, tests de contrat API et onze registres/exports Excel contrôlés en lecture seule sur SauverNdeko. Les recettes ne visent que des bases explicitement nommées `sauverndeko_test_*`. Le diagnostic `verifier_backend` inclut aussi la synthèse et les registres d’administration. Le frontend `/admin` réutilise les tableaux, filtres, fenêtres et thèmes de Logistique ; la compatibilité du module territorial reste conservée.

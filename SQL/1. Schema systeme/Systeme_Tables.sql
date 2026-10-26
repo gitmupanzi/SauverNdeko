@@ -1,8 +1,14 @@
--- Extrait canonique du catalogue installé le 24/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 26/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
 CREATE SCHEMA IF NOT EXISTS "systeme";
+--
+-- Name: SCHEMA systeme; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA systeme IS 'Comptes, entités, localisations, licences, connexions, audit et paramètres partagés de l’administration.';
+
 --
 -- Name: audit_log_function(); Type: FUNCTION; Schema: systeme; Owner: -
 --
@@ -20,13 +26,131 @@ BEGIN
  RETURN NULL;
 END;$$;
 
-
 --
 -- Name: FUNCTION audit_log_function(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.audit_log_function() IS 'Audit AFTER INSERT/UPDATE/DELETE transactionnel : lit le contexte par JSON sans supposer une colonne IdEntiteFk, ne recopie ni mots de passe ni jetons et accepte une entité absente.';
 
+--
+-- Name: fn_admin_actor_user_id(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_actor_user_id() RETURNS integer
+    LANGUAGE plpgsql STABLE
+    AS $_$
+DECLARE v_raw text:=nullif(current_setting('systeme.actor_user_id',true),''); v_id integer;
+BEGIN
+ IF v_raw IS NULL OR v_raw !~ '^[1-9][0-9]{0,9}$' THEN RETURN NULL; END IF;
+ BEGIN v_id:=v_raw::integer;
+ EXCEPTION WHEN numeric_value_out_of_range THEN RETURN NULL; END;
+ IF EXISTS (SELECT 1 FROM systeme."T_Utilisateurs"
+            WHERE "IdUser"=v_id AND "ValideUser" IS TRUE) THEN RETURN v_id; END IF;
+ RETURN NULL;
+END $_$;
+
+--
+-- Name: FUNCTION fn_admin_actor_user_id(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_actor_user_id() IS 'Auteur actif existant de la GUC transactionnelle systeme.actor_user_id ; NULL si absence ou valeur invalide. Métadonnée de traçabilité, jamais autorisation SQL.';
+
+--
+-- Name: fn_admin_cle_sensible(text); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_cle_sensible(p_cle text) RETURNS boolean
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $_$
+ SELECT CASE WHEN p_cle IS NULL THEN false ELSE
+  regexp_replace(lower(p_cle),'[^a-z0-9]','','g') ~
+  '(password|motdepasse|privatekey|apikey|accesstoken|refreshtoken|idtoken|secret$)'
+  OR regexp_replace(lower(p_cle),'[^a-z0-9]','','g') IN
+   ('token','authorization','credential','credentials') END;
+$_$;
+
+--
+-- Name: FUNCTION fn_admin_cle_sensible(p_cle text); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_cle_sensible(p_cle text) IS 'Détecte les noms de mots de passe, jetons et secrets sans dépendre de la casse ni des séparateurs.';
+
+--
+-- Name: fn_admin_reglage_audit(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_reglage_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE v_before jsonb; v_after jsonb; v_actor integer:=systeme.fn_admin_actor_user_id();
+        v_identity jsonb:=jsonb_build_object('IdUser',NULL,'NomComplet',NULL);
+        v_scope text; v_scope_value text; v_entity integer;
+BEGIN
+ IF v_actor IS NOT NULL THEN
+  SELECT jsonb_build_object('IdUser',"IdUser",'NomComplet',
+         concat_ws(' ',"PrenomUser","NomUser")) INTO v_identity
+   FROM systeme."T_Utilisateurs" WHERE "IdUser"=v_actor;
+ END IF;
+ IF TG_OP IN ('DELETE','UPDATE') THEN
+  v_before:=systeme.fn_audit_sans_secrets(to_jsonb(OLD));
+  IF v_identity IS NOT NULL THEN v_before:=v_before||jsonb_build_object('_actor',v_identity); END IF;
+ END IF;
+ IF TG_OP IN ('INSERT','UPDATE') THEN
+  v_after:=systeme.fn_audit_sans_secrets(to_jsonb(NEW));
+  IF v_identity IS NOT NULL THEN v_after:=v_after||jsonb_build_object('_actor',v_identity); END IF;
+ END IF;
+ v_scope:=coalesce(v_after->>'SettingScope',v_before->>'SettingScope');
+ v_scope_value:=coalesce(v_after->>'ScopeValue',v_before->>'ScopeValue');
+ IF v_scope IN ('entity','entite') AND v_scope_value ~ '^[1-9][0-9]{0,9}$' THEN
+  BEGIN v_entity:=v_scope_value::integer;
+  EXCEPTION WHEN numeric_value_out_of_range THEN v_entity:=NULL; END;
+  IF NOT EXISTS(SELECT 1 FROM systeme."T_Entite" WHERE "IdEntite"=v_entity) THEN v_entity:=NULL; END IF;
+ END IF;
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk")
+ VALUES(TG_TABLE_NAME,TG_OP,v_before,v_after,CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa',v_entity);
+ RETURN NULL;
+END $_$;
+
+--
+-- Name: FUNCTION fn_admin_reglage_audit(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_reglage_audit() IS 'Un événement SQL par écriture de réglage ou correspondance, avec images nettoyées et auteur de l’opération, y compris suppression.';
+
+--
+-- Name: fn_admin_ui_setting_proteger(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_admin_ui_setting_proteger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF OLD."IsEditable" IS NOT TRUE OR OLD."IsSystem" IS TRUE THEN
+   RAISE EXCEPTION 'Ce paramètre ne peut pas être supprimé' USING ERRCODE='23514';
+  END IF;
+  RETURN OLD;
+ END IF;
+ IF OLD."IsEditable" IS NOT TRUE AND
+  (to_jsonb(NEW)-ARRAY['UpdatedAt','UpdatedByUserFk']) IS DISTINCT FROM
+  (to_jsonb(OLD)-ARRAY['UpdatedAt','UpdatedByUserFk']) THEN
+  RAISE EXCEPTION 'Ce paramètre est protégé contre les modifications' USING ERRCODE='23514';
+ END IF;
+ IF OLD."IsSystem" IS TRUE AND
+  ROW(NEW."IdAdminUISetting",NEW."SettingKey",NEW."SettingType",NEW."SettingScope",
+      NEW."ScopeValue",NEW."IsEditable",NEW."IsSystem",NEW."CreatedAt") IS DISTINCT FROM
+  ROW(OLD."IdAdminUISetting",OLD."SettingKey",OLD."SettingType",OLD."SettingScope",
+      OLD."ScopeValue",OLD."IsEditable",OLD."IsSystem",OLD."CreatedAt") THEN
+  RAISE EXCEPTION 'Identité et protections du paramètre système immuables' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION fn_admin_ui_setting_proteger(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_admin_ui_setting_proteger() IS 'Refuse les modifications d’un paramètre non éditable et la suppression/altération d’identité d’un paramètre système ; sa valeur reste modifiable si IsEditable=true.';
 
 --
 -- Name: fn_admin_ui_setting_set_updated_at(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -36,36 +160,137 @@ CREATE FUNCTION systeme.fn_admin_ui_setting_set_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    NEW."UpdatedAt" = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$;
-
+ NEW."UpdatedAt":=CURRENT_TIMESTAMP;
+ NEW."UpdatedByUserFk":=systeme.fn_admin_actor_user_id();
+ IF TG_OP='INSERT' THEN NEW."CreatedAt":=CURRENT_TIMESTAMP;
+ ELSE NEW."CreatedAt":=OLD."CreatedAt"; END IF;
+ RETURN NEW;
+END $$;
 
 --
 -- Name: FUNCTION fn_admin_ui_setting_set_updated_at(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Avant UPDATE d’un paramètre d’interface, remplace UpdatedAt par CURRENT_TIMESTAMP et renvoie NEW.';
-
+COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Horodate et attribue les paramètres à l’auteur transactionnel validé ; conserve CreatedAt après création.';
 
 --
 -- Name: fn_audit_sans_secrets(jsonb); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
 CREATE FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) RETURNS jsonb
-    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
     AS $$
- SELECT p_data - ARRAY['MotdepasseUser','password','Password','MotDePasse','accessToken','refreshToken'];
-$$;
-
+DECLARE v_type text; v_result jsonb; v_key text; v_value jsonb;
+        v_setting_secret boolean:=false; v_decoded jsonb; v_string text;
+BEGIN
+ IF p_data IS NULL THEN RETURN NULL; END IF;
+ v_type:=jsonb_typeof(p_data);
+ IF v_type='object' THEN
+  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value #>> '{}')),false)
+   INTO v_setting_secret FROM jsonb_each(p_data)
+   WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
+  v_result:='{}'::jsonb;
+  FOR v_key,v_value IN SELECT key,value FROM jsonb_each(p_data) LOOP
+   IF systeme.fn_admin_cle_sensible(v_key) THEN CONTINUE; END IF;
+   IF v_setting_secret AND regexp_replace(lower(v_key),'[^a-z0-9]','','g')
+      IN ('settingvalue','settingvaluejson') THEN
+    v_result:=v_result||jsonb_build_object(v_key,'[Masqué]');
+   ELSE
+    v_result:=v_result||jsonb_build_object(v_key,systeme.fn_audit_sans_secrets(v_value));
+   END IF;
+  END LOOP;
+  RETURN v_result;
+ ELSIF v_type='array' THEN
+  SELECT coalesce(jsonb_agg(systeme.fn_audit_sans_secrets(value) ORDER BY ord),'[]'::jsonb)
+   INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);
+  RETURN v_result;
+ ELSIF v_type='string' THEN
+  -- Les anciennes images JSON parfois doublement encodées restent nettoyables.
+  v_string:=btrim(p_data #>> '{}');
+  IF left(v_string,1) IN ('{','[') THEN
+   BEGIN v_decoded:=v_string::jsonb;
+   EXCEPTION WHEN invalid_text_representation THEN RETURN p_data; END;
+   RETURN systeme.fn_audit_sans_secrets(v_decoded);
+  END IF;
+ END IF;
+ RETURN p_data;
+END $$;
 
 --
 -- Name: FUNCTION fn_audit_sans_secrets(p_data jsonb); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Retire les champs de mot de passe et jetons d’une image de ligne JSON d’audit ; conserve NULL et les autres données de traçabilité.';
+COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement objets, listes et images JSON encodées ; retire les clés secrètes et masque les valeurs des SettingKey sensibles sans réécrire les journaux historiques.';
 
+--
+-- Name: fn_fk_correspondance_actualiser(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_fk_correspondance_actualiser() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ -- Le type existant reste timestamp sans fuseau ; heure civile métier de Kinshasa.
+ NEW."UpdatedAt":=CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa';
+ NEW."UpdatedByUserFk":=systeme.fn_admin_actor_user_id();
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION fn_fk_correspondance_actualiser(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_fk_correspondance_actualiser() IS 'Actualise la date civile de Kinshasa et l’auteur transactionnel de chaque correspondance écrite.';
+
+--
+-- Name: fn_identifiants_legaux_valides(jsonb); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_identifiants_legaux_valides(p_value jsonb) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE item jsonb; labels text[]:='{}'; label text; value text;
+BEGIN
+ IF p_value IS NULL OR jsonb_typeof(p_value)<>'array' THEN RETURN false; END IF;
+ IF jsonb_array_length(p_value)>10 THEN RETURN false; END IF;
+ FOR item IN SELECT jsonb_array_elements(p_value) LOOP
+  IF jsonb_typeof(item)<>'object' OR (SELECT count(*) FROM jsonb_object_keys(item))<>2
+     OR NOT item ?& ARRAY['libelle','valeur'] THEN RETURN false; END IF;
+  IF jsonb_typeof(item->'libelle')<>'string' OR jsonb_typeof(item->'valeur')<>'string' THEN RETURN false; END IF;
+  label:=item->>'libelle'; value:=item->>'valeur';
+  IF char_length(btrim(label)) NOT BETWEEN 1 AND 60 OR char_length(btrim(value)) NOT BETWEEN 1 AND 180
+     OR label ~ '[[:cntrl:]]' OR value ~ '[[:cntrl:]]' THEN RETURN false; END IF;
+  IF lower(btrim(label))=ANY(labels) THEN RETURN false; END IF;
+  labels:=array_append(labels,lower(btrim(label)));
+ END LOOP;
+ RETURN true;
+END $$;
+
+--
+-- Name: FUNCTION fn_identifiants_legaux_valides(p_value jsonb); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_identifiants_legaux_valides(p_value jsonb) IS 'Contrôle la structure, les longueurs, les libellés uniques et les caractères de contrôle des identifiants déclaratifs, y compris en SQL direct.';
+
+--
+-- Name: fn_identite_documentaire(integer); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_identite_documentaire(p_entite integer) RETURNS jsonb
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT jsonb_build_object('IdEntite',"IdEntite",'NomEntite',"NomEntite",'AdresseEntite',"AdresseEntite",
+ 'EmailEntite',"EmailEntite",'PhoneEntite',"PhoneEntite",'IdentifiantsLegauxEntite',"IdentifiantsLegauxEntite",
+ 'MentionDocumentaireEntite',"MentionDocumentaireEntite") FROM systeme."T_Entite" WHERE "IdEntite"=p_entite
+$$;
+
+--
+-- Name: FUNCTION fn_identite_documentaire(p_entite integer); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Source canonique de l’identité documentaire actuelle d’une entreprise. Ne modifie jamais les identités déjà émises.';
 
 --
 -- Name: format_phone_number(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -80,13 +305,11 @@ BEGIN
 END;
 $$;
 
-
 --
 -- Name: FUNCTION format_phone_number(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.format_phone_number() IS 'Avant INSERT/UPDATE d’un utilisateur, retire de PhoneUser tous les caractères autres que les chiffres. Ne normalise pas le préfixe international ni la validité téléphonique.';
-
 
 --
 -- Name: notify_licence_expiry(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -111,13 +334,11 @@ BEGIN
  RETURN NEW;
 END;$$;
 
-
 --
 -- Name: FUNCTION notify_licence_expiry(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.notify_licence_expiry() IS 'À l’écriture d’une licence valide arrivant à J+7 calendaires, notifie un gestionnaire actif de la même entité. Une modification sans changement de date ni activation ne répète pas la notification. Ce trigger ne constitue pas une tâche quotidienne planifiée.';
-
 
 --
 -- Name: prevent_multiple_active_licenses(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -139,13 +360,11 @@ BEGIN
  RETURN NEW;
 END;$$;
 
-
 --
 -- Name: FUNCTION prevent_multiple_active_licenses(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.prevent_multiple_active_licenses() IS 'Verrouille les entités dans un ordre stable et refuse tout chevauchement de périodes de licences déclarées valides, à l’insertion et à la mise à jour, y compris concurrentes. Les renouvellements sans chevauchement et licences désactivées restent autorisés.';
-
 
 --
 -- Name: prevention_delete_if_dependent(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -215,13 +434,11 @@ BEGIN
 END;
 $$;
 
-
 --
 -- Name: FUNCTION prevention_delete_if_dependent(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
-
 
 --
 -- Name: update_date_modification(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -236,13 +453,11 @@ BEGIN
 END;
 $$;
 
-
 --
 -- Name: FUNCTION update_date_modification(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.update_date_modification() IS 'Avant UPDATE utilisateur, remplace DateModificationUser par NOW() et renvoie NEW.';
-
 
 --
 -- Name: update_licence_status(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -253,12 +468,43 @@ CREATE FUNCTION systeme.update_licence_status() RETURNS trigger
     AS $$
 BEGIN NEW."ExpireeLicence":=NEW."DateFin"<=current_timestamp; RETURN NEW; END;$$;
 
-
 --
 -- Name: FUNCTION update_licence_status(); Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON FUNCTION systeme.update_licence_status() IS 'Calcule le drapeau d’expiration au moment de l’écriture. La vue calcule l’état courant à la lecture pour tenir compte du passage du temps.';
+
+--
+-- Name: verifier_activation_module(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.verifier_activation_module() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' THEN
+  IF TG_TABLE_NAME='T_LicenceModule' THEN
+   IF OLD."IdLicenceFk"<>NEW."IdLicenceFk" OR OLD."CodeModule"<>NEW."CodeModule" OR OLD."Origine"<>NEW."Origine" THEN RAISE EXCEPTION 'Le rattachement et son origine sont immuables.'; END IF;
+  ELSE
+   IF OLD."IdEntiteFk"<>NEW."IdEntiteFk" OR OLD."IdRoleFk"<>NEW."IdRoleFk" OR OLD."CodeModule"<>NEW."CodeModule" THEN RAISE EXCEPTION 'Le périmètre du rôle est immuable.'; END IF;
+  END IF;
+  NEW."Version"=OLD."Version"+1;
+ ELSE
+  NEW."Version"=1;
+ END IF;
+ IF TG_TABLE_NAME='T_RoleModule' THEN
+  IF NOT EXISTS (SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."IdRoleFk" AND "ID_CategorieGeneriqueFk"=39) THEN RAISE EXCEPTION 'Référence de rôle invalide.'; END IF;
+ END IF;
+ NEW."ModifieLe"=CURRENT_TIMESTAMP;
+ RETURN NEW;
+END;
+$$;
+
+--
+-- Name: FUNCTION verifier_activation_module(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.verifier_activation_module() IS 'Préserve les rattachements et leur provenance, contrôle la catégorie de rôle et fixe version et horodatage ; ne crée aucune licence.';
 
 
 SET default_tablespace = '';
@@ -277,9 +523,16 @@ CREATE TABLE systeme."T_Entite" (
     "AdresseEntite" text,
     "DateCreationEntite" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     "IdTypeEntiteFk" integer,
-    "ValideEntite" boolean DEFAULT true
+    "ValideEntite" boolean DEFAULT true,
+    "AlertePeremptionJours" smallint DEFAULT 30 NOT NULL,
+    "BloquerLotsPerimes" boolean DEFAULT false NOT NULL,
+    "IdentifiantsLegauxEntite" jsonb DEFAULT '[]'::jsonb NOT NULL,
+    "MentionDocumentaireEntite" character varying(1000),
+    CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
+    CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
+    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))
 );
-
 
 --
 -- Name: TABLE "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -287,13 +540,11 @@ CREATE TABLE systeme."T_Entite" (
 
 COMMENT ON TABLE systeme."T_Entite" IS 'Organisations et structures : identité, coordonnées, type, date de création et validité. Source des rattachements utilisateurs, professionnels, licences et opérations.';
 
-
 --
 -- Name: COLUMN "T_Entite"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite"."IdEntite" IS 'Identifiant de l’entité.';
-
 
 --
 -- Name: COLUMN "T_Entite"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -301,13 +552,11 @@ COMMENT ON COLUMN systeme."T_Entite"."IdEntite" IS 'Identifiant de l’entité.'
 
 COMMENT ON COLUMN systeme."T_Entite"."NomEntite" IS 'Nom de la structure ou organisation.';
 
-
 --
 -- Name: COLUMN "T_Entite"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite"."PhoneEntite" IS 'Téléphone de contact de l’entité.';
-
 
 --
 -- Name: COLUMN "T_Entite"."EmailEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -315,13 +564,11 @@ COMMENT ON COLUMN systeme."T_Entite"."PhoneEntite" IS 'Téléphone de contact de
 
 COMMENT ON COLUMN systeme."T_Entite"."EmailEntite" IS 'Adresse électronique de contact de l’entité.';
 
-
 --
 -- Name: COLUMN "T_Entite"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite"."AdresseEntite" IS 'Adresse générale enregistrée pour l’entité.';
-
 
 --
 -- Name: COLUMN "T_Entite"."DateCreationEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -329,13 +576,11 @@ COMMENT ON COLUMN systeme."T_Entite"."AdresseEntite" IS 'Adresse générale enre
 
 COMMENT ON COLUMN systeme."T_Entite"."DateCreationEntite" IS 'Date et heure de création de l’entité.';
 
-
 --
 -- Name: COLUMN "T_Entite"."IdTypeEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite"."IdTypeEntiteFk" IS 'Type de structure ou d’organisation dans le référentiel. Relation imposée : FOREIGN KEY ("IdTypeEntiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: COLUMN "T_Entite"."ValideEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -343,6 +588,29 @@ COMMENT ON COLUMN systeme."T_Entite"."IdTypeEntiteFk" IS 'Type de structure ou d
 
 COMMENT ON COLUMN systeme."T_Entite"."ValideEntite" IS 'Indique si l’entité est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
+--
+-- Name: COLUMN "T_Entite"."AlertePeremptionJours"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."AlertePeremptionJours" IS 'Délai d’alerte par défaut de cette entreprise, en jours ; le seuil explicite de l’article prime.';
+
+--
+-- Name: COLUMN "T_Entite"."BloquerLotsPerimes"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."BloquerLotsPerimes" IS 'Refuse les nouveaux prélèvements sur des lots périmés, sauf dérogation motivée d’un administrateur global ; false conserve le mode informatif.';
+
+--
+-- Name: COLUMN "T_Entite"."IdentifiantsLegauxEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."IdentifiantsLegauxEntite" IS 'Identifiants déclarés par l’entreprise, sans pays ni régime fiscal imposé : liste facultative de dix couples libelle/valeur. Figés lors de la création de chaque nouveau document.';
+
+--
+-- Name: COLUMN "T_Entite"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."MentionDocumentaireEntite" IS 'Mention libre facultative de l’émetteur, limitée à 1000 caractères, conservée dans les nouveaux instantanés documentaires. Aucun taux ou texte légal n’est inventé.';
 
 --
 -- Name: CONSTRAINT "T_Entite_IdEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -350,13 +618,11 @@ COMMENT ON COLUMN systeme."T_Entite"."ValideEntite" IS 'Indique si l’entité e
 
 COMMENT ON CONSTRAINT "T_Entite_IdEntite_not_null" ON systeme."T_Entite" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite". Définition : NOT NULL "IdEntite".';
 
-
 --
 -- Name: CONSTRAINT "T_Entite_NomEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Entite_NomEntite_not_null" ON systeme."T_Entite" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite". Définition : NOT NULL "NomEntite".';
-
 
 --
 -- Name: CONSTRAINT "T_Entite_EmailEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -364,6 +630,17 @@ COMMENT ON CONSTRAINT "T_Entite_NomEntite_not_null" ON systeme."T_Entite" IS 'No
 
 COMMENT ON CONSTRAINT "T_Entite_EmailEntite_not_null" ON systeme."T_Entite" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite". Définition : NOT NULL "EmailEntite".';
 
+--
+-- Name: CONSTRAINT ck_entite_identifiants_legaux ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_identifiants_legaux ON systeme."T_Entite" IS 'Identifiants facultatifs génériques, sans doublon de libellé ni structure JSON arbitraire.';
+
+--
+-- Name: CONSTRAINT ck_entite_mention_documentaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_mention_documentaire ON systeme."T_Entite" IS 'Mention documentaire sans caractères de contrôle, à l’exception du saut de ligne pour sa mise en forme.';
 
 --
 -- Name: T_Utilisateurs; Type: TABLE; Schema: systeme; Owner: -
@@ -388,13 +665,11 @@ CREATE TABLE systeme."T_Utilisateurs" (
     CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar])))
 );
 
-
 --
 -- Name: TABLE "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TABLE systeme."T_Utilisateurs" IS 'Comptes utilisateurs : identité, authentification, rôle, entité, validité et indicateurs staff/administrateur. Les triggers normalisent le téléphone, datent les modifications et alimentent l’audit.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."IdUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -402,13 +677,11 @@ COMMENT ON TABLE systeme."T_Utilisateurs" IS 'Comptes utilisateurs : identité, 
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."IdUser" IS 'Identifiant du compte utilisateur.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."NomUser"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."NomUser" IS 'Nom de l’utilisateur.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."PrenomUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -416,13 +689,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."NomUser" IS 'Nom de l’utilisateur.
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."PrenomUser" IS 'Prénom de l’utilisateur.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."EmailUser"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."EmailUser" IS 'Adresse électronique du compte, utilisée pour la connexion.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."MotdepasseUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -430,13 +701,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."EmailUser" IS 'Adresse électronique
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."MotdepasseUser" IS 'Empreinte du mot de passe utilisée pour l’authentification du compte ; donnée confidentielle à exclure des projections publiques.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."PhoneUser"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."PhoneUser" IS 'Téléphone utilisateur ; le trigger de normalisation conserve les chiffres sans interpréter le pays.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."DatecreationUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -444,13 +713,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."PhoneUser" IS 'Téléphone utilisate
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."DatecreationUser" IS 'Date et heure de création du compte.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."IdRoleFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."IdRoleFk" IS 'Rôle de l’utilisateur dans le référentiel. Relation imposée : FOREIGN KEY ("IdRoleFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."ValideUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -458,13 +725,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."IdRoleFk" IS 'Rôle de l’utilisate
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."ValideUser" IS 'Indique si le compte est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."SexeUser"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."SexeUser" IS 'Code de sexe enregistré pour le compte ; la contrainte actuelle admet M ou F.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."DateModificationUser"; Type: COMMENT; Schema: systeme; Owner: -
@@ -472,13 +737,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."SexeUser" IS 'Code de sexe enregistr
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."DateModificationUser" IS 'Date et heure de dernière modification du compte, actualisée par trigger.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."UrlPhoto"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."UrlPhoto" IS 'Référence de la photo de l’utilisateur.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -486,13 +749,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."UrlPhoto" IS 'Référence de la phot
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
 
-
 --
 -- Name: COLUMN "T_Utilisateurs"."Is_staff"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."Is_staff" IS 'Indicateur de compte staff ; pris en compte par les contrôles actuels d’administration.';
-
 
 --
 -- Name: COLUMN "T_Utilisateurs"."Is_Admin"; Type: COMMENT; Schema: systeme; Owner: -
@@ -500,13 +761,11 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."Is_staff" IS 'Indicateur de compte s
 
 COMMENT ON COLUMN systeme."T_Utilisateurs"."Is_Admin" IS 'Indicateur de compte administrateur ; pris en compte par les contrôles actuels d’administration.';
 
-
 --
 -- Name: CONSTRAINT "T_Utilisateurs_IdUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_IdUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "IdUser".';
-
 
 --
 -- Name: CONSTRAINT "T_Utilisateurs_NomUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
@@ -514,13 +773,11 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_IdUser_not_null" ON systeme."T_Utilisateur
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_NomUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "NomUser".';
 
-
 --
 -- Name: CONSTRAINT "T_Utilisateurs_PrenomUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_PrenomUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "PrenomUser".';
-
 
 --
 -- Name: CONSTRAINT "T_Utilisateurs_EmailUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
@@ -528,13 +785,11 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_PrenomUser_not_null" ON systeme."T_Utilisa
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_EmailUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "EmailUser".';
 
-
 --
 -- Name: CONSTRAINT "T_Utilisateurs_MotdepasseUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_MotdepasseUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "MotdepasseUser".';
-
 
 --
 -- Name: CONSTRAINT "T_Utilisateurs_ValideUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
@@ -542,13 +797,11 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_MotdepasseUser_not_null" ON systeme."T_Uti
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_ValideUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "ValideUser".';
 
-
 --
 -- Name: CONSTRAINT "T_Utilisateurs_SexeUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_SexeUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "SexeUser".';
-
 
 --
 -- Name: CONSTRAINT "T_Utilisateurs_DateModificationUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
@@ -556,13 +809,11 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_SexeUser_not_null" ON systeme."T_Utilisate
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_DateModificationUser_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "DateModificationUser".';
 
-
 --
 -- Name: CONSTRAINT "T_Utilisateurs_Is_staff_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_Is_staff_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "Is_staff".';
-
 
 --
 -- Name: CONSTRAINT "T_Utilisateurs_Is_Admin_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
@@ -570,13 +821,11 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_Is_staff_not_null" ON systeme."T_Utilisate
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_Is_Admin_not_null" ON systeme."T_Utilisateurs" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Utilisateurs". Définition : NOT NULL "Is_Admin".';
 
-
 --
 -- Name: CONSTRAINT chk_sexe_utilisateur ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT chk_sexe_utilisateur ON systeme."T_Utilisateurs" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Utilisateurs". Définition : CHECK ("SexeUser" = ANY (ARRAY[''M''::bpchar, ''F''::bpchar])).';
-
 
 --
 -- Name: T_Entite_Localisation; Type: TABLE; Schema: systeme; Owner: -
@@ -594,13 +843,11 @@ CREATE TABLE systeme."T_Entite_Localisation" (
     "DateCreation" timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
 --
 -- Name: TABLE "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TABLE systeme."T_Entite_Localisation" IS 'Localisations des entités : niveaux géographiques de rattachement, coordonnées et adresse détaillée. Une entité peut posséder plusieurs localisations.';
-
 
 --
 -- Name: COLUMN "T_Entite_Localisation"."IdEntiteLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
@@ -608,13 +855,11 @@ COMMENT ON TABLE systeme."T_Entite_Localisation" IS 'Localisations des entités 
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdEntiteLocalisation" IS 'Identifiant de la localisation d’entité.';
 
-
 --
 -- Name: COLUMN "T_Entite_Localisation"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE.';
-
 
 --
 -- Name: COLUMN "T_Entite_Localisation"."IdNiveau_3_Fk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -622,13 +867,11 @@ COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdEntiteFk" IS 'Entité de ra
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdNiveau_3_Fk" IS 'Unité géographique de rattachement de niveau 3. Relation imposée : FOREIGN KEY ("IdNiveau_3_Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3").';
 
-
 --
 -- Name: COLUMN "T_Entite_Localisation"."IdNiveau_4_Fk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdNiveau_4_Fk" IS 'Unité géographique de rattachement de niveau 4. Relation imposée : FOREIGN KEY ("IdNiveau_4_Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4").';
-
 
 --
 -- Name: COLUMN "T_Entite_Localisation"."IdNiveau_5_Fk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -636,13 +879,11 @@ COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdNiveau_4_Fk" IS 'Unité gé
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."IdNiveau_5_Fk" IS 'Unité géographique de rattachement de niveau 5. Relation imposée : FOREIGN KEY ("IdNiveau_5_Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5").';
 
-
 --
 -- Name: COLUMN "T_Entite_Localisation"."Latitude"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."Latitude" IS 'Latitude de la localisation ; coordonnée décimale.';
-
 
 --
 -- Name: COLUMN "T_Entite_Localisation"."Longitude"; Type: COMMENT; Schema: systeme; Owner: -
@@ -650,13 +891,11 @@ COMMENT ON COLUMN systeme."T_Entite_Localisation"."Latitude" IS 'Latitude de la 
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."Longitude" IS 'Longitude de la localisation ; coordonnée décimale.';
 
-
 --
 -- Name: COLUMN "T_Entite_Localisation"."AdresseDetaillee"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."AdresseDetaillee" IS 'Adresse détaillée de cette localisation.';
-
 
 --
 -- Name: COLUMN "T_Entite_Localisation"."DateCreation"; Type: COMMENT; Schema: systeme; Owner: -
@@ -664,20 +903,17 @@ COMMENT ON COLUMN systeme."T_Entite_Localisation"."AdresseDetaillee" IS 'Adresse
 
 COMMENT ON COLUMN systeme."T_Entite_Localisation"."DateCreation" IS 'Horodatage de création de la localisation, sans fuseau dans le type SQL.';
 
-
 --
 -- Name: CONSTRAINT "T_Entite_Localisation_IdEntiteLocalisation_not_null" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Entite_Localisation_IdEntiteLocalisation_not_null" ON systeme."T_Entite_Localisation" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite_Localisation". Définition : NOT NULL "IdEntiteLocalisation".';
 
-
 --
 -- Name: CONSTRAINT "T_Entite_Localisation_IdEntiteFk_not_null" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Entite_Localisation_IdEntiteFk_not_null" ON systeme."T_Entite_Localisation" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Entite_Localisation". Définition : NOT NULL "IdEntiteFk".';
-
 
 --
 -- Name: T_Admin_UI_Setting; Type: TABLE; Schema: systeme; Owner: -
@@ -702,16 +938,15 @@ CREATE TABLE systeme."T_Admin_UI_Setting" (
     "UpdatedByUserFk" integer,
     "ObsSetting" text,
     CONSTRAINT "Ck_Admin_UI_Setting_Scope" CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('entite'::character varying)::text, ('user'::character varying)::text, ('module'::character varying)::text]))),
+    CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT "Ck_Admin_UI_Setting_Type" CHECK ((("SettingType")::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('boolean'::character varying)::text, ('select'::character varying)::text, ('json'::character varying)::text, ('color'::character varying)::text, ('file'::character varying)::text, ('email'::character varying)::text, ('phone'::character varying)::text, ('url'::character varying)::text, ('textarea'::character varying)::text])))
 );
-
 
 --
 -- Name: TABLE "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TABLE systeme."T_Admin_UI_Setting" IS 'Paramètres d’interface partagés avec portée, clé, groupe, type et valeur texte/JSON. La contrainte installée admet les portées global, entite, user et module ; UpdatedAt est actualisé par trigger.';
-
+COMMENT ON TABLE systeme."T_Admin_UI_Setting" IS 'Paramètres partagés par portée et clé ; unicité y compris portée globale NULL, protections SQL et audit des écritures. Un paramètre système éditable conserve la modification de sa valeur.';
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."IdAdminUISetting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -719,13 +954,11 @@ COMMENT ON TABLE systeme."T_Admin_UI_Setting" IS 'Paramètres d’interface part
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."IdAdminUISetting" IS 'Identifiant du paramètre d’interface.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingScope" IS 'Portée du paramètre d’interface ; la contrainte actuellement installée admet global, entite, user et module. Distincte de la portée des correspondances FK.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."ScopeValue"; Type: COMMENT; Schema: systeme; Owner: -
@@ -733,13 +966,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingScope" IS 'Portée du par
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."ScopeValue" IS 'Identifiant ou valeur du contexte ciblé par SettingScope ; ne constitue pas une autorisation d’accès.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingKey"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingKey" IS 'Clé technique stable du paramètre.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingLabel"; Type: COMMENT; Schema: systeme; Owner: -
@@ -747,13 +978,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingKey" IS 'Clé technique s
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingLabel" IS 'Libellé du paramètre présenté dans l’administration.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingGroup"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingGroup" IS 'Groupe fonctionnel du paramètre d’interface.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingValue"; Type: COMMENT; Schema: systeme; Owner: -
@@ -761,13 +990,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingGroup" IS 'Groupe fonctio
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingValue" IS 'Valeur du paramètre sous forme textuelle.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingValueJson"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingValueJson" IS 'Valeur structurée JSON du paramètre ; distincte de la représentation textuelle.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."SettingType"; Type: COMMENT; Schema: systeme; Owner: -
@@ -775,13 +1002,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingValueJson" IS 'Valeur str
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."SettingType" IS 'Type de représentation du paramètre contrôlé par la contrainte installée.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."DisplayOrder"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."DisplayOrder" IS 'Ordre d’affichage du paramètre ou de la correspondance.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."IsEditable"; Type: COMMENT; Schema: systeme; Owner: -
@@ -789,13 +1014,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."DisplayOrder" IS 'Ordre d’affi
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."IsEditable" IS 'Indique si le paramètre est déclaré modifiable dans l’interface.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."IsSystem"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."IsSystem" IS 'Identifie un paramètre système.';
-
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."ValideSetting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -803,27 +1026,23 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."IsSystem" IS 'Identifie un param
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."ValideSetting" IS 'Indique si le paramètre est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
-
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."CreatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."CreatedAt" IS 'Horodatage de création du paramètre.';
-
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."CreatedAt" IS 'Instant de création imposé par PostgreSQL ; conservé lors des modifications ultérieures.';
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."UpdatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedAt" IS 'Horodatage de dernière mise à jour enregistré.';
-
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedAt" IS 'Instant de dernière écriture, imposé par PostgreSQL.';
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."UpdatedByUserFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedByUserFk" IS 'Utilisateur ayant enregistré la dernière modification du paramètre ou de la correspondance. Relation imposée : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
-
+COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedByUserFk" IS 'Auteur actif validé depuis systeme.actor_user_id ; NULL pour une écriture directe sans acteur applicatif.';
 
 --
 -- Name: COLUMN "T_Admin_UI_Setting"."ObsSetting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -831,13 +1050,11 @@ COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."UpdatedByUserFk" IS 'Utilisateur
 
 COMMENT ON COLUMN systeme."T_Admin_UI_Setting"."ObsSetting" IS 'Observations enregistrées sur le paramètre.';
 
-
 --
 -- Name: CONSTRAINT "T_Admin_UI_Setting_IdAdminUISetting_not_null" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Admin_UI_Setting_IdAdminUISetting_not_null" ON systeme."T_Admin_UI_Setting" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Admin_UI_Setting". Définition : NOT NULL "IdAdminUISetting".';
-
 
 --
 -- Name: CONSTRAINT "T_Admin_UI_Setting_SettingScope_not_null" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -845,13 +1062,11 @@ COMMENT ON CONSTRAINT "T_Admin_UI_Setting_IdAdminUISetting_not_null" ON systeme.
 
 COMMENT ON CONSTRAINT "T_Admin_UI_Setting_SettingScope_not_null" ON systeme."T_Admin_UI_Setting" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Admin_UI_Setting". Définition : NOT NULL "SettingScope".';
 
-
 --
 -- Name: CONSTRAINT "T_Admin_UI_Setting_SettingKey_not_null" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Admin_UI_Setting_SettingKey_not_null" ON systeme."T_Admin_UI_Setting" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Admin_UI_Setting". Définition : NOT NULL "SettingKey".';
-
 
 --
 -- Name: CONSTRAINT "Ck_Admin_UI_Setting_Scope" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -859,13 +1074,17 @@ COMMENT ON CONSTRAINT "T_Admin_UI_Setting_SettingKey_not_null" ON systeme."T_Adm
 
 COMMENT ON CONSTRAINT "Ck_Admin_UI_Setting_Scope" ON systeme."T_Admin_UI_Setting" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Admin_UI_Setting". Définition : CHECK ("SettingScope"::text = ANY (ARRAY[''global''::character varying::text, ''entite''::character varying::text, ''user''::character varying::text, ''module''::character varying::text])).';
 
+--
+-- Name: CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Ck_Admin_UI_Setting_ScopeValue" ON systeme."T_Admin_UI_Setting" IS 'Contexte NULL pour global ; contexte non vide pour entite, user ou module.';
 
 --
 -- Name: CONSTRAINT "Ck_Admin_UI_Setting_Type" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Ck_Admin_UI_Setting_Type" ON systeme."T_Admin_UI_Setting" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Admin_UI_Setting". Définition : CHECK ("SettingType"::text = ANY (ARRAY[''text''::character varying::text, ''number''::character varying::text, ''boolean''::character varying::text, ''select''::character varying::text, ''json''::character varying::text, ''color''::character varying::text, ''file''::character varying::text, ''email''::character varying::text, ''phone''::character varying::text, ''url''::character varying::text, ''textarea''::character varying::text])).';
-
 
 --
 -- Name: T_Admin_UI_Setting_IdAdminUISetting_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -880,13 +1099,11 @@ ALTER TABLE systeme."T_Admin_UI_Setting" ALTER COLUMN "IdAdminUISetting" ADD GEN
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Admin_UI_Setting_IdAdminUISetting_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Admin_UI_Setting_IdAdminUISetting_seq" IS 'Séquence de génération de "systeme"."T_Admin_UI_Setting"."IdAdminUISetting". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Audit_Log; Type: TABLE; Schema: systeme; Owner: -
@@ -902,13 +1119,11 @@ CREATE TABLE systeme."T_Audit_Log" (
     "IdEntiteFk" integer
 );
 
-
 --
 -- Name: TABLE "T_Audit_Log"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TABLE systeme."T_Audit_Log" IS 'Événements d’audit : table, opération, instant, valeurs avant/après en JSON et entité éventuelle. Les événements proviennent des triggers raccordés ou des écritures explicites de l’application.';
-
 
 --
 -- Name: COLUMN "T_Audit_Log"."IdLog"; Type: COMMENT; Schema: systeme; Owner: -
@@ -916,13 +1131,11 @@ COMMENT ON TABLE systeme."T_Audit_Log" IS 'Événements d’audit : table, opér
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."IdLog" IS 'Identifiant de l’événement d’audit.';
 
-
 --
 -- Name: COLUMN "T_Audit_Log"."TableName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."TableName" IS 'Nom de la table à l’origine de l’événement d’audit.';
-
 
 --
 -- Name: COLUMN "T_Audit_Log"."Operation"; Type: COMMENT; Schema: systeme; Owner: -
@@ -930,13 +1143,11 @@ COMMENT ON COLUMN systeme."T_Audit_Log"."TableName" IS 'Nom de la table à l’o
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."Operation" IS 'Nom de l’opération auditée ; le trigger produit INSERT, UPDATE ou DELETE.';
 
-
 --
 -- Name: COLUMN "T_Audit_Log"."OldData"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."OldData" IS 'Valeurs avant l’opération auditable, sérialisées en JSON ; NULL lors d’une insertion par le trigger d’audit.';
-
 
 --
 -- Name: COLUMN "T_Audit_Log"."NewData"; Type: COMMENT; Schema: systeme; Owner: -
@@ -944,13 +1155,11 @@ COMMENT ON COLUMN systeme."T_Audit_Log"."OldData" IS 'Valeurs avant l’opérati
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."NewData" IS 'Valeurs après l’opération auditable, sérialisées en JSON ; NULL lors d’une suppression par le trigger d’audit.';
 
-
 --
 -- Name: COLUMN "T_Audit_Log"."ChangedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."ChangedAt" IS 'Horodatage de l’événement d’audit.';
-
 
 --
 -- Name: COLUMN "T_Audit_Log"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -958,13 +1167,11 @@ COMMENT ON COLUMN systeme."T_Audit_Log"."ChangedAt" IS 'Horodatage de l’évén
 
 COMMENT ON COLUMN systeme."T_Audit_Log"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
 
-
 --
 -- Name: CONSTRAINT "T_Audit_Log_IdLog_not_null" ON "T_Audit_Log"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Audit_Log_IdLog_not_null" ON systeme."T_Audit_Log" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Audit_Log". Définition : NOT NULL "IdLog".';
-
 
 --
 -- Name: T_Audit_Log_IdLog_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -979,13 +1186,11 @@ ALTER TABLE systeme."T_Audit_Log" ALTER COLUMN "IdLog" ADD GENERATED ALWAYS AS I
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Audit_Log_IdLog_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Audit_Log_IdLog_seq" IS 'Séquence de génération de "systeme"."T_Audit_Log"."IdLog". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Entite_IdEntite_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1000,13 +1205,11 @@ ALTER TABLE systeme."T_Entite" ALTER COLUMN "IdEntite" ADD GENERATED ALWAYS AS I
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Entite_IdEntite_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Entite_IdEntite_seq" IS 'Séquence de génération de "systeme"."T_Entite"."IdEntite". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Entite_Localisation_IdEntiteLocalisation_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1021,13 +1224,11 @@ ALTER TABLE systeme."T_Entite_Localisation" ALTER COLUMN "IdEntiteLocalisation" 
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Entite_Localisation_IdEntiteLocalisation_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Entite_Localisation_IdEntiteLocalisation_seq" IS 'Séquence de génération de "systeme"."T_Entite_Localisation"."IdEntiteLocalisation". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Fk_Correspondance; Type: TABLE; Schema: systeme; Owner: -
@@ -1055,17 +1256,16 @@ CREATE TABLE systeme."T_Fk_Correspondance" (
     "UpdatedAt" timestamp(6) without time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" NOT NULL,
     "UpdatedByUserFk" integer,
     "ObsFkCorrespondance" text,
+    CONSTRAINT "Ck_FkCorrespondance_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT chk_fkcorrespondance_mappingtype CHECK ((("MappingType")::text = ANY (ARRAY[('generic_category'::character varying)::text, ('direct_source'::character varying)::text, ('hierarchy_mode'::character varying)::text]))),
     CONSTRAINT chk_fkcorrespondance_scope CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('country'::character varying)::text, ('entity'::character varying)::text])))
 );
-
 
 --
 -- Name: TABLE "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TABLE systeme."T_Fk_Correspondance" IS 'Correspondances configurables des champs et sources de listes : catégorie ou source directe, portée global/country/entity, ordre, validité et auteur de modification.';
-
+COMMENT ON TABLE systeme."T_Fk_Correspondance" IS 'Correspondances de références par source et portée ; unicité y compris contexte NULL, auteur transactionnel et audit SQL.';
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."IdFkCorrespondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1073,13 +1273,11 @@ COMMENT ON TABLE systeme."T_Fk_Correspondance" IS 'Correspondances configurables
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."IdFkCorrespondance" IS 'Identifiant de la correspondance de champ.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ModuleName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ModuleName" IS 'Module applicatif auquel s’applique la correspondance.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."SchemaName"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1087,13 +1285,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ModuleName" IS 'Module applicat
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."SchemaName" IS 'Schéma PostgreSQL de la vue dont le champ est configuré.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ViewName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ViewName" IS 'Nom de la vue dont les correspondances de champ sont configurées.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."SourceKey"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1101,13 +1297,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ViewName" IS 'Nom de la vue don
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."SourceKey" IS 'Clé applicative de la source de liste configurée.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."FieldName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."FieldName" IS 'Nom technique du champ dont la source de liste est configurée.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."FieldLabel"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1115,13 +1309,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."FieldName" IS 'Nom technique du
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."FieldLabel" IS 'Libellé du champ présenté dans le paramétrage des correspondances.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."MappingType"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."MappingType" IS 'Mode de correspondance : generic_category, direct_source ou hierarchy_mode, selon la contrainte installée.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ReferenceSchemaName"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1129,13 +1321,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."MappingType" IS 'Mode de corres
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ReferenceSchemaName" IS 'Schéma PostgreSQL de l’objet de référence configuré.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ReferenceObjectName"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ReferenceObjectName" IS 'Nom technique de l’objet de référence configuré pour la liste.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ReferenceFieldName"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1143,13 +1333,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ReferenceObjectName" IS 'Nom te
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ReferenceFieldName" IS 'Champ identifiant ou libellé utilisé dans l’objet de référence configuré.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."TargetCategoryIdFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."TargetCategoryIdFk" IS 'Catégorie de nomenclature ciblée par une correspondance de type generic_category. Relation imposée : FOREIGN KEY ("TargetCategoryIdFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."MappingValue"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1157,13 +1345,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."TargetCategoryIdFk" IS 'Catégo
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."MappingValue" IS 'Valeur de configuration associée à la correspondance.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."IsDefaultMapping"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."IsDefaultMapping" IS 'Indique une correspondance proposée par défaut.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ValideFkCorrespondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1171,13 +1357,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."IsDefaultMapping" IS 'Indique u
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ValideFkCorrespondance" IS 'Indique si la correspondance est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."SettingScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."SettingScope" IS 'Portée de la correspondance FK : global, country ou entity selon la contrainte installée.';
-
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ScopeValue"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1185,27 +1369,23 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."SettingScope" IS 'Portée de la
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ScopeValue" IS 'Identifiant ou valeur du contexte ciblé par SettingScope ; ne constitue pas une autorisation d’accès.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."DisplayOrder"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."DisplayOrder" IS 'Ordre d’affichage du paramètre ou de la correspondance.';
 
-
 --
 -- Name: COLUMN "T_Fk_Correspondance"."UpdatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedAt" IS 'Horodatage de dernière mise à jour enregistré.';
-
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedAt" IS 'Dernière écriture en heure civile Africa/Kinshasa, type historique sans fuseau conservé.';
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."UpdatedByUserFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Utilisateur ayant enregistré la dernière modification du paramètre ou de la correspondance. Relation imposée : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
-
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Auteur actif validé depuis systeme.actor_user_id ; NULL pour une écriture directe sans acteur applicatif.';
 
 --
 -- Name: COLUMN "T_Fk_Correspondance"."ObsFkCorrespondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1213,13 +1393,11 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Utilisateu
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ObsFkCorrespondance" IS 'Observations enregistrées sur la correspondance.';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_IdFkCorrespondance_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_IdFkCorrespondance_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "IdFkCorrespondance".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_ModuleName_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1227,13 +1405,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_IdFkCorrespondance_not_null" ON syste
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_ModuleName_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "ModuleName".';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_SchemaName_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_SchemaName_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "SchemaName".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_SourceKey_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1241,13 +1417,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_SchemaName_not_null" ON systeme."T_Fk
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_SourceKey_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "SourceKey".';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_FieldName_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_FieldName_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "FieldName".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_MappingType_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1255,13 +1429,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_FieldName_not_null" ON systeme."T_Fk_
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_MappingType_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "MappingType".';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_MappingValue_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_MappingValue_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "MappingValue".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_IsDefaultMapping_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1269,13 +1441,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_MappingValue_not_null" ON systeme."T_
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_IsDefaultMapping_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "IsDefaultMapping".';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_ValideFkCorrespondance_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_ValideFkCorrespondance_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "ValideFkCorrespondance".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_SettingScope_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1283,13 +1453,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_ValideFkCorrespondance_not_null" ON s
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_SettingScope_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "SettingScope".';
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_DisplayOrder_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_DisplayOrder_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "DisplayOrder".';
-
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1297,6 +1465,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_DisplayOrder_not_null" ON systeme."T_
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" ON systeme."T_Fk_Correspondance" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Fk_Correspondance". Définition : NOT NULL "UpdatedAt".';
 
+--
+-- Name: CONSTRAINT "Ck_FkCorrespondance_ScopeValue" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Ck_FkCorrespondance_ScopeValue" ON systeme."T_Fk_Correspondance" IS 'Contexte NULL pour global ; contexte non vide pour country ou entity.';
 
 --
 -- Name: CONSTRAINT chk_fkcorrespondance_mappingtype ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1304,13 +1477,11 @@ COMMENT ON CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" ON systeme."T_Fk_
 
 COMMENT ON CONSTRAINT chk_fkcorrespondance_mappingtype ON systeme."T_Fk_Correspondance" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Fk_Correspondance". Définition : CHECK ("MappingType"::text = ANY (ARRAY[''generic_category''::character varying::text, ''direct_source''::character varying::text, ''hierarchy_mode''::character varying::text])).';
 
-
 --
 -- Name: CONSTRAINT chk_fkcorrespondance_scope ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT chk_fkcorrespondance_scope ON systeme."T_Fk_Correspondance" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Fk_Correspondance". Définition : CHECK ("SettingScope"::text = ANY (ARRAY[''global''::character varying::text, ''country''::character varying::text, ''entity''::character varying::text])).';
-
 
 --
 -- Name: T_Fk_Correspondance_IdFkCorrespondance_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1325,13 +1496,11 @@ ALTER TABLE systeme."T_Fk_Correspondance" ALTER COLUMN "IdFkCorrespondance" ADD 
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Fk_Correspondance_IdFkCorrespondance_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Fk_Correspondance_IdFkCorrespondance_seq" IS 'Séquence de génération de "systeme"."T_Fk_Correspondance"."IdFkCorrespondance". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Licence; Type: TABLE; Schema: systeme; Owner: -
@@ -1349,13 +1518,11 @@ CREATE TABLE systeme."T_Licence" (
     CONSTRAINT chk_licence_dates CHECK (("DateFin" > "DateDebut"))
 );
 
-
 --
 -- Name: TABLE "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TABLE systeme."T_Licence" IS 'Licences des entités avec clé UUID, période, statut et indicateurs de validité/expiration. Les triggers contrôlent les insertions et actualisent l’expiration lors des écritures ; aucune tâche périodique n’est définie par ces triggers.';
-
 
 --
 -- Name: COLUMN "T_Licence"."IdLicence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1363,13 +1530,11 @@ COMMENT ON TABLE systeme."T_Licence" IS 'Licences des entités avec clé UUID, p
 
 COMMENT ON COLUMN systeme."T_Licence"."IdLicence" IS 'Identifiant automatiquement attribué par une identité PostgreSQL ; les identifiants antérieurs sont conservés.';
 
-
 --
 -- Name: COLUMN "T_Licence"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Licence"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE.';
-
 
 --
 -- Name: COLUMN "T_Licence"."CleLicence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1377,13 +1542,11 @@ COMMENT ON COLUMN systeme."T_Licence"."IdEntiteFk" IS 'Entité de rattachement d
 
 COMMENT ON COLUMN systeme."T_Licence"."CleLicence" IS 'Clé UUID identifiant la licence.';
 
-
 --
 -- Name: COLUMN "T_Licence"."DateDebut"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Licence"."DateDebut" IS 'Début de validité de la licence.';
-
 
 --
 -- Name: COLUMN "T_Licence"."DateFin"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1391,13 +1554,11 @@ COMMENT ON COLUMN systeme."T_Licence"."DateDebut" IS 'Début de validité de la 
 
 COMMENT ON COLUMN systeme."T_Licence"."DateFin" IS 'Fin de validité de la licence, strictement postérieure à DateDebut selon la contrainte.';
 
-
 --
 -- Name: COLUMN "T_Licence"."IdStatutLicenceFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Licence"."IdStatutLicenceFk" IS 'Statut de licence dans le référentiel. Relation imposée : FOREIGN KEY ("IdStatutLicenceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
-
 
 --
 -- Name: COLUMN "T_Licence"."ValideLicence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1405,13 +1566,11 @@ COMMENT ON COLUMN systeme."T_Licence"."IdStatutLicenceFk" IS 'Statut de licence 
 
 COMMENT ON COLUMN systeme."T_Licence"."ValideLicence" IS 'Indique si la licence est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
-
 --
 -- Name: COLUMN "T_Licence"."ExpireeLicence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Licence"."ExpireeLicence" IS 'Indicateur d’expiration calculé à l’écriture de la licence à partir de DateFin ; ne se met pas à jour seul avec le passage du temps.';
-
 
 --
 -- Name: CONSTRAINT "T_Licence_IdLicence_not_null" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1419,13 +1578,11 @@ COMMENT ON COLUMN systeme."T_Licence"."ExpireeLicence" IS 'Indicateur d’expira
 
 COMMENT ON CONSTRAINT "T_Licence_IdLicence_not_null" ON systeme."T_Licence" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Licence". Définition : NOT NULL "IdLicence".';
 
-
 --
 -- Name: CONSTRAINT "T_Licence_IdEntiteFk_not_null" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Licence_IdEntiteFk_not_null" ON systeme."T_Licence" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Licence". Définition : NOT NULL "IdEntiteFk".';
-
 
 --
 -- Name: CONSTRAINT "T_Licence_DateFin_not_null" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1433,13 +1590,11 @@ COMMENT ON CONSTRAINT "T_Licence_IdEntiteFk_not_null" ON systeme."T_Licence" IS 
 
 COMMENT ON CONSTRAINT "T_Licence_DateFin_not_null" ON systeme."T_Licence" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Licence". Définition : NOT NULL "DateFin".';
 
-
 --
 -- Name: CONSTRAINT "T_Licence_IdStatutLicenceFk_not_null" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Licence_IdStatutLicenceFk_not_null" ON systeme."T_Licence" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Licence". Définition : NOT NULL "IdStatutLicenceFk".';
-
 
 --
 -- Name: CONSTRAINT chk_licence_dates ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1447,6 +1602,96 @@ COMMENT ON CONSTRAINT "T_Licence_IdStatutLicenceFk_not_null" ON systeme."T_Licen
 
 COMMENT ON CONSTRAINT chk_licence_dates ON systeme."T_Licence" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Licence". Définition : CHECK ("DateFin" > "DateDebut").';
 
+--
+-- Name: T_LicenceModule; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_LicenceModule" (
+    "IdLicenceModule" integer NOT NULL,
+    "IdLicenceFk" integer NOT NULL,
+    "CodeModule" character varying(32) NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Origine" character varying(12) DEFAULT 'activation'::character varying NOT NULL,
+    "Version" integer DEFAULT 1 NOT NULL,
+    "ModifieParUserFk" integer,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY ((ARRAY['activation'::character varying, 'reprise'::character varying])::text[]))),
+    CONSTRAINT "T_LicenceModule_Version_check" CHECK (("Version" > 0))
+);
+
+--
+-- Name: TABLE "T_LicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_LicenceModule" IS 'Modules compris dans une licence existante. L’entité et la période sont celles de T_Licence ; aucun abonnement individuel.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."IdLicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."IdLicenceModule" IS 'Identifiant permanent de la ligne d’activation.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."IdLicenceFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."IdLicenceFk" IS 'Licence de l’entité ; cette relation est immuable.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."CodeModule" IS 'Application activée dans cette licence ; code immuable.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Actif" IS 'Activation explicite du module dans la licence.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."Origine"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Origine" IS 'Reprise identifie les accès conservés lors de la migration ; ce champ ne constitue pas une facturation.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."Version" IS 'Version utilisée pour refuser les modifications concurrentes.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification ; NULL pour la migration initiale.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."CreeLe" IS 'Instant de création du rattachement.';
+
+--
+-- Name: COLUMN "T_LicenceModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_LicenceModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+--
+-- Name: T_LicenceModule_IdLicenceModule_seq; Type: SEQUENCE; Schema: systeme; Owner: -
+--
+
+ALTER TABLE systeme."T_LicenceModule" ALTER COLUMN "IdLicenceModule" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME systeme."T_LicenceModule_IdLicenceModule_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 --
 -- Name: T_Licence_IdLicence_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1461,13 +1706,11 @@ ALTER TABLE systeme."T_Licence" ALTER COLUMN "IdLicence" ADD GENERATED BY DEFAUL
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Licence_IdLicence_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Licence_IdLicence_seq" IS 'Séquence technique d’identité attribuant les identifiants sans réécrire les lignes existantes.';
-
 
 --
 -- Name: T_Login; Type: TABLE; Schema: systeme; Owner: -
@@ -1481,13 +1724,11 @@ CREATE TABLE systeme."T_Login" (
     "IdEntiteFk" integer
 );
 
-
 --
 -- Name: TABLE "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TABLE systeme."T_Login" IS 'Événements de connexion liés à un utilisateur, un type de connexion et une entité éventuelle.';
-
 
 --
 -- Name: COLUMN "T_Login"."IdLogin"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1495,13 +1736,11 @@ COMMENT ON TABLE systeme."T_Login" IS 'Événements de connexion liés à un uti
 
 COMMENT ON COLUMN systeme."T_Login"."IdLogin" IS 'Identifiant de l’événement de connexion.';
 
-
 --
 -- Name: COLUMN "T_Login"."IdUserFk"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Login"."IdUserFk" IS 'Utilisateur rattaché à l’enregistrement. Relation imposée : FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE.';
-
 
 --
 -- Name: COLUMN "T_Login"."IdTypeLoginFk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1509,13 +1748,11 @@ COMMENT ON COLUMN systeme."T_Login"."IdUserFk" IS 'Utilisateur rattaché à l’
 
 COMMENT ON COLUMN systeme."T_Login"."IdTypeLoginFk" IS 'Type de l’événement de connexion dans le référentiel. Relation imposée : FOREIGN KEY ("IdTypeLoginFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
 
-
 --
 -- Name: COLUMN "T_Login"."DateLogin"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."T_Login"."DateLogin" IS 'Date et heure de l’événement de connexion.';
-
 
 --
 -- Name: COLUMN "T_Login"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1523,13 +1760,11 @@ COMMENT ON COLUMN systeme."T_Login"."DateLogin" IS 'Date et heure de l’événe
 
 COMMENT ON COLUMN systeme."T_Login"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
 
-
 --
 -- Name: CONSTRAINT "T_Login_IdLogin_not_null" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Login_IdLogin_not_null" ON systeme."T_Login" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Login". Définition : NOT NULL "IdLogin".';
-
 
 --
 -- Name: CONSTRAINT "T_Login_IdUserFk_not_null" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1537,20 +1772,17 @@ COMMENT ON CONSTRAINT "T_Login_IdLogin_not_null" ON systeme."T_Login" IS 'Non-nu
 
 COMMENT ON CONSTRAINT "T_Login_IdUserFk_not_null" ON systeme."T_Login" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Login". Définition : NOT NULL "IdUserFk".';
 
-
 --
 -- Name: CONSTRAINT "T_Login_IdTypeLoginFk_not_null" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Login_IdTypeLoginFk_not_null" ON systeme."T_Login" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Login". Définition : NOT NULL "IdTypeLoginFk".';
 
-
 --
 -- Name: CONSTRAINT "T_Login_DateLogin_not_null" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Login_DateLogin_not_null" ON systeme."T_Login" IS 'Non-nullité : exige une valeur renseignée dans "systeme"."T_Login". Définition : NOT NULL "DateLogin".';
-
 
 --
 -- Name: T_Login_IdLogin_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1565,13 +1797,180 @@ ALTER TABLE systeme."T_Login" ALTER COLUMN "IdLogin" ADD GENERATED ALWAYS AS IDE
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Login_IdLogin_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Login_IdLogin_seq" IS 'Séquence de génération de "systeme"."T_Login"."IdLogin". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
 
+--
+-- Name: T_ModuleApplication; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_ModuleApplication" (
+    "CodeModule" character varying(32) NOT NULL,
+    "Nom" character varying(120) NOT NULL,
+    "EstSocle" boolean DEFAULT false NOT NULL,
+    "CodeIncluant" character varying(32),
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Ordre" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
+    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text))
+);
+
+--
+-- Name: TABLE "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_ModuleApplication" IS 'Catalogue des applications SauverNdeko ; le socle partagé reste distinct des modules compris dans une licence.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."CodeModule" IS 'Code stable utilisé par les contrôles serveur et la navigation.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Nom"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Nom" IS 'Nom métier de l’application.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."EstSocle"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."EstSocle" IS 'Application incluse au socle d’une entité active ; les droits du rôle restent nécessaires.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."CodeIncluant"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."CodeIncluant" IS 'Application dont la licence inclut aussi ce module, sans créer une seconde souscription.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Actif" IS 'Disponibilité du module dans le catalogue.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Ordre"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Ordre" IS 'Ordre de présentation du catalogue.';
+
+--
+-- Name: T_RoleModule; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_RoleModule" (
+    "IdRoleModule" integer NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "IdRoleFk" integer NOT NULL,
+    "CodeModule" character varying(32) NOT NULL,
+    "PeutConsulter" boolean DEFAULT true NOT NULL,
+    "PeutGerer" boolean DEFAULT false NOT NULL,
+    "PeutExporter" boolean DEFAULT false NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "Version" integer DEFAULT 1 NOT NULL,
+    "ModifieParUserFk" integer,
+    "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "T_RoleModule_Version_check" CHECK (("Version" > 0)),
+    CONSTRAINT "T_RoleModule_check" CHECK (("PeutConsulter" OR ((NOT "PeutGerer") AND (NOT "PeutExporter"))))
+);
+
+--
+-- Name: TABLE "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_RoleModule" IS 'Restrictions par rôle, application et entité. Elles complètent les droits existants sans accorder le rôle d’administrateur.';
+
+--
+-- Name: COLUMN "T_RoleModule"."IdRoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdRoleModule" IS 'Identifiant permanent du paramétrage.';
+
+--
+-- Name: COLUMN "T_RoleModule"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdEntiteFk" IS 'Entité à laquelle s’applique cette règle ; immuable.';
+
+--
+-- Name: COLUMN "T_RoleModule"."IdRoleFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."IdRoleFk" IS 'Rôle du référentiel, catégorie Rôles (39) ; immuable.';
+
+--
+-- Name: COLUMN "T_RoleModule"."CodeModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."CodeModule" IS 'Application concernée par les restrictions ; code immuable.';
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutConsulter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutConsulter" IS 'Autorise la consultation si la licence et les droits préexistants l’autorisent aussi.';
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutGerer"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutGerer" IS 'Autorise les créations, modifications et suppressions permises par les services métier existants.';
+
+--
+-- Name: COLUMN "T_RoleModule"."PeutExporter"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."PeutExporter" IS 'Autorise les exports officiels du module.';
+
+--
+-- Name: COLUMN "T_RoleModule"."Actif"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."Actif" IS 'Une règle inactive refuse ces accès ; son absence conserve les droits antérieurs.';
+
+--
+-- Name: COLUMN "T_RoleModule"."Version"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."Version" IS 'Version du paramétrage pour la concurrence optimiste.';
+
+--
+-- Name: COLUMN "T_RoleModule"."ModifieParUserFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."ModifieParUserFk" IS 'Administrateur de plateforme auteur de la dernière modification.';
+
+--
+-- Name: COLUMN "T_RoleModule"."CreeLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."CreeLe" IS 'Instant de création du paramétrage.';
+
+--
+-- Name: COLUMN "T_RoleModule"."ModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_RoleModule"."ModifieLe" IS 'Instant de dernière modification fixé par le trigger.';
+
+--
+-- Name: T_RoleModule_IdRoleModule_seq; Type: SEQUENCE; Schema: systeme; Owner: -
+--
+
+ALTER TABLE systeme."T_RoleModule" ALTER COLUMN "IdRoleModule" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME systeme."T_RoleModule_IdRoleModule_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 --
 -- Name: T_Utilisateurs_IdUser_seq; Type: SEQUENCE; Schema: systeme; Owner: -
@@ -1586,13 +1985,11 @@ ALTER TABLE systeme."T_Utilisateurs" ALTER COLUMN "IdUser" ADD GENERATED ALWAYS 
     CACHE 1
 );
 
-
 --
 -- Name: SEQUENCE "T_Utilisateurs_IdUser_seq"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON SEQUENCE systeme."T_Utilisateurs_IdUser_seq" IS 'Séquence de génération de "systeme"."T_Utilisateurs"."IdUser". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
-
 
 --
 -- Name: T_Admin_UI_Setting Pk_Admin_UI_Setting; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1601,13 +1998,11 @@ COMMENT ON SEQUENCE systeme."T_Utilisateurs_IdUser_seq" IS 'Séquence de génér
 ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
     ADD CONSTRAINT "Pk_Admin_UI_Setting" PRIMARY KEY ("IdAdminUISetting");
 
-
 --
 -- Name: CONSTRAINT "Pk_Admin_UI_Setting" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_Admin_UI_Setting" ON systeme."T_Admin_UI_Setting" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Admin_UI_Setting". Définition : PRIMARY KEY ("IdAdminUISetting").';
-
 
 --
 -- Name: T_Entite Pk_IdEntite; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1616,13 +2011,11 @@ COMMENT ON CONSTRAINT "Pk_Admin_UI_Setting" ON systeme."T_Admin_UI_Setting" IS '
 ALTER TABLE ONLY systeme."T_Entite"
     ADD CONSTRAINT "Pk_IdEntite" PRIMARY KEY ("IdEntite");
 
-
 --
 -- Name: CONSTRAINT "Pk_IdEntite" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_IdEntite" ON systeme."T_Entite" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Entite". Définition : PRIMARY KEY ("IdEntite").';
-
 
 --
 -- Name: T_Entite_Localisation Pk_IdEntiteLocalisation; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1631,13 +2024,11 @@ COMMENT ON CONSTRAINT "Pk_IdEntite" ON systeme."T_Entite" IS 'Clé primaire : id
 ALTER TABLE ONLY systeme."T_Entite_Localisation"
     ADD CONSTRAINT "Pk_IdEntiteLocalisation" PRIMARY KEY ("IdEntiteLocalisation");
 
-
 --
 -- Name: CONSTRAINT "Pk_IdEntiteLocalisation" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_IdEntiteLocalisation" ON systeme."T_Entite_Localisation" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Entite_Localisation". Définition : PRIMARY KEY ("IdEntiteLocalisation").';
-
 
 --
 -- Name: T_Licence Pk_IdLicence; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1646,13 +2037,11 @@ COMMENT ON CONSTRAINT "Pk_IdEntiteLocalisation" ON systeme."T_Entite_Localisatio
 ALTER TABLE ONLY systeme."T_Licence"
     ADD CONSTRAINT "Pk_IdLicence" PRIMARY KEY ("IdLicence");
 
-
 --
 -- Name: CONSTRAINT "Pk_IdLicence" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_IdLicence" ON systeme."T_Licence" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Licence". Définition : PRIMARY KEY ("IdLicence").';
-
 
 --
 -- Name: T_Login Pk_IdLogin; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1661,13 +2050,11 @@ COMMENT ON CONSTRAINT "Pk_IdLicence" ON systeme."T_Licence" IS 'Clé primaire : 
 ALTER TABLE ONLY systeme."T_Login"
     ADD CONSTRAINT "Pk_IdLogin" PRIMARY KEY ("IdLogin");
 
-
 --
 -- Name: CONSTRAINT "Pk_IdLogin" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_IdLogin" ON systeme."T_Login" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Login". Définition : PRIMARY KEY ("IdLogin").';
-
 
 --
 -- Name: T_Utilisateurs Pk_IdUser; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1676,13 +2063,11 @@ COMMENT ON CONSTRAINT "Pk_IdLogin" ON systeme."T_Login" IS 'Clé primaire : iden
 ALTER TABLE ONLY systeme."T_Utilisateurs"
     ADD CONSTRAINT "Pk_IdUser" PRIMARY KEY ("IdUser");
 
-
 --
 -- Name: CONSTRAINT "Pk_IdUser" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Pk_IdUser" ON systeme."T_Utilisateurs" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Utilisateurs". Définition : PRIMARY KEY ("IdUser").';
-
 
 --
 -- Name: T_Audit_Log T_Audit_Log_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1691,13 +2076,11 @@ COMMENT ON CONSTRAINT "Pk_IdUser" ON systeme."T_Utilisateurs" IS 'Clé primaire 
 ALTER TABLE ONLY systeme."T_Audit_Log"
     ADD CONSTRAINT "T_Audit_Log_pkey" PRIMARY KEY ("IdLog");
 
-
 --
 -- Name: CONSTRAINT "T_Audit_Log_pkey" ON "T_Audit_Log"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Audit_Log_pkey" ON systeme."T_Audit_Log" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Audit_Log". Définition : PRIMARY KEY ("IdLog").';
-
 
 --
 -- Name: T_Entite T_Entite_EmailEntite_key; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1706,13 +2089,11 @@ COMMENT ON CONSTRAINT "T_Audit_Log_pkey" ON systeme."T_Audit_Log" IS 'Clé prima
 ALTER TABLE ONLY systeme."T_Entite"
     ADD CONSTRAINT "T_Entite_EmailEntite_key" UNIQUE ("EmailEntite");
 
-
 --
 -- Name: CONSTRAINT "T_Entite_EmailEntite_key" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Entite_EmailEntite_key" ON systeme."T_Entite" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Entite". Définition : UNIQUE ("EmailEntite").';
-
 
 --
 -- Name: T_Entite T_Entite_PhoneEntite_key; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1721,13 +2102,11 @@ COMMENT ON CONSTRAINT "T_Entite_EmailEntite_key" ON systeme."T_Entite" IS 'Unici
 ALTER TABLE ONLY systeme."T_Entite"
     ADD CONSTRAINT "T_Entite_PhoneEntite_key" UNIQUE ("PhoneEntite");
 
-
 --
 -- Name: CONSTRAINT "T_Entite_PhoneEntite_key" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Entite_PhoneEntite_key" ON systeme."T_Entite" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Entite". Définition : UNIQUE ("PhoneEntite").';
-
 
 --
 -- Name: T_Fk_Correspondance T_Fk_Correspondance_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1736,43 +2115,72 @@ COMMENT ON CONSTRAINT "T_Entite_PhoneEntite_key" ON systeme."T_Entite" IS 'Unici
 ALTER TABLE ONLY systeme."T_Fk_Correspondance"
     ADD CONSTRAINT "T_Fk_Correspondance_pkey" PRIMARY KEY ("IdFkCorrespondance");
 
-
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_pkey" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "T_Fk_Correspondance_pkey" ON systeme."T_Fk_Correspondance" IS 'Clé primaire : identifie de manière unique chaque ligne dans "systeme"."T_Fk_Correspondance". Définition : PRIMARY KEY ("IdFkCorrespondance").';
 
+--
+-- Name: T_LicenceModule T_LicenceModule_IdLicenceFk_CodeModule_key; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_IdLicenceFk_CodeModule_key" UNIQUE ("IdLicenceFk", "CodeModule");
+
+--
+-- Name: T_LicenceModule T_LicenceModule_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_pkey" PRIMARY KEY ("IdLicenceModule");
+
+--
+-- Name: T_ModuleApplication T_ModuleApplication_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT "T_ModuleApplication_pkey" PRIMARY KEY ("CodeModule");
+
+--
+-- Name: T_RoleModule T_RoleModule_IdEntiteFk_IdRoleFk_CodeModule_key; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdEntiteFk_IdRoleFk_CodeModule_key" UNIQUE ("IdEntiteFk", "IdRoleFk", "CodeModule");
+
+--
+-- Name: T_RoleModule T_RoleModule_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_pkey" PRIMARY KEY ("IdRoleModule");
 
 --
 -- Name: T_Fk_Correspondance UQ_FkCorrespondance_SourceValueScope; Type: CONSTRAINT; Schema: systeme; Owner: -
 --
 
 ALTER TABLE ONLY systeme."T_Fk_Correspondance"
-    ADD CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" UNIQUE ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue");
-
+    ADD CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" UNIQUE NULLS NOT DISTINCT ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue");
 
 --
 -- Name: CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Fk_Correspondance". Définition : UNIQUE ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue").';
-
+COMMENT ON CONSTRAINT "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" IS 'Une seule correspondance logique, même sans vue ou contexte explicite.';
 
 --
 -- Name: T_Admin_UI_Setting Uq_Admin_UI_Setting_Key_Scope; Type: CONSTRAINT; Schema: systeme; Owner: -
 --
 
 ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
-    ADD CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" UNIQUE ("SettingScope", "ScopeValue", "SettingKey");
-
+    ADD CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" UNIQUE NULLS NOT DISTINCT ("SettingScope", "ScopeValue", "SettingKey");
 
 --
 -- Name: CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Admin_UI_Setting". Définition : UNIQUE ("SettingScope", "ScopeValue", "SettingKey").';
-
+COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" IS 'Une seule clé par portée et contexte ; NULL global est une valeur unique.';
 
 --
 -- Name: T_Utilisateurs utilisateurs_emailuser_key; Type: CONSTRAINT; Schema: systeme; Owner: -
@@ -1781,13 +2189,11 @@ COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Set
 ALTER TABLE ONLY systeme."T_Utilisateurs"
     ADD CONSTRAINT utilisateurs_emailuser_key UNIQUE ("EmailUser");
 
-
 --
 -- Name: CONSTRAINT utilisateurs_emailuser_key ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT utilisateurs_emailuser_key ON systeme."T_Utilisateurs" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "systeme"."T_Utilisateurs". Définition : UNIQUE ("EmailUser").';
-
 
 --
 -- Name: Idx_Admin_UI_Setting_Group; Type: INDEX; Schema: systeme; Owner: -
@@ -1795,13 +2201,11 @@ COMMENT ON CONSTRAINT utilisateurs_emailuser_key ON systeme."T_Utilisateurs" IS 
 
 CREATE INDEX "Idx_Admin_UI_Setting_Group" ON systeme."T_Admin_UI_Setting" USING btree ("SettingGroup");
 
-
 --
 -- Name: INDEX "Idx_Admin_UI_Setting_Group"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Group" IS 'Index d’accès sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX "Idx_Admin_UI_Setting_Group" ON systeme."T_Admin_UI_Setting" USING btree ("SettingGroup").';
-
 
 --
 -- Name: Idx_Admin_UI_Setting_Key; Type: INDEX; Schema: systeme; Owner: -
@@ -1809,13 +2213,11 @@ COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Group" IS 'Index d’accès sur "
 
 CREATE INDEX "Idx_Admin_UI_Setting_Key" ON systeme."T_Admin_UI_Setting" USING btree ("SettingKey");
 
-
 --
 -- Name: INDEX "Idx_Admin_UI_Setting_Key"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Key" IS 'Index d’accès sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX "Idx_Admin_UI_Setting_Key" ON systeme."T_Admin_UI_Setting" USING btree ("SettingKey").';
-
 
 --
 -- Name: Idx_Admin_UI_Setting_Scope; Type: INDEX; Schema: systeme; Owner: -
@@ -1823,13 +2225,11 @@ COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Key" IS 'Index d’accès sur "sy
 
 CREATE INDEX "Idx_Admin_UI_Setting_Scope" ON systeme."T_Admin_UI_Setting" USING btree ("SettingScope", "ScopeValue");
 
-
 --
 -- Name: INDEX "Idx_Admin_UI_Setting_Scope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Scope" IS 'Index d’accès sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX "Idx_Admin_UI_Setting_Scope" ON systeme."T_Admin_UI_Setting" USING btree ("SettingScope", "ScopeValue").';
-
 
 --
 -- Name: Idx_Admin_UI_Setting_UpdatedAt; Type: INDEX; Schema: systeme; Owner: -
@@ -1837,13 +2237,11 @@ COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Scope" IS 'Index d’accès sur "
 
 CREATE INDEX "Idx_Admin_UI_Setting_UpdatedAt" ON systeme."T_Admin_UI_Setting" USING btree ("UpdatedAt");
 
-
 --
 -- Name: INDEX "Idx_Admin_UI_Setting_UpdatedAt"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_UpdatedAt" IS 'Index d’accès sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX "Idx_Admin_UI_Setting_UpdatedAt" ON systeme."T_Admin_UI_Setting" USING btree ("UpdatedAt").';
-
 
 --
 -- Name: Idx_Admin_UI_Setting_Valide; Type: INDEX; Schema: systeme; Owner: -
@@ -1851,13 +2249,11 @@ COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_UpdatedAt" IS 'Index d’accès s
 
 CREATE INDEX "Idx_Admin_UI_Setting_Valide" ON systeme."T_Admin_UI_Setting" USING btree ("ValideSetting");
 
-
 --
 -- Name: INDEX "Idx_Admin_UI_Setting_Valide"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Valide" IS 'Index d’accès sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX "Idx_Admin_UI_Setting_Valide" ON systeme."T_Admin_UI_Setting" USING btree ("ValideSetting").';
-
 
 --
 -- Name: INDEX "Pk_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1865,13 +2261,11 @@ COMMENT ON INDEX systeme."Idx_Admin_UI_Setting_Valide" IS 'Index d’accès sur 
 
 COMMENT ON INDEX systeme."Pk_Admin_UI_Setting" IS 'Index support de la clé primaire sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_Admin_UI_Setting" ON systeme."T_Admin_UI_Setting" USING btree ("IdAdminUISetting").';
 
-
 --
 -- Name: INDEX "Pk_IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Pk_IdEntite" IS 'Index support de la clé primaire sur "systeme"."T_Entite". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_IdEntite" ON systeme."T_Entite" USING btree ("IdEntite").';
-
 
 --
 -- Name: INDEX "Pk_IdEntiteLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1879,13 +2273,11 @@ COMMENT ON INDEX systeme."Pk_IdEntite" IS 'Index support de la clé primaire sur
 
 COMMENT ON INDEX systeme."Pk_IdEntiteLocalisation" IS 'Index support de la clé primaire sur "systeme"."T_Entite_Localisation". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_IdEntiteLocalisation" ON systeme."T_Entite_Localisation" USING btree ("IdEntiteLocalisation").';
 
-
 --
 -- Name: INDEX "Pk_IdLicence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Pk_IdLicence" IS 'Index support de la clé primaire sur "systeme"."T_Licence". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_IdLicence" ON systeme."T_Licence" USING btree ("IdLicence").';
-
 
 --
 -- Name: INDEX "Pk_IdLogin"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1893,13 +2285,11 @@ COMMENT ON INDEX systeme."Pk_IdLicence" IS 'Index support de la clé primaire su
 
 COMMENT ON INDEX systeme."Pk_IdLogin" IS 'Index support de la clé primaire sur "systeme"."T_Login". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_IdLogin" ON systeme."T_Login" USING btree ("IdLogin").';
 
-
 --
 -- Name: INDEX "Pk_IdUser"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."Pk_IdUser" IS 'Index support de la clé primaire sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Pk_IdUser" ON systeme."T_Utilisateurs" USING btree ("IdUser").';
-
 
 --
 -- Name: INDEX "T_Audit_Log_pkey"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1907,13 +2297,11 @@ COMMENT ON INDEX systeme."Pk_IdUser" IS 'Index support de la clé primaire sur "
 
 COMMENT ON INDEX systeme."T_Audit_Log_pkey" IS 'Index support de la clé primaire sur "systeme"."T_Audit_Log". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Audit_Log_pkey" ON systeme."T_Audit_Log" USING btree ("IdLog").';
 
-
 --
 -- Name: INDEX "T_Entite_EmailEntite_key"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."T_Entite_EmailEntite_key" IS 'Index d’unicité sur "systeme"."T_Entite". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Entite_EmailEntite_key" ON systeme."T_Entite" USING btree ("EmailEntite").';
-
 
 --
 -- Name: INDEX "T_Entite_PhoneEntite_key"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1921,27 +2309,47 @@ COMMENT ON INDEX systeme."T_Entite_EmailEntite_key" IS 'Index d’unicité sur "
 
 COMMENT ON INDEX systeme."T_Entite_PhoneEntite_key" IS 'Index d’unicité sur "systeme"."T_Entite". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Entite_PhoneEntite_key" ON systeme."T_Entite" USING btree ("PhoneEntite").';
 
-
 --
 -- Name: INDEX "T_Fk_Correspondance_pkey"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme."T_Fk_Correspondance_pkey" IS 'Index support de la clé primaire sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Fk_Correspondance_pkey" ON systeme."T_Fk_Correspondance" USING btree ("IdFkCorrespondance").';
 
-
 --
 -- Name: INDEX "UQ_FkCorrespondance_SourceValueScope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON INDEX systeme."UQ_FkCorrespondance_SourceValueScope" IS 'Index d’unicité sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "UQ_FkCorrespondance_SourceValueScope" ON systeme."T_Fk_Correspondance" USING btree ("ModuleName", "SchemaName", "ViewName", "SourceKey", "FieldName", "MappingType", "MappingValue", "SettingScope", "ScopeValue").';
-
+COMMENT ON INDEX systeme."UQ_FkCorrespondance_SourceValueScope" IS 'Index unique de la correspondance source/valeur/portée ; une vue ou un contexte NULL ne permet pas de doublon.';
 
 --
 -- Name: INDEX "Uq_Admin_UI_Setting_Key_Scope"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON INDEX systeme."Uq_Admin_UI_Setting_Key_Scope" IS 'Index d’unicité sur "systeme"."T_Admin_UI_Setting". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" USING btree ("SettingScope", "ScopeValue", "SettingKey").';
+COMMENT ON INDEX systeme."Uq_Admin_UI_Setting_Key_Scope" IS 'Index unique de la clé de paramètre par portée et contexte ; NULLS NOT DISTINCT interdit aussi les doublons globaux.';
 
+--
+-- Name: audit_document_identites_new_gin; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE INDEX audit_document_identites_new_gin ON systeme."T_Audit_Log" USING gin (logistique.fn_identites_audit("NewData")) WHERE ("TableName" = ANY (ARRAY['logistique.T_Commande'::text, 'T_Commande'::text, 'logistique.T_Facture'::text]));
+
+--
+-- Name: INDEX audit_document_identites_new_gin; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.audit_document_identites_new_gin IS 'Identités de bons/factures présentes après une écriture auditée ; garde la non-réutilisation après suppression.';
+
+--
+-- Name: audit_document_identites_old_gin; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE INDEX audit_document_identites_old_gin ON systeme."T_Audit_Log" USING gin (logistique.fn_identites_audit("OldData")) WHERE ("TableName" = ANY (ARRAY['logistique.T_Commande'::text, 'T_Commande'::text, 'logistique.T_Facture'::text]));
+
+--
+-- Name: INDEX audit_document_identites_old_gin; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.audit_document_identites_old_gin IS 'Identités de bons/factures présentes avant une écriture auditée ; évite regex et parcours complet du journal à chaque réservation.';
 
 --
 -- Name: idx_audit_changedat; Type: INDEX; Schema: systeme; Owner: -
@@ -1949,13 +2357,11 @@ COMMENT ON INDEX systeme."Uq_Admin_UI_Setting_Key_Scope" IS 'Index d’unicité 
 
 CREATE INDEX idx_audit_changedat ON systeme."T_Audit_Log" USING btree ("ChangedAt" DESC);
 
-
 --
 -- Name: INDEX idx_audit_changedat; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_audit_changedat IS 'Index d’accès sur "systeme"."T_Audit_Log". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_audit_changedat ON systeme."T_Audit_Log" USING btree ("ChangedAt" DESC).';
-
 
 --
 -- Name: idx_audit_log_entite; Type: INDEX; Schema: systeme; Owner: -
@@ -1963,13 +2369,11 @@ COMMENT ON INDEX systeme.idx_audit_changedat IS 'Index d’accès sur "systeme".
 
 CREATE INDEX idx_audit_log_entite ON systeme."T_Audit_Log" USING btree ("IdEntiteFk");
 
-
 --
 -- Name: INDEX idx_audit_log_entite; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_audit_log_entite IS 'Index d’accès sur "systeme"."T_Audit_Log". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_audit_log_entite ON systeme."T_Audit_Log" USING btree ("IdEntiteFk").';
-
 
 --
 -- Name: idx_entite_loc_coords; Type: INDEX; Schema: systeme; Owner: -
@@ -1977,13 +2381,11 @@ COMMENT ON INDEX systeme.idx_audit_log_entite IS 'Index d’accès sur "systeme"
 
 CREATE INDEX idx_entite_loc_coords ON systeme."T_Entite_Localisation" USING btree ("Latitude", "Longitude");
 
-
 --
 -- Name: INDEX idx_entite_loc_coords; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_entite_loc_coords IS 'Index d’accès sur "systeme"."T_Entite_Localisation". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_entite_loc_coords ON systeme."T_Entite_Localisation" USING btree ("Latitude", "Longitude").';
-
 
 --
 -- Name: idx_entite_loc_entite; Type: INDEX; Schema: systeme; Owner: -
@@ -1991,13 +2393,11 @@ COMMENT ON INDEX systeme.idx_entite_loc_coords IS 'Index d’accès sur "systeme
 
 CREATE INDEX idx_entite_loc_entite ON systeme."T_Entite_Localisation" USING btree ("IdEntiteFk");
 
-
 --
 -- Name: INDEX idx_entite_loc_entite; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_entite_loc_entite IS 'Index d’accès sur "systeme"."T_Entite_Localisation". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_entite_loc_entite ON systeme."T_Entite_Localisation" USING btree ("IdEntiteFk").';
-
 
 --
 -- Name: idx_entite_nom; Type: INDEX; Schema: systeme; Owner: -
@@ -2005,13 +2405,11 @@ COMMENT ON INDEX systeme.idx_entite_loc_entite IS 'Index d’accès sur "systeme
 
 CREATE INDEX idx_entite_nom ON systeme."T_Entite" USING btree ("NomEntite");
 
-
 --
 -- Name: INDEX idx_entite_nom; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_entite_nom IS 'Index d’accès sur "systeme"."T_Entite". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_entite_nom ON systeme."T_Entite" USING btree ("NomEntite").';
-
 
 --
 -- Name: idx_fk_licence_entite; Type: INDEX; Schema: systeme; Owner: -
@@ -2019,13 +2417,11 @@ COMMENT ON INDEX systeme.idx_entite_nom IS 'Index d’accès sur "systeme"."T_En
 
 CREATE INDEX idx_fk_licence_entite ON systeme."T_Licence" USING btree ("IdEntiteFk") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_fk_licence_entite; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fk_licence_entite IS 'Index d’accès sur "systeme"."T_Licence". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fk_licence_entite ON systeme."T_Licence" USING btree ("IdEntiteFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: idx_fk_licence_statut; Type: INDEX; Schema: systeme; Owner: -
@@ -2033,13 +2429,11 @@ COMMENT ON INDEX systeme.idx_fk_licence_entite IS 'Index d’accès sur "systeme
 
 CREATE INDEX idx_fk_licence_statut ON systeme."T_Licence" USING btree ("IdStatutLicenceFk") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_fk_licence_statut; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fk_licence_statut IS 'Index d’accès sur "systeme"."T_Licence". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fk_licence_statut ON systeme."T_Licence" USING btree ("IdStatutLicenceFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: idx_fkcorrespondance_category; Type: INDEX; Schema: systeme; Owner: -
@@ -2047,13 +2441,11 @@ COMMENT ON INDEX systeme.idx_fk_licence_statut IS 'Index d’accès sur "systeme
 
 CREATE INDEX idx_fkcorrespondance_category ON systeme."T_Fk_Correspondance" USING btree ("TargetCategoryIdFk");
 
-
 --
 -- Name: INDEX idx_fkcorrespondance_category; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fkcorrespondance_category IS 'Index d’accès sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fkcorrespondance_category ON systeme."T_Fk_Correspondance" USING btree ("TargetCategoryIdFk").';
-
 
 --
 -- Name: idx_fkcorrespondance_scope; Type: INDEX; Schema: systeme; Owner: -
@@ -2061,13 +2453,11 @@ COMMENT ON INDEX systeme.idx_fkcorrespondance_category IS 'Index d’accès sur 
 
 CREATE INDEX idx_fkcorrespondance_scope ON systeme."T_Fk_Correspondance" USING btree ("SettingScope", "ScopeValue");
 
-
 --
 -- Name: INDEX idx_fkcorrespondance_scope; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fkcorrespondance_scope IS 'Index d’accès sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fkcorrespondance_scope ON systeme."T_Fk_Correspondance" USING btree ("SettingScope", "ScopeValue").';
-
 
 --
 -- Name: idx_fkcorrespondance_source; Type: INDEX; Schema: systeme; Owner: -
@@ -2075,13 +2465,11 @@ COMMENT ON INDEX systeme.idx_fkcorrespondance_scope IS 'Index d’accès sur "sy
 
 CREATE INDEX idx_fkcorrespondance_source ON systeme."T_Fk_Correspondance" USING btree ("SchemaName", "ViewName", "SourceKey");
 
-
 --
 -- Name: INDEX idx_fkcorrespondance_source; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fkcorrespondance_source IS 'Index d’accès sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fkcorrespondance_source ON systeme."T_Fk_Correspondance" USING btree ("SchemaName", "ViewName", "SourceKey").';
-
 
 --
 -- Name: idx_fkcorrespondance_updatedby; Type: INDEX; Schema: systeme; Owner: -
@@ -2089,13 +2477,11 @@ COMMENT ON INDEX systeme.idx_fkcorrespondance_source IS 'Index d’accès sur "s
 
 CREATE INDEX idx_fkcorrespondance_updatedby ON systeme."T_Fk_Correspondance" USING btree ("UpdatedByUserFk");
 
-
 --
 -- Name: INDEX idx_fkcorrespondance_updatedby; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_fkcorrespondance_updatedby IS 'Index d’accès sur "systeme"."T_Fk_Correspondance". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_fkcorrespondance_updatedby ON systeme."T_Fk_Correspondance" USING btree ("UpdatedByUserFk").';
-
 
 --
 -- Name: idx_login_entite; Type: INDEX; Schema: systeme; Owner: -
@@ -2103,13 +2489,11 @@ COMMENT ON INDEX systeme.idx_fkcorrespondance_updatedby IS 'Index d’accès sur
 
 CREATE INDEX idx_login_entite ON systeme."T_Login" USING btree ("IdEntiteFk");
 
-
 --
 -- Name: INDEX idx_login_entite; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_login_entite IS 'Index d’accès sur "systeme"."T_Login". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_login_entite ON systeme."T_Login" USING btree ("IdEntiteFk").';
-
 
 --
 -- Name: idx_login_type; Type: INDEX; Schema: systeme; Owner: -
@@ -2117,13 +2501,11 @@ COMMENT ON INDEX systeme.idx_login_entite IS 'Index d’accès sur "systeme"."T_
 
 CREATE INDEX idx_login_type ON systeme."T_Login" USING btree ("IdTypeLoginFk");
 
-
 --
 -- Name: INDEX idx_login_type; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_login_type IS 'Index d’accès sur "systeme"."T_Login". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_login_type ON systeme."T_Login" USING btree ("IdTypeLoginFk").';
-
 
 --
 -- Name: idx_login_user_date; Type: INDEX; Schema: systeme; Owner: -
@@ -2131,13 +2513,11 @@ COMMENT ON INDEX systeme.idx_login_type IS 'Index d’accès sur "systeme"."T_Lo
 
 CREATE INDEX idx_login_user_date ON systeme."T_Login" USING btree ("IdUserFk", "DateLogin");
 
-
 --
 -- Name: INDEX idx_login_user_date; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_login_user_date IS 'Index d’accès sur "systeme"."T_Login". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_login_user_date ON systeme."T_Login" USING btree ("IdUserFk", "DateLogin").';
-
 
 --
 -- Name: idx_user_entite; Type: INDEX; Schema: systeme; Owner: -
@@ -2145,13 +2525,11 @@ COMMENT ON INDEX systeme.idx_login_user_date IS 'Index d’accès sur "systeme".
 
 CREATE INDEX idx_user_entite ON systeme."T_Utilisateurs" USING btree ("IdEntiteFk");
 
-
 --
 -- Name: INDEX idx_user_entite; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_user_entite IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_user_entite ON systeme."T_Utilisateurs" USING btree ("IdEntiteFk").';
-
 
 --
 -- Name: idx_utilisateur_date_creation; Type: INDEX; Schema: systeme; Owner: -
@@ -2159,13 +2537,11 @@ COMMENT ON INDEX systeme.idx_user_entite IS 'Index d’accès sur "systeme"."T_U
 
 CREATE INDEX idx_utilisateur_date_creation ON systeme."T_Utilisateurs" USING btree ("DatecreationUser") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_utilisateur_date_creation; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_utilisateur_date_creation IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_date_creation ON systeme."T_Utilisateurs" USING btree ("DatecreationUser") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: idx_utilisateur_nom; Type: INDEX; Schema: systeme; Owner: -
@@ -2173,13 +2549,11 @@ COMMENT ON INDEX systeme.idx_utilisateur_date_creation IS 'Index d’accès sur 
 
 CREATE INDEX idx_utilisateur_nom ON systeme."T_Utilisateurs" USING btree ("NomUser", "PrenomUser") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_utilisateur_nom; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_utilisateur_nom IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_nom ON systeme."T_Utilisateurs" USING btree ("NomUser", "PrenomUser") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: idx_utilisateur_phone; Type: INDEX; Schema: systeme; Owner: -
@@ -2187,13 +2561,11 @@ COMMENT ON INDEX systeme.idx_utilisateur_nom IS 'Index d’accès sur "systeme".
 
 CREATE INDEX idx_utilisateur_phone ON systeme."T_Utilisateurs" USING btree ("PhoneUser") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_utilisateur_phone; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_utilisateur_phone IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_phone ON systeme."T_Utilisateurs" USING btree ("PhoneUser") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: idx_utilisateur_role; Type: INDEX; Schema: systeme; Owner: -
@@ -2201,13 +2573,11 @@ COMMENT ON INDEX systeme.idx_utilisateur_phone IS 'Index d’accès sur "systeme
 
 CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRoleFk") WITH (fillfactor='100', deduplicate_items='true');
 
-
 --
 -- Name: INDEX idx_utilisateur_role; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.idx_utilisateur_role IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRoleFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
-
 
 --
 -- Name: INDEX utilisateurs_emailuser_key; Type: COMMENT; Schema: systeme; Owner: -
@@ -2215,20 +2585,89 @@ COMMENT ON INDEX systeme.idx_utilisateur_role IS 'Index d’accès sur "systeme"
 
 COMMENT ON INDEX systeme.utilisateurs_emailuser_key IS 'Index d’unicité sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX utilisateurs_emailuser_key ON systeme."T_Utilisateurs" USING btree ("EmailUser").';
 
+--
+-- Name: T_LicenceModule licence_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER licence_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_LicenceModule" FOR EACH ROW EXECUTE FUNCTION systeme.verifier_activation_module();
+
+--
+-- Name: TRIGGER licence_module_integrite ON "T_LicenceModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER licence_module_integrite ON systeme."T_LicenceModule" IS 'Rattachement licence/module immuable et versionné ; les dates de licence ne sont pas modifiées.';
+
+--
+-- Name: T_RoleModule role_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER role_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_RoleModule" FOR EACH ROW EXECUTE FUNCTION systeme.verifier_activation_module();
+
+--
+-- Name: TRIGGER role_module_integrite ON "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER role_module_integrite ON systeme."T_RoleModule" IS 'Périmètre entité/rôle/module immuable ; les restrictions ne constituent pas un rôle administrateur.';
+
+--
+-- Name: T_Admin_UI_Setting tr_admin_ui_setting_audit; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_admin_ui_setting_audit AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_reglage_audit();
+
+--
+-- Name: TRIGGER tr_admin_ui_setting_audit ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_admin_ui_setting_audit ON systeme."T_Admin_UI_Setting" IS 'Audit SQL unique des paramètres ; le backend ne produit pas un second événement.';
+
+--
+-- Name: T_Admin_UI_Setting tr_admin_ui_setting_proteger; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_admin_ui_setting_proteger BEFORE DELETE OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_proteger();
+
+--
+-- Name: TRIGGER tr_admin_ui_setting_proteger ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_admin_ui_setting_proteger ON systeme."T_Admin_UI_Setting" IS 'Protection des identités système et des paramètres non éditables avant toute mise à jour ou suppression.';
 
 --
 -- Name: T_Admin_UI_Setting tr_admin_ui_setting_set_updated_at; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
-CREATE TRIGGER tr_admin_ui_setting_set_updated_at BEFORE UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_set_updated_at();
-
+CREATE TRIGGER tr_admin_ui_setting_set_updated_at BEFORE INSERT OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_ui_setting_set_updated_at();
 
 --
 -- Name: TRIGGER tr_admin_ui_setting_set_updated_at ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TRIGGER tr_admin_ui_setting_set_updated_at ON systeme."T_Admin_UI_Setting" IS 'BEFORE UPDATE sur "systeme"."T_Admin_UI_Setting", pour chaque ligne. Appelle "systeme"."fn_admin_ui_setting_set_updated_at" : Avant UPDATE d’un paramètre d’interface, remplace UpdatedAt par CURRENT_TIMESTAMP et renvoie NEW.';
+COMMENT ON TRIGGER tr_admin_ui_setting_set_updated_at ON systeme."T_Admin_UI_Setting" IS 'Date et auteur SQL des paramètres ; les champs fournis par le client ne font pas foi.';
 
+--
+-- Name: T_Fk_Correspondance tr_fk_correspondance_actualiser; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_fk_correspondance_actualiser BEFORE INSERT OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.fn_fk_correspondance_actualiser();
+
+--
+-- Name: TRIGGER tr_fk_correspondance_actualiser ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_fk_correspondance_actualiser ON systeme."T_Fk_Correspondance" IS 'Date et auteur SQL des correspondances avant insertion ou mise à jour.';
+
+--
+-- Name: T_Fk_Correspondance tr_fk_correspondance_audit; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_fk_correspondance_audit AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.fn_admin_reglage_audit();
+
+--
+-- Name: TRIGGER tr_fk_correspondance_audit ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_fk_correspondance_audit ON systeme."T_Fk_Correspondance" IS 'Audit SQL unique des correspondances, compatible avec les remplacements transactionnels du réglage historique.';
 
 --
 -- Name: T_Login trigger_audit_T_Login; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2236,13 +2675,11 @@ COMMENT ON TRIGGER tr_admin_ui_setting_set_updated_at ON systeme."T_Admin_UI_Set
 
 CREATE TRIGGER "trigger_audit_T_Login" AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Login" FOR EACH ROW EXECUTE FUNCTION systeme.audit_log_function();
 
-
 --
 -- Name: TRIGGER "trigger_audit_T_Login" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER "trigger_audit_T_Login" ON systeme."T_Login" IS 'AFTER INSERT OR DELETE OR UPDATE sur "systeme"."T_Login", pour chaque ligne. Appelle "systeme"."audit_log_function" : Fonction de trigger AFTER enregistrant INSERT/UPDATE/DELETE dans T_Audit_Log avec TG_TABLE_NAME, états OLD/NEW complets et instant de modification. Tente de reprendre IdEntiteFk si la colonne est présente ; ne déduit pas l’auteur utilisateur.';
-
 
 --
 -- Name: T_Utilisateurs trigger_audit_T_Utilisateurs; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2250,13 +2687,11 @@ COMMENT ON TRIGGER "trigger_audit_T_Login" ON systeme."T_Login" IS 'AFTER INSERT
 
 CREATE TRIGGER "trigger_audit_T_Utilisateurs" AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION systeme.audit_log_function();
 
-
 --
 -- Name: TRIGGER "trigger_audit_T_Utilisateurs" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER "trigger_audit_T_Utilisateurs" ON systeme."T_Utilisateurs" IS 'AFTER INSERT OR DELETE OR UPDATE sur "systeme"."T_Utilisateurs", pour chaque ligne. Appelle "systeme"."audit_log_function" : Fonction de trigger AFTER enregistrant INSERT/UPDATE/DELETE dans T_Audit_Log avec TG_TABLE_NAME, états OLD/NEW complets et instant de modification. Tente de reprendre IdEntiteFk si la colonne est présente ; ne déduit pas l’auteur utilisateur.';
-
 
 --
 -- Name: T_Licence trigger_audit_log_T_Licence; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2264,13 +2699,11 @@ COMMENT ON TRIGGER "trigger_audit_T_Utilisateurs" ON systeme."T_Utilisateurs" IS
 
 CREATE TRIGGER "trigger_audit_log_T_Licence" AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION systeme.audit_log_function();
 
-
 --
 -- Name: TRIGGER "trigger_audit_log_T_Licence" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER "trigger_audit_log_T_Licence" ON systeme."T_Licence" IS 'AFTER INSERT OR DELETE OR UPDATE sur "systeme"."T_Licence", pour chaque ligne. Appelle "systeme"."audit_log_function" : Fonction de trigger AFTER enregistrant INSERT/UPDATE/DELETE dans T_Audit_Log avec TG_TABLE_NAME, états OLD/NEW complets et instant de modification. Tente de reprendre IdEntiteFk si la colonne est présente ; ne déduit pas l’auteur utilisateur.';
-
 
 --
 -- Name: T_Utilisateurs trigger_format_phone_number; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2278,13 +2711,11 @@ COMMENT ON TRIGGER "trigger_audit_log_T_Licence" ON systeme."T_Licence" IS 'AFTE
 
 CREATE TRIGGER trigger_format_phone_number BEFORE INSERT OR UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION systeme.format_phone_number();
 
-
 --
 -- Name: TRIGGER trigger_format_phone_number ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_format_phone_number ON systeme."T_Utilisateurs" IS 'BEFORE INSERT OR UPDATE sur "systeme"."T_Utilisateurs", pour chaque ligne. Appelle "systeme"."format_phone_number" : Avant INSERT/UPDATE d’un utilisateur, retire de PhoneUser tous les caractères autres que les chiffres. Ne normalise pas le préfixe international ni la validité téléphonique.';
-
 
 --
 -- Name: T_Licence trigger_notify_licence_expiry; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2292,13 +2723,11 @@ COMMENT ON TRIGGER trigger_format_phone_number ON systeme."T_Utilisateurs" IS 'B
 
 CREATE TRIGGER trigger_notify_licence_expiry AFTER INSERT OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION systeme.notify_licence_expiry();
 
-
 --
 -- Name: TRIGGER trigger_notify_licence_expiry ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_notify_licence_expiry ON systeme."T_Licence" IS 'AFTER INSERT OR UPDATE sur "systeme"."T_Licence", pour chaque ligne. Appelle "systeme"."notify_licence_expiry" : Après INSERT/UPDATE de licence, crée une notification pour un administrateur d’entité si DATE_PART(day, DateFin - NOW()) vaut 7 et si destinataire/type Notification sont trouvés. Ce trigger n’est pas une tâche quotidienne et ne s’exécute pas du seul fait du passage du temps.';
-
 
 --
 -- Name: T_Licence trigger_prevent_multiple_licenses; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2306,13 +2735,11 @@ COMMENT ON TRIGGER trigger_notify_licence_expiry ON systeme."T_Licence" IS 'AFTE
 
 CREATE TRIGGER trigger_prevent_multiple_licenses BEFORE INSERT OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION systeme.prevent_multiple_active_licenses();
 
-
 --
 -- Name: TRIGGER trigger_prevent_multiple_licenses ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_prevent_multiple_licenses ON systeme."T_Licence" IS 'Contrôle des périodes concurrentes de licences valides après verrouillage de leur entité.';
-
 
 --
 -- Name: T_Utilisateurs trigger_prevention_delete_utilisateur; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2320,13 +2747,11 @@ COMMENT ON TRIGGER trigger_prevent_multiple_licenses ON systeme."T_Licence" IS '
 
 CREATE TRIGGER trigger_prevention_delete_utilisateur BEFORE DELETE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION systeme.prevention_delete_if_dependent();
 
-
 --
 -- Name: TRIGGER trigger_prevention_delete_utilisateur ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_prevention_delete_utilisateur ON systeme."T_Utilisateurs" IS 'BEFORE DELETE sur "systeme"."T_Utilisateurs", pour chaque ligne. Appelle "systeme"."prevention_delete_if_dependent" : Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
-
 
 --
 -- Name: T_Utilisateurs trigger_update_date_modification; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2334,13 +2759,11 @@ COMMENT ON TRIGGER trigger_prevention_delete_utilisateur ON systeme."T_Utilisate
 
 CREATE TRIGGER trigger_update_date_modification BEFORE UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION systeme.update_date_modification();
 
-
 --
 -- Name: TRIGGER trigger_update_date_modification ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_update_date_modification ON systeme."T_Utilisateurs" IS 'BEFORE UPDATE sur "systeme"."T_Utilisateurs", pour chaque ligne. Appelle "systeme"."update_date_modification" : Avant UPDATE utilisateur, remplace DateModificationUser par NOW() et renvoie NEW.';
-
 
 --
 -- Name: T_Licence trigger_update_licence_status; Type: TRIGGER; Schema: systeme; Owner: -
@@ -2348,13 +2771,11 @@ COMMENT ON TRIGGER trigger_update_date_modification ON systeme."T_Utilisateurs" 
 
 CREATE TRIGGER trigger_update_licence_status BEFORE INSERT OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION systeme.update_licence_status();
 
-
 --
 -- Name: TRIGGER trigger_update_licence_status ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON TRIGGER trigger_update_licence_status ON systeme."T_Licence" IS 'BEFORE INSERT OR UPDATE sur "systeme"."T_Licence", pour chaque ligne. Appelle "systeme"."update_licence_status" : Avant INSERT/UPDATE de licence, fixe ExpireeLicence selon DateFin < NOW() ; une date NULL suit la branche false. Aucun recalcul périodique indépendant d’une écriture.';
-
 
 --
 -- Name: T_Admin_UI_Setting Fk_Admin_UI_Setting_User; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2363,13 +2784,11 @@ COMMENT ON TRIGGER trigger_update_licence_status ON systeme."T_Licence" IS 'BEFO
 ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
     ADD CONSTRAINT "Fk_Admin_UI_Setting_User" FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_Admin_UI_Setting_User" ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_Admin_UI_Setting_User" ON systeme."T_Admin_UI_Setting" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Admin_UI_Setting". Définition : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Entite_Localisation Fk_EL_Entite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2378,13 +2797,11 @@ COMMENT ON CONSTRAINT "Fk_Admin_UI_Setting_User" ON systeme."T_Admin_UI_Setting"
 ALTER TABLE ONLY systeme."T_Entite_Localisation"
     ADD CONSTRAINT "Fk_EL_Entite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE;
 
-
 --
 -- Name: CONSTRAINT "Fk_EL_Entite" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_EL_Entite" ON systeme."T_Entite_Localisation" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite_Localisation". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE.';
-
 
 --
 -- Name: T_Entite_Localisation Fk_EL_N3; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2393,13 +2810,11 @@ COMMENT ON CONSTRAINT "Fk_EL_Entite" ON systeme."T_Entite_Localisation" IS 'Clé
 ALTER TABLE ONLY systeme."T_Entite_Localisation"
     ADD CONSTRAINT "Fk_EL_N3" FOREIGN KEY ("IdNiveau_3_Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3");
 
-
 --
 -- Name: CONSTRAINT "Fk_EL_N3" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_EL_N3" ON systeme."T_Entite_Localisation" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite_Localisation". Définition : FOREIGN KEY ("IdNiveau_3_Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3").';
-
 
 --
 -- Name: T_Entite_Localisation Fk_EL_N4; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2408,13 +2823,11 @@ COMMENT ON CONSTRAINT "Fk_EL_N3" ON systeme."T_Entite_Localisation" IS 'Clé ét
 ALTER TABLE ONLY systeme."T_Entite_Localisation"
     ADD CONSTRAINT "Fk_EL_N4" FOREIGN KEY ("IdNiveau_4_Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4");
 
-
 --
 -- Name: CONSTRAINT "Fk_EL_N4" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_EL_N4" ON systeme."T_Entite_Localisation" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite_Localisation". Définition : FOREIGN KEY ("IdNiveau_4_Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4").';
-
 
 --
 -- Name: T_Entite_Localisation Fk_EL_N5; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2423,13 +2836,11 @@ COMMENT ON CONSTRAINT "Fk_EL_N4" ON systeme."T_Entite_Localisation" IS 'Clé ét
 ALTER TABLE ONLY systeme."T_Entite_Localisation"
     ADD CONSTRAINT "Fk_EL_N5" FOREIGN KEY ("IdNiveau_5_Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5");
 
-
 --
 -- Name: CONSTRAINT "Fk_EL_N5" ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_EL_N5" ON systeme."T_Entite_Localisation" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite_Localisation". Définition : FOREIGN KEY ("IdNiveau_5_Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5").';
-
 
 --
 -- Name: T_Licence Fk_Entite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2438,13 +2849,11 @@ COMMENT ON CONSTRAINT "Fk_EL_N5" ON systeme."T_Entite_Localisation" IS 'Clé ét
 ALTER TABLE ONLY systeme."T_Licence"
     ADD CONSTRAINT "Fk_Entite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE;
 
-
 --
 -- Name: CONSTRAINT "Fk_Entite" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_Entite" ON systeme."T_Licence" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Licence". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE.';
-
 
 --
 -- Name: T_Fk_Correspondance Fk_FkCorrespondance_Category; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2453,13 +2862,11 @@ COMMENT ON CONSTRAINT "Fk_Entite" ON systeme."T_Licence" IS 'Clé étrangère : 
 ALTER TABLE ONLY systeme."T_Fk_Correspondance"
     ADD CONSTRAINT "Fk_FkCorrespondance_Category" FOREIGN KEY ("TargetCategoryIdFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_FkCorrespondance_Category" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_FkCorrespondance_Category" ON systeme."T_Fk_Correspondance" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Fk_Correspondance". Définition : FOREIGN KEY ("TargetCategoryIdFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Fk_Correspondance Fk_FkCorrespondance_User; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2468,13 +2875,11 @@ COMMENT ON CONSTRAINT "Fk_FkCorrespondance_Category" ON systeme."T_Fk_Correspond
 ALTER TABLE ONLY systeme."T_Fk_Correspondance"
     ADD CONSTRAINT "Fk_FkCorrespondance_User" FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_FkCorrespondance_User" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_FkCorrespondance_User" ON systeme."T_Fk_Correspondance" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Fk_Correspondance". Définition : FOREIGN KEY ("UpdatedByUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Audit_Log Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2483,13 +2888,11 @@ COMMENT ON CONSTRAINT "Fk_FkCorrespondance_User" ON systeme."T_Fk_Correspondance
 ALTER TABLE ONLY systeme."T_Audit_Log"
     ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_IdEntite" ON "T_Audit_Log"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Audit_Log" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Audit_Log". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Login Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2498,13 +2901,11 @@ COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Audit_Log" IS 'Clé étrangèr
 ALTER TABLE ONLY systeme."T_Login"
     ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_IdEntite" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Login" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Login". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Utilisateurs Fk_IdEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2513,13 +2914,11 @@ COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Login" IS 'Clé étrangère : 
 ALTER TABLE ONLY systeme."T_Utilisateurs"
     ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_IdEntite" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Utilisateurs" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Utilisateurs". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Login Fk_IdTypeLogin; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2528,13 +2927,11 @@ COMMENT ON CONSTRAINT "Fk_IdEntite" ON systeme."T_Utilisateurs" IS 'Clé étrang
 ALTER TABLE ONLY systeme."T_Login"
     ADD CONSTRAINT "Fk_IdTypeLogin" FOREIGN KEY ("IdTypeLoginFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE;
 
-
 --
 -- Name: CONSTRAINT "Fk_IdTypeLogin" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_IdTypeLogin" ON systeme."T_Login" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Login". Définition : FOREIGN KEY ("IdTypeLoginFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
-
 
 --
 -- Name: T_Login Fk_IdUserFk; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2543,13 +2940,11 @@ COMMENT ON CONSTRAINT "Fk_IdTypeLogin" ON systeme."T_Login" IS 'Clé étrangère
 ALTER TABLE ONLY systeme."T_Login"
     ADD CONSTRAINT "Fk_IdUserFk" FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE;
 
-
 --
 -- Name: CONSTRAINT "Fk_IdUserFk" ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_IdUserFk" ON systeme."T_Login" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Login". Définition : FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE.';
-
 
 --
 -- Name: T_Utilisateurs Fk_RoleFk; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2558,13 +2953,11 @@ COMMENT ON CONSTRAINT "Fk_IdUserFk" ON systeme."T_Login" IS 'Clé étrangère : 
 ALTER TABLE ONLY systeme."T_Utilisateurs"
     ADD CONSTRAINT "Fk_RoleFk" FOREIGN KEY ("IdRoleFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_RoleFk" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_RoleFk" ON systeme."T_Utilisateurs" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Utilisateurs". Définition : FOREIGN KEY ("IdRoleFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL.';
-
 
 --
 -- Name: T_Licence Fk_StatutLicence; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2573,13 +2966,11 @@ COMMENT ON CONSTRAINT "Fk_RoleFk" ON systeme."T_Utilisateurs" IS 'Clé étrangè
 ALTER TABLE ONLY systeme."T_Licence"
     ADD CONSTRAINT "Fk_StatutLicence" FOREIGN KEY ("IdStatutLicenceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE;
 
-
 --
 -- Name: CONSTRAINT "Fk_StatutLicence" ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_StatutLicence" ON systeme."T_Licence" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Licence". Définition : FOREIGN KEY ("IdStatutLicenceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
-
 
 --
 -- Name: T_Entite Fk_TypeEntite; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -2588,14 +2979,64 @@ COMMENT ON CONSTRAINT "Fk_StatutLicence" ON systeme."T_Licence" IS 'Clé étrang
 ALTER TABLE ONLY systeme."T_Entite"
     ADD CONSTRAINT "Fk_TypeEntite" FOREIGN KEY ("IdTypeEntiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL;
 
-
 --
 -- Name: CONSTRAINT "Fk_TypeEntite" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT "Fk_TypeEntite" ON systeme."T_Entite" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite". Définition : FOREIGN KEY ("IdTypeEntiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL.';
 
+--
+-- Name: T_LicenceModule T_LicenceModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_CodeModule_fkey" FOREIGN KEY ("CodeModule") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
 
 --
--- PostgreSQL database dump complete
+-- Name: T_LicenceModule T_LicenceModule_IdLicenceFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
 --
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_IdLicenceFk_fkey" FOREIGN KEY ("IdLicenceFk") REFERENCES systeme."T_Licence"("IdLicence") ON DELETE RESTRICT;
+
+--
+-- Name: T_LicenceModule T_LicenceModule_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_LicenceModule"
+    ADD CONSTRAINT "T_LicenceModule_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;
+
+--
+-- Name: T_ModuleApplication T_ModuleApplication_CodeIncluant_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT "T_ModuleApplication_CodeIncluant_fkey" FOREIGN KEY ("CodeIncluant") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+--
+-- Name: T_RoleModule T_RoleModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_CodeModule_fkey" FOREIGN KEY ("CodeModule") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+--
+-- Name: T_RoleModule T_RoleModule_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+--
+-- Name: T_RoleModule T_RoleModule_IdRoleFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_IdRoleFk_fkey" FOREIGN KEY ("IdRoleFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: T_RoleModule T_RoleModule_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_RoleModule"
+    ADD CONSTRAINT "T_RoleModule_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;

@@ -2,12 +2,10 @@
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
 from django.db import transaction
 from rest_framework.views import APIView
 from . import db
-from .registry import model
-from .repository import positive, audit
+from .repository import positive, set_admin_actor
 from .permissions import IsERPAdmin
 from .responses import ok, APIError
 
@@ -151,17 +149,15 @@ class UISettingsView(APIView):
                         "SettingScope": scope,
                         "ScopeValue": value,
                         "DisplayOrder": index,
-                        "UpdatedAt": datetime.now(timezone.utc),
-                        "UpdatedByUserFk": request.user.pk,
                         "ObsFkCorrespondance": "Source " + key,
                     }
                     rows.append(row)
         with transaction.atomic():
+            set_admin_actor(request.user)
             db.query(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
                 ["settings:" + scope + ":" + str(value)],
             )
-            old = rows_for(scope, value)
             db.query(
                 'DELETE FROM systeme."T_Fk_Correspondance" WHERE "SettingScope"=%s AND "ScopeValue" IS NOT DISTINCT FROM %s AND "MappingType" IN (\'generic_category\',\'hierarchy_mode\')',
                 [scope, value],
@@ -175,13 +171,6 @@ class UISettingsView(APIView):
                     + ")",
                     list(row.values()),
                 )
-            audit(
-                model("T_Fk_Correspondance"),
-                "UPDATE",
-                format_rows(old, scope, value),
-                format_rows(rows, scope, value),
-                request.user,
-            )
         return ok(
             format_rows(rows_for(scope, value), scope, value),
             message="Paramétrage FK partagé enregistré.",

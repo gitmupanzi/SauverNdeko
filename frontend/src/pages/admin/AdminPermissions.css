@@ -1,0 +1,30 @@
+.admin-permissions{border:1px solid var(--erp-border);border-radius:12px;background:var(--erp-surface);color:var(--erp-text);overflow:hidden;min-width:0;}
+.admin-permissions-controls{display:flex;align-items:flex-end;gap:14px;padding:22px;border-bottom:1px solid var(--erp-border);flex-wrap:wrap;}
+.admin-permissions-controls>div{display:grid;gap:8px;flex:1 1 240px;max-width:360px;min-width:0;}
+.admin-permissions-controls label{font-size:12px;font-weight:600;color:var(--erp-muted);}
+.admin-permissions-controls>.ui-action{margin-left:auto;}
+.admin-permissions-message{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:18px 22px;padding:14px 16px;border:1px solid var(--erp-border);border-radius:8px;font-size:13px;line-height:1.6;}
+.admin-permissions-message.is-error{color:var(--erp-danger);border-color:color-mix(in srgb,var(--erp-danger) 35%,var(--erp-border));}
+.admin-permissions-message.is-success{justify-content:flex-start;background:var(--erp-mint);color:var(--erp-on-mint);}
+.admin-permissions-state{padding:22px;margin:0;font-size:13px;color:var(--erp-muted);}
+.admin-permissions-context{display:flex;align-items:center;gap:12px;padding:22px;}
+.admin-permissions-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:var(--erp-active);color:var(--erp-link);flex:none;}
+.admin-permissions-context>div{display:grid;gap:4px;min-width:0;}
+.admin-permissions-context strong{font-size:15px;font-weight:650;}.admin-permissions-context>div>span{font-size:12px;color:var(--erp-muted);}
+.admin-permissions-mode{margin-left:auto;font-size:11px;background:var(--erp-raised);padding:5px 8px;border-radius:6px;color:var(--erp-muted);}
+.admin-permissions-table-wrap{margin:0 22px;overflow:auto;border:1px solid var(--erp-border);border-radius:9px;}
+.admin-permissions-table{width:100%;min-width:580px;border-collapse:collapse;font-size:13px;}
+.admin-permissions-table th,.admin-permissions-table td{padding:15px 18px;border-bottom:1px solid var(--erp-border);}
+.admin-permissions-table tr:last-child :is(th,td){border-bottom:0;}
+.admin-permissions-table thead th{color:var(--erp-muted);font-size:12px;font-weight:600;background:var(--erp-raised);}
+.admin-permissions-table tbody th{font-weight:600;}.admin-permissions-table tbody th>small{display:inline-block;margin-left:9px;padding:3px 6px;font-size:10px;font-weight:400;color:var(--erp-muted);background:var(--erp-raised);border-radius:4px;}
+.admin-permissions-table td,.admin-permissions-table thead th:not(:first-child){text-align:center;width:120px;}
+.admin-permissions-table tbody tr:hover{background:var(--erp-hover);}
+.admin-permissions-table input[type=checkbox]{appearance:auto;width:17px;height:17px;accent-color:var(--erp-action);cursor:pointer;vertical-align:middle;}
+.admin-permissions-table input[type=checkbox]:disabled{cursor:default;opacity:.6;}
+.admin-permissions-table input[type=checkbox]:focus-visible{outline:2px solid var(--erp-link);outline-offset:4px;}
+.admin-permissions-note{font-size:12px;line-height:1.6;color:var(--erp-muted);margin:17px 22px 22px;}
+.admin-permissions-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px 22px;border-top:1px solid var(--erp-border);background:var(--erp-raised);}
+.admin-permissions-footer>span{font-size:12px;color:var(--erp-muted);}.admin-permissions-footer>div{display:flex;gap:8px;}
+.admin-permissions-confirm .drawer-body{color:var(--erp-text);font-size:14px;line-height:1.6;padding:24px;}
+@media(max-width:640px){.admin-permissions-controls{padding:16px;gap:12px;}.admin-permissions-controls>div{max-width:none;flex-basis:100%;}.admin-permissions-controls>.ui-action{margin-left:0;}.admin-permissions-context{padding:18px 16px;flex-wrap:wrap;}.admin-permissions-mode{margin-left:54px;}.admin-permissions-table-wrap{margin-inline:16px;}.admin-permissions-message{margin-inline:16px;flex-wrap:wrap;}.admin-permissions-note{margin-inline:16px;}.admin-permissions-footer{padding:16px;flex-wrap:wrap;}.admin-permissions-footer>div{margin-left:auto;}}

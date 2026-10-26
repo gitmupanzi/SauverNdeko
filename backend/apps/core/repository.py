@@ -14,9 +14,35 @@ PRIVATE = {"MotdepasseUser", "password", "Password", "MotDePasse"}
 READONLY = {"T_Mouvement", "T_Login", "T_Audit_Log", "T_Paiement_Archive", "T_RetourBon", "T_Facture", "T_FactureLigne"}
 
 
+def secret_key(value):
+    """Reconnaît les clés sensibles sans dépendre de leur casse ou séparateurs."""
+    key = re.sub(r"[^a-z0-9]", "", str(value).lower())
+    return (key in {"token", "authorization", "credentials", "credential", "secret"}
+            or key.endswith("secret")
+            or any(word in key for word in ("password", "motdepasse", "privatekey", "apikey", "accesstoken", "refreshtoken", "idtoken")))
+
+
 def clean(value):
     if isinstance(value, dict):
-        return {k: clean(v) for k, v in value.items() if k not in PRIVATE}
+        result = {}
+        protected_setting = secret_key(value.get("SettingKey", ""))
+        for key, item in value.items():
+            if key in PRIVATE or secret_key(key):
+                continue
+            if protected_setting and key in {"SettingValue", "SettingValueJson"}:
+                result[key] = "[Masqué]"
+                continue
+            # Certains anciens journaux ont enregistré un objet JSON sous forme
+            # de chaîne dans JSONB : l’inspecter avant de masquer récursivement.
+            if key in {"OldData", "NewData", "SettingValueJson"} and isinstance(item, str):
+                try:
+                    decoded = json.loads(item)
+                    if isinstance(decoded, (dict, list)):
+                        item = decoded
+                except (ValueError, TypeError):
+                    pass
+            result[key] = clean(item)
+        return result
     if isinstance(value, list):
         return [clean(x) for x in value]
     return value
@@ -367,6 +393,15 @@ def audit(obj, operation, old=None, new=None, actor=None):
     )
 
 
+def set_admin_actor(actor):
+    """Contexte transactionnel transmis aux déclencheurs d’administration.
+
+    La connexion ne porte aucune identité durable : SET LOCAL disparaît au
+    COMMIT/ROLLBACK. La base vérifie que le compte existe avant de l’auditer.
+    """
+    db.query("SELECT set_config('systeme.actor_user_id',%s,true)", [str(actor.pk)])
+
+
 @transaction.atomic
 def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     db.ensure_writable()
@@ -374,11 +409,32 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
         if hard and not actor.global_admin:raise APIError("Suppression définitive réservée à un administrateur global.","GLOBAL_ADMIN_REQUIRED",403)
         from apps.logistique.payments import mutate_payment
         return mutate_payment(actor,body,keys,operation)
+    if body is not None and not isinstance(body, dict):
+        raise APIError("Objet JSON attendu.")
     obj = model(name)
     check_global_write(obj, actor)
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
+    if name in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:
+        if isinstance(body, dict):
+            # Ces valeurs sont produites par PostgreSQL ; le navigateur ne
+            # peut ni antidater une modification ni choisir son auteur.
+            body = {key: value for key, value in body.items()
+                    if key not in {"UpdatedAt", "UpdatedByUserFk", "CreatedAt"}}
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if name == "T_Admin_UI_Setting" and not old and isinstance(body, dict) and secret_key(body.get("SettingKey", "")):
+        raise APIError("Ce secret se configure dans le paramétrage privé du serveur.", "SETTING_SECRET_PRIVATE", 409)
+    if name == "T_Admin_UI_Setting" and old:
+        if secret_key(old.get("SettingKey", "")) and set(body or {}) & {"SettingValue", "SettingValueJson"}:
+            raise APIError("Ce secret se configure dans le paramétrage privé du serveur.", "SETTING_SECRET_PRIVATE", 409)
+        if old.get("IsEditable") is not True:
+            raise APIError("Ce paramètre est protégé et reste en consultation.", "SETTING_PROTECTED", 409)
+        if old.get("IsSystem") is True:
+            if operation == "delete":
+                raise APIError("Un paramètre système doit être conservé.", "SETTING_PROTECTED", 409)
+            identity_fields = {"SettingKey", "SettingType", "SettingScope", "ScopeValue", "IsEditable", "IsSystem"}
+            if any(key in (body or {}) and body[key] != old.get(key) for key in identity_fields):
+                raise APIError("L’identité et les protections de ce paramètre système sont conservées.", "SETTING_PROTECTED", 409)
     if name in {"T_Article","T_Commande"}:
         from .tenancy import require_entity,assert_document
         require_entity(actor)
@@ -448,6 +504,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
         from apps.logistique.services import validate_header
 
         validate_header(obj, data, old, actor)
+    if name in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:
+        set_admin_actor(actor)
     table = db.qualified(obj["schema"], obj["name"])
     if operation == "create":
         if name == "T_Commande":
@@ -495,7 +553,10 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
                 + " RETURNING v.*",
                 [*data.values(), *values],
             )
-    audit(obj, operation.upper(), old, row, actor)
+    # Les réglages partagés sont audités par leurs déclencheurs SQL, y compris
+    # lors d’une intervention directe. Une seconde écriture ici les doublerait.
+    if name not in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:
+        audit(obj, operation.upper(), old, row, actor)
     if name == "T_Utilisateurs" and old and "MotdepasseUser" in data and data["MotdepasseUser"] != old.get("MotdepasseUser"):
         audit(obj,"PASSWORD_CHANGE",new={"IdUser":row["IdUser"],"passwordChanged":True},actor=actor)
     return clean(row)
