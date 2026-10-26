@@ -140,9 +140,9 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
       </section>
       <section role="tabpanel" id={prefix+"-panel-conservation"} aria-labelledby={prefix+"-tab-conservation"} hidden={active!=="conservation"} tabIndex={active==="conservation"?0:-1}>
       <Section title="Conservation" icon="calendar">
-        {input("DatePeremptionArticle","Date de péremption",{type:"date"})}
-        {input("NbreJoursAlerteArticle","Alerte avant péremption (jours)",{inputMode:"numeric"})}
-        <Field name={prefix+"alert"} label="Début de l’alerte" hint="Calculé à partir de la péremption et du délai d’alerte." wide><input id={prefix+"alert"} type="date" value={alertDate(values,record)} readOnly aria-describedby={prefix+"alert-hint"}/></Field>
+        {input("DatePeremptionArticle","Péremption générale · stock sans lot",{type:"date"})}
+        {input("NbreJoursAlerteArticle","Alerte avant péremption · jours",{inputMode:"numeric"})}
+        <Field name={prefix+"alert"} label="Début de l’alerte" hint="Date générale seulement. Les lots utilisent leur propre date et ce même délai." wide><input id={prefix+"alert"} type="date" value={alertDate(values,record)} readOnly aria-describedby={prefix+"alert-hint"}/></Field>
       </Section>
       </section>
       <section role="tabpanel" id={prefix+"-panel-informations"} aria-labelledby={prefix+"-tab-informations"} hidden={active!=="informations"} tabIndex={active==="informations"?0:-1}>

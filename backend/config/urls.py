@@ -1,8 +1,12 @@
+from apps.logistique.expiry import ExpiryPolicyView
+from apps.logistique.entity_documents import EntityDocumentIdentityView
+from apps.logistique.valuation import ArticleValuationView, ArticleValuationExcelView
+from apps.logistique.lot_register import LotDetailView, LotMovementsView, LotMovementsExcelView
 from apps.logistique.inventories import InventoriesView, UnitPrecisionView
 from apps.logistique.lot_fefo import LotFefoView
 from apps.logistique.destinations import DestinationsView
 from apps.logistique.tiers import EntreprisesView,TiersView,TiersReferencesView,TiersConsultationView
-from apps.accounts.mail_settings import MailSettingsView
+from apps.accounts.mail_settings import MailSettingsView, MailConnectionTestView
 from apps.accounts.password_reset import PasswordResetView, PasswordResetCheckView, PasswordResetConfirmView
 from apps.accounts.passwords import PasswordChangeView
 from apps.logistique.documents import DocumentPdfView, AttachmentsView
@@ -46,6 +50,13 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/export\.xlsx/?$", ArticleValuationExcelView.as_view()),
+    re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/?$", ArticleValuationView.as_view()),
+    re_path(r"^api/logistique/entreprise/identite/?$", EntityDocumentIdentityView.as_view()),
+    re_path(r"^api/logistique/peremption/politique/?$", ExpiryPolicyView.as_view()),
+    re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/export\.xlsx/?$", LotMovementsExcelView.as_view()),
+    re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/?$", LotMovementsView.as_view()),
+    re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/?$", LotDetailView.as_view()),
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|facture|recu|avoir)\.pdf/?$", DocumentPdfView.as_view()),
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
@@ -82,8 +93,8 @@ urlpatterns = [
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/export\.xlsx/?$", FolderExcelView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/membres/?$", FolderMembersView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi(?:/(?P<key>[a-z0-9-]+))?/?$", FoldersView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes|lignes|mouvements|factures|reglements)/?$", RegisterReadView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|commandes|lignes|mouvements|factures|reglements)/export\.xlsx/?$", RegisterExcelView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/?$", RegisterReadView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/export\.xlsx/?$", RegisterExcelView.as_view()),
     re_path(r"^api/logistique/synthese/?$", OverviewReadView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/export\.xlsx/?$", IndicatorExcelView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),
@@ -174,6 +185,7 @@ urlpatterns = [
         {"module": "referentiel/generiques"},
     ),
     re_path(r"^api/systeme/messagerie/?$", MailSettingsView.as_view()),
+    re_path(r"^api/systeme/messagerie/test/?$", MailConnectionTestView.as_view()),
     re_path(r"^api/systeme/admin-ui-settings/?$", UISettingsView.as_view()),
     re_path(r"^api/admin-ui-settings/?$", UISettingsView.as_view()),
     re_path(

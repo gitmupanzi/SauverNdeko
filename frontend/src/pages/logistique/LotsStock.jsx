@@ -1,0 +1,67 @@
+import {useEffect,useId,useRef,useState} from "react";
+import {useAuth} from "../../contexts/AuthContext";
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import {useConsultations} from "../../components/ConsultationProvider";
+import {moduleRights} from "../../services/moduleAccess";
+import {requestJson,downloadApiFile} from "../../services/api";
+import RegisterSurface from "../../components/RegisterSurface";
+import DataTableToolbar from "../../components/DataTableToolbar";
+import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
+import RemoteArticleSelect from "../../components/RemoteArticleSelect";
+import SearchSelect from "../../components/SearchSelect";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import ActionButton from "../../components/ActionButton";
+import AppIcon from "../../components/AppIcon";
+import {asArrayPayload,buildReferenceOptions,formatDate,formatNumber,SimpleTable} from "./logistiqueShared";
+import {LotState,LotQuantity,lotExcel} from "./lotShared";
+import Lot360 from "./Lot360";
+import "./LotsStock.css";
+const INITIAL={articleId:"",categorieId:"",articleTypeId:"",stockState:"all",peremption:"all",archive:"all",articleState:"all",dateFrom:"",dateTo:""};
+const LABELS={articleId:"Article",categorieId:"Catégorie",articleTypeId:"Type d’article",stockState:"État du stock",peremption:"Péremption",archive:"État du lot",articleState:"État de l’article",dateFrom:"Créé du",dateTo:"Créé au"};
+const STOCK=[{value:"all",label:"Tous les lots"},{value:"disponible",label:"En stock"},{value:"epuise",label:"Épuisés"},{value:"incoherent",label:"Stock négatif"}];
+const CONSERVATION=[{value:"all",label:"Toutes les dates"},{value:"perime",label:"Périmés"},{value:"alerte",label:"Péremption proche"},{value:"valide",label:"Valides"},{value:"non-renseignee",label:"Sans date de péremption"}];
+const ARCHIVE=[{value:"all",label:"Actifs et archivés"},{value:"actif",label:"Actifs"},{value:"archive",label:"Archivés"}];
+const DEFAULT_COLUMNS=["NumeroLot","NomArticle","CategorieArticle","StockLot","DatePeremptionLot","EtatPeremptionLot","Actif","actions"];
+const API="/api/logistique/registre/lots";
+const cleanColumns=filters=>Object.fromEntries(Object.entries(filters).filter(([,value])=>String(value??"").trim()));
+export default function LotsStock({references,refreshKey}){
+ const {user}=useAuth(),scope=useEntityScope(),consult=useConsultations(),filterId=useId(),columnsRef=useRef(null),exportRequest=useRef(null);
+ const canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+ const [search,setSearch]=useState(""),[filters,setFilters]=useState(INITIAL),[criteria,setCriteria]=useState({...INITIAL,q:""}),[grid,setGrid]=useState({take:25,skip:0,sortBy:"NumeroLot",sortDir:"asc"});
+ const [snapshot,setSnapshot]=useState({scopeKey:null,rows:[],meta:null}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0),[filterError,setFilterError]=useState(""),[columnDraft,setColumnDraft]=useState({}),[columnApplied,setColumnApplied]=useState({});
+ const [filtersOpen,setFiltersOpen]=useState(false),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS),[density,setDensity]=useState("compact"),[lot,setLot]=useState(null),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
+ const rows=snapshot.scopeKey===scope.scopeKey?snapshot.rows:[],meta=snapshot.scopeKey===scope.scopeKey?snapshot.meta:null,pending=search.trim()!==criteria.q||Object.keys(INITIAL).some(key=>filters[key]!==criteria[key])||JSON.stringify(cleanColumns(columnDraft))!==JSON.stringify(columnApplied),activeFilters=Object.keys(INITIAL).filter(key=>criteria[key]!==INITIAL[key]).length+Number(Boolean(criteria.q))+Object.values(columnApplied).filter(Boolean).length;
+ useEffect(()=>{setSnapshot({scopeKey:null,rows:[],meta:null});setLot(null);setSearch("");setFilters(INITIAL);setCriteria({...INITIAL,q:""});setGrid(current=>({...current,skip:0}));setColumnsOpen(false);setColumnDraft({});setColumnApplied({});},[scope.scopeKey]);
+ useEffect(()=>{let live=true;setLoading(true);setError("");const params=new URLSearchParams({...criteria,...grid,columnFilters:JSON.stringify(columnApplied),timeZone:"Africa/Kinshasa"});requestJson(API+"?"+params,{requiresAuth:true}).then(response=>{if(!live)return;setLoading(false);if(!response?.success){setSnapshot({scopeKey:null,rows:[],meta:null});setError(response?.message||"Les lots ne sont pas disponibles.");return;}setSnapshot({scopeKey:scope.scopeKey,rows:asArrayPayload(response),meta:response.meta||null});});return()=>{live=false;};},[criteria,grid,columnApplied,scope.scopeKey,refreshKey,revision]);
+ useEffect(()=>{exportRequest.current?.abort();exportRequest.current=null;setExporting(false);setExportError("");return()=>exportRequest.current?.abort();},[criteria,columnApplied,grid.sortBy,grid.sortDir,scope.scopeKey]);
+ function changeGrid(patch){setGrid(current=>({...current,...patch}));}
+ function apply(){if(filters.dateFrom&&filters.dateTo&&filters.dateFrom>filters.dateTo){setFilterError("La date de fin doit suivre la date de début.");return;}setCriteria({...filters,q:search.trim()});setColumnApplied(cleanColumns(columnDraft));setFilterError("");changeGrid({skip:0});}
+ function reset(){setSearch("");setFilters(INITIAL);setCriteria({...INITIAL,q:""});setFilterError("");setColumnDraft({});setColumnApplied({});changeGrid({skip:0});}
+ async function exportExcel(){if(!canExport||pending||loading||error||exporting||!meta?.filteredCount)return;const controller=new AbortController();exportRequest.current=controller;setExporting(true);setExportError("");try{await downloadApiFile(API+"/export.xlsx?"+new URLSearchParams({...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,columnFilters:JSON.stringify(columnApplied),timeZone:"Africa/Kinshasa",columns:JSON.stringify(visibleColumns.filter(key=>key!=="actions"))}),{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export a échoué.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}}
+ const options={categorieId:[{value:"",label:"Toutes les catégories"},...buildReferenceOptions(references?.articleCategories,"Catégorie")],articleTypeId:[{value:"",label:"Tous les types"},...buildReferenceOptions(references?.articleTypes,"Type")],stockState:STOCK,peremption:CONSERVATION,archive:ARCHIVE,articleState:ARCHIVE};
+ function open(row){if(!loading&&!error)setLot({id:row.ID_LotArticle,scopeKey:scope.scopeKey});}
+ const columns=[
+  {key:"NumeroLot",label:"N° de lot",width:190,render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={18}/></span><span className="erp-product-identity"><strong>{row.NumeroLot}</strong><small>{row.CodeArticleInterne||row.RefArticle||""}</small></span></span>},
+  {key:"NomArticle",label:"Article",width:230,render:row=><button className="erp-object-link" type="button" disabled={loading} onClick={()=>consult.openProduct(row)}>{row.NomArticle||"—"}</button>},
+  {key:"CategorieArticle",label:"Catégorie",width:180},{key:"TypeArticle",label:"Type",width:160},
+  {key:"StockLot",label:"Stock du lot",width:150,align:"right",filterType:"number",render:row=><LotQuantity value={row.StockLot} unit={row.AbrUnite}/>},
+  {key:"QuantiteEntree",label:"Entrées cumulées",width:155,align:"right",filterType:"number",render:row=><LotQuantity value={row.QuantiteEntree} unit={row.AbrUnite}/>},
+  {key:"QuantiteSortie",label:"Sorties cumulées",width:155,align:"right",filterType:"number",render:row=><LotQuantity value={row.QuantiteSortie} unit={row.AbrUnite}/>},
+  {key:"DatePeremptionLot",label:"Péremption",width:155,filterType:"date",render:row=>formatDate(row.DatePeremptionLot,{withTime:false})},
+  {key:"EtatPeremptionLot",label:"Conservation",width:165,render:row=><LotState value={row.EtatPeremptionLot}/>},
+  {key:"EtatStockLot",label:"État du stock",width:155,render:row=><LotState value={row.EtatStockLot}/>},
+  {key:"Actif",label:"État du lot",width:130,render:row=><LotState value={row.Actif===false?"Archivé":"Actif"}/>},
+  {key:"NomEntite",label:"Entreprise",width:190},{key:"CreeLe",label:"Créé le",width:175,filterType:"date",render:row=>formatDate(row.CreeLe)},
+  {key:"actions",label:"Actions",width:112,sortable:false,render:row=><div className="lots-row-actions"><ActionButton icon="eye" className="is-icon" aria-label={"Consulter le lot "+row.NumeroLot} disabled={loading} onClick={()=>open(row)}/><RowActionsMenu label={"Actions du lot "+row.NumeroLot} disabled={loading} documents={canExport?[lotExcel(row.ID_LotArticle)]:[]} items={[{label:"Consulter le lot",icon:"eye",disabled:loading,onSelect:()=>open(row)},{label:"Produit 360",icon:"box",disabled:loading,onSelect:()=>consult.openProduct(row)}]}/></div>},
+ ];
+ const summary=meta?.summary;
+ return <div className="logistics-screen lots-screen"><RegisterSurface title="Lots de stock" subtitle="Disponibilité et traçabilité de vos lots" tabs={<RegisterCategoryFilter label="Stock des lots" value={criteria.stockState} options={STOCK} disabled={loading} onChange={value=>{setFilters(current=>({...current,stockState:value}));setCriteria(current=>({...current,stockState:value}));changeGrid({skip:0});}}/>}>
+  <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
+   {summary?<div className="lots-summary" aria-label="Lots correspondant aux critères"><span><strong>{formatNumber(summary.total)}</strong> {String(summary.total)==="1"?"lot":"lots"}</span><span><strong>{formatNumber(summary.articles)}</strong> {String(summary.articles)==="1"?"article":"articles"}</span><span><strong>{formatNumber(summary.epuises)}</strong> {String(summary.epuises)==="1"?"épuisé":"épuisés"}</span><span><strong>{formatNumber(summary.perimes)}</strong> {String(summary.perimes)==="1"?"périmé en stock":"périmés en stock"}</span><span><strong>{formatNumber(summary.proches)}</strong> {String(summary.proches)==="1"?"proche de péremption en stock":"proches de péremption en stock"}</span></div>:null}
+   {error?<p className="erp-table-error" role="alert">{error} <ActionButton icon="refresh" onClick={()=>setRevision(current=>current+1)}>Réessayer</ActionButton></p>:null}
+   <SimpleTable rows={rows} columns={columns} getRowId={row=>row.ID_LotArticle} showSearch={false} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} loading={loading} emptyMessage="Aucun lot ne correspond aux critères." onRowConsult={open} consultColumns={["NumeroLot"]} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={columnDraft} onColumnFilterChange={(key,value)=>setColumnDraft(current=>({...current,[key]:value}))} onApplyColumnFilters={apply}
+    toolbar={<DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} toggleFilters={()=>setFiltersOpen(current=>!current)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(current=>current==="compact"?"airy":"compact")} columnsOpen={columnsOpen} columnsButtonRef={columnsRef} toggleColumns={()=>setColumnsOpen(current=>!current)} loading={loading} exportFile={canExport?exportExcel:undefined} exporting={exporting} exportDisabled={!canExport||!meta?.filteredCount||Boolean(error)} error={exportError} placeholder="Rechercher un lot, un article ou une référence…" filterControlsId={filterId} filterContent={filtersOpen?<form id={filterId} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid"><div><label htmlFor={filterId+"article"}>Article</label><RemoteArticleSelect id={filterId+"article"} value={filters.articleId} onChange={value=>setFilters(current=>({...current,articleId:value}))} scopeKey={scope.scopeKey}/></div>{Object.entries(options).map(([key,choices])=><div key={key}><label htmlFor={filterId+key}>{LABELS[key]}</label><SearchSelect id={filterId+key} label={LABELS[key]} value={filters[key]} options={choices} onChange={value=>setFilters(current=>({...current,[key]:value}))}/></div>)}{["dateFrom","dateTo"].map(key=><label key={key}><span>{LABELS[key]}</span><input type="date" value={filters[key]} onChange={event=>setFilters(current=>({...current,[key]:event.target.value}))}/></label>)}</div>{filterError?<p role="alert" className="erp-table-error">{filterError}</p>:null}<div className="erp-register-filters-footer"><ActionButton type="submit" variant="primary" disabled={loading}>Appliquer les filtres</ActionButton></div></form>:null}/>}/>
+   <p className="erp-register-hint">Les quantités se modifient depuis les bons de stock. Les lots épuisés et archivés restent consultables.</p>
+  </div>
+ </RegisterSurface>{lot&&lot.scopeKey===scope.scopeKey?<Lot360 key={lot.id} lotId={lot.id} onClose={()=>setLot(null)} canExport={canExport}/>:null}</div>;
+}

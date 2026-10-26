@@ -21,8 +21,8 @@ STATES = {"bon": {"attente":"commandesEnAttente","en-cours":"commandesEnCours","
 AUTOMATIC = [
  {"key":"ruptures","name":"Produits en rupture","objectType":"article","category":"Stock","colour":"rouge","rules":{"stockState":"rupture"},"description":"Stock nul ou négatif."},
  {"key":"stock-faible","name":"Produits en stock faible","objectType":"article","category":"Stock","colour":"orange","rules":{"stockState":"faible"},"description":"Stock positif inférieur ou égal au seuil minimum."},
- {"key":"peremption-proche","name":"Péremption proche","objectType":"article","category":"Conservation","colour":"orange","rules":{"peremption":"alerte"},"description":"Articles en alerte de péremption, non encore périmés."},
- {"key":"articles-perimes","name":"Articles périmés","objectType":"article","category":"Conservation","colour":"rouge","rules":{"peremption":"perime"},"description":"Date de péremption dépassée."},
+ {"key":"peremption-proche","name":"Péremption proche","objectType":"article","category":"Conservation","colour":"orange","rules":{"peremption":"alerte"},"description":"Stock disponible proche de sa péremption, par lot ou sans lot."},
+ {"key":"articles-perimes","name":"Articles périmés","objectType":"article","category":"Conservation","colour":"rouge","rules":{"peremption":"perime"},"description":"Stock restant périmé, par lot ou sans lot."},
  {"key":"bons-en-attente","name":"Bons en attente","objectType":"bon","category":"À traiter","colour":"orange","rules":{"etatBon":"attente"},"description":"Bons de stock en attente de traitement."},
  {"key":"bons-en-cours","name":"Bons en cours","objectType":"bon","category":"À traiter","colour":"bleu","rules":{"etatBon":"en-cours"},"description":"Bons de stock en cours de traitement."},
  {"key":"bons-non-factures","name":"Bons non facturés","objectType":"bon","category":"Facturation","colour":"violet","rules":{"etatBon":"non-facture"},"description":"Bons sans référence de facture."},

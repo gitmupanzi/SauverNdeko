@@ -1,8 +1,6 @@
-import PasswordReset from "./pages/PasswordReset";
+import lazyView from "./components/LazyView";
 import ModuleHeader from "./components/ModuleHeader";
 import ModuleGate from "./components/ModuleGate";
-import Applications from "./pages/Applications";
-import ApplicationLicences from "./pages/ApplicationLicences";
 import { mayOpen, accessSignature } from "./services/moduleAccess";
 import AppIcon from "./components/AppIcon";
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
@@ -11,22 +9,26 @@ import AdminRoute from "./components/AdminRoute";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
-import Discussions from "./pages/Discussions";
-import Diseases from "./pages/Diseases";
-import Experts from "./pages/Experts";
-import Home from "./pages/Home";
 import Login, { SessionLoading } from "./pages/Login";
 import { loginPathFor } from "./services/authNavigation";
-import Pharmacies from "./pages/Pharmacies";
-import Products from "./pages/Products";
-import Profile from "./pages/Profile";
-import WorkspaceHome from "./pages/WorkspaceHome";
-import Admin from "./pages/Admin";
-import Logistique from "./pages/Logistique";
-import Referentiels from "./pages/Referentiels";
-import OrganisationTerritoriale from "./pages/OrganisationTerritoriale";
 import { usePublicCatalogue } from "./hooks/usePublicCatalogue";
 import { buildDiscussionPath, matchesSearch, normalizeText } from "./services/mappers";
+
+const PasswordReset=lazyView(()=>import("./pages/PasswordReset"),{label:"Ouverture de la page…"});
+const Applications=lazyView(()=>import("./pages/Applications"),{label:"Ouverture de la page…"});
+const ApplicationLicences=lazyView(()=>import("./pages/ApplicationLicences"),{label:"Ouverture de la page…"});
+const Discussions=lazyView(()=>import("./pages/Discussions"),{label:"Ouverture de la page…"});
+const Diseases=lazyView(()=>import("./pages/Diseases"),{label:"Ouverture de la page…"});
+const Experts=lazyView(()=>import("./pages/Experts"),{label:"Ouverture de la page…"});
+const Home=lazyView(()=>import("./pages/Home"),{label:"Ouverture de la page…"});
+const Pharmacies=lazyView(()=>import("./pages/Pharmacies"),{label:"Ouverture de la page…"});
+const Products=lazyView(()=>import("./pages/Products"),{label:"Ouverture de la page…"});
+const Profile=lazyView(()=>import("./pages/Profile"),{label:"Ouverture du profil…"});
+const WorkspaceHome=lazyView(()=>import("./pages/WorkspaceHome"),{label:"Ouverture de vos applications…"});
+const Admin=lazyView(()=>import("./pages/Admin"),{label:"Ouverture de l’administration…"});
+const Logistique=lazyView(()=>import("./pages/Logistique"),{label:"Ouverture de la logistique…"});
+const Referentiels=lazyView(()=>import("./pages/Referentiels"),{label:"Ouverture de la page…"});
+const OrganisationTerritoriale=lazyView(()=>import("./pages/OrganisationTerritoriale"),{label:"Ouverture de la page…"});
 
 function SearchResultGroup({ title, items, onSelect }) {
   return (
@@ -243,7 +245,7 @@ function ApplicationShell() {
 
   function goTo(path, options) {
     closeOverlays();
-    navigate(path, options);
+    startTransition(() => navigate(path, options));
   }
 
   async function handleLogout() {

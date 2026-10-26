@@ -6,7 +6,25 @@ from apps.core import db
 from apps.core.repository import mutate, audit
 from apps.core.responses import APIError
 from .inventories import access, header, snapshot, check_version, request_id, digest, OBJECT
-from .lots import validate_stock
+from .lots import validate_stock,expiry_storage_ready
+
+
+def compensation_lots(actor,original_movement,new_movement,outgoing,reason,inventory):
+    if not expiry_storage_ready():
+        db.query('''INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite")
+            SELECT %s,"ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=%s''',[new_movement,original_movement])
+        return
+    rows=db.query('''SELECT ml."ID_LotArticleFk",ml."Quantite",(l."DatePeremptionLot"<(CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa')::date) IS TRUE AS expired,e."BloquerLotsPerimes" AS blocked
+        FROM logistique."T_MouvementLot" ml JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=ml."ID_LotArticleFk"
+        JOIN logistique."T_Article" a ON a."ID_Article"=l."ID_ArticleFk" JOIN systeme."T_Entite" e ON e."IdEntite"=a."IdEntiteFk"
+        WHERE ml."ID_MvtFk"=%s ORDER BY ml."ID_LotArticleFk"''',[original_movement])
+    for row in rows:
+        override=outgoing and row['expired'] and row['blocked']
+        if override and not actor.global_admin:
+            raise APIError('L’annulation prélève un lot périmé bloqué. Un administrateur de plateforme doit confirmer cette correction avec son motif.','EXPIRED_LOT_OVERRIDE_REQUIRED',403)
+        note=(f'Annulation inv-{inventory} : '+reason)[:1000] if override else None
+        db.query('''INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite","MotifDerogationPeremption","ID_DerogationUserFk")
+            VALUES (%s,%s,%s,%s,%s)''',[new_movement,row['ID_LotArticleFk'],row['Quantite'],note,actor.pk if override else None])
 
 
 def cancel(actor, identifier, body):
@@ -61,8 +79,7 @@ def cancel(actor, identifier, body):
             db.query('''INSERT INTO logistique."T_CommandeDetail" ("ID_CmdFk","ID_ArticleFk","QteCmdDetail","PUCmdDetail","ObsCmdDetail")
                 VALUES (%s,%s,%s,%s,%s)''', [cid, line['ID_ArticleFk'], original['QteCmdDetail'], original['PUCmdDetail'], reason[:255]])
             movement = db.one('SELECT "ID_Mvt" FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=%s AND "ID_ArticleFk"=%s', [cid, line['ID_ArticleFk']])
-            db.query('''INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite")
-                SELECT %s,"ID_LotArticleFk","Quantite" FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=%s''', [movement['ID_Mvt'], original['ID_Mvt']])
+            compensation_lots(actor,original['ID_Mvt'],movement['ID_Mvt'],original['SigneStock']==1,reason,identifier)
             validate_stock(line['ID_ArticleFk'])
             db.query('UPDATE logistique."T_InventaireLigne" SET "ID_CommandeAnnulationFk"=%s WHERE "ID_InventaireFk"=%s AND "ID_ArticleFk"=%s', [cid, identifier, line['ID_ArticleFk']])
             commands.append(cid)

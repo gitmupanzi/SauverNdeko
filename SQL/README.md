@@ -140,3 +140,25 @@ La précision est désormais portée par les lignes Unités de referentiel.T_Gen
 Annuler la validation exige les droits de gestion, une entreprise active, la révision du document, un UUID de demande et un motif. L’opération crée les bons inverses par les triggers de stock existants, conserve quantités, lots, prix historiques et devise, et interdit toute suppression des écritures d’origine. Un stock ou lot insuffisant refuse toute la transaction ; rejouer la même demande ne produit aucun mouvement supplémentaire. L’inventaire annulé reste consultable et ne peut pas être revalidé.
 
 Recette reproductible : définir SAUVERNDEKO_TEST_DATABASE_URL vers une base indépendante sauverndeko_test_* déjà migrée, puis exécuter SQL/tests/test_annulation_inventaire.py avec le Python du backend. Le script refuse la base applicative et crée exclusivement des données fictives dans la base dédiée. Résultat : 31 contrôles réussis. Sur SauverNdeko, le diagnostic de 176 routes GET et les lectures ciblées sont passés en lecture seule ; Django et la compilation frontend sont également validés.
+
+## Valorisation, péremption et registre des lots — 26 octobre 2026
+
+Les migrations suivantes sont installées dans SauverNdeko après les trois migrations 20261026_01 à 03. Respecter cet ordre sur une reprise compatible ; ne pas les rejouer sur la base locale déjà mise à jour. Une installation neuve utilise le paquet fermé décrit dans [le guide de livraison](../docs/livraison-logistique.md).
+
+1. [20261026_04_valorisation_cump.sql](migrations/20261026_04_valorisation_cump.sql) : coût moyen permanent PostgreSQL, arrêté motivé/révision de source, coûts d’origine des retours et journal append-only. Les coûts historiques incertains restent inconnus.
+2. [20261026_05_peremption_lots.sql](migrations/20261026_05_peremption_lots.sql) : conservation effective par lot, seuils et politique d’entreprise, stock sans lot, dérogations tracées. Le jour métier est Africa/Kinshasa.
+3. [20261026_06_performance_numerotation.sql](migrations/20261026_06_performance_numerotation.sql) : normalisation et index GIN ciblés de l’audit pour préserver la non-réutilisation des identités sans scanner tout l’historique à chaque bon.
+4. [20261026_07_registre_lots.sql](migrations/20261026_07_registre_lots.sql) : V_RegistreLots et V_RegistreMouvementLot, sources partagées des écrans et exports, propriétaires durables et unités.
+5. [20261026_08_corrections_inventaire_non_commerciales.sql](migrations/20261026_08_corrections_inventaire_non_commerciales.sql) : identification des bons correcteurs/compensateurs par FK, protections contre facturation et retours commerciaux dans les deux sens.
+
+La sauvegarde pré-déploiement .runtime/backups/avant-cump-peremption-20261026 a réellement été restaurée et comparée (61 tables, médias privés). Son dump SHA-256 est 7037a1c10e571ff7c592776f5f671e494fa9efbfd7562f3c3d7df5927c4ba91e. Les cinq migrations ont été appliquées dans une seule transaction ; les empreintes des 24 tables source contrôlées sont identiques avant/après, en excluant uniquement les nouvelles colonnes de métadonnées. Aucun coût d’ouverture réel n’a été arbitrairement confirmé : deux restent à compléter.
+
+Recette intégrée sur base privée fraîche : 299 contrôles (45 CUMP, 49 péremption, 65 lots, 31 annulation, 40 protections inventaire, 22 numérotation, 27 accès, 20 rôle runtime). Sur SauverNdeko : 185 routes GET réussies sous connexion effectivement en lecture seule. Les commandes de recette refusent les bases hors sauverndeko_test_*. Les définitions et commentaires sont versionnés ; aucune désactivation des triggers de stock n’est nécessaire.
+
+## Profil documentaire et clôture — 26 octobre 2026
+
+La migration [20261026_09_identite_documentaire.sql](migrations/20261026_09_identite_documentaire.sql) est installée après 01–08. Elle ajoute deux champs facultatifs sur T_Entite (identifiants déclaratifs génériques et mention), la fonction canonique fn_identite_documentaire et la vue V_IdentiteDocumentaire ; le trigger de création des identités les reprend dans les nouveaux documents uniquement. Les instantanés existants et leur protection immuable sont conservés. Aucun identifiant légal ni taux fiscal n’est inventé.
+
+Sauvegarde préalable restaurée : .runtime/backups/avant-identite-documentaire-20261026, dump SHA-256 f24ea851aa6d6252a30c52fddea54fe61ea24d2761ffcfd91807ebe1c3091ef2. La migration atomique a conservé les empreintes des 26 tables source, hors les deux nouvelles colonnes de profil. Ne pas la rejouer sur l’instance locale.
+
+Recettes privées : identité documentaire37 (révisions, rejeux, concurrence, SQL direct et instantanés), chaîne complète112 et diagnostic livraison47. Les nouveaux PDF ont été rendus et inspectés. Les paramètres réels de l’entreprise et la confirmation comptable des coûts restent sous la responsabilité du propriétaire. Voir [le suivi de clôture](../docs/reste-a-faire-logistique.md).

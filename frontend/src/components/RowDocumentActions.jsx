@@ -1,3 +1,4 @@
+import {moduleRights} from "../services/moduleAccess";
 import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {useAuth} from "../contexts/AuthContext";
@@ -10,7 +11,7 @@ export default function RowDocumentActions({documents=[],disabled=false,...props
  const {user}=useAuth(),scope=useEntityScope(),host=useRef(null),operation=useRef(null),mounted=useRef(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[failed,setFailed]=useState(null),[label,setLabel]=useState('');
  const identity=scope.scopeKey+':'+JSON.stringify(documents),currentIdentity=useRef(identity);currentIdentity.current=identity;
- const allowed=user?.permissions?.canExportData!==false;
+ const allowed=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;operation.current?.abort();};},[]);
  useEffect(()=>{operation.current?.abort();operation.current=null;setBusy(false);setError('');setFailed(null);return()=>operation.current?.abort();},[identity]);
  async function download(item){if(disabled||!allowed||operation.current||!item)return;const key=identity,controller=new AbortController();operation.current=controller;setBusy(true);setError('');setFailed(null);setLabel(item.label);try{await downloadApiFile(item.url,{signal:controller.signal,filename:item.filename,...(item.contentType?{contentType:item.contentType}:{})});}catch(failure){if(!controller.signal.aborted&&mounted.current&&currentIdentity.current===key){setError(failure.message||'Le téléchargement a échoué.');setFailed(item);}}finally{if(mounted.current&&currentIdentity.current===key&&operation.current===controller){operation.current=null;setBusy(false);}}}

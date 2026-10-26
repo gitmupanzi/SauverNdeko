@@ -1,3 +1,4 @@
+import {moduleRights} from "../services/moduleAccess";
 import {useEffect,useRef,useState} from "react";
 import {useAuth} from "../contexts/AuthContext";
 import {useEntityScope} from "../contexts/EntityScopeContext";
@@ -11,7 +12,7 @@ const MIME_TYPES=new Set(["application/pdf","image/jpeg","image/png","image/webp
 export default function BusinessDocuments({kind,objectId,types=[],refreshKey=0}){
  const {user}=useAuth(),scope=useEntityScope(),input=useRef(null),mounted=useRef(true),operation=useRef(null),activeIdentity=useRef("");
  const [collection,setCollection]=useState({identity:"",rows:[]}),[error,setError]=useState(""),[failed,setFailed]=useState(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[version,setVersion]=useState(0),[removing,setRemoving]=useState(null);
- const writable=scope.canWrite&&user?.permissions?.canWriteData===true,canDownload=user?.permissions?.canExportData!==false;
+ const writable=scope.canWrite&&user?.permissions?.canWriteData===true,canDownload=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
  const base="/api/logistique/documents/"+kind+"/"+objectId,identity=scope.scopeKey+":"+base;activeIdentity.current=identity;
  const pieces=collection.identity===identity?collection.rows:[];
  const current=key=>mounted.current&&activeIdentity.current===key;

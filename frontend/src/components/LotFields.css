@@ -2,3 +2,5 @@
 .lot-fields-stock>span,.lot-fields-allocation>span{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;}.lot-fields-stock strong,.lot-fields-allocation strong{color:var(--erp-text);font-size:12px;font-weight:650;}.lot-fields-stock .lot-fields-required{color:var(--erp-link);}.lot-fields-stock .lot-fields-required strong{color:var(--erp-link);}
 .lot-fields-allocation{margin:14px 0 0;background:transparent;}.lot-fields-row .search-select-trigger{min-height:40px;width:100%;}.lot-fields-row>label:first-child{flex:1.65;}.lot-fields .record-editor-note{line-height:1.6;}
 @container(max-width:540px){.lot-fields-stock,.lot-fields-allocation{gap:8px;}.lot-fields-stock>span,.lot-fields-allocation>span{width:100%;}.lot-fields-row>label:first-child{flex-basis:100%;}.lot-fields-row>label:nth-child(2){flex:1;}}
+
+.lot-fields-override{grid-column:1/-1}.lot-fields-override small{color:var(--erp-muted);font-size:.76rem}

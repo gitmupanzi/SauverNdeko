@@ -1,3 +1,7 @@
+import {moduleRights} from "../../services/moduleAccess";
+import lazyView from "../../components/LazyView";
+const StockValuation=lazyView(()=>import("../../components/StockValuation"),{label:"Chargement de la valorisation…",compact:true});
+import ExpiryPolicyEditor from "./ExpiryPolicyEditor";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import { currencyOptions } from "../../utils/money";
@@ -55,12 +59,13 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const canWrite = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
-  const canExport = currentUser?.permissions?.canExportData !== false;
+  const canExport = currentUser?.permissions?.canExportData !== false && moduleRights(currentUser,"logistique").canExport === true;
   const [search, setSearch] = useState(sharedTable?.searchValue || "");
   const [criteria, setCriteria] = useState(() => ({ ...EMPTY_FILTERS, q:sharedTable?.searchValue || "" }));
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [expiryPolicyOpen,setExpiryPolicyOpen]=useState(false);
   const columnsAnchorRef = useRef(null);
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_COLUMNS);
   const [density, setDensity] = useState(() => { try { return localStorage.getItem("sauverndeko.table.density") === "airy" ? "airy" : "compact"; } catch { return "compact"; } });
@@ -104,6 +109,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const [editor,setEditor]=useState(null);
   const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null);
   const [action,setAction]=useState(null);
+  const [valuation,setValuation]=useState(null);
   const [savedRecord,setSavedRecord]=useState(null);
   const selectedArticle = sharedTable?.selectedRow || null;
   function handleReceipt(article){if(canWrite&&article.ValideArticle!==false)setReceipt(article.ID_Article);}
@@ -148,13 +154,14 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     { key:"NombreLots",label:"Lots",width:110,align:"right",render:row=><button type="button" className="erp-object-link" onClick={event=>{event.stopPropagation();openProductLots(row);}}>{formatNumber(row.NombreLots)}</button> },
     { key:"InformationArticle",label:"Informations",width:240 },
     { key:"PVArticle", label:"Prix de vente", width:130, align:"right", render:row => formatCurrency(row.PVArticle,row.DeviseCode) },
-    { key:"ValeurStockAchat", label:"Valeur du stock", width:150, align:"right", render:row => formatCurrency(row.ValeurStockAchat,row.DeviseCode) },
+    { key:"ValeurStockAchat", label:"Valeur catalogue (achat)", width:150, align:"right", render:row => formatCurrency(row.ValeurStockAchat,row.DeviseCode) },
     { key:"MargeUnitaire", label:"Marge unitaire", align:"right", render:row => formatCurrency(row.MargeUnitaire,row.DeviseCode) },
     { key:"DatePeremptionArticle", label:"Péremption", width:140, render:row => row.DatePeremptionArticle ? formatDate(row.DatePeremptionArticle) : "—" },
     { key:"EtatPeremption", label:"État de péremption", width:170, render:row => <ArticleStatus value={row.EtatPeremption} tone={expiryTone(row.EtatPeremption)}/> },
     { key:"ValideArticle", label:"État de l’article", width:145, render:row => <ArticleStatus value={row.ValideArticle == null ? null : row.ValideArticle ? "Actif" : "Inactif"} tone={row.ValideArticle ? "success" : "neutral"}/> },
     { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[recordExcel('articles',{ID_Article:row.ID_Article},'Fiche article')]} label={row.NomArticle || "Article"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openProduct(row)},
+      {label:"Valorisation CUMP",icon:"cash",onSelect:()=>setValuation({id:row.ID_Article,currency:row.ID_DeviseFk})},
       {label:"Réceptionner du stock",icon:"stock-in",disabled:!canWrite||row.ValideArticle===false,reason:!canWrite?"Accès en consultation":row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>handleReceipt(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleEditArticle(row)},
       {label:row.ValideArticle===false?"Réactiver":"Désactiver",icon:row.ValideArticle===false?"check-circle":"close",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleDisableArticle(row)},
@@ -208,7 +215,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     <div className="logistics-screen">
       <div aria-live="polite"><StatusBanner feedback={feedback} />{savedRecord?<button type="button" className="application-back" onClick={()=>openProduct(savedRecord)}>Consulter l’article<AppIcon name="arrow-up-right"/></button>:null}{savedReceipt?<button type="button" className="application-back" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée<AppIcon name="arrow-up-right"/></button>:null}</div>
       <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
-        <ActionButton icon="settings" onClick={onToggleFkMappings} title="Réglages des références">Réglages</ActionButton>
+        <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><ActionButton icon="settings" onClick={onToggleFkMappings} title="Réglages des références">Réglages</ActionButton>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
       </>} tabs={<RegisterCategoryFilter label="État du stock" value={criteria.stockState} options={[{value:"all",label:"Tous les articles"},{value:"disponible",label:"Disponibles"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Ruptures"}]} onChange={chooseStock}/>}>
         <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
@@ -235,6 +242,8 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
         </div>
       </RegisterSurface>
 
+      {expiryPolicyOpen?<ExpiryPolicyEditor onClose={()=>setExpiryPolicyOpen(false)} onSaved={()=>{onDataChanged?.();refreshFolders?.();}}/>:null}
+      {valuation?<StockValuation articleId={valuation.id} defaultCurrencyId={valuation.currency} onClose={()=>setValuation(null)} onSaved={()=>onDataChanged?.()}/>:null}
       {editor?<ArticleEditor key={editor.id||"new"} articleId={editor.id} references={references} onClose={()=>setEditor(null)} onSaved={saved}/>:null}
       {receipt?<StockReceiptEditor key={receipt} articleId={receipt} references={references} onClose={()=>setReceipt(null)} onSaved={received}/>:null}
       {action?<ArticleActionDrawer key={action.id+action.kind} articleId={action.id} action={action.kind} onClose={()=>setAction(null)} onSaved={saved}/>:null}

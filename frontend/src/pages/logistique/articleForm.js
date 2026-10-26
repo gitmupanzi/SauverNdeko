@@ -26,7 +26,6 @@ export function articleErrors(values,creating){
   }
   for(const key of ["QteMinArticle",...(creating?["QteArticle"]:[])])if(String(values[key]??"").trim()!==""&&quantityError(values[key],true))errors[key]=quantityError(values[key],true);
   if(String(values.CodeArticleExterne??"").trim()!==""&&Number(values.CodeArticleExterne)<1)errors.CodeArticleExterne="Le code externe doit être supérieur à zéro.";
-  if(String(values.NbreJoursAlerteArticle??"").trim()!==""&&!values.DatePeremptionArticle)errors.DatePeremptionArticle="Renseignez une date pour définir l’alerte.";
   if(values.PoidsUnitaire!==""&&!/^\d{1,8}(?:[.,]\d{1,6})?$/.test(values.PoidsUnitaire.trim()))errors.PoidsUnitaire="Renseignez un poids positif ou nul, avec six décimales au maximum.";
   if(Boolean(values.PoidsUnitaire)!==Boolean(values.ID_UnitePoidsFk))errors.PoidsUnitaire="Renseignez le poids et son unité, ou laissez les deux vides.";
   return errors;

@@ -8,9 +8,9 @@ from apps.core.responses import APIError
 from .currency import amounts_by_currency
 from .table_queries import document_zone
 
-KINDS={'mouvements','factures','reglements'}
+KINDS={'mouvements','factures','reglements','lots'}
 COMMON={'q','dateFrom','dateTo','take','skip','sortBy','sortDir','columnFilters','timeZone','deviseId'}
-SPECIFIC={'mouvements':{'articleId','commandeId','typeId','origine','sens','categorieId','articleTypeId'},'factures':{'commandeId','client','payment','late','dueFrom','dueTo'},'reglements':{'commandeId','client','modeId','codeFacture'}}
+SPECIFIC={'lots':{'lotId','articleId','categorieId','articleTypeId','stockState','peremption','archive','articleState'},'mouvements':{'articleId','commandeId','typeId','origine','sens','categorieId','articleTypeId'},'factures':{'commandeId','client','payment','late','dueFrom','dueTo'},'reglements':{'commandeId','client','modeId','codeFacture'}}
 INVOICE=""""CodeFacture" IS NOT NULL AND BTRIM("CodeFacture")<>''"""
 
 
@@ -19,6 +19,8 @@ def column(name,kind):
 
 
 def source(kind):
+    if kind=='lots':
+        return {**view('logistique','V_RegistreLots'),'primaryKey':['ID_LotArticle'],'_date_field':'CreeLe'}
     if kind=='mouvements':
         base=view('logistique','V_Mouvement');extras=[column('AbrUnite','character varying'),column('MontantMvtSigned','numeric'),column('RefArticle','character varying'),column('CategorieArticle','character varying'),column('TypeArticle','character varying'),column('ID_CategorieArticleFk','integer'),column('ID_TypeArticleFk','integer'),column('StockActuel','numeric'),column('ValideArticle','boolean')]
         sql='''(SELECT m.*,a."AbrUnite",a."RefArticle",a."CategorieArticle",a."TypeArticle",a."ID_CategorieArticleFk",a."ID_TypeArticleFk",a."QteArticle" AS "StockActuel",a."ValideArticle",CASE WHEN m."PUMvt" IS NOT NULL AND m."QteMvt" IS NOT NULL AND m."SigneStock" IN (-1,1)
@@ -42,10 +44,21 @@ def source(kind):
 def register_source(kind,raw,for_export=False):
     if set(raw)-(COMMON|SPECIFIC[kind]|({'columns'} if for_export else set())):raise APIError('Critère non autorisé.')
     obj=source(kind);filters={};conditions=[obj.get('_base_condition','TRUE')]
-    mapping=({'articleId':'ID_ArticleFk','commandeId':'ID_cmdFk','typeId':'ID_TypeMvtFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='mouvements' else {'commandeId':'ID_Commande','client':'ID_TiersFk'} if kind=='factures' else {'commandeId':'ID_Commande','client':'ID_ClientFk','modeId':'ID_ModeReglementFk'})
+    mapping=({'lotId':'ID_LotArticle','articleId':'ID_ArticleFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='lots' else {'articleId':'ID_ArticleFk','commandeId':'ID_cmdFk','typeId':'ID_TypeMvtFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='mouvements' else {'commandeId':'ID_Commande','client':'ID_TiersFk'} if kind=='factures' else {'commandeId':'ID_Commande','client':'ID_ClientFk','modeId':'ID_ModeReglementFk'})
     for key,field in mapping.items():
         if raw.get(key) not in (None,'','all'):filters[field]=positive(raw[key])
-    if kind=='mouvements':
+    if kind=='lots':
+        choices={
+          'stockState':{'all':'TRUE','disponible':'"StockLot">0','epuise':'"StockLot"=0','incoherent':'"StockLot"<0'},
+          'peremption':{'all':'TRUE','perime':'"EstPerime"=true','alerte':'"EstProche"=true','valide':"\"EtatPeremptionLot\"='Valide'",'non-renseignee':'"DatePeremptionLot" IS NULL'},
+          'archive':{'all':'TRUE','actif':'"Actif"=true','archive':'"Actif"=false'},
+          'articleState':{'all':'TRUE','actif':'"ValideArticle"=true','archive':'"ValideArticle"=false'},
+        }
+        for key,options in choices.items():
+            selected=raw.get(key) or 'all'
+            if selected not in options:raise APIError('Critère de lot invalide : '+key+'.')
+            conditions.append(options[selected])
+    elif kind=='mouvements':
         senses={'all':'TRUE','entree':'"SigneStock"=1','sortie':'"SigneStock"=-1','neutre':'COALESCE("SigneStock",0)=0'};selected=raw.get('sens') or 'all'
         if selected not in senses:raise APIError('Sens de mouvement invalide.')
         conditions.append(senses[selected]);origin=raw.get('origine')
@@ -88,7 +101,10 @@ def period_clause(obj,field,begin,end,raw):
 def annotate_metadata(kind,obj,actor,raw,where,values,meta):
     from .reads import row_source
     source_sql=row_source(obj)
-    if kind=='mouvements':
+    if kind=='lots':
+        # Des nombres de lots seulement : les quantités d’unités différentes ne se somment pas.
+        expression='COUNT(*) AS total,COUNT(DISTINCT "ID_ArticleFk") AS articles,COUNT(*) FILTER(WHERE "StockLot">0) AS disponibles,COUNT(*) FILTER(WHERE "StockLot"=0) AS epuises,COUNT(*) FILTER(WHERE "Actif"=false) AS archives,COUNT(*) FILTER(WHERE "EstPerime" AND "StockLot">0) AS perimes,COUNT(*) FILTER(WHERE "EstProche" AND "StockLot">0) AS proches'
+    elif kind=='mouvements':
         expression='COUNT(*) AS total,COUNT(*) FILTER(WHERE "SigneStock"=1) AS entrees,COUNT(*) FILTER(WHERE "SigneStock"=-1) AS sorties,COUNT(DISTINCT "ID_ArticleFk") AS articles,COUNT(DISTINCT "ID_cmdFk") AS bons'
         scope,scope_values=scope_for(obj,actor)
         options=db.query('SELECT DISTINCT "OrigineMouvement" AS value FROM '+source_sql+' WHERE '+scope+' AND "OrigineMouvement" IS NOT NULL ORDER BY value',scope_values)

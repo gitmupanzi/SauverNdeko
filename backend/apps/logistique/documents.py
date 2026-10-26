@@ -162,6 +162,10 @@ def render_pdf(data):
     story.append(p(emitter.get('NomEntite') or 'Entreprise à renseigner','TitleERP'))
     for key in ('AdresseEntite','EmailEntite','PhoneEntite'):
         if emitter.get(key):story.append(p(emitter[key],'SmallERP'))
+    for identifier in emitter.get('IdentifiantsLegauxEntite') or []:
+        if isinstance(identifier,dict) and identifier.get('libelle') and identifier.get('valeur'):
+            story.append(p(str(identifier['libelle'])+' : '+str(identifier['valeur']),'SmallERP'))
+    if emitter.get('MentionDocumentaireEntite'):story.append(p(emitter['MentionDocumentaireEntite'],'SmallERP'))
     story.append(Spacer(1,7*mm));story.append(p(data['title'],'TitleERP'))
     story.append(p('N° '+str(data.get('code') or '—')+' · '+date_label(data.get('date'))))
     if data.get('parentCode') and data['parentCode']!=data.get('code'):story.append(p('Bon d’origine : '+str(data['parentCode']),'SmallERP'))

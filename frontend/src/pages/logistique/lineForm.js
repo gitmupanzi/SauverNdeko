@@ -15,7 +15,7 @@ export function closedBon(bon) {
 export function lineForm(row=null,bonId="") {
   return {ID_CmdFk:String(row?.ID_CmdFk??bonId??""),ID_ArticleFk:String(row?.ID_ArticleFk??""),QteCmdDetail:row?.QteCmdDetail==null?"":String(row.QteCmdDetail),PUCmdDetail:row?.PUCmdDetail==null?"":String(row.PUCmdDetail),ObsCmdDetail:row?.ObsCmdDetail||"",LieuCmdDetail:row?.LieuCmdDetail==null?"":String(row.LieuCmdDetail),RemiseCmdDetail:row?.RemiseCmdDetail??null,SelectCmdDetail:row?.SelectCmdDetail??null};
 }
-export function lineLots(rows=[]) {return rows.map(row=>({NumeroLot:String(row.NumeroLot||""),Quantite:String(row.Quantite??""),DatePeremptionLot:row.DatePeremptionLot?String(row.DatePeremptionLot).slice(0,10):""}));}
+export function lineLots(rows=[]) {return rows.map(row=>({NumeroLot:String(row.NumeroLot||""),Quantite:String(row.Quantite??""),DatePeremptionLot:row.DatePeremptionLot?String(row.DatePeremptionLot).slice(0,10):"",MotifDerogationPeremption:row.MotifDerogationPeremption||""}));}
 export function linePrice(article,bon) {
   if(!article||!bon||!sameCurrency({currencyId:article.ID_DeviseFk},bon))return "";
   const direction=lineDirection(bon),price=direction==="entree"?article.PUArticle:direction==="sortie"?article.PVArticle:null;
@@ -41,7 +41,7 @@ export function lineErrors(values,bon,article,previous=null) {
   return errors;
 }
 export function linePayload(values,lots,version) {
-  const data={ID_ArticleFk:values.ID_ArticleFk,QteCmdDetail:values.QteCmdDetail.trim().replace(",","."),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),ObsCmdDetail:values.ObsCmdDetail,LieuCmdDetail:values.LieuCmdDetail.trim()||null,RemiseCmdDetail:values.RemiseCmdDetail,SelectCmdDetail:values.SelectCmdDetail,Lots:lots.map(row=>({NumeroLot:row.NumeroLot.trim(),Quantite:String(row.Quantite),DatePeremptionLot:row.DatePeremptionLot||null}))};
+  const data={ID_ArticleFk:values.ID_ArticleFk,QteCmdDetail:values.QteCmdDetail.trim().replace(",","."),PUCmdDetail:values.PUCmdDetail.trim().replace(",","."),ObsCmdDetail:values.ObsCmdDetail,LieuCmdDetail:values.LieuCmdDetail.trim()||null,RemiseCmdDetail:values.RemiseCmdDetail,SelectCmdDetail:values.SelectCmdDetail,Lots:lots.map(row=>({NumeroLot:row.NumeroLot.trim(),Quantite:String(row.Quantite),DatePeremptionLot:row.DatePeremptionLot||null,...(row.MotifDerogationPeremption?.trim()?{MotifDerogationPeremption:row.MotifDerogationPeremption.trim()}:{})}))};
   if(version)data._version=version;
   return data;
 }

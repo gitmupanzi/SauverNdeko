@@ -1,0 +1,57 @@
+name: sauverndeko
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.backend
+    env_file: ${SAUVERNDEKO_DEPLOY_ENV:?Chemin absolu du fichier prive de production requis}
+    environment:
+      DJANGO_SETTINGS_MODULE: config.production
+      SAUVERNDEKO_WSGI_LISTEN: 0.0.0.0:5000
+      SAUVERNDEKO_TRUSTED_PROXY: 172.29.74.10
+      SAUVERNDEKO_MEDIA_ROOT: /app/media
+      SAUVERNDEKO_DB_SSLMODE: verify-full
+      SAUVERNDEKO_DB_SSLROOTCERT: /run/secrets/postgresql-ca.crt
+    volumes:
+      - media:/app/media
+      - type: bind
+        source: ${SAUVERNDEKO_DB_CA_FILE:?Certificat CA PostgreSQL requis}
+        target: /run/secrets/postgresql-ca.crt
+        read_only: true
+    networks:
+      private:
+        ipv4_address: 172.29.74.11
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '5'}
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.web
+    environment:
+      SAUVERNDEKO_DOMAIN: ${SAUVERNDEKO_DOMAIN:?Domaine HTTPS exact requis}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      private:
+        ipv4_address: 172.29.74.10
+    restart: unless-stopped
+    depends_on: [backend]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '5'}
+networks:
+  private:
+    ipam:
+      config: [{subnet: 172.29.74.0/24}]
+volumes:
+  media:
+  caddy_data:
+  caddy_config:

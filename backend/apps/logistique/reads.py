@@ -28,8 +28,8 @@ INDICATORS = {
 }
 INVOICE = '"CodeFacture" IS NOT NULL AND BTRIM("CodeFacture")<>\'\''
 INDICATORS.update({
-    "peremptionProche": ("V_Article", '"EstAlertePeremption"=true AND "EstPerime"=false', "COUNT(*)", "Péremption proche", "produit", "Articles en alerte de péremption et non encore périmés."),
-    "articlesPerimes": ("V_Article", '"EstPerime"=true', "COUNT(*)", "Articles périmés", "produit", "Articles dont la date de péremption est dépassée."),
+    "peremptionProche": ("V_Article", '"EstAlertePeremption"=true', "COUNT(*)", "Péremption proche", "produit", "Articles ayant un stock encore disponible proche de sa péremption."),
+    "articlesPerimes": ("V_Article", '"EstPerime"=true', "COUNT(*)", "Articles périmés", "produit", "Articles ayant encore du stock périmé, par lot ou sans lot."),
     "commandesEnAttente": ("V_Commande", "UPPER(BTRIM(COALESCE(\"StatutCmd\",''))) IN ('EN ATTENTE','ATTENTE')", "COUNT(*)", "Bons en attente", "commande", "Bons dont le statut est En attente ou Attente."),
     "commandesEnCours": ("V_Commande", "UPPER(BTRIM(COALESCE(\"StatutCmd\",'')))='EN COURS'", "COUNT(*)", "Bons en cours", "commande", "Bons dont le statut est En cours."),
     "commandesEntree": ("V_Commande", '"EstCommandeEntree"=true', "COUNT(*)", "Bons d’entrée", "commande", "Bons de stock de type Entrée."),
@@ -200,7 +200,7 @@ def register_source(kind, raw, for_export=False):
                 raise APIError("État invalide.")
             filters["ValideArticle"] = raw["statut"] == "true"
         states = {"all": "TRUE", "rupture": '"EstRupture"=true', "faible": '"EstAlerteStock"=true AND "EstRupture"=false', "disponible": '"QteArticle">0 AND ("QteMinArticle" IS NULL OR "QteArticle">"QteMinArticle")'}
-        expiry = {"all": "TRUE", "perime": '"EstPerime"=true', "alerte": '"EstAlertePeremption"=true AND "EstPerime"=false', "non-renseignee": '"DatePeremptionArticle" IS NULL', "valide": '"DatePeremptionArticle">=CURRENT_TIMESTAMP AND "EstAlertePeremption"=false'}
+        expiry = {"all": "TRUE", "perime": '"EstPerime"=true', "alerte": '"EstAlertePeremption"=true', "non-renseignee": '"StockSansDatePeremption">0', "valide": '"EtatPeremption"=\'Valide\''}
         for key, rules in [("stockState", states), ("peremption", expiry)]:
             selected = raw.get(key) or "all"
             if selected not in rules:
@@ -225,12 +225,14 @@ def register(actor, kind, raw):
     obj, condition, filters = register_source(kind, raw)
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
-    if kind in {"mouvements","factures","reglements"}:
+    if kind in {"mouvements","factures","reglements","lots"}:
         from .ledger_registers import annotate_metadata
         return rows,annotate_metadata(kind,obj,actor,raw,where,values,meta)
     if kind == "commandes":
-        from .stock_returns import annotate_return_context
+        from .stock_returns import annotate_return_context,return_feature_ready
+        from .invoices import storage_ready as invoice_storage_ready
         rows=annotate_return_context(rows,actor)
+        meta["features"]={"returns":return_feature_ready(),"invoices":invoice_storage_ready()}
     if kind == "lignes":
         meta["summary"] = db.one('SELECT COUNT(*) AS total,COUNT(DISTINCT "ID_CmdFk") AS bons,COUNT(DISTINCT "ID_ArticleFk") AS articles FROM '+row_source(obj)+" WHERE "+where,values)
         return rows,meta

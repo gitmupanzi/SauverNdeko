@@ -24,6 +24,8 @@ ROOT = Path(settings.BASE_DIR).parent
 ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
 MAX_EXPORT_ROWS = 100000
 DEFAULT_FIELDS = {
+    "V_RegistreLots":["NumeroLot","NomArticle","CodeArticleInterne","RefArticle","CategorieArticle","TypeArticle","StockLot","AbrUnite","QuantiteEntree","QuantiteSortie","DatePeremptionLot","EtatPeremptionLot","EtatStockLot","Actif","NomEntite","CreeLe"],
+    "V_RegistreMouvementLot":["DateMvt","NumeroLot","NomArticle","NomTypeMvt","SensMouvement","Quantite","QuantiteSignee","AbrUnite","CodeCmd","DatePeremptionLot","MotifDerogationPeremption","DateDerogationPeremption"],
     "V_Mouvement":["DateMvt","CodeArticleInterne","NomArticle","AbrUnite","NomTypeMvt","CodeCmd","RefArticle","CategorieArticle","TypeArticle","StockActuel","QteMvt","QteMvtSigned","PUMvt","MontantMvt","MontantMvtSigned","OrigineMouvement"],
     "V_Reglements":["CodeFactureFk","CodeCmd","DateReglement","NomClientSaisi","ModeReglement","MontantRegle"],
     "V_Article":["CodeArticleInterne","NomArticle","TypeArticle","CategorieArticle","Unite","QteArticle","QteMinArticle","PUArticle","PVArticle","DatePeremptionArticle","EtatStock","EtatPeremption"],
@@ -50,7 +52,7 @@ def export_columns(obj, raw):
         raise APIError("Colonne d’export non autorisée.")
     wanted = list(wanted)
     # Les quantités restent numériques ; leur unité accompagne le tableau exporté.
-    quantities = {"QteArticle","QteMinArticle","QteACommander","StockActuel","StockArticle","StockMouvements","ConsoMensuelle","ConsoMoyMensuelle","QteCmdDetail","QteMvt","QteMvtSigned"}
+    quantities = {"StockLot","QuantiteEntree","QuantiteSortie","Quantite","QuantiteSignee","QteArticle","QteMinArticle","QteACommander","StockActuel","StockArticle","StockMouvements","ConsoMensuelle","ConsoMoyMensuelle","QteCmdDetail","QteMvt","QteMvtSigned"}
     if quantities.intersection(wanted) and not {"Unite","AbrUnite"}.intersection(wanted):
         unit = next((key for key in ("Unite","AbrUnite") if key in available),None)
         if unit:
@@ -73,7 +75,7 @@ def write_workbook(target, columns, rows, context):
     book = xlsxwriter.Workbook(target, {"constant_memory":True,"strings_to_formulas":False,"strings_to_urls":False,"default_date_format":"dd/mm/yyyy hh:mm"})
     count, precise_text = 0, 0
     seen_currencies = set()
-    monetary_export = any(field["column_name"] in AMOUNT_FIELDS or field["column_name"] == "MontantsParDevise" for field in columns)
+    monetary_export = any(field["column_name"].startswith(("Cout","Valeur")) or field["column_name"] in AMOUNT_FIELDS or field["column_name"] == "MontantsParDevise" for field in columns)
     try:
         book.set_properties({"title":context["title"],"subject":"Liste filtrée complète","author":"SauverNdeko","comments":"Valeurs issues de la vue autorisée, sans recalcul métier."})
         sheet = book.add_worksheet("Données")
@@ -110,7 +112,7 @@ def write_workbook(target, columns, rows, context):
                 key, typ = field["column_name"],field["data_type"]
                 value = row.get(key)
                 zebra = count % 2 == 0
-                kind = "amount" if key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")) else "number"
+                kind = "weight" if key.startswith("Cout") else "amount" if key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")) else "number"
                 if value is None:
                     sheet.write_blank(line,col,None,styles[zebra,"number" if typ in NUMERIC else "text"])
                 elif typ in NUMERIC:
@@ -184,7 +186,7 @@ def indicator_workbook(actor, key, raw):
 def register_workbook(actor, kind, raw):
     obj,condition,fixed = register_source(kind,raw,for_export=True)
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
-    label = {"articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
+    label = {"lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label)
 
 def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label):

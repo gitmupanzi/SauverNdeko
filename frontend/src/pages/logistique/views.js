@@ -123,6 +123,15 @@ const LOGISTIQUE_VIEWS = [
     accessMode: "CRUD disponible",
   },
   {
+    key: "lots",
+    schema: SCHEMA_NAME,
+    name: "V_RegistreLots",
+    title: "Lots de stock",
+    description: "Disponibilités, péremption et traçabilité des lots.",
+    group: "pilotage",
+    accessMode: "Lecture seule",
+  },
+  {
     key: "commandes",
     schema: SCHEMA_NAME,
     name: "V_Commande",

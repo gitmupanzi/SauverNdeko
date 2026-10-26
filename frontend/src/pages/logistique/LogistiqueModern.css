@@ -178,3 +178,6 @@
 .logistics-modern.logistics-app .logistics-app-switcher a { color:var(--erp-sidebar-muted,#bdd0e2); }
 .logistics-modern.logistics-app .logistics-app-switcher a:hover { background:var(--erp-sidebar-hover,#2b4c6b); color:var(--erp-sidebar-text,#fff); }
 .logistics-modern.logistics-app .logistics-app-switcher a > span:first-child { color:var(--erp-sidebar-muted,#bdd0e2); background:var(--erp-sidebar-icon,#2d4d6b); }
+
+/* L’identité documentaire utilise les mêmes accès discrets que les liens du pied de menu. */
+.logistics-app-switcher>button{display:flex;align-items:center;gap:9px;min-height:40px;width:100%;padding:6px 10px;border:0;border-radius:8px;background:transparent;color:inherit;box-shadow:none;text-align:left;font-size:12px;font-weight:400}.logistics-app-switcher>button>span:first-child{display:grid;place-items:center;flex:none}.logistics-app-switcher>button:disabled{opacity:.45;cursor:not-allowed}.logistics-app-switcher>button:hover:not(:disabled){background:var(--erp-hover)}.logistics-sidebar-shell.is-collapsed .logistics-app-switcher>button{justify-content:center;padding-inline:0}.logistics-app-switcher>button:focus-visible{outline:2px solid var(--erp-link);outline-offset:2px}@media(max-width:760px){.logistics-app-switcher>button{justify-content:center;padding-inline:0}.logistics-app-switcher>button>span:not(:first-child){display:none}}

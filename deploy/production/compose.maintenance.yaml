@@ -1,0 +1,37 @@
+name: sauverndeko-maintenance
+services:
+  maintenance:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.maintenance
+    env_file: ${SAUVERNDEKO_MAINTENANCE_ENV:?Fichier prive de maintenance requis}
+    environment:
+      DJANGO_SETTINGS_MODULE: config.production
+      SAUVERNDEKO_DB_SSLMODE: verify-full
+      SAUVERNDEKO_DB_SSLROOTCERT: /run/secrets/postgresql-ca.crt
+      SAUVERNDEKO_MEDIA_ROOT: /app/media
+    volumes:
+      - type: volume
+        source: media
+        target: /app/media
+        read_only: true
+      - type: bind
+        source: ${SAUVERNDEKO_BACKUP_DIR:?Dossier prive de sauvegarde requis}
+        target: /backups
+      - type: bind
+        source: ${SAUVERNDEKO_DB_CA_FILE:?Certificat CA PostgreSQL requis}
+        target: /run/secrets/postgresql-ca.crt
+        read_only: true
+    networks: [private]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+volumes:
+  media:
+    external: true
+    name: sauverndeko_media
+networks:
+  private:
+    external: true
+    name: sauverndeko_private

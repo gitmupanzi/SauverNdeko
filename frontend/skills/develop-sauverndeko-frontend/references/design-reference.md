@@ -82,3 +82,19 @@ Le contenu reste celui du profil ou de l’objet 360 sélectionné, chargé à l
 [UserAvatar](../../../src/components/UserAvatar.jsx) est partagé avec l’en-tête, avec initiales par défaut. Choisir une photo JPEG, PNG ou WebP de 8 Mo maximum, avec aperçu local et retrait ; aucun champ d’adresse d’image dans le parcours. Révoquer les URL d’aperçu au remplacement, à l’annulation et à la fermeture. Aucun téléversement avant Enregistrer : réutiliser updateProfile pour la sauvegarde atomique des informations et de la photo ; le retrait reste une modification en attente. Une erreur conserve le fichier et le brouillon ; Annuler ne persiste rien.
 
 Les contrôles de mot de passe ou de double authentification n’apparaissent que lorsqu’un parcours serveur réel est raccordé.
+
+
+## Chargement des pages et valorisation — 26 octobre 2026
+
+Réutiliser `lazyView` pour une nouvelle page ou une consultation volumineuse. Garder les contextes et le shell montés, conserver un espace réservé stable et une reprise explicite si un module n’a pas pu être téléchargé. Ne pas remplacer la grille ou son conteneur par un écran blanc pendant une actualisation de données ; préserver les filtres et les données déjà reçues dans leur périmètre. Mesurer le JavaScript initial par la fermeture des imports statiques du manifeste, puis vérifier la navigation sur le build de production.
+
+`StockValuation` fournit la consultation CUMP et le formulaire de coût motivé avec le même DrawerDialog/RecordEditorFrame. Le coût moyen est une valeur exacte pouvant avoir six décimales ; il reste distinct du prix catalogue. Ne pas convertir la révision opaque en nombre et conserver l’UUID lors d’un rejeu incertain. Les boutons d’initialisation/réévaluation suivent `canConfigure` fourni par le serveur et le contexte d’entreprise. L’historique est paginé et filtré par devise côté serveur ; son Excel utilise le même filtre et l’ensemble des lignes. Le mode `readOnly` de RecordEditorFrame propose uniquement Fermer dans le pied de consultation.
+
+
+## Identité documentaire et diagnostic d’envoi — 26 octobre 2026
+
+Le pied du menu Logistique ouvre `EntityDocumentIdentity` pour l’entreprise active. Réutiliser le même `RecordEditorFrame` en consultation et modification ; les identifiants légaux sont des libellés/valeurs génériques (dix au maximum), sans imposer un régime fiscal ou un secteur. Les valeurs manquantes restent explicitement non renseignées. Le motif, la révision opaque et l’UUID de demande accompagnent la sauvegarde. Une réponse incertaine fige le contenu et réutilise la même demande ; recharger un brouillon exige un abandon explicite. Après réussite, rafraîchir la liste d’entreprises sans recharger la page ni perdre l’entreprise active. Les documents émis conservent leurs instantanés historiques.
+
+`AdminMailSettings` prend les valeurs par défaut dans `data.defaults`, sans adresse codée en dur. « Tester la connexion » vérifie uniquement le transport courant et n’envoie aucun e-mail. Le bouton suit `canTest`, ses états attente/échec/reprise/succès sont distincts de la sauvegarde de l’expéditeur. Rappeler sobrement que les modifications du formulaire ne sont pas enregistrées. Les tests UI de ce bouton utilisent une réponse simulée et ne contactent jamais un service SMTP réel.
+
+Tous les exports de lignes, listes, dossiers et consultations respectent à la fois le droit global et `moduleRights(user,"logistique").canExport`. Un accès de consultation ne donne pas le droit de créer une ligne : réutiliser `useEntityScope().canWrite`, qui tient compte du rôle et de l’entreprise active. Le serveur reste l’autorité sur chaque opération.

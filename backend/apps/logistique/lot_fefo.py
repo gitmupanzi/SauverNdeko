@@ -18,6 +18,9 @@ def proposal(actor,article_id,params):
     amount=for_unit(params.get('quantite'),article['ID_UniteFk'],'quantite')
     include=params.get('inclurePerimes','false')
     if include not in ('true','false'):raise APIError('Choix de péremption invalide.')
+    from .expiry import policy
+    rules=policy(actor)
+    if include=='true' and rules['BloquerLotsPerimes'] and not actor.global_admin:raise APIError('Les lots périmés sont bloqués dans cette entreprise.','EXPIRED_LOT_BLOCKED',409)
     rows=db.query('''SELECT * FROM logistique."V_LotDisponibilite" WHERE "ID_ArticleFk"=%s AND "Actif" IS TRUE AND "StockLot">0
        ORDER BY "DatePeremptionLot" NULLS LAST,"NumeroLot","ID_LotArticle"''',[article_id])
     left=amount;selected=[]
@@ -27,7 +30,7 @@ def proposal(actor,article_id,params):
         take=min(left,row['StockLot']);left-=take
         selected.append({'ID_LotArticle':row['ID_LotArticle'],'NumeroLot':row['NumeroLot'],'DatePeremptionLot':row['DatePeremptionLot'],
           'Quantite':take,'StockLot':row['StockLot'],'EstPerime':row['EstPerime'],'EtatPeremptionLot':row['EtatPeremptionLot']})
-    return clean({'ID_Article':article_id,'quantiteDemandee':amount,'quantiteProposee':amount-left,'resteSansAffectation':left,
+    return clean({'politiquePeremption':rules,'ID_Article':article_id,'quantiteDemandee':amount,'quantiteProposee':amount-left,'resteSansAffectation':left,
        'Lots':selected,'lotsDisponibles':rows,'inclutPerimes':any(row['EstPerime'] for row in selected),
        'message':'Proposition à confirmer. Vérifiez les lots réellement prélevés.'})
 

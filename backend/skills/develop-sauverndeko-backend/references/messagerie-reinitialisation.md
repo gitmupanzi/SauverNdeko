@@ -32,3 +32,9 @@ Les demandes sont limitées par adresse réseau et par empreinte d’adresse e-m
 ## Vérification
 
 verifier_backend contrôle uniquement les routes GET, avec une connexion PostgreSQL imposée en lecture seule. Les recettes des demandes SMTP, expirations, validations et confirmations concurrentes utilisent des comptes fictifs, un accès SQL simulé et un transport simulé hors du dépôt. Aucune vérification ne doit réinitialiser un compte réel ni envoyer un e-mail réel sans une demande explicite adaptée.
+
+## Contrôle depuis l’administration
+
+Administration → Messagerie → Tester la connexion utilise POST /api/systeme/messagerie/test avec un objet vide. Seul l’administrateur global peut le lancer, en mode écritures autorisées ; trois demandes par minute. Le test ouvre et authentifie le transport puis le ferme, sans message ni destinataire. Une configuration présente, une authentification réussie et la réception d’un e-mail sont trois preuves distinctes.
+
+Les valeurs par défaut du formulaire suivent EMAIL_HOST_USER valide, avec le nom SauverNdeko ; le réglage global explicitement enregistré reste prioritaire. L’instance locale utilise actuellement sauverndekordc@gmail.com comme compte et expéditeur. Le dernier contrôle TLS Google a réussi, mais AUTH LOGIN a renvoyé535 ; aucun e-mail n’a été envoyé. Le mot de passe d’application doit être corrigé dans le fichier privé avant un nouveau contrôle. La documentation Google décrit [les mots de passe d’application](https://support.google.com/accounts/answer/185833?hl=fr).

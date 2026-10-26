@@ -92,8 +92,6 @@ def validate(data, old, actor):
     expiry = effective.get("DatePeremptionArticle")
     if days is not None and (days < 0 or days > 36500):
         errors["NbreJoursAlerteArticle"] = "Le délai doit être compris entre 0 et 36 500 jours."
-    if days is not None and expiry is None:
-        errors["DatePeremptionArticle"] = "Renseignez une date de péremption pour définir une alerte."
     if {"DatePeremptionArticle", "NbreJoursAlerteArticle", "DatePeremptionAlerteArticle"}.intersection(data):
         try:
             data["DatePeremptionAlerteArticle"] = expiry - timedelta(days=days) if expiry is not None and days is not None and 0 <= days <= 36500 else None

@@ -1,45 +1,54 @@
-# Logistique — travaux restants
+# Logistique — livraison et travaux restants
 
-État au 26 octobre 2026. Ce relevé distingue les développements encore nécessaires des vérifications de livraison. Il complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md).
+État au 26 octobre 2026, après installation des migrations 20261026_04 à 09 dans SauverNdeko. Ce relevé complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md) et distingue les fonctions exécutées des validations externes encore nécessaires.
 
 ## Déjà livré
 
 - Articles : formulaire commun ajout/modification, Produit 360, photo, informations complémentaires, poids/unité, devise du référentiel et réception préremplie.
 - Bons de stock et lignes : composition depuis le catalogue, codes automatiques, édition commune, consultations liées, réceptions, sorties et restitutions partielles avec un seul effet sur le stock.
-- Factures et règlements séparés : instantanés de facturation, paiements et préparation groupée, avoirs après retour facturé, imputations et remboursements enregistrés.
-- PDF des bons d’entrée/sortie/livraison, factures, reçus et avoirs ; justificatifs privés ; identités des documents financiers conservées.
-- Clients et fournisseurs via T_Client et Type de personne du référentiel, Tiers 360, référence du tiers dans les bons, destinations géographiques normalisées.
+- Factures et règlements séparés : instantanés de facturation, paiements groupés, avoirs après retour facturé, imputations et remboursements enregistrés.
+- PDF des bons d’entrée/sortie/livraison, factures, reçus et avoirs ; justificatifs privés ; identités financières conservées.
+- Clients et fournisseurs dans T_Client, types issus du référentiel, Tiers 360, tiers référencé dans les bons et destinations géographiques typées.
 - Propriété durable par Entité, contexte d’entreprise du compte global, droits serveur et dossiers personnalisés privés.
 - Inventaires physiques, écarts justifiés, validation et annulation motivée avec mouvements compensateurs ; quantités fractionnaires selon la précision de l’unité dans le référentiel générique.
-- Lots facultatifs, contrôle des budgets et proposition de sortie par péremption ; tableaux, exports et filtres catégoriels recherchables communs.
+- Lots de stock : onglet après Articles, tous les lots y compris épuisés ou archivés, filtres et pagination serveur, export Excel et Lot 360 avec journal propre au lot. Les soldes sont calculés depuis les mouvements, sans saisie directe.
+- Identité documentaire : réglage commun en consultation/modification, coordonnées et identifiants légaux facultatifs, motif, révision et rejeu de demande ; les nouveaux documents utilisent le profil confirmé et les instantanés émis restent immuables.
+- Diagnostic de livraison en lecture seule : contrôle des licences, identités, stock/lots, CUMP, paramètres de déploiement et sauvegardes, avec actions à effectuer et éléments non vérifiés explicitement indiqués.
+- COUSP : Entité créée, licence avec les neuf modules du catalogue actif du 26 octobre 2026 au 26 octobre 2031. Le rejeu du provisionnement ne prolonge pas la licence. Aucun utilisateur ou contact fictif ni transfert de données d’École Pilote Test.
 
 ## Développements prioritaires
 
-| Priorité | Travail | Résultat attendu pour clôturer |
+| Priorité | Travail | État et suite |
 |---|---|---|
-| P1 | Valorisation CUMP | Valider la méthode avec le responsable comptable et les coûts d’ouverture ; calculer le coût moyen après réception et la valeur des sorties/retours/corrections, par article, entreprise et devise. Traiter les corrections rétroactives et l’arrondi, conserver les coûts justifiables et vérifier la concordance des vues, documents et exports. Le prix catalogue actuellement utilisé ne constitue pas un coût moyen comptable. |
-| P1 | Péremption exhaustive par lot | Faire reposer les alertes, dossiers, détails et exports sur les lots disposant réellement de stock ; conserver le traitement du stock sans lot. Définir seuils, blocage éventuel des lots périmés et dérogations motivées selon le secteur et les droits. La proposition par péremption existe déjà ; la colonne de date générale de l’article ne suffit pas au suivi exhaustif. |
-| P2 | Performance de l’interface | Réduire le chargement initial par découpage des pages et consultations ; mesurer les listes, indicateurs et exports sur un volume représentatif. La compilation passe, avec un avertissement sur un fichier JavaScript d’environ 1 Mo avant compression. |
+| P1 | Valorisation CUMP | Calcul PostgreSQL installé par article, entreprise et devise : achats réels, sorties au coût moyen, retours au coût d’origine prouvé, corrections et arrondis. Consultation, réévaluation motivée, historique et Excel disponibles depuis Articles/Produit 360. **Les deux coûts d’ouverture existants restent à confirmer par le responsable comptable** ; les anciens prix de vente ne deviennent pas artificiellement des coûts. Le prix catalogue reste explicitement distinct. |
+| P1 | Péremption exhaustive par lot | Installée : alertes, dossiers et détails utilisent les lots ayant réellement du stock et traitent aussi le stock sans lot. Seuils par article/entreprise, politique facultative de blocage des lots périmés et dérogation motivée réservée au compte global. Les lots épuisés restent visibles dans le registre historique sans gonfler les alertes de stock courant. |
+| P2 | Performance de l’interface | Pages et consultations chargées à la demande ; shell et espaces de chargement conservés. JavaScript initial réduit d’environ 1 045 Ko à 361 Ko (115 Ko gzip). Recette sur deux entreprises de 5 000 mouvements : médianes locales CUMP 242 ms, Articles 124 ms, Bons 818 ms ; export CUMP complet 1 837 ms. Les limites et conditions sont dans la [recette de volume](recette-volume-logistique-20261026.md). |
 
 ## Vérifications avant livraison client
 
-| Priorité | Vérification ouverte | Critère de clôture |
+| Priorité | Vérification | État et critère restant |
 |---|---|---|
-| P1 | Envoi Gmail et récupération du mot de passe | Réussir un envoi réel autorisé et recevoir le lien sur une boîte de recette ; vérifier expiration et usage unique. Les derniers essais documentés ont été interrompus pendant le dialogue SMTP ; configuration présente ne signifie pas délivrance validée. |
-| P1 | Installation et déploiement | Tester une installation vierge et une mise à jour avec les migrations requises ; formaliser leur ordre et les prérequis. Préparer un serveur de production, HTTPS, paramètres privés et journalisation ; les lanceurs Django/Vite actuels servent au développement local. |
-| P1 | Sauvegarde et restauration | Restaurer une sauvegarde dans un environnement isolé et vérifier stock, documents, identités et justificatifs. Sauvegarder également les fichiers media des photos ; la lecture du catalogue d’une sauvegarde ne suffit pas à prouver une restauration complète. |
-| P1 | Paramétrage de l’entreprise cliente | Renseigner l’identité réelle de l’Entité, ses coordonnées, utilisateurs, licences et droits. Valider les données de reprise et les règles fiscales applicables sans inventer un taux ou une mention légale. |
-| P1 | Recette utilisateur de la chaîne complète | Faire valider réception → sortie → restitution → facture → règlement → avoir → imputation/remboursement, avec quantités fractionnaires et lots lorsque pertinents. Inclure deux entreprises, accès global, permissions, doubles clics et erreurs réseau, sans utiliser de données fictives dans la base réelle. |
-| P2 | Recette visuelle et accessibilité | Contrôler les filtres catégoriels récemment harmonisés et les autres parcours sur ordinateur/mobile, thèmes, clavier et retour au contexte. Vérifier les PDF avec l’identité cliente et des tableaux longs. |
+| P1 | Gmail et récupération du mot de passe | Les 27 contrôles isolés de sécurité passent : expiration, usage unique, concurrence, non-divulgation des comptes et révocation des jetons. Le compte et l’expéditeur utilisent sauverndekordc@gmail.com. Le dialogue TLS Google est valide ; le test AUTH LOGIN renvoie **535 : identifiants SMTP refusés**, sans e-mail envoyé. Le bouton Administration → Messagerie → Tester la connexion permet un contrôle sans message (trois demandes par minute, accès global uniquement). Il reste à corriger le secret privé puis vérifier un envoi et sa réception. Aucun mot de passe réel n’a été changé pour la recette. |
+| P1 | Installation et déploiement | Installation vierge et mise à jour SQL vérifiées en base privée. Commandes de maintenance, paquet d’installation fermé, paramètres production, Waitress et configuration HTTPS préparés. La mise en service sur le serveur client avec domaine, certificats et secrets réels reste à exécuter ; Docker absent sur ce poste, images non exécutées ici. Voir le [guide de livraison](livraison-logistique.md). |
+| P1 | Sauvegarde et restauration | Aller-retour DB et médias vérifié en environnement isolé, avant mise à jour et pour la livraison finale ; les résultats exacts sont consignés dans le guide de livraison. Un essai séparé avec photo fictive contrôle aussi les fichiers privés. Prévoir la planification et la conservation des sauvegardes sur le serveur client. |
+| P1 | Paramétrage de l’entreprise cliente | COUSP et sa licence sont créées ; l’isolation a été vérifiée avec École Pilote Test et le compte global. Compléter les vraies coordonnées et identifiants déclaratifs via Logistique → Identité de l’entreprise, puis les utilisateurs et coûts de reprise. Aucun contact, taux fiscal ni mention légale n’a été inventé. |
+| P1 | Recette utilisateur de la chaîne complète | La chaîne complète a passé **112 contrôles intégrés** sur installation vierge privée : réception/sortie fractionnaires, retour avant facture, paiements concurrents, retour facturé, avoir, imputation/remboursement et rapprochement final stock/financier. Les deux entreprises restent isolées. Le responsable client doit encore accepter les données de reprise, les documents et son parcours réception → sortie → retour → facture → règlement → avoir → imputation/remboursement. Conserver des essais fictifs hors de SauverNdeko. |
+| P2 | Recette visuelle et accessibilité | Build, navigation différée, reprise d’erreur, vues Lots/CUMP et mobilité contrôlés ; les preuves et limites figurent dans le guide frontend. Faire accepter les écrans et documents longs avec l’identité réelle du client. |
 
 ## Extensions à cadrer séparément
 
-La modernisation des autres modules (Administration, Référentiels, Organisation territoriale, catalogue santé et discussions) et les fonctions de multi-dépôts/transferts, cycle achats/ventes complet ou comptabilité générale relèvent d’une phase ERP à cadrer avec le client. Leur présence dans la trajectoire ne signifie pas qu’elles sont livrées. Le suivi des règlements ne remplace pas une comptabilité générale.
+Le [cadrage ERP](cadrage-extensions-erp.md) définit les parcours, contrats SQL, principes d’interface et critères d’acceptation pour multi-dépôts/transferts, achats/ventes, comptabilité générale et modernisation des autres modules. Ces extensions restent des phases distinctes à réaliser ; elles ne sont pas présentées comme des modules déjà livrés. Le suivi des règlements et la valorisation CUMP ne remplacent pas une comptabilité générale.
 
 ## Vérifications déjà obtenues
 
-Les documents et avoirs ont passé 102 contrôles métier sur des données fictives dans une base privée, dont rejeu et remboursements concurrents. Après installation, 174 routes existantes et 24 contrôles réels des nouvelles fonctions ont réussi en lecture seule. Les quantités et le journal de stock sont restés inchangés lors des migrations. Les PDF ont été rendus et inspectés, dont un tableau de cinq pages. La dernière harmonisation des filtres catégoriels a compilé avec succès. Ces preuves ne remplacent pas la recette de livraison ci-dessus.
+- Après les migrations du 26 octobre : **24 tables sources métier/audit inchangées**, aucune quantité ni écriture de stock ajoutée pour les essais. Deux ouvertures CUMP restent non confirmées.
+- Sur une copie privée fraîche recevant SQL04 → SQL08 : **299 contrôles réussis**, dont CUMP 45, péremption 49, registre Lots 65, annulation d’inventaire 31, protections des bons internes 40, numérotation 22, récupération d’accès 27 et rôle runtime restreint 20.
+- Sur SauverNdeko après redémarrage : **187 routes GET réussies**, connexion PostgreSQL réellement en lecture seule, aucune écriture. Django check réussi.
+- Pour la clôture : 112 contrôles de chaîne intégrée, 37 d’identité documentaire, 47 de diagnostic de livraison et 21 de connexion mail simulée ont réussi ; les 27 contrôles de récupération ont été rejoués après l’évolution de messagerie. Les six PDF de la chaîne et l’identité multiligne ont été rendus et inspectés.
+- SQL09 : 26 tables sources identiques avant/après hors nouvelles colonnes de profil ; aucun instantané documentaire émis n’a été réécrit.
+- Les corrections et compensations d’inventaire sont classées par FK dans V_BonInventaire et ne peuvent pas recevoir une facture ou un retour commercial. Leur annulation passe uniquement par le parcours d’inventaire, pour éviter une double restitution.
+- Les preuves plus anciennes restent valables : 102 contrôles des documents/avoirs et inspection de PDF longs. Elles ne prouvent pas, à elles seules, l’acceptation client ou la réception d’un e-mail réel.
 
-Le 26 octobre : centralisation des précisions dans T_Generique, destinations préfixées par leur type, ordres de colonnes harmonisés et annulation traçable des inventaires. Les 31 contrôles dédiés à l’annulation ont passé sur une base privée ; 176 routes GET ont passé sur SauverNdeko en lecture seule. Les 22 tables métier contrôlées sont restées identiques pendant les migrations. La recette utilisateur de livraison reste à réaliser.
+Sources : [CUMP](../SQL/documentation/Valorisation_CUMP_20261026.md), [péremption](../SQL/documentation/Peremption_Lots_20261026.md), [lots](../SQL/documentation/Registre_Lots_20261026.md), [performance](performance-frontend-20261026.md), [livraison](livraison-logistique.md), [Entités, tiers et stock](../skills/sauverndeko-erp/references/entites-tiers-et-stock.md).
 
-Sources locales : [documents et avoirs](../SQL/documentation/Documents_Avoirs_20261025.md), [Entités, tiers et stock](../skills/sauverndeko-erp/references/entites-tiers-et-stock.md), [lancement et messagerie](lancement-local.md), [règles frontend](../frontend/skills/develop-sauverndeko-frontend/references/formulaires-crud.md).
+Les points qui dépendent de données réelles du client et du serveur restent ouverts explicitement. Le diagnostic ne remplace ni une acceptation utilisateur ni une connexion Google réellement authentifiée. Le [guide de prise en main](prise-en-main-logistique.md) décrit les parcours quotidiens.

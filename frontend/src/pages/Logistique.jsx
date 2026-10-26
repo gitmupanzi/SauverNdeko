@@ -1,10 +1,8 @@
-import Inventaires from "./logistique/Inventaires";
-import Tiers from "./logistique/Tiers";
+import lazyView, { ScreenPlaceholder } from "../components/LazyView";
 import {TIERS_CHANGED} from "../services/tiers";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import {formatDate} from "./logistique/logistiqueShared";
-import ReferenceSettings from "../components/ReferenceSettings";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
 import { Link, useSearchParams } from "react-router-dom";
@@ -18,18 +16,24 @@ import {
   saveAdminUiSettings,
 } from "../services/api";
 import { fetchLogistiqueReferences } from "../services/logistique";
-import AlertesStock from "./logistique/AlertesStock";
-import Articles from "./logistique/Articles";
-import DossiersSuivi from "./logistique/DossiersSuivi";
-import CommandeDetails from "./logistique/CommandeDetails";
-import Commandes from "./logistique/Commandes";
-import ConsommationMensuelle from "./logistique/ConsommationMensuelle";
-import CouvertureStock from "./logistique/CouvertureStock";
-import DashboardLogistique from "./logistique/DashboardLogistique";
-import Mouvements from "./logistique/Mouvements";
-import Reglements from "./logistique/Reglements";
-import StockAudit from "./logistique/StockAudit";
 import { LOGISTIQUE_GENERIC_SOURCE_CONFIG, LOGISTIQUE_MODULE_SCHEMA } from "./logistique/views";
+
+const EntityDocumentIdentity=lazyView(()=>import("../components/EntityDocumentIdentity"),{label:"Chargement de l’identité…",compact:true});
+const Inventaires=lazyView(()=>import("./logistique/Inventaires"),{label:"Chargement de la vue…"});
+const Tiers=lazyView(()=>import("./logistique/Tiers"),{label:"Chargement de la vue…"});
+const ReferenceSettings=lazyView(()=>import("../components/ReferenceSettings"),{label:"Ouverture des réglages…",compact:true});
+const AlertesStock=lazyView(()=>import("./logistique/AlertesStock"),{label:"Chargement de la vue…"});
+const Articles=lazyView(()=>import("./logistique/Articles"),{label:"Chargement de la vue…"});
+const LotsStock=lazyView(()=>import("./logistique/LotsStock"),{label:"Chargement des lots…"});
+const DossiersSuivi=lazyView(()=>import("./logistique/DossiersSuivi"),{label:"Chargement de la vue…"});
+const CommandeDetails=lazyView(()=>import("./logistique/CommandeDetails"),{label:"Chargement de la vue…"});
+const Commandes=lazyView(()=>import("./logistique/Commandes"),{label:"Chargement de la vue…"});
+const ConsommationMensuelle=lazyView(()=>import("./logistique/ConsommationMensuelle"),{label:"Chargement de la vue…"});
+const CouvertureStock=lazyView(()=>import("./logistique/CouvertureStock"),{label:"Chargement de la vue…"});
+const DashboardLogistique=lazyView(()=>import("./logistique/DashboardLogistique"),{label:"Chargement de la vue…"});
+const Mouvements=lazyView(()=>import("./logistique/Mouvements"),{label:"Chargement de la vue…"});
+const Reglements=lazyView(()=>import("./logistique/Reglements"),{label:"Chargement de la vue…"});
+const StockAudit=lazyView(()=>import("./logistique/StockAudit"),{label:"Chargement de la vue…"});
 
 const LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY = "logistique.generic-category-overrides";
 const LOGISTIQUE_SIDEBAR_STORAGE_KEY = "logistique.sidebar-collapsed";
@@ -479,13 +483,13 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
   );
 }
 
-function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
+function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle, onIdentity, identityAvailable }) {
   const { user } = useAuth();
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
     { label: "Relations", keys: ["tiers"] },
-    { label: "Stocks", keys: ["articles", "commandes", "details", "mouvements", "inventaires"] },
+    { label: "Stocks", keys: ["articles", "lots", "commandes", "details", "mouvements", "inventaires"] },
     { label: "Finances", keys: ["factures", "reglements"] },
   ];
   return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
@@ -510,7 +514,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
         })}
       </div>)}
     </nav>
-    <div className="logistics-app-switcher">{user?.permissions?.canAccessAdmin?<Link to="/admin" title="Administration" aria-label="Administration"><span><AppIcon name="shield" /></span>{!collapsed ? <><span>Administration</span><AppIcon name="arrow-up-right" /></> : null}</Link>:null}<Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
+    <div className="logistics-app-switcher">{onIdentity?<button type="button" onClick={onIdentity} disabled={!identityAvailable} title={identityAvailable?"Identité de l’entreprise":"Choisissez une entreprise active."} aria-label="Identité de l’entreprise"><span><AppIcon name="document"/></span>{!collapsed?<span>Identité de l’entreprise</span>:null}</button>:null}{user?.permissions?.canAccessAdmin?<Link to="/admin" title="Administration" aria-label="Administration"><span><AppIcon name="shield" /></span>{!collapsed ? <><span>Administration</span><AppIcon name="arrow-up-right" /></> : null}</Link>:null}<Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
   </aside>;
 }
 
@@ -588,6 +592,7 @@ const MAIN_TAB_DEFINITIONS = [
   { key: "dashboard", label: "Tableau de bord", icon: "bi-speedometer2" },
   { key: "tiers", label: "Clients et fournisseurs", icon: "user" },
   { key: "articles", label: "Articles", icon: "bi-box-seam" },
+  { key: "lots", label: "Lots de stock", icon: "box" },
   { key: "dossiers", label: "Dossiers de suivi", icon: "folder" },
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
@@ -602,10 +607,12 @@ export default function Logistique() {
   const { user } = useAuth();
   const canEditReferences = user?.Is_Admin === true && user?.permissions?.canWriteData === true;
   const [settingsVersion, setSettingsVersion] = useState(0);
+  const [identityOpen,setIdentityOpen]=useState(false);
+  useEffect(()=>setIdentityOpen(false),[entityScope.scopeKey]);
   const [navigation,setNavigation]=useSearchParams();
   const requestedTab=navigation.get("onglet");
   const [activeTab, setActiveTab] = useState(()=>MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab)?requestedTab:"dashboard");
-  useEffect(()=>{if(MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab))setActiveTab(requestedTab);},[requestedTab]);
+  useEffect(()=>{if(MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab))startTransition(()=>setActiveTab(requestedTab));},[requestedTab]);
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [activeTab]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -802,9 +809,9 @@ export default function Logistique() {
   }
 
   function handleNavigate(tabKey, options = {}) {
-    setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet",tabKey);if(tabKey!=="dossiers")next.delete("dossier");return next;},{replace:true});
-    if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
     startTransition(() => {
+      setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet",tabKey);if(tabKey!=="dossiers")next.delete("dossier");return next;},{replace:true});
+      if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
       setActiveTab(tabKey);
     });
   }
@@ -1146,6 +1153,7 @@ export default function Logistique() {
   return (
     <>
       <LogistiqueResponsiveStyles />
+      {identityOpen?<EntityDocumentIdentity onClose={()=>setIdentityOpen(false)} onSaved={()=>entityScope.retry()}/>:null}
       <div className={"logistics-modern logistics-app" + (sidebarCollapsed ? " is-menu-collapsed" : "")}>
         <LogistiqueSidebar
           collapsed={sidebarCollapsed}
@@ -1154,6 +1162,8 @@ export default function Logistique() {
           activeTabConfig={activeTabConfig}
           onNavigate={handleNavigate}
           onToggle={() => setSidebarCollapsed((current) => !current)}
+          onIdentity={user?.permissions?.canAccessAdmin?()=>setIdentityOpen(true):undefined}
+          identityAvailable={Boolean(entityScope.entityId)}
         />
 
         <ModuleHeader title="Logistique" />
@@ -1161,7 +1171,7 @@ export default function Logistique() {
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
             {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
-            {referencesLoading ? <section className="table-empty-state">Chargement des references logistiques...</section> : null}
+            {referencesLoading ? <ScreenPlaceholder label="Chargement des références…"/> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
 
             {!referencesLoading && !referencesError ? (
@@ -1183,6 +1193,7 @@ export default function Logistique() {
                     onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
+                {activeTab === "lots" ? <LotsStock references={references} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "commandes" ? (
                   <Commandes
                     references={references}

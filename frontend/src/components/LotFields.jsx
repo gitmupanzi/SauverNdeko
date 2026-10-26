@@ -1,4 +1,5 @@
 import {useId} from "react";
+import {useAuth} from "../contexts/AuthContext";
 import ActionButton from "./ActionButton";
 import AppIcon from "./AppIcon";
 import SearchSelect from "./SearchSelect";
@@ -24,6 +25,7 @@ export function lotErrors(rows,total,{outgoing=false,availability=null}={}){
 }
 function displayQuantity(value){const number=wholeQuantity(value);return number==null?'—':quantityString(number).replace('.',',');}
 export default function LotFields({value,onChange,total,disabled=false,known=[],outgoing=false,title="Lots reçus",error="",availability=null,loading=false,unit="",articleId=null}){
+ const {user}=useAuth();
  const id=useId(),assigned=allocatedQuantity(value),quantity=wholeQuantity(total),remainder=quantity!=null&&assigned!=null&&quantity>=assigned?quantityString(quantity-assigned):null,minimum=requiredLotQuantity(total,availability);
  const rows=availability?.rows||known;
  const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Kinshasa",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
@@ -42,6 +44,7 @@ export default function LotFields({value,onChange,total,disabled=false,known=[],
    <label htmlFor={id+'-quantity-'+index}><span>Quantité</span><input id={id+'-quantity-'+index} inputMode="decimal" value={row.Quantite} disabled={disabled||loading} onChange={event=>update(index,'Quantite',event.target.value)} aria-label={'Quantité du lot '+(index+1)}/></label>
    {!outgoing?<label htmlFor={id+'-expiry-'+index}><span>Péremption du lot</span><input id={id+'-expiry-'+index} type="date" value={row.DatePeremptionLot||''} disabled={disabled} onChange={event=>update(index,'DatePeremptionLot',event.target.value)} aria-label={'Péremption du lot '+(index+1)}/></label>:null}
    <ActionButton icon="close" className="is-icon" disabled={disabled||loading} aria-label={'Retirer le lot '+(index+1)} onClick={()=>onChange(value.filter((_,i)=>i!==index))}/>
+   {outgoing&&expired(rows.find(item=>item.NumeroLot===row.NumeroLot))&&user?.Is_Admin===true?<label className="lot-fields-override" htmlFor={id+'-override-'+index}><span>Motif de dérogation</span><input id={id+'-override-'+index} value={row.MotifDerogationPeremption||''} minLength={10} maxLength={1000} disabled={disabled||loading} onChange={event=>update(index,'MotifDerogationPeremption',event.target.value)} placeholder="Précisez la raison de ce prélèvement périmé…"/><small>Réservé à l’administration. Obligatoire si l’entreprise bloque les lots périmés.</small></label>:null}
   </div>;})}
   <ActionButton icon="plus" disabled={disabled||loading||value.length>=50||outgoing&&!hasAvailable} onClick={()=>onChange([...value,{NumeroLot:'',Quantite:outgoing?'':value.length?'':String(total||''),DatePeremptionLot:''}])}>Ajouter un lot</ActionButton>
   {outgoing&&value.some(lot=>expired(rows.find(row=>row.NumeroLot===lot.NumeroLot)))?<p className="record-field-error" role="status">Un lot sélectionné est périmé. Vérifiez son utilisation avant de confirmer la sortie.</p>:null}

@@ -43,7 +43,7 @@ React présente les données autorisées et pilote les interactions. Les mesures
 
 - Le code/nom d’un objet et son bouton Consulter ouvrent la même fiche 360 depuis liste, recherche ou détail lié.
 - Une valeur d’indicateur ayant un détail ouvre cette population exacte, ou son registre avec un filtre visible et effaçable. La carte et le lien de détail partagent le même contrat.
-- ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Une facture ouvre directement la rubrique Facturation de Bon de stock 360 ; ReglementEditor fournit la consultation et le formulaire commun des paiements. La fiche Tiers dédiée reste à construire.
+- ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Une facture ouvre directement la rubrique Facturation de Bon de stock 360 ; ReglementEditor fournit la consultation et le formulaire commun des paiements. La fiche Tiers 360 utilise le même principe de parent autorisé et de rubriques liées.
 - Toute fenêtre latérale métier de ce type utilise DrawerDialog et propose les commandes communes Réduire, Élargir, Rétablir la largeur et Fermer, avec les mêmes icônes. Conserver poignée, clavier, adaptation mobile et retour au contexte, conformément à la référence. Cette règle couvre aussi les réglages, pas seulement les consultations 360.
 - La consultation charge uniquement l’objet sélectionné, puis ses rubriques à la demande si volumineuses. Ne pas lancer une requête 360 pour chaque ligne du tableau.
 
@@ -99,3 +99,9 @@ Les anciennes références [frontend-architecture.md](references/frontend-archit
 ## Documents métier et avoirs
 
 Réutiliser BusinessDocuments pour PDF et justificatifs privés ; conserver les états de chargement, reprise du téléchargement échoué et protection des réponses obsolètes après changement d’entreprise. Utiliser le formulaire CreditNotes partagé pour émission, imputation et remboursement ; la consultation reste en lecture avec un bouton Fermer. Une réponse incertaine conserve le même identifiant et le même contenu pour vérification. Afficher les montants exacts fournis par le serveur et distinguer encaissements, avoirs imputés, remboursements et solde disponible. Aucun transfert bancaire n’est exécuté par l’enregistrement d’un remboursement.
+
+## Paramétrage documentaire et livraison
+
+EntityDocumentIdentity fournit la consultation puis le formulaire commun du profil de l’entreprise active. Réutiliser sa révision figée et son UUID lors d’une réponse incertaine ; rafraîchir le sélecteur d’entreprise après sauvegarde, sans recharger la page. Les identifiants légaux sont des couples libelle/valeur facultatifs, indépendants du pays ; les documents émis conservent leurs instantanés. Ne pas préremplir de coordonnées ou mentions fictives.
+
+AdminMailSettings distingue configuration présente et connexion prouvée. Tester la connexion appelle un POST réservé à l’administration de plateforme, sans destinataire ni e-mail envoyé. Les valeurs par défaut viennent du compte d’envoi configuré, pas du compte utilisateur connecté. Une réussite du test ne prouve pas la réception d’un message.

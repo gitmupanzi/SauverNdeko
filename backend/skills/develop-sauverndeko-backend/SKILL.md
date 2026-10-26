@@ -68,3 +68,27 @@ Les anciennes références [backend-architecture.md](references/backend-architec
 ## Documents et avoirs logistiques
 
 Les migrations 11/12 et les services documents.py/credit_notes.py assurent les PDF métier, pièces privées, avoirs après retour facturé, imputations et remboursements enregistrés. Les avoirs ne recréent jamais un mouvement de stock. V_Facture fournit le solde net commun ; ne pas déduire une seconde fois les imputations dans les vues aval. Conserver les identités émises, les lignes facturées et les écritures financières ; corriger par un document traçable. Les fichiers sont téléchargés après contrôle du parent et de son entreprise, jamais par une URL publique. Le PDF/les images utilisent des réponses binaires et les erreurs restent JSON. Les mutations portent une révision et un identifiant idempotent, avec verrouillage du parent puis des objets dans un ordre stable.
+
+## Maintenance et livraison
+
+Lire [le guide de livraison](../../../docs/livraison-logistique.md) pour provisionner une Entité, sauvegarder DB et médias privés, restaurer dans une base isolée, préparer une installation vierge et servir le backend en production. Les commandes de maintenance ne font jamais partie du démarrage normal et ne migrent pas automatiquement une base cliente. Le provisionnement conserve les dates lors d’un rejeu ; une licence appartient à l’Entité et ne remplace pas les droits des rôles.
+
+Une restauration n’est attestée qu’après comparaison des tables et fichiers restaurés. Le paquet neuf contient une liste fermée de données de dictionnaire, sans compte ni document client. `initialiser_admin` refuse un système possédant déjà des utilisateurs. Les extensions de dépôts, achats/ventes et comptabilité générale suivent le [cadrage ERP](../../../docs/cadrage-extensions-erp.md), avec contrats SQL et critères métier avant livraison.
+
+La recette `SQL/tests/test_recuperation_acces.py` utilise uniquement une base privée explicitement configurée et un transport mémoire. Elle ne prouve pas une délivrance Gmail réelle. Le service WSGI de production s’appuie sur Waitress derrière le seul proxy de confiance déclaré ; les médias restent privés et le réglage `config.production` refuse des hôtes ou secrets incomplets.
+
+## Bons internes d’inventaire
+
+Les corrections et compensations d’inventaire ne sont pas des ventes ni des retours clients. `V_BonInventaire` et `fn_bon_inventaire` classent les bons par leurs FK de comptage, jamais par le texte de RefCmd. Conserver les gardes SQL dans les deux sens, leurs verrous communs et leur contrôle différé : un bon facturé ou lié à une restitution ne peut pas devenir une correction ; une correction ou son annulation ne peut pas recevoir de facture ou de restitution commerciale. Le parcours correct est un nouveau comptage ou une annulation de validation avec motif et compensation. Les contextes et menus API reprennent cette classification.
+
+## Valorisation CUMP et lectures de lots
+
+Lire [la règle CUMP](../../../SQL/documentation/Valorisation_CUMP_20261026.md) avant toute modification des coûts. Réutiliser V_ValorisationStock, V_CoutMouvement et enregistrer_cout_ouverture : calcul exact PostgreSQL, devise/entreprise explicites, coût inconnu distinct de zéro et révision de source vérifiée dans la même transaction. Ne pas fabriquer un coût à partir du prix de vente ou d’un prix indicatif d’inventaire. Les arrêtés/réévaluations ne créent pas de mouvement physique.
+
+Le registre Lots et son journal utilisent V_RegistreLots/V_RegistreMouvementLot ; fiche et export contrôlent d’abord le parent puis le filtre de lot. La pagination, le compteur et l’export partagent le même périmètre. Le diagnostic verifier_backend doit rester en connexion réellement lecture seule et inclure les nouvelles routes.
+
+## Clôture et identité documentaire
+
+SQL09 fournit V_IdentiteDocumentaire et fn_identite_documentaire sur T_Entite. entity_documents impose entreprise active, gestionnaire autorisé, motif, révision et UUID lié à acteur/contenu ; aucune identité émise n’est réécrite. Les identifiants déclaratifs restent facultatifs et leur structure est contrôlée en SQL. Les nouveaux documents les figent avec la mention.
+
+Utiliser verifier_livraison pour un diagnostic agrégé en transaction READ ONLY ; un état configuré ne prouve ni délivrance SMTP ni restauration ni mise en production. Le POST messagerie/test authentifie le transport sans envoyer de message, limité à trois demandes/minute et aux administrateurs globaux, refusé en lecture seule. Les secrets et réponses brutes du serveur SMTP restent hors API/journaux. Lire le [diagnostic](../../../docs/diagnostic-livraison.md) et le [guide utilisateur](../../../docs/prise-en-main-logistique.md).

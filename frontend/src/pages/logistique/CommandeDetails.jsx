@@ -1,3 +1,5 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import {moduleRights} from "../../services/moduleAccess";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useConsultations} from "../../components/ConsultationProvider";
@@ -27,7 +29,7 @@ function fieldValue(key,value,references){
 }
 export default function CommandeDetails({selectedCommande,references,refreshKey,onDataChanged,sharedTable,onToggleFkMappings,onClearCommande}) {
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders();
- const canWrite=user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false;
+ const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
  const [search,setSearch]=useState(sharedTable?.searchValue||""),[criteria,setCriteria]=useState(()=>({...EMPTY,q:sharedTable?.searchValue||""})),[draft,setDraft]=useState(EMPTY);
  const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateCmd",sortDir:"desc"}),[meta,setMeta]=useState(null),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const [filtersOpen,setFiltersOpen]=useState(false),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS),columnsAnchorRef=useRef(null);

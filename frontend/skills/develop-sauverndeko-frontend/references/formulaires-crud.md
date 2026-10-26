@@ -167,3 +167,12 @@ Bons de stock : Bon de stock · Code facture · Date et heure · Type de bon · 
 Articles : Article · Catégorie · Type · Stock actuel · Lots · État de l’article, puis Actions pour l’accès aux opérations. Lots ouvre la consultation liée ; État de l’article indique Actif/Inactif, distinct de la disponibilité du stock. Les prix, la péremption et les autres informations restent disponibles dans le choix des colonnes.
 
 Le menu ⋯ des inventaires validés propose Annuler la validation selon les droits. Employer une fenêtre commune avec motif obligatoire, état d’envoi, conservation de la demande en cas de réponse incertaine et erreurs explicites. Après succès, montrer Annulé et conserver la fiche, l’auteur, la date, le motif et les bons compensateurs. Aucun bouton de suppression de l’historique.
+
+
+## Conservation du stock
+
+Articles → Conservation utilise RecordEditorFrame et SearchSelect, avec entreprise active, délai d’alerte et règle des lots périmés. La date générale de l’article vise le stock sans lot ; les lots conservent chacun leur date. Les consultations reprennent les quantités périmées/proches et la prochaine date réellement en stock. Le formulaire de lot sortant présente au compte global un motif de dérogation quand un lot périmé est sélectionné ; préserver ce motif dans la composition, la modification et le comptage. Une suggestion FEFO reste un choix à confirmer et exclut les lots périmés par défaut.
+
+## Registre Lots de stock et fiche Lot 360
+
+Le registre commun des lots suit Articles et présente tous les lots, y compris épuisés/archivés par défaut. Réutiliser les composants de registre, filtres catégoriels recherchables, pagination/tri serveur et menu ⋯. Le sélecteur d’article distant doit paginer ses options, jamais charger un catalogue exhaustif pour un simple choix. Lot 360 reprend DrawerDialog et ConsultationTabs avec Synthèse/Mouvements ; les mouvements sont demandés au serveur uniquement pour le lot choisi. Chaque quantité conserve son abréviation d’unité. Les changements de contexte d’Entité effacent les lignes et la fiche ; une ancienne réponse ou un téléchargement annulé ne doit pas réafficher les données précédentes. Proposer la fiche Excel dans les actions, sans PDF fictif ni édition directe du stock.

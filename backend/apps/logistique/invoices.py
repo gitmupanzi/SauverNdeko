@@ -22,7 +22,7 @@ from apps.core.repository import audit, clean, get_record, mutate, positive
 from apps.core.responses import APIError, ExactEncoder, ok
 from .document_rules import closed, revision as document_revision
 from .order_composer import composition_snapshot
-from .stock_returns import return_context, return_storage_ready, return_feature_ready
+from .stock_returns import return_context, return_storage_ready, return_feature_ready, inventory_adjustment
 
 CENT=Decimal('0.01')
 MAX_AMOUNT=Decimal('9999999999.99')
@@ -247,6 +247,7 @@ def context(actor,command_id):
             'Vous ne disposez pas du droit de facturation.' if not manage else
             'Ce bon appartient à une autre organisation.' if not owner else
             'Ce bon est clôturé.' if closed(parent) else
+            'Un bon d’inventaire ne peut pas être facturé.' if inventory_adjustment(command_id) else
             'Un bon de retour ne peut pas être facturé.' if returns['isReturn'] else
             'La facturation concerne les bons de sortie.' if not outgoing else
             'Cette facture historique nécessite une reprise contrôlée.' if legacy else source_reason)

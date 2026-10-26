@@ -53,3 +53,11 @@ Le backend unique est Django/DRF ; l’ancien backend Express/Prisma et ses dép
 ## Devises logistiques
 
 La migration 20261025_04 est appliquée à SauverNdeko après sauvegarde. Le propriétaire a confirmé le rattachement des montants existants à USD. Pour les nouvelles créations, résoudre USD dans la catégorie Devise active du référentiel ; ne pas figer son identifiant ni inventer une devise dans le formatage frontend. Les champs `ID_DeviseFk`, `DeviseCode` et `DeviseLibelle` accompagnent les prix et montants ; les affichages peuvent suffixer le montant sans imposer une colonne redondante. Les exports numériques conservent une colonne de devise. Les agrégats, leurs détails et exports partagent le même filtre. Les montants de devises différentes ne sont jamais additionnés ; un prix catalogue d’une autre devise ne peut pas être recopié automatiquement dans un bon.
+
+## Coûts, lots et livraison logistique
+
+La valorisation CUMP est calculée par les fonctions et vues PostgreSQL de 20261026_04, par article, propriétaire et devise. Ne pas la remplacer par prix catalogue × quantité. Un coût inconnu reste distinct de zéro ; une ouverture doit être confirmée avec motif et révision atomique. Les retours utilisent les coûts historiques prouvés. Les tables d’arrêtés et de journal portent des événements métier, elles ne sont pas des catégories à déplacer dans T_Generique. Lire [la règle CUMP](../../SQL/documentation/Valorisation_CUMP_20261026.md).
+
+Lots de stock est un registre transversal après Articles ; V_RegistreLots et V_RegistreMouvementLot servent les tableaux, la fiche Lot 360 et les exports. Chaque fiche limite son journal au lot sélectionné et à son entreprise. Les lots épuisés/archivés restent consultables, tandis que les alertes courantes ne comptent que les stocks restants. Les seuils et dérogations suivent la [règle de péremption](../../SQL/documentation/Peremption_Lots_20261026.md).
+
+Les bons correcteurs et compensateurs d’inventaire sont identifiés par FK, jamais par leur référence libre ; ils ne peuvent être facturés ou restitués commercialement. Une livraison nécessite les preuves de sauvegarde/restauration, installation et recette du [guide de livraison](../../docs/livraison-logistique.md), ainsi que les validations externes encore ouvertes dans [les travaux restants](../../docs/reste-a-faire-logistique.md).

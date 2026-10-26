@@ -1,3 +1,4 @@
+import {moduleRights} from "../../services/moduleAccess";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
@@ -35,7 +36,7 @@ function Badge({value}){return value==null||value===""?"—":<span className={"e
 
 export default function Commandes({references,refreshKey,onDataChanged,onOpenDetails,sharedTable,onToggleFkMappings}) {
   const {user}=useAuth(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
-  const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false;
+  const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
   const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateCmd",sortDir:"desc"}),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
   const [search,setSearch]=useState(sharedTable?.searchValue||""),[criteria,setCriteria]=useState(()=>({...EMPTY_FILTERS,q:sharedTable?.searchValue||""})),[filters,setFilters]=useState(EMPTY_FILTERS),[filtersOpen,setFiltersOpen]=useState(false),[filtersError,setFiltersError]=useState("");
   const [columnsOpen,setColumnsOpen]=useState(false),columnsAnchorRef=useRef(null),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS);

@@ -2,6 +2,10 @@
 from apps.core import db
 
 
+def inventory_adjustment(command_id):
+    return bool(db.one('SELECT logistique.fn_bon_inventaire(%s) AS linked',[command_id])['linked'])
+
+
 def return_storage_ready():
     return bool(db.one("SELECT to_regclass('logistique.\"T_RetourBon\"') IS NOT NULL AS ready")['ready'])
 
@@ -103,7 +107,9 @@ def return_policy(actor,snapshot,*,writing=False):
     from .receipts import entry_types,default_entry_type
     from .currency import validate_currency
     reason='';selected=None
-    if snapshot['is_return'] or snapshot['type_category']!=64 or not str(snapshot['direction'] or '').lower().startswith('sort'):
+    if inventory_adjustment(snapshot['raw']['ID_Commande']):
+        reason='Un bon d’inventaire se corrige par le comptage ou son annulation, sans restitution commerciale.'
+    elif snapshot['is_return'] or snapshot['type_category']!=64 or not str(snapshot['direction'] or '').lower().startswith('sort'):
         reason='Seul un bon de sortie peut recevoir une restitution.'
     elif not snapshot['lignes']:reason='Ce bon ne comporte aucun article sorti.'
     elif any(not row['SourceCoherente'] or Decimal(str(row['QteRestante']))<0 or Decimal(str(row['QteSansLotRestante']))<0 or any(Decimal(str(lot['QteRestante']))<0 for lot in row['Lots']) for row in snapshot['lignes']):
@@ -156,14 +162,14 @@ def return_data(body):
         prefix='lignes.'+str(index)
         if not isinstance(row,dict) or set(row)-{'ID_ArticleFk','QteRetour','Lots'}:return_error(prefix,'Informations de restitution non autorisées.')
         try:identifier=positive(row.get('ID_ArticleFk'),'Article');quantity=exact_quantity(row.get('QteRetour'),'QteRetour')
-        except APIError:return_error(prefix+'.QteRetour','Indiquez un article et une quantité entière strictement positive.')
-        if identifier in seen:return_error(prefix+'.QteRetour','Un article distinct et une quantité entière dans les limites du stock sont requis.')
+        except APIError:return_error(prefix+'.QteRetour','Indiquez un article et une quantité strictement positive, avec trois décimales au maximum.')
+        if identifier in seen:return_error(prefix+'.QteRetour','Chaque article doit apparaître une seule fois avec une quantité dans les limites du stock.')
         seen.add(identifier);lots=[];lot_ids=set();lot_rows=row.get('Lots',[])
         if not isinstance(lot_rows,list) or len(lot_rows)>50:return_error(prefix+'.Lots','Indiquez au maximum 50 lots source par ligne.')
         for lot in lot_rows:
             if not isinstance(lot,dict) or set(lot)!={'ID_LotArticle','Quantite'}:return_error(prefix+'.Lots','Sélectionnez uniquement les lots de la sortie d’origine.')
             try:lot_id=positive(lot['ID_LotArticle'],'Lot');lot_qty=exact_quantity(lot['Quantite'],'Quantite')
-            except APIError:return_error(prefix+'.Lots','Chaque lot exige une quantité entière strictement positive.')
+            except APIError:return_error(prefix+'.Lots','Chaque lot exige une quantité strictement positive, avec trois décimales au maximum.')
             if lot_id in lot_ids:return_error(prefix+'.Lots','Un lot source ne doit apparaître qu’une fois dans la ligne.')
             lot_ids.add(lot_id);lots.append({'ID_LotArticle':lot_id,'Quantite':lot_qty})
         if sum(lot['Quantite'] for lot in lots)>quantity:return_error(prefix+'.Lots','La ventilation ne peut pas dépasser la quantité rendue.')
@@ -266,7 +272,7 @@ def annotate_return_context(rows,actor):
            'isReturn':False,'hasReturns':False,'allReturned':False,'originId':None,'returnIds':[]}
     if not available or not rows:return [{**row,'returnContext':dict(empty)} for row in rows]
     identifiers=[row['ID_Commande'] for row in rows]
-    contexts=db.query('''SELECT c."ID_Commande",c."IdEntiteFk" AS organisation,t."AbrGenerique" AS direction,
+    contexts=db.query('''SELECT c."ID_Commande",c."IdEntiteFk" AS organisation,t."AbrGenerique" AS direction,logistique.fn_bon_inventaire(c."ID_Commande") AS inventory_adjustment,
         t."ID_CategorieGeneriqueFk" AS category,
         (SELECT r."ID_CommandeOrigineFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeRetourFk"=c."ID_Commande") AS origin,
         ARRAY(SELECT r."ID_CommandeRetourFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeOrigineFk"=c."ID_Commande" ORDER BY r."ID_RetourBon") AS children,
@@ -288,6 +294,7 @@ def annotate_return_context(rows,actor):
         if not state:context=dict(empty)
         else:
             reason=('Effectuez le retour dans l’organisation du bon.' if state['organisation']!=actor.organisation else
+                    'Un bon d’inventaire ne permet pas de restitution commerciale.' if state['inventory_adjustment'] else
                     'Ce document n’est pas une sortie originale.' if state['origin'] is not None or state['category']!=64 or not str(state['direction'] or '').lower().startswith('sort') else
                     'Rapprochez les lignes et mouvements historiques avant un retour.' if not state['coherent'] else
                     'Tous les articles ont déjà été restitués.' if not state['remaining'] else

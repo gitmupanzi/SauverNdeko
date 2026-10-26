@@ -234,7 +234,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             if not movement:raise APIError("Mouvement source introuvable.", "LOT_MOVEMENT_MISSING", 409)
             try:
                 unchanged=old is not None and effective.get("QteCmdDetail")==old.get("QteCmdDetail") and lots_unchanged(lots,previous_lots,effective["QteCmdDetail"])
-                if not unchanged:sync_movement(next_id,movement["ID_Mvt"],lots,effective["QteCmdDetail"])
+                if not unchanged:sync_movement(next_id,movement["ID_Mvt"],lots,effective["QteCmdDetail"],actor=actor)
             except APIError as error:
                 raise APIError({"Lots":str(error.detail)},error.default_code,error.status_code) from error
         # Les contraintes de lots sont différées : cibler la ligne avant de quitter sa transaction.

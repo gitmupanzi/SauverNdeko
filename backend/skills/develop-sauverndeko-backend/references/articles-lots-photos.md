@@ -59,3 +59,16 @@ Un verrou transactionnel par acteur/UUID et une preuve RECEIVE dans le journal e
 Avant de rendre une mutation de ligne, contrôler les soldes de lots sous le verrou article, après la mise à jour du mouvement et de sa ventilation. Retourner une erreur Lots ciblée avant le commit ; la composition conserve l’indice original de la ligne et annule tout le panier. Les contraintes différées PostgreSQL restent la protection finale. Les métadonnées lotStock exposent stockTotal, stockAllocated et stockWithoutLot sur l’ensemble de l’article, indépendamment de la pagination et des filtres ; un stock inconnu reste inconnu. En édition, prendre en compte le mouvement existant pour calculer le disponible propre à cette ligne.
 
 Une ventilation historique explicitement inchangée, avec la même quantité source, peut être conservée sans réécrire ses lots, y compris archivés. Cette conservation ne permet pas une nouvelle ventilation partielle d’entrée ni une consommation supplémentaire d’un lot archivé.
+
+
+## Péremption exhaustive — 26 octobre 2026
+
+Réutiliser V_ArticlePeremption et les flags de V_Article pour alertes, dossiers, listes et exports. Seules les quantités encore en stock comptent ; conserver le stock archivé restant et distinguer les lots sans date. La date générale de l’article concerne le stock sans lot. Une référence peut avoir simultanément du stock périmé et proche ; ne pas exclure implicitement l’une des populations de l’autre.
+
+Les réglages T_Entite.AlertePeremptionJours et BloquerLotsPerimes appartiennent à l’entreprise active. Le délai article explicite prime, même sans date générale. Le blocage initial est désactivé ; sa modification exige le compte global, l’entreprise cible et la révision. Les dérogations de lot sont des motifs globaux nominatifs horodatés sur T_MouvementLot, jamais un simple drapeau envoyé par le navigateur. Le trigger PostgreSQL garde le contrôle final et le mouvement source reste unique. Pour l’annulation d’une entrée d’inventaire sur un lot périmé bloqué, transmettre le motif d’annulation et l’acteur global au mouvement inverse ; refuser atomiquement aux autres comptes et conserver le rejeu.
+
+Voir SQL/documentation/Peremption_Lots_20261026.md et la recette isolée SQL/tests/test_peremption_lots.py.
+
+## Registre transversal des lots
+
+Pour consulter tous les lots, utiliser `V_RegistreLots` et `/api/logistique/registre/lots`, défaut sans filtre d’activité ou de solde. Le journal `V_RegistreMouvementLot` se consulte par `/api/logistique/lots/{id}/mouvements`, avec filtre serveur obligatoire sur l’identifiant du lot et contrôle de son entreprise avant lecture, même si le journal est vide. Ne pas charger le journal entier pour filtrer côté React. Le registre et l’export partagent les mêmes critères ; une quantité est accompagnée de l’abréviation de son unité. Les compteurs sont des nombres de lots/articles : ne pas sommer des quantités d’unités différentes. Les écritures passent par les bons et les triggers existants. Voir SQL/documentation/Registre_Lots_20261026.md.

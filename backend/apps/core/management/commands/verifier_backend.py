@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
         def guard(execute, sql, params, many, context):
             if not (
-                sql.split() and sql.split()[0].upper() in {"SELECT", "SHOW", "EXPLAIN"}
+                sql.split() and sql.split()[0].upper() in {"SELECT", "WITH", "SHOW", "EXPLAIN"}
             ):
                 raise CommandError("Instruction non autorisée pendant la vérification.")
             return execute(sql, params, many, context)
@@ -70,9 +70,11 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1"])
-            urls.extend("/api/logistique/registre/"+kind+"?take=1" for kind in ("mouvements","factures","reglements"))
+            urls.extend("/api/logistique/registre/"+kind+"?take=1" for kind in ("lots","mouvements","factures","reglements"))
             urls.append("/api/logistique/registre/articles?contexte=composition&take=1")
             urls.append("/api/logistique/dossiers-suivi")
+            urls.append("/api/logistique/peremption/politique")
+            urls.append("/api/logistique/entreprise/identite")
             urls.extend("/api/logistique/dossiers-suivi/"+folder["key"]+"?take=1" for folder in AUTOMATIC)
             urls.extend("/api/logistique/indicateurs/" + key + "?take=1" for key in INDICATORS)
             urls.extend("/api/" + name + "?take=1" for name in MODULES)
@@ -86,6 +88,7 @@ class Command(BaseCommand):
                 receipt_article = cursor.fetchone()
             if receipt_article:
                 urls.append("/api/logistique/articles/"+str(receipt_article[0])+"/receptions")
+                urls.append("/api/logistique/articles/"+str(receipt_article[0])+"/valorisation")
             with connection.cursor() as cursor:
                 cursor.execute('SELECT "ID_Commande" FROM logistique."T_Commande" ORDER BY "ID_Commande" LIMIT 1')
                 sample_order = cursor.fetchone()
@@ -97,6 +100,11 @@ class Command(BaseCommand):
                 sample_invoice=cursor.fetchone()
                 cursor.execute('SELECT "ID_Reglement" FROM logistique."T_Reglements" ORDER BY "ID_Reglement" LIMIT 1')
                 sample_payment=cursor.fetchone()
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT "ID_LotArticle" FROM logistique."T_LotArticle" ORDER BY "ID_LotArticle" LIMIT 1')
+                sample_lot = cursor.fetchone()
+            if sample_lot:
+                urls.extend("/api/logistique/lots/"+str(sample_lot[0])+suffix for suffix in ("", "/mouvements"))
             if sample_order:urls.append("/api/logistique/commandes/"+str(sample_order[0]))
             if platform_order:
                 for suffix in ("composition","retours","facture"):
@@ -111,7 +119,7 @@ class Command(BaseCommand):
                 for url in urls:
                     # Les préparations nécessitent un contexte explicite, même pour le compte global.
                     actor._context_entity = None
-                    required = 'contexte=composition' in url or '/receptions' in url or '/retours' in url
+                    required = 'contexte=composition' in url or '/receptions' in url or '/retours' in url or '/peremption/politique' in url or '/entreprise/identite' in url
                     if required:
                         match = re.search(r'/articles/([0-9]+)/', url)
                         command = re.search(r'/commandes/([0-9]+)/', url)

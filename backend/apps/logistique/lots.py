@@ -6,8 +6,12 @@ from apps.core.responses import APIError
 from apps.core.repository import positive
 from .quantities import quantity as exact_quantity
 
+def expiry_storage_ready():
+    return db.one("SELECT to_regclass('logistique.\"V_ArticlePeremption\"') IS NOT NULL AS ready")['ready']
+
 def line_lots(commande_id,article_id):
-    return db.query('''SELECT l."ID_LotArticle",l."NumeroLot",l."DatePeremptionLot",ml."Quantite"
+    fields=',ml."MotifDerogationPeremption",ml."ID_DerogationUserFk",ml."DateDerogationPeremption"' if expiry_storage_ready() else ''
+    return db.query('''SELECT l."ID_LotArticle",l."NumeroLot",l."DatePeremptionLot",ml."Quantite"'''+fields+'''
         FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
         JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=ml."ID_LotArticleFk"
         WHERE m."ID_cmdFk"=%s AND m."ID_ArticleFk"=%s ORDER BY l."NumeroLot",l."ID_LotArticle"''',[commande_id,article_id])
@@ -16,7 +20,7 @@ def normalize(rows,quantity,*,allow_partial=False):
     if not isinstance(rows,list) or len(rows)>50:raise APIError("Indiquez au maximum 50 lots par ligne.","LOT_VALIDATION",400)
     result=[];seen=set()
     for row in rows:
-        if not isinstance(row,dict) or set(row)-{"NumeroLot","Quantite","DatePeremptionLot"}:raise APIError("Informations de lot invalides.","LOT_VALIDATION",400)
+        if not isinstance(row,dict) or set(row)-{"NumeroLot","Quantite","DatePeremptionLot","MotifDerogationPeremption"}:raise APIError("Informations de lot invalides.","LOT_VALIDATION",400)
         number=row.get("NumeroLot")
         if not isinstance(number,str) or not number.strip() or len(number.strip())>100:raise APIError("Renseignez un numéro de lot de 100 caractères au maximum.","LOT_VALIDATION",400)
         number=number.strip();key=number.casefold()
@@ -25,7 +29,9 @@ def normalize(rows,quantity,*,allow_partial=False):
         expiry=row.get("DatePeremptionLot")
         try:expiry=date.fromisoformat(expiry) if expiry else None
         except (ValueError,TypeError):raise APIError("Date de péremption du lot invalide.","LOT_VALIDATION",400)
-        result.append({"NumeroLot":number,"Quantite":qty,"DatePeremptionLot":expiry})
+        reason=row.get("MotifDerogationPeremption")
+        if reason not in (None,"") and (not isinstance(reason,str) or not 10<=len(reason.strip())<=1000):raise APIError("Le motif de dérogation doit contenir de 10 à 1000 caractères.","EXPIRY_REASON_REQUIRED",400)
+        result.append({"NumeroLot":number,"Quantite":qty,"DatePeremptionLot":expiry,**({"MotifDerogationPeremption":reason.strip()} if reason else {})})
     allocated=sum(row["Quantite"] for row in result)
     if result and (allocated>quantity or not allow_partial and allocated!=quantity):raise APIError("La somme des quantités par lot doit correspondre à la quantité de la ligne." if not allow_partial else "La quantité ventilée par lot dépasse celle de la ligne.","LOT_QUANTITY_MISMATCH",400)
     return result
@@ -34,11 +40,11 @@ def unchanged(rows,previous,quantity):
     values=normalize(rows,quantity,allow_partial=True)
     def signature(items):
         return sorted((str(row["NumeroLot"]).strip().casefold(),Decimal(str(row["Quantite"])),
-            row["DatePeremptionLot"].isoformat() if hasattr(row.get("DatePeremptionLot"),"isoformat") else row.get("DatePeremptionLot")) for row in items)
+            row["DatePeremptionLot"].isoformat() if hasattr(row.get("DatePeremptionLot"),"isoformat") else row.get("DatePeremptionLot"),str(row.get("MotifDerogationPeremption") or "").strip()) for row in items)
     return signature(values)==signature(previous)
 
 
-def sync_movement(article_id,movement_id,rows,quantity):
+def sync_movement(article_id,movement_id,rows,quantity,*,actor=None):
     movement=db.one('SELECT "ID_ArticleFk","SigneStock" FROM logistique."V_MouvementStock" WHERE "ID_Mvt"=%s',[movement_id])
     if not movement or movement["ID_ArticleFk"]!=article_id:raise APIError("Mouvement de lot introuvable.","LOT_MOVEMENT_MISSING",409)
     values=normalize(rows,quantity,allow_partial=movement["SigneStock"]==-1)
@@ -53,7 +59,16 @@ def sync_movement(article_id,movement_id,rows,quantity):
         elif movement["SigneStock"]==1:
             lot=db.one('INSERT INTO logistique."T_LotArticle" ("ID_ArticleFk","NumeroLot","DatePeremptionLot") VALUES (%s,%s,%s) RETURNING *',[article_id,row["NumeroLot"],row["DatePeremptionLot"]])
         else:raise APIError("Ce lot n’a pas été reçu pour cet article.","LOT_NOT_RECEIVED",409)
-        db.query('INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite") VALUES (%s,%s,%s)',[movement_id,lot["ID_LotArticle"],row["Quantite"]])
+        reason=row.get("MotifDerogationPeremption")
+        if not expiry_storage_ready():
+            if reason:raise APIError("Le contrôle de péremption n’est pas encore installé.","EXPIRY_UNAVAILABLE",503)
+            db.query('INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite") VALUES (%s,%s,%s)',[movement_id,lot["ID_LotArticle"],row["Quantite"]])
+            continue
+        if reason and (actor is None or not actor.global_admin):raise APIError("Une dérogation de péremption exige un administrateur de plateforme.","EXPIRY_OVERRIDE_FORBIDDEN",403)
+        if movement["SigneStock"]==-1:
+            policy=db.one('SELECT e."BloquerLotsPerimes" blocked,(%s::date<(CURRENT_TIMESTAMP AT TIME ZONE \'Africa/Kinshasa\')::date) IS TRUE expired FROM logistique."T_Article" a JOIN systeme."T_Entite" e ON e."IdEntite"=a."IdEntiteFk" WHERE a."ID_Article"=%s',[lot.get("DatePeremptionLot"),article_id])
+            if policy and policy['expired'] and policy['blocked'] and not reason:raise APIError("La sortie d’un lot périmé est bloquée dans cette entreprise. Une dérogation motivée est requise.","EXPIRED_LOT_BLOCKED",409)
+        db.query('''INSERT INTO logistique."T_MouvementLot" ("ID_MvtFk","ID_LotArticleFk","Quantite","MotifDerogationPeremption","ID_DerogationUserFk") VALUES (%s,%s,%s,%s,%s)''',[movement_id,lot["ID_LotArticle"],row["Quantite"],reason,actor.pk if reason else None])
 
 def initial_lots(article,rows):
     if not rows:return

@@ -208,7 +208,7 @@ class OrderComposerView(APIView):
 
 def lot_signature(lots):
     return sorted((str(row['NumeroLot']).casefold(),Decimal(str(row['Quantite'])),
-                   row.get('DatePeremptionLot').isoformat() if hasattr(row.get('DatePeremptionLot'),'isoformat') else row.get('DatePeremptionLot'))
+                   row.get('DatePeremptionLot').isoformat() if hasattr(row.get('DatePeremptionLot'),'isoformat') else row.get('DatePeremptionLot'),str(row.get('MotifDerogationPeremption') or '').strip())
                   for row in lots)
 
 
@@ -235,7 +235,7 @@ def composition_snapshot(actor,command_id):
         v."IdEntiteFk" AS owner_entity,
         (SELECT COALESCE(jsonb_agg((COALESCE(to_jsonb(dv),'{}'::jsonb)||to_jsonb(d))||jsonb_build_object(
             'Lots',(SELECT COALESCE(jsonb_agg(jsonb_build_object('ID_LotArticle',lot."ID_LotArticle",'NumeroLot',lot."NumeroLot",
-                        'DatePeremptionLot',lot."DatePeremptionLot",'Quantite',ml."Quantite") ORDER BY lot."NumeroLot",lot."ID_LotArticle"),'[]'::jsonb)
+                        'DatePeremptionLot',lot."DatePeremptionLot",'Quantite',ml."Quantite",'MotifDerogationPeremption',ml."MotifDerogationPeremption") ORDER BY lot."NumeroLot",lot."ID_LotArticle"),'[]'::jsonb)
                     FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
                     JOIN logistique."T_LotArticle" lot ON lot."ID_LotArticle"=ml."ID_LotArticleFk"
                     WHERE m."ID_cmdFk"=d."ID_CmdFk" AND m."ID_ArticleFk"=d."ID_ArticleFk"),

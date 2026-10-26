@@ -1,5 +1,9 @@
 """Expéditeur de plateforme dans une clé JSON dédiée du registre de réglages existant."""
 import unicodedata
+import smtplib,ssl
+from django.core.mail import get_connection
+from django.utils import timezone
+from rest_framework.throttling import SimpleRateThrottle
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -66,9 +70,16 @@ def setting_row(*, lock=False):
     return rows[0] if rows else None
 
 
+def defaults():
+    email=getattr(settings,'EMAIL_HOST_USER','') or DEFAULT_EMAIL
+    try:validate_email(email)
+    except ValidationError:email=DEFAULT_EMAIL
+    return {'senderEmail':email,'senderName':DEFAULT_NAME}
+
+
 def sender_state(row):
     if row is None or row.get("ValideSetting") is not True:
-        return {"senderEmail": DEFAULT_EMAIL, "senderName": DEFAULT_NAME, "source": "default",
+        return {**defaults(), "source": "default",
                 "updatedAt": None, "updatedByUserId": None}
     value = row.get("SettingValueJson")
     if not isinstance(value, dict):
@@ -92,7 +103,7 @@ def mail_settings(actor):
     value = sender_state(setting_row())
     # Import local : le service de réinitialisation consomme lui-même get_sender().
     from .password_reset import smtp_configured
-    return {**value, "canManage": not settings.DB_READ_ONLY,
+    return {**value, "defaults": defaults(), "canTest": not settings.DB_READ_ONLY, "canManage": not settings.DB_READ_ONLY,
             "canSend": not settings.DB_READ_ONLY and bool(smtp_configured())}
 
 
@@ -149,3 +160,45 @@ class MailSettingsView(APIView):
 
     def put(self, request):
         return ok(save_mail_settings(request.user, request.data), message="Expéditeur mis à jour.")
+
+
+class MailConnectionThrottle(SimpleRateThrottle):
+    scope='mail_connection_test'
+    rate='3/min'
+    def get_cache_key(self,request,view):
+        return self.cache_format % {'scope':self.scope,'ident':str(request.user.pk)}
+
+
+def test_mail_connection(actor):
+    """Authentification du transport courant uniquement ; jamais de destinataire ni de message."""
+    require_platform_admin(actor)
+    db.ensure_writable()
+    from .password_reset import smtp_configured
+    if not smtp_configured():
+        raise APIError('Complétez la configuration du service d’envoi.','SMTP_CONFIGURATION_REQUIRED',503)
+    connection=None
+    try:
+        connection=get_connection(fail_silently=False,timeout=10)
+        opened=connection.open()
+        if opened is False and getattr(connection,'connection',None) is None:
+            raise smtplib.SMTPConnectError(421,'Transport unavailable')
+        return {'connected':True,'messageSent':False,'checkedAt':timezone.now()}
+    except smtplib.SMTPAuthenticationError as error:
+        raise APIError('Le service d’envoi a refusé les identifiants. Vérifiez le compte et son mot de passe d’application.','SMTP_AUTHENTICATION_FAILED',503) from error
+    except (smtplib.SMTPException,OSError,ssl.SSLError,ValueError) as error:
+        raise APIError('La connexion au service d’envoi n’a pas abouti. Vérifiez les paramètres et l’accès réseau.','SMTP_CONNECTION_FAILED',503) from error
+    finally:
+        if connection:
+            try:connection.close()
+            except (smtplib.SMTPException,OSError):pass
+
+
+class MailConnectionTestView(APIView):
+    permission_classes=[IsAuthenticated]
+    throttle_classes=[MailConnectionThrottle]
+    http_method_names=['post','options']
+    def post(self,request):
+        require_platform_admin(request.user)
+        if not isinstance(request.data,dict) or request.data:
+            raise APIError('Aucun paramètre attendu pour le test de connexion.')
+        return ok(test_mail_connection(request.user),message='Connexion au service d’envoi réussie. Aucun e-mail envoyé.')
