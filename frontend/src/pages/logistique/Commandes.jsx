@@ -6,7 +6,8 @@ import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
 import {useConsultations} from "../../components/ConsultationProvider";
 import RegisterSurface from "../../components/RegisterSurface";
 import DataTableToolbar from "../../components/DataTableToolbar";
-import RowActionsMenu from "../../components/RowActionsMenu";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import {stockDocuments,recordExcel} from "../../utils/rowDocuments";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import CategoricalSelect from "../../components/CategoricalSelect";
@@ -23,7 +24,7 @@ import "./Commandes.css";
 
 const CONFIG=getLogistiqueViewConfig("commandes");
 const EMPTY_FILTERS={typeId:"",statutId:"",client:"",deviseId:"",payment:"all",control:"all",dateFrom:"",dateTo:""};
-const DEFAULT_COLUMNS=["CodeCmd","DateCmd","TypeCmd","NomClientSaisi","StatutCmd","NbLignes","MontantTTC","actions"];
+const DEFAULT_COLUMNS=["CodeCmd","CodeFacture","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","QteTotale","MontantTTC","EtatPaiement","RefCmd","actions"];
 const PAYMENT_OPTIONS=[{value:"non-facturee",label:"Non facturés"},{value:"non-reglee",label:"À régler"},{value:"partielle",label:"Partiellement réglés"},{value:"reglee",label:"Réglés"},{value:"retard",label:"En retard"}];
 const CONTROL_OPTIONS=[{value:"sans-details",label:"Sans lignes"},{value:"incoherente",label:"Montants à vérifier"},{value:"coherente",label:"Montants cohérents"}];
 const LABELS={q:"Recherche",typeId:"Type de bon",statutId:"Statut du bon",client:"Tiers",deviseId:"Devise",payment:"Facturation",control:"Contrôle",dateFrom:"Du",dateTo:"Au"};
@@ -86,6 +87,7 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
   }
   const columns=[
     {key:"CodeCmd",label:"Bon de stock",width:205,render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="receipt" size={19}/></span><span className="erp-product-identity"><strong>{row.CodeCmd||"Bon sans code"}</strong><small>{row.RefCmd||"Référence non renseignée"}</small></span></span>,renderText:row=>row.CodeCmd||""},
+    {key:"CodeFacture",label:"Code facture",width:165,render:row=>row.CodeFacture||"—"},
     {key:"RefCmd",label:"Référence",width:170},
     {key:"DateCmd",label:"Date et heure",width:180,render:row=>formatDate(row.DateCmd)},
     {key:"TypeCmd",label:"Type de bon",width:160,render:row=>row.TypeCmd||options.typeId.find(option=>option.value===String(row.ID_TypeCmdFk))?.label||"—"},
@@ -97,14 +99,13 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
     {key:"DeviseCode",label:"Devise",width:110,render:row=>row.DeviseCode||"Non renseignée"},
     {key:"MontantHT",label:"Montant HT",width:160,align:"right",render:row=>formatCurrency(row.MontantHT,row.DeviseCode)},
     {key:"MontantTTC",label:"Montant TTC",width:160,align:"right",render:row=>formatCurrency(row.MontantTTC,row.DeviseCode)},
-    {key:"CodeFacture",label:"Facture",width:165},
     {key:"DateFacture",label:"Date de facture",width:180,render:row=>formatDate(row.DateFacture)},
     {key:"DateEcheancePaiement",label:"Échéance",width:180,render:row=>formatDate(row.DateEcheancePaiement)},
     {key:"MontantRegleFacture",label:"Montant réglé",width:160,align:"right",render:row=>formatCurrency(row.MontantRegleFacture,row.DeviseCode)},
     {key:"MontantResteFacture",label:"Reste à régler",width:160,align:"right",render:row=>formatCurrency(row.MontantResteFacture,row.DeviseCode)},
     {key:"EtatPaiement",label:"Paiement",width:180,render:row=><Badge value={row.EtatPaiement}/>},
     {key:"EtatControleCommande",label:"Contrôle",width:180,render:row=><Badge value={row.EtatControleCommande}/>},
-    {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title="Consulter le bon" aria-label={"Consulter le bon "+(row.CodeCmd||"sans code")} onClick={()=>openOrder(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={row.CodeCmd||"Bon de stock"} items={[
+    {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title="Consulter le bon" aria-label={"Consulter le bon "+(row.CodeCmd||"sans code")} onClick={()=>openOrder(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[...stockDocuments(row),recordExcel('commandes',{ID_Commande:row.ID_Commande},'Bon de stock')]} label={row.CodeCmd||"Bon de stock"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openOrder(row)},
       {label:"Voir les lignes",icon:"list",onSelect:()=>openLines(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite||closed(row),reason:!canWrite?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>edit(row)},
@@ -113,7 +114,7 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
       ...(meta?.features?.invoices===true?[{label:row.CodeFacture?"Consulter / modifier la facture":"Créer la facture",icon:"document",disabled:!canWrite&&!row.CodeFacture,reason:!canWrite&&!row.CodeFacture?"Accès en consultation":"",onSelect:()=>openInvoice(row.ID_Commande)}]:[]),
       {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite,reason:!canWrite?"Accès en consultation":"Les conditions de suppression seront vérifiées.",onSelect:()=>{if(canWrite)setDeleting(row.ID_Commande);}},
     ]}/></div>},
-  ];
+  ].sort((a,b)=>(DEFAULT_COLUMNS.indexOf(a.key)<0?99:DEFAULT_COLUMNS.indexOf(a.key))-(DEFAULT_COLUMNS.indexOf(b.key)<0?99:DEFAULT_COLUMNS.indexOf(b.key)));
   function filterLabel(key,value){return options[key]?.find(option=>String(option.value)===String(value))?.label||(key==="dateFrom"||key==="dateTo"?value.split("-").reverse().join("/"):value);}
   return <div className="logistics-screen commandes-register">
     <div aria-live="polite"><StatusBanner feedback={feedback}/>{savedRecord?<div className="commandes-saved-actions"><ActionButton icon="eye" onClick={()=>openOrder(savedRecord)}>Consulter le bon</ActionButton>{savedOperation==="created"&&canWrite?<ActionButton icon="plus" onClick={()=>addLine(savedRecord)}>Ajouter des lignes</ActionButton>:null}</div>:null}</div>

@@ -32,7 +32,7 @@ def closed(record):
 def stock_write_state(record):
     """Le panier devient historique après émission ou restitution ; les métadonnées financières restent distinctes."""
     from .stock_returns import return_context
-    inventory=bool(db.one("SELECT to_regclass('logistique.\"T_InventaireLigne\"') IS NOT NULL AS ready")['ready']) and bool(db.one('SELECT EXISTS(SELECT FROM logistique."T_InventaireLigne" l JOIN logistique."T_Inventaire" h ON h."ID_Inventaire"=l."ID_InventaireFk" WHERE l."ID_CommandeCorrectionFk"=%s AND h."Etat"=\'valide\') AS present',[record['ID_Commande']])['present'])
+    inventory=bool(db.one('SELECT EXISTS(SELECT FROM logistique."T_InventaireLigne" l JOIN logistique."T_Inventaire" h ON h."ID_Inventaire"=l."ID_InventaireFk" WHERE (%s IN (l."ID_CommandeCorrectionFk",l."ID_CommandeAnnulationFk")) AND h."Etat" IN (\'valide\',\'annule\')) AS present',[record['ID_Commande']])['present'])
     returns=return_context(record['ID_Commande'])
     invoice=bool(str(record.get('CodeFacture') or '').strip())
     if not invoice and db.one("SELECT to_regclass('logistique.\"T_Facture\"') IS NOT NULL AS ready")['ready']:

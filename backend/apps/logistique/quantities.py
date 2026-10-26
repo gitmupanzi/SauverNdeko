@@ -21,9 +21,8 @@ def quantity(value, field='Quantite', *, zero=False):
 
 
 def policy(unit_id):
-    row = db.one('''SELECT COALESCE(p."Decimales",0) AS decimals
-        FROM referentiel."T_Generique" g LEFT JOIN logistique."T_UniteStockPrecision" p
-        ON p."ID_UniteFk"=g."ID_Generique" WHERE g."ID_Generique"=%s AND g."ID_CategorieGeneriqueFk"=34''', [unit_id])
+    row = db.one('''SELECT COALESCE(g."DecimalesStock",0) AS decimals
+        FROM referentiel."T_Generique" g WHERE g."ID_Generique"=%s AND g."ID_CategorieGeneriqueFk"=34''', [unit_id])
     if not row:raise APIError('L’unité de stock doit être vérifiée.', 'QUANTITY_UNIT_REQUIRED', 409)
     return int(row['decimals'])
 

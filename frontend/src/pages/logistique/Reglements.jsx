@@ -9,7 +9,8 @@ import RegisterSurface from "../../components/RegisterSurface";
 import ConsultationTabs from "../../components/ConsultationTabs";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import SearchSelect from "../../components/SearchSelect";
-import RowActionsMenu from "../../components/RowActionsMenu";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import {pdfDocument,recordExcel} from "../../utils/rowDocuments";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import {requestJson,downloadApiFile} from "../../services/api";
@@ -98,13 +99,13 @@ export function FinanceRegister({kind,enabled,references,contextKey,refreshKey,c
   {key:"DernierReglement",label:"Dernier règlement",width:175,render:row=>formatDate(row.DernierReglement)},
   {key:"MontantAvoirAEtablir",label:"Avoir à établir",width:170,align:"right",render:row=>formatCurrency(row.MontantAvoirAEtablir,row.DeviseCode)},
   {key:"DeviseCode",label:"Devise",width:100},
-  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu label={row.CodeFacture||"Facture"} items={[{label:"Consulter la facture",icon:"eye",disabled:blocked,onSelect:()=>openInvoice(row)},{label:"Voir les règlements",icon:"wallet",disabled:blocked,onSelect:()=>openPayments(row)},{label:"Enregistrer un règlement",icon:"plus",disabled:blocked||!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>onNewPayment(row)},...(meta?.features?.invoices===true?[{label:"Modifier la facture",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onInvoice(row)}]:[]),{label:"Bon d’origine",icon:"receipt",disabled:blocked,onSelect:()=>openOrder(row)}]}/>},
+  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu disabled={blocked} documents={[...(row.EstFactureSnapshot===true?[pdfDocument('facture',row.ID_Commande,'facture','Facture')]:[]),recordExcel('factures',{ID_Commande:row.ID_Commande},'Facture')]} label={row.CodeFacture||"Facture"} items={[{label:"Consulter la facture",icon:"eye",disabled:blocked,onSelect:()=>openInvoice(row)},{label:"Voir les règlements",icon:"wallet",disabled:blocked,onSelect:()=>openPayments(row)},{label:"Enregistrer un règlement",icon:"plus",disabled:blocked||!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>onNewPayment(row)},...(meta?.features?.invoices===true?[{label:"Modifier la facture",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onInvoice(row)}]:[]),{label:"Bon d’origine",icon:"receipt",disabled:blocked,onSelect:()=>openOrder(row)}]}/>},
  ]:[
   {key:"DateReglement",label:"Date et heure",width:185,render:row=>formatDate(row.DateReglement)},
   {key:"CodeFactureFk",label:"Facture",width:170,render:row=><button type="button" className="erp-object-link" disabled={blocked||!row.ID_Commande} onClick={event=>{event.stopPropagation();openInvoice(row);}}>{row.CodeFactureFk||"—"}</button>},
   {key:"CodeCmd",label:"Bon de stock",width:150},{key:"NomClientSaisi",label:"Tiers",width:210},{key:"ModeReglement",label:"Mode de règlement",width:180},
   {key:"MontantRegle",label:"Montant réglé",width:185,align:"right",render:row=>formatCurrency(row.MontantRegle,row.DeviseCode)},{key:"DeviseCode",label:"Devise",width:100},
-  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu label={"Règlement du "+formatDate(row.DateReglement)} items={[{label:"Consulter",icon:"eye",disabled:blocked,onSelect:()=>onViewPayment(row)},{label:"Modifier",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onEditPayment(row)},{label:"Consulter la facture",icon:"document",disabled:blocked||!row.ID_Commande,onSelect:()=>openInvoice(row)},{label:"Supprimer",icon:"trash",danger:true,disabled:blocked||!canWrite,onSelect:()=>onDeletePayment(row)}]}/>},
+  {key:"actions",label:"Actions",width:105,sortable:false,render:row=><RowActionsMenu disabled={blocked} documents={[pdfDocument('reglement',row.ID_Reglement,'recu','Reçu de règlement'),recordExcel('reglements',{ID_Reglement:row.ID_Reglement},'Règlement')]} label={"Règlement du "+formatDate(row.DateReglement)} items={[{label:"Consulter",icon:"eye",disabled:blocked,onSelect:()=>onViewPayment(row)},{label:"Modifier",icon:"edit",disabled:blocked||!canWrite,onSelect:()=>onEditPayment(row)},{label:"Consulter la facture",icon:"document",disabled:blocked||!row.ID_Commande,onSelect:()=>openInvoice(row)},{label:"Supprimer",icon:"trash",danger:true,disabled:blocked||!canWrite,onSelect:()=>onDeletePayment(row)}]}/>},
  ];
  const amountLabels=invoices?{MontantFacture:"Facturé",TotalRegle:"Réglé",Reste:"Solde à régler",MontantAvoirAEtablir:"Avoir à établir"}:{MontantRegle:"Montant réglé"};
  return <div className="erp-register-table erp-results finance-register" data-density={density} aria-busy={loading}>

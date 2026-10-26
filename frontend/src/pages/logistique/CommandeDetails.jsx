@@ -6,7 +6,8 @@ import RegisterSurface from "../../components/RegisterSurface";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
-import RowActionsMenu from "../../components/RowActionsMenu";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import {recordExcel} from "../../utils/rowDocuments";
 import CategoricalSelect from "../../components/CategoricalSelect";
 import {requestJson,downloadApiFile} from "../../services/api";
 import {currencyOptions} from "../../utils/money";
@@ -83,7 +84,7 @@ export default function CommandeDetails({selectedCommande,references,refreshKey,
   {key:"EtatLigne",label:"Contrôle",width:160,render:row=>row.EtatLigne?<span className={"erp-status is-"+(row.EtatLigne==="Valide"?"success":"warning")}>{row.EtatLigne}</span>:"—"},
   {key:"ObsCmdDetail",label:"Observation",width:240},
   {key:"LieuCmdDetail",label:"Lieu",width:110},
-  {key:"actions",label:"Actions",width:120,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title="Bon de stock 360" aria-label={"Consulter le bon "+(row.CodeCmd||row.ID_CmdFk)} onClick={()=>consultBon(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={(row.CodeCmd||"Bon #"+row.ID_CmdFk)+" · "+(row.NomArticle||"Article")} items={[
+  {key:"actions",label:"Actions",width:120,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title="Bon de stock 360" aria-label={"Consulter le bon "+(row.CodeCmd||row.ID_CmdFk)} onClick={()=>consultBon(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[recordExcel('lignes',{ID_CmdFk:row.ID_CmdFk,ID_ArticleFk:row.ID_ArticleFk},'Ligne du bon')]} label={(row.CodeCmd||"Bon #"+row.ID_CmdFk)+" · "+(row.NomArticle||"Article")} items={[
    {label:"Consulter le bon",icon:"eye",onSelect:()=>consultBon(row)},
    {label:"Consulter l’article",icon:"box",onSelect:()=>consultArticle(row)},
    {label:"Modifier",icon:"edit",disabled:!canWrite||closedBon(row),reason:!canWrite?"Accès en consultation":closedBon(row)?"Ce bon est clôturé.":"",onSelect:()=>edit(row)},

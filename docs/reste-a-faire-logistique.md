@@ -1,6 +1,6 @@
 # Logistique — travaux restants
 
-État au 25 octobre 2026. Ce relevé distingue les développements encore nécessaires des vérifications de livraison. Il complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md).
+État au 26 octobre 2026. Ce relevé distingue les développements encore nécessaires des vérifications de livraison. Il complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md).
 
 ## Déjà livré
 
@@ -10,7 +10,7 @@
 - PDF des bons d’entrée/sortie/livraison, factures, reçus et avoirs ; justificatifs privés ; identités des documents financiers conservées.
 - Clients et fournisseurs via T_Client et Type de personne du référentiel, Tiers 360, référence du tiers dans les bons, destinations géographiques normalisées.
 - Propriété durable par Entité, contexte d’entreprise du compte global, droits serveur et dossiers personnalisés privés.
-- Inventaires physiques, écarts justifiés et validation traçable ; quantités fractionnaires selon la précision explicite de l’unité.
+- Inventaires physiques, écarts justifiés, validation et annulation motivée avec mouvements compensateurs ; quantités fractionnaires selon la précision de l’unité dans le référentiel générique.
 - Lots facultatifs, contrôle des budgets et proposition de sortie par péremption ; tableaux, exports et filtres catégoriels recherchables communs.
 
 ## Développements prioritaires
@@ -39,5 +39,7 @@ La modernisation des autres modules (Administration, Référentiels, Organisatio
 ## Vérifications déjà obtenues
 
 Les documents et avoirs ont passé 102 contrôles métier sur des données fictives dans une base privée, dont rejeu et remboursements concurrents. Après installation, 174 routes existantes et 24 contrôles réels des nouvelles fonctions ont réussi en lecture seule. Les quantités et le journal de stock sont restés inchangés lors des migrations. Les PDF ont été rendus et inspectés, dont un tableau de cinq pages. La dernière harmonisation des filtres catégoriels a compilé avec succès. Ces preuves ne remplacent pas la recette de livraison ci-dessus.
+
+Le 26 octobre : centralisation des précisions dans T_Generique, destinations préfixées par leur type, ordres de colonnes harmonisés et annulation traçable des inventaires. Les 31 contrôles dédiés à l’annulation ont passé sur une base privée ; 176 routes GET ont passé sur SauverNdeko en lecture seule. Les 22 tables métier contrôlées sont restées identiques pendant les migrations. La recette utilisateur de livraison reste à réaliser.
 
 Sources locales : [documents et avoirs](../SQL/documentation/Documents_Avoirs_20261025.md), [Entités, tiers et stock](../skills/sauverndeko-erp/references/entites-tiers-et-stock.md), [lancement et messagerie](lancement-local.md), [règles frontend](../frontend/skills/develop-sauverndeko-frontend/references/formulaires-crud.md).

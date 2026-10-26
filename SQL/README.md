@@ -124,3 +124,19 @@ Les empreintes métier avant/après sont identiques hors codes et référence de
 Recette sur le cluster privé sans données clients : **50 contrôles PostgreSQL** — 21 contrôles SQL et 29 contrôles de services — ainsi que **99 contrôles isolés** du backend. Les cas couvrent notamment collisions, factures clôturées ou payées, références des règlements, attribution SQL directe, non-réutilisation après suppression, immutabilité et six rejeux de demandes antérieures sans nouvelle allocation. Aucune écriture fictive n’a été effectuée dans la base client.
 
 Cette migration n’est **pas réexécutable** : elle contrôle les définitions attendues et refuse une numérotation déjà installée. Sur une nouvelle installation, respecter l’ordre des migrations et les préconditions ; sur la base locale, conserver ce fichier comme historique. Aucun retour arrière destructeur automatique n’est fourni.
+
+## Référentiel, destinations et annulation d’inventaire — 26 octobre 2026
+
+Après les migrations du 25 octobre jusqu’à 20261025_13, appliquer dans l’ordre :
+
+1. [20261026_01_precision_referentiel.sql](migrations/20261026_01_precision_referentiel.sql) : transfère la précision et sa date de modification dans T_Generique, adapte les contrôles et la vue de comptage, puis supprime T_UniteStockPrecision avec RESTRICT.
+2. [20261026_02_destinations_typees.sql](migrations/20261026_02_destinations_typees.sql) : enrichit V_DestinationLogistique avec les types réels du référentiel à chaque niveau de la hiérarchie.
+3. [20261026_03_annulation_inventaire.sql](migrations/20261026_03_annulation_inventaire.sql) : conserve validation et comptages, ajoute l’annulation motivée et ses liens de compensation, protège les documents et lots historiques.
+
+Ces trois migrations sont installées dans SauverNdeko. Ne pas les rejouer. La sauvegarde complète locale .runtime/backups/SauverNdeko-avant-referentiel-annulation-20261026-094221.dump a été vérifiée par empreinte, catalogue et décodage intégral ; cela ne remplace pas un essai de restauration. Les empreintes des 22 tables métier contrôlées sont identiques avant/après, hors nouvelles colonnes de métadonnées NULL. Aucun inventaire réel n’a été annulé pour les essais.
+
+La précision est désormais portée par les lignes Unités de referentiel.T_Generique : DecimalesStock (0 à 3 ; NULL conserve le comportement entier) et PrecisionStockModifieLe. Le réglage partagé est réservé à l’administrateur global. Une réduction incompatible avec les quantités existantes est refusée. Le transfert avec préservation des valeurs et dates a été vérifié sur une base privée.
+
+Annuler la validation exige les droits de gestion, une entreprise active, la révision du document, un UUID de demande et un motif. L’opération crée les bons inverses par les triggers de stock existants, conserve quantités, lots, prix historiques et devise, et interdit toute suppression des écritures d’origine. Un stock ou lot insuffisant refuse toute la transaction ; rejouer la même demande ne produit aucun mouvement supplémentaire. L’inventaire annulé reste consultable et ne peut pas être revalidé.
+
+Recette reproductible : définir SAUVERNDEKO_TEST_DATABASE_URL vers une base indépendante sauverndeko_test_* déjà migrée, puis exécuter SQL/tests/test_annulation_inventaire.py avec le Python du backend. Le script refuse la base applicative et crée exclusivement des données fictives dans la base dédiée. Résultat : 31 contrôles réussis. Sur SauverNdeko, le diagnostic de 176 routes GET et les lectures ciblées sont passés en lecture seule ; Django et la compilation frontend sont également validés.

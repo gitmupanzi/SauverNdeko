@@ -414,6 +414,8 @@ class T_CategorieGenerique(models.Model):
 
 
 class T_Generique(models.Model):
+    DecimalesStock = models.SmallIntegerField(null=True)
+    PrecisionStockModifieLe = models.DateTimeField(null=True)
     ID_Generique = models.AutoField(primary_key=True)
     ID_CategorieGeneriqueFk = models.IntegerField()
     NomGenerique = models.TextField()
@@ -656,4 +658,4 @@ class T_Client(models.Model):
         managed=False
         db_table='"logistique"."T_Client"'
 
-from .inventory_models import T_UniteStockPrecision, T_Inventaire, T_InventaireLigne
+from .inventory_models import T_Inventaire, T_InventaireLigne

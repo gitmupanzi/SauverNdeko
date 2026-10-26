@@ -147,3 +147,23 @@ Dans le panier d’un bon de sortie, rendre visible le besoin de lots et ouvrir 
 ## Filtres catégoriels des registres
 
 Les choix de population des listes logistiques utilisent RegisterCategoryFilter et SearchSelect : liste compacte recherchable, choix actif visible et options dynamiques du référentiel. Éviter une rangée de boutons pour chaque catégorie. Conserver les handlers de filtrage serveur, la remise à la première page et les autres critères. Les véritables sous-onglets des formulaires et consultations restent ConsultationTabs.
+
+## Comptage physique
+
+Le formulaire d’inventaire conserve deux rubriques : Comptage et Validation. Dans Comptage, présenter les informations, le catalogue recherchable avec sélection multiple, puis les articles comptés sur toute la largeur, comme dans la composition d’un bon. L’ajout conserve les valeurs saisies et évite les doublons ; un inventaire validé reste consultable sans catalogue d’ajout. Afficher les détails métier des erreurs API au lieu du seul libellé générique.
+
+Lorsqu’une action de ligne ouvre un détail sous le tableau, faire défiler uniquement le conteneur de la fenêtre jusqu’à ce détail après son rendu et lui transférer le focus sans second saut. Respecter la préférence de mouvement réduit. Un nouveau clic sur le même article révèle de nouveau le détail ; sa fermeture rend le focus et la visibilité au bouton de la ligne d’origine, sans modifier les saisies.
+
+## Documents depuis les actions d’une ligne
+
+Les menus ⋯ proposent les fichiers disponibles pour l’objet sélectionné, via RowDocumentActions : PDF de bon selon son sens, facture uniquement si émise, reçu de règlement et Excel ciblé sur les clés exactes. La facture du bon est aussi accessible depuis Bons de stock. Réutiliser les mêmes routes autorisées que les fiches 360 et la charte documentaire ; ne pas exporter toute une liste à la place de la ligne, ni afficher un format non raccordé. Conserver les droits d’export, le blocage des doubles clics, les erreurs avec Réessayer et l’annulation après changement d’entreprise.
+
+Dans Bons de stock, afficher Code facture par défaut à côté du numéro de bon ; conserver la colonne sélectionnable, le tri et son inclusion dans les exports. Une facture absente reste représentée par —.
+
+## Colonnes par défaut — accord du 26 octobre 2026
+
+Bons de stock : Bon de stock · Code facture · Date et heure · Type de bon · Statut du bon · Tiers · Quantité totale · Montant TTC · Paiement · Référence · Actions. Une seule définition de CodeFacture, libellée Code facture ; ne pas ajouter une deuxième colonne Facture. Les colonnes facultatives restent sélectionnables sans dupliquer leur clé.
+
+Articles : Article · Catégorie · Type · Stock actuel · Lots · État de l’article, puis Actions pour l’accès aux opérations. Lots ouvre la consultation liée ; État de l’article indique Actif/Inactif, distinct de la disponibilité du stock. Les prix, la péremption et les autres informations restent disponibles dans le choix des colonnes.
+
+Le menu ⋯ des inventaires validés propose Annuler la validation selon les droits. Employer une fenêtre commune avec motif obligatoire, état d’envoi, conservation de la demande en cas de réponse incertaine et erreurs explicites. Après succès, montrer Annulé et conserver la fiche, l’auteur, la date, le motif et les bons compensateurs. Aucun bouton de suppression de l’historique.

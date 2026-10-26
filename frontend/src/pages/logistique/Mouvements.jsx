@@ -7,7 +7,8 @@ import {useConsultations} from "../../components/ConsultationProvider";
 import RegisterSurface from "../../components/RegisterSurface";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import SearchSelect from "../../components/SearchSelect";
-import RowActionsMenu from "../../components/RowActionsMenu";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import {stockDocuments,recordExcel} from "../../utils/rowDocuments";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
@@ -157,7 +158,7 @@ export default function Mouvements({references,refreshKey,sharedTable,onToggleFk
   {key:"OrigineMouvement",label:"Origine",width:200,render:row=>options.origine.find(option=>option.value===row.OrigineMouvement)?.label||row.OrigineMouvement||"—"},
   {key:"DateCmd",label:"Date du bon",width:180,render:row=>formatDate(row.DateCmd)},
   {key:"DateHeureAutoMvt",label:"Enregistré le",width:190,render:row=>formatDate(row.DateHeureAutoMvt,{withSeconds:true})},
-  {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title={hasOrder(row)?"Consulter le bon":"Consulter l’article"} aria-label={hasOrder(row)?"Consulter le bon "+(row.CodeCmd||"sans code"):"Consulter "+(row.NomArticle||"l’article")} disabled={blocked||(!hasOrder(row)&&!hasProduct(row))} onClick={()=>hasOrder(row)?order(row):product(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={row.NomArticle||"Mouvement de stock"} items={[
+  {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title={hasOrder(row)?"Consulter le bon":"Consulter l’article"} aria-label={hasOrder(row)?"Consulter le bon "+(row.CodeCmd||"sans code"):"Consulter "+(row.NomArticle||"l’article")} disabled={blocked||(!hasOrder(row)&&!hasProduct(row))} onClick={()=>hasOrder(row)?order(row):product(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu disabled={blocked} documents={[...stockDocuments({EstCommandeEntree:Number(row.SigneStock)===1,EstCommandeSortie:Number(row.SigneStock)===-1},row.ID_cmdFk),recordExcel('mouvements',{ID_Mvt:row.ID_Mvt},'Mouvement')]} label={row.NomArticle||"Mouvement de stock"} items={[
    {label:"Consulter l’article",icon:"box",disabled:blocked||!hasProduct(row),onSelect:()=>product(row)},
    ...(hasOrder(row)?[{label:"Consulter le bon",icon:"receipt",disabled:blocked,onSelect:()=>order(row)}]:[]),
    ...(canManage?[{label:"Réceptionner du stock",icon:"stock-in",disabled:blocked||!hasProduct(row)||row.ValideArticle===false,reason:row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>receive(row)}]:[])

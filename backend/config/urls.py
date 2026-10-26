@@ -52,6 +52,7 @@ urlpatterns = [
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
     re_path(r"^api/logistique/inventaires/unites/?$", UnitPrecisionView.as_view()),
     re_path(r"^api/logistique/inventaires/catalogue/?$", InventoriesView.as_view(), {"action":"catalogue"}),
+    re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/annuler/?$", InventoriesView.as_view(), {"action":"annuler"}),
     re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/valider/?$", InventoriesView.as_view(), {"action":"valider"}),
     re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/?$", InventoriesView.as_view()),
     re_path(r"^api/logistique/inventaires/?$", InventoriesView.as_view()),

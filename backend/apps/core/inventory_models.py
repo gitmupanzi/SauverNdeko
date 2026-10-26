@@ -2,14 +2,6 @@
 from django.db import models
 
 
-class T_UniteStockPrecision(models.Model):
-    ID_UniteFk=models.IntegerField(primary_key=True)
-    Decimales=models.SmallIntegerField(default=0)
-    ModifieLe=models.DateTimeField()
-    class Meta:
-        app_label='core';managed=False;db_table='"logistique"."T_UniteStockPrecision"'
-
-
 class T_Inventaire(models.Model):
     ID_Inventaire=models.BigAutoField(primary_key=True)
     IdEntiteFk=models.IntegerField()
@@ -24,6 +16,11 @@ class T_Inventaire(models.Model):
     ID_ValidateurFk=models.IntegerField(null=True)
     ValidationRequest=models.UUIDField(null=True)
     ValidationHash=models.TextField(null=True)
+    AnnuleLe=models.DateTimeField(null=True)
+    ID_AnnulateurFk=models.IntegerField(null=True)
+    MotifAnnulation=models.TextField(null=True)
+    AnnulationRequest=models.UUIDField(null=True)
+    AnnulationHash=models.TextField(null=True)
     class Meta:
         app_label='core';managed=False;db_table='"logistique"."T_Inventaire"'
 
@@ -38,5 +35,6 @@ class T_InventaireLigne(models.Model):
     Lots=models.JSONField(default=list)
     Justification=models.TextField()
     ID_CommandeCorrectionFk=models.IntegerField(null=True)
+    ID_CommandeAnnulationFk=models.IntegerField(null=True)
     class Meta:
         app_label='core';managed=False;db_table='"logistique"."T_InventaireLigne"'

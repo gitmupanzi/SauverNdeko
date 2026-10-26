@@ -6,7 +6,8 @@ import ArticleEditor from "./ArticleEditor";
 import StockReceiptEditor from "./StockReceiptEditor";
 import ArticleActionDrawer from "./ArticleActionDrawer";
 import { useFollowupFolders } from "../../contexts/FollowupFoldersContext";
-import RowActionsMenu from "../../components/RowActionsMenu";
+import RowActionsMenu from "../../components/RowDocumentActions";
+import {recordExcel} from "../../utils/rowDocuments";
 import AppIcon from "../../components/AppIcon";
 import RegisterSurface from "../../components/RegisterSurface";
 import DataTableToolbar from "../../components/DataTableToolbar";
@@ -33,7 +34,7 @@ import {
 
 const ARTICLES_VIEW_CONFIG = getLogistiqueViewConfig("articles");
 const EMPTY_FILTERS = { deviseId:"", categorieId:"", typeId:"", uniteId:"", stockState:"all", peremption:"all", statut:"" };
-const DEFAULT_COLUMNS = ["NomArticle","CategorieArticle","QteArticle","EtatStock","PUArticle","DatePeremptionArticle","actions"];
+const DEFAULT_COLUMNS = ["NomArticle","CategorieArticle","TypeArticle","QteArticle","NombreLots","ValideArticle","actions"];
 
 function stockTone(value) {
   const label = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -152,7 +153,7 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     { key:"DatePeremptionArticle", label:"Péremption", width:140, render:row => row.DatePeremptionArticle ? formatDate(row.DatePeremptionArticle) : "—" },
     { key:"EtatPeremption", label:"État de péremption", width:170, render:row => <ArticleStatus value={row.EtatPeremption} tone={expiryTone(row.EtatPeremption)}/> },
     { key:"ValideArticle", label:"État de l’article", width:145, render:row => <ArticleStatus value={row.ValideArticle == null ? null : row.ValideArticle ? "Actif" : "Inactif"} tone={row.ValideArticle ? "success" : "neutral"}/> },
-    { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu label={row.NomArticle || "Article"} items={[
+    { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[recordExcel('articles',{ID_Article:row.ID_Article},'Fiche article')]} label={row.NomArticle || "Article"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openProduct(row)},
       {label:"Réceptionner du stock",icon:"stock-in",disabled:!canWrite||row.ValideArticle===false,reason:!canWrite?"Accès en consultation":row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>handleReceipt(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleEditArticle(row)},

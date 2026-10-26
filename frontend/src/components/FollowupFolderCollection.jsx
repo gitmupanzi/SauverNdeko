@@ -1,11 +1,11 @@
 import "./DataTable.css";
 import AppIcon from "./AppIcon";
-import RowActionsMenu from "./RowActionsMenu";
+import RowActionsMenu from "./RowDocumentActions";
 import {SimpleTable,formatNumber} from "../pages/logistique/logistiqueShared";
 import {FOLDER_OBJECT_LABELS,FOLDER_UNITS} from "../services/followupFolders";
 export function FolderActions({folder,canWrite,onEdit,onArchive}){
   if(folder.system)return <span className="followup-folder-actions-gap"/>;
-  return <RowActionsMenu label={folder.name} items={[{label:"Modifier",icon:"edit",disabled:!canWrite || !folder.active,onSelect:()=>onEdit(folder)},{label:folder.active?"Archiver":"Restaurer",icon:"folder",disabled:!canWrite,onSelect:()=>onArchive(folder)}]}/>;
+  return <RowActionsMenu documents={folder.active?[{label:"Contenu du dossier · Excel",url:"/api/logistique/dossiers-suivi/"+encodeURIComponent(folder.key)+"/export.xlsx",filename:"dossier-"+folder.key+".xlsx"}]:[]} label={folder.name} items={folder.system?[]:[{label:"Modifier",icon:"edit",disabled:!canWrite || !folder.active,onSelect:()=>onEdit(folder)},{label:folder.active?"Archiver":"Restaurer",icon:"folder",disabled:!canWrite,onSelect:()=>onArchive(folder)}]}/>;
 }
 function FolderCount({folder,onSelect}){return <button type="button" className="followup-folder-count" aria-label={"Voir le dossier "+folder.name+" : "+formatNumber(folder.count)+" "+FOLDER_UNITS[folder.objectType]+(folder.count>1?"s":"")} disabled={!folder.active} onClick={()=>onSelect(folder.key)}><span><strong>{formatNumber(folder.count)}</strong><small>{FOLDER_UNITS[folder.objectType]}{folder.count>1?"s":""}</small></span><AppIcon name="chevron-right" size={15}/></button>;}
 export default function FollowupFolderCollection({folders,view,onSelect,canWrite,onEdit,onArchive}){

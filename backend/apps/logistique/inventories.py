@@ -152,6 +152,7 @@ def validate(actor,identifier,body):
         if record['Etat']=='valide':
             if str(record['ValidationRequest'])!=request or not hmac.compare_digest(record['ValidationHash'],fingerprint):raise APIError('Cet inventaire est déjà validé.','INVENTORY_CLOSED',409)
             return snapshot(actor,identifier),True
+        if record['Etat']!='brouillon':raise APIError('Cet inventaire est historique. Créez un nouveau comptage.','INVENTORY_CLOSED',409)
         check_version(record,body['_version'])
         lines=db.query('SELECT * FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Inventaire']])
         if not lines:failure('lignes','Ajoutez les articles comptés.')
@@ -190,13 +191,13 @@ def catalogue(actor,params):
     try:take=min(100,max(1,int(params.get('take',25))));skip=max(0,int(params.get('skip',0)))
     except (ValueError,TypeError):raise APIError('Pagination invalide.')
     sort=params.get('sortBy','NomArticle');direction=params.get('sortDir','asc')
-    sorts={'NomArticle':'a."NomArticle"','QteArticle':'a."QteArticle"','Decimales':'COALESCE(p."Decimales",0)'}
+    sorts={'NomArticle':'a."NomArticle"','QteArticle':'a."QteArticle"','Decimales':'COALESCE(g."DecimalesStock",0)'}
     if sort not in sorts or direction not in ('asc','desc'):raise APIError('Tri invalide.')
     where='a."IdEntiteFk"=%s AND a."ValideArticle" IS TRUE';values=[entity]
     if q:where+=' AND (a."NomArticle" ILIKE %s OR a."CodeArticleInterne" ILIKE %s OR a."RefArticle" ILIKE %s)';values += ['%'+q+'%']*3
     total=db.one('SELECT count(*) n FROM logistique."T_Article" a WHERE '+where,values)['n']
-    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle",a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(p."Decimales",0) AS "Decimales"
-      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk" LEFT JOIN logistique."T_UniteStockPrecision" p ON p."ID_UniteFk"=a."ID_UniteFk" WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[*values,take,skip])
+    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle",a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(g."DecimalesStock",0) AS "Decimales"
+      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk" WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[*values,take,skip])
     return clean(rows),{'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction}
 
 
@@ -218,6 +219,9 @@ class InventoriesView(APIView):
         return ok(clean(rows),meta={'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction})
     def post(self,request,pk=None,action=None):
         if action=='valider':data,replayed=validate(request.user,positive(pk),request.data)
+        elif action=='annuler':
+            from .inventory_cancellation import cancel
+            data,replayed=cancel(request.user,positive(pk),request.data)
         elif pk is None:data,replayed=save(request.user,None,request.data)
         else:raise APIError('Action inconnue.','NOT_FOUND',404)
         return ok(data,status=200 if replayed else 201)
@@ -229,13 +233,14 @@ class UnitPrecisionView(APIView):
     permission_classes=[IsERPAdmin]
     def get(self,request):
         access(request.user)
-        return ok(db.query('''SELECT g."ID_Generique" AS "ID_UniteFk",g."NomGenerique" AS "Unite",g."AbrGenerique" AS "Abreviation",COALESCE(p."Decimales",0) AS "Decimales",p."ModifieLe" FROM referentiel."T_Generique" g LEFT JOIN logistique."T_UniteStockPrecision" p ON p."ID_UniteFk"=g."ID_Generique" WHERE g."ID_CategorieGeneriqueFk"=34 ORDER BY g."NomGenerique"'''))
+        return ok(db.query('''SELECT g."ID_Generique" AS "ID_UniteFk",g."NomGenerique" AS "Unite",g."AbrGenerique" AS "Abreviation",COALESCE(g."DecimalesStock",0) AS "Decimales",g."PrecisionStockModifieLe" AS "ModifieLe" FROM referentiel."T_Generique" g WHERE g."ID_CategorieGeneriqueFk"=34 ORDER BY g."NomGenerique"'''))
     def put(self,request):
         access(request.user,True)
         if not request.user.global_admin:raise APIError('Le paramétrage partagé des unités exige un administrateur de plateforme.','GLOBAL_ADMIN_REQUIRED',403)
         body=request.data
         if not isinstance(body,dict) or set(body)!={'ID_UniteFk','Decimales'} or type(body['Decimales']) is not int or body['Decimales'] not in range(4):raise APIError('Choisissez une unité et une précision de zéro à trois décimales.')
         with transaction.atomic():
-            row=db.one('''INSERT INTO logistique."T_UniteStockPrecision" ("ID_UniteFk","Decimales") VALUES (%s,%s) ON CONFLICT("ID_UniteFk") DO UPDATE SET "Decimales"=EXCLUDED."Decimales" RETURNING *''',[positive(body['ID_UniteFk']),body['Decimales']])
-            audit({'schema':'logistique','name':'T_UniteStockPrecision'},'UPDATE',new=row,actor=request.user)
+            row=db.one('''UPDATE referentiel."T_Generique" SET "DecimalesStock"=%s WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=34 RETURNING "ID_Generique" AS "ID_UniteFk","DecimalesStock" AS "Decimales","PrecisionStockModifieLe" AS "ModifieLe"''',[body['Decimales'],positive(body['ID_UniteFk'])])
+            if not row:raise APIError('Unité introuvable.','NOT_FOUND',404)
+            audit({'schema':'referentiel','name':'T_Generique'},'UPDATE',new=row,actor=request.user)
             return ok(clean(row))
