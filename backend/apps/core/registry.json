@@ -8789,6 +8789,78 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "MatriculeUser",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 50,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "ID_ServiceFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "ID_FonctionFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "DateEmbauche",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "DateFinEmploi",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Utilisateurs",
+          "column_name": "ObservationProfessionnelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -8911,6 +8983,30 @@
             "ID_Generique"
           ],
           "relation": "UserRole"
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_FonctionFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_FonctionFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_ServiceFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_ServiceFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
         }
       ],
       "fields": [
@@ -9929,6 +10025,425 @@
       ],
       "relations": [],
       "fields": []
+    },
+    "T_Immobilisation": {
+      "schema": "logistique",
+      "name": "T_Immobilisation",
+      "primaryKey": [
+        "ID_Immobilisation"
+      ],
+      "columns": [
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_Immobilisation",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "YES"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "CodeImmobilisation",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 32,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "NomImmobilisation",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 200,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "Reference",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "Caracteristiques",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "SuiviIndividuel",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "Quantite",
+          "data_type": "numeric",
+          "is_nullable": "NO",
+          "column_default": "1",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "PrixUnitaire",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 18,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_CategorieFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_EtatFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_ResponsableFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_ServiceFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ID_LocalisationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "LocalisationComplement",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "DateEntree",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "clock_timestamp()",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "DateAcquisition",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "NumeroSerie",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "Observations",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "Actif",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "CreeLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "CreeParUserFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "ModifieParUserFk",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        }
+      ],
+      "relations": [
+        {
+          "name": "T_Utilisateurs",
+          "many": false,
+          "relation": "T_Utilisateurs_CreeParUserFk",
+          "target": "T_Utilisateurs",
+          "from": [
+            "CreeParUserFk"
+          ],
+          "to": [
+            "IdUser"
+          ]
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_CategorieFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_CategorieFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_DeviseFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_DeviseFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_EtatFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_EtatFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
+        },
+        {
+          "name": "T_Entite_Localisation",
+          "many": false,
+          "relation": "T_Entite_Localisation_ID_LocalisationFk",
+          "target": "T_Entite_Localisation",
+          "from": [
+            "ID_LocalisationFk"
+          ],
+          "to": [
+            "IdEntiteLocalisation"
+          ]
+        },
+        {
+          "name": "T_Utilisateurs",
+          "many": false,
+          "relation": "T_Utilisateurs_ID_ResponsableFk",
+          "target": "T_Utilisateurs",
+          "from": [
+            "ID_ResponsableFk"
+          ],
+          "to": [
+            "IdUser"
+          ]
+        },
+        {
+          "name": "T_Generique",
+          "many": false,
+          "relation": "T_Generique_ID_ServiceFk",
+          "target": "T_Generique",
+          "from": [
+            "ID_ServiceFk"
+          ],
+          "to": [
+            "ID_Generique"
+          ]
+        },
+        {
+          "name": "T_Entite",
+          "many": false,
+          "relation": "T_Entite_IdEntiteFk",
+          "target": "T_Entite",
+          "from": [
+            "IdEntiteFk"
+          ],
+          "to": [
+            "IdEntite"
+          ]
+        },
+        {
+          "name": "T_Utilisateurs",
+          "many": false,
+          "relation": "T_Utilisateurs_ModifieParUserFk",
+          "target": "T_Utilisateurs",
+          "from": [
+            "ModifieParUserFk"
+          ],
+          "to": [
+            "IdUser"
+          ]
+        }
+      ]
     }
   },
   "views": {
@@ -22777,6 +23292,636 @@
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": 20,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ]
+    },
+    "logistique.V_Immobilisation": {
+      "schema": "logistique",
+      "name": "V_Immobilisation",
+      "primaryKey": [
+        "ID_Immobilisation"
+      ],
+      "columns": [
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_Immobilisation",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "CodeImmobilisation",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 32,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "NomImmobilisation",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 200,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Reference",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Caracteristiques",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "SuiviIndividuel",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Quantite",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "PrixUnitaire",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 18,
+          "numeric_scale": 2,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_DeviseFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_CategorieFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_EtatFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_ResponsableFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_ServiceFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ID_LocalisationFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "LocalisationComplement",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DateEntree",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DateAcquisition",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "NumeroSerie",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Observations",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Actif",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "CreeLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "CreeParUserFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ModifieParUserFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "NomEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "CategorieMateriel",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "EtatMateriel",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Service",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Responsable",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DeviseCode",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DeviseLibelle",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "ValeurAcquisition",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "Localisation",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "_version",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ]
+    },
+    "systeme.V_User_Affectation": {
+      "schema": "systeme",
+      "name": "V_User_Affectation",
+      "primaryKey": [
+        "IdUser"
+      ],
+      "columns": [
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "IdUser",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "NomUser",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "PrenomUser",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "NomCompletUser",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "MatriculeUser",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 50,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "ID_ServiceFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "Service",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "ID_FonctionFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "Fonction",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "DateEmbauche",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "DateFinEmploi",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "ObservationProfessionnelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "ValideUser",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "EstAffectable",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_User_Affectation",
+          "column_name": "_version",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"

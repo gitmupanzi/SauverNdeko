@@ -432,6 +432,46 @@ $$;
 COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
 
 --
+-- Name: tr_localisation_patrimoine_proprietaire(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_localisation_patrimoine_proprietaire() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" AND EXISTS(SELECT FROM logistique."T_Immobilisation" WHERE "ID_LocalisationFk"=OLD."IdEntiteLocalisation") THEN RAISE EXCEPTION 'Une immobilisation est liée à cette localisation ; son entreprise est conservée.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_localisation_patrimoine_proprietaire(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_localisation_patrimoine_proprietaire() IS 'Empêche de déplacer une localisation vers une autre entreprise lorsqu’un bien actif ou archivé y reste lié. Ne crée aucun état d’archivage fictif pour les localisations.';
+
+--
+-- Name: tr_utilisateur_affectation_verifier(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_utilisateur_affectation_verifier() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF TG_OP='UPDATE' AND NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" AND EXISTS(SELECT FROM logistique."T_Immobilisation" WHERE "ID_ResponsableFk"=OLD."IdUser") THEN RAISE EXCEPTION 'Un bien reste lié à cet utilisateur ; son entreprise doit être conservée.' USING ERRCODE='23514';END IF;
+ IF TG_OP='INSERT' OR NEW."ID_ServiceFk" IS DISTINCT FROM OLD."ID_ServiceFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_ServiceFk",'service-rh',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Service professionnel indisponible.' USING ERRCODE='23514';END IF;END IF;
+ IF TG_OP='INSERT' OR NEW."ID_FonctionFk" IS DISTINCT FROM OLD."ID_FonctionFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_FonctionFk",'fonction-rh',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Fonction professionnelle indisponible.' USING ERRCODE='23514';END IF;END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_utilisateur_affectation_verifier(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_utilisateur_affectation_verifier() IS 'Références RH actives à leur affectation ; le changement d’entreprise est refusé lorsqu’un bien, même archivé, reste lié comme responsabilité. Aucune extension du profil public.';
+
+--
 -- Name: update_date_modification(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -748,7 +788,16 @@ CREATE TABLE systeme."T_Utilisateurs" (
     "IdEntiteFk" integer,
     "Is_staff" boolean DEFAULT false CONSTRAINT "T_Utilisateurs_Is_staff_not_null" NOT NULL,
     "Is_Admin" boolean DEFAULT false CONSTRAINT "T_Utilisateurs_Is_Admin_not_null" NOT NULL,
-    CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar])))
+    "MatriculeUser" character varying(50),
+    "ID_ServiceFk" integer,
+    "ID_FonctionFk" integer,
+    "DateEmbauche" date,
+    "DateFinEmploi" date,
+    "ObservationProfessionnelle" text,
+    CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar]))),
+    CONSTRAINT ck_user_dates_emploi CHECK (((("DateEmbauche" IS NULL) OR isfinite("DateEmbauche")) AND (("DateFinEmploi" IS NULL) OR isfinite("DateFinEmploi")) AND (("DateEmbauche" IS NULL) OR ("DateFinEmploi" IS NULL) OR ("DateFinEmploi" >= "DateEmbauche")))),
+    CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR (((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50)) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_user_observation_professionnelle CHECK ((("ObservationProfessionnelle" IS NULL) OR ((char_length("ObservationProfessionnelle") <= 1000) AND (replace(replace("ObservationProfessionnelle", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))))
 );
 
 --
@@ -848,6 +897,42 @@ COMMENT ON COLUMN systeme."T_Utilisateurs"."Is_staff" IS 'Indicateur de compte s
 COMMENT ON COLUMN systeme."T_Utilisateurs"."Is_Admin" IS 'Indicateur de compte administrateur ; pris en compte par les contrôles actuels d’administration.';
 
 --
+-- Name: COLUMN "T_Utilisateurs"."MatriculeUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."MatriculeUser" IS 'Matricule professionnel facultatif, maximum50 caractères, sans espaces extérieurs ; unique sans distinction de casse dans son entreprise.';
+
+--
+-- Name: COLUMN "T_Utilisateurs"."ID_ServiceFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."ID_ServiceFk" IS 'Service professionnel actuel dans la famille générique Service ; ne déplace pas automatiquement les immobilisations affectées.';
+
+--
+-- Name: COLUMN "T_Utilisateurs"."ID_FonctionFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."ID_FonctionFk" IS 'Fonction professionnelle actuelle dans la famille générique Fonction, distincte du rôle de sécurité.';
+
+--
+-- Name: COLUMN "T_Utilisateurs"."DateEmbauche"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."DateEmbauche" IS 'Début professionnel facultatif ; aucune date supposée pour les comptes existants.';
+
+--
+-- Name: COLUMN "T_Utilisateurs"."DateFinEmploi"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."DateFinEmploi" IS 'Fin professionnelle facultative, jamais antérieure au début renseigné ; condition de nouvelle affectation des biens.';
+
+--
+-- Name: COLUMN "T_Utilisateurs"."ObservationProfessionnelle"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Utilisateurs"."ObservationProfessionnelle" IS 'Note professionnelle facultative, maximum1000 caractères ; séparée des projections publiques et du profil courant.';
+
+--
 -- Name: CONSTRAINT "T_Utilisateurs_IdUser_not_null" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
@@ -912,6 +997,24 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_Is_Admin_not_null" ON systeme."T_Utilisate
 --
 
 COMMENT ON CONSTRAINT chk_sexe_utilisateur ON systeme."T_Utilisateurs" IS 'Contrôle de cohérence des valeurs autorisées dans "systeme"."T_Utilisateurs". Définition : CHECK ("SexeUser" = ANY (ARRAY[''M''::bpchar, ''F''::bpchar])).';
+
+--
+-- Name: CONSTRAINT ck_user_dates_emploi ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_user_dates_emploi ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : CHECK (("DateEmbauche" IS NULL OR isfinite("DateEmbauche")) AND ("DateFinEmploi" IS NULL OR isfinite("DateFinEmploi")) AND ("DateEmbauche" IS NULL OR "DateFinEmploi" IS NULL OR "DateFinEmploi" >= "DateEmbauche")). Ne donne aucun droit de sécurité.';
+
+--
+-- Name: CONSTRAINT ck_user_matricule ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_user_matricule ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : CHECK ("MatriculeUser" IS NULL OR char_length("MatriculeUser"::text) >= 1 AND char_length("MatriculeUser"::text) <= 50 AND "MatriculeUser"::text = btrim("MatriculeUser"::text) AND "MatriculeUser"::text !~ ''[[:cntrl:]]''::text). Ne donne aucun droit de sécurité.';
+
+--
+-- Name: CONSTRAINT ck_user_observation_professionnelle ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_user_observation_professionnelle ON systeme."T_Utilisateurs" IS E'Métadonnée professionnelle facultative contrôlée : CHECK ("ObservationProfessionnelle" IS NULL OR char_length("ObservationProfessionnelle") <= 1000 AND replace(replace("ObservationProfessionnelle", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Ne donne aucun droit de sécurité.';
 
 --
 -- Name: T_Entite_Localisation; Type: TABLE; Schema: systeme; Owner: -
@@ -2679,10 +2782,58 @@ CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRo
 COMMENT ON INDEX systeme.idx_utilisateur_role IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRoleFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
 
 --
+-- Name: uq_audit_immobilisation_request; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_audit_immobilisation_request ON systeme."T_Audit_Log" USING btree ("IdEntiteFk", (("NewData" #>> '{_actor,IdUser}'::text[])), (("NewData" ->> 'requestId'::text))) WHERE (("TableName" = 'logistique.T_Immobilisation'::text) AND ("NewData" ? 'requestId'::text));
+
+--
+-- Name: INDEX uq_audit_immobilisation_request; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.uq_audit_immobilisation_request IS 'Une seule preuve UUID d’immobilisation par entreprise et auteur, quelle que soit l’opération ou le contenu ; le service compare hash/opération et sérialise les rejeux avant réponse.';
+
+--
+-- Name: uq_user_matricule_entite; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_user_matricule_entite ON systeme."T_Utilisateurs" USING btree ("IdEntiteFk", lower(("MatriculeUser")::text)) NULLS NOT DISTINCT WHERE ("MatriculeUser" IS NOT NULL);
+
+--
+-- Name: INDEX uq_user_matricule_entite; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.uq_user_matricule_entite IS 'Matricule facultatif unique sans distinction de casse dans chaque entreprise ; les valeurs NULL ne représentent pas un matricule.';
+
+--
 -- Name: INDEX utilisateurs_emailuser_key; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON INDEX systeme.utilisateurs_emailuser_key IS 'Index d’unicité sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX utilisateurs_emailuser_key ON systeme."T_Utilisateurs" USING btree ("EmailUser").';
+
+--
+-- Name: T_Entite_Localisation aa_localisation_patrimoine_proprietaire; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_localisation_patrimoine_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON systeme."T_Entite_Localisation" FOR EACH ROW EXECUTE FUNCTION systeme.tr_localisation_patrimoine_proprietaire();
+
+--
+-- Name: TRIGGER aa_localisation_patrimoine_proprietaire ON "T_Entite_Localisation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_localisation_patrimoine_proprietaire ON systeme."T_Entite_Localisation" IS 'Conserve le propriétaire des lieux d’affectation liés au patrimoine.';
+
+--
+-- Name: T_Utilisateurs aa_utilisateur_affectation_verifier; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_utilisateur_affectation_verifier BEFORE INSERT OR UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION systeme.tr_utilisateur_affectation_verifier();
+
+--
+-- Name: TRIGGER aa_utilisateur_affectation_verifier ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_utilisateur_affectation_verifier ON systeme."T_Utilisateurs" IS 'Intégrité des nouvelles affectations professionnelles et conservation de l’entreprise des responsables de biens.';
 
 --
 -- Name: T_LicenceModule licence_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -
@@ -3139,3 +3290,29 @@ ALTER TABLE ONLY systeme."T_RoleModule"
 
 ALTER TABLE ONLY systeme."T_RoleModule"
     ADD CONSTRAINT "T_RoleModule_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;
+
+--
+-- Name: T_Utilisateurs T_Utilisateurs_ID_FonctionFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_Utilisateurs"
+    ADD CONSTRAINT "T_Utilisateurs_ID_FonctionFk_fkey" FOREIGN KEY ("ID_FonctionFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Utilisateurs_ID_FonctionFk_fkey" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Utilisateurs_ID_FonctionFk_fkey" ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : FOREIGN KEY ("ID_FonctionFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Ne donne aucun droit de sécurité.';
+
+--
+-- Name: T_Utilisateurs T_Utilisateurs_ID_ServiceFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_Utilisateurs"
+    ADD CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" FOREIGN KEY ("ID_ServiceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : FOREIGN KEY ("ID_ServiceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Ne donne aucun droit de sécurité.';

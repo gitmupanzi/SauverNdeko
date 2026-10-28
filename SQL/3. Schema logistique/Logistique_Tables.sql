@@ -824,6 +824,34 @@ END $$;
 COMMENT ON FUNCTION logistique.fn_precision_stock_compatible(p_unite integer, p_decimales integer) IS 'Contrôle sans écriture de la compatibilité d’une précision avec stock, seuils, lignes, mouvements, lots, comptages, instantanés de facture, avoirs et arrêtés de valorisation de l’unité.';
 
 --
+-- Name: fn_reference_immobilisation_valide(integer, text, integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ WITH matching AS (
+  SELECT f."TargetCategoryIdFk" cat,f."SettingScope" FROM systeme."T_Fk_Correspondance" f
+  WHERE f."SourceKey"='logistique.immobilisations.'||p_famille AND f."MappingType"='generic_category' AND f."ValideFkCorrespondance"
+   AND ((f."SettingScope"='entity' AND f."ScopeValue"=p_entite::text) OR (f."SettingScope"='global' AND f."ScopeValue" IS NULL))
+ ), allowed AS (
+  SELECT cat FROM matching WHERE "SettingScope"=CASE WHEN EXISTS(SELECT FROM matching WHERE "SettingScope"='entity') THEN 'entity' ELSE 'global' END
+  UNION ALL SELECT "ID_CategorieGenerique" FROM referentiel."T_CategorieGenerique"
+   WHERE (p_famille='devise' AND lower(btrim("NomCategorieGenerique"))=lower('Devise'))
+      OR (p_famille='service-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Service'))
+      OR (p_famille='fonction-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Fonction'))
+ ) SELECT p_id IS NULL OR EXISTS(SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+  WHERE g."ID_Generique"=p_id AND g."ID_CategorieGeneriqueFk" IN (SELECT cat FROM allowed) AND g."ValideGenerique" AND c."ValideCategorieGenerique")
+$$;
+
+--
+-- Name: FUNCTION fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) IS 'Valide une nouvelle référence active depuis les correspondances FK d’entreprise prioritaires puis globales, ou les familles RH/Devise existantes résolues par libellé ; aucun identifiant de catégorie figé.';
+
+--
 -- Name: fn_reserver_identite_commande(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -2000,6 +2028,81 @@ BEGIN RAISE EXCEPTION 'L’identité documentaire est conservée.' USING ERRCODE
 --
 
 COMMENT ON FUNCTION logistique.tr_identite_document_immuable() IS 'Conserve les identités des documents émis.';
+
+--
+-- Name: tr_immobilisation_audit(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_immobilisation_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE context_text text:=nullif(current_setting('logistique.immobilisation_request',true),'');context_data jsonb;event_operation text;image_before jsonb;image_after jsonb;
+BEGIN
+ event_operation:=CASE WHEN TG_OP='INSERT' THEN 'CREATE' WHEN OLD."Actif" AND NOT NEW."Actif" THEN 'ARCHIVE' WHEN NOT OLD."Actif" AND NEW."Actif" THEN 'RESTORE' ELSE 'UPDATE' END;
+ IF context_text IS NOT NULL THEN
+  IF char_length(context_text)>4000 THEN RAISE EXCEPTION 'Contexte de traçabilité invalide.' USING ERRCODE='23514';END IF;
+  BEGIN context_data:=context_text::jsonb;EXCEPTION WHEN invalid_text_representation THEN RAISE EXCEPTION 'Contexte de traçabilité invalide.' USING ERRCODE='23514';END;
+  IF jsonb_typeof(context_data)<>'object' OR coalesce(context_data->>'requestId','') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+   OR coalesce(context_data->>'payloadHash','') !~ '^[0-9a-f]{64}$' OR context_data->>'operation' IS DISTINCT FROM event_operation
+   OR (context_data ? 'motif' AND (jsonb_typeof(context_data->'motif') IS DISTINCT FROM 'string' OR char_length(context_data->>'motif') NOT BETWEEN 1 AND 1000)) THEN RAISE EXCEPTION 'Preuve de requête invalide.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF TG_OP='UPDATE' THEN image_before:=systeme.fn_audit_sans_secrets(to_jsonb(OLD));END IF;
+ image_after:=systeme.fn_audit_sans_secrets(to_jsonb(NEW))||jsonb_build_object('_actor',jsonb_build_object('IdUser',NEW."ModifieParUserFk"));
+ IF context_data IS NOT NULL THEN image_after:=image_after||jsonb_build_object('requestId',context_data->>'requestId','payloadHash',context_data->>'payloadHash','operation',event_operation,'_motif',context_data->>'motif');END IF;
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk") VALUES('logistique.T_Immobilisation',event_operation,image_before,image_after,CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa',NEW."IdEntiteFk");
+ RETURN NULL;
+END $_$;
+
+--
+-- Name: FUNCTION tr_immobilisation_audit(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_immobilisation_audit() IS 'Une image avant/après par écriture de patrimoine avec auteur réel et entreprise. Requête UUID/hash/opération facultative prouvée, sans GUC d’autorisation ni mouvement ; les anciennes affectations restent dans l’historique.';
+
+--
+-- Name: tr_immobilisation_verifier(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_immobilisation_verifier() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE actor_id integer:=systeme.fn_admin_actor_user_id();actor_entity integer;actor_global boolean;target_entity integer;assignable boolean;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Archivez le bien pour conserver son historique.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' THEN
+  IF ROW(NEW."ID_Immobilisation",NEW."IdEntiteFk",NEW."CodeImmobilisation",NEW."CreeLe",NEW."CreeParUserFk") IS DISTINCT FROM ROW(OLD."ID_Immobilisation",OLD."IdEntiteFk",OLD."CodeImmobilisation",OLD."CreeLe",OLD."CreeParUserFk") THEN RAISE EXCEPTION 'Identité, entreprise, code et origine du bien sont immuables.' USING ERRCODE='23514';END IF;
+ ELSE
+  IF NEW."CodeImmobilisation" IS NOT NULL THEN RAISE EXCEPTION 'Le code du bien est attribué automatiquement.' USING ERRCODE='23514';END IF;
+  NEW."CodeImmobilisation":='IMMO-'||NEW."ID_Immobilisation"::text;
+ END IF;
+ IF actor_id IS NULL THEN RAISE EXCEPTION 'Auteur actif requis pour enregistrer un bien.' USING ERRCODE='42501';END IF;
+ SELECT "IdEntiteFk","Is_Admin" INTO actor_entity,actor_global FROM systeme."T_Utilisateurs" WHERE "IdUser"=actor_id FOR SHARE;
+ IF NOT actor_global AND actor_entity IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Entreprise du bien hors périmètre de son auteur.' USING ERRCODE='42501';END IF;
+ IF TG_OP='INSERT' OR NEW."ID_CategorieFk" IS DISTINCT FROM OLD."ID_CategorieFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_CategorieFk",'categories',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Type de matériel indisponible.' USING ERRCODE='23514';END IF;END IF;
+ IF TG_OP='INSERT' OR NEW."ID_EtatFk" IS DISTINCT FROM OLD."ID_EtatFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_EtatFk",'etats',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'État du matériel indisponible.' USING ERRCODE='23514';END IF;END IF;
+ IF TG_OP='INSERT' OR NEW."ID_ServiceFk" IS DISTINCT FROM OLD."ID_ServiceFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_ServiceFk",'services',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Service indisponible.' USING ERRCODE='23514';END IF;END IF;
+ IF TG_OP='INSERT' OR NEW."ID_DeviseFk" IS DISTINCT FROM OLD."ID_DeviseFk" THEN IF NOT logistique.fn_reference_immobilisation_valide(NEW."ID_DeviseFk",'devise',NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Devise indisponible.' USING ERRCODE='23514';END IF;END IF;
+ IF NEW."ID_ResponsableFk" IS NOT NULL AND (TG_OP='INSERT' OR NEW."ID_ResponsableFk" IS DISTINCT FROM OLD."ID_ResponsableFk") THEN
+  SELECT u."IdEntiteFk",u."ValideUser" AND (u."DateEmbauche" IS NULL OR u."DateEmbauche"<=(current_timestamp AT TIME ZONE 'Africa/Kinshasa')::date) AND (u."DateFinEmploi" IS NULL OR u."DateFinEmploi">=(current_timestamp AT TIME ZONE 'Africa/Kinshasa')::date)
+   INTO target_entity,assignable FROM systeme."T_Utilisateurs" u WHERE u."IdUser"=NEW."ID_ResponsableFk" FOR SHARE;
+  IF NOT FOUND OR target_entity IS DISTINCT FROM NEW."IdEntiteFk" OR assignable IS NOT TRUE THEN RAISE EXCEPTION 'Choisissez un responsable actif de cette entreprise.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF NEW."ID_LocalisationFk" IS NOT NULL AND (TG_OP='INSERT' OR NEW."ID_LocalisationFk" IS DISTINCT FROM OLD."ID_LocalisationFk") THEN
+  PERFORM FROM systeme."T_Entite_Localisation" WHERE "IdEntiteLocalisation"=NEW."ID_LocalisationFk" AND "IdEntiteFk"=NEW."IdEntiteFk" FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Choisissez une localisation de cette entreprise.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF TG_OP='INSERT' THEN NEW."CreeLe":=clock_timestamp();NEW."CreeParUserFk":=actor_id;END IF;
+ NEW."ModifieLe":=clock_timestamp();NEW."ModifieParUserFk":=actor_id;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_immobilisation_verifier(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_immobilisation_verifier() IS 'Impose identité/code/propriétaire immuables, références nouvelles actives, responsable affectable et localisation de la même entreprise, auteur prouvé et horodatages SQL. Conservation par archivage ; aucun effet de stock.';
 
 --
 -- Name: tr_lock_commande_cloturee(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -5140,6 +5243,361 @@ ALTER TABLE logistique."T_Facture" ALTER COLUMN "ID_Facture" ADD GENERATED ALWAY
 );
 
 --
+-- Name: T_Immobilisation; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_Immobilisation" (
+    "ID_Immobilisation" integer CONSTRAINT "T_Immobilisation_ID_Immobilisation_not_null" NOT NULL,
+    "IdEntiteFk" integer CONSTRAINT "T_Immobilisation_IdEntiteFk_not_null" NOT NULL,
+    "CodeImmobilisation" character varying(32) CONSTRAINT "T_Immobilisation_CodeImmobilisation_not_null" NOT NULL,
+    "NomImmobilisation" character varying(200) CONSTRAINT "T_Immobilisation_NomImmobilisation_not_null" NOT NULL,
+    "Reference" character varying(255),
+    "Caracteristiques" text,
+    "SuiviIndividuel" boolean DEFAULT true CONSTRAINT "T_Immobilisation_SuiviIndividuel_not_null" NOT NULL,
+    "Quantite" numeric DEFAULT 1 CONSTRAINT "T_Immobilisation_Quantite_not_null" NOT NULL,
+    "PrixUnitaire" numeric(18,2),
+    "ID_DeviseFk" integer,
+    "ID_CategorieFk" integer CONSTRAINT "T_Immobilisation_ID_CategorieFk_not_null" NOT NULL,
+    "ID_EtatFk" integer,
+    "ID_ResponsableFk" integer,
+    "ID_ServiceFk" integer,
+    "ID_LocalisationFk" integer,
+    "LocalisationComplement" character varying(255),
+    "DateEntree" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Immobilisation_DateEntree_not_null" NOT NULL,
+    "DateAcquisition" date,
+    "NumeroSerie" character varying(255),
+    "Observations" text,
+    "Actif" boolean DEFAULT true CONSTRAINT "T_Immobilisation_Actif_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone CONSTRAINT "T_Immobilisation_CreeLe_not_null" NOT NULL,
+    "ModifieLe" timestamp with time zone CONSTRAINT "T_Immobilisation_ModifieLe_not_null" NOT NULL,
+    "CreeParUserFk" integer CONSTRAINT "T_Immobilisation_CreeParUserFk_not_null" NOT NULL,
+    "ModifieParUserFk" integer CONSTRAINT "T_Immobilisation_ModifieParUserFk_not_null" NOT NULL,
+    CONSTRAINT ck_immobilisation_caracteristiques CHECK ((("Caracteristiques" IS NULL) OR ((char_length("Caracteristiques") <= 4000) AND (replace(replace("Caracteristiques", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_dates CHECK ((isfinite("DateEntree") AND (("DateAcquisition" IS NULL) OR isfinite("DateAcquisition")))),
+    CONSTRAINT ck_immobilisation_individuelle CHECK ((((NOT "SuiviIndividuel") AND ("NumeroSerie" IS NULL)) OR ("Quantite" = (1)::numeric))),
+    CONSTRAINT ck_immobilisation_localisation_complement CHECK ((("LocalisationComplement" IS NULL) OR (((char_length(("LocalisationComplement")::text) >= 1) AND (char_length(("LocalisationComplement")::text) <= 255)) AND (("LocalisationComplement")::text = btrim(("LocalisationComplement")::text)) AND (("LocalisationComplement")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_nom CHECK ((((char_length(("NomImmobilisation")::text) >= 1) AND (char_length(("NomImmobilisation")::text) <= 200)) AND (("NomImmobilisation")::text = btrim(("NomImmobilisation")::text)) AND (("NomImmobilisation")::text !~ '[[:cntrl:]]'::text))),
+    CONSTRAINT ck_immobilisation_observations CHECK ((("Observations" IS NULL) OR ((char_length("Observations") <= 4000) AND (replace(replace("Observations", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_prix CHECK ((("PrixUnitaire" IS NULL) OR (("PrixUnitaire" >= (0)::numeric) AND ("PrixUnitaire" <> 'NaN'::numeric) AND ("ID_DeviseFk" IS NOT NULL)))),
+    CONSTRAINT ck_immobilisation_quantite CHECK ((("Quantite" > (0)::numeric) AND ("Quantite" = trunc("Quantite")) AND ("Quantite" <= ('999999999999999999'::bigint)::numeric))),
+    CONSTRAINT ck_immobilisation_reference CHECK ((("Reference" IS NULL) OR (((char_length(("Reference")::text) >= 1) AND (char_length(("Reference")::text) <= 255)) AND (("Reference")::text = btrim(("Reference")::text)) AND (("Reference")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_serie CHECK ((("NumeroSerie" IS NULL) OR (((char_length(("NumeroSerie")::text) >= 1) AND (char_length(("NumeroSerie")::text) <= 255)) AND (("NumeroSerie")::text = btrim(("NumeroSerie")::text)) AND (("NumeroSerie")::text !~ '[[:cntrl:]]'::text))))
+);
+
+--
+-- Name: TABLE "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_Immobilisation" IS 'Biens et équipements appartenant durablement à une entreprise, suivis individuellement ou par groupe homogène explicite. Affectations et coût indicatif d’acquisition exacts, sans stock commercial, mouvement, CUMP, amortissement ou écriture comptable implicite. Archivage conservant le registre et son audit.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_Immobilisation" IS 'Identifiant technique stable du bien ; attribué par PostgreSQL et jamais réutilisé.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."IdEntiteFk" IS 'Entreprise propriétaire durable, obligatoire et immuable.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."CodeImmobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."CodeImmobilisation" IS 'Code IMMO-identifiant attribué par trigger ; unique et immuable.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."NomImmobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."NomImmobilisation" IS 'Désignation du bien, maximum200 caractères, sans contrôle ni espace extérieur.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."Reference"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."Reference" IS 'Référence libre facultative du modèle ou du catalogue, maximum255 caractères.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."Caracteristiques"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."Caracteristiques" IS 'Caractéristiques communes du bien ou du groupe homogène, maximum4000 caractères, retours de ligne autorisés.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."SuiviIndividuel"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."SuiviIndividuel" IS 'true par défaut pour une fiche par équipement ; false explicite pour un groupe homogène partageant caractéristiques, état et affectation.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."Quantite" IS 'Nombre entier exact de biens, de1 à18 chiffres ; aucun arrondi silencieux des fractions. Un suivi individuel ou numéro de série impose1.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."PrixUnitaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."PrixUnitaire" IS 'Prix d’acquisition unitaire indicatif à2 décimales, non négatif ; NULL signifie inconnu et ne vaut jamais zéro.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_DeviseFk" IS 'Devise du référentiel ; obligatoire dès que le prix est renseigné, sans conversion automatique.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_CategorieFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_CategorieFk" IS 'Type de matériel depuis le référentiel et les correspondances configurées pour cette entreprise.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_EtatFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_EtatFk" IS 'État facultatif issu de la famille configurée ; aucune présomption de bon état.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_ResponsableFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_ResponsableFk" IS 'Compte responsable de la même entreprise ; nouvelle affectation réservée aux comptes actifs dont les dates d’emploi permettent l’affectation.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_ServiceFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_ServiceFk" IS 'Service explicite du bien, issu du référentiel ; indépendant de l’évolution du service professionnel de son responsable.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ID_LocalisationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ID_LocalisationFk" IS 'Lieu d’affectation appartenant à la même entreprise, sans lien texte ou égalité d’identifiants d’une autre table.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."LocalisationComplement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."LocalisationComplement" IS 'Salle, bureau ou précision facultative de l’affectation, maximum255 caractères.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."DateEntree"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."DateEntree" IS 'Date et heure d’entrée du bien dans le registre ; distincte de la date d’achat et des dates techniques.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."DateAcquisition"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."DateAcquisition" IS 'Date d’acquisition facultative ; aucune date inventée si inconnue.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."NumeroSerie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."NumeroSerie" IS 'Numéro de série facultatif, maximum255 caractères ; sa présence impose une fiche pour un seul bien.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."Observations"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."Observations" IS 'Note complémentaire facultative, maximum4000 caractères, retours de ligne autorisés.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."Actif" IS 'true si le bien figure dans le registre actif ; false archive sa fiche sans effacer les affectations ni l’historique.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."CreeLe" IS 'Horodatage technique PostgreSQL de création, immuable.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ModifieLe" IS 'Horodatage technique PostgreSQL de la dernière écriture.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."CreeParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."CreeParUserFk" IS 'Auteur actif prouvé par le contexte transactionnel à la création, immuable.';
+
+--
+-- Name: COLUMN "T_Immobilisation"."ModifieParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Immobilisation"."ModifieParUserFk" IS 'Auteur actif prouvé de la dernière écriture.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_Immobilisation_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_Immobilisation_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "ID_Immobilisation". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_IdEntiteFk_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_IdEntiteFk_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "IdEntiteFk". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_CodeImmobilisation_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_CodeImmobilisation_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "CodeImmobilisation". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_NomImmobilisation_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_NomImmobilisation_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "NomImmobilisation". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_SuiviIndividuel_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_SuiviIndividuel_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "SuiviIndividuel". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_Quantite_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_Quantite_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "Quantite". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_CategorieFk_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_CategorieFk_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "ID_CategorieFk". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_DateEntree_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_DateEntree_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "DateEntree". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_Actif_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_Actif_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "Actif". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_CreeLe_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_CreeLe_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "CreeLe". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ModifieLe_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ModifieLe_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "ModifieLe". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_CreeParUserFk_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_CreeParUserFk_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "CreeParUserFk". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ModifieParUserFk_not_null" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ModifieParUserFk_not_null" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : NOT NULL "ModifieParUserFk". Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_caracteristiques ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_caracteristiques ON logistique."T_Immobilisation" IS E'Intégrité durable du patrimoine : CHECK ("Caracteristiques" IS NULL OR char_length("Caracteristiques") <= 4000 AND replace(replace("Caracteristiques", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_dates ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_dates ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK (isfinite("DateEntree") AND ("DateAcquisition" IS NULL OR isfinite("DateAcquisition"))). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_individuelle ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_individuelle ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK (NOT "SuiviIndividuel" AND "NumeroSerie" IS NULL OR "Quantite" = 1::numeric). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_localisation_complement ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_localisation_complement ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("LocalisationComplement" IS NULL OR char_length("LocalisationComplement"::text) >= 1 AND char_length("LocalisationComplement"::text) <= 255 AND "LocalisationComplement"::text = btrim("LocalisationComplement"::text) AND "LocalisationComplement"::text !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_nom ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_nom ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK (char_length("NomImmobilisation"::text) >= 1 AND char_length("NomImmobilisation"::text) <= 200 AND "NomImmobilisation"::text = btrim("NomImmobilisation"::text) AND "NomImmobilisation"::text !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_observations ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_observations ON logistique."T_Immobilisation" IS E'Intégrité durable du patrimoine : CHECK ("Observations" IS NULL OR char_length("Observations") <= 4000 AND replace(replace("Observations", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_prix ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_prix ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("PrixUnitaire" IS NULL OR "PrixUnitaire" >= 0::numeric AND "PrixUnitaire" <> ''NaN''::numeric AND "ID_DeviseFk" IS NOT NULL). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_quantite ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_quantite ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("Quantite" > 0::numeric AND "Quantite" = trunc("Quantite") AND "Quantite" <= ''999999999999999999''::bigint::numeric). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_reference ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_reference ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("Reference" IS NULL OR char_length("Reference"::text) >= 1 AND char_length("Reference"::text) <= 255 AND "Reference"::text = btrim("Reference"::text) AND "Reference"::text !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: CONSTRAINT ck_immobilisation_serie ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_immobilisation_serie ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("NumeroSerie" IS NULL OR char_length("NumeroSerie"::text) >= 1 AND char_length("NumeroSerie"::text) <= 255 AND "NumeroSerie"::text = btrim("NumeroSerie"::text) AND "NumeroSerie"::text !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation_ID_Immobilisation_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_Immobilisation" ALTER COLUMN "ID_Immobilisation" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_Immobilisation_ID_Immobilisation_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_Immobilisation_ID_Immobilisation_seq"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON SEQUENCE logistique."T_Immobilisation_ID_Immobilisation_seq" IS 'Identifiant technique des biens ; les trous de séquence sont normaux après annulation transactionnelle, aucun identifiant n’est réutilisé.';
+
+--
 -- Name: T_Inventaire; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -6578,6 +7036,32 @@ ALTER TABLE ONLY logistique."T_Facture"
 COMMENT ON CONSTRAINT "T_Facture_pkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 
 --
+-- Name: T_Immobilisation T_Immobilisation_CodeImmobilisation_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_CodeImmobilisation_key" UNIQUE ("CodeImmobilisation");
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_CodeImmobilisation_key" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_CodeImmobilisation_key" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : UNIQUE ("CodeImmobilisation"). Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_pkey" PRIMARY KEY ("ID_Immobilisation");
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_pkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_pkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : PRIMARY KEY ("ID_Immobilisation"). Aucun effet de stock ou comptabilisation automatique.';
+
+--
 -- Name: T_InventaireLigne T_InventaireLigne_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -6856,6 +7340,18 @@ COMMENT ON INDEX logistique."T_Facture_ID_CommandeFk_key" IS 'Unicité et accès
 --
 
 COMMENT ON INDEX logistique."T_Facture_pkey" IS 'Unicité et accès aux instantanés de facturation par identité, bon, article ou demande idempotente.';
+
+--
+-- Name: INDEX "T_Immobilisation_CodeImmobilisation_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_Immobilisation_CodeImmobilisation_key" IS 'Unicité de l’identité technique ou du code immuable de patrimoine.';
+
+--
+-- Name: INDEX "T_Immobilisation_pkey"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_Immobilisation_pkey" IS 'Unicité de l’identité technique ou du code immuable de patrimoine.';
 
 --
 -- Name: INDEX "T_Mouvement_pkey"; Type: COMMENT; Schema: logistique; Owner: -
@@ -7204,6 +7700,42 @@ CREATE INDEX ix_commande_tiers ON logistique."T_Commande" USING btree ("ID_Tiers
 --
 
 COMMENT ON INDEX logistique.ix_commande_tiers IS 'Accès au périmètre entreprise et aux documents liés du tiers, sans dépendre du créateur actuel.';
+
+--
+-- Name: ix_immobilisation_entite_actif; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_immobilisation_entite_actif ON logistique."T_Immobilisation" USING btree ("IdEntiteFk", "Actif", "ID_Immobilisation");
+
+--
+-- Name: INDEX ix_immobilisation_entite_actif; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_immobilisation_entite_actif IS 'Registre et pagination stable par entreprise, état d’archivage et identifiant.';
+
+--
+-- Name: ix_immobilisation_localisation; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_immobilisation_localisation ON logistique."T_Immobilisation" USING btree ("ID_LocalisationFk") WHERE ("ID_LocalisationFk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_immobilisation_localisation; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_immobilisation_localisation IS 'Biens liés à une localisation d’entreprise ; protège son propriétaire et facilite la consultation.';
+
+--
+-- Name: ix_immobilisation_responsable; Type: INDEX; Schema: logistique; Owner: -
+--
+
+CREATE INDEX ix_immobilisation_responsable ON logistique."T_Immobilisation" USING btree ("ID_ResponsableFk") WHERE ("ID_ResponsableFk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_immobilisation_responsable; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique.ix_immobilisation_responsable IS 'Affectations conservées par responsable ; contrôle des transferts d’entreprise et consultation de ses biens.';
 
 --
 -- Name: ix_inventaire_ligne_bon_correction; Type: INDEX; Schema: logistique; Owner: -
@@ -7584,6 +8116,18 @@ CREATE TRIGGER a0_reglement_apres_avoir BEFORE INSERT OR DELETE OR UPDATE ON log
 --
 
 COMMENT ON TRIGGER a0_reglement_apres_avoir ON logistique."T_Reglements" IS 'Garde financière SQL exécutée avant le contrôle de propriété : verrou du parent acquis avant les verrous partagés, sans conversion concurrente de verrou ni dépassement du solde.';
+
+--
+-- Name: T_Immobilisation a_immobilisation_verifier; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER a_immobilisation_verifier BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION logistique.tr_immobilisation_verifier();
+
+--
+-- Name: TRIGGER a_immobilisation_verifier ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER a_immobilisation_verifier ON logistique."T_Immobilisation" IS 'Contrôle métier du patrimoine avant chaque écriture, y compris par un autre backend ; refus des suppressions physiques.';
 
 --
 -- Name: T_Commande aa_08_code_facture_inventaire; Type: TRIGGER; Schema: logistique; Owner: -
@@ -8630,6 +9174,18 @@ CREATE TRIGGER zz_cout_source_trace BEFORE INSERT OR DELETE OR UPDATE ON logisti
 COMMENT ON TRIGGER zz_cout_source_trace ON logistique."T_Mouvement" IS 'Ajoute une preuve de source sans créer de deuxième mouvement physique.';
 
 --
+-- Name: T_Immobilisation zz_immobilisation_audit; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER zz_immobilisation_audit AFTER INSERT OR UPDATE ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION logistique.tr_immobilisation_audit();
+
+--
+-- Name: TRIGGER zz_immobilisation_audit ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER zz_immobilisation_audit ON logistique."T_Immobilisation" IS 'Historique transactionnel unique du bien, comprenant les changements de responsable, service, état et localisation.';
+
+--
 -- Name: T_Reglements zz_reglement_audit; Type: TRIGGER; Schema: logistique; Owner: -
 --
 
@@ -9183,6 +9739,123 @@ ALTER TABLE ONLY logistique."T_Facture"
 --
 
 COMMENT ON CONSTRAINT "T_Facture_IdEntiteFk_fkey" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_CreeParUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_CreeParUserFk_fkey" FOREIGN KEY ("CreeParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_CreeParUserFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_CreeParUserFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("CreeParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_CategorieFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_CategorieFk_fkey" FOREIGN KEY ("ID_CategorieFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_CategorieFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_CategorieFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_CategorieFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_DeviseFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_DeviseFk_fkey" FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_DeviseFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_DeviseFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_DeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_EtatFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_EtatFk_fkey" FOREIGN KEY ("ID_EtatFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_EtatFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_EtatFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_EtatFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_LocalisationFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_LocalisationFk_fkey" FOREIGN KEY ("ID_LocalisationFk") REFERENCES systeme."T_Entite_Localisation"("IdEntiteLocalisation") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_LocalisationFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_LocalisationFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_LocalisationFk") REFERENCES systeme."T_Entite_Localisation"("IdEntiteLocalisation") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_ResponsableFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_ResponsableFk_fkey" FOREIGN KEY ("ID_ResponsableFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_ResponsableFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_ResponsableFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_ResponsableFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ID_ServiceFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ID_ServiceFk_fkey" FOREIGN KEY ("ID_ServiceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ID_ServiceFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ID_ServiceFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ID_ServiceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_IdEntiteFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_IdEntiteFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
+
+--
+-- Name: T_Immobilisation T_Immobilisation_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_Immobilisation"
+    ADD CONSTRAINT "T_Immobilisation_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Immobilisation_ModifieParUserFk_fkey" ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Immobilisation_ModifieParUserFk_fkey" ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT. Aucun effet de stock ou comptabilisation automatique.';
 
 --
 -- Name: T_InventaireLigne T_InventaireLigne_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: logistique; Owner: -

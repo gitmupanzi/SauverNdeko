@@ -65,6 +65,16 @@ verifier_backend contrôle désormais ces nouvelles routes dans son diagnostic G
 
 Les répartitions par catégorie utilisent GROUP BY et leurs détails imposent ID_CategorieArticleFk. Distinguer En attente et En cours ; les sens Entrée/Sortie viennent des indicateurs de la vue. Le bloc Factures exclut les bons sans référence de facture. Les filtres temporels portent sur DateFacture pour la facturation, DateCmd pour les bons et DateMvt pour les mouvements. Ne pas réutiliser implicitement la première date présente dans une vue.
 
+## Patrimoine et informations professionnelles
+
+Réutiliser T_Immobilisation/V_Immobilisation pour registre, fiche, recherches et exports. Le propriétaire, le code IMMO-ID et la création sont immuables ; les écritures conservent un audit SQL unique. Une GUC de requête contient UUID/hash/opération/motif pour la preuve de rejeu, jamais une autorisation. Le service vérifie licence, droits, entreprise et révision, sérialise les demandes puis compare la preuve gagnante. L’archivage/restauration remplace la suppression physique ; aucune opération sur ce registre ne touche le stock, les lots, le CUMP ou des amortissements.
+
+Les types, états et services sont résolus par les correspondances FK actives de l’entreprise puis globales. Ne pas figer l’identifiant de Type de matériel ni remplacer une référence absente par une liste locale. Le responsable affectable et la localisation appartiennent à l’entreprise. La table des lieux n’a pas de drapeau d’archive : ne pas inventer ce statut. Les biens individuels ou avec numéro de série ont une quantité 1 ; les groupes homogènes utilisent des entiers exacts sans arrondi silencieux. Un prix inconnu reste NULL.
+
+Les six champs professionnels de T_Utilisateurs et la vue V_User_Affectation restent dans l’administration autorisée. Les registres Utilisateurs/Profils peuvent les joindre en compatibilité ; le parcours utilisateur est fusionné dans Utilisateurs. Ne pas élargir /auth/me, V_User_profil ou une projection publique. Les références de responsables ne renvoient que les données nécessaires à la sélection, sans note ou dates RH. Fonction et service restent distincts du rôle de sécurité. Le changement d’entreprise d’un responsable ou d’un lieu est refusé tant qu’un bien actif ou archivé lui reste lié.
+
+Lire [le contrat SQL](../../../SQL/documentation/Immobilisations_Affectations_20261028.md) et [le guide utilisateur](../../../docs/prise-en-main-patrimoine.md). Une nouvelle source FK ne doit pas disparaître lors de l’enregistrement d’anciens réglages : préserver les sources inconnues ou les intégrer explicitement. Le paquet d’installation ajoute le seed fermé de correspondances après les références, avec contrôle de manifeste ; il ne transporte pas les réglages privés du client source.
+
 ## Relevés historiques conservés
 
 Les anciennes références [backend-architecture.md](references/backend-architecture.md), [api-contracts.md](references/api-contracts.md), [validation.md](references/validation.md) et [inspect_backend.py](scripts/inspect_backend.py) décrivent Express/Prisma avant la conversion. Elles sont conservées comme archives ; ne pas exécuter leurs anciennes commandes ni les utiliser pour décrire le backend actuel. Les références précédentes portent les consignes maintenues.

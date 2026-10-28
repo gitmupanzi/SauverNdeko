@@ -58,6 +58,16 @@ const MODEL = {
 };
 const PRIMARY_KEYS = { users: "IdUser", profiles: "IdUser", entities: "IdEntite", licences: "IdLicence", roles: "ID_Generique", fk: "IdFkCorrespondance", settings: "IdAdminUISetting", locations: "IdEntiteLocalisation" };
 const SYSTEM_SETTING_IDENTITY = new Set(["SettingKey", "SettingType", "SettingScope", "ScopeValue", "IsEditable", "IsSystem"]);
+const PROFESSIONAL_FIELDS=[
+  {name:"MatriculeUser",label:"Matricule",type:"text"},
+  {name:"ID_ServiceFk",label:"Service",type:"select",optionsSource:"personnelServices"},
+  {name:"ID_FonctionFk",label:"Fonction",type:"select",optionsSource:"personnelFonctions"},
+  {name:"DateEmbauche",label:"Date d’embauche",type:"date"},
+  {name:"DateFinEmploi",label:"Fin d’emploi",type:"date"},
+  {name:"ObservationProfessionnelle",label:"Observations professionnelles",type:"textarea"},
+];
+const PROFESSIONAL_NAMES=new Set(PROFESSIONAL_FIELDS.map(field=>field.name));
+Object.assign(LIMITS,{MatriculeUser:50,ObservationProfessionnelle:1000});
 
 function definition(type, creating) {
   let fields;
@@ -67,6 +77,7 @@ function definition(type, creating) {
   else if (type === "roles") fields = ROLE_FIELDS;
   else if (type === "locations") fields = LOCATION_FIELDS;
   else fields = schemaConfigs[type === "fk" ? "systeme.V_Fk_Correspondance_Detail" : "systeme.V_Admin_UI_Setting"]?.allFields.filter(field => !["UpdatedByUserFk", "IsSystem"].includes(field.name)) || [];
+  if(["users","profiles"].includes(type))fields=[...fields,...PROFESSIONAL_FIELDS];
   return fields.map(field => ({ ...field, label: LABELS[field.name] || field.label || field.name }));
 }
 function initialForm(fields, record) {
@@ -106,6 +117,7 @@ function groupsFor(type, fields) {
   const filtered = groups => groups.map(group => ({ ...group, names: group.names.filter(name => names.includes(name)) })).filter(group => group.names.length);
   if (type === "users" || type === "profiles") return filtered([
     { key: "identity", label: "Informations personnelles", icon: "user", names: ["PrenomUser", "NomUser", "EmailUser", "PhoneUser", "SexeUser"] },
+    {key:"professional",label:"Professionnel",icon:"building",names:[...PROFESSIONAL_NAMES]},
     { key: "access", label: "Organisation et accès", icon: "shield", names: ["IdEntiteFk", "IdRoleFk", "MotdepasseUser", "ValideUser", "Is_staff", "Is_Admin"] },
   ]);
   if (type === "fk") return filtered([
@@ -131,7 +143,7 @@ export function buildAdminEditorPayload(type, fields, values, initial, { creatin
     if (name === "MotdepasseUser") { if (creating) result[name] = value; continue; }
     if (name === "SettingValueJson") result[name] = value.trim() ? JSON.parse(value) : null;
     else if (field.type === "checkbox") result[name] = value;
-    else if (field.type === "number" || (field.type === "select" && (name.startsWith("Id") || name.endsWith("IdFk")))) result[name] = value === "" ? null : Number(value);
+    else if (field.type === "number" || (field.type === "select" && (name.startsWith("Id") || name.startsWith("ID_") || name.endsWith("IdFk")))) result[name] = value === "" ? null : Number(value);
     else result[name] = String(value ?? "").trim() || null;
   }
   if (creating && type === "roles") result.ID_CategorieGeneriqueFk = Number(roleCategoryId);
@@ -200,6 +212,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     if (field.name === "SettingType") return ["text", "number", "boolean", "select", "json", "color", "file", "email", "phone", "url", "textarea"].map(value => ({ value, label: ({ text: "Texte", number: "Nombre", boolean: "Oui / Non", select: "Liste", json: "JSON", color: "Couleur", file: "Fichier", email: "Adresse e-mail", phone: "Téléphone", url: "Lien", textarea: "Texte long" })[value] }));
     if (field.options) return field.options.map(option => ({ ...option, label: ({ Feminin: "Féminin", Masculin: "Masculin" })[option.label] || option.label }));
     const source = field.optionsSource;
+    if(["personnelServices","personnelFonctions"].includes(source))return (support[source]||[]).map(item=>({value:String(item.id),label:item.label||item.abbr||"Valeur sans libellé",disabled:item.disabled===true&&String(item.id)!==initial?.[field.name]}));
     if (source === "entities") return (support.entities || []).map(entity => ({ value: String(entity.IdEntite), label: entity.NomEntite || "Entreprise sans nom", disabled: entity.ValideEntite === false && String(entity.IdEntite) !== initial?.[field.name] }));
     if (source === "categories") return (support.categories || []).map(category => ({ value: String(category.ID_CategorieGenerique), label: category.NomCategorieGenerique || "Catégorie sans nom", disabled: category.ValideCategorieGenerique === false && String(category.ID_CategorieGenerique) !== initial?.[field.name] }));
     const category = { roles: 39, entityTypes: 48, licenseStatuses: 55 }[source];
@@ -215,7 +228,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     if (!field.required) options.unshift({ value: "", label: "Non renseigné" });
     const value = values[field.name];
     if (value && !options.some(option => String(option.value) === String(value))) {
-      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : field.name === "IdRoleFk" ? record?.NomRole || row?.NomRole : field.name === "IdStatutLicenceFk" ? record?.NomStatutLicence : null;
+      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : field.name === "IdRoleFk" ? record?.NomRole || row?.NomRole : field.name === "IdStatutLicenceFk" ? record?.NomStatutLicence : field.name==="ID_ServiceFk"?row?.Service:field.name==="ID_FonctionFk"?row?.Fonction:null;
       options.push({ value: String(value), label: fallback || "Valeur actuelle · " + value });
     }
     return options;
@@ -230,11 +243,14 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
       if (field.type === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) issues[field.name] = "Renseignez une adresse e-mail valide.";
       if (field.type === "select" && value && !optionsFor(field).some(option => String(option.value) === String(value) && !option.disabled)) issues[field.name] = "Choisissez une valeur active de la liste.";
       if (field.type === "datetime-local" && value && !validCommandeDate(value)) issues[field.name] = "Renseignez une date et une heure valides.";
+      if(field.type==="date"&&value&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+"T00:00:00Z"))||new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value))issues[field.name]="Renseignez une date valide.";
+      if(PROFESSIONAL_NAMES.has(field.name)&&String(value??"").length>(field.name==="MatriculeUser"?50:field.name==="ObservationProfessionnelle"?1000:Infinity))issues[field.name]="Ce texte est trop long.";
       if (field.type === "number" && value !== "" && (!Number.isFinite(Number(value)) || (field.name === "DisplayOrder" && (!/^\d+$/.test(String(value)) || Number(value) > 2147483647)))) issues[field.name] = "Renseignez un nombre valide.";
       if (["Latitude", "Longitude"].includes(field.name) && value !== "" && !/^-?\d+(?:\.\d{1,6})?$/.test(String(value))) issues[field.name] = "Utilisez au maximum 6 décimales.";
     }
     if (creating && values.MotdepasseUser?.length < 12) issues.MotdepasseUser = "Utilisez au moins 12 caractères.";
     if (type === "licences" && values.DateDebut && values.DateFin && values.DateFin <= values.DateDebut) issues.DateFin = "La fin doit être postérieure au début.";
+    if(["users","profiles"].includes(type)&&values.DateEmbauche&&values.DateFinEmploi&&values.DateFinEmploi<values.DateEmbauche)issues.DateFinEmploi="La fin de l’emploi ne peut pas précéder l’embauche.";
     if (type === "locations") {
       if (values.Latitude !== "" && Math.abs(Number(values.Latitude)) > 90) issues.Latitude = "Choisissez une latitude entre −90 et 90.";
       if (values.Longitude !== "" && Math.abs(Number(values.Longitude)) > 180) issues.Longitude = "Choisissez une longitude entre −180 et 180.";

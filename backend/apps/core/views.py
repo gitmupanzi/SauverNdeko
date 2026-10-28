@@ -123,7 +123,11 @@ class ModuleView(APIView):
             from apps.logistique.photos import request_data, save_article
             body, photo = request_data(request)
             return ok(save_article(request.user, body, photo), status=201)
-        result=mutate(obj["name"],request.user,request.data)
+        body=request.data
+        if obj['name']=='T_Utilisateurs':
+            from .personnel import validate_professional_fields
+            body=validate_professional_fields(body)
+        result=mutate(obj["name"],request.user,body)
         return ok(result,status=200 if obj["name"]=="T_Reglements" and result.get("replayed") else 201)
 
     def put(self, request, module=None, model_name=None, pk=None):
@@ -139,11 +143,15 @@ class ModuleView(APIView):
             from apps.logistique.photos import request_data, save_article
             body, photo = request_data(request)
             return ok(save_article(request.user, body, photo, positive(pk)))
+        body=request.data
+        if obj['name']=='T_Utilisateurs':
+            from .personnel import validate_professional_fields
+            body=validate_professional_fields(body)
         return ok(
             mutate(
                 obj["name"],
                 request.user,
-                request.data,
+                body,
                 {obj["primaryKey"][0]: positive(pk)},
                 "update",
             )

@@ -167,6 +167,9 @@ def overview(actor, raw):
     return {"totals": totals, "amountsByCurrency": grouped, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
+    if kind == 'immobilisations':
+        from .immobilisations import register_source as immobilisation_source
+        return immobilisation_source(raw, for_export)
     from .ledger_registers import KINDS, register_source as ledger_source
     if kind in KINDS:return ledger_source(kind,raw,for_export)
     if kind not in {"articles", "commandes", "lignes"}:
@@ -228,6 +231,9 @@ def register_source(kind, raw, for_export=False):
     return obj, " AND ".join(conditions), filters
 
 def register(actor, kind, raw):
+    if kind == 'immobilisations':
+        from .immobilisations import list_data
+        return list_data(actor, raw)
     obj, condition, filters = register_source(kind, raw)
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)

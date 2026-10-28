@@ -68,6 +68,16 @@ Conserver la colonne de gauche sur toute la hauteur : logo, menus à icônes reg
 
 Lire [la terminologie du stock](references/terminologie-stock.md) pour les noms de menus, documents, tiers et mouvements. Les noms techniques T_Commande et /commandes restent internes.
 
+### Patrimoine et immobilisations
+
+La rubrique Patrimoine vient après Finances et contient Immobilisations. Son registre reprend RegisterSurface, SimpleTable, le bouton unique Réglages en en-tête, les préférences de colonnes/export en base (`logistique.immobilisations`), les filtres SearchSelect et les exports serveur filtrés ou limités à la sélection. Un clic sur le code, le nom ou Consulter ouvre la même fiche Immobilisation 360 par identifiant stable. La fiche PDF utilise le moteur documentaire commun et l’identité actuelle de l’entreprise.
+
+L’historique de la fiche montre les changements d’affectation en libellés précédents → nouveaux : responsable, service, localisation (bureau/salle compris) et état. Comparer les clés des images d’audit pour détecter le changement, puis utiliser exclusivement AffectationAvant/AffectationApres reçues du serveur pour la présentation. Une désaffectation du responsable devient « Sans affectataire » ; ne pas exposer d’identifiant ou de JSON technique. Ne pas répéter une affectation inchangée lors d’un archivage.
+
+ImmobilisationEditor est partagé par ajout et modification, avec Identification, Affectation, Acquisition et Traçabilité ; recharger toutes les valeurs existantes, références et révision. Les types de matériel, états et services viennent des correspondances du référentiel, sans identifiant numérique encodé. Les responsables et localisations appartiennent à l’entreprise ; une affectation absente reste affichée sans valeur inventée. Ne pas confondre responsable d’un bien et rôle de sécurité.
+
+Le défaut Bien individuel impose une quantité de 1 ; Lot homogène est un choix explicite pour des biens partageant caractéristiques, état et affectation. Un numéro de série impose aussi 1. Conserver les quantités entières de 18 chiffres et les prix en chaînes exactes, jamais en Number. Un prix inconnu reste vide/NULL et s’affiche — ; le défaut USD est fourni par l’API. Regrouper les valeurs par devise sans somme de devises différentes. L’état du matériel est facultatif, sans « Bon état » automatique. Ce registre ne génère aucun mouvement de stock ni amortissement. Archivage/réactivation conservent l’historique ; chaque écriture porte un motif, une révision fraîche et un UUID réutilisé après une réponse incertaine. Le code IMMO est attribué par PostgreSQL et reste non modifiable.
+
 ## Présentation
 
 TailAdmin React est la référence visuelle demandée par le propriétaire pour le login, Vos applications et les modules. Conserver les principes d’interaction d’imf_BB : indicateurs vers liste intégrée, puis fiche 360 d’un enregistrement. Préserver la marque SauverNdeko, les mini-indicateurs compacts, le menu bleu ardoise et les styles partagés. Lire la référence visuelle avant une évolution de présentation.

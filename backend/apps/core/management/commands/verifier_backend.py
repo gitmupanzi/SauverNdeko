@@ -71,6 +71,9 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.append("/api/systeme/administration/synthese")
+            urls.extend(["/api/systeme/personnel/references", "/api/logistique/immobilisations?take=1",
+                "/api/logistique/immobilisations/references", "/api/logistique/registre/immobilisations?take=1",
+                "/api/tableaux/logistique.immobilisations/preferences"])
             urls.extend("/api/systeme/administration/registres/" + kind + "?take=1" for kind in ADMIN_REGISTERS)
             urls.extend("/api/tableaux/"+key+"/preferences" for key in (
                 *["logistique."+kind for kind in ("articles","commandes","lignes","lots","mouvements","factures","reglements")],
@@ -156,6 +159,17 @@ class Command(BaseCommand):
                                 ensure_ascii=False,
                             )
                         )
+                with connection.cursor() as sample_cursor:
+                    sample_cursor.execute('SELECT "ID_Immobilisation" FROM logistique."T_Immobilisation" ORDER BY "ID_Immobilisation" LIMIT 1')
+                    sample_asset=sample_cursor.fetchone()
+                asset_id=sample_asset[0] if sample_asset else 2147483600
+                expected=200 if sample_asset else 404
+                for suffix in ('','/historique'):
+                    url='/api/logistique/immobilisations/'+str(asset_id)+suffix
+                    response=client.get(url)
+                    results.append({'url':url,'status':response.status_code,'attendu':expected})
+                    if response.status_code!=expected:
+                        raise CommandError('Lecture du patrimoine inattendue : '+url)
             # La politique publique de récupération reste contrôlée en anonyme, sans envoi.
             anonymous = APIClient()
             with override_settings(ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]):
@@ -199,6 +213,11 @@ class Command(BaseCommand):
                     "/api/logistique/stock",
                     "/api/logistique/dashboard",
                     "/api/logistique/references",
+                    "/api/logistique/immobilisations",
+                    "/api/logistique/immobilisations/references",
+                    "/api/logistique/registre/immobilisations",
+                    "/api/tableaux/logistique.immobilisations/preferences",
+                    "/api/systeme/personnel/references",
                     "/api/systeme/utilisateurs",
                     "/api/systeme/entites",
                     "/api/systeme/licences",

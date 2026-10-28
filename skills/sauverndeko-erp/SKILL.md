@@ -10,6 +10,7 @@ description: Cartographier et faire évoluer SauverNdeko vers un ERP modulaire, 
 - Pour repérer un domaine et son état réel : [cartographie](references/cartographie.md), puis [inventaire technique](references/inventaire-technique.md).
 - Pour prioriser une version client ou un module ERP : [trajectoire ERP](references/trajectoire-erp.md).
 - Pour les droits par entreprise, le compte global, les clients/fournisseurs et le suivi facultatif par lot : [décisions Entités, tiers et stock](references/entites-tiers-et-stock.md). Cette cible reste distincte du comportement installé.
+- Pour les équipements de l’entreprise et les informations professionnelles minimales : [Patrimoine et affectations](references/patrimoine-affectations.md).
 - Pour reprendre un comportement d’imf_BB : [matrice de transposition](references/transposition-imf-bb.md).
 - Pour PostgreSQL/API : [skill backend](../../backend/skills/develop-sauverndeko-backend/SKILL.md).
 - Pour l’interface : [skill frontend](../../frontend/skills/develop-sauverndeko-frontend/SKILL.md).
@@ -52,7 +53,7 @@ Le backend unique est Django/DRF ; l’ancien backend Express/Prisma et ses dép
 
 ## Devises logistiques
 
-La migration 20261025_04 est appliquée à SauverNdeko après sauvegarde. Le propriétaire a confirmé le rattachement des montants existants à USD. Pour les nouvelles créations, résoudre USD dans la catégorie Devise active du référentiel ; ne pas figer son identifiant ni inventer une devise dans le formatage frontend. Les champs `ID_DeviseFk`, `DeviseCode` et `DeviseLibelle` accompagnent les prix et montants ; les affichages peuvent suffixer le montant sans imposer une colonne redondante. Les exports numériques conservent une colonne de devise. Les agrégats, leurs détails et exports partagent le même filtre. Les montants de devises différentes ne sont jamais additionnés ; un prix catalogue d’une autre devise ne peut pas être recopié automatiquement dans un bon.
+La migration 20261025_04 est appliquée à SauverNdeko après sauvegarde. Le propriétaire a confirmé le rattachement des montants existants à USD. Pour les nouvelles créations, résoudre USD dans la catégorie Devise active du référentiel ; ne pas figer son identifiant ni inventer une devise dans le formatage frontend. Les champs `ID_DeviseFk`, `DeviseCode` et `DeviseLibelle` accompagnent les prix et montants ; les affichages peuvent suffixer le montant sans imposer une colonne redondante. La devise reste disponible dans les exports numériques, qui respectent exactement les colonnes et l’ordre choisis sans ajout implicite. Les agrégats, leurs détails et exports partagent le même filtre. Les montants de devises différentes ne sont jamais additionnés ; un prix catalogue d’une autre devise ne peut pas être recopié automatiquement dans un bon.
 
 ## Coûts, lots et livraison logistique
 
@@ -73,3 +74,7 @@ Les évolutions SQL du 28 octobre 2026 distinguent les données métier, leur hi
 - Les dates et auteurs techniques des règlements et les contrôles financiers demeurent en SQL, y compris pour un futur backend. La GUC d’acteur sert à la traçabilité transactionnelle ; elle ne constitue pas une autorisation. Les permissions réelles restent vérifiées côté serveur, et les audits détaillés ne sont pas dupliqués en Python. Les métadonnées historiques inconnues restent inconnues.
 
 Les tableaux, indicateurs et exports reprennent les mêmes unités, devises et périmètres. Une somme de quantités de plusieurs unités n’est pas présentée comme un total unique. Les exports respectent exactement les colonnes et leur ordre, proposent sélection ou résultats filtrés complets et conservent les références textuelles dans le XLSX. Le CSV UTF-8 avec BOM est adapté à Excel français mais reste sans types ; les zéros initiaux sont garantis par le XLSX.
+
+## Biens de l’entreprise et données professionnelles
+
+La tranche Patrimoine sépare les immobilisations des Articles et du stock commercial. Les références, affectations, quantités entières et calculs de valeur appartiennent aux vues et gardes SQL ; aucun retrait de stock, amortissement ou droit d’accès n’en découle automatiquement. Les données RH minimales complètent les comptes existants, restent privées et se gèrent dans l’onglet Utilisateurs fusionné ; la source Profils conserve sa compatibilité. Lire [la règle de patrimoine](references/patrimoine-affectations.md) avant d’étendre ce parcours.

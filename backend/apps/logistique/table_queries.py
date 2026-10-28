@@ -116,3 +116,10 @@ def query_order(obj, raw):
 LABELS.update({"CodeArticleExterne":"Code externe","ObsArticle":"Observations","DateHeureAuto":"Créé le","DatePeremptionAlerteArticle":"Début alerte péremption","NbreJoursAlerteArticle":"Délai alerte péremption (jours)","NomComplet":"Responsable","StockVentileLots":"Stock ventilé par lot","StockSansLot":"Stock sans lot","ValeurStockVente":"Valeur catalogue (vente)","TauxMargePct":"Taux de marge (%)","QuantitesParUnite":"Quantités par unité"})
 
 LABELS.update({"OrigineBon":"Origine"})
+LABELS.update({'Actif':'Actif','ID_Immobilisation':'Identifiant du bien','CodeImmobilisation':'Code du bien',
+    'NomImmobilisation':'Désignation','Reference':'Référence','Caracteristiques':'Caractéristiques',
+    'SuiviIndividuel':'Suivi individuel','PrixUnitaire':'Prix unitaire','ValeurAcquisition':'Valeur d’acquisition',
+    'CategorieMateriel':'Type de matériel','EtatMateriel':'État du matériel','Service':'Service',
+    'Responsable':'Responsable','Localisation':'Localisation','LocalisationComplement':'Salle ou bureau',
+    'DateEntree':'Date d’entrée','DateAcquisition':'Date d’acquisition','NumeroSerie':'N° de série',
+    'Observations':'Observations','ModifieLe':'Modifié le'})

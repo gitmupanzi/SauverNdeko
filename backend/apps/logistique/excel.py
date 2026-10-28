@@ -24,6 +24,7 @@ ROOT = Path(settings.BASE_DIR).parent
 ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
 MAX_EXPORT_ROWS = 100000
 DEFAULT_FIELDS = {
+    "V_Immobilisation":["CodeImmobilisation","NomImmobilisation","Reference","CategorieMateriel","SuiviIndividuel","Quantite","PrixUnitaire","ValeurAcquisition","DeviseCode","EtatMateriel","Responsable","Service","Localisation","LocalisationComplement","DateEntree","DateAcquisition","NumeroSerie","Caracteristiques","Observations","Actif","NomEntite","CreeLe","ModifieLe"],
     "V_RegistreLots":["NumeroLot","NomArticle","CodeArticleInterne","RefArticle","CategorieArticle","TypeArticle","StockLot","AbrUnite","QuantiteEntree","QuantiteSortie","DatePeremptionLot","EtatPeremptionLot","EtatStockLot","Actif","NomEntite","CreeLe"],
     "V_RegistreMouvementLot":["DateMvt","NumeroLot","NomArticle","NomTypeMvt","SensMouvement","Quantite","QuantiteSignee","AbrUnite","CodeCmd","DatePeremptionLot","MotifDerogationPeremption","DateDerogationPeremption"],
     "V_Mouvement":["DateMvt","CodeArticleInterne","NomArticle","AbrUnite","NomTypeMvt","CodeCmd","RefArticle","CategorieArticle","TypeArticle","StockActuel","QteMvt","QteMvtSigned","PUMvt","MontantMvt","MontantMvtSigned","OrigineMouvement"],
@@ -186,7 +187,7 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
             raise APIError("Sélection documentaire invalide.")
         if not isinstance(selection,list) or len(selection)!=1:
             raise APIError("Choisissez un seul enregistrement pour sa fiche.")
-        identities={"articles":"ID_Article","commandes":"ID_Commande","lignes":["ID_CmdFk","ID_ArticleFk"],"lots":"ID_LotArticle","mouvements":"ID_Mvt","factures":"ID_Commande","reglements":"ID_Reglement"}
+        identities={"immobilisations":"ID_Immobilisation","articles":"ID_Article","commandes":"ID_Commande","lignes":["ID_CmdFk","ID_ArticleFk"],"lots":"ID_LotArticle","mouvements":"ID_Mvt","factures":"ID_Commande","reglements":"ID_Reglement"}
         if kind not in identities:
             raise APIError("Fiche non disponible.")
         selected_scope(raw,identities[kind])
@@ -196,12 +197,12 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
         raw["columns"]=json.dumps(export_keys(actor,"logistique."+kind,raw))
     obj,condition,fixed = register_source(kind,raw,for_export=True)
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
-    label = {"lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
+    label = {"immobilisations":"Registre des immobilisations","lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label,file_format=file_format)
 
 def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label, file_format="xlsx"):
     from apps.core.tabular_exports import selected_scope, write_tabular
-    identities = {"V_Article":"ID_Article","V_Commande":"ID_Commande","V_CommandeDetail":["ID_CmdFk","ID_ArticleFk"],"V_Mouvement":"ID_Mvt","V_RegistreLots":"ID_LotArticle","V_SuiviReglements":"ID_Commande","V_Reglements":"ID_Reglement"}
+    identities = {"V_Immobilisation":"ID_Immobilisation","V_Article":"ID_Article","V_Commande":"ID_Commande","V_CommandeDetail":["ID_CmdFk","ID_ArticleFk"],"V_Mouvement":"ID_Mvt","V_RegistreLots":"ID_LotArticle","V_SuiviReglements":"ID_Commande","V_Reglements":"ID_Reglement"}
     if raw.get("selection") is not None:
         if obj["name"] not in identities: raise APIError("Cette liste ne propose pas l’export d’une sélection.")
         selection_where,selection_values = selected_scope(raw,identities[obj["name"]])

@@ -585,6 +585,12 @@ class T_Login(models.Model):
 
 
 class T_Utilisateurs(models.Model):
+    MatriculeUser = models.CharField(max_length=50, null=True)
+    ID_ServiceFk = models.IntegerField(null=True)
+    ID_FonctionFk = models.IntegerField(null=True)
+    DateEmbauche = models.DateField(null=True)
+    DateFinEmploi = models.DateField(null=True)
+    ObservationProfessionnelle = models.TextField(null=True)
     IdUser = models.AutoField(primary_key=True)
     NomUser = models.TextField()
     PrenomUser = models.TextField()
@@ -718,3 +724,35 @@ class T_PrecisionStock(models.Model):
     class Meta:
         managed = False
         db_table = '"logistique"."T_PrecisionStock"'
+
+
+class T_Immobilisation(models.Model):
+    ID_Immobilisation = models.AutoField(primary_key=True)
+    IdEntiteFk = models.IntegerField()
+    CodeImmobilisation = models.CharField(max_length=32)
+    NomImmobilisation = models.CharField(max_length=200)
+    Reference = models.CharField(max_length=255, null=True)
+    Caracteristiques = models.TextField(null=True)
+    SuiviIndividuel = models.BooleanField(default=True)
+    Quantite = models.DecimalField(max_digits=18, decimal_places=0, default=1)
+    PrixUnitaire = models.DecimalField(max_digits=18, decimal_places=2, null=True)
+    ID_DeviseFk = models.IntegerField(null=True)
+    ID_CategorieFk = models.IntegerField()
+    ID_EtatFk = models.IntegerField(null=True)
+    ID_ResponsableFk = models.IntegerField(null=True)
+    ID_ServiceFk = models.IntegerField(null=True)
+    ID_LocalisationFk = models.IntegerField(null=True)
+    LocalisationComplement = models.CharField(max_length=255, null=True)
+    DateEntree = models.DateTimeField()
+    DateAcquisition = models.DateField(null=True)
+    NumeroSerie = models.CharField(max_length=255, null=True)
+    Observations = models.TextField(null=True)
+    Actif = models.BooleanField(default=True)
+    CreeLe = models.DateTimeField()
+    ModifieLe = models.DateTimeField()
+    CreeParUserFk = models.IntegerField()
+    ModifieParUserFk = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = '"logistique"."T_Immobilisation"'

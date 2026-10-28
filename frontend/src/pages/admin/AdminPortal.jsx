@@ -15,7 +15,7 @@ import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import lazyView from "../../components/LazyView";
 import { requestJson, downloadApiFile, fetchCompleteReferenceRows, fetchAdminModelList, deleteAdminUser, deleteAdminEntity, deleteAdminLicence, deleteAdminModelRecord, updateAdminModelRecord } from "../../services/api";
 import { SimpleTable, formatDate } from "../logistique/logistiqueShared";
-import { ADMIN_ROOT, ADMIN_NAVIGATION, ADMIN_REGISTERS } from "./adminPortalDefinitions";
+import { ADMIN_ROOT, ADMIN_NAVIGATION, ADMIN_REGISTERS, adminTabKey } from "./adminPortalDefinitions";
 import "../logistique/LogistiqueModern.css";
 import "./AdminPortal.css";
 
@@ -27,17 +27,18 @@ const numeric = value => typeof value === "number" ? new Intl.NumberFormat("fr")
 const fullName = row => [row?.PrenomUser, row?.NomUser].filter(Boolean).join(" ");
 function recordName(kind, row) { return kind === "licences" ? "Licence #" + row.IdLicence : ["utilisateurs", "profils", "connexions"].includes(kind) ? fullName(row) : row[ADMIN_REGISTERS[kind].name] || row.SettingKey || row.FieldName || "Fiche"; }
 function useAdminSupport(refresh) {
-  const [support, setSupport] = useState({ entities: [], generics: [], categories: [], niveaux3: [], niveaux4: [], niveaux5: [] });
+  const [support, setSupport] = useState({ entities: [], generics: [], categories: [], niveaux3: [], niveaux4: [], niveaux5: [],personnelServices:[],personnelFonctions:[] });
   const [error, setError] = useState("");
   useEffect(() => {
     let current = true;
     Promise.allSettled([
       requestJson("/api/workspace/organisations", { requiresAuth: true }),
       fetchCompleteReferenceRows("T_Generique"), fetchCompleteReferenceRows("T_CategorieGenerique"),
+      requestJson("/api/systeme/personnel/references",{requiresAuth:true}),
     ]).then(results => {
       if (!current) return;
-      const [entities, generics, categories] = results.map(result => result.status === "fulfilled" ? result.value : null);
-      setSupport(old => ({ ...old, entities: entities?.success ? entities.data : [], generics: generics?.success ? generics.data : [], categories: categories?.success ? categories.data : [] }));
+      const [entities, generics, categories,personnel] = results.map(result => result.status === "fulfilled" ? result.value : null);
+      setSupport(old => ({ ...old, entities: entities?.success ? entities.data : [], generics: generics?.success ? generics.data : [], categories: categories?.success ? categories.data : [],personnelServices:personnel?.data?.personnelServices||[],personnelFonctions:personnel?.data?.personnelFonctions||[] }));
       setError(results.some(result => result.status === "rejected" || !result.value?.success) ? "Certaines listes de référence sont indisponibles." : "");
     });
     return () => { current = false; };
@@ -49,6 +50,7 @@ function optionsFor(field, support) {
   if (field.source === "entities") return support.entities.map(row => ({ value: String(row.IdEntite), label: row.NomEntite }));
   if (field.source === "categories") return support.categories.map(row => ({ value: String(row.ID_CategorieGenerique), label: row.NomCategorieGenerique }));
   if (field.source === "roles") return support.generics.filter(row => Number(row.ID_CategorieGeneriqueFk) === 39).map(row => ({ value: String(row.ID_Generique), label: row.NomGenerique }));
+  if(["personnelServices","personnelFonctions"].includes(field.source))return (support[field.source]||[]).map(row=>({value:String(row.id),label:row.label,disabled:row.disabled===true}));
   return [];
 }
 function serializeCriteria(criteria, grid, columns) {
@@ -220,7 +222,7 @@ function AdminDashboard({ onNavigate, refresh, platform }) {
 export default function AdminPortal() {
   const { user } = useAuth(), [params, setParams] = useSearchParams(), navigateRoute = useNavigate();
   const platform = Boolean(user?.moduleAccess?.platformAdmin || user?.Is_Admin === true);
-  const key = params.get("onglet") || "tableau-de-bord";
+  const key = adminTabKey(params.get("onglet")) || "tableau-de-bord";
   const allKeys = ["tableau-de-bord", "permissions", "messagerie", ...Object.keys(ADMIN_REGISTERS)];
   const active = allKeys.includes(key) ? key : "tableau-de-bord";
   const restricted = (ADMIN_REGISTERS[active]?.platform || ["permissions", "messagerie"].includes(active)) && !platform;
@@ -230,6 +232,11 @@ export default function AdminPortal() {
   const { support, setSupport, error: supportError } = useAdminSupport(refresh);
   const [locationSupportReady, setLocationSupportReady] = useState(false);
   useReferencesRefresh(() => setRefresh(value => value + 1));
+  useEffect(() => {
+    if (params.get("onglet") !== "profils") return;
+    const next = new URLSearchParams(params); next.set("onglet", "utilisateurs");
+    setParams(next, { replace: true });
+  }, [params, setParams]);
   useEffect(() => { try { localStorage.setItem("sauverndeko.admin.sidebar-collapsed", String(collapsed)); } catch { /* Préférence locale facultative. */ } }, [collapsed]);
   useEffect(() => {
     if (active !== "localisations" || locationSupportReady) return;
@@ -240,6 +247,7 @@ export default function AdminPortal() {
   }, [active, locationSupportReady, setSupport]);
   function requestTransition(run) { if (permissionsBusy) return; if (permissionsDirty) setTransition({ run }); else run(); }
   function navigate(next, criteria = {}) {
+    next = adminTabKey(next);
     if (next === "licence-applications") { requestTransition(() => navigateRoute("/abonnements")); return; }
     if (next === active && !Object.keys(criteria).length) return;
     requestTransition(() => { setInitial(criteria); setNavigationVersion(value => value + 1); setParams({ onglet: next }); });

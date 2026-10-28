@@ -25,6 +25,7 @@ const ReferenceSettings=lazyView(()=>import("../components/ReferenceSettings"),{
 const AlertesStock=lazyView(()=>import("./logistique/AlertesStock"),{label:"Chargement de la vue…"});
 const Articles=lazyView(()=>import("./logistique/Articles"),{label:"Chargement de la vue…"});
 const LotsStock=lazyView(()=>import("./logistique/LotsStock"),{label:"Chargement des lots…"});
+const Immobilisations=lazyView(()=>import("./logistique/Immobilisations"),{label:"Chargement des immobilisations…"});
 const DossiersSuivi=lazyView(()=>import("./logistique/DossiersSuivi"),{label:"Chargement de la vue…"});
 const CommandeDetails=lazyView(()=>import("./logistique/CommandeDetails"),{label:"Chargement de la vue…"});
 const Commandes=lazyView(()=>import("./logistique/Commandes"),{label:"Chargement de la vue…"});
@@ -471,6 +472,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
     { label: "Relations", keys: ["tiers"] },
     { label: "Stocks", keys: ["articles", "lots", "commandes", "details", "mouvements", "inventaires"] },
     { label: "Finances", keys: ["factures", "reglements"] },
+    { label: "Patrimoine", keys: ["immobilisations"] },
   ];
   return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
     <div className="logistics-sidebar-top">
@@ -580,6 +582,7 @@ const MAIN_TAB_DEFINITIONS = [
   { key: "inventaires", label: "Inventaires", icon: "list" },
   { key: "factures", label: "Factures", icon: "document" },
   { key: "reglements", label: "Règlements", icon: "bi-wallet2" },
+  { key: "immobilisations", label: "Immobilisations", icon: "building" },
 ];
 
 export default function Logistique() {
@@ -1162,6 +1165,7 @@ export default function Logistique() {
                 ) : null}
 
                 {activeTab === "inventaires" ? <Inventaires/> : null}
+                {activeTab === "immobilisations" ? <Immobilisations refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "tiers" ? <Tiers refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
                 {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"factures":"commandes")}/> : null}

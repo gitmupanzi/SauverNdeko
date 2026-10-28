@@ -138,6 +138,24 @@ DO UPDATE SET
     "UpdatedByUserFk" = EXCLUDED."UpdatedByUserFk",
     "ObsFkCorrespondance" = EXCLUDED."ObsFkCorrespondance";
 
+-- Les identifiants de la nouvelle famille de patrimoine varient entre
+-- installations : résoudre les catégories, jamais recopier un ID de serveur.
+DO $immobilisations$
+DECLARE item record;category_id integer;family_count integer;
+BEGIN
+ IF to_regclass('logistique."T_Immobilisation"') IS NULL THEN RETURN;END IF;
+ FOR item IN SELECT * FROM (VALUES
+  ('categories','ID_CategorieFk','Type de matériel','Type de matériel'),
+  ('etats','ID_EtatFk','État du matériel','Etat'),
+  ('services','ID_ServiceFk','Service','Service')) AS seed(source,field,label,family) LOOP
+  SELECT count(*),min("ID_CategorieGenerique") INTO family_count,category_id
+   FROM referentiel."T_CategorieGenerique" WHERE lower(btrim("NomCategorieGenerique"))=lower(item.family);
+  IF family_count<>1 THEN RAISE EXCEPTION 'Famille % absente ou ambiguë pour le patrimoine.',item.family;END IF;
+  INSERT INTO systeme."T_Fk_Correspondance"("ModuleName","SchemaName","ViewName","SourceKey","FieldName","FieldLabel","MappingType","ReferenceSchemaName","ReferenceObjectName","ReferenceFieldName","TargetCategoryIdFk","MappingValue","IsDefaultMapping","ValideFkCorrespondance","SettingScope","ScopeValue","DisplayOrder","ObsFkCorrespondance")
+  VALUES('logistique','logistique','V_Immobilisation','logistique.immobilisations.'||item.source,item.field,item.label,'generic_category','referentiel','T_Generique','ID_Generique',category_id,category_id::text,true,true,'global',NULL,0,'Initialisation patrimoine08 par catégorie résolue.');
+ END LOOP;
+END $immobilisations$;
+
 DO $$
 DECLARE
     v_count integer;

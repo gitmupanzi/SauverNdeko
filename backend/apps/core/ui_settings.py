@@ -159,8 +159,10 @@ class UISettingsView(APIView):
                 ["settings:" + scope + ":" + str(value)],
             )
             db.query(
-                'DELETE FROM systeme."T_Fk_Correspondance" WHERE "SettingScope"=%s AND "ScopeValue" IS NOT DISTINCT FROM %s AND "MappingType" IN (\'generic_category\',\'hierarchy_mode\')',
-                [scope, value],
+                'DELETE FROM systeme."T_Fk_Correspondance" WHERE "SettingScope"=%s AND "ScopeValue" IS NOT DISTINCT FROM %s '
+                'AND (("MappingType"=\'generic_category\' AND "SourceKey"=ANY(%s::text[])) '
+                'OR ("MappingType"=\'hierarchy_mode\' AND "SourceKey"=ANY(%s::text[])))',
+                [scope, value, list(SOURCES['generic']), list(SOURCES['hierarchy'])],
             )
             for row in rows:
                 db.query(

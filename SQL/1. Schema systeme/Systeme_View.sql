@@ -3,6 +3,150 @@
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
 --
+-- Name: V_Entite_Localisation_Detail; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_Entite_Localisation_Detail" AS
+ SELECT el."IdEntiteLocalisation",
+    e."IdEntite",
+    e."NomEntite",
+    e."PhoneEntite",
+    e."EmailEntite",
+    e."AdresseEntite",
+    e."IdTypeEntiteFk",
+    te."NomGenerique" AS "TypeEntite",
+    el."Latitude",
+    el."Longitude",
+    el."AdresseDetaillee",
+    el."DateCreation",
+    el."IdNiveau_3_Fk",
+    n3."NomNiveau_3",
+    el."IdNiveau_4_Fk",
+    n4."NomNiveau_4",
+    el."IdNiveau_5_Fk",
+    n5."NomNiveau_5"
+   FROM (((((systeme."T_Entite" e
+     LEFT JOIN systeme."T_Entite_Localisation" el ON ((el."IdEntiteFk" = e."IdEntite")))
+     LEFT JOIN referentiel."T_Generique" te ON ((te."ID_Generique" = e."IdTypeEntiteFk")))
+     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = el."IdNiveau_3_Fk")))
+     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n4."ID_Niveau_4" = el."IdNiveau_4_Fk")))
+     LEFT JOIN geolocalisation."T_Niveau_5" n5 ON ((n5."ID_Niveau_5" = el."IdNiveau_5_Fk")));
+
+--
+-- Name: VIEW "V_Entite_Localisation_Detail"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_Entite_Localisation_Detail" IS 'Entités enrichies de leurs localisations, type et niveaux géographiques. Grain entité/localisation ; une entité sans localisation reste présente et une entité peut apparaître sur plusieurs lignes.';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdEntiteLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdEntiteLocalisation" IS 'Identifiant de la localisation d’entité. Expression projetée : el."IdEntiteLocalisation".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdEntite" IS 'Identifiant de l’entité. Expression projetée : e."IdEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomEntite" IS 'Nom de la structure ou organisation. Expression projetée : e."NomEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."PhoneEntite" IS 'Téléphone de contact de l’entité. Expression projetée : e."PhoneEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."EmailEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."EmailEntite" IS 'Adresse électronique de contact de l’entité. Expression projetée : e."EmailEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."AdresseEntite" IS 'Adresse générale enregistrée pour l’entité. Expression projetée : e."AdresseEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdTypeEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdTypeEntiteFk" IS 'Type de structure ou d’organisation dans le référentiel. Expression projetée : e."IdTypeEntiteFk".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."TypeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."TypeEntite" IS 'Libellé du type d’entité dans le référentiel. Expression projetée : te."NomGenerique" AS "TypeEntite".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."Latitude"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."Latitude" IS 'Latitude de la localisation ; coordonnée décimale. Expression projetée : el."Latitude".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."Longitude"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."Longitude" IS 'Longitude de la localisation ; coordonnée décimale. Expression projetée : el."Longitude".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."AdresseDetaillee"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."AdresseDetaillee" IS 'Adresse détaillée de cette localisation. Expression projetée : el."AdresseDetaillee".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."DateCreation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."DateCreation" IS 'Date et heure de création de l’enregistrement. Expression projetée : el."DateCreation".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_3_Fk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_3_Fk" IS 'Unité géographique de rattachement de niveau 3. Expression projetée : el."IdNiveau_3_Fk".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_3"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_4_Fk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_4_Fk" IS 'Unité géographique de rattachement de niveau 4. Expression projetée : el."IdNiveau_4_Fk".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_4"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_4" IS 'Nom de l’unité géographique de niveau 4. Expression projetée : n4."NomNiveau_4".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_5_Fk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_5_Fk" IS 'Unité géographique de rattachement de niveau 5. Expression projetée : el."IdNiveau_5_Fk".';
+
+--
+-- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_5"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_5" IS 'Nom de l’unité géographique de niveau 5. Expression projetée : n5."NomNiveau_5".';
+
+--
 -- Name: V_Admin_UI_Setting; Type: VIEW; Schema: systeme; Owner: -
 --
 
@@ -578,150 +722,6 @@ COMMENT ON COLUMN systeme."V_EntiteModuleActif"."IdEntiteFk" IS 'Entité autoris
 --
 
 COMMENT ON COLUMN systeme."V_EntiteModuleActif"."CodeModule" IS 'Application comprise dans son socle ou sa licence active.';
-
---
--- Name: V_Entite_Localisation_Detail; Type: VIEW; Schema: systeme; Owner: -
---
-
-CREATE VIEW systeme."V_Entite_Localisation_Detail" AS
- SELECT el."IdEntiteLocalisation",
-    e."IdEntite",
-    e."NomEntite",
-    e."PhoneEntite",
-    e."EmailEntite",
-    e."AdresseEntite",
-    e."IdTypeEntiteFk",
-    te."NomGenerique" AS "TypeEntite",
-    el."Latitude",
-    el."Longitude",
-    el."AdresseDetaillee",
-    el."DateCreation",
-    el."IdNiveau_3_Fk",
-    n3."NomNiveau_3",
-    el."IdNiveau_4_Fk",
-    n4."NomNiveau_4",
-    el."IdNiveau_5_Fk",
-    n5."NomNiveau_5"
-   FROM (((((systeme."T_Entite" e
-     LEFT JOIN systeme."T_Entite_Localisation" el ON ((el."IdEntiteFk" = e."IdEntite")))
-     LEFT JOIN referentiel."T_Generique" te ON ((te."ID_Generique" = e."IdTypeEntiteFk")))
-     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = el."IdNiveau_3_Fk")))
-     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n4."ID_Niveau_4" = el."IdNiveau_4_Fk")))
-     LEFT JOIN geolocalisation."T_Niveau_5" n5 ON ((n5."ID_Niveau_5" = el."IdNiveau_5_Fk")));
-
---
--- Name: VIEW "V_Entite_Localisation_Detail"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON VIEW systeme."V_Entite_Localisation_Detail" IS 'Entités enrichies de leurs localisations, type et niveaux géographiques. Grain entité/localisation ; une entité sans localisation reste présente et une entité peut apparaître sur plusieurs lignes.';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdEntiteLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdEntiteLocalisation" IS 'Identifiant de la localisation d’entité. Expression projetée : el."IdEntiteLocalisation".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdEntite" IS 'Identifiant de l’entité. Expression projetée : e."IdEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomEntite" IS 'Nom de la structure ou organisation. Expression projetée : e."NomEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."PhoneEntite" IS 'Téléphone de contact de l’entité. Expression projetée : e."PhoneEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."EmailEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."EmailEntite" IS 'Adresse électronique de contact de l’entité. Expression projetée : e."EmailEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."AdresseEntite" IS 'Adresse générale enregistrée pour l’entité. Expression projetée : e."AdresseEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdTypeEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdTypeEntiteFk" IS 'Type de structure ou d’organisation dans le référentiel. Expression projetée : e."IdTypeEntiteFk".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."TypeEntite"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."TypeEntite" IS 'Libellé du type d’entité dans le référentiel. Expression projetée : te."NomGenerique" AS "TypeEntite".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."Latitude"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."Latitude" IS 'Latitude de la localisation ; coordonnée décimale. Expression projetée : el."Latitude".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."Longitude"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."Longitude" IS 'Longitude de la localisation ; coordonnée décimale. Expression projetée : el."Longitude".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."AdresseDetaillee"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."AdresseDetaillee" IS 'Adresse détaillée de cette localisation. Expression projetée : el."AdresseDetaillee".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."DateCreation"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."DateCreation" IS 'Date et heure de création de l’enregistrement. Expression projetée : el."DateCreation".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_3_Fk"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_3_Fk" IS 'Unité géographique de rattachement de niveau 3. Expression projetée : el."IdNiveau_3_Fk".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_3"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_4_Fk"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_4_Fk" IS 'Unité géographique de rattachement de niveau 4. Expression projetée : el."IdNiveau_4_Fk".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_4"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_4" IS 'Nom de l’unité géographique de niveau 4. Expression projetée : n4."NomNiveau_4".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."IdNiveau_5_Fk"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."IdNiveau_5_Fk" IS 'Unité géographique de rattachement de niveau 5. Expression projetée : el."IdNiveau_5_Fk".';
-
---
--- Name: COLUMN "V_Entite_Localisation_Detail"."NomNiveau_5"; Type: COMMENT; Schema: systeme; Owner: -
---
-
-COMMENT ON COLUMN systeme."V_Entite_Localisation_Detail"."NomNiveau_5" IS 'Nom de l’unité géographique de niveau 5. Expression projetée : n5."NomNiveau_5".';
 
 --
 -- Name: V_Entite_Public; Type: VIEW; Schema: systeme; Owner: -
@@ -1599,6 +1599,133 @@ COMMENT ON COLUMN systeme."V_RoleModule"."NomRole" IS 'Libellé du rôle du réf
 --
 
 COMMENT ON COLUMN systeme."V_RoleModule"."NomModule" IS 'Libellé de l’application.';
+
+--
+-- Name: V_User_Affectation; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_User_Affectation" AS
+ SELECT u."IdUser",
+    u."IdEntiteFk",
+    u."NomUser",
+    u."PrenomUser",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "NomCompletUser",
+    u."MatriculeUser",
+    u."ID_ServiceFk",
+    s."NomGenerique" AS "Service",
+    u."ID_FonctionFk",
+    f."NomGenerique" AS "Fonction",
+    u."DateEmbauche",
+    u."DateFinEmploi",
+    u."ObservationProfessionnelle",
+    u."ValideUser",
+    (u."ValideUser" AND ((u."DateEmbauche" IS NULL) OR (u."DateEmbauche" <= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date)) AND ((u."DateFinEmploi" IS NULL) OR (u."DateFinEmploi" >= ((CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa'::text))::date))) AS "EstAffectable",
+    (u.xmin)::text AS _version
+   FROM ((systeme."T_Utilisateurs" u
+     LEFT JOIN referentiel."T_Generique" s ON ((s."ID_Generique" = u."ID_ServiceFk")))
+     LEFT JOIN referentiel."T_Generique" f ON ((f."ID_Generique" = u."ID_FonctionFk")));
+
+--
+-- Name: VIEW "V_User_Affectation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_User_Affectation" IS 'Métadonnées professionnelles privées pour la gestion RH minimale et les affectations ; sans mot de passe, photo, e-mail ni téléphone. Le service doit imposer entreprise et droits. N’élargit pas V_User_profil ni les projections publiques.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."IdUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."IdUser" IS 'Métadonnée professionnelle privée IdUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."IdEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."IdEntiteFk" IS 'Métadonnée professionnelle privée IdEntiteFk ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."NomUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."NomUser" IS 'Métadonnée professionnelle privée NomUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."PrenomUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."PrenomUser" IS 'Métadonnée professionnelle privée PrenomUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."NomCompletUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."NomCompletUser" IS 'Métadonnée professionnelle privée NomCompletUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."MatriculeUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."MatriculeUser" IS 'Métadonnée professionnelle privée MatriculeUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."ID_ServiceFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."ID_ServiceFk" IS 'Métadonnée professionnelle privée ID_ServiceFk ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."Service"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."Service" IS 'Métadonnée professionnelle privée Service ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."ID_FonctionFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."ID_FonctionFk" IS 'Métadonnée professionnelle privée ID_FonctionFk ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."Fonction"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."Fonction" IS 'Métadonnée professionnelle privée Fonction ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."DateEmbauche"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."DateEmbauche" IS 'Métadonnée professionnelle privée DateEmbauche ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."DateFinEmploi"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."DateFinEmploi" IS 'Métadonnée professionnelle privée DateFinEmploi ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."ObservationProfessionnelle"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."ObservationProfessionnelle" IS 'Note professionnelle privée limitée à1000 caractères, jamais étendue au profil public.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."ValideUser"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."ValideUser" IS 'Métadonnée professionnelle privée ValideUser ; filtrage par entreprise et droits requis.';
+
+--
+-- Name: COLUMN "V_User_Affectation"."EstAffectable"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"."EstAffectable" IS 'Compte actif, sans début professionnel futur ni fin passée à la date de Kinshasa ; les nouvelles responsabilités exigent aussi la même entreprise.';
+
+--
+-- Name: COLUMN "V_User_Affectation"._version; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_User_Affectation"._version IS 'Révision opaque xmin de la fiche utilisateur, sans secret.';
 
 --
 -- Name: V_User_profil; Type: VIEW; Schema: systeme; Owner: -

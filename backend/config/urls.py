@@ -1,4 +1,5 @@
 from apps.core.table_preferences import TablePreferencesView
+from apps.core.personnel import PersonnelReferencesView
 from apps.core.reference_exports import ReferenceCSVView
 from apps.core.admin_portal import AdminCSVView
 from apps.logistique.excel import RegisterCSVView
@@ -9,6 +10,7 @@ from apps.logistique.entity_documents import EntityDocumentIdentityView, EntityL
 from apps.logistique.valuation import ArticleValuationView, ArticleValuationExcelView
 from apps.logistique.lot_register import LotDetailView, LotMovementsView, LotMovementsExcelView
 from apps.logistique.inventories import InventoriesView, UnitPrecisionView
+from apps.logistique.immobilisations import ImmobilisationsView, ImmobilisationReferencesView, ImmobilisationHistoryView, ImmobilisationExportView
 from apps.logistique.lot_fefo import LotFefoView
 from apps.logistique.destinations import DestinationsView
 from apps.logistique.tiers import EntreprisesView,TiersView,TiersReferencesView,TiersConsultationView
@@ -56,10 +58,16 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/systeme/personnel/references/?$", PersonnelReferencesView.as_view()),
+    re_path(r"^api/logistique/immobilisations/references/?$", ImmobilisationReferencesView.as_view()),
+    re_path(r"^api/logistique/immobilisations/export\.(?P<file_format>xlsx|csv)/?$", ImmobilisationExportView.as_view()),
+    re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/historique/?$", ImmobilisationHistoryView.as_view()),
+    re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/?$", ImmobilisationsView.as_view()),
+    re_path(r"^api/logistique/immobilisations/?$", ImmobilisationsView.as_view()),
     re_path(r"^api/tableaux/(?P<interface_key>[a-z]+[.][a-z-]+)/preferences/?$", TablePreferencesView.as_view()),
     re_path(r"^api/referentiel/exports/(?P<kind>categories|valeurs)\.csv/?$", ReferenceCSVView.as_view()),
     re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)/export\.csv/?$", AdminCSVView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/export\.csv/?$", RegisterCSVView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements|immobilisations)/export\.csv/?$", RegisterCSVView.as_view()),
     re_path(r"^api/systeme/administration/synthese/?$", AdminOverviewView.as_view()),
     re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)/export\.xlsx/?$", AdminExcelView.as_view()),
     re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)(?:/(?P<pk>[0-9]+))?/?$", AdminRegisterView.as_view()),
@@ -73,7 +81,7 @@ urlpatterns = [
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/export\.xlsx/?$", LotMovementsExcelView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/?$", LotMovementsView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/?$", LotDetailView.as_view()),
-    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|commande|facture|recu|avoir)\.pdf/?$", DocumentPdfView.as_view()),
+    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir|immobilisation)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|commande|facture|recu|avoir|fiche)\.pdf/?$", DocumentPdfView.as_view()),
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
@@ -109,8 +117,8 @@ urlpatterns = [
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/export\.xlsx/?$", FolderExcelView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi/(?P<key>[a-z0-9-]+)/membres/?$", FolderMembersView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi(?:/(?P<key>[a-z0-9-]+))?/?$", FoldersView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/?$", RegisterReadView.as_view()),
-    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/export\.xlsx/?$", RegisterExcelView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements|immobilisations)/?$", RegisterReadView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements|immobilisations)/export\.xlsx/?$", RegisterExcelView.as_view()),
     re_path(r"^api/logistique/synthese/?$", OverviewReadView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/export\.xlsx/?$", IndicatorExcelView.as_view()),
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),

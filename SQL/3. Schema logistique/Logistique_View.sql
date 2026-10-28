@@ -5441,6 +5441,274 @@ COMMENT ON COLUMN logistique."V_FactureLigne"."DeviseCode" IS 'Projection financ
 COMMENT ON COLUMN logistique."V_FactureLigne"."DeviseLibelle" IS 'Projection financière : DeviseLibelle ; snapshot émis ou agrégat exhaustif de ses règlements/retours.';
 
 --
+-- Name: V_Immobilisation; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_Immobilisation" AS
+ SELECT i."ID_Immobilisation",
+    i."IdEntiteFk",
+    i."CodeImmobilisation",
+    i."NomImmobilisation",
+    i."Reference",
+    i."Caracteristiques",
+    i."SuiviIndividuel",
+    i."Quantite",
+    i."PrixUnitaire",
+    i."ID_DeviseFk",
+    i."ID_CategorieFk",
+    i."ID_EtatFk",
+    i."ID_ResponsableFk",
+    i."ID_ServiceFk",
+    i."ID_LocalisationFk",
+    i."LocalisationComplement",
+    i."DateEntree",
+    i."DateAcquisition",
+    i."NumeroSerie",
+    i."Observations",
+    i."Actif",
+    i."CreeLe",
+    i."ModifieLe",
+    i."CreeParUserFk",
+    i."ModifieParUserFk",
+    e."NomEntite",
+    c."NomGenerique" AS "CategorieMateriel",
+    s."NomGenerique" AS "EtatMateriel",
+    service."NomGenerique" AS "Service",
+    NULLIF(concat_ws(' '::text, u."PrenomUser", u."NomUser"), ''::text) AS "Responsable",
+    d."AbrGenerique" AS "DeviseCode",
+    d."NomGenerique" AS "DeviseLibelle",
+        CASE
+            WHEN (i."PrixUnitaire" IS NULL) THEN NULL::numeric
+            ELSE round((i."Quantite" * i."PrixUnitaire"), 2)
+        END AS "ValeurAcquisition",
+    NULLIF(concat_ws(' · '::text, NULLIF(l."AdresseDetaillee", ''::text), NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text)), ''::text) AS "Localisation",
+    (i.xmin)::text AS _version
+   FROM (((((((logistique."T_Immobilisation" i
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = i."IdEntiteFk")))
+     LEFT JOIN referentiel."T_Generique" c ON ((c."ID_Generique" = i."ID_CategorieFk")))
+     LEFT JOIN referentiel."T_Generique" s ON ((s."ID_Generique" = i."ID_EtatFk")))
+     LEFT JOIN referentiel."T_Generique" service ON ((service."ID_Generique" = i."ID_ServiceFk")))
+     LEFT JOIN referentiel."T_Generique" d ON ((d."ID_Generique" = i."ID_DeviseFk")))
+     LEFT JOIN systeme."T_Utilisateurs" u ON (((u."IdUser" = i."ID_ResponsableFk") AND (u."IdEntiteFk" = i."IdEntiteFk"))))
+     LEFT JOIN systeme."V_Entite_Localisation_Detail" l ON (((l."IdEntiteLocalisation" = i."ID_LocalisationFk") AND (l."IdEntite" = i."IdEntiteFk"))));
+
+--
+-- Name: VIEW "V_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_Immobilisation" IS 'Registre de patrimoine au grain un bien/groupe homogène, avec LEFT JOIN conservant les références optionnelles et contrôle du propriétaire des lieux/responsables. Valeur d’acquisition indicative exacte, NULL si coût inconnu ; aucun montant comptable amorti ou stock réservé. Filtrage par entreprise imposé au serveur.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_Immobilisation" IS 'Identifiant technique stable du bien ; attribué par PostgreSQL et jamais réutilisé.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."IdEntiteFk" IS 'Entreprise propriétaire durable, obligatoire et immuable.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."CodeImmobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."CodeImmobilisation" IS 'Code IMMO-identifiant attribué par trigger ; unique et immuable.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."NomImmobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."NomImmobilisation" IS 'Désignation du bien, maximum200 caractères, sans contrôle ni espace extérieur.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Reference"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Reference" IS 'Référence libre facultative du modèle ou du catalogue, maximum255 caractères.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Caracteristiques"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Caracteristiques" IS 'Caractéristiques communes du bien ou du groupe homogène, maximum4000 caractères, retours de ligne autorisés.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."SuiviIndividuel"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."SuiviIndividuel" IS 'true par défaut pour une fiche par équipement ; false explicite pour un groupe homogène partageant caractéristiques, état et affectation.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Quantite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Quantite" IS 'Nombre entier exact de biens, de1 à18 chiffres ; aucun arrondi silencieux des fractions. Un suivi individuel ou numéro de série impose1.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."PrixUnitaire"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."PrixUnitaire" IS 'Prix d’acquisition unitaire indicatif à2 décimales, non négatif ; NULL signifie inconnu et ne vaut jamais zéro.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_DeviseFk" IS 'Devise du référentiel ; obligatoire dès que le prix est renseigné, sans conversion automatique.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_CategorieFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_CategorieFk" IS 'Type de matériel depuis le référentiel et les correspondances configurées pour cette entreprise.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_EtatFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_EtatFk" IS 'État facultatif issu de la famille configurée ; aucune présomption de bon état.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_ResponsableFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_ResponsableFk" IS 'Compte responsable de la même entreprise ; nouvelle affectation réservée aux comptes actifs dont les dates d’emploi permettent l’affectation.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_ServiceFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_ServiceFk" IS 'Service explicite du bien, issu du référentiel ; indépendant de l’évolution du service professionnel de son responsable.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ID_LocalisationFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ID_LocalisationFk" IS 'Lieu d’affectation appartenant à la même entreprise, sans lien texte ou égalité d’identifiants d’une autre table.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."LocalisationComplement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."LocalisationComplement" IS 'Salle, bureau ou précision facultative de l’affectation, maximum255 caractères.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."DateEntree"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."DateEntree" IS 'Date et heure d’entrée du bien dans le registre ; distincte de la date d’achat et des dates techniques.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."DateAcquisition"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."DateAcquisition" IS 'Date d’acquisition facultative ; aucune date inventée si inconnue.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."NumeroSerie"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."NumeroSerie" IS 'Numéro de série facultatif, maximum255 caractères ; sa présence impose une fiche pour un seul bien.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Observations"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Observations" IS 'Note complémentaire facultative, maximum4000 caractères, retours de ligne autorisés.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Actif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Actif" IS 'true si le bien figure dans le registre actif ; false archive sa fiche sans effacer les affectations ni l’historique.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."CreeLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."CreeLe" IS 'Horodatage technique PostgreSQL de création, immuable.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ModifieLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ModifieLe" IS 'Horodatage technique PostgreSQL de la dernière écriture.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."CreeParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."CreeParUserFk" IS 'Auteur actif prouvé par le contexte transactionnel à la création, immuable.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ModifieParUserFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ModifieParUserFk" IS 'Auteur actif prouvé de la dernière écriture.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."NomEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."NomEntite" IS 'Libellé courant NomEntite joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."CategorieMateriel"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."CategorieMateriel" IS 'Libellé courant CategorieMateriel joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."EtatMateriel"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."EtatMateriel" IS 'Libellé courant EtatMateriel joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Service"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Service" IS 'Libellé courant Service joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Responsable"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Responsable" IS 'Libellé courant Responsable joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."DeviseCode" IS 'Libellé courant DeviseCode joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."DeviseLibelle" IS 'Libellé courant DeviseLibelle joint depuis son référentiel ou son propriétaire, sans calcul en frontend.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."ValeurAcquisition"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."ValeurAcquisition" IS 'Quantité entière multipliée par prix unitaire, arrondi monétaire à2 décimales ; NULL si prix inconnu, sans calcul d’amortissement.';
+
+--
+-- Name: COLUMN "V_Immobilisation"."Localisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"."Localisation" IS 'Adresse et niveaux géographiques du lieu lié, avec propriétaire vérifié ; aucune ligne supprimée par un champ optionnel absent.';
+
+--
+-- Name: COLUMN "V_Immobilisation"._version; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Immobilisation"._version IS 'Révision technique opaque xmin pour refuser les modifications concurrentes périmées.';
+
+--
 -- Name: V_Inventaire; Type: VIEW; Schema: logistique; Owner: -
 --
 

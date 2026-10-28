@@ -26,15 +26,18 @@ from apps.core.repository import get_record, positive, audit, clean
 from apps.core.responses import APIError, ok
 
 MAX_BYTES=8*1024*1024
-KINDS={'bon','facture','reglement','avoir'}
-PDF_TYPES={'bon':{'entree','sortie','livraison','commande'},'facture':{'facture'},'reglement':{'recu'},'avoir':{'avoir'}}
+KINDS={'bon','facture','reglement','avoir','immobilisation'}
+PDF_TYPES={'bon':{'entree','sortie','livraison','commande'},'facture':{'facture'},'reglement':{'recu'},'avoir':{'avoir'},'immobilisation':{'fiche'}}
 
 
 def document_parent(actor,kind,object_id,lock=False):
     if kind not in KINDS:raise APIError('Document introuvable.','NOT_FOUND',404)
     require_module(actor,'logistique','read')
     object_id=positive(object_id)
-    if kind in {'bon','facture'}:
+    if kind=='immobilisation':
+        record=get_record(model('T_Immobilisation'),actor,{'ID_Immobilisation':object_id},lock=lock)
+        parent=record
+    elif kind in {'bon','facture'}:
         record=get_record(model('T_Commande'),actor,{'ID_Commande':object_id},lock=lock)
         parent=record
         if kind=='facture':
@@ -112,6 +115,21 @@ def issued_parent_code(kind,record,parent):
 def document_data(actor,kind,object_id,document_type):
     record,parent,entity=document_parent(actor,kind,object_id)
     if document_type not in PDF_TYPES[kind]:raise APIError('Format de document introuvable.','NOT_FOUND',404)
+    if kind=='immobilisation':
+        # Une fiche patrimoniale est courante et n'émet aucune facture/mouvement.
+        from .entity_documents import current_identity
+        row=get_record(view('logistique','V_Immobilisation'),actor,{'ID_Immobilisation':object_id})
+        location=' · '.join(str(row[key]) for key in ('Localisation','LocalisationComplement') if row.get(key))
+        return {'emitter':current_identity(entity,include_logo=True),'thirdParty':None,'recipient':row.get('Responsable'),
+          'currency':row.get('DeviseCode'),'title':'Fiche d’immobilisation','documentType':'fiche',
+          'code':row['CodeImmobilisation'],'date':row['DateEntree'],'reference':row.get('Reference'),
+          'destination':location,'lines':[{'name':row['NomImmobilisation'],'reference':row.get('NumeroSerie'),
+             'quantity':row['Quantite'],'unit':'unité','price':row.get('PrixUnitaire'),'amount':row.get('ValeurAcquisition')}],
+          'totals':[] if row.get('ValeurAcquisition') is None else [('Valeur d’acquisition',row['ValeurAcquisition'])],
+          'details':[(label,value) for label,value in [('Catégorie',row.get('CategorieMateriel')),('État',row.get('EtatMateriel')),('Service',row.get('Service')),
+            ('Date d’acquisition',date_label(row.get('DateAcquisition')) if row.get('DateAcquisition') else None),
+            ('Suivi','Bien individuel' if row.get('SuiviIndividuel') else 'Lot homogène'),('Registre','Actif' if row.get('Actif') else 'Archivé')] if value],
+          'notes':[str(row[key]) for key in ('Caracteristiques','Observations') if row.get(key)]}
     frozen=identity(kind,object_id,entity)
     currency=record.get('DeviseCode') or db.one('SELECT "DeviseCode" FROM logistique."V_Commande" WHERE "ID_Commande"=%s',[parent['ID_Commande']])['DeviseCode']
     # Le parent a été autorisé avant la lecture du logo privé. Seule la
@@ -281,9 +299,10 @@ def render_pdf(data):
     if data.get('reference'):details.append(('Référence',data['reference']))
     third=data.get('thirdParty') or {}
     recipient=third.get('Nom') or third.get('NomTiers') or third.get('NomClient') or data.get('recipient')
-    if recipient:details.append(('Tiers',recipient))
+    if recipient:details.append(('Affectataire' if data.get('documentType')=='fiche' else 'Tiers',recipient))
     if data.get('destination'):details.append(('Destination',data['destination']))
     if data.get('dueDate'):details.append(('Échéance',date_label(data['dueDate'])))
+    details.extend((label,value) for label,value in data.get('details',[]) if value is not None and value!='')
     detail_rows=[[p(label,'head'),p(value,'cell')] for label,value in details]
     meta=Table(detail_rows,colWidths=[34*mm,content_width-34*mm],splitInRow=1)
     meta.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),pale),('VALIGN',(0,0),(-1,-1),'TOP'),

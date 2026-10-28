@@ -46,6 +46,9 @@ TITLES = {
     "parametres": "Paramètres de l’application", "audit-parametres": "Historique des paramètres",
 }
 LABELS = {
+    "MatriculeUser":"Matricule", "ID_ServiceFk":"Identifiant service", "ID_FonctionFk":"Identifiant fonction",
+    "Service":"Service", "Fonction":"Fonction", "DateEmbauche":"Date d’embauche", "DateFinEmploi":"Fin d’emploi",
+    "ObservationProfessionnelle":"Observations professionnelles", "EstAffectable":"Affectation possible",
     "IdUser": "Identifiant utilisateur", "NomUser": "Nom", "PrenomUser": "Prénom", "EmailUser": "Adresse e-mail",
     "PhoneUser": "Téléphone", "SexeUser": "Sexe", "ValideUser": "État", "Is_staff": "Gestionnaire", "Is_Admin": "Administrateur global",
     "DatecreationUser": "Créé le", "IdEntite": "Identifiant entreprise", "IdEntiteFk": "Identifiant entreprise", "NomEntite": "Entreprise",
@@ -74,8 +77,8 @@ LABELS = {
     "UpdatedByUserId": "Identifiant auteur", "UpdatedSettingAt": "Date du réglage",
 }
 DEFAULTS = {
-    "utilisateurs": ["NomUser", "PrenomUser", "EmailUser", "NomEntite", "Role", "ValideUser", "DatecreationUser"],
-    "profils": ["NomUser", "PrenomUser", "EmailUser", "PhoneUser", "NomEntite", "Role", "Is_staff", "Is_Admin", "ValideUser"],
+    "utilisateurs": ["NomUser", "MatriculeUser", "NomEntite", "Service", "Fonction", "Role", "ValideUser", "Is_Admin"],
+    "profils": ["NomUser", "MatriculeUser", "NomEntite", "Service", "Fonction", "ValideUser"],
     "entites": ["NomEntite", "EmailEntite", "PhoneEntite", "AdresseEntite", "ValideEntite"],
     "roles": ["NomGenerique", "AbrGenerique", "ObsGenerique", "ValideGenerique"],
     "audit": ["ChangedAt", "TableName", "Operation", "NomEntite"],
@@ -105,14 +108,26 @@ def source(actor, kind, action="read"):
             {"column_name": "IdRoleFk", "data_type": "integer", "is_nullable": "YES"},
             {"column_name": "Role", "data_type": "text", "is_nullable": "YES", "character_maximum_length": 255}]
         obj["portalProfile"] = True
+        # Un seul registre utilisateur réunit désormais compte et affectation.
+        # L'ancienne clé profils conserve exactement le même périmètre privé.
+        fields={'MatriculeUser','ID_ServiceFk','ID_FonctionFk','Service','Fonction','DateEmbauche','DateFinEmploi','ObservationProfessionnelle','EstAffectable'}
+        professional=view('systeme','V_User_Affectation')
+        obj['columns']=[*obj['columns'],*[c for c in professional['columns'] if c['column_name'] in fields]]
+        obj['portalProfessional']=True
     return obj, pk, default_sort, date_field
 
 
 def source_sql(obj):
     if obj.get("portalProfile"):
-        return '''(SELECT p.*,u."IdRoleFk",g."NomGenerique" AS "Role"
+        extra=''
+        join=''
+        if obj.get('portalProfessional'):
+            fields=('MatriculeUser','ID_ServiceFk','ID_FonctionFk','Service','Fonction','DateEmbauche','DateFinEmploi','ObservationProfessionnelle','EstAffectable')
+            extra=','+','.join('a.'+db.ident(name) for name in fields)
+            join=' LEFT JOIN systeme."V_User_Affectation" a ON a."IdUser"=u."IdUser"'
+        return '''(SELECT p.*,u."IdRoleFk",g."NomGenerique" AS "Role"'''+extra+'''
           FROM systeme."V_User_profil" p JOIN systeme."T_Utilisateurs" u ON u."IdUser"=p."IdUser"
-          LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk") v'''
+          LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk"'''+join+') v'
     return db.qualified(obj["schema"], obj["name"]) + " v"
 
 

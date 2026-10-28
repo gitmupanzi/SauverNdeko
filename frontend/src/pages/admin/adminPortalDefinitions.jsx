@@ -3,6 +3,7 @@ import UserAvatar from "../../components/UserAvatar";
 import { formatDate } from "../logistique/logistiqueShared";
 
 export const ADMIN_ROOT = "/api/systeme/administration";
+export const adminTabKey = key => key === "profils" ? "utilisateurs" : key;
 const text = (key, label, width = 180) => ({ key, label, width });
 const date = (key, label = "Date et heure") => ({ key, label, width: 180, render: row => formatDate(row[key], { withTime: true }) });
 const flag = (key, label = "État") => ({ key, label, width: 110, render: row => row[key] == null ? "—" : <span className={"erp-status is-" + (row[key] ? "success" : "neutral")}>{row[key] ? "Actif" : "Inactif"}</span> });
@@ -17,14 +18,14 @@ const identity = (key, label, icon = "document", width = 260) => ({ key, label, 
 /** Colonnes métier et clés stables ; les recherches et exports restent au serveur. */
 export const ADMIN_REGISTERS = {
   utilisateurs: {
-    title: "Utilisateurs", description: "Comptes, entreprises et accès.", icon: "user", pk: "IdUser", name: "NomUser", editor: "users", create: "Nouvel utilisateur", active: "ValideUser", dateKey: "DatecreationUser",
-    columns: [person, text("NomEntite", "Entreprise", 220), text("Role", "Rôle", 180), flag("ValideUser"), yes("Is_Admin", "Admin plateforme"), date("DatecreationUser", "Créé le"), text("PrenomUser", "Prénom"), text("EmailUser", "Adresse e-mail", 240), text("PhoneUser", "Téléphone"), text("SexeUser", "Sexe", 90), yes("Is_staff", "Équipe"), text("IdUser", "Identifiant", 110)],
-    visible: ["NomUser", "NomEntite", "Role", "ValideUser", "Is_Admin", "actions"], sort: ["NomUser", "asc"], filters: [filter("IdEntite", "Entreprise", "entities"), filter("IdRoleFk", "Rôle", "roles"), state("ValideUser"), { key: "Is_Admin", label: "Administration", options: [{ value: "true", label: "Administrateurs" }, { value: "false", label: "Autres comptes" }] }],
+    title: "Utilisateurs", description: "Comptes, informations professionnelles et accès.", icon: "user", pk: "IdUser", name: "NomUser", editor: "users", create: "Nouvel utilisateur", active: "ValideUser", dateKey: "DatecreationUser",
+    columns: [person, text("MatriculeUser","Matricule",150), text("NomEntite", "Entreprise", 220), text("Service","Service",190), text("Fonction","Fonction",190), text("Role", "Rôle", 180), flag("ValideUser"), yes("Is_Admin", "Admin plateforme"), {key:"DateEmbauche",label:"Date d’embauche",width:150,render:row=>formatDate(row.DateEmbauche,{withTime:false})}, {key:"DateFinEmploi",label:"Fin d’emploi",width:150,render:row=>formatDate(row.DateFinEmploi,{withTime:false})}, yes("EstAffectable","Affectation possible"), text("ObservationProfessionnelle","Observations professionnelles",280), date("DatecreationUser", "Créé le"), text("PrenomUser", "Prénom"), text("EmailUser", "Adresse e-mail", 240), text("PhoneUser", "Téléphone"), text("SexeUser", "Sexe", 90), yes("Is_staff", "Équipe"), text("IdUser", "Identifiant", 110)],
+    visible: ["NomUser", "MatriculeUser", "NomEntite", "Service", "Fonction", "Role", "ValideUser", "Is_Admin", "actions"], sort: ["NomUser", "asc"], filters: [filter("IdEntite", "Entreprise", "entities"), filter("ID_ServiceFk","Service","personnelServices"), filter("ID_FonctionFk","Fonction","personnelFonctions"), filter("IdRoleFk", "Rôle", "roles"), state("ValideUser"), { key: "Is_Admin", label: "Administration", options: [{ value: "true", label: "Administrateurs" }, { value: "false", label: "Autres comptes" }] }],
   },
   profils: {
-    title: "Profils utilisateurs", description: "Identités et rattachement à l’entreprise.", icon: "user", pk: "IdUser", name: "NomUser", editor: "profiles", active: "ValideUser", dateKey: "DatecreationUser",
-    columns: [person, text("PhoneUser", "Téléphone"), text("NomEntite", "Entreprise", 230), text("Role", "Rôle", 180), flag("ValideUser"), yes("Is_staff", "Équipe"), yes("Is_Admin", "Admin plateforme"), date("DatecreationUser", "Créé le"), text("EmailUser", "Adresse e-mail", 240), text("EmailEntite", "E-mail entreprise", 240), text("PhoneEntite", "Téléphone entreprise"), text("SexeUser", "Sexe", 90), text("IdUser", "Identifiant", 110)],
-    visible: ["NomUser", "PhoneUser", "NomEntite", "Role", "ValideUser", "actions"], sort: ["NomUser", "asc"], filters: [filter("IdEntite", "Entreprise", "entities"), filter("IdRoleFk", "Rôle", "roles"), state("ValideUser")],
+    title: "Profils utilisateurs", description: "Identités, services et informations professionnelles.", icon: "user", pk: "IdUser", name: "NomUser", editor: "profiles", active: "ValideUser", dateKey: "DatecreationUser",
+    columns: [person,text("MatriculeUser","Matricule",150),text("Service","Service",190),text("Fonction","Fonction",190),{key:"DateEmbauche",label:"Date d’embauche",width:150,render:row=>formatDate(row.DateEmbauche,{withTime:false})},{key:"DateFinEmploi",label:"Fin d’emploi",width:150,render:row=>formatDate(row.DateFinEmploi,{withTime:false})},yes("EstAffectable","Affectation possible"),text("ObservationProfessionnelle","Observations professionnelles",280), text("PhoneUser", "Téléphone"), text("NomEntite", "Entreprise", 230), text("Role", "Rôle", 180), flag("ValideUser"), yes("Is_staff", "Équipe"), yes("Is_Admin", "Admin plateforme"), date("DatecreationUser", "Créé le"), text("EmailUser", "Adresse e-mail", 240), text("EmailEntite", "E-mail entreprise", 240), text("PhoneEntite", "Téléphone entreprise"), text("SexeUser", "Sexe", 90), text("IdUser", "Identifiant", 110)],
+    visible: ["NomUser", "MatriculeUser", "NomEntite", "Service", "Fonction", "ValideUser", "actions"], sort: ["NomUser", "asc"], filters: [filter("IdEntite", "Entreprise", "entities"),filter("ID_ServiceFk","Service","personnelServices"),filter("ID_FonctionFk","Fonction","personnelFonctions"), filter("IdRoleFk", "Rôle", "roles"), state("ValideUser")],
   },
   entites: {
     title: "Entreprises", description: "Les organisations de la plateforme.", icon: "apps", pk: "IdEntite", name: "NomEntite", editor: "entities", create: "Nouvelle entreprise", active: "ValideEntite",
@@ -75,7 +76,7 @@ export const ADMIN_REGISTERS = {
 
 export const ADMIN_NAVIGATION = [
   { label: "Pilotage", items: [{ key: "tableau-de-bord", label: "Tableau de bord", icon: "dashboard" }] },
-  { label: "Accès", items: [{ key: "utilisateurs", label: "Utilisateurs", icon: "user" }, { key: "roles", label: "Rôles", icon: "shield", platform: true }, { key: "permissions", label: "Permissions", icon: "lock", platform: true }, { key: "profils", label: "Profils utilisateurs", icon: "user" }] },
+  { label: "Accès", items: [{ key: "utilisateurs", label: "Utilisateurs", icon: "user" }, { key: "roles", label: "Rôles", icon: "shield", platform: true }, { key: "permissions", label: "Permissions", icon: "lock", platform: true }] },
   { label: "Organisation", items: [{ key: "entites", label: "Entreprises", icon: "apps" }, { key: "localisations", label: "Localisations", icon: "globe" }, { key: "licences", label: "Licences", icon: "shield" }] },
   { label: "Paramétrage", items: [{ key: "correspondances", label: "Correspondances FK", icon: "movements", platform: true }, { key: "parametres", label: "Paramètres UI", icon: "settings", platform: true }, { key: "messagerie", label: "Messagerie", icon: "mail", platform: true }] },
   { label: "Traçabilité", items: [{ key: "audit", label: "Journaux d’audit", icon: "document", platform: true }, { key: "connexions", label: "Connexions", icon: "clock", platform: true }] },

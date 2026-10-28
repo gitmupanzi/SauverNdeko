@@ -1,0 +1,26 @@
+.immobilisations-screen { min-width:0; }
+.immobilisation-feedback { color:var(--erp-link); font-size:13px; margin:0 0 16px; }
+.immobilisation-filter-chips { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px; }
+.immobilisation-filter-chips button { display:inline-flex; align-items:center; gap:8px; padding:5px 9px; border:1px solid var(--erp-border); border-radius:6px; color:var(--erp-text); background:var(--erp-raised); font-size:12px; }
+.immobilisation-totals { border-top:1px solid var(--erp-border); margin-top:16px; padding-top:14px; color:var(--erp-muted); font-size:12px; }
+.immobilisation-totals>div { display:flex; gap:12px 24px; flex-wrap:wrap; margin-top:12px; }
+.immobilisation-totals strong { color:var(--erp-text); }
+.immobilisation-360-body { display:grid; gap:20px; align-content:start; padding:24px; }
+.immobilisation-identity { display:flex; align-items:center; flex-wrap:wrap; gap:14px; }
+.immobilisation-identity h3 { margin:3px 0 7px; font-size:21px; color:var(--erp-text); }
+.immobilisation-identity p { margin:0 0 7px; color:var(--erp-muted); font-size:12px; }
+.immobilisation-identity-actions { margin-left:auto; display:flex; flex-wrap:wrap; gap:8px; }
+.immobilisation-overview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:0; }
+.immobilisation-overview>div,.immobilisation-panel { min-width:0; border:1px solid var(--erp-border); border-radius:10px; padding:18px; background:var(--erp-surface); }
+.immobilisation-overview dt { color:var(--erp-muted); font-size:12px; margin-bottom:8px; }
+.immobilisation-overview dd { margin:0; color:var(--erp-text); font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.immobilisation-overview .is-wide { grid-column:1/-1; }
+.immobilisation-panel h3 { font-size:15px; margin:0 0 14px; }
+.immobilisation-history-changes { display:grid; gap:5px; list-style:none; margin:0; padding:0; font-size:12px; line-height:1.45; }
+.immobilisation-history-changes li { display:block; white-space:normal; }
+.immobilisation-history-changes strong { color:var(--erp-muted); font-weight:500; font-size:11px; }
+.immobilisation-history-changes li>span { color:var(--erp-text); white-space:normal; overflow-wrap:anywhere; }
+.immobilisation-history-arrow { color:var(--erp-muted); }
+.immobilisation-editor .record-field.is-wide { grid-column:1/-1; }
+.immobilisation-editor output { display:block; font-size:13px; padding:8px 0; color:var(--erp-text); }
+@media(max-width:640px) { .immobilisation-360-body { padding:16px; }.immobilisation-identity-actions { margin-left:0; width:100%; }.immobilisation-overview { grid-template-columns:1fr; } }

@@ -427,6 +427,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
         raise APIError("Objet JSON attendu.")
     obj = model(name)
     check_global_write(obj, actor)
+    if name == 'T_Immobilisation':
+        raise APIError('Utilisez le formulaire des immobilisations avec sa révision et son motif.', 'DEDICATED_IMMOBILISATION_REQUIRED', 405)
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
     if name in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:

@@ -1,6 +1,6 @@
 # Livraison et exploitation — Logistique
 
-État vérifié le 26 octobre 2026. Les commandes ci-dessous utilisent le Python du backend et les outils PostgreSQL 18. Les sauvegardes, paquets et restaurations sont privés ; `.runtime`, les médias et les fichiers `.env` restent exclus de Git.
+Livraison initiale du 26 octobre, complétée par les évolutions vérifiées le 28 octobre 2026. Les commandes ci-dessous utilisent le Python du backend et les outils PostgreSQL 18. Les sauvegardes, paquets et restaurations sont privés ; `.runtime`, les médias et les fichiers `.env` restent exclus de Git. Les preuves techniques ne valent pas acceptation client.
 
 ## COUSP et les licences
 
@@ -67,13 +67,15 @@ Le paquet vierge et la sauvegarde complète ont des usages différents : le prem
 
 ## Installation vierge
 
-Le dossier SQL historique décrit le socle du 24 octobre ; ses extraits ne doivent pas être rejoués sur une version courante. Pour fournir une installation neuve à la version effectivement installée, préparer un paquet depuis l’instance source validée :
+Les sources canoniques de SQL décrivent le socle installé ; les migrations historiques ne doivent pas être rejouées sur ce socle. Pour fournir une installation neuve à la version effectivement vérifiée, préparer un paquet depuis l’instance source validée :
 
 ```powershell
 .\backend\.venv\Scripts\python.exe backend/manage.py preparer_installation --destination .runtime/releases/socle-AAAAMMJJ --pg-bin 'C:\Program Files\PostgreSQL\18\bin'
 ```
 
-Le paquet contient uniquement la structure des huit schémas métier, les deux tables du dictionnaire générique, le catalogue des applications et un manifeste d’empreintes. Il ne contient ni utilisateurs, ni entreprises, ni coordonnées clients, ni articles, ni documents, ni événements. La liste `migrationsInCode` inventorie les fichiers du code ; elle ne prétend pas attester à elle seule leur installation dans la base source. Préparer le paquet après la validation du déploiement SQL et fournir avec lui le rapport de version installé.
+Le paquet courant de format 2 contient quatre fichiers contrôlés par SHA : `structure.sql`, `references.sql`, `correspondances.sql` et `LIRE-MOI.md`. Le manifeste fixe l’ordre des trois SQL. Les références se limitent à cinq tables fermées : catégories génériques, valeurs génériques, catalogue des tableaux, catalogue des applications et précision des unités. Les correspondances proviennent du script de valeurs par défaut versionné ; elles ne sont pas copiées depuis les réglages privés du serveur source.
+
+Aucun utilisateur, entreprise, contact client, article, bien, document, préférence personnelle ou historique métier n’est transféré. L’installation des valeurs par défaut produit seulement ses propres audits de configuration sur la destination. La liste `migrationsInCode` inventorie les fichiers du code ; elle n’atteste pas à elle seule leur application dans la source. Préparer le paquet après validation du déploiement SQL et fournir le rapport de version installé.
 
 Sur une **base PostgreSQL entièrement vide**, configurer le fichier privé du backend pour viser cette base puis, dans la fenêtre d’installation, définir `SAUVERNDEKO_DB_READ_ONLY=0` :
 
@@ -82,7 +84,7 @@ Sur une **base PostgreSQL entièrement vide**, configurer le fichier privé du b
 .\backend\.venv\Scripts\python.exe backend/manage.py installer_instance --source CHEMIN_DU_PAQUET --pg-bin 'C:\Program Files\PostgreSQL\18\bin' --apply
 ```
 
-Le premier appel présente le plan ; le second vérifie les empreintes, installe `pg_trgm`, la structure métier et le dictionnaire, puis exécute les migrations Django natives exclusivement dans `public`. Une base non vide est refusée. Un échec conserve la base pour examen ; aucune purge ou réapplication partielle automatique n’est effectuée.
+Le premier appel présente le plan ; le second vérifie les empreintes et l’ordre, installe `pg_trgm`, la structure métier, les références puis les correspondances fermées. Il exécute ensuite les migrations Django natives exclusivement dans `public`. Le format 1 historique à deux SQL reste compatible. Une base non vide est refusée. Un échec conserve la base pour examen ; aucune purge ou réapplication partielle automatique n’est effectuée.
 
 Créer ensuite le premier administrateur, dont le mot de passe est saisi deux fois dans une invite masquée :
 
@@ -93,6 +95,8 @@ Créer ensuite le premier administrateur, dont le mot de passe est saisi deux fo
 Cette commande refuse une installation qui possède déjà des utilisateurs. Elle demande au moins 14 caractères et n’affiche jamais le secret. Pour un processus automatisé isolé, `SAUVERNDEKO_BOOTSTRAP_PASSWORD` remplace l’invite ; le retirer immédiatement du processus après usage. Ne pas transmettre le mot de passe dans les arguments de commande ni le documenter.
 
 Première recette complète du socle 01 à 08 obtenue sur `sauverndeko_test_install_final_20261026` depuis `.runtime/releases/socle-logistique-20261026-final`, exporté après installation des migrations du 26 octobre **01 à 08** : installation et migrations natives réussies ; cinq tables racines utilisateurs/entreprises/articles/bons/mouvements vides, neuf modules présents ; premier compte fictif créé uniquement dans cette base privée. **299 contrôles** ont ensuite réussi sur cette installation neuve : CUMP 45, péremption 49, registre des lots 65, annulation d’inventaire 31, corrections non commerciales 40, numérotation 22, récupération d’accès 27 et rôle runtime 20. Régénérer le paquet après une nouvelle migration métier.
+
+Recette d’installation du socle Patrimoine 08 du 28 octobre : le paquet de format 2 a été produit puis installé avec les vraies commandes, plan et application, sur une destination privée vide. Les 18 migrations Django natives passent ; 21 catalogues et les trois correspondances Patrimoine fonctionnent, sans donnée cliente ni préférence personnelle. Preuve locale : `.runtime/immobilisations08-package-753ea16f/verification.json`. Neuf contrôles distincts vérifient les six paquets incorrects refusés sans écriture, la compatibilité format 1 et la protection d’une base non vide : `.runtime/installateur-formats08-c5829352/verification.json`.
 
 ## Mise à jour d’une instance existante
 
@@ -185,4 +189,16 @@ Pour la livraison, contrôler les quatre combinaisons d’options, le nom long, 
 
 La recette finale du 28 octobre a passé **57 contrôles SQL**, **13 tests API de profil**, **312 contrôles API/PDF** pour les sept documents et les quatre combinaisons, puis **189 contrôles de mise en page**. **48 pages rendues** ont été inspectées, avec contenus longs, logo transparent, absence de logo et documents multipages. Les polices Vera et Vera Bold de ReportLab sont embarquées dans les PDF pour conserver le rendu sur les différents systèmes.
 
-La migration07 est appliquée dans SauverNdeko : les anciennes données des entreprises et les 66 autres tables sont conservées, sans modifier les écritures financières ou les instantanés. Les huit sources canoniques, y compris Système, ont été exportées sans données puis restaurées sur deux bases privées vides. Leurs définitions et commentaires sont identiques au catalogue installé : 67 tables pour la structure complète, 57 pour le métier, 80 vues et 126 triggers dans les deux cas. Voir [le dossier technique de l’identité documentaire](../SQL/documentation/Identite_Documents_Entreprise_20261028.md).
+La migration 07 est appliquée dans SauverNdeko : les anciennes données des entreprises et les 66 autres tables sont conservées, sans modifier les écritures financières ou les instantanés. Les huit sources canoniques, y compris Système, ont été exportées sans données puis restaurées sur deux bases privées vides. Leurs définitions et commentaires sont identiques au catalogue installé : 67 tables pour la structure complète, 57 pour le métier, 80 vues et 126 triggers dans les deux cas. Voir [le dossier technique de l’identité documentaire](../SQL/documentation/Identite_Documents_Entreprise_20261028.md).
+
+## Patrimoine et utilisateurs — 28 octobre 2026
+
+La migration 08 est installée dans SauverNdeko après sauvegarde vérifiée : les 67 tables antérieures ont été comparées, les anciennes colonnes utilisateur sont conservées et les six nouvelles données professionnelles restent vides. Aucun bien fictif, mouvement, coût, facture ou règlement de recette n’a été ajouté dans l’instance source. Les ajouts de dictionnaire et de catalogues sont contrôlés séparément. Preuve locale : `.runtime/immobilisations08-applique.json`.
+
+Le registre **Patrimoine → Immobilisations** conserve les biens, leur quantité entière, acquisition et affectation par entreprise. Le suivi individuel ou un numéro de série impose une seule pièce ; un groupe homogène est explicite. Le prix peut rester inconnu. Le code IMMO est automatique et immuable ; archive et réactivation conservent l’historique. Aucun amortissement ou transfert du stock commercial n’est implicite. Dans l’administration, les informations professionnelles sont réunies avec **Utilisateurs** ; la source Profils reste compatible sans second parcours. Les dates et la note professionnelles ne deviennent pas publiques.
+
+La recette privée passe **159 contrôles SQL** et **15 tests API** ; **234 routes GET** passent après redémarrage. Les huit sources canoniques ont été exportées sans données puis restaurées sur deux bases vides : **68 tables, 82 vues, 130 triggers et 154 routines** pour le global ; **58 tables, 82 vues, 130 triggers et 123 routines** pour le métier. Définitions et commentaires sont identiques au catalogue installé. La preuve est `.runtime/immobilisations08-canonical-20261028-60c5c6949d/verification.json`.
+
+Les API, rendus techniques et build ont été contrôlés ; les PDF dédiés ont été vérifiés et **42 pages rendues inspectées**. L’accès du navigateur intégré à localhost:5174 reste bloqué par une permission : la dernière recette interactive n’a pas été réalisée. Ces preuves ne constituent pas une acceptation des écrans par le client. Faire encore vérifier le parcours réel, le clavier, les petits écrans et les données de reprise par les utilisateurs concernés.
+
+Voir [le guide Patrimoine](prise-en-main-patrimoine.md) et [le contrat SQL](../SQL/documentation/Immobilisations_Affectations_20261028.md). L’installation vierge complète de format 2, ses correspondances fermées et les migrations publiques sont vérifiées dans la section Installation ci-dessus. Maintenance, cessions et amortissements restent des extensions distinctes.

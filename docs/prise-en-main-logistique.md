@@ -23,8 +23,11 @@ Dans **Articles → ⋯ → Valorisation CUMP**, confirmez les coûts d’ouvert
 | Traiter un avoir | Facture/avoir → Imputer ou Enregistrer le remboursement | L’imputation diminue une dette éligible ; le remboursement enregistré correspond à une opération réellement effectuée. |
 | Compter le stock | Inventaires → Nouvel inventaire → Comptage | Sélectionnez les articles, saisissez les quantités comptées, justifiez les écarts et ventilez les lots concernés. |
 | Corriger un inventaire validé | Inventaire → ⋯ → Annuler la validation | Motif obligatoire et mouvements compensateurs ; le comptage et les écritures d’origine restent consultables. |
+| Suivre les équipements de l’entreprise | Patrimoine → Immobilisations → Nouvelle immobilisation | Bien individuel ou groupe homogène, responsable et lieu de l’entreprise, valeur d’acquisition connue ou inconnue. Aucun mouvement de stock. |
 
 Les bons d’écart d’inventaire sont internes : ils se corrigent dans Inventaires et ne servent pas à facturer un client ou à effectuer une restitution commerciale.
+
+Le [guide Patrimoine](prise-en-main-patrimoine.md) décrit les équipements, leurs affectations, les archives et les informations professionnelles de l’onglet Utilisateurs de l’administration.
 
 **BE** constate une entrée effective et **BS** une sortie effective. **CMD** prépare une commande : les quantités peuvent dépasser le stock disponible, et aucun lot n’est affecté. La réception ou la sortie réelle s’enregistre ensuite dans un BE ou un BS séparé. Le CMD garde son numéro ; le rapprochement automatique des réceptions partielles reste une évolution distincte. Voir [les trois types de bons](bons-entree-sortie-commande.md).
 

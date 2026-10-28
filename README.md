@@ -1,10 +1,10 @@
 # SauverNdeko
 
-## Évolution ERP — socle du 24 octobre 2026
+## Évolution ERP — état du 28 octobre 2026
 
 La cible produit est désormais un ERP modulaire commercialisable. La logistique en constitue un domaine, aux côtés du catalogue santé/services, des discussions et de l’administration. Multi-organisation et multi-pays sont des objectifs à valider dans les droits, les données et la recette.
 
-Le code comprend déjà /logistique et ses écrans articles, commandes, lignes, mouvements, règlements, audit, alertes, consommation, couverture et dashboard. Cette présence ne certifie pas encore une chaîne achats/ventes complète ni une version prête à vendre.
+Le module Logistique comprend Articles, Lots de stock, Bons de stock, Lignes, Mouvements, Inventaires, Factures, Règlements et Patrimoine. Les immobilisations conservent les biens et leurs affectations par entreprise sans mouvement de stock ni amortissement implicite. Les preuves techniques et les validations client restantes sont distinguées dans le [suivi de livraison](docs/reste-a-faire-logistique.md).
 
 Le backend actif est désormais Django + Django REST Framework, connecté au PostgreSQL existant. Les schémas métier sont conservés. Sur autorisation ultérieure du propriétaire, les dix tables natives Django sont installées dans public. L’ancien backend Express/Prisma, ses dépendances et ses lanceurs npm ont été supprimés à la demande du propriétaire ; Node.js reste nécessaire au frontend Vite. Voir le [guide Django](backend/README.md), le [bilan technique actuel](SQL/documentation/Audit_Metier_20261024.md) et la [décision d’accès PostgreSQL](backend/skills/develop-sauverndeko-backend/references/decision-acces-postgresql.md).
 
@@ -13,10 +13,12 @@ Documentation de travail :
 - [Cartographie et écarts constatés](skills/sauverndeko-erp/references/cartographie.md).
 - [Inventaire des modèles, routes et objets SQL](skills/sauverndeko-erp/references/inventaire-technique.md).
 - [Trajectoire ERP et critères des prochains lots](skills/sauverndeko-erp/references/trajectoire-erp.md).
+- [Guide utilisateur Logistique](docs/prise-en-main-logistique.md) et [guide Patrimoine et affectations](docs/prise-en-main-patrimoine.md).
+- [Livraison et installation](docs/livraison-logistique.md), [identité documentaire et PDF](docs/identite-entreprise-pdf.md).
 - [Principes repris d’imf_BB](skills/sauverndeko-erp/references/transposition-imf-bb.md).
 - [Skill transverse ERP](skills/sauverndeko-erp/SKILL.md), [backend](backend/skills/develop-sauverndeko-backend/SKILL.md), [frontend](frontend/skills/develop-sauverndeko-frontend/SKILL.md).
 
-Les priorités avant livraison client sont la protection des routes modulaires, l’isolation par organisation, les agrégats exhaustifs, les commentaires PostgreSQL et les consultations 360 avec indicateurs cliquables. Elles sont documentées et restent à implémenter ou vérifier.
+Les droits par module, l’isolation par entreprise, les commentaires PostgreSQL et les consultations 360 font partie du socle installé. L’acceptation des parcours par le client, les données réelles de reprise et la mise en service du serveur restent des validations distinctes des recettes techniques.
 
 
 SauverNdeko est une plateforme web modulaire orientee sante, services, orientation et administration de donnees.  
@@ -47,7 +49,7 @@ SauverNdeko est donc concu comme une application :
 Fournir une base web robuste pour :
 
 - publier des informations et services publics
-- gerer des comptes et profils utilisateurs
+- gérer les comptes et leurs informations professionnelles dans une même interface Utilisateurs
 - ouvrir des discussions et interactions metier
 - administrer des donnees de reference et de geolocalisation
 - parametrer des comportements differents selon le contexte connecte
@@ -80,6 +82,7 @@ Fournir une base web robuste pour :
 
 ### Administration
 
+- interface Utilisateurs commune pour le compte, les droits et les informations professionnelles ; l’ancienne source Profils reste compatible sans second onglet
 - lecture de vues PostgreSQL
 - CRUD sur certains objets metier
 - tri, filtres, export, colonnes visibles et gelees
@@ -132,7 +135,7 @@ Python 3.12, Django 5.2 LTS, Django REST Framework, psycopg, JWT et bcrypt. Poin
 
 Le projet repose sur PostgreSQL avec Django/psycopg.
 
-Les 31 tables métier installées sont décrites par des modèles Django unmanaged dans backend/apps/core/models.py. Le registre backend/apps/core/registry.json décrit les tables et les 48 vues autorisées. Les modèles Django et ce registre constituent la référence applicative ; l’ancien schéma Prisma et son client généré ont été supprimés.
+Les tables métier sont décrites par des modèles Django unmanaged dans backend/apps/core/models.py. Le registre backend/apps/core/registry.json décrit les tables et vues autorisées. Les sources SQL canoniques conservent les définitions, contraintes et commentaires du socle installé ; les modèles et ce registre décrivent son accès applicatif. L’ancien schéma Prisma et son client généré ont été supprimés.
 
 Schemas PostgreSQL declares :
 

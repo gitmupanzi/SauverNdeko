@@ -113,6 +113,7 @@ const LOGISTIQUE_VIEWS = [
     group: "pilotage",
     accessMode: "Pilotage",
   },
+  {key:"immobilisations",schema:SCHEMA_NAME,name:"V_Immobilisation",title:"Immobilisations",description:"Biens, affectations et acquisitions de l’entreprise.",group:"patrimoine",accessMode:"CRUD disponible"},
   {
     key: "articles",
     schema: SCHEMA_NAME,
@@ -217,6 +218,7 @@ const LOGISTIQUE_VIEWS = [
 const LOGISTIQUE_TAB_GROUPS = [
   { key: "pilotage", title: "Volets metier", subtitle: "Operations et ecritures", accessMode: "Vue avec actions" },
   { key: "analyse", title: "Analyse et controle", subtitle: "Lecture et supervision", accessMode: "Lecture seule" },
+  {key:"patrimoine",title:"Patrimoine",subtitle:"Biens et affectations",accessMode:"Vue avec actions"},
 ];
 
 const LOGISTIQUE_TABLE_FEATURES = {

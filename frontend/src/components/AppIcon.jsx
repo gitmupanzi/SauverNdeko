@@ -1,5 +1,6 @@
 import "./AppIcon.css";
 const paths = {
+  building:"M4 21V3h12v18M16 9h4v12M2 21h20M8 7h4M8 11h4M8 15h4M8 21v-3h4v3",
   mail:"M3 5h18v14H3V5Zm0 0 9 8 9-8",
   lock:"M6 10V7a6 6 0 0 1 12 0v3M4 10h16v11H4V10Zm8 4v3",
   shield:"M12 3 3 7v5c0 5 4 8 9 10 5-2 9-5 9-10V7l-9-4Zm-4 9 3 3 5-5",
