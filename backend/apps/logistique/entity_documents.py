@@ -87,7 +87,7 @@ def profile(actor, entity=None, *, administration=False):
     row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY
     row['logoUrl'] = f'/api/systeme/entites/{entity}/logo' if row.get('HasLogo') else None
     if administration:
-        row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'))}
+        row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'), actor=actor)}
     if not administration:
         for key in ADMIN_FIELDS:
             row.pop(key, None)
@@ -221,21 +221,17 @@ def request_data(request):
     return request.data, None
 
 
-def entity_types(entity, current=None):
+def entity_types(entity, current=None, actor=None):
     """La présentation et la validation utilisent les mêmes correspondances FK."""
-    from apps.core.ui_settings import SOURCES, rows_for
-    configured = [r for r in rows_for('entity', str(entity)) if r['SourceKey'] == 'entityTypes' and r['MappingType'] == 'generic_category'] if entity else []
-    configured = configured or [r for r in rows_for('global', None) if r['SourceKey'] == 'entityTypes' and r['MappingType'] == 'generic_category']
-    categories = [positive(r['MappingValue']) for r in configured] if configured else SOURCES['generic']['entityTypes']['defaultCategoryIds']
-    result = db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr
-        FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE g."ID_CategorieGeneriqueFk"=ANY(%s) AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE
-        ORDER BY lower(g."NomGenerique"),g."ID_Generique"''', [categories])
-    if current is not None and not any(row['id'] == current for row in result):
-        retained = db.one('SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [current])
-        if retained:
-            result.append({**retained, 'disabled': True})
-    return result
+    from apps.core.field_references import reference_options
+    # target() a déjà autorisé cette entreprise explicite. Une création n’a pas
+    # encore d’entreprise propriétaire et reprend donc le défaut global.
+    context=copy(actor) if actor is not None else None
+    if context is not None:
+        context._context_entity=entity
+    elif entity is not None:
+        raise APIError('Le contexte de l’entreprise doit être vérifié.', 'ENTITY_CONTEXT_REQUIRED', 403)
+    return reference_options(context,'systeme','T_Entite','IdTypeEntiteFk',current=current)
 
 
 def admin_values(body, actor, old, entity):
@@ -254,7 +250,7 @@ def admin_values(body, actor, old, entity):
             raise APIError('Le type et l’état de l’entreprise sont gérés par la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
     type_id = result.get('IdTypeEntiteFk')
     if type_id is not None and type_id != (old or {}).get('IdTypeEntiteFk'):
-        if not any(row['id'] == type_id for row in entity_types(entity)):
+        if not any(row['id'] == type_id for row in entity_types(entity,actor=actor)):
             raise APIError({'IdTypeEntiteFk': 'Choisissez un type d’entreprise actif dans le référentiel.'}, 'ENTITY_PROFILE_VALIDATION', 400)
     return result
 
@@ -363,7 +359,7 @@ class EntityIdentityDefaultsView(APIView):
         data.update(IdentifiantsLegauxEntite=[], AfficherEnteteDocument=True,
             AfficherPiedDocument=True, ValideEntite=True, HasLogo=False,
             canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
-            canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None)})
+            canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
         return ok(data)
 
 

@@ -1,3 +1,4 @@
+import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {moduleRights} from "../../services/moduleAccess";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
@@ -41,7 +42,8 @@ export function formatBonQuantities(row){
   return groups.length?groups.map(part=>formatNumber(part.quantite)).join(" · "):formatNumber(row.QteTotale);
 }
 
-export default function Commandes({references,refreshKey,onDataChanged,onOpenDetails,sharedTable,onToggleFkMappings}) {
+export default function Commandes({references:receivedReferences,refreshKey,onDataChanged,onOpenDetails,sharedTable,onToggleFkMappings}) {
+ const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.commandes");
   const {user}=useAuth(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
   const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;

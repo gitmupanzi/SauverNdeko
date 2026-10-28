@@ -1,3 +1,5 @@
+import {fieldCurrencyReferences} from "../../utils/money";
+import {REFERENCE_RETAINED_HINT,referenceLabel,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import DestinationSelect from "../../components/DestinationSelect";
 import TiersSelect from "../../components/TiersSelect";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
@@ -31,7 +33,8 @@ const articleReferences=article=>[text(article.CodeArticleInterne)?"Code : "+tex
 const articleContext=article=>[text(article.CategorieArticle)||text(article.AbrCategorieArticle),text(article.TypeArticle)||text(article.AbrTypeArticle)].filter(Boolean).join(" · ");
 const stockUnit=article=>text(article.AbrUnite)||text(article.Unite);
 
-export default function BonComposer({commandeId=null,references,onClose,onSaved,invoiceAvailable=false,onInvoice}) {
+export default function BonComposer({commandeId=null,references:receivedReferences,onClose,onSaved,invoiceAvailable=false,onInvoice}) {
+ const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const creating=commandeId==null;
   const {user}=useAuth(),prefix=useId(),mounted=useRef(true),saving=useRef(false),request=useRef(null),searchRef=useRef(null);
   const contextKey=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??""),initialContext=useRef(contextKey);
@@ -47,7 +50,7 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
   const direction=compositionDirection(compositionType(references,values,sourceBon)),currency=references?.currencies?.find(item=>String(item.id)===values.ID_DeviseFk)||(sourceBon&&String(sourceBon.ID_DeviseFk)===values.ID_DeviseFk?{code:sourceBon.DeviseCode}:null),currencyCode=currency?.code;
   const order=direction==="commande",typeFixedByOrder=!creating&&(isStockOrder(sourceBon)||order);
   const dirty=JSON.stringify(values)!==JSON.stringify(firstValues.current)||compositionBasketSnapshot(basket)!==initialBasket.current,total=compositionTotal(basket);
-  const typeOptions=(references?.commandeTypes||[]).filter(type=>compositionDirection(type)&&!(!creating&&sourceBon&&!isStockOrder(sourceBon)&&compositionDirection(type)==="commande")).map(type=>({value:String(type.id),label:type.label||type.abbr}));
+  const typeOptions=(references?.commandeTypes||[]).filter(type=>compositionDirection(type)&&!(!creating&&sourceBon&&!isStockOrder(sourceBon)&&compositionDirection(type)==="commande")).map(type=>({value:String(type.id),label:referenceLabel(type),disabled:type.disabled===true||type.incompatible===true,incompatible:type.incompatible===true}));
   const chosenIds=new Set(basket.map(line=>String(line.article.ID_Article))),newSelected=selected.filter(article=>!chosenIds.has(String(article.ID_Article)));
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;lotsRequests.current.queue=[];lotsRequests.current.clear();};},[]);
   useEffect(()=>{if(contextKey!==initialContext.current)onClose();},[contextKey,onClose]);
@@ -82,8 +85,8 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
   function input(name,label,{hint,wide=false,type="text",...attributes}={}) {const id=prefix+name,invalid=headerErrors[name];return <Field id={id} label={label} hint={hint} error={invalid} wide={wide}><input id={id} name={name} type={type} value={values[name]??""} onChange={event=>change(name,event.target.value)} disabled={disabled} aria-invalid={Boolean(invalid)} aria-describedby={invalid?id+"-error":hint?id+"-hint":undefined} {...attributes}/></Field>;}
   function select(name,label,{nullable=true,boolean=false}={}) {
     const id=prefix+name,invalid=headerErrors[name],options=boolean?[{value:"true",label:"Oui"},{value:"false",label:"Non"}]:name==="ID_TypeCmdFk"?[...typeOptions]:name==="ID_DeviseFk"?currencyOptions(references):buildReferenceOptions(references?.[headerReferences[name]],label);
-    if(values[name]&&!options.some(option=>String(option.value)===String(values[name])))options.unshift({value:String(values[name]),label:sourceBon?.[{ID_TypeCmdFk:"TypeCmd",ID_DeviseFk:"DeviseCode",ID_StatutCmdFk:"StatutCmd",ID_TiersFk:"NomClientSaisi",ID_ConditionPaiementFk:"ConditionPaiement",ID_ModePaiementFk:"ModePaiement"}[name]]||"Valeur actuelle"});
-    const fixed=name==="ID_TypeCmdFk"&&typeFixedByOrder||!creating&&(name==="ID_TypeCmdFk"||name==="ID_DeviseFk")&&editMeta?.[name==="ID_TypeCmdFk"?"canChangeType":"canChangeCurrency"]!==true,locked=fixed||basket.length>0&&(name==="ID_TypeCmdFk"||name==="ID_DeviseFk"),hint=fixed?"Cette valeur est conservée avec l’historique du bon.":locked?"Videz le panier pour changer le type ou la devise.":"";
+    if(values[name]&&!options.some(option=>String(option.value)===String(values[name])))options.unshift({value:String(values[name]),label:sourceBon?.[{ID_TypeCmdFk:"TypeCmd",ID_DeviseFk:"DeviseCode",ID_StatutCmdFk:"StatutCmd",ID_TiersFk:"NomClientSaisi",ID_ConditionPaiementFk:"ConditionPaiement",ID_ModePaiementFk:"ModePaiement"}[name]]||"Valeur actuelle",disabled:true,incompatible:true});
+    const fixed=name==="ID_TypeCmdFk"&&typeFixedByOrder||!creating&&(name==="ID_TypeCmdFk"||name==="ID_DeviseFk")&&editMeta?.[name==="ID_TypeCmdFk"?"canChangeType":"canChangeCurrency"]!==true,locked=fixed||basket.length>0&&(name==="ID_TypeCmdFk"||name==="ID_DeviseFk"),hint=isRetainedReference(options,values[name])?REFERENCE_RETAINED_HINT:fixed?"Cette valeur est conservée avec l’historique du bon.":locked?"Videz le panier pour changer le type ou la devise.":"";
     return <Field id={id} label={label} error={invalid} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={[{value:"",label:nullable?"Non renseigné":"Choisir"},...options]} onChange={value=>change(name,value)} disabled={disabled||locked} invalid={Boolean(invalid)} describedBy={invalid?id+"-error":hint?id+"-hint":undefined}/></Field>;
   }
   function readonly(name,label,value){return <Field id={prefix+name} label={label}><input id={prefix+name} value={value==null||value===""?"Non renseigné":String(value)} readOnly/></Field>;}

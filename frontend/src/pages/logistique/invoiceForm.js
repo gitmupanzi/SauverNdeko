@@ -17,9 +17,11 @@ export function invoiceDeadline(value,condition) {
 export function invoiceErrors(values,references,previous=null) {
   const issues={};
   if(!validCommandeDate(values.DateFacture))issues.DateFacture="Indiquez la date et l’heure de la facture.";
-  if(!values.ID_ModePaiementFk||!(references?.modesPaiement||[]).some(row=>String(row.id)===values.ID_ModePaiementFk))issues.ID_ModePaiementFk="Choisissez un mode de paiement disponible.";
+  const modePreserved=previous&&values.ID_ModePaiementFk===previous.ID_ModePaiementFk;
+  if(!values.ID_ModePaiementFk||!modePreserved&&!(references?.modesPaiement||[]).some(row=>String(row.id)===values.ID_ModePaiementFk&&!row.disabled&&!row.incompatible))issues.ID_ModePaiementFk="Choisissez un mode de paiement disponible.";
   const condition=(references?.conditionsPaiement||[]).find(row=>String(row.id)===values.ID_ConditionPaiementFk);
-  if(!condition)issues.ID_ConditionPaiementFk="Choisissez une condition de paiement disponible.";
+  const conditionPreserved=previous&&values.ID_ConditionPaiementFk===previous.ID_ConditionPaiementFk;
+  if(!values.ID_ConditionPaiementFk||!conditionPreserved&&(!condition||condition.disabled||condition.incompatible))issues.ID_ConditionPaiementFk="Choisissez une condition de paiement disponible.";
   if(!validCommandeDate(values.DateEcheancePaiement))issues.DateEcheancePaiement="Indiquez la date et l’heure d’échéance.";
   else if(!issues.DateFacture&&commandeDateInput(values.DateEcheancePaiement)<commandeDateInput(values.DateFacture))issues.DateEcheancePaiement="L’échéance ne peut pas précéder la facture.";
   const automatic=invoiceDeadline(values.DateFacture,condition);

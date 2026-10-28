@@ -1,3 +1,4 @@
+import {REFERENCE_RETAINED_HINT,referenceOptions,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import { useEffect, useId, useRef, useState } from "react";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
 import ConsultationTabs from "../../components/ConsultationTabs";
@@ -134,7 +135,7 @@ function groupsFor(type, fields) {
 }
 
 /** Ne transmet que les valeurs éditables modifiées ; les valeurs absentes et masquées restent intactes. */
-export function buildAdminEditorPayload(type, fields, values, initial, { creating = false, roleCategoryId = 39 } = {}) {
+export function buildAdminEditorPayload(type, fields, values, initial, { creating = false, roleCategoryId = null } = {}) {
   const result = {};
   for (const field of fields) {
     const name = field.name, value = values[name];
@@ -146,7 +147,7 @@ export function buildAdminEditorPayload(type, fields, values, initial, { creatin
     else if (field.type === "number" || (field.type === "select" && (name.startsWith("Id") || name.startsWith("ID_") || name.endsWith("IdFk")))) result[name] = value === "" ? null : Number(value);
     else result[name] = String(value ?? "").trim() || null;
   }
-  if (creating && type === "roles") result.ID_CategorieGeneriqueFk = Number(roleCategoryId);
+  if (creating && type === "roles" && roleCategoryId) result.ID_CategorieGeneriqueFk = Number(roleCategoryId);
   if (creating && type === "settings") result.IsSystem = false;
   if (creating && type === "licences" && !result.DateDebut) delete result.DateDebut;
   return result;
@@ -212,11 +213,11 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     if (field.name === "SettingType") return ["text", "number", "boolean", "select", "json", "color", "file", "email", "phone", "url", "textarea"].map(value => ({ value, label: ({ text: "Texte", number: "Nombre", boolean: "Oui / Non", select: "Liste", json: "JSON", color: "Couleur", file: "Fichier", email: "Adresse e-mail", phone: "Téléphone", url: "Lien", textarea: "Texte long" })[value] }));
     if (field.options) return field.options.map(option => ({ ...option, label: ({ Feminin: "Féminin", Masculin: "Masculin" })[option.label] || option.label }));
     const source = field.optionsSource;
-    if(["personnelServices","personnelFonctions"].includes(source))return (support[source]||[]).map(item=>({value:String(item.id),label:item.label||item.abbr||"Valeur sans libellé",disabled:item.disabled===true&&String(item.id)!==initial?.[field.name]}));
-    if (source === "entities") return (support.entities || []).map(entity => ({ value: String(entity.IdEntite), label: entity.NomEntite || "Entreprise sans nom", disabled: entity.ValideEntite === false && String(entity.IdEntite) !== initial?.[field.name] }));
-    if (source === "categories") return (support.categories || []).map(category => ({ value: String(category.ID_CategorieGenerique), label: category.NomCategorieGenerique || "Catégorie sans nom", disabled: category.ValideCategorieGenerique === false && String(category.ID_CategorieGenerique) !== initial?.[field.name] }));
-    const category = { roles: 39, entityTypes: 48, licenseStatuses: 55 }[source];
-    if (category) return (support.generics || []).filter(item => String(item.ID_CategorieGeneriqueFk) === String(category)).map(item => ({ value: String(item.ID_Generique), label: item.NomGenerique || item.AbrGenerique || "Valeur sans libellé", disabled: item.ValideGenerique === false && String(item.ID_Generique) !== initial?.[field.name] }));
+    if(["personnelServices","personnelFonctions"].includes(source))return (support[source]||[]).map(item=>({value:String(item.id),label:item.label||item.abbr||"Valeur sans libellé",disabled:item.disabled===true}));
+    if (source === "entities") return (support.entities || []).map(entity => ({ value: String(entity.IdEntite), label: entity.NomEntite || "Entreprise sans nom", disabled: entity.ValideEntite === false }));
+    if (source === "categories") return (support.categories || []).map(category => ({ value: String(category.ID_CategorieGenerique), label: category.NomCategorieGenerique || "Catégorie sans nom", disabled: category.ValideCategorieGenerique === false }));
+    if (["roles","entityTypes","licenseStatuses"].includes(source)) return referenceOptions(support.referenceOptions?.[source]||[]);
+
     if (["niveaux3", "niveaux4", "niveaux5"].includes(source)) {
       const level = source.slice(-1);
       return (support[source] || []).filter(item => source === "niveaux4" && values.IdNiveau_3_Fk ? String(item.ID_Niveau_3_Fk) === values.IdNiveau_3_Fk : source === "niveaux5" && values.IdNiveau_4_Fk ? String(item.ID_Niveau_4_Fk) === values.IdNiveau_4_Fk : true).map(item => ({ value: String(item["ID_Niveau_" + level]), label: item["NomNiveau_" + level] || "Localisation sans nom" }));
@@ -228,8 +229,8 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     if (!field.required) options.unshift({ value: "", label: "Non renseigné" });
     const value = values[field.name];
     if (value && !options.some(option => String(option.value) === String(value))) {
-      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : field.name === "IdRoleFk" ? record?.NomRole || row?.NomRole : field.name === "IdStatutLicenceFk" ? record?.NomStatutLicence : field.name==="ID_ServiceFk"?row?.Service:field.name==="ID_FonctionFk"?row?.Fonction:null;
-      options.push({ value: String(value), label: fallback || "Valeur actuelle · " + value });
+      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : field.name === "IdRoleFk" ? record?.NomRole || record?.Role || row?.NomRole || row?.Role : field.name === "IdStatutLicenceFk" ? record?.NomStatutLicence : field.name==="ID_ServiceFk"?row?.Service:field.name==="ID_FonctionFk"?row?.Fonction:null;
+      options.push({ value: String(value), label: fallback || "Valeur actuelle",disabled:true,incompatible:true });
     }
     return options;
   }
@@ -241,13 +242,14 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
       if ((field.required || (creating && field.requiredOnCreate)) && !String(value ?? "").trim()) issues[field.name] = "Renseignez ce champ.";
       if (LIMITS[field.name] && String(value ?? "").length > LIMITS[field.name]) issues[field.name] = "Limitez ce champ à " + LIMITS[field.name] + " caractères.";
       if (field.type === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) issues[field.name] = "Renseignez une adresse e-mail valide.";
-      if (field.type === "select" && value && !optionsFor(field).some(option => String(option.value) === String(value) && !option.disabled)) issues[field.name] = "Choisissez une valeur active de la liste.";
+      if (field.type === "select" && value && changed && !optionsFor(field).some(option => String(option.value) === String(value) && !option.disabled)) issues[field.name] = "Choisissez une valeur active de la liste.";
       if (field.type === "datetime-local" && value && !validCommandeDate(value)) issues[field.name] = "Renseignez une date et une heure valides.";
       if(field.type==="date"&&value&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+"T00:00:00Z"))||new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value))issues[field.name]="Renseignez une date valide.";
       if(PROFESSIONAL_NAMES.has(field.name)&&String(value??"").length>(field.name==="MatriculeUser"?50:field.name==="ObservationProfessionnelle"?1000:Infinity))issues[field.name]="Ce texte est trop long.";
       if (field.type === "number" && value !== "" && (!Number.isFinite(Number(value)) || (field.name === "DisplayOrder" && (!/^\d+$/.test(String(value)) || Number(value) > 2147483647)))) issues[field.name] = "Renseignez un nombre valide.";
       if (["Latitude", "Longitude"].includes(field.name) && value !== "" && !/^-?\d+(?:\.\d{1,6})?$/.test(String(value))) issues[field.name] = "Utilisez au maximum 6 décimales.";
     }
+    if (creating && type === "roles" && !/^[1-9]\d*$/.test(String(support.roleCategoryId||""))) issues.NomGenerique="La famille des rôles est indisponible. Rechargez les références.";
     if (creating && values.MotdepasseUser?.length < 12) issues.MotdepasseUser = "Utilisez au moins 12 caractères.";
     if (type === "licences" && values.DateDebut && values.DateFin && values.DateFin <= values.DateDebut) issues.DateFin = "La fin doit être postérieure au début.";
     if(["users","profiles"].includes(type)&&values.DateEmbauche&&values.DateFinEmploi&&values.DateFinEmploi<values.DateEmbauche)issues.DateFinEmploi="La fin de l’emploi ne peut pas précéder l’embauche.";
@@ -266,7 +268,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     requestAnimationFrame(() => document.getElementById(prefix + name)?.focus());
   }
   function payload() {
-    const result = buildAdminEditorPayload(type, fields, values, initial, { creating, roleCategoryId: support.roleCategoryId || 39 });
+    const result = buildAdminEditorPayload(type, fields, values, initial, { creating, roleCategoryId: support.roleCategoryId });
     if (systemSettingIdentityLocked) for (const name of SYSTEM_SETTING_IDENTITY) delete result[name];
     return result;
   }
@@ -302,6 +304,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
           : <input id={id} type={name.startsWith("Phone") ? "tel" : field.type || "text"} value={values[name] ?? ""} disabled={locked} onChange={event => change(name, event.target.value)} step={field.type === "datetime-local" ? 1 : field.step} maxLength={LIMITS[name]} autoComplete={field.type === "password" ? "new-password" : "off"} aria-invalid={Boolean(issue)} aria-describedby={issue ? id + "-error" : undefined}/>
       }
       {issue ? <small className="record-field-error" id={id + "-error"}>{issue}</small> : null}
+      {select&&isRetainedReference(optionsFor(field),values[name])?<small className="record-editor-note">{REFERENCE_RETAINED_HINT}</small>:null}
       {field.type === "datetime-local" ? <small>Heure de Kinshasa.</small> : null}
       {name === "MotdepasseUser" ? <small>Au moins 12 caractères.</small> : null}
     </div>;

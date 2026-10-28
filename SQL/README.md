@@ -22,6 +22,12 @@ Appliquer uniquement l’évolution nécessaire, avec contrôle des préconditio
 
 La migration 04 est transactionnelle et réexécutable. Son retour arrière ne constitue pas une restauration de données. Une sauvegarde de la seule structure précède cette intervention ; aucune nouvelle copie des données privées n’a été créée.
 
+## Référencement des champs — 28 octobre 2026
+
+`migrations/20261028_09_referencement_champs.sql` ajoute le catalogue des 60 vraies colonnes liées à `T_Generique`, leur défaut immuable et la résolution des correspondances courantes dans `T_Fk_Correspondance`. Les références historiques et les 60 FK sont conservées ; les tables partagées restent globales et les surcharges d’entreprise exigent un propriétaire durable. Les rôles de sécurité, codes de stock, devises et précisions gardent leurs protections. Cette évolution se prépare et se recette avant l’application contrôlée ; ne pas la lancer au démarrage ni la rejouer sur une instance déjà équipée.
+
+Lire [le contrat et les vérifications de référencement](documentation/Referencement_Champs_20261028.md). La recette SQL dédiée exige un socle08 dans une base privée locale ; les recettes de chaîne, CUMP et annulation d’inventaire vérifient aussi la compatibilité physique. Le paquet d’installation contient seulement les métadonnées immuables du nouveau catalogue, avec des révisions, dates et auteurs locaux ; il exclut les correspondances clientes et les préférences de l’instance source.
+
 ## Nouvelle installation
 
 Utiliser une base vide et les outils PostgreSQL 18 compatibles. Créer d’abord l’extension `pg_trgm` dans `public`. Le fichier métier s’exécute avec psql -X -v ON_ERROR_STOP=1 --dbname NOM_BASE --file SQL/SauverNdeko_Metier_Structure.sql. Il ne charge aucun compte, dictionnaire, organisation, article ni événement. Pour préparer l’installation complète, utiliser un nouveau paquet `preparer_installation` produit depuis ce socle : structure, dictionnaire fermé et manifeste de contrôle, sans données clientes ni préférences personnelles.

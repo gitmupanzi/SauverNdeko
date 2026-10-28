@@ -184,3 +184,178 @@ COMMENT ON COLUMN referentiel."V_Generique"."ObsGenerique" IS 'Observations enre
 --
 
 COMMENT ON COLUMN referentiel."V_Generique"."ValideGenerique" IS 'Indique si la valeur de nomenclature est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues. Expression projetée : g."ValideGenerique".';
+
+--
+-- Name: V_ReferencementChamp; Type: VIEW; Schema: referentiel; Owner: -
+--
+
+CREATE VIEW referentiel."V_ReferencementChamp" AS
+ SELECT c."ID_ChampReferentiel",
+    c."SchemaName",
+    c."TableName",
+    c."ColumnName",
+    c."ChampLabel",
+    c."ModuleName",
+    c."ID_CategorieDefautFk",
+    c."AliasSourceKeys",
+    c."CanConfigure",
+    c."SupportsEntityScope",
+    c."Revision",
+    c."CreeLe",
+    c."ModifieLe",
+    c."ModifieParUserFk",
+    s."CategoryIds",
+    ARRAY( SELECT x."NomCategorieGenerique"
+           FROM (unnest(s."CategoryIds") WITH ORDINALITY a(id, ord)
+             JOIN referentiel."T_CategorieGenerique" x ON ((x."ID_CategorieGenerique" = a.id)))
+          ORDER BY a.ord) AS "CategoryLabels",
+    array_to_string(ARRAY( SELECT x."NomCategorieGenerique"
+           FROM (unnest(s."CategoryIds") WITH ORDINALITY a(id, ord)
+             JOIN referentiel."T_CategorieGenerique" x ON ((x."ID_CategorieGenerique" = a.id)))
+          ORDER BY a.ord), ', '::text) AS "CategoriesActuelles",
+    d."NomCategorieGenerique" AS "CategorieDefaut",
+    c."ID_CategorieDefautFk" AS "DefaultCategoryId",
+    s."OrigineReglage",
+    (c."Revision")::text AS _version,
+    (((c."SchemaName")::text = 'logistique'::text) AND ((((c."TableName")::text = ANY ((ARRAY['T_Mouvement'::character varying, 'T_Facture'::character varying, 'T_Avoir'::character varying, 'T_Reglements'::character varying, 'T_ValorisationOuverture'::character varying])::text[])) AND ((c."ColumnName")::text = 'ID_DeviseFk'::text)) OR (((c."TableName")::text = 'T_Mouvement'::text) AND ((c."ColumnName")::text = 'ID_TypeMvtFk'::text)) OR (((c."TableName")::text = 'T_Facture'::text) AND ((c."ColumnName")::text = ANY ((ARRAY['ID_ModePaiementFk'::character varying, 'ID_ConditionPaiementFk'::character varying])::text[]))))) AS "ReferenceHeriteeParent"
+   FROM ((referentiel."T_ChampReferentiel" c
+     LEFT JOIN referentiel."T_CategorieGenerique" d ON ((d."ID_CategorieGenerique" = c."ID_CategorieDefautFk")))
+     CROSS JOIN LATERAL referentiel.fn_resolution_champ((c."SchemaName")::text, (c."TableName")::text, (c."ColumnName")::text, NULL::integer) s("CategoryIds", "OrigineReglage"));
+
+--
+-- Name: VIEW "V_ReferencementChamp"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON VIEW referentiel."V_ReferencementChamp" IS 'Registre des 60 champs physiques, familles globales effectives et défauts prouvés ; pour un contexte entreprise utiliser le même résolveur avec son identifiant autorisé.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ID_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ID_ChampReferentiel" IS 'Projection de référencement : ID_ChampReferentiel. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."SchemaName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."SchemaName" IS 'Projection de référencement : SchemaName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."TableName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."TableName" IS 'Projection de référencement : TableName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ColumnName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ColumnName" IS 'Projection de référencement : ColumnName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ChampLabel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ChampLabel" IS 'Projection de référencement : ChampLabel. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModuleName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModuleName" IS 'Projection de référencement : ModuleName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ID_CategorieDefautFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ID_CategorieDefautFk" IS 'Projection de référencement : ID_CategorieDefautFk. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."AliasSourceKeys"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."AliasSourceKeys" IS 'Projection de référencement : AliasSourceKeys. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CanConfigure"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CanConfigure" IS 'Projection de référencement : CanConfigure. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."SupportsEntityScope"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."SupportsEntityScope" IS 'Projection de référencement : SupportsEntityScope. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."Revision"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."Revision" IS 'Projection de référencement : Revision. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CreeLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CreeLe" IS 'Projection de référencement : CreeLe. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModifieLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModifieLe" IS 'Projection de référencement : ModifieLe. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModifieParUserFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModifieParUserFk" IS 'Projection de référencement : ModifieParUserFk. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoryIds"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoryIds" IS 'Projection de référencement : CategoryIds. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoryLabels"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoryLabels" IS 'Projection de référencement : CategoryLabels. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoriesActuelles"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoriesActuelles" IS 'Projection de référencement : CategoriesActuelles. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategorieDefaut"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategorieDefaut" IS 'Projection de référencement : CategorieDefaut. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."DefaultCategoryId"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."DefaultCategoryId" IS 'Projection de référencement : DefaultCategoryId. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."OrigineReglage"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."OrigineReglage" IS 'Projection de référencement : OrigineReglage. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"._version; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"._version IS 'Projection de référencement : _version. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ReferenceHeriteeParent"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ReferenceHeriteeParent" IS 'Projection de référencement : ReferenceHeriteeParent. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';

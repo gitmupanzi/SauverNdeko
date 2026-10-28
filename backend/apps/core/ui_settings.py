@@ -50,6 +50,22 @@ def format_rows(rows, scope, value):
         ]
         if found and found != list(map(str, config["defaultCategoryIds"])):
             generic[key] = ", ".join(found)
+    # Compatibilité de lecture des anciens écrans : les associations par champ
+    # sont désormais résolues dans PostgreSQL, sans préférence locale parallèle.
+    fields = db.query('SELECT "SchemaName","TableName","ColumnName","AliasSourceKeys",'
+                      '"ID_CategorieDefautFk" FROM referentiel."T_ChampReferentiel" '
+                      'WHERE cardinality("AliasSourceKeys")>0 ORDER BY "ID_ChampReferentiel"')
+    for field in fields:
+        identifiers = db.one('SELECT referentiel.fn_categories_champ(%s,%s,%s,%s) AS ids',
+            [field['SchemaName'], field['TableName'], field['ColumnName'],
+             int(value) if scope == 'entity' else None])['ids'] or []
+        for key in field['AliasSourceKeys']:
+            if key not in SOURCES['generic']:
+                continue
+            if identifiers == ([field['ID_CategorieDefautFk']] if field['ID_CategorieDefautFk'] is not None else []):
+                generic.pop(key, None)
+            else:
+                generic[key] = ', '.join(map(str, identifiers))
     for key, config in SOURCES["hierarchy"].items():
         found = next(
             (
@@ -100,12 +116,25 @@ class UISettingsView(APIView):
             or set(hierarchy) - SOURCES["hierarchy"].keys()
         ):
             raise APIError("Source de paramétrage non autorisée.")
+        migrated = {key for row in db.query('SELECT unnest("AliasSourceKeys") AS key '
+                                            'FROM referentiel."T_ChampReferentiel"')
+                    if (key := row['key']) in SOURCES['generic']}
+        previous = format_rows(rows_for(scope, value), scope, value)['genericCategoryOverrides']
+        for key in migrated.intersection(generic):
+            def parsed(value):
+                return [positive(part.strip(), 'Catégorie') for part in str(value).split(',') if part.strip()]
+            expected = previous.get(key, ','.join(map(str, SOURCES['generic'][key]['defaultCategoryIds'])))
+            if parsed(generic[key]) != parsed(expected):
+                raise APIError('Modifiez cette association dans Référencement des champs.',
+                               'REFERENCE_CONFIG_MOVED', 409)
         rows = []
         for group, mapping in [
             ("generic", "generic_category"),
             ("hierarchy", "hierarchy_mode"),
         ]:
             for key, config in SOURCES[group].items():
+                if group == 'generic' and key in migrated:
+                    continue
                 vals = (
                     list(
                         dict.fromkeys(
@@ -162,7 +191,7 @@ class UISettingsView(APIView):
                 'DELETE FROM systeme."T_Fk_Correspondance" WHERE "SettingScope"=%s AND "ScopeValue" IS NOT DISTINCT FROM %s '
                 'AND (("MappingType"=\'generic_category\' AND "SourceKey"=ANY(%s::text[])) '
                 'OR ("MappingType"=\'hierarchy_mode\' AND "SourceKey"=ANY(%s::text[])))',
-                [scope, value, list(SOURCES['generic']), list(SOURCES['hierarchy'])],
+                [scope, value, list(set(SOURCES['generic']) - migrated), list(SOURCES['hierarchy'])],
             )
             for row in rows:
                 db.query(

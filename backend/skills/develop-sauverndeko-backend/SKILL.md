@@ -65,6 +65,16 @@ verifier_backend contrôle désormais ces nouvelles routes dans son diagnostic G
 
 Les répartitions par catégorie utilisent GROUP BY et leurs détails imposent ID_CategorieArticleFk. Distinguer En attente et En cours ; les sens Entrée/Sortie viennent des indicateurs de la vue. Le bloc Factures exclut les bons sans référence de facture. Les filtres temporels portent sur DateFacture pour la facturation, DateCmd pour les bons et DateMvt pour les mouvements. Ne pas réutiliser implicitement la première date présente dans une vue.
 
+## Référencement central des champs
+
+Le catalogue `referentiel.T_ChampReferentiel` désigne les vraies FK vers `T_Generique` par schéma/table/colonne, avec un défaut immuable et parfois NULL faute de preuve. Les choix courants restent dans `T_Fk_Correspondance`, liés au catalogue ; les SourceKey historiques sont des alias explicites. Lire [le contrat SQL](../../../SQL/documentation/Referencement_Champs_20261028.md). Les nouveaux consommateurs utilisent `fn_categories_champ` et le helper commun de références, jamais un identifiant de famille ou un nom de famille figé.
+
+Le scope entreprise remplace le global, puis le défaut s’applique ; aucune portée pays n’est activée implicitement. Rétablir persiste `@default` au scope choisi, y compris pour revenir à une famille inconnue. Verrouiller le champ avant de comparer sa révision ; contrôler acteur, droits, entreprise, UUID et contenu de la requête. Les rôles de sécurité restent protégés. Les listes offrent les valeurs et familles actives, sans imposer les visibilités historiques à tous les objets.
+
+Respecter `SupportsEntityScope` : les tables partagées restent globales. Le contexte d’une vraie ligne vient de `fn_entite_reference_champ` (FK d’entreprise, PK Entité ou parent métier prouvé), jamais de l’entreprise actuelle d’un utilisateur ou d’un résultat de recherche. Refuser une configuration `entity` non applicable et garder liste/validation SQL dans le même contexte. Les anciens réglages de ce type restent conservés sans être appliqués aux champs partagés. Une installation neuve exporte seulement les métadonnées immuables du catalogue ; elle ne copie pas ses révisions, dates, auteurs ou surcharges clientes.
+
+Une référence ancienne inchangée reste visible et permet une modification descriptive. Les copies physiques/financières exactes suivent le parent autorisé, avec ses contrôles d’entreprise, même si une nouvelle liste courante a changé. Ne pas réécrire les historiques, la nature BE/BS/CMD, les coûts ou les quantités pour faire passer une nouvelle configuration. Les métadonnées du catalogue entrent dans le seed fermé d’installation ; les surcharges clientes n’y entrent jamais.
+
 ## Patrimoine et informations professionnelles
 
 Réutiliser T_Immobilisation/V_Immobilisation pour registre, fiche, recherches et exports. Le propriétaire, le code IMMO-ID et la création sont immuables ; les écritures conservent un audit SQL unique. Une GUC de requête contient UUID/hash/opération/motif pour la preuve de rejeu, jamais une autorisation. Le service vérifie licence, droits, entreprise et révision, sérialise les demandes puis compare la preuve gagnante. L’archivage/restauration remplace la suppression physique ; aucune opération sur ce registre ne touche le stock, les lots, le CUMP ou des amortissements.

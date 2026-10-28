@@ -1,3 +1,5 @@
+import {fieldCurrencyReferences} from "../../utils/money";
+import {REFERENCE_RETAINED_HINT,isRetainedReference,referenceOptions,retainReference} from "../../utils/referenceOptions";
 import TiersSelect from "../../components/TiersSelect";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
@@ -23,8 +25,9 @@ export default function StockReceiptEditor({articleId,references,onClose,onSaved
   const [typeRefreshError,setTypeRefreshError]=useState("");
   const typeRequest=useRef(0),latestValues=useRef(values);latestValues.current=values;
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[reload,setReload]=useState(0);
-  const article=data?.article,options=currencyOptions(references),currency=references?.currencies?.find(item=>String(item.id)===values.ID_DeviseFk);
-  const typeOptions=(data?.types||[]).map(type=>({value:String(type.id),label:type.label}));
+  const receiptReferences=data?.currencies?{...references,currencies:data.currencies}:fieldCurrencyReferences(references,"commandeCurrencies");
+  const article=data?.article,options=retainReference(currencyOptions(receiptReferences),values.ID_DeviseFk,"Devise sélectionnée"),currency=receiptReferences?.currencies?.find(item=>String(item.id)===values.ID_DeviseFk);
+  const typeOptions=retainReference(referenceOptions(data?.types||[]),values.ID_TypeCmdFk,data?.type?.label||"Type sélectionné");
   const canWrite=user?.permissions?.canWriteData===true,dirty=Boolean(initial)&&(JSON.stringify(values)!==initial||lots.length>0);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
@@ -47,7 +50,7 @@ export default function StockReceiptEditor({articleId,references,onClose,onSaved
     }
     setTypeRefreshError("");
     const nextTypes=response.data.types||[],selected=latestValues.current.ID_TypeCmdFk;
-    setData(current=>current?{...current,types:nextTypes,type:response.data.type,canReceive:response.data.canReceive}:current);
+    setData(current=>current?{...current,types:nextTypes,type:response.data.type,currencies:response.data.currencies,canReceive:response.data.canReceive,currencyToConfirm:response.data.currencyToConfirm,priceToConfirm:response.data.priceToConfirm}:current);
     if(selected)setErrors(current=>({...current,ID_TypeCmdFk:nextTypes.some(type=>String(type.id)===selected)?"":"Ce type n’est plus disponible. Choisissez un type de bon d’entrée."}));
   },{enabled:Boolean(article)&&!loading&&!busy});
   function change(name,value){setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));}
@@ -59,7 +62,7 @@ export default function StockReceiptEditor({articleId,references,onClose,onSaved
   }
   async function submit(){
     if(saving.current||!canWrite||!article)return;
-    const invalid=receiptErrors(values,typeOptions.map(option=>option.value)),lotError=lotErrors(lots,values.QteCmdDetail);setErrors(invalid);setLotsError(lotError);setError("");
+    const invalid=receiptErrors(values,typeOptions.filter(option=>!option.disabled).map(option=>option.value)),lotError=lotErrors(lots,values.QteCmdDetail);if(!options.some(option=>option.value===values.ID_DeviseFk&&!option.disabled))invalid.ID_DeviseFk="Choisissez une devise disponible pour ce bon.";setErrors(invalid);setLotsError(lotError);setError("");
     if(Object.keys(invalid).length||lotError){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
     saving.current=true;setBusy(true);
     const response=await receiveArticleStock(articleId,{...receiptPayload(values,lots),requestId});
@@ -80,16 +83,17 @@ export default function StockReceiptEditor({articleId,references,onClose,onSaved
       {data.canReceive===false?<p className="record-editor-note" role="status">Cette installation est en consultation seule.</p>:null}
       <div className="record-editor-identity"><AppIcon name="box"/><div><strong>{article.NomArticle}</strong><small>{[article.CodeArticleInterne||article.RefArticle,"Stock actuel : "+formatNumber(article.QteArticle)+(article.Unite?" "+article.Unite:"")].filter(Boolean).join(" · ")}</small></div></div>
       <section className="record-editor-section"><h3><AppIcon name="receipt"/>Bon d’entrée</h3><div className="record-editor-grid">
-        <Field id={prefix+"ID_TypeCmdFk"} label="Type de bon *" error={errors.ID_TypeCmdFk||typeRefreshError} hint={!typeOptions.length?"Aucun type de bon d’entrée disponible.":""}><SearchSelect id={prefix+"ID_TypeCmdFk"} label="Type de bon" value={values.ID_TypeCmdFk} options={typeOptions} onChange={value=>change("ID_TypeCmdFk",value)} disabled={busy||!typeOptions.length} invalid={Boolean(errors.ID_TypeCmdFk||typeRefreshError)} describedBy={errors.ID_TypeCmdFk||typeRefreshError?prefix+"ID_TypeCmdFk-error":!typeOptions.length?prefix+"ID_TypeCmdFk-hint":undefined}/></Field>
+        <Field id={prefix+"ID_TypeCmdFk"} label="Type de bon *" error={errors.ID_TypeCmdFk||typeRefreshError} hint={isRetainedReference(typeOptions,values.ID_TypeCmdFk)?REFERENCE_RETAINED_HINT:!typeOptions.length?"Aucun type de bon d’entrée disponible.":""}><SearchSelect id={prefix+"ID_TypeCmdFk"} label="Type de bon" value={values.ID_TypeCmdFk} options={typeOptions} onChange={value=>change("ID_TypeCmdFk",value)} disabled={busy||!typeOptions.length} invalid={Boolean(errors.ID_TypeCmdFk||typeRefreshError)} describedBy={errors.ID_TypeCmdFk||typeRefreshError?prefix+"ID_TypeCmdFk-error":!typeOptions.length?prefix+"ID_TypeCmdFk-hint":undefined}/></Field>
         {input("DateCmd","Date et heure du bon *",{type:"datetime-local",step:60,hint:data.timeZone?"Heure de "+data.timeZone.split("/").at(-1).replace(/_/g," "):""})}
         {input("RefCmd","Référence du bon de livraison",{maxLength:255,autoComplete:"off"})}
         <Field id={prefix+"ID_TiersFk"} label="Tiers référencé" error={errors.ID_TiersFk}><TiersSelect id={prefix+"ID_TiersFk"} value={values.ID_TiersFk} references={references?.clients||[]} role="fournisseur" disabled={busy} invalid={Boolean(errors.ID_TiersFk)} onChange={(id,name)=>{change("ID_TiersFk",id);if(name)change("NomClientSaisi",name);}}/></Field>
         {input("NomClientSaisi","Nom du fournisseur",{maxLength:255,autoComplete:"off"})}
       </div></section>
       <section className="record-editor-section"><h3><AppIcon name="stock-in"/>Quantité et prix d’achat</h3><div className="record-editor-grid">
+        {data.currencyToConfirm?<p className="record-field record-editor-note is-wide">Choisissez la devise du bon et renseignez le prix d’achat correspondant.</p>:null}
         {input("QteCmdDetail","Quantité reçue *",{inputMode:"decimal",maxLength:15,autoComplete:"off"})}
         <Field id={prefix+"unit"} label="Unité"><input id={prefix+"unit"} value={article.Unite||"Non renseignée"} readOnly/></Field>
-        <Field id={prefix+"ID_DeviseFk"} label="Devise du bon *" error={errors.ID_DeviseFk} hint={!options.length?"Aucune devise disponible. Vérifiez les références.":""}><SearchSelect id={prefix+"ID_DeviseFk"} label="Devise du bon" value={values.ID_DeviseFk} options={options} onChange={changeCurrency} disabled={busy||!options.length} invalid={Boolean(errors.ID_DeviseFk)} describedBy={errors.ID_DeviseFk?prefix+"ID_DeviseFk-error":undefined}/></Field>
+        <Field id={prefix+"ID_DeviseFk"} label="Devise du bon *" error={errors.ID_DeviseFk} hint={isRetainedReference(options,values.ID_DeviseFk)?REFERENCE_RETAINED_HINT:!options.length?"Aucune devise disponible. Vérifiez les références.":""}><SearchSelect id={prefix+"ID_DeviseFk"} label="Devise du bon" value={values.ID_DeviseFk} options={options} onChange={changeCurrency} disabled={busy||!options.length} invalid={Boolean(errors.ID_DeviseFk)} describedBy={errors.ID_DeviseFk?prefix+"ID_DeviseFk-error":undefined}/></Field>
         {input("PUCmdDetail","Prix d’achat unitaire *",{inputMode:"decimal",maxLength:13,hint:priceHint,autoComplete:"off"})}
         <Field id={prefix+"amount"} label="Montant de la réception" wide><output id={prefix+"amount"} className="stock-receipt-total">{formatCurrency(roundMoney(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail)),currency?.code)}</output></Field>
       </div></section>

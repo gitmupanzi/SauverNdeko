@@ -33,12 +33,27 @@ class Command(BaseCommand):
             comments=db.query("SELECT format('COMMENT ON CONSTRAINT %%I ON %%I.%%I IS %%L;',k.conname,n.nspname,c.relname,obj_description(k.oid,'pg_constraint')) AS command FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND k.contype='t' AND obj_description(k.oid,'pg_constraint') IS NOT NULL ORDER BY n.nspname,c.relname,k.conname",[SCHEMAS])
             if comments:
                 with structure.open('ab') as output:output.write(('\n'+''.join(row['command']+'\n' for row in comments)).encode('utf8'))
-            result=subprocess.run([*base,'--data-only','--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"','--table=referentiel."T_InterfaceTableau"','--table=systeme."T_ModuleApplication"','--table=logistique."T_PrecisionStock"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
+            result=subprocess.run([*base,'--data-only','--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"','--table=referentiel."T_InterfaceTableau"','--table=systeme."T_ModuleApplication"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
             if result.returncode:raise CommandError('Export dictionnaire refusé.')
+            # Le catalogue physique est une métadonnée fermée. Ses révisions,
+            # dates et auteurs décrivent en revanche l'activité de la source :
+            # ne jamais les recopier vers une autre installation.
+            field_catalogue=[]
+            if db.one("SELECT to_regclass('referentiel.\"T_ChampReferentiel\"') relation")['relation']:
+                field_catalogue=db.query("SELECT format('INSERT INTO referentiel.\"T_ChampReferentiel\"(\"ID_ChampReferentiel\",\"SchemaName\",\"TableName\",\"ColumnName\",\"ChampLabel\",\"ModuleName\",\"ID_CategorieDefautFk\",\"AliasSourceKeys\",\"CanConfigure\",\"SupportsEntityScope\") OVERRIDING SYSTEM VALUE VALUES(%%L,%%L,%%L,%%L,%%L,%%L,%%L,%%L,%%L,%%L);',\"ID_ChampReferentiel\",\"SchemaName\",\"TableName\",\"ColumnName\",\"ChampLabel\",\"ModuleName\",\"ID_CategorieDefautFk\",\"AliasSourceKeys\"::text,\"CanConfigure\",\"SupportsEntityScope\") command FROM referentiel.\"T_ChampReferentiel\" ORDER BY \"ID_ChampReferentiel\"")
+                with refs.open('ab') as output:
+                    output.write(('\n-- Catalogue physique fermé ; révisions, dates et auteurs réinitialisés localement.\n'+''.join(row['command']+'\n' for row in field_catalogue)+"SELECT pg_catalog.setval(pg_get_serial_sequence('referentiel.\"T_ChampReferentiel\"','ID_ChampReferentiel'),coalesce((SELECT max(\"ID_ChampReferentiel\") FROM referentiel.\"T_ChampReferentiel\"),1),EXISTS(SELECT FROM referentiel.\"T_ChampReferentiel\"));\n").encode('utf8'))
+            # La précision est validée par le même catalogue que les articles :
+            # son chargement vient donc après les familles et définitions.
+            precision=subprocess.run([*base,'--data-only','--table=logistique."T_PrecisionStock"'],env=pg_environment(),capture_output=True,timeout=180)
+            if precision.returncode:raise CommandError('Export précision des unités refusé.')
+            with refs.open('ab') as output:output.write(b'\n'+precision.stdout)
             mappings=target/'correspondances.sql';mappings.write_bytes(closed_mapping_seed.read_bytes())
             instructions=target/'LIRE-MOI.md'
             instructions.write_text("# Installation vierge SauverNdeko\n\nCe paquet ne contient aucun compte, entreprise, bien, stock, document client ou préférence personnelle. Les correspondances sont une initialisation fermée du code ; aucune configuration privée de la base source n’est copiée.\n\nUtiliser une base vide PostgreSQL18 et créer l’extension pg_trgm dans public. Vérifier les SHA-256 du manifeste. Appliquer avec psql -X -v ON_ERROR_STOP=1, dans cet ordre :\n\n1. structure.sql\n2. references.sql\n3. correspondances.sql\n\nLe troisième fichier initialise les correspondances globales, notamment celles du patrimoine. Ne pas le rejouer sur une configuration cliente personnalisée sans examen. Configurer ensuite le backend vers la nouvelle base, appliquer les migrations natives Django dans public et créer le premier administrateur avec la commande dédiée. Les profils, logos, licences et données de l’entreprise de destination sont à renseigner après installation. La liste migrationsInCode inventorie les fichiers livrés ; elle ne prouve pas à elle seule leur installation sur une base existante.\n",encoding='utf8')
             migrations=sorted((project/'SQL/migrations').glob('*.sql'))
             manifest={'format':2,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs),'correspondances.sql':digest_file(mappings),'LIRE-MOI.md':digest_file(instructions)},'installationOrder':['structure.sql','references.sql','correspondances.sql'],'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','referentiel.T_InterfaceTableau','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'mappingSeed':'closed-code-defaults','constraintTriggerCommentsSupplemented':len(comments),'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
+            if field_catalogue:
+                manifest['sanitizedDataTables']={'referentiel.T_ChampReferentiel':{'rows':len(field_catalogue),'excludedColumns':['Revision','CreeLe','ModifieLe','ModifieParUserFk'],'currentMappingsCopied':False}}
             (target/'manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf8')
         self.stdout.write(f'Paquet vierge préparé : {target} ; aucune donnée client ni identité de compte incluse.')

@@ -46,7 +46,7 @@ def usage(record, actor):
 
 def validate(data, old, actor):
     from .currency import write_currency
-    write_currency(data, old)
+    write_currency(data, old, actor=actor, table='T_Article')
     errors = {}
     effective = {**(old or {}), **data}
     if old and "ID_DeviseFk" in data and data["ID_DeviseFk"] != old.get("ID_DeviseFk") and not usage(old, actor)["canChangeCurrency"]:
@@ -80,13 +80,13 @@ def validate(data, old, actor):
                 del data["ID_UserFK"]
         if "ID_UniteFk" in data and data["ID_UniteFk"] != old.get("ID_UniteFk") and not usage(old, actor)["canChangeUnit"]:
             errors["ID_UniteFk"] = "L’unité ne peut plus changer après un mouvement ou une ligne de bon."
-    for key, category, label in (("ID_TypeArticleFk", 46, "type"), ("ID_CategorieArticleFk", 40, "catégorie"), ("ID_UniteFk", 34, "unité")):
+    for key, label in (("ID_TypeArticleFk", "type"), ("ID_CategorieArticleFk", "catégorie"), ("ID_UniteFk", "unité")):
         value = effective.get(key)
         if not old and value is None:
             errors[key] = "Choisissez une " + label + "." if key != "ID_TypeArticleFk" else "Choisissez un type."
         if key in data and value is not None and (not old or value != old.get(key)):
-            row = db.one('SELECT "ValideGenerique","ID_CategorieGeneriqueFk" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [value])
-            if not row or row["ID_CategorieGeneriqueFk"] != category or row["ValideGenerique"] is not True:
+            valid = db.one('SELECT referentiel.fn_valider_reference_champ(%s,%s,%s,%s,%s) AS valid', ['logistique','T_Article',key,value,effective.get('IdEntiteFk') or actor.organisation])['valid']
+            if not valid:
                 errors[key] = "Choisissez une valeur active dans la liste proposée."
     days = effective.get("NbreJoursAlerteArticle")
     expiry = effective.get("DatePeremptionArticle")
@@ -103,9 +103,10 @@ def validate(data, old, actor):
     if (weight is None)!=(weight_unit is None):
         errors["PoidsUnitaire"]="Renseignez le poids et son unité, ou laissez les deux vides."
     if weight is not None and weight<0:errors["PoidsUnitaire"]="Le poids doit être positif ou nul."
-    if weight_unit is not None:
+    if weight_unit is not None and (not old or weight_unit != old.get('ID_UnitePoidsFk')):
         unit=db.one('SELECT "AbrGenerique","ID_CategorieGeneriqueFk","ValideGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[weight_unit])
-        if not unit or unit["ID_CategorieGeneriqueFk"]!=34 or str(unit["AbrGenerique"] or "").strip().lower() not in {"mg","g","kg","t"}:
+        valid = db.one('SELECT referentiel.fn_valider_reference_champ(%s,%s,%s,%s,%s) AS valid', ['logistique','T_Article','ID_UnitePoidsFk',weight_unit,effective.get('IdEntiteFk') or actor.organisation])['valid']
+        if not unit or not valid or str(unit["AbrGenerique"] or "").strip().lower() not in {"mg","g","kg","t"}:
             errors["ID_UnitePoidsFk"]="Choisissez une unité de masse."
     if effective.get("CodeArticleExterne") is not None and effective["CodeArticleExterne"]<1:errors["CodeArticleExterne"]="Le code externe doit être supérieur à zéro."
     if old is None:

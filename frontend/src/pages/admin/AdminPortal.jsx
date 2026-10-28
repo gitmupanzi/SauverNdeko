@@ -1,3 +1,6 @@
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import {fetchAdminFieldReferences} from "../../services/fieldReferences";
+import {referenceOptions} from "../../utils/referenceOptions";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -27,6 +30,7 @@ const numeric = value => typeof value === "number" ? new Intl.NumberFormat("fr")
 const fullName = row => [row?.PrenomUser, row?.NomUser].filter(Boolean).join(" ");
 function recordName(kind, row) { return kind === "licences" ? "Licence #" + row.IdLicence : ["utilisateurs", "profils", "connexions"].includes(kind) ? fullName(row) : row[ADMIN_REGISTERS[kind].name] || row.SettingKey || row.FieldName || "Fiche"; }
 function useAdminSupport(refresh) {
+  const entityScope=useEntityScope();
   const [support, setSupport] = useState({ entities: [], generics: [], categories: [], niveaux3: [], niveaux4: [], niveaux5: [],personnelServices:[],personnelFonctions:[] });
   const [error, setError] = useState("");
   useEffect(() => {
@@ -34,22 +38,22 @@ function useAdminSupport(refresh) {
     Promise.allSettled([
       requestJson("/api/workspace/organisations", { requiresAuth: true }),
       fetchCompleteReferenceRows("T_Generique"), fetchCompleteReferenceRows("T_CategorieGenerique"),
-      requestJson("/api/systeme/personnel/references",{requiresAuth:true}),
+      requestJson("/api/systeme/personnel/references",{requiresAuth:true}),fetchAdminFieldReferences(),
     ]).then(results => {
       if (!current) return;
-      const [entities, generics, categories,personnel] = results.map(result => result.status === "fulfilled" ? result.value : null);
-      setSupport(old => ({ ...old, entities: entities?.success ? entities.data : [], generics: generics?.success ? generics.data : [], categories: categories?.success ? categories.data : [],personnelServices:personnel?.data?.personnelServices||[],personnelFonctions:personnel?.data?.personnelFonctions||[] }));
+      const [entities, generics, categories,personnel,fieldReferences] = results.map(result => result.status === "fulfilled" ? result.value : null);
+      setSupport(old => ({ ...old,referenceOptions:fieldReferences?.options||{},roleCategoryId:fieldReferences?.roleCategoryId??null, entities: entities?.success ? entities.data : [], generics: generics?.success ? generics.data : [], categories: categories?.success ? categories.data : [],personnelServices:personnel?.data?.personnelServices||[],personnelFonctions:personnel?.data?.personnelFonctions||[] }));
       setError(results.some(result => result.status === "rejected" || !result.value?.success) ? "Certaines listes de référence sont indisponibles." : "");
     });
     return () => { current = false; };
-  }, [refresh]);
+  }, [refresh,entityScope.scopeKey]);
   return { support, setSupport, error };
 }
 function optionsFor(field, support) {
   if (field.options) return field.options;
   if (field.source === "entities") return support.entities.map(row => ({ value: String(row.IdEntite), label: row.NomEntite }));
   if (field.source === "categories") return support.categories.map(row => ({ value: String(row.ID_CategorieGenerique), label: row.NomCategorieGenerique }));
-  if (field.source === "roles") return support.generics.filter(row => Number(row.ID_CategorieGeneriqueFk) === 39).map(row => ({ value: String(row.ID_Generique), label: row.NomGenerique }));
+  if (field.source === "roles") return referenceOptions(support.referenceOptions?.roles||[]);
   if(["personnelServices","personnelFonctions"].includes(field.source))return (support[field.source]||[]).map(row=>({value:String(row.id),label:row.label,disabled:row.disabled===true}));
   return [];
 }

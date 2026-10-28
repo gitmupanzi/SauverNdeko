@@ -74,6 +74,16 @@ class Command(BaseCommand):
             urls.extend(["/api/systeme/personnel/references", "/api/logistique/immobilisations?take=1",
                 "/api/logistique/immobilisations/references", "/api/logistique/registre/immobilisations?take=1",
                 "/api/tableaux/logistique.immobilisations/preferences"])
+            urls.extend(["/api/referentiel/champs-references?take=1",
+                "/api/tableaux/referentiels.champs/preferences",
+                "/api/referentiel/champs-references/valeurs?schema=logistique&table=T_Article&column=ID_CategorieArticleFk"])
+            with connection.cursor() as reference_cursor:
+                reference_cursor.execute('SELECT "ID_ChampReferentiel" FROM referentiel."T_ChampReferentiel" '
+                    'WHERE "SchemaName"=\'logistique\' AND "TableName"=\'T_Article\' AND "ColumnName"=\'ID_CategorieArticleFk\'')
+                reference_field=reference_cursor.fetchone()
+            if reference_field:
+                reference_path='/api/referentiel/champs-references/'+str(reference_field[0])
+                urls.extend([reference_path,reference_path+'/historique?scope=global',reference_path+'/valeurs'])
             urls.extend("/api/systeme/administration/registres/" + kind + "?take=1" for kind in ADMIN_REGISTERS)
             urls.extend("/api/tableaux/"+key+"/preferences" for key in (
                 *["logistique."+kind for kind in ("articles","commandes","lignes","lots","mouvements","factures","reglements")],

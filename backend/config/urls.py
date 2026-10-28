@@ -1,4 +1,6 @@
 from apps.core.table_preferences import TablePreferencesView
+from apps.core.field_references import (FieldReferencesView, FieldReferenceRestoreView,
+    FieldReferenceOptionsView, FieldReferenceHistoryView, FieldReferenceExportView)
 from apps.core.personnel import PersonnelReferencesView
 from apps.core.reference_exports import ReferenceCSVView
 from apps.core.admin_portal import AdminCSVView
@@ -58,6 +60,12 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/referentiel/champs-references/valeurs/?$", FieldReferenceOptionsView.as_view()),
+    re_path(r"^api/referentiel/champs-references/export\.(?P<file_format>xlsx|csv)/?$", FieldReferenceExportView.as_view()),
+    re_path(r"^api/referentiel/champs-references/(?P<pk>[0-9]+)/retablir/?$", FieldReferenceRestoreView.as_view()),
+    re_path(r"^api/referentiel/champs-references/(?P<pk>[0-9]+)/valeurs/?$", FieldReferenceOptionsView.as_view()),
+    re_path(r"^api/referentiel/champs-references/(?P<pk>[0-9]+)/historique/?$", FieldReferenceHistoryView.as_view()),
+    re_path(r"^api/referentiel/champs-references(?:/(?P<pk>[0-9]+))?/?$", FieldReferencesView.as_view()),
     re_path(r"^api/systeme/personnel/references/?$", PersonnelReferencesView.as_view()),
     re_path(r"^api/logistique/immobilisations/references/?$", ImmobilisationReferencesView.as_view()),
     re_path(r"^api/logistique/immobilisations/export\.(?P<file_format>xlsx|csv)/?$", ImmobilisationExportView.as_view()),

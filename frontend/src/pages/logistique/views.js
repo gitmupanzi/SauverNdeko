@@ -28,59 +28,63 @@ import {
 const SCHEMA_NAME = "logistique";
 
 export const LOGISTIQUE_GENERIC_SOURCE_CONFIG = {
+  "logistique.articleCurrencies": {label:"Devise des articles",referenceKey:"articleCurrencies",defaultCategoryIds:[],categoryLabel:"Devise",locked:true},
+  "logistique.commandeCurrencies": {label:"Devise des bons",referenceKey:"commandeCurrencies",defaultCategoryIds:[],categoryLabel:"Devise",locked:true},
+  "logistique.weightUnits": {label:"Unité de poids",referenceKey:"weightUnits",defaultCategoryIds:[],categoryLabel:"Unité de poids",locked:true},
+  "logistique.movementTypes": {label:"Type de mouvement",referenceKey:"movementTypes",defaultCategoryIds:[],categoryLabel:"Type de mouvement",locked:true},
   "logistique.articleTypes": {
     label: "Type d'article",
     referenceKey: "articleTypes",
-    defaultCategoryIds: [46],
+    defaultCategoryIds: [],
     categoryLabel: "Type produit",
     locked: true,
   },
   "logistique.articleCategories": {
     label: "Categorie d'article",
     referenceKey: "articleCategories",
-    defaultCategoryIds: [40],
+    defaultCategoryIds: [],
     categoryLabel: "Categorie produit",
     locked: true,
   },
   "logistique.articleUnits": {
     label: "Unite",
     referenceKey: "articleUnits",
-    defaultCategoryIds: [34],
+    defaultCategoryIds: [],
     categoryLabel: "Unites",
     locked: true,
   },
   "logistique.commandeTypes": {
     label: "Type de bon",
     referenceKey: "commandeTypes",
-    defaultCategoryIds: [64],
+    defaultCategoryIds: [],
     categoryLabel: "Type de bon",
     locked: true,
   },
   "logistique.commandeStatuses": {
     label: "Statut du bon",
     referenceKey: "commandeStatuses",
-    defaultCategoryIds: [28],
+    defaultCategoryIds: [],
     categoryLabel: "Statut",
     locked: true,
   },
   "logistique.commandeConditionPaiements": {
     label: "Condition de paiement",
     referenceKey: "commandeConditionPaiements",
-    defaultCategoryIds: [37],
+    defaultCategoryIds: [],
     categoryLabel: "Condition de paiement",
     locked: true,
   },
   "logistique.commandeModesPaiement": {
     label: "Mode de paiement",
     referenceKey: "commandeModesPaiement",
-    defaultCategoryIds: [36],
+    defaultCategoryIds: [],
     categoryLabel: "Mode paiement",
     locked: true,
   },
   "logistique.reglementModes": {
     label: "Mode de reglement",
     referenceKey: "reglementModes",
-    defaultCategoryIds: [36],
+    defaultCategoryIds: [],
     categoryLabel: "Mode paiement",
     locked: true,
   },
@@ -227,6 +231,8 @@ const LOGISTIQUE_TABLE_FEATURES = {
     toolbarTitle: "Tableau logistique.V_Article",
     exportFilename: "logistique-v_article.csv",
     fkMappings: [
+      {field:"ID_DeviseFk",label:"Devise des articles",sourceKey:"logistique.articleCurrencies",source:"referentiel.T_Generique",kind:"generic"},
+      {field:"ID_UnitePoidsFk",label:"Unité de poids",sourceKey:"logistique.weightUnits",source:"referentiel.T_Generique",kind:"generic"},
       {
         field: "ID_TypeArticleFk",
         label: "Type d'article",
@@ -256,6 +262,7 @@ const LOGISTIQUE_TABLE_FEATURES = {
     toolbarTitle: "Tableau logistique.V_Commande",
     exportFilename: "logistique-v_commande.csv",
     fkMappings: [
+      {field:"ID_DeviseFk",label:"Devise du bon",sourceKey:"logistique.commandeCurrencies",source:"referentiel.T_Generique",kind:"generic"},
       {
         field: "ID_TypeCmdFk",
         label: "Type de bon",
@@ -270,7 +277,7 @@ const LOGISTIQUE_TABLE_FEATURES = {
         source: "referentiel.T_Generique",
         kind: "generic",
       },
-      { field: "ID_ClientFk", label: "Client", source: "Source tiers disponible dans la base actuelle", kind: "direct" },
+      { field: "ID_TiersFk", label: "Tiers référencé", source: "logistique.T_Client", kind: "direct" },
       { field: "ID_UserFk", label: "Utilisateur", source: "systeme.T_Utilisateurs", kind: "direct" },
       {
         field: "ID_ConditionPaiementFk",
@@ -305,7 +312,7 @@ const LOGISTIQUE_TABLE_FEATURES = {
       {
         field: "ID_TypeMvtFk",
         label: "Type de mouvement",
-        sourceKey: "logistique.commandeTypes",
+        sourceKey: "logistique.movementTypes",
         source: "referentiel.T_Generique",
         kind: "generic",
       },

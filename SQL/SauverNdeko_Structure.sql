@@ -5,7 +5,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict tj9NabjAn6fYLizaDarvY6ahzi4rcOpOwhB0zT7RKIvCarDqht8cIL0FpzHBNKi
+\restrict Yny1u7yYHSauyBNCWH0g6GOoCEOdx7BjTjSJuLPK7Q0HobxmXxfzE6NGmr9SLOC
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -264,7 +264,7 @@ BEGIN
  IF TG_TABLE_NAME='T_Client' THEN
   IF TG_OP='UPDATE' AND (NEW."CreeParUserFk" IS DISTINCT FROM OLD."CreeParUserFk" OR NEW."DateCreation" IS DISTINCT FROM OLD."DateCreation") THEN RAISE EXCEPTION 'Auteur et date de création immuables.' USING ERRCODE='23514';END IF;
   IF NEW."IdProfessionnelFk" IS NOT NULL AND NEW."IdUserFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM professionnel."T_Professionnel" p WHERE p."IdProfessionnel"=NEW."IdProfessionnelFk" AND p."IdUserFk"=NEW."IdUserFk") THEN RAISE EXCEPTION 'Identités du tiers incompatibles.' USING ERRCODE='23514';END IF;
-  IF NEW."ID_TypeClientFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_TypeClientFk" AND lower(btrim(c."NomCategorieGenerique"))='type de personne') THEN RAISE EXCEPTION 'Type de client incompatible.' USING ERRCODE='23514';END IF;
+  IF NEW."ID_TypeClientFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_TypeClientFk" AND referentiel.fn_reference_champ_connue('logistique','T_Client','ID_TypeClientFk',NEW."ID_TypeClientFk")) THEN RAISE EXCEPTION 'Type de client incompatible.' USING ERRCODE='23514';END IF;
  ELSIF TG_TABLE_NAME='T_Commande' THEN
   IF NEW."ID_TiersFk" IS NOT NULL THEN SELECT "IdEntiteFk" INTO client_entity FROM logistique."T_Client" WHERE "ID_Client"=NEW."ID_TiersFk" FOR SHARE;IF client_entity IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Tiers d’une autre entreprise.' USING ERRCODE='23514';END IF;END IF;
  ELSIF TG_TABLE_NAME='T_CommandeDetail' OR TG_TABLE_NAME='T_Mouvement' THEN
@@ -285,7 +285,7 @@ END $$;
 -- Name: FUNCTION controler_propriete_logistique(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.controler_propriete_logistique() IS 'Conserve les entreprises propriétaires et interdit les liens de tiers, articles, bons et règlements entre entreprises.';
+COMMENT ON FUNCTION logistique.controler_propriete_logistique() IS 'Propriété durable et cohérence des tiers conservées ; leur famille de référence est déléguée au catalogue commun.';
 
 
 --
@@ -302,12 +302,12 @@ BEGIN
  SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO origine
  FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
  WHERE c."ID_Commande"=NEW."ID_CommandeOrigineFk" FOR UPDATE OF c;
- IF NOT FOUND OR origine.categorie<>64 OR origine.sens NOT ILIKE 'sort%' OR origine.sens IS NULL THEN
+ IF NOT FOUND OR logistique.fn_nature_bon(origine."ID_TypeCmdFk") IS DISTINCT FROM 'sortie' OR origine.sens NOT ILIKE 'sort%' OR origine.sens IS NULL THEN
   RAISE EXCEPTION 'Le retour exige un bon de sortie historique.' USING ERRCODE='23514';END IF;
  SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO entree
  FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
  WHERE c."ID_Commande"=NEW."ID_CommandeRetourFk" FOR UPDATE OF c;
- IF NOT FOUND OR entree.categorie<>64 OR entree.sens NOT ILIKE 'entr%' OR entree.sens IS NULL THEN
+ IF NOT FOUND OR logistique.fn_nature_bon(entree."ID_TypeCmdFk") IS DISTINCT FROM 'entree' OR entree.sens NOT ILIKE 'entr%' OR entree.sens IS NULL THEN
   RAISE EXCEPTION 'Le document compensateur doit être un bon d’entrée.' USING ERRCODE='23514';END IF;
  IF EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=origine."ID_Commande" OR "ID_CommandeOrigineFk"=entree."ID_Commande") THEN
   RAISE EXCEPTION 'Un retour ne peut pas devenir une nouvelle origine.' USING ERRCODE='23514';END IF;
@@ -357,7 +357,7 @@ $$;
 -- Name: FUNCTION controler_retour_bon(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.controler_retour_bon() IS 'Sérialise chaque retour sur la sortie source et contrôle les budgets restants par article, lot et quantité sans lot ; conserve le PU mouvement et la devise, sans modifier le stock lui-même.';
+COMMENT ON FUNCTION logistique.controler_retour_bon() IS 'Restitution conservée par document de sortie et entrée compensatrice, types déclarés ou historiques au lieu d’une constante de famille ; aucun mouvement ou montant antérieur modifié.';
 
 
 --
@@ -483,45 +483,26 @@ COMMENT ON FUNCTION logistique.enregistrer_cout_ouverture(p_article integer, p_d
 
 CREATE FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) RETURNS void
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
     AS $$
-DECLARE v_nom_categorie text;
-BEGIN IF p_id_generique IS NULL THEN RETURN;
-END IF;
-SELECT cg."NomCategorieGenerique" INTO v_nom_categorie
-FROM referentiel."T_CategorieGenerique" cg
-WHERE cg."ID_CategorieGenerique" = p_id_categorie_generique;
-IF NOT EXISTS (
-    SELECT 1
-    FROM referentiel."T_Generique" g
-    WHERE g."ID_Generique" = p_id_generique
-        AND g."ID_CategorieGeneriqueFk" = p_id_categorie_generique
-) THEN IF EXISTS (
-    SELECT 1
-    FROM referentiel."T_Generique" g
-    WHERE g."ID_Generique" = p_id_generique
-) THEN RAISE EXCEPTION '% : %= % present dans T_Generique mais hors categorie attendue % (%).',
-p_contexte,
-p_nom_colonne,
-p_id_generique,
-p_id_categorie_generique,
-COALESCE(v_nom_categorie, 'Categorie inconnue');
-END IF;
-RAISE EXCEPTION '% : %= % introuvable dans T_Generique pour la categorie % (%).',
-p_contexte,
-p_nom_colonne,
-p_id_generique,
-p_id_categorie_generique,
-COALESCE(v_nom_categorie, 'Categorie inconnue');
-END IF;
-END;
-$$;
+DECLARE table_name text;
+BEGIN
+ IF p_id_generique IS NULL THEN RETURN;END IF;
+ table_name:=CASE WHEN p_contexte ILIKE '%article%' THEN 'T_Article' WHEN p_contexte ILIKE '%commande%' THEN 'T_Commande'
+ WHEN p_contexte ILIKE '%reglement%' THEN 'T_Reglements' WHEN p_contexte ILIKE '%mouvement%' THEN 'T_Mouvement'
+ WHEN p_contexte ILIKE '%remboursement%' THEN 'T_Remboursement' WHEN p_contexte ILIKE '%facture%' THEN 'T_Facture' END;
+ IF table_name='T_Mouvement' AND p_nom_colonne='ID_TypeMvtFk' AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',p_id_generique) THEN RETURN;END IF;
+ IF table_name='T_Facture' AND p_nom_colonne IN('ID_ModePaiementFk','ID_ConditionPaiementFk') AND referentiel.fn_reference_champ_connue('logistique','T_Commande',p_nom_colonne,p_id_generique) THEN RETURN;END IF;
+ IF table_name IS NULL OR NOT referentiel.fn_reference_champ_connue('logistique',table_name,p_nom_colonne,p_id_generique) THEN
+  RAISE EXCEPTION 'Référence incompatible pour %.%.',coalesce(table_name,p_contexte),p_nom_colonne USING ERRCODE='23514';END IF;
+END $$;
 
 
 --
 -- Name: FUNCTION fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) IS 'Valide qu’un identifiant générique renseigné appartient à la catégorie attendue ; accepte NULL et lève une exception en cas de référence absente ou de mauvaise catégorie. Les paramètres de contexte/colonne servent au diagnostic ; aucune écriture.';
+COMMENT ON FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) IS 'Compatibilité des procédures historiques avec le catalogue physique. Le paramètre de famille ancien conserve la signature, sans imposer une constante ; la nouvelle affectation est validée au scope par la garde de table.';
 
 
 --
@@ -796,7 +777,7 @@ BEGIN
  SELECT min(g."ID_Generique"),count(*) INTO identifiant,nombre
  FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
- WHERE lower(btrim(c."NomCategorieGenerique"))='devise'
+ WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Article','ID_DeviseFk',NULL))
    AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE
    AND logistique.fn_code_devise(g."AbrGenerique")='USD';
  IF nombre<>1 THEN
@@ -811,7 +792,7 @@ $$;
 -- Name: FUNCTION fn_devise_usd(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Résout exactement une référence USD active dans la catégorie Devise active ; aucun identifiant numérique codé en dur.';
+COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Défaut USD global résolu dans la catégorie courante du champ devise Article ; exige une seule valeur USD active et conserve son code ISO. Les choix d’entreprise sont explicitement transmis par les services.';
 
 
 --
@@ -937,7 +918,7 @@ BEGIN
   qty=a."QteArticle";price=a."PUArticle";business_date=coalesce(a."DateHeureAuto"::timestamp,clock_timestamp()::timestamp);origin='stock_initial';
   IF coalesce(qty,0)=0 THEN RETURN NULL;END IF;
   IF EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_ArticleFk"=p_article) THEN RAISE EXCEPTION 'Stock deja historise: rapprochez les mouvements existants.' USING ERRCODE='23514';END IF;
-  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_CategorieGeneriqueFk"=64 AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
+  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Commande','ID_TypeCmdFk',a."IdEntiteFk")) AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
  ELSE
   SELECT * INTO m FROM logistique."T_Mouvement" WHERE "ID_Mvt"=p_mouvement AND "ID_ArticleFk"=p_article FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Mouvement absent.' USING ERRCODE='23503';END IF;
@@ -963,7 +944,7 @@ END $$;
 -- Name: FUNCTION fn_materialiser_stock_initial(p_article integer, p_mouvement integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Creation centrale sous verrou article d un bon initial, ligne et unique mouvement; ou rattachement d un mouvement orphelin prouve sans reappliquer le stock. Idempotent par source; aucun tiers fournisseur invente.';
+COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Stock initial positif matérialisé une seule fois par BE, ligne et mouvement ; type d’entrée actif résolu dans la famille de commande effective de son entreprise. Reprise historique inchangée.';
 
 
 --
@@ -994,17 +975,18 @@ COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS '
 --
 
 CREATE FUNCTION logistique.fn_nature_bon(p_type integer) RETURNS text
-    LANGUAGE sql STABLE PARALLEL SAFE
+    LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
-    AS $$ SELECT logistique.fn_nature_type_bon(g."AbrGenerique")
- FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type AND g."ID_CategorieGeneriqueFk"=64 $$;
+    AS $$
+ SELECT logistique.fn_nature_type_bon(g."AbrGenerique") FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type
+ AND (referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',p_type) OR referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',p_type)) $$;
 
 
 --
 -- Name: FUNCTION fn_nature_bon(p_type integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_nature_bon(p_type integer) IS 'Nature métier du type du référentiel Type de commande : entree, sortie, commande ou NULL. Ne fige aucun identifiant de valeur CMD ; conserve la lecture des types historiques désactivés.';
+COMMENT ON FUNCTION logistique.fn_nature_bon(p_type integer) IS 'Nature par code Entrée/Sortie/CMD uniquement pour un type déclaré ou déjà utilisé. Retirer une famille du choix courant ne requalifie aucun document historique ; un type inconnu reste refusé.';
 
 
 --
@@ -1078,26 +1060,16 @@ CREATE FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_fa
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
     AS $$
- WITH matching AS (
-  SELECT f."TargetCategoryIdFk" cat,f."SettingScope" FROM systeme."T_Fk_Correspondance" f
-  WHERE f."SourceKey"='logistique.immobilisations.'||p_famille AND f."MappingType"='generic_category' AND f."ValideFkCorrespondance"
-   AND ((f."SettingScope"='entity' AND f."ScopeValue"=p_entite::text) OR (f."SettingScope"='global' AND f."ScopeValue" IS NULL))
- ), allowed AS (
-  SELECT cat FROM matching WHERE "SettingScope"=CASE WHEN EXISTS(SELECT FROM matching WHERE "SettingScope"='entity') THEN 'entity' ELSE 'global' END
-  UNION ALL SELECT "ID_CategorieGenerique" FROM referentiel."T_CategorieGenerique"
-   WHERE (p_famille='devise' AND lower(btrim("NomCategorieGenerique"))=lower('Devise'))
-      OR (p_famille='service-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Service'))
-      OR (p_famille='fonction-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Fonction'))
- ) SELECT p_id IS NULL OR EXISTS(SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-  WHERE g."ID_Generique"=p_id AND g."ID_CategorieGeneriqueFk" IN (SELECT cat FROM allowed) AND g."ValideGenerique" AND c."ValideCategorieGenerique")
-$$;
+ SELECT referentiel.fn_valider_reference_champ(CASE WHEN p_famille IN('service-rh','fonction-rh') THEN 'systeme' ELSE 'logistique' END,
+ CASE WHEN p_famille IN('service-rh','fonction-rh') THEN 'T_Utilisateurs' ELSE 'T_Immobilisation' END,
+ CASE p_famille WHEN 'categories' THEN 'ID_CategorieFk' WHEN 'etats' THEN 'ID_EtatFk' WHEN 'services' THEN 'ID_ServiceFk' WHEN 'service-rh' THEN 'ID_ServiceFk' WHEN 'fonction-rh' THEN 'ID_FonctionFk' WHEN 'devise' THEN 'ID_DeviseFk' END,p_id,p_entite) $$;
 
 
 --
 -- Name: FUNCTION fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) IS 'Valide une nouvelle référence active depuis les correspondances FK d’entreprise prioritaires puis globales, ou les familles RH/Devise existantes résolues par libellé ; aucun identifiant de catégorie figé.';
+COMMENT ON FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) IS 'Références du patrimoine et des données professionnelles résolues par le catalogue commun, sans seconde règle de catégorie dans ce domaine.';
 
 
 --
@@ -1161,22 +1133,18 @@ CREATE FUNCTION logistique.fn_verifier_devise(p_id integer) RETURNS void
     SET search_path TO 'pg_catalog'
     AS $_$
 BEGIN
- PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-  WHERE g."ID_Generique"=p_id AND g."ValideGenerique" IS TRUE
-   AND c."ValideCategorieGenerique" IS TRUE AND lower(btrim(c."NomCategorieGenerique"))='devise'
-   AND logistique.fn_code_devise(g."AbrGenerique") ~ '^[A-Z]{3}$'
- FOR SHARE OF g,c;
- IF NOT FOUND THEN RAISE EXCEPTION 'Une devise active du référentiel Devise est requise.' USING ERRCODE='23514'; END IF;
-END;
-$_$;
+ PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+ WHERE g."ID_Generique"=p_id AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND logistique.fn_code_devise(g."AbrGenerique") ~ '^[A-Z]{3}$'
+ AND EXISTS(SELECT FROM referentiel."T_ChampReferentiel" r WHERE r."ColumnName" IN('ID_DeviseFk','IdDeviseFk') AND referentiel.fn_reference_champ_connue(r."SchemaName",r."TableName",r."ColumnName",p_id)) FOR SHARE OF g,c;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Une devise active de référence, avec code ISO, est requise.' USING ERRCODE='23514';END IF;
+END $_$;
 
 
 --
 -- Name: FUNCTION fn_verifier_devise(p_id integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_verifier_devise(p_id integer) IS 'Verrouille la référence et sa catégorie contre une reclassification concurrente ; refuse devise absente, inactive ou sans code de trois lettres.';
+COMMENT ON FUNCTION logistique.fn_verifier_devise(p_id integer) IS 'Contrôle sémantique financier conservé : référence déclarée ou historique, valeur active et code ISO trois lettres. Le scope de la nouvelle affectation relève de la garde physique.';
 
 
 --
@@ -1192,7 +1160,7 @@ BEGIN
  IF p_qte<0 OR p_qte::text IN ('NaN','Infinity','-Infinity') OR p_qte>99999999999.999 OR p_qte<>round(p_qte,3) THEN
   RAISE EXCEPTION 'Quantité hors précision' USING ERRCODE='23514';
  END IF;
- PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=p_unite AND "ID_CategorieGeneriqueFk"=34 FOR SHARE;
+ PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=p_unite AND (referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UniteFk',p_unite) OR referentiel.fn_reference_champ_connue('logistique','T_PrecisionStock','ID_UniteFk',p_unite)) FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Unité de stock requise' USING ERRCODE='23514';END IF;
  SELECT "DecimalesStock" INTO d FROM logistique."V_PrecisionStock" WHERE "ID_UniteFk"=p_unite;
  IF d IS NULL OR p_qte<>round(p_qte,d) THEN
@@ -1205,7 +1173,7 @@ END $$;
 -- Name: FUNCTION fn_verifier_quantite(p_unite integer, p_qte numeric); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) IS 'Validation exacte d’une quantité physique par la politique logistique de son unité ; verrou partagé commun à la configuration, zéro décimale si aucune politique.';
+COMMENT ON FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) IS 'Contrôle exact des quantités et de la politique de précision ; unités déclarées ou déjà utilisées sans arrondi silencieux, même après changement des choix proposés.';
 
 
 --
@@ -1394,13 +1362,13 @@ BEGIN
  PERFORM logistique.fn_assert_generique_category(p_new_id_statut_cmd,28,'Commande','ID_StatutCmdFk');
  PERFORM logistique.fn_assert_generique_category(p_new_id_condition_paiement,37,'Commande','ID_ConditionPaiementFk');
  PERFORM logistique.fn_assert_generique_category(p_new_id_mode_paiement,36,'Commande','ID_ModePaiementFk');
- SELECT "AbrGenerique" INTO new_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_new_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
+ SELECT "AbrGenerique" INTO new_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_new_id_type_cmd AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',"ID_Generique");
  new_sign:=CASE WHEN new_abr ILIKE 'entr%' THEN 1 WHEN new_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
  IF logistique.fn_nature_bon(p_new_id_type_cmd) IS NULL THEN RAISE EXCEPTION 'Type de bon inconnu.' USING ERRCODE='23514'; END IF;
  IF op='INSERT' OR p_old_id_type_cmd IS NOT DISTINCT FROM p_new_id_type_cmd THEN RETURN; END IF;
  IF logistique.fn_nature_bon(p_old_id_type_cmd)='commande' OR logistique.fn_nature_bon(p_new_id_type_cmd)='commande' THEN RAISE EXCEPTION 'Un bon de commande ne se convertit pas en mouvement physique ; créez un BE ou BS distinct.' USING ERRCODE='23514';END IF;
  IF NOT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=p_id_commande) THEN RETURN; END IF;
- SELECT "AbrGenerique" INTO old_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_old_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
+ SELECT "AbrGenerique" INTO old_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_old_id_type_cmd AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',"ID_Generique");
  old_sign:=CASE WHEN old_abr ILIKE 'entr%' THEN 1 WHEN old_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
  IF old_sign=0 THEN RAISE EXCEPTION 'Ancien type inconnu : changement de sens impossible.' USING ERRCODE='23514'; END IF;
  PERFORM 1 FROM logistique."T_Article" a WHERE a."ID_Article" IN
@@ -1421,7 +1389,7 @@ $$;
 -- Name: PROCEDURE ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Valide les catégories et la nature explicite du bon : CMD ne produit aucun effet stock ; les changements physiques autorisés conservent le calcul net historique. Toute conversion vers ou depuis CMD est interdite.';
+COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Procédure de sens des bons conservée ; familles déléguées au catalogue sans modifier le sens, les codes, les lignes ou les mouvements historiques.';
 
 
 --
@@ -1478,11 +1446,11 @@ BEGIN
    RAISE EXCEPTION 'Ancienne quantité de ligne invalide.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO old_type,old_abr
-  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND g."ID_CategorieGeneriqueFk"=64
+  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
   WHERE c."ID_Commande"=p_old_cmd_fk;
   IF NOT FOUND THEN
    SELECT m."ID_TypeMvtFk",g."AbrGenerique" INTO old_type,old_abr
-   FROM logistique."T_Mouvement" m JOIN referentiel."T_Generique" g ON g."ID_Generique"=m."ID_TypeMvtFk" AND g."ID_CategorieGeneriqueFk"=64
+   FROM logistique."T_Mouvement" m JOIN referentiel."T_Generique" g ON g."ID_Generique"=m."ID_TypeMvtFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
    WHERE m."ID_cmdFk"=p_old_cmd_fk AND m."ID_ArticleFk"=p_old_article_fk;
   END IF;
   old_sign := CASE WHEN old_abr ILIKE 'entr%' THEN 1 WHEN old_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
@@ -1493,7 +1461,7 @@ BEGIN
    RAISE EXCEPTION 'Quantité entière positive et prix non négatif requis.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO new_type,new_abr
-  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND g."ID_CategorieGeneriqueFk"=64
+  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
   WHERE c."ID_Commande"=p_new_cmd_fk;
   new_sign := CASE WHEN new_abr ILIKE 'entr%' THEN 1 WHEN new_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
   IF new_sign=0 THEN RAISE EXCEPTION 'Nouveau type de mouvement inconnu.' USING ERRCODE='23514'; END IF;
@@ -2618,7 +2586,7 @@ BEGIN
  END IF;
  -- Même clé de verrou que fn_verifier_quantite : la réduction attend les opérations en cours.
  PERFORM 1 FROM referentiel."T_Generique"
-  WHERE "ID_Generique"=NEW."ID_UniteFk" AND "ID_CategorieGeneriqueFk"=34 FOR UPDATE;
+  WHERE "ID_Generique"=NEW."ID_UniteFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UniteFk',NEW."ID_UniteFk") OR referentiel.fn_reference_champ_connue('logistique','T_PrecisionStock','ID_UniteFk',NEW."ID_UniteFk")) FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Une unité du référentiel Unités est requise' USING ERRCODE='23514';END IF;
  IF TG_OP='UPDATE' AND NEW."DecimalesStock" IS NOT DISTINCT FROM OLD."DecimalesStock" THEN
   NEW."ModifieLe"=OLD."ModifieLe";RETURN NEW;
@@ -2633,7 +2601,7 @@ END $$;
 -- Name: FUNCTION tr_precision_stock(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_precision_stock() IS 'Verrouille l’unité, protège l’identité, interdit la suppression et toute précision incompatible ; horodate seulement les changements effectifs, sans effet de stock.';
+COMMENT ON FUNCTION logistique.tr_precision_stock() IS 'Politique de décimales conservée et protégée par l’historique ; sélection d’unité résolue au catalogue, identité toujours immuable.';
 
 
 --
@@ -2850,7 +2818,7 @@ CREATE FUNCTION logistique.tr_proteger_unite_precision_stock() RETURNS trigger
     AS $$
 BEGIN
  IF TG_OP='UPDATE' AND NEW."ID_Generique"=OLD."ID_Generique" AND NEW."ID_CategorieGeneriqueFk"=OLD."ID_CategorieGeneriqueFk" THEN RETURN NEW;END IF;
- IF OLD."ID_CategorieGeneriqueFk"=34 AND
+ IF
  (EXISTS(SELECT FROM logistique."T_PrecisionStock" WHERE "ID_UniteFk"=OLD."ID_Generique")
  OR EXISTS(SELECT FROM logistique."T_Article" WHERE "ID_UniteFk"=OLD."ID_Generique")) THEN
   RAISE EXCEPTION 'La catégorie et l’identité d’une unité utilisée sont conservées' USING ERRCODE='23514';
@@ -2929,7 +2897,7 @@ BEGIN
  IF TG_OP='INSERT' OR NEW."ID_ModeReglementFk" IS DISTINCT FROM OLD."ID_ModeReglementFk" THEN
   PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
    ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-   WHERE g."ID_Generique"=NEW."ID_ModeReglementFk" AND g."ID_CategorieGeneriqueFk"=36
+   WHERE g."ID_Generique"=NEW."ID_ModeReglementFk" AND referentiel.fn_reference_champ_connue('logistique','T_Reglements','ID_ModeReglementFk',NEW."ID_ModeReglementFk")
      AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE FOR SHARE OF g,c;
   IF NOT FOUND THEN RAISE EXCEPTION 'Mode de reglement indisponible.' USING ERRCODE='23514'; END IF;
  END IF;
@@ -2951,7 +2919,7 @@ END $$;
 -- Name: FUNCTION tr_reglement_apres_avoir(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_reglement_apres_avoir() IS 'Verrouille la facture et contrôle créations ET modifications : montant positif, parent/devise/tiers immuables, mode actif, clôture et avoirs conservés, solde net non dépassé. Un excédent historique peut seulement diminuer.';
+COMMENT ON FUNCTION logistique.tr_reglement_apres_avoir() IS 'Protections du règlement conservées : valeur active, solde après avoir et dates ; famille du mode déléguée au référencement physique.';
 
 
 --
@@ -3178,7 +3146,7 @@ CREATE FUNCTION logistique.verifier_article_poids() RETURNS trigger
     AS $$
 BEGIN
  IF NEW."ID_UnitePoidsFk" IS NOT NULL AND NOT EXISTS (
- SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_UnitePoidsFk" AND "ID_CategorieGeneriqueFk"=34 AND lower(btrim("AbrGenerique")) IN ('mg','g','kg','t')) THEN
+ SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_UnitePoidsFk" AND referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UnitePoidsFk',NEW."ID_UnitePoidsFk") AND lower(btrim("AbrGenerique")) IN ('mg','g','kg','t')) THEN
  RAISE EXCEPTION 'Unité de masse requise pour le poids unitaire.' USING ERRCODE='23514';
  END IF;
  RETURN NEW;
@@ -3190,7 +3158,7 @@ $$;
 -- Name: FUNCTION verifier_article_poids(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.verifier_article_poids() IS 'Contrôle l’unité de masse sans transformer les quantités ni les prix.';
+COMMENT ON FUNCTION logistique.verifier_article_poids() IS 'Unité de poids issue de la famille du champ, avec les codes de masse mg/g/kg/t toujours obligatoires ; aucun poids ni unité historique recalculé.';
 
 
 --
@@ -3673,7 +3641,7 @@ BEGIN
         -- b) Devise appartenant à la catégorie 'Devise' ?
         IF OLD."IdDeviseFk" IS NOT NULL THEN
             SELECT
-                ( lower(cg."NomCategorieGenerique") = 'devise' )
+                ( referentiel.fn_reference_champ_connue('operations','T_Paiement','IdDeviseFk',g."ID_Generique") )
             INTO v_is_devise
             FROM referentiel."T_Generique" g
             JOIN referentiel."T_CategorieGenerique" cg
@@ -3748,7 +3716,7 @@ BEGIN
         -- b) Devise appartenant à la catégorie 'Devise' ?
         IF NEW."IdDeviseFk" IS NOT NULL THEN
             SELECT
-                ( lower(cg."NomCategorieGenerique") = 'devise' )
+                ( referentiel.fn_reference_champ_connue('operations','T_Paiement','IdDeviseFk',g."ID_Generique") )
             INTO v_is_devise
             FROM referentiel."T_Generique" g
             JOIN referentiel."T_CategorieGenerique" cg
@@ -3813,7 +3781,7 @@ $$;
 -- Name: FUNCTION gestion_caisse_on_paiement(); Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Après mutation d’un paiement, annule l’effet OLD et applique NEW dans la caisse entité/devise par UPSERT. Éligibilité : ValidePaiement vrai, statut Payé(e), catégorie devise, type de mouvement paiement Entrée/Sortie et entité renseignée. Les libellés de référentiel sont utilisés, contrairement aux codes fixes des fonctions d’audit.';
+COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Gestion de caisse existante conservée ; contrôle de devise délégué au catalogue de la vraie FK, sans modifier les règles de statut, de sens ou les écritures antérieures.';
 
 
 --
@@ -3990,6 +3958,62 @@ COMMENT ON FUNCTION referentiel.fn_catalogue_tableau_verifier() IS 'Vérifie les
 
 
 --
+-- Name: fn_categories_champ(text, text, text, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_categories_champ(p_schema text, p_table text, p_colonne text, p_entite integer DEFAULT NULL::integer) RETURNS integer[]
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT "CategoryIds" FROM referentiel.fn_resolution_champ(p_schema,p_table,p_colonne,p_entite) $$;
+
+
+--
+-- Name: FUNCTION fn_categories_champ(p_schema text, p_table text, p_colonne text, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_categories_champ(p_schema text, p_table text, p_colonne text, p_entite integer) IS 'Familles effectives du champ physique et de son entreprise. Vide signifie non configuré ; les scopes pays et visibilités historiques ne sont pas implicitement activés.';
+
+
+--
+-- Name: fn_entite_reference_champ(text, text, jsonb); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) RETURNS integer
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE owner_id integer;
+BEGIN
+ -- L'entreprise de l'utilisateur ou d'un résultat de recherche n'est pas
+ -- un propriétaire durable d'une ligne partagée.
+ IF p_ligne IS NULL OR NOT EXISTS(SELECT FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "SupportsEntityScope") THEN RETURN NULL;END IF;
+ IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
+ owner_id:=coalesce(nullif(p_ligne->>'IdEntiteFk','')::integer,nullif(p_ligne->>'ID_EntiteFk','')::integer);
+ IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
+ IF p_schema='logistique' THEN
+  CASE p_table
+   WHEN 'T_Mouvement' THEN
+    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=nullif(p_ligne->>'ID_cmdFk','')::integer;
+    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Article" WHERE "ID_Article"=nullif(p_ligne->>'ID_ArticleFk','')::integer;END IF;
+   WHEN 'T_Reglements' THEN
+    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Facture" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';
+    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';END IF;
+   WHEN 'T_Remboursement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Avoir" WHERE "ID_Avoir"=nullif(p_ligne->>'ID_AvoirFk','')::bigint;
+   ELSE NULL;
+  END CASE;
+ END IF;
+ RETURN owner_id;
+END $$;
+
+
+--
+-- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Entreprise de la vraie ligne : FK directe, PK de T_Entite ou parent logistique prouvé. Retourne NULL pour les tables partagées ; ne déduit jamais une propriété depuis l’utilisateur, la session ou un résultat de recherche. Fonction de lecture sans autorisation supplémentaire.';
+
+
+--
 -- Name: fn_guard_sens_stock(); Type: FUNCTION; Schema: referentiel; Owner: -
 --
 
@@ -3997,16 +4021,11 @@ CREATE FUNCTION referentiel.fn_guard_sens_stock() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog'
     AS $$
-DECLARE old_nature text; new_nature text;
 BEGIN
- IF OLD."ID_CategorieGeneriqueFk"=64 AND (
-  EXISTS(SELECT FROM logistique."T_Commande" WHERE "ID_TypeCmdFk"=OLD."ID_Generique") OR EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_TypeMvtFk"=OLD."ID_Generique")) THEN
-  old_nature:=logistique.fn_nature_type_bon(OLD."AbrGenerique");new_nature:=logistique.fn_nature_type_bon(NEW."AbrGenerique");
-  IF NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM 64 OR new_nature IS DISTINCT FROM old_nature THEN
-   RAISE EXCEPTION 'La nature d’un type de bon déjà utilisé ne peut pas changer.' USING ERRCODE='23514';
-  END IF;
- END IF;
- RETURN NEW;
+ IF EXISTS(SELECT FROM logistique."T_Commande" WHERE "ID_TypeCmdFk"=OLD."ID_Generique") OR EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_TypeMvtFk"=OLD."ID_Generique") THEN
+  IF NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM OLD."ID_CategorieGeneriqueFk" OR logistique.fn_nature_type_bon(NEW."AbrGenerique") IS DISTINCT FROM logistique.fn_nature_type_bon(OLD."AbrGenerique") THEN
+   RAISE EXCEPTION 'La nature d’un type de bon déjà utilisé ne peut pas changer.' USING ERRCODE='23514';END IF;
+ END IF;RETURN NEW;
 END $$;
 
 
@@ -4014,7 +4033,7 @@ END $$;
 -- Name: FUNCTION fn_guard_sens_stock(); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_guard_sens_stock() IS 'Préserve la nature exacte des types utilisés : CMD ne peut pas devenir un autre type de signe zéro. Les libellés peuvent évoluer en conservant la catégorie et la nature métier.';
+COMMENT ON FUNCTION referentiel.fn_guard_sens_stock() IS 'Conserve le sens des types de bon déjà utilisés, dans toute famille actuelle ou ancienne, sans dépendre de l’identifiant historique64.';
 
 
 --
@@ -4065,6 +4084,191 @@ END $$;
 --
 
 COMMENT ON FUNCTION referentiel.fn_preference_tableau_verifier() IS 'Contrôle SQL de l’auteur et entreprise, des colonnes autorisées et de l’indépendance tableau/export ; date et révise les modifications.';
+
+
+--
+-- Name: fn_reference_champ_connue(text, text, text, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_reference_champ_connue(p_schema text, p_table text, p_colonne text, p_valeur integer) RETURNS boolean
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE r referentiel."T_ChampReferentiel"; cat integer; used boolean;
+BEGIN
+ IF p_valeur IS NULL THEN RETURN true;END IF;
+ SELECT * INTO r FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "ColumnName"=p_colonne;
+ IF NOT FOUND THEN RETURN false;END IF;
+ SELECT "ID_CategorieGeneriqueFk" INTO cat FROM referentiel."T_Generique" WHERE "ID_Generique"=p_valeur;
+ IF NOT FOUND THEN RETURN false;END IF;
+ IF cat=r."ID_CategorieDefautFk" OR (r."CanConfigure" AND EXISTS(SELECT FROM systeme."T_Fk_Correspondance" f
+ WHERE f."MappingType"='generic_category' AND f."TargetCategoryIdFk"=cat AND (f."IdChampReferentielFk"=r."ID_ChampReferentiel" OR (f."IdChampReferentielFk" IS NULL AND f."SourceKey"=ANY(r."AliasSourceKeys"))))) THEN RETURN true;END IF;
+ EXECUTE format('SELECT EXISTS(SELECT FROM %I.%I WHERE %I=$1)',p_schema,p_table,p_colonne) INTO used USING p_valeur;
+ RETURN used;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_reference_champ_connue(p_schema text, p_table text, p_colonne text, p_valeur integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_reference_champ_connue(p_schema text, p_table text, p_colonne text, p_valeur integer) IS 'Reconnaissance de lecture et des procédures historiques : famille de référence, catégorie déclarée ou valeur déjà utilisée dans la vraie FK. Ne remplace jamais la validation stricte d’une nouvelle affectation.';
+
+
+--
+-- Name: fn_resolution_champ(text, text, text, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_resolution_champ(p_schema text, p_table text, p_colonne text, p_entite integer DEFAULT NULL::integer) RETURNS TABLE("CategoryIds" integer[], "OrigineReglage" text)
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ WITH champ AS (SELECT * FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "ColumnName"=p_colonne),
+ candidates AS (
+ SELECT f.*,CASE WHEN f."SettingScope"='entity' THEN CASE WHEN f."IdChampReferentielFk" IS NOT NULL THEN 1 ELSE 2 END ELSE CASE WHEN f."IdChampReferentielFk" IS NOT NULL THEN 3 ELSE 4 END END priority
+ FROM champ c JOIN systeme."T_Fk_Correspondance" f ON (f."IdChampReferentielFk"=c."ID_ChampReferentiel" OR (f."IdChampReferentielFk" IS NULL AND f."SourceKey"=ANY(c."AliasSourceKeys")))
+ WHERE c."CanConfigure" AND f."MappingType"='generic_category' AND f."ValideFkCorrespondance"
+ AND ((f."SettingScope"='global' AND f."ScopeValue" IS NULL) OR (c."SupportsEntityScope" AND f."SettingScope"='entity' AND f."ScopeValue"=p_entite::text))
+ ), chosen AS (SELECT * FROM candidates WHERE priority=(SELECT min(priority) FROM candidates)),
+ resolved AS (SELECT CASE WHEN EXISTS(SELECT FROM chosen) THEN
+ CASE WHEN EXISTS(SELECT FROM chosen WHERE "MappingValue"='@default') THEN ARRAY_REMOVE(ARRAY[c."ID_CategorieDefautFk"],NULL)
+ ELSE ARRAY(SELECT DISTINCT "TargetCategoryIdFk" FROM chosen WHERE "TargetCategoryIdFk" IS NOT NULL ORDER BY "TargetCategoryIdFk") END
+ ELSE ARRAY_REMOVE(ARRAY[c."ID_CategorieDefautFk"],NULL) END ids,
+ CASE WHEN EXISTS(SELECT FROM chosen WHERE "MappingValue"='@default') THEN CASE WHEN c."ID_CategorieDefautFk" IS NULL THEN 'non_configure' ELSE 'defaut' END
+ WHEN EXISTS(SELECT FROM chosen WHERE "SettingScope"='entity') THEN 'entity'
+ WHEN EXISTS(SELECT FROM chosen) THEN 'global'
+ WHEN c."ID_CategorieDefautFk" IS NULL THEN 'non_configure' ELSE 'defaut' END origin FROM champ c)
+ SELECT coalesce((SELECT ids FROM resolved),'{}'::integer[]),coalesce((SELECT origin FROM resolved),'inconnu') $$;
+
+
+--
+-- Name: FUNCTION fn_resolution_champ(p_schema text, p_table text, p_colonne text, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_resolution_champ(p_schema text, p_table text, p_colonne text, p_entite integer) IS 'Résolution canonique : entreprise puis global, jeu canonique avant alias au même scope, puis défaut immuable. Un marqueur explicite @default ne retombe jamais sur une ancienne surcharge.';
+
+
+--
+-- Name: fn_valider_reference_champ(text, text, text, integer, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer DEFAULT NULL::integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT p_valeur IS NULL OR EXISTS(
+ SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+ WHERE g."ID_Generique"=p_valeur AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ(p_schema,p_table,p_colonne,p_entite))) $$;
+
+
+--
+-- Name: FUNCTION fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer) IS 'Vérifie une nouvelle affectation de référence : valeur et famille actives, famille courante du champ et de l’entreprise. NULL reste soumis à la contrainte NOT NULL de la vraie colonne.';
+
+
+--
+-- Name: tr_catalogue_champ_integrite(); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.tr_catalogue_champ_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Catalogue physique conservé.' USING ERRCODE='23514';END IF;
+ IF TG_OP='INSERT' THEN
+  IF NOT EXISTS(SELECT FROM pg_constraint k JOIN pg_class t ON t.oid=k.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+   JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=ANY(k.conkey) WHERE k.contype='f' AND k.confrelid='referentiel."T_Generique"'::regclass
+   AND n.nspname=NEW."SchemaName" AND t.relname=NEW."TableName" AND a.attname=NEW."ColumnName") THEN RAISE EXCEPTION 'Colonne physique à FK non prouvée.' USING ERRCODE='23514';END IF;
+  RETURN NEW;
+ END IF;
+ IF (to_jsonb(NEW)-ARRAY['Revision','ModifieLe','ModifieParUserFk']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['Revision','ModifieLe','ModifieParUserFk']) OR pg_trigger_depth()<2 THEN
+  RAISE EXCEPTION 'Définition et catégorie de référence immuables ; utilisez les correspondances courantes.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_catalogue_champ_integrite(); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.tr_catalogue_champ_integrite() IS 'Conserve la clé physique, le défaut prouvé et la politique de sécurité ; seule une révision interne issue des correspondances peut modifier les métadonnées. Un chargement initial doit prouver la vraie FK ; les clés déjà installées sont uniques.';
+
+
+--
+-- Name: tr_reference_utilisee_integrite(); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.tr_reference_utilisee_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE r record; used boolean;
+BEGIN
+ IF TG_OP='UPDATE' AND NEW."ID_Generique" IS NOT DISTINCT FROM OLD."ID_Generique" AND NEW."ID_CategorieGeneriqueFk" IS NOT DISTINCT FROM OLD."ID_CategorieGeneriqueFk" THEN RETURN NEW;END IF;
+ FOR r IN SELECT "SchemaName" s,"TableName" t,"ColumnName" col FROM referentiel."T_ChampReferentiel" LOOP
+  EXECUTE format('SELECT EXISTS(SELECT FROM %I.%I WHERE %I=$1)',r.s,r.t,r.col) INTO used USING OLD."ID_Generique";
+  IF used THEN RAISE EXCEPTION 'Identité et famille d’une référence utilisée sont conservées ; désactivez-la si nécessaire.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_reference_utilisee_integrite(); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.tr_reference_utilisee_integrite() IS 'Empêche une suppression/cascade ou migration de famille d’une valeur déjà utilisée dans les FK physiques, afin de préserver les historiques. Désactivation et changement de libellé restent distincts.';
+
+
+--
+-- Name: tr_valider_champ_referentiel(); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.tr_valider_champ_referentiel() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE r record; before_data jsonb; after_data jsonb:=to_jsonb(NEW); owner_id integer; old_owner integer; value_id integer; parent_data jsonb; parent_column text;
+BEGIN
+ IF TG_OP='UPDATE' THEN before_data:=to_jsonb(OLD);END IF;
+ owner_id:=referentiel.fn_entite_reference_champ(TG_TABLE_SCHEMA,TG_TABLE_NAME,after_data);
+ old_owner:=referentiel.fn_entite_reference_champ(TG_TABLE_SCHEMA,TG_TABLE_NAME,before_data);
+ IF TG_TABLE_SCHEMA='logistique' THEN
+  IF TG_TABLE_NAME='T_Mouvement' THEN
+   SELECT to_jsonb(c) INTO parent_data FROM logistique."T_Commande" c WHERE c."ID_Commande"=(after_data->>'ID_cmdFk')::integer;
+   IF parent_data IS NULL THEN SELECT to_jsonb(a) INTO parent_data FROM logistique."T_Article" a WHERE a."ID_Article"=(after_data->>'ID_ArticleFk')::integer;END IF;
+  ELSIF TG_TABLE_NAME IN('T_Facture','T_Avoir') THEN SELECT to_jsonb(c) INTO parent_data FROM logistique."T_Commande" c WHERE c."ID_Commande"=(after_data->>'ID_CommandeFk')::integer;
+  ELSIF TG_TABLE_NAME='T_Reglements' THEN SELECT to_jsonb(c) INTO parent_data FROM logistique."T_Facture" c WHERE c."CodeFacture"=after_data->>'CodeFactureFk';
+  ELSIF TG_TABLE_NAME='T_Remboursement' THEN SELECT to_jsonb(c) INTO parent_data FROM logistique."T_Avoir" c WHERE c."ID_Avoir"=(after_data->>'ID_AvoirFk')::bigint;
+  ELSIF TG_TABLE_NAME='T_ValorisationOuverture' THEN SELECT to_jsonb(a) INTO parent_data FROM logistique."T_Article" a WHERE a."ID_Article"=(after_data->>'ID_ArticleFk')::integer;
+  END IF;
+ END IF;
+ FOR r IN SELECT * FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=TG_TABLE_SCHEMA AND "TableName"=TG_TABLE_NAME ORDER BY "ID_ChampReferentiel" LOOP
+  IF TG_OP='UPDATE' AND after_data->r."ColumnName" IS NOT DISTINCT FROM before_data->r."ColumnName" AND owner_id IS NOT DISTINCT FROM old_owner THEN CONTINUE;END IF;
+  value_id:=nullif(after_data->>r."ColumnName",'')::integer;
+  IF value_id IS NOT NULL THEN PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=value_id FOR SHARE;END IF;
+  -- Une référence financière/physique copiée exactement du parent historique
+  -- reste celle du parent, même après changement de la catégorie proposée.
+  parent_column:=CASE WHEN TG_TABLE_NAME='T_Mouvement' AND r."ColumnName"='ID_TypeMvtFk' THEN 'ID_TypeCmdFk' ELSE r."ColumnName" END;
+  IF TG_TABLE_SCHEMA='logistique' AND parent_data IS NOT NULL AND (
+   r."ColumnName"='ID_DeviseFk' OR (TG_TABLE_NAME='T_Mouvement' AND r."ColumnName"='ID_TypeMvtFk')
+   OR (TG_TABLE_NAME='T_Facture' AND r."ColumnName" IN('ID_ModePaiementFk','ID_ConditionPaiementFk')))
+   AND owner_id IS NOT DISTINCT FROM (parent_data->>'IdEntiteFk')::integer
+   AND value_id IS NOT NULL AND after_data->r."ColumnName" IS NOT DISTINCT FROM parent_data->parent_column THEN CONTINUE;END IF;
+  IF NOT referentiel.fn_valider_reference_champ(TG_TABLE_SCHEMA,TG_TABLE_NAME,r."ColumnName",value_id,owner_id) THEN
+   RAISE EXCEPTION 'Référence inactive ou incompatible pour %.%.%.',TG_TABLE_SCHEMA,TG_TABLE_NAME,r."ColumnName" USING ERRCODE='23514';END IF;
+ END LOOP;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_valider_champ_referentiel(); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.tr_valider_champ_referentiel() IS 'Garde de toutes les FK cataloguées : INSERT ou changement effectif de valeur/entreprise seulement. Une référence historique inchangée reste consultable et autorise une modification descriptive.';
 
 
 --
@@ -4515,6 +4719,78 @@ $$;
 --
 
 COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
+
+
+--
+-- Name: tr_correspondance_champ_integrite(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_correspondance_champ_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE row_data jsonb; r referentiel."T_ChampReferentiel"; cat integer;
+BEGIN
+ row_data:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+ IF (row_data->>'IdChampReferentielFk') IS NULL THEN
+  PERFORM 1 FROM referentiel."T_ChampReferentiel" c WHERE row_data->>'SourceKey'=ANY(c."AliasSourceKeys") ORDER BY c."ID_ChampReferentiel" FOR UPDATE;
+  IF row_data->>'SourceKey' LIKE 'champ.%' THEN RAISE EXCEPTION 'Identité de champ canonique obligatoire' USING ERRCODE='23514';END IF;
+  IF EXISTS(SELECT FROM referentiel."T_ChampReferentiel" c WHERE NOT c."CanConfigure" AND row_data->>'SourceKey'=ANY(c."AliasSourceKeys") AND (row_data->>'TargetCategoryIdFk')::integer IS DISTINCT FROM c."ID_CategorieDefautFk") THEN
+   RAISE EXCEPTION 'Famille de sécurité protégée.' USING ERRCODE='23514';END IF;
+  RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+ END IF;
+ SELECT * INTO r FROM referentiel."T_ChampReferentiel" WHERE "ID_ChampReferentiel"=(row_data->>'IdChampReferentielFk')::integer FOR UPDATE;
+ IF NOT FOUND OR NOT r."CanConfigure" THEN RAISE EXCEPTION 'Champ absent ou protégé.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND NEW."IdChampReferentielFk" IS DISTINCT FROM OLD."IdChampReferentielFk" THEN RAISE EXCEPTION 'Identité du réglage conservée.' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ IF NEW."MappingType"<>'generic_category' OR NEW."SourceKey"<>'champ.'||r."ID_ChampReferentiel"::text OR NEW."SchemaName"<>r."SchemaName" OR NEW."FieldName"<>r."ColumnName" OR NEW."ModuleName"<>r."ModuleName" OR NEW."ViewName" IS NOT NULL
+  OR NEW."ReferenceSchemaName" IS DISTINCT FROM 'referentiel' OR NEW."ReferenceObjectName" IS DISTINCT FROM 'T_Generique' OR NEW."ReferenceFieldName" IS DISTINCT FROM 'ID_Generique'
+  OR NEW."SettingScope" NOT IN ('global','entity') OR NEW."DisplayOrder"<0 THEN RAISE EXCEPTION 'Correspondance et colonne physique incohérentes.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entity' AND NOT r."SupportsEntityScope" THEN RAISE EXCEPTION 'Ce champ partagé ne possède pas de portée entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entity' AND (NEW."ScopeValue" !~ '^[1-9][0-9]{0,9}$' OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"::text=NEW."ScopeValue")) THEN RAISE EXCEPTION 'Entreprise de réglage introuvable.' USING ERRCODE='23514';END IF;
+ IF NEW."MappingValue"='@default' THEN
+  IF NEW."TargetCategoryIdFk" IS NOT NULL OR NOT NEW."IsDefaultMapping" THEN RAISE EXCEPTION 'Marqueur de restauration invalide.' USING ERRCODE='23514';END IF;
+ ELSE
+  IF NEW."TargetCategoryIdFk" IS NULL OR NEW."MappingValue"<>NEW."TargetCategoryIdFk"::text OR NOT EXISTS(SELECT FROM referentiel."T_CategorieGenerique" WHERE "ID_CategorieGenerique"=NEW."TargetCategoryIdFk" AND "ValideCategorieGenerique") THEN
+   RAISE EXCEPTION 'Catégorie courante active requise.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF EXISTS(SELECT FROM systeme."T_Fk_Correspondance" f WHERE f."IdChampReferentielFk"=r."ID_ChampReferentiel" AND f."SettingScope"=NEW."SettingScope" AND f."ScopeValue" IS NOT DISTINCT FROM NEW."ScopeValue" AND f."IdFkCorrespondance"<>coalesce(NEW."IdFkCorrespondance",-1)
+  AND ((NEW."MappingValue"='@default')<>(f."MappingValue"='@default'))) THEN RAISE EXCEPTION 'Un jeu de réglage ne mélange pas restauration et catégories.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_correspondance_champ_integrite(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_correspondance_champ_integrite() IS 'Contrôle des jeux canoniques : champ physique, famille active, portée existante, restauration explicite et verrou du catalogue. Les anciens réglages restent conservés, les rôles de sécurité ne changent pas de famille.';
+
+
+--
+-- Name: tr_correspondance_champ_revision(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_correspondance_champ_revision() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE before_data jsonb; after_data jsonb;
+BEGIN
+ IF TG_OP<>'INSERT' THEN before_data:=to_jsonb(OLD);END IF;
+ IF TG_OP<>'DELETE' THEN after_data:=to_jsonb(NEW);END IF;
+ UPDATE referentiel."T_ChampReferentiel" c SET "Revision"=c."Revision"+1,"ModifieLe"=clock_timestamp(),"ModifieParUserFk"=systeme.fn_admin_actor_user_id()
+ WHERE c."ID_ChampReferentiel" IN (nullif(before_data->>'IdChampReferentielFk','')::integer,nullif(after_data->>'IdChampReferentielFk','')::integer)
+ OR coalesce(before_data->>'SourceKey','')=ANY(c."AliasSourceKeys") OR coalesce(after_data->>'SourceKey','')=ANY(c."AliasSourceKeys");
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_correspondance_champ_revision(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_correspondance_champ_revision() IS 'Révision opaque commune au champ : chaque modification canonique ou de son alias historique invalide les lectures concurrentes, toutes portées confondues, avec auteur et horodatage factuels.';
 
 
 --
@@ -20966,14 +21242,14 @@ CREATE VIEW logistique."V_PrecisionStock" AS
     g."ValideGenerique" AS "ValideUnite"
    FROM (referentiel."T_Generique" g
      LEFT JOIN logistique."T_PrecisionStock" p ON ((p."ID_UniteFk" = g."ID_Generique")))
-  WHERE (g."ID_CategorieGeneriqueFk" = 34);
+  WHERE (referentiel.fn_reference_champ_connue('logistique'::text, 'T_Article'::text, 'ID_UniteFk'::text, g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique'::text, 'T_PrecisionStock'::text, 'ID_UniteFk'::text, g."ID_Generique"));
 
 
 --
 -- Name: VIEW "V_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_PrecisionStock" IS 'Lecture commune au grain unité de la catégorie Unités : politique explicite, identité et date ; zéro décimale si une nouvelle unité n’est pas encore paramétrée.';
+COMMENT ON VIEW logistique."V_PrecisionStock" IS 'Précision des unités déclarées ou utilisées ; défaut explicite zéro décimale, paramètres historiques conservés et aucune quantité transformée.';
 
 
 --
@@ -25772,6 +26048,254 @@ COMMENT ON SEQUENCE referentiel."T_CategorieGenerique_ID_CategorieGenerique_seq"
 
 
 --
+-- Name: T_ChampReferentiel; Type: TABLE; Schema: referentiel; Owner: -
+--
+
+CREATE TABLE referentiel."T_ChampReferentiel" (
+    "ID_ChampReferentiel" integer CONSTRAINT "T_ChampReferentiel_ID_ChampReferentiel_not_null" NOT NULL,
+    "SchemaName" character varying(80) CONSTRAINT "T_ChampReferentiel_SchemaName_not_null" NOT NULL,
+    "TableName" character varying(120) CONSTRAINT "T_ChampReferentiel_TableName_not_null" NOT NULL,
+    "ColumnName" character varying(120) CONSTRAINT "T_ChampReferentiel_ColumnName_not_null" NOT NULL,
+    "ChampLabel" character varying(255) CONSTRAINT "T_ChampReferentiel_ChampLabel_not_null" NOT NULL,
+    "ModuleName" character varying(80) CONSTRAINT "T_ChampReferentiel_ModuleName_not_null" NOT NULL,
+    "ID_CategorieDefautFk" integer,
+    "AliasSourceKeys" text[] DEFAULT '{}'::text[] CONSTRAINT "T_ChampReferentiel_AliasSourceKeys_not_null" NOT NULL,
+    "CanConfigure" boolean DEFAULT true CONSTRAINT "T_ChampReferentiel_CanConfigure_not_null" NOT NULL,
+    "SupportsEntityScope" boolean DEFAULT false CONSTRAINT "T_ChampReferentiel_SupportsEntityScope_not_null" NOT NULL,
+    "Revision" bigint DEFAULT 1 CONSTRAINT "T_ChampReferentiel_Revision_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_ChampReferentiel_CreeLe_not_null" NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_ChampReferentiel_ModifieLe_not_null" NOT NULL,
+    "ModifieParUserFk" integer,
+    CONSTRAINT "T_ChampReferentiel_Revision_check" CHECK (("Revision" > 0)),
+    CONSTRAINT ck_champ_identifiants CHECK (((("SchemaName")::text = btrim(("SchemaName")::text)) AND (("TableName")::text = btrim(("TableName")::text)) AND (("ColumnName")::text = btrim(("ColumnName")::text)) AND (length(("SchemaName")::text) > 0) AND (length(("TableName")::text) > 0) AND (length(("ColumnName")::text) > 0)))
+);
+
+
+--
+-- Name: TABLE "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TABLE referentiel."T_ChampReferentiel" IS 'Catalogue unique des colonnes physiques à FK vers T_Generique ; famille de référence immuable et alias explicites, aucun choix courant dupliqué.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ID_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ID_ChampReferentiel" IS 'Identifiant immuable d’une colonne physique cataloguée, jamais déduit de sa position affichée.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."SchemaName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."SchemaName" IS 'Schéma réel de la table possédant une clé étrangère vers T_Generique.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."TableName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."TableName" IS 'Nom réel et sensible à la casse de la table propriétaire de la clé étrangère.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ColumnName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ColumnName" IS 'Nom physique exact de la colonne de référence ; la clé étrangère est prouvée au catalogue PostgreSQL.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ChampLabel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ChampLabel" IS 'Libellé métier du champ pour lecture et diagnostic, distinct de son identifiant SQL.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ModuleName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ModuleName" IS 'Domaine du champ, utilisé pour le catalogue et les correspondances, sans accorder de droits.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ID_CategorieDefautFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ID_CategorieDefautFk" IS 'Famille de référence prouvée et immuable ; NULL signifie absence de preuve, aucune famille inventée.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."AliasSourceKeys"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."AliasSourceKeys" IS 'Anciens SourceKey explicitement associés à cette vraie FK pour compatibilité des réglages hérités.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."CanConfigure"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."CanConfigure" IS 'Autorise une surcharge de catégorie ; false protège notamment la famille des rôles de sécurité.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."SupportsEntityScope"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."SupportsEntityScope" IS 'Politique immuable de portée : true seulement si la vraie ligne possède une entreprise directe, sa propre PK Entité ou un parent logistique prouvé. Les tables partagées restent globales, sans entreprise déduite de leur utilisateur.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."Revision"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."Revision" IS 'Révision opaque incrémentée pour toute modification de jeu canonique ou alias, afin de détecter les écritures concurrentes.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."CreeLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."CreeLe" IS 'Instant réel de création du catalogue physique.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ModifieLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ModifieLe" IS 'Instant réel de la dernière modification de correspondance touchant le champ.';
+
+
+--
+-- Name: COLUMN "T_ChampReferentiel"."ModifieParUserFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_ChampReferentiel"."ModifieParUserFk" IS 'Auteur factuel du dernier réglage si prouvé ; NULL pour installation et absence de contexte.';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ID_ChampReferentiel_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ID_ChampReferentiel_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "ID_ChampReferentiel"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_SchemaName_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_SchemaName_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "SchemaName"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_TableName_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_TableName_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "TableName"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ColumnName_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ColumnName_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "ColumnName"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ChampLabel_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ChampLabel_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "ChampLabel"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ModuleName_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ModuleName_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "ModuleName"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_AliasSourceKeys_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_AliasSourceKeys_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "AliasSourceKeys"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_CanConfigure_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_CanConfigure_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "CanConfigure"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_SupportsEntityScope_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_SupportsEntityScope_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "SupportsEntityScope"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_Revision_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_Revision_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "Revision"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_CreeLe_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_CreeLe_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "CreeLe"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ModifieLe_not_null" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ModifieLe_not_null" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : NOT NULL "ModifieLe"';
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_Revision_check" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_Revision_check" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : CHECK ("Revision" > 0)';
+
+
+--
+-- Name: CONSTRAINT ck_champ_identifiants ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_champ_identifiants ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : CHECK ("SchemaName"::text = btrim("SchemaName"::text) AND "TableName"::text = btrim("TableName"::text) AND "ColumnName"::text = btrim("ColumnName"::text) AND length("SchemaName"::text) > 0 AND length("TableName"::text) > 0 AND length("ColumnName"::text) > 0)';
+
+
+--
+-- Name: T_ChampReferentiel_ID_ChampReferentiel_seq; Type: SEQUENCE; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE referentiel."T_ChampReferentiel" ALTER COLUMN "ID_ChampReferentiel" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME referentiel."T_ChampReferentiel_ID_ChampReferentiel_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: SEQUENCE "T_ChampReferentiel_ID_ChampReferentiel_seq"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON SEQUENCE referentiel."T_ChampReferentiel_ID_ChampReferentiel_seq" IS 'Identités techniques du catalogue physique ; aucune relation par nom affiché ou position de ligne.';
+
+
+--
 -- Name: T_Generique_ID_Generique_seq; Type: SEQUENCE; Schema: referentiel; Owner: -
 --
 
@@ -26331,6 +26855,205 @@ COMMENT ON COLUMN referentiel."V_Generique"."ValideGenerique" IS 'Indique si la 
 
 
 --
+-- Name: V_ReferencementChamp; Type: VIEW; Schema: referentiel; Owner: -
+--
+
+CREATE VIEW referentiel."V_ReferencementChamp" AS
+ SELECT c."ID_ChampReferentiel",
+    c."SchemaName",
+    c."TableName",
+    c."ColumnName",
+    c."ChampLabel",
+    c."ModuleName",
+    c."ID_CategorieDefautFk",
+    c."AliasSourceKeys",
+    c."CanConfigure",
+    c."SupportsEntityScope",
+    c."Revision",
+    c."CreeLe",
+    c."ModifieLe",
+    c."ModifieParUserFk",
+    s."CategoryIds",
+    ARRAY( SELECT x."NomCategorieGenerique"
+           FROM (unnest(s."CategoryIds") WITH ORDINALITY a(id, ord)
+             JOIN referentiel."T_CategorieGenerique" x ON ((x."ID_CategorieGenerique" = a.id)))
+          ORDER BY a.ord) AS "CategoryLabels",
+    array_to_string(ARRAY( SELECT x."NomCategorieGenerique"
+           FROM (unnest(s."CategoryIds") WITH ORDINALITY a(id, ord)
+             JOIN referentiel."T_CategorieGenerique" x ON ((x."ID_CategorieGenerique" = a.id)))
+          ORDER BY a.ord), ', '::text) AS "CategoriesActuelles",
+    d."NomCategorieGenerique" AS "CategorieDefaut",
+    c."ID_CategorieDefautFk" AS "DefaultCategoryId",
+    s."OrigineReglage",
+    (c."Revision")::text AS _version,
+    (((c."SchemaName")::text = 'logistique'::text) AND ((((c."TableName")::text = ANY ((ARRAY['T_Mouvement'::character varying, 'T_Facture'::character varying, 'T_Avoir'::character varying, 'T_Reglements'::character varying, 'T_ValorisationOuverture'::character varying])::text[])) AND ((c."ColumnName")::text = 'ID_DeviseFk'::text)) OR (((c."TableName")::text = 'T_Mouvement'::text) AND ((c."ColumnName")::text = 'ID_TypeMvtFk'::text)) OR (((c."TableName")::text = 'T_Facture'::text) AND ((c."ColumnName")::text = ANY ((ARRAY['ID_ModePaiementFk'::character varying, 'ID_ConditionPaiementFk'::character varying])::text[]))))) AS "ReferenceHeriteeParent"
+   FROM ((referentiel."T_ChampReferentiel" c
+     LEFT JOIN referentiel."T_CategorieGenerique" d ON ((d."ID_CategorieGenerique" = c."ID_CategorieDefautFk")))
+     CROSS JOIN LATERAL referentiel.fn_resolution_champ((c."SchemaName")::text, (c."TableName")::text, (c."ColumnName")::text, NULL::integer) s("CategoryIds", "OrigineReglage"));
+
+
+--
+-- Name: VIEW "V_ReferencementChamp"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON VIEW referentiel."V_ReferencementChamp" IS 'Registre des 60 champs physiques, familles globales effectives et défauts prouvés ; pour un contexte entreprise utiliser le même résolveur avec son identifiant autorisé.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ID_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ID_ChampReferentiel" IS 'Projection de référencement : ID_ChampReferentiel. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."SchemaName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."SchemaName" IS 'Projection de référencement : SchemaName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."TableName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."TableName" IS 'Projection de référencement : TableName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ColumnName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ColumnName" IS 'Projection de référencement : ColumnName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ChampLabel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ChampLabel" IS 'Projection de référencement : ChampLabel. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModuleName"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModuleName" IS 'Projection de référencement : ModuleName. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ID_CategorieDefautFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ID_CategorieDefautFk" IS 'Projection de référencement : ID_CategorieDefautFk. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."AliasSourceKeys"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."AliasSourceKeys" IS 'Projection de référencement : AliasSourceKeys. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CanConfigure"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CanConfigure" IS 'Projection de référencement : CanConfigure. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."SupportsEntityScope"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."SupportsEntityScope" IS 'Projection de référencement : SupportsEntityScope. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."Revision"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."Revision" IS 'Projection de référencement : Revision. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CreeLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CreeLe" IS 'Projection de référencement : CreeLe. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModifieLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModifieLe" IS 'Projection de référencement : ModifieLe. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ModifieParUserFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ModifieParUserFk" IS 'Projection de référencement : ModifieParUserFk. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoryIds"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoryIds" IS 'Projection de référencement : CategoryIds. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoryLabels"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoryLabels" IS 'Projection de référencement : CategoryLabels. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategoriesActuelles"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategoriesActuelles" IS 'Projection de référencement : CategoriesActuelles. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."CategorieDefaut"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."CategorieDefaut" IS 'Projection de référencement : CategorieDefaut. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."DefaultCategoryId"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."DefaultCategoryId" IS 'Projection de référencement : DefaultCategoryId. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."OrigineReglage"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."OrigineReglage" IS 'Projection de référencement : OrigineReglage. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"._version; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"._version IS 'Projection de référencement : _version. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: COLUMN "V_ReferencementChamp"."ReferenceHeriteeParent"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ReferenceHeriteeParent" IS 'Projection de référencement : ReferenceHeriteeParent. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
 -- Name: T_Admin_UI_Setting; Type: TABLE; Schema: systeme; Owner: -
 --
 
@@ -26714,6 +27437,7 @@ CREATE TABLE systeme."T_Fk_Correspondance" (
     "UpdatedAt" timestamp(6) without time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" NOT NULL,
     "UpdatedByUserFk" integer,
     "ObsFkCorrespondance" text,
+    "IdChampReferentielFk" integer,
     CONSTRAINT "Ck_FkCorrespondance_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT chk_fkcorrespondance_mappingtype CHECK ((("MappingType")::text = ANY (ARRAY[('generic_category'::character varying)::text, ('direct_source'::character varying)::text, ('hierarchy_mode'::character varying)::text]))),
     CONSTRAINT chk_fkcorrespondance_scope CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('country'::character varying)::text, ('entity'::character varying)::text])))
@@ -26872,6 +27596,13 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Auteur act
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ObsFkCorrespondance" IS 'Observations enregistrées sur la correspondance.';
+
+
+--
+-- Name: COLUMN "T_Fk_Correspondance"."IdChampReferentielFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."IdChampReferentielFk" IS 'Champ physique canonique pour un jeu de catégories courant ; NULL conserve une correspondance historique ou non catégorielle.';
 
 
 --
@@ -30605,6 +31336,21 @@ COMMENT ON CONSTRAINT "T_CategorieGenerique_pkey" ON referentiel."T_CategorieGen
 
 
 --
+-- Name: T_ChampReferentiel T_ChampReferentiel_pkey; Type: CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_ChampReferentiel"
+    ADD CONSTRAINT "T_ChampReferentiel_pkey" PRIMARY KEY ("ID_ChampReferentiel");
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_pkey" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_pkey" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : PRIMARY KEY ("ID_ChampReferentiel")';
+
+
+--
 -- Name: T_InterfaceTableau T_InterfaceTableau_pkey; Type: CONSTRAINT; Schema: referentiel; Owner: -
 --
 
@@ -30632,6 +31378,21 @@ ALTER TABLE ONLY referentiel."T_PreferenceTableau"
 --
 
 COMMENT ON CONSTRAINT "T_PreferenceTableau_pkey" ON referentiel."T_PreferenceTableau" IS 'Identité technique unique de la préférence.';
+
+
+--
+-- Name: T_ChampReferentiel uq_champ_referentiel_physique; Type: CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_ChampReferentiel"
+    ADD CONSTRAINT uq_champ_referentiel_physique UNIQUE ("SchemaName", "TableName", "ColumnName");
+
+
+--
+-- Name: CONSTRAINT uq_champ_referentiel_physique ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_champ_referentiel_physique ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : UNIQUE ("SchemaName", "TableName", "ColumnName")';
 
 
 --
@@ -32944,6 +33705,13 @@ COMMENT ON INDEX referentiel."T_CategorieGenerique_pkey" IS 'Index support de la
 
 
 --
+-- Name: INDEX "T_ChampReferentiel_pkey"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel."T_ChampReferentiel_pkey" IS 'Accès par identité immuable au catalogue des champs.';
+
+
+--
 -- Name: INDEX "T_InterfaceTableau_pkey"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
@@ -32983,6 +33751,27 @@ CREATE INDEX idx_generique_id_categorie ON referentiel."T_Generique" USING btree
 --
 
 COMMENT ON INDEX referentiel.idx_generique_id_categorie IS 'Index d’accès sur "referentiel"."T_Generique". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_generique_id_categorie ON referentiel."T_Generique" USING btree ("ID_CategorieGeneriqueFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
+
+
+--
+-- Name: ix_champ_referentiel_alias; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_champ_referentiel_alias ON referentiel."T_ChampReferentiel" USING gin ("AliasSourceKeys");
+
+
+--
+-- Name: INDEX ix_champ_referentiel_alias; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_champ_referentiel_alias IS 'Résolution explicite des anciens SourceKey partagés vers leurs colonnes physiques, sans supposer que les alias sont des noms de champs.';
+
+
+--
+-- Name: INDEX uq_champ_referentiel_physique; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.uq_champ_referentiel_physique IS 'Une seule définition et un seul défaut de référence par colonne physique à clé étrangère.';
 
 
 --
@@ -33455,6 +34244,20 @@ COMMENT ON INDEX systeme.uq_audit_immobilisation_request IS 'Une seule preuve UU
 
 
 --
+-- Name: uq_fk_champ_categorie_scope; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_fk_champ_categorie_scope ON systeme."T_Fk_Correspondance" USING btree ("IdChampReferentielFk", "SettingScope", "ScopeValue", "MappingValue") NULLS NOT DISTINCT WHERE ("IdChampReferentielFk" IS NOT NULL);
+
+
+--
+-- Name: INDEX uq_fk_champ_categorie_scope; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.uq_fk_champ_categorie_scope IS 'Une occurrence par catégorie et portée dans le jeu canonique ; plusieurs catégories historiques restent représentables sans CSV.';
+
+
+--
 -- Name: uq_user_matricule_entite; Type: INDEX; Schema: systeme; Owner: -
 --
 
@@ -33582,6 +34385,34 @@ CREATE OR REPLACE VIEW logistique."V_LotArticleStock" AS
 
 
 --
+-- Name: T_Recherche aa_reference_champ; Type: TRIGGER; Schema: analytics; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON analytics."T_Recherche" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Recherche"; Type: COMMENT; Schema: analytics; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON analytics."T_Recherche" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Communication aa_reference_champ; Type: TRIGGER; Schema: communication; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON communication."T_Communication" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Communication"; Type: COMMENT; Schema: communication; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON communication."T_Communication" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
 -- Name: T_Chat tr_00_lock_discussion_message; Type: TRIGGER; Schema: communication; Owner: -
 --
 
@@ -33607,6 +34438,62 @@ CREATE TRIGGER tr_sync_dernier_message AFTER INSERT OR DELETE OR UPDATE ON commu
 --
 
 COMMENT ON TRIGGER tr_sync_dernier_message ON communication."T_Chat" IS 'Synchronise la dernière activité avec les messages effectivement présents.';
+
+
+--
+-- Name: T_Niveau_2 aa_reference_champ; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON geolocalisation."T_Niveau_2" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON geolocalisation."T_Niveau_2" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Niveau_3 aa_reference_champ; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON geolocalisation."T_Niveau_3" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON geolocalisation."T_Niveau_3" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Niveau_4 aa_reference_champ; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON geolocalisation."T_Niveau_4" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON geolocalisation."T_Niveau_4" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Niveau_5 aa_reference_champ; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON geolocalisation."T_Niveau_5" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON geolocalisation."T_Niveau_5" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 
 --
@@ -33957,6 +34844,160 @@ CREATE TRIGGER aa_propriete_reglement BEFORE INSERT OR UPDATE ON logistique."T_R
 --
 
 COMMENT ON TRIGGER aa_propriete_reglement ON logistique."T_Reglements" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+
+--
+-- Name: T_Article aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Article" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Avoir aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Avoir" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Avoir" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Client aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Client" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Client" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Commande aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Commande" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Facture aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Facture" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Immobilisation aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Immobilisation" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Mouvement aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Mouvement" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_PrecisionStock aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_PrecisionStock" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_PrecisionStock" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Reglements aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Reglements" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Remboursement aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Remboursement" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Remboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Remboursement" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_ValorisationOuverture aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_ValorisationOuverture" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_ValorisationOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_ValorisationOuverture" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 
 --
@@ -35010,6 +36051,34 @@ COMMENT ON TRIGGER zz_reglement_audit ON logistique."T_Reglements" IS 'Historiqu
 
 
 --
+-- Name: T_Caisse aa_reference_champ; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON operations."T_Caisse" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON operations."T_Caisse" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Paiement aa_reference_champ; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON operations."T_Paiement" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
 -- Name: T_Paiement trigger_archive_paiements; Type: TRIGGER; Schema: operations; Owner: -
 --
 
@@ -35082,6 +36151,48 @@ COMMENT ON TRIGGER trigger_prevention_delete_caisse ON operations."T_Caisse" IS 
 
 
 --
+-- Name: T_Professionnel aa_reference_champ; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON professionnel."T_Professionnel" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Professionnel_Entite aa_reference_champ; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON professionnel."T_Professionnel_Entite" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Professionnel_Entite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel_Entite" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Generique aa_reference_utilisee_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER aa_reference_utilisee_integrite BEFORE DELETE OR UPDATE ON referentiel."T_Generique" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_reference_utilisee_integrite();
+
+
+--
+-- Name: TRIGGER aa_reference_utilisee_integrite ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_utilisee_integrite ON referentiel."T_Generique" IS 'Protection transversale des références utilisées, sans réécrire les anciennes données hors famille.';
+
+
+--
 -- Name: T_Generique devise_logistique_reference_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
 --
 
@@ -35107,6 +36218,20 @@ CREATE TRIGGER precision_stock_reference_integrite BEFORE DELETE OR UPDATE OF "I
 --
 
 COMMENT ON TRIGGER precision_stock_reference_integrite ON referentiel."T_Generique" IS 'Protège les unités utilisées sans placer de paramètre logistique dans la table de nomenclature.';
+
+
+--
+-- Name: T_ChampReferentiel tr_catalogue_champ_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER tr_catalogue_champ_integrite BEFORE INSERT OR DELETE OR UPDATE ON referentiel."T_ChampReferentiel" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_catalogue_champ_integrite();
+
+
+--
+-- Name: TRIGGER tr_catalogue_champ_integrite ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER tr_catalogue_champ_integrite ON referentiel."T_ChampReferentiel" IS 'Catalogue et défauts fermés aux écritures ordinaires ; version alimentée par les jeux de correspondances.';
 
 
 --
@@ -35152,6 +36277,20 @@ COMMENT ON TRIGGER tr_preference_tableau_verifier ON referentiel."T_PreferenceTa
 
 
 --
+-- Name: T_Fk_Correspondance a_correspondance_champ_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER a_correspondance_champ_integrite BEFORE INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.tr_correspondance_champ_integrite();
+
+
+--
+-- Name: TRIGGER a_correspondance_champ_integrite ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER a_correspondance_champ_integrite ON systeme."T_Fk_Correspondance" IS 'Valide une correspondance canonique avant les dates/audits existants, sans remplacer les contrôles de droits applicatifs.';
+
+
+--
 -- Name: T_Entite_Localisation aa_localisation_patrimoine_proprietaire; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
@@ -35163,6 +36302,76 @@ CREATE TRIGGER aa_localisation_patrimoine_proprietaire BEFORE UPDATE OF "IdEntit
 --
 
 COMMENT ON TRIGGER aa_localisation_patrimoine_proprietaire ON systeme."T_Entite_Localisation" IS 'Conserve le propriétaire des lieux d’affectation liés au patrimoine.';
+
+
+--
+-- Name: T_Entite aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Entite" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Entite" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Licence aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Licence" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Login aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Login" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Login" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_RoleModule aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_RoleModule" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_RoleModule" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Utilisateurs aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Utilisateurs" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 
 --
@@ -35401,6 +36610,20 @@ CREATE TRIGGER trigger_update_licence_status BEFORE INSERT OR UPDATE ON systeme.
 --
 
 COMMENT ON TRIGGER trigger_update_licence_status ON systeme."T_Licence" IS 'BEFORE INSERT OR UPDATE sur "systeme"."T_Licence", pour chaque ligne. Appelle "systeme"."update_licence_status" : Avant INSERT/UPDATE de licence, fixe ExpireeLicence selon DateFin < NOW() ; une date NULL suit la branche false. Aucun recalcul périodique indépendant d’une écriture.';
+
+
+--
+-- Name: T_Fk_Correspondance zz_correspondance_champ_revision; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER zz_correspondance_champ_revision AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.tr_correspondance_champ_revision();
+
+
+--
+-- Name: TRIGGER zz_correspondance_champ_revision ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER zz_correspondance_champ_revision ON systeme."T_Fk_Correspondance" IS 'Invalide la révision du catalogue après changement de correspondance et conserve les audits existants.';
 
 
 --
@@ -37533,6 +38756,36 @@ COMMENT ON CONSTRAINT "Fk_ID_CategorieGenerique" ON referentiel."T_Generique" IS
 
 
 --
+-- Name: T_ChampReferentiel T_ChampReferentiel_ID_CategorieDefautFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_ChampReferentiel"
+    ADD CONSTRAINT "T_ChampReferentiel_ID_CategorieDefautFk_fkey" FOREIGN KEY ("ID_CategorieDefautFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ID_CategorieDefautFk_fkey" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ID_CategorieDefautFk_fkey" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : FOREIGN KEY ("ID_CategorieDefautFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON DELETE RESTRICT';
+
+
+--
+-- Name: T_ChampReferentiel T_ChampReferentiel_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_ChampReferentiel"
+    ADD CONSTRAINT "T_ChampReferentiel_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL;
+
+
+--
+-- Name: CONSTRAINT "T_ChampReferentiel_ModifieParUserFk_fkey" ON "T_ChampReferentiel"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ChampReferentiel_ModifieParUserFk_fkey" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL';
+
+
+--
 -- Name: T_PreferenceTableau T_PreferenceTableau_CleInterfaceFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
 --
 
@@ -37818,6 +39071,21 @@ COMMENT ON CONSTRAINT "Fk_TypeEntite" ON systeme."T_Entite" IS 'Clé étrangère
 
 
 --
+-- Name: T_Fk_Correspondance T_Fk_Correspondance_IdChampReferentielFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_Fk_Correspondance"
+    ADD CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" FOREIGN KEY ("IdChampReferentielFk") REFERENCES referentiel."T_ChampReferentiel"("ID_ChampReferentiel") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" ON systeme."T_Fk_Correspondance" IS 'Intégrité du référencement physique : FOREIGN KEY ("IdChampReferentielFk") REFERENCES referentiel."T_ChampReferentiel"("ID_ChampReferentiel") ON DELETE RESTRICT';
+
+
+--
 -- Name: T_LicenceModule T_LicenceModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
 --
 
@@ -37915,7 +39183,7 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON systeme."T_Utilisate
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tj9NabjAn6fYLizaDarvY6ahzi4rcOpOwhB0zT7RKIvCarDqht8cIL0FpzHBNKi
+\unrestrict Yny1u7yYHSauyBNCWH0g6GOoCEOdx7BjTjSJuLPK7Q0HobxmXxfzE6NGmr9SLOC
 
 COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';

@@ -67,7 +67,7 @@ BEGIN
  IF TG_TABLE_NAME='T_Client' THEN
   IF TG_OP='UPDATE' AND (NEW."CreeParUserFk" IS DISTINCT FROM OLD."CreeParUserFk" OR NEW."DateCreation" IS DISTINCT FROM OLD."DateCreation") THEN RAISE EXCEPTION 'Auteur et date de création immuables.' USING ERRCODE='23514';END IF;
   IF NEW."IdProfessionnelFk" IS NOT NULL AND NEW."IdUserFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM professionnel."T_Professionnel" p WHERE p."IdProfessionnel"=NEW."IdProfessionnelFk" AND p."IdUserFk"=NEW."IdUserFk") THEN RAISE EXCEPTION 'Identités du tiers incompatibles.' USING ERRCODE='23514';END IF;
-  IF NEW."ID_TypeClientFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_TypeClientFk" AND lower(btrim(c."NomCategorieGenerique"))='type de personne') THEN RAISE EXCEPTION 'Type de client incompatible.' USING ERRCODE='23514';END IF;
+  IF NEW."ID_TypeClientFk" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=NEW."ID_TypeClientFk" AND referentiel.fn_reference_champ_connue('logistique','T_Client','ID_TypeClientFk',NEW."ID_TypeClientFk")) THEN RAISE EXCEPTION 'Type de client incompatible.' USING ERRCODE='23514';END IF;
  ELSIF TG_TABLE_NAME='T_Commande' THEN
   IF NEW."ID_TiersFk" IS NOT NULL THEN SELECT "IdEntiteFk" INTO client_entity FROM logistique."T_Client" WHERE "ID_Client"=NEW."ID_TiersFk" FOR SHARE;IF client_entity IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Tiers d’une autre entreprise.' USING ERRCODE='23514';END IF;END IF;
  ELSIF TG_TABLE_NAME='T_CommandeDetail' OR TG_TABLE_NAME='T_Mouvement' THEN
@@ -87,7 +87,7 @@ END $$;
 -- Name: FUNCTION controler_propriete_logistique(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.controler_propriete_logistique() IS 'Conserve les entreprises propriétaires et interdit les liens de tiers, articles, bons et règlements entre entreprises.';
+COMMENT ON FUNCTION logistique.controler_propriete_logistique() IS 'Propriété durable et cohérence des tiers conservées ; leur famille de référence est déléguée au catalogue commun.';
 
 --
 -- Name: controler_retour_bon(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -103,12 +103,12 @@ BEGIN
  SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO origine
  FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
  WHERE c."ID_Commande"=NEW."ID_CommandeOrigineFk" FOR UPDATE OF c;
- IF NOT FOUND OR origine.categorie<>64 OR origine.sens NOT ILIKE 'sort%' OR origine.sens IS NULL THEN
+ IF NOT FOUND OR logistique.fn_nature_bon(origine."ID_TypeCmdFk") IS DISTINCT FROM 'sortie' OR origine.sens NOT ILIKE 'sort%' OR origine.sens IS NULL THEN
   RAISE EXCEPTION 'Le retour exige un bon de sortie historique.' USING ERRCODE='23514';END IF;
  SELECT c.*,t."AbrGenerique" AS sens,t."ID_CategorieGeneriqueFk" AS categorie INTO entree
  FROM logistique."T_Commande" c LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
  WHERE c."ID_Commande"=NEW."ID_CommandeRetourFk" FOR UPDATE OF c;
- IF NOT FOUND OR entree.categorie<>64 OR entree.sens NOT ILIKE 'entr%' OR entree.sens IS NULL THEN
+ IF NOT FOUND OR logistique.fn_nature_bon(entree."ID_TypeCmdFk") IS DISTINCT FROM 'entree' OR entree.sens NOT ILIKE 'entr%' OR entree.sens IS NULL THEN
   RAISE EXCEPTION 'Le document compensateur doit être un bon d’entrée.' USING ERRCODE='23514';END IF;
  IF EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=origine."ID_Commande" OR "ID_CommandeOrigineFk"=entree."ID_Commande") THEN
   RAISE EXCEPTION 'Un retour ne peut pas devenir une nouvelle origine.' USING ERRCODE='23514';END IF;
@@ -157,7 +157,7 @@ $$;
 -- Name: FUNCTION controler_retour_bon(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.controler_retour_bon() IS 'Sérialise chaque retour sur la sortie source et contrôle les budgets restants par article, lot et quantité sans lot ; conserve le PU mouvement et la devise, sans modifier le stock lui-même.';
+COMMENT ON FUNCTION logistique.controler_retour_bon() IS 'Restitution conservée par document de sortie et entrée compensatrice, types déclarés ou historiques au lieu d’une constante de famille ; aucun mouvement ou montant antérieur modifié.';
 
 --
 -- Name: controler_sortie_lot_perime(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -276,44 +276,25 @@ COMMENT ON FUNCTION logistique.enregistrer_cout_ouverture(p_article integer, p_d
 
 CREATE FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) RETURNS void
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
     AS $$
-DECLARE v_nom_categorie text;
-BEGIN IF p_id_generique IS NULL THEN RETURN;
-END IF;
-SELECT cg."NomCategorieGenerique" INTO v_nom_categorie
-FROM referentiel."T_CategorieGenerique" cg
-WHERE cg."ID_CategorieGenerique" = p_id_categorie_generique;
-IF NOT EXISTS (
-    SELECT 1
-    FROM referentiel."T_Generique" g
-    WHERE g."ID_Generique" = p_id_generique
-        AND g."ID_CategorieGeneriqueFk" = p_id_categorie_generique
-) THEN IF EXISTS (
-    SELECT 1
-    FROM referentiel."T_Generique" g
-    WHERE g."ID_Generique" = p_id_generique
-) THEN RAISE EXCEPTION '% : %= % present dans T_Generique mais hors categorie attendue % (%).',
-p_contexte,
-p_nom_colonne,
-p_id_generique,
-p_id_categorie_generique,
-COALESCE(v_nom_categorie, 'Categorie inconnue');
-END IF;
-RAISE EXCEPTION '% : %= % introuvable dans T_Generique pour la categorie % (%).',
-p_contexte,
-p_nom_colonne,
-p_id_generique,
-p_id_categorie_generique,
-COALESCE(v_nom_categorie, 'Categorie inconnue');
-END IF;
-END;
-$$;
+DECLARE table_name text;
+BEGIN
+ IF p_id_generique IS NULL THEN RETURN;END IF;
+ table_name:=CASE WHEN p_contexte ILIKE '%article%' THEN 'T_Article' WHEN p_contexte ILIKE '%commande%' THEN 'T_Commande'
+ WHEN p_contexte ILIKE '%reglement%' THEN 'T_Reglements' WHEN p_contexte ILIKE '%mouvement%' THEN 'T_Mouvement'
+ WHEN p_contexte ILIKE '%remboursement%' THEN 'T_Remboursement' WHEN p_contexte ILIKE '%facture%' THEN 'T_Facture' END;
+ IF table_name='T_Mouvement' AND p_nom_colonne='ID_TypeMvtFk' AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',p_id_generique) THEN RETURN;END IF;
+ IF table_name='T_Facture' AND p_nom_colonne IN('ID_ModePaiementFk','ID_ConditionPaiementFk') AND referentiel.fn_reference_champ_connue('logistique','T_Commande',p_nom_colonne,p_id_generique) THEN RETURN;END IF;
+ IF table_name IS NULL OR NOT referentiel.fn_reference_champ_connue('logistique',table_name,p_nom_colonne,p_id_generique) THEN
+  RAISE EXCEPTION 'Référence incompatible pour %.%.',coalesce(table_name,p_contexte),p_nom_colonne USING ERRCODE='23514';END IF;
+END $$;
 
 --
 -- Name: FUNCTION fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) IS 'Valide qu’un identifiant générique renseigné appartient à la catégorie attendue ; accepte NULL et lève une exception en cas de référence absente ou de mauvaise catégorie. Les paramètres de contexte/colonne servent au diagnostic ; aucune écriture.';
+COMMENT ON FUNCTION logistique.fn_assert_generique_category(p_id_generique integer, p_id_categorie_generique integer, p_contexte text, p_nom_colonne text) IS 'Compatibilité des procédures historiques avec le catalogue physique. Le paramètre de famille ancien conserve la signature, sans imposer une constante ; la nouvelle affectation est validée au scope par la garde de table.';
 
 --
 -- Name: fn_audit_stock(integer, timestamp without time zone); Type: FUNCTION; Schema: logistique; Owner: -
@@ -569,7 +550,7 @@ BEGIN
  SELECT min(g."ID_Generique"),count(*) INTO identifiant,nombre
  FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
- WHERE lower(btrim(c."NomCategorieGenerique"))='devise'
+ WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Article','ID_DeviseFk',NULL))
    AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE
    AND logistique.fn_code_devise(g."AbrGenerique")='USD';
  IF nombre<>1 THEN
@@ -583,7 +564,7 @@ $$;
 -- Name: FUNCTION fn_devise_usd(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Résout exactement une référence USD active dans la catégorie Devise active ; aucun identifiant numérique codé en dur.';
+COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Défaut USD global résolu dans la catégorie courante du champ devise Article ; exige une seule valeur USD active et conserve son code ISO. Les choix d’entreprise sont explicitement transmis par les services.';
 
 --
 -- Name: fn_effet_type_bon(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -700,7 +681,7 @@ BEGIN
   qty=a."QteArticle";price=a."PUArticle";business_date=coalesce(a."DateHeureAuto"::timestamp,clock_timestamp()::timestamp);origin='stock_initial';
   IF coalesce(qty,0)=0 THEN RETURN NULL;END IF;
   IF EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_ArticleFk"=p_article) THEN RAISE EXCEPTION 'Stock deja historise: rapprochez les mouvements existants.' USING ERRCODE='23514';END IF;
-  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_CategorieGeneriqueFk"=64 AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
+  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Commande','ID_TypeCmdFk',a."IdEntiteFk")) AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
  ELSE
   SELECT * INTO m FROM logistique."T_Mouvement" WHERE "ID_Mvt"=p_mouvement AND "ID_ArticleFk"=p_article FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Mouvement absent.' USING ERRCODE='23503';END IF;
@@ -725,7 +706,7 @@ END $$;
 -- Name: FUNCTION fn_materialiser_stock_initial(p_article integer, p_mouvement integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Creation centrale sous verrou article d un bon initial, ligne et unique mouvement; ou rattachement d un mouvement orphelin prouve sans reappliquer le stock. Idempotent par source; aucun tiers fournisseur invente.';
+COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Stock initial positif matérialisé une seule fois par BE, ligne et mouvement ; type d’entrée actif résolu dans la famille de commande effective de son entreprise. Reprise historique inchangée.';
 
 --
 -- Name: fn_montant_avoir_attente(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -753,16 +734,17 @@ COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS '
 --
 
 CREATE FUNCTION logistique.fn_nature_bon(p_type integer) RETURNS text
-    LANGUAGE sql STABLE PARALLEL SAFE
+    LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
-    AS $$ SELECT logistique.fn_nature_type_bon(g."AbrGenerique")
- FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type AND g."ID_CategorieGeneriqueFk"=64 $$;
+    AS $$
+ SELECT logistique.fn_nature_type_bon(g."AbrGenerique") FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type
+ AND (referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',p_type) OR referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',p_type)) $$;
 
 --
 -- Name: FUNCTION fn_nature_bon(p_type integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_nature_bon(p_type integer) IS 'Nature métier du type du référentiel Type de commande : entree, sortie, commande ou NULL. Ne fige aucun identifiant de valeur CMD ; conserve la lecture des types historiques désactivés.';
+COMMENT ON FUNCTION logistique.fn_nature_bon(p_type integer) IS 'Nature par code Entrée/Sortie/CMD uniquement pour un type déclaré ou déjà utilisé. Retirer une famille du choix courant ne requalifie aucun document historique ; un type inconnu reste refusé.';
 
 --
 -- Name: fn_nature_type_bon(text); Type: FUNCTION; Schema: logistique; Owner: -
@@ -831,25 +813,15 @@ CREATE FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_fa
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
     AS $$
- WITH matching AS (
-  SELECT f."TargetCategoryIdFk" cat,f."SettingScope" FROM systeme."T_Fk_Correspondance" f
-  WHERE f."SourceKey"='logistique.immobilisations.'||p_famille AND f."MappingType"='generic_category' AND f."ValideFkCorrespondance"
-   AND ((f."SettingScope"='entity' AND f."ScopeValue"=p_entite::text) OR (f."SettingScope"='global' AND f."ScopeValue" IS NULL))
- ), allowed AS (
-  SELECT cat FROM matching WHERE "SettingScope"=CASE WHEN EXISTS(SELECT FROM matching WHERE "SettingScope"='entity') THEN 'entity' ELSE 'global' END
-  UNION ALL SELECT "ID_CategorieGenerique" FROM referentiel."T_CategorieGenerique"
-   WHERE (p_famille='devise' AND lower(btrim("NomCategorieGenerique"))=lower('Devise'))
-      OR (p_famille='service-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Service'))
-      OR (p_famille='fonction-rh' AND lower(btrim("NomCategorieGenerique"))=lower('Fonction'))
- ) SELECT p_id IS NULL OR EXISTS(SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-  WHERE g."ID_Generique"=p_id AND g."ID_CategorieGeneriqueFk" IN (SELECT cat FROM allowed) AND g."ValideGenerique" AND c."ValideCategorieGenerique")
-$$;
+ SELECT referentiel.fn_valider_reference_champ(CASE WHEN p_famille IN('service-rh','fonction-rh') THEN 'systeme' ELSE 'logistique' END,
+ CASE WHEN p_famille IN('service-rh','fonction-rh') THEN 'T_Utilisateurs' ELSE 'T_Immobilisation' END,
+ CASE p_famille WHEN 'categories' THEN 'ID_CategorieFk' WHEN 'etats' THEN 'ID_EtatFk' WHEN 'services' THEN 'ID_ServiceFk' WHEN 'service-rh' THEN 'ID_ServiceFk' WHEN 'fonction-rh' THEN 'ID_FonctionFk' WHEN 'devise' THEN 'ID_DeviseFk' END,p_id,p_entite) $$;
 
 --
 -- Name: FUNCTION fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) IS 'Valide une nouvelle référence active depuis les correspondances FK d’entreprise prioritaires puis globales, ou les familles RH/Devise existantes résolues par libellé ; aucun identifiant de catégorie figé.';
+COMMENT ON FUNCTION logistique.fn_reference_immobilisation_valide(p_id integer, p_famille text, p_entite integer) IS 'Références du patrimoine et des données professionnelles résolues par le catalogue commun, sans seconde règle de catégorie dans ce domaine.';
 
 --
 -- Name: fn_reserver_identite_commande(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -908,21 +880,17 @@ CREATE FUNCTION logistique.fn_verifier_devise(p_id integer) RETURNS void
     SET search_path TO 'pg_catalog'
     AS $_$
 BEGIN
- PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-  WHERE g."ID_Generique"=p_id AND g."ValideGenerique" IS TRUE
-   AND c."ValideCategorieGenerique" IS TRUE AND lower(btrim(c."NomCategorieGenerique"))='devise'
-   AND logistique.fn_code_devise(g."AbrGenerique") ~ '^[A-Z]{3}$'
- FOR SHARE OF g,c;
- IF NOT FOUND THEN RAISE EXCEPTION 'Une devise active du référentiel Devise est requise.' USING ERRCODE='23514'; END IF;
-END;
-$_$;
+ PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+ WHERE g."ID_Generique"=p_id AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND logistique.fn_code_devise(g."AbrGenerique") ~ '^[A-Z]{3}$'
+ AND EXISTS(SELECT FROM referentiel."T_ChampReferentiel" r WHERE r."ColumnName" IN('ID_DeviseFk','IdDeviseFk') AND referentiel.fn_reference_champ_connue(r."SchemaName",r."TableName",r."ColumnName",p_id)) FOR SHARE OF g,c;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Une devise active de référence, avec code ISO, est requise.' USING ERRCODE='23514';END IF;
+END $_$;
 
 --
 -- Name: FUNCTION fn_verifier_devise(p_id integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_verifier_devise(p_id integer) IS 'Verrouille la référence et sa catégorie contre une reclassification concurrente ; refuse devise absente, inactive ou sans code de trois lettres.';
+COMMENT ON FUNCTION logistique.fn_verifier_devise(p_id integer) IS 'Contrôle sémantique financier conservé : référence déclarée ou historique, valeur active et code ISO trois lettres. Le scope de la nouvelle affectation relève de la garde physique.';
 
 --
 -- Name: fn_verifier_quantite(integer, numeric); Type: FUNCTION; Schema: logistique; Owner: -
@@ -937,7 +905,7 @@ BEGIN
  IF p_qte<0 OR p_qte::text IN ('NaN','Infinity','-Infinity') OR p_qte>99999999999.999 OR p_qte<>round(p_qte,3) THEN
   RAISE EXCEPTION 'Quantité hors précision' USING ERRCODE='23514';
  END IF;
- PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=p_unite AND "ID_CategorieGeneriqueFk"=34 FOR SHARE;
+ PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=p_unite AND (referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UniteFk',p_unite) OR referentiel.fn_reference_champ_connue('logistique','T_PrecisionStock','ID_UniteFk',p_unite)) FOR SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Unité de stock requise' USING ERRCODE='23514';END IF;
  SELECT "DecimalesStock" INTO d FROM logistique."V_PrecisionStock" WHERE "ID_UniteFk"=p_unite;
  IF d IS NULL OR p_qte<>round(p_qte,d) THEN
@@ -949,7 +917,7 @@ END $$;
 -- Name: FUNCTION fn_verifier_quantite(p_unite integer, p_qte numeric); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) IS 'Validation exacte d’une quantité physique par la politique logistique de son unité ; verrou partagé commun à la configuration, zéro décimale si aucune politique.';
+COMMENT ON FUNCTION logistique.fn_verifier_quantite(p_unite integer, p_qte numeric) IS 'Contrôle exact des quantités et de la politique de précision ; unités déclarées ou déjà utilisées sans arrondi silencieux, même après changement des choix proposés.';
 
 --
 -- Name: proteger_bon_inventaire(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1127,13 +1095,13 @@ BEGIN
  PERFORM logistique.fn_assert_generique_category(p_new_id_statut_cmd,28,'Commande','ID_StatutCmdFk');
  PERFORM logistique.fn_assert_generique_category(p_new_id_condition_paiement,37,'Commande','ID_ConditionPaiementFk');
  PERFORM logistique.fn_assert_generique_category(p_new_id_mode_paiement,36,'Commande','ID_ModePaiementFk');
- SELECT "AbrGenerique" INTO new_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_new_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
+ SELECT "AbrGenerique" INTO new_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_new_id_type_cmd AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',"ID_Generique");
  new_sign:=CASE WHEN new_abr ILIKE 'entr%' THEN 1 WHEN new_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
  IF logistique.fn_nature_bon(p_new_id_type_cmd) IS NULL THEN RAISE EXCEPTION 'Type de bon inconnu.' USING ERRCODE='23514'; END IF;
  IF op='INSERT' OR p_old_id_type_cmd IS NOT DISTINCT FROM p_new_id_type_cmd THEN RETURN; END IF;
  IF logistique.fn_nature_bon(p_old_id_type_cmd)='commande' OR logistique.fn_nature_bon(p_new_id_type_cmd)='commande' THEN RAISE EXCEPTION 'Un bon de commande ne se convertit pas en mouvement physique ; créez un BE ou BS distinct.' USING ERRCODE='23514';END IF;
  IF NOT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=p_id_commande) THEN RETURN; END IF;
- SELECT "AbrGenerique" INTO old_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_old_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
+ SELECT "AbrGenerique" INTO old_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_old_id_type_cmd AND referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',"ID_Generique");
  old_sign:=CASE WHEN old_abr ILIKE 'entr%' THEN 1 WHEN old_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
  IF old_sign=0 THEN RAISE EXCEPTION 'Ancien type inconnu : changement de sens impossible.' USING ERRCODE='23514'; END IF;
  PERFORM 1 FROM logistique."T_Article" a WHERE a."ID_Article" IN
@@ -1153,7 +1121,7 @@ $$;
 -- Name: PROCEDURE ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Valide les catégories et la nature explicite du bon : CMD ne produit aucun effet stock ; les changements physiques autorisés conservent le calcul net historique. Toute conversion vers ou depuis CMD est interdite.';
+COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Procédure de sens des bons conservée ; familles déléguées au catalogue sans modifier le sens, les codes, les lignes ou les mouvements historiques.';
 
 --
 -- Name: ps_crud_commandedetail(integer, integer, numeric, numeric, integer, integer, numeric, numeric, character varying); Type: PROCEDURE; Schema: logistique; Owner: -
@@ -1209,11 +1177,11 @@ BEGIN
    RAISE EXCEPTION 'Ancienne quantité de ligne invalide.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO old_type,old_abr
-  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND g."ID_CategorieGeneriqueFk"=64
+  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
   WHERE c."ID_Commande"=p_old_cmd_fk;
   IF NOT FOUND THEN
    SELECT m."ID_TypeMvtFk",g."AbrGenerique" INTO old_type,old_abr
-   FROM logistique."T_Mouvement" m JOIN referentiel."T_Generique" g ON g."ID_Generique"=m."ID_TypeMvtFk" AND g."ID_CategorieGeneriqueFk"=64
+   FROM logistique."T_Mouvement" m JOIN referentiel."T_Generique" g ON g."ID_Generique"=m."ID_TypeMvtFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
    WHERE m."ID_cmdFk"=p_old_cmd_fk AND m."ID_ArticleFk"=p_old_article_fk;
   END IF;
   old_sign := CASE WHEN old_abr ILIKE 'entr%' THEN 1 WHEN old_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
@@ -1224,7 +1192,7 @@ BEGIN
    RAISE EXCEPTION 'Quantité entière positive et prix non négatif requis.' USING ERRCODE='23514';
   END IF;
   SELECT c."ID_TypeCmdFk",g."AbrGenerique" INTO new_type,new_abr
-  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND g."ID_CategorieGeneriqueFk"=64
+  FROM logistique."T_Commande" c JOIN referentiel."T_Generique" g ON g."ID_Generique"=c."ID_TypeCmdFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Mouvement','ID_TypeMvtFk',g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique"))
   WHERE c."ID_Commande"=p_new_cmd_fk;
   new_sign := CASE WHEN new_abr ILIKE 'entr%' THEN 1 WHEN new_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
   IF new_sign=0 THEN RAISE EXCEPTION 'Nouveau type de mouvement inconnu.' USING ERRCODE='23514'; END IF;
@@ -2281,7 +2249,7 @@ BEGIN
  END IF;
  -- Même clé de verrou que fn_verifier_quantite : la réduction attend les opérations en cours.
  PERFORM 1 FROM referentiel."T_Generique"
-  WHERE "ID_Generique"=NEW."ID_UniteFk" AND "ID_CategorieGeneriqueFk"=34 FOR UPDATE;
+  WHERE "ID_Generique"=NEW."ID_UniteFk" AND (referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UniteFk',NEW."ID_UniteFk") OR referentiel.fn_reference_champ_connue('logistique','T_PrecisionStock','ID_UniteFk',NEW."ID_UniteFk")) FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Une unité du référentiel Unités est requise' USING ERRCODE='23514';END IF;
  IF TG_OP='UPDATE' AND NEW."DecimalesStock" IS NOT DISTINCT FROM OLD."DecimalesStock" THEN
   NEW."ModifieLe"=OLD."ModifieLe";RETURN NEW;
@@ -2295,7 +2263,7 @@ END $$;
 -- Name: FUNCTION tr_precision_stock(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_precision_stock() IS 'Verrouille l’unité, protège l’identité, interdit la suppression et toute précision incompatible ; horodate seulement les changements effectifs, sans effet de stock.';
+COMMENT ON FUNCTION logistique.tr_precision_stock() IS 'Politique de décimales conservée et protégée par l’historique ; sélection d’unité résolue au catalogue, identité toujours immuable.';
 
 --
 -- Name: tr_proteger_bon_facture(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -2499,7 +2467,7 @@ CREATE FUNCTION logistique.tr_proteger_unite_precision_stock() RETURNS trigger
     AS $$
 BEGIN
  IF TG_OP='UPDATE' AND NEW."ID_Generique"=OLD."ID_Generique" AND NEW."ID_CategorieGeneriqueFk"=OLD."ID_CategorieGeneriqueFk" THEN RETURN NEW;END IF;
- IF OLD."ID_CategorieGeneriqueFk"=34 AND
+ IF
  (EXISTS(SELECT FROM logistique."T_PrecisionStock" WHERE "ID_UniteFk"=OLD."ID_Generique")
  OR EXISTS(SELECT FROM logistique."T_Article" WHERE "ID_UniteFk"=OLD."ID_Generique")) THEN
   RAISE EXCEPTION 'La catégorie et l’identité d’une unité utilisée sont conservées' USING ERRCODE='23514';
@@ -2574,7 +2542,7 @@ BEGIN
  IF TG_OP='INSERT' OR NEW."ID_ModeReglementFk" IS DISTINCT FROM OLD."ID_ModeReglementFk" THEN
   PERFORM 1 FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
    ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-   WHERE g."ID_Generique"=NEW."ID_ModeReglementFk" AND g."ID_CategorieGeneriqueFk"=36
+   WHERE g."ID_Generique"=NEW."ID_ModeReglementFk" AND referentiel.fn_reference_champ_connue('logistique','T_Reglements','ID_ModeReglementFk',NEW."ID_ModeReglementFk")
      AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE FOR SHARE OF g,c;
   IF NOT FOUND THEN RAISE EXCEPTION 'Mode de reglement indisponible.' USING ERRCODE='23514'; END IF;
  END IF;
@@ -2595,7 +2563,7 @@ END $$;
 -- Name: FUNCTION tr_reglement_apres_avoir(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_reglement_apres_avoir() IS 'Verrouille la facture et contrôle créations ET modifications : montant positif, parent/devise/tiers immuables, mode actif, clôture et avoirs conservés, solde net non dépassé. Un excédent historique peut seulement diminuer.';
+COMMENT ON FUNCTION logistique.tr_reglement_apres_avoir() IS 'Protections du règlement conservées : valeur active, solde après avoir et dates ; famille du mode déléguée au référencement physique.';
 
 --
 -- Name: tr_reglement_audit(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -2809,7 +2777,7 @@ CREATE FUNCTION logistique.verifier_article_poids() RETURNS trigger
     AS $$
 BEGIN
  IF NEW."ID_UnitePoidsFk" IS NOT NULL AND NOT EXISTS (
- SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_UnitePoidsFk" AND "ID_CategorieGeneriqueFk"=34 AND lower(btrim("AbrGenerique")) IN ('mg','g','kg','t')) THEN
+ SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."ID_UnitePoidsFk" AND referentiel.fn_reference_champ_connue('logistique','T_Article','ID_UnitePoidsFk',NEW."ID_UnitePoidsFk") AND lower(btrim("AbrGenerique")) IN ('mg','g','kg','t')) THEN
  RAISE EXCEPTION 'Unité de masse requise pour le poids unitaire.' USING ERRCODE='23514';
  END IF;
  RETURN NEW;
@@ -2820,7 +2788,7 @@ $$;
 -- Name: FUNCTION verifier_article_poids(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.verifier_article_poids() IS 'Contrôle l’unité de masse sans transformer les quantités ni les prix.';
+COMMENT ON FUNCTION logistique.verifier_article_poids() IS 'Unité de poids issue de la famille du champ, avec les codes de masse mg/g/kg/t toujours obligatoires ; aucun poids ni unité historique recalculé.';
 
 --
 -- Name: verifier_bon_inventaire_non_commercial(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -8296,6 +8264,138 @@ CREATE TRIGGER aa_propriete_reglement BEFORE INSERT OR UPDATE ON logistique."T_R
 --
 
 COMMENT ON TRIGGER aa_propriete_reglement ON logistique."T_Reglements" IS 'Contrôle la propriété durable et la cohérence des rattachements de l’entreprise.';
+
+--
+-- Name: T_Article aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Article" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Avoir aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Avoir" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Avoir" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Client aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Client" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Client" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Commande aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Commande" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Facture aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Facture" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Immobilisation aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Immobilisation" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Mouvement aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Mouvement" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_PrecisionStock aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_PrecisionStock" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_PrecisionStock" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Reglements aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Reglements"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Reglements" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Remboursement aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Remboursement" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Remboursement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_Remboursement" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_ValorisationOuverture aa_reference_champ; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_ValorisationOuverture" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_ValorisationOuverture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON logistique."T_ValorisationOuverture" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 --
 -- Name: T_Reglements aa_reglement_tracabilite; Type: TRIGGER; Schema: logistique; Owner: -

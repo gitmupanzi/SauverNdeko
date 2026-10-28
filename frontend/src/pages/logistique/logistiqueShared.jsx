@@ -1,3 +1,4 @@
+import {referenceLabel} from "../../utils/referenceOptions";
 import { compareDecimal, withCurrencyColumn, formatConsumptionMoney } from "../../utils/money";
 export { formatCurrency } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
@@ -1275,14 +1276,14 @@ export function buildReferenceOptions(items, fallbackPrefix = "Option") {
       return;
     }
 
-    const label =
-      item.label ||
-      [item.code, item.abbr, item.id != null ? `${fallbackPrefix} #${item.id}` : ""].filter(Boolean).join(" - ");
+    const label=referenceLabel(item, `${fallbackPrefix} ${value}`);
 
     if (!uniqueOptions.has(value)) {
       uniqueOptions.set(value, {
+        ...item,
         value,
         label: String(label || `${fallbackPrefix} ${value}`),
+        disabled:item.disabled===true||item.incompatible===true||item.active===false,
       });
     }
   });

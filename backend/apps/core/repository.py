@@ -438,6 +438,10 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
             body = {key: value for key, value in body.items()
                     if key not in {"UpdatedAt", "UpdatedByUserFk", "CreatedAt"}}
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if name == 'T_Fk_Correspondance' and ((old or {}).get('IdChampReferentielFk') is not None
+            or isinstance(body, dict) and body.get('IdChampReferentielFk') is not None):
+        raise APIError('Utilisez Référencement des champs pour modifier cette association.',
+                       'DEDICATED_FIELD_REFERENCE_REQUIRED', 405)
     if name == "T_Admin_UI_Setting" and not old and isinstance(body, dict) and secret_key(body.get("SettingKey", "")):
         raise APIError("Ce secret se configure dans le paramétrage privé du serveur.", "SETTING_SECRET_PRIVATE", 409)
     if name == "T_Admin_UI_Setting" and old:
@@ -522,6 +526,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
         from apps.logistique.services import validate_header
 
         validate_header(obj, data, old, actor)
+    elif operation != 'delete':
+        from .reference_integration import validate_changed
+        validate_changed(obj, data, old, actor)
     if _creation_metadata is not None:
         if name != "T_Article" or operation != "create" or set(_creation_metadata) != {"CreationRequestId", "CreationPayloadHash"}:
             raise APIError("Informations techniques de création invalides.", "ARTICLE_VALIDATION", 400)

@@ -5882,13 +5882,13 @@ CREATE VIEW logistique."V_PrecisionStock" AS
     g."ValideGenerique" AS "ValideUnite"
    FROM (referentiel."T_Generique" g
      LEFT JOIN logistique."T_PrecisionStock" p ON ((p."ID_UniteFk" = g."ID_Generique")))
-  WHERE (g."ID_CategorieGeneriqueFk" = 34);
+  WHERE (referentiel.fn_reference_champ_connue('logistique'::text, 'T_Article'::text, 'ID_UniteFk'::text, g."ID_Generique") OR referentiel.fn_reference_champ_connue('logistique'::text, 'T_PrecisionStock'::text, 'ID_UniteFk'::text, g."ID_Generique"));
 
 --
 -- Name: VIEW "V_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_PrecisionStock" IS 'Lecture commune au grain unité de la catégorie Unités : politique explicite, identité et date ; zéro décimale si une nouvelle unité n’est pas encore paramétrée.';
+COMMENT ON VIEW logistique."V_PrecisionStock" IS 'Précision des unités déclarées ou utilisées ; défaut explicite zéro décimale, paramètres historiques conservés et aucune quantité transformée.';
 
 --
 -- Name: COLUMN "V_PrecisionStock"."ID_PrecisionStock"; Type: COMMENT; Schema: logistique; Owner: -

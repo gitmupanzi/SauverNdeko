@@ -1,3 +1,6 @@
+import {useEntityScope} from "../contexts/EntityScopeContext";
+import {fetchTerritorialReferences} from "../services/fieldReferences";
+import {REFERENCE_RETAINED_HINT,referenceLabel,referenceOptions,retainReference} from "../utils/referenceOptions";
 import AdminMailSettings from "../components/AdminMailSettings";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import {formatDate} from "./logistique/logistiqueShared";
@@ -40,87 +43,87 @@ const ADMIN_UI_SCOPE_PRIORITY = ["entity", "country", "global"];
 const GENERIC_OPTION_SOURCE_CONFIG = {
   roles: {
     label: "Role",
-    defaultCategoryIds: [39],
+    defaultCategoryIds: [],
     fallbackKeywords: ["role"],
   },
   entityTypes: {
     label: "Type entite",
-    defaultCategoryIds: [48],
+    defaultCategoryIds: [],
     fallbackKeywords: ["typeentite"],
   },
   licenseStatuses: {
     label: "Statut licence",
-    defaultCategoryIds: [55],
+    defaultCategoryIds: [],
     fallbackKeywords: ["statutlicence"],
   },
   niveau2Types: {
     label: "Type niveau 2",
-    defaultCategoryIds: [32],
+    defaultCategoryIds: [],
   },
   niveau3Types: {
     label: "Type niveau 3",
-    defaultCategoryIds: [32],
+    defaultCategoryIds: [],
     predicate: (item) => isFalseFlag(item.VisibleNiveau_3),
     fallbackMode: "withoutPredicate",
   },
   niveau2Statuses: {
     label: "Statut niveau 2",
-    defaultCategoryIds: [4],
+    defaultCategoryIds: [],
   },
   niveau3Statuses: {
     label: "Statut niveau 3",
-    defaultCategoryIds: [4],
+    defaultCategoryIds: [],
   },
   deploymentStatuses: {
     label: "Statut deploiement",
-    defaultCategoryIds: [27],
+    defaultCategoryIds: [],
   },
   dpsAccessRoutes: {
     label: "Voie acces DPS",
-    defaultCategoryIds: [29],
+    defaultCategoryIds: [],
     predicate: (item) => isFalseFlag(item.VisibleVoie),
     fallbackMode: "withoutPredicate",
   },
   antBczAccessRoutes: {
     label: "Voie acces antenne BCZS",
-    defaultCategoryIds: [29],
+    defaultCategoryIds: [],
   },
   dpsBczAccessRoutes: {
     label: "Voie acces DPS BCZS",
-    defaultCategoryIds: [29],
+    defaultCategoryIds: [],
   },
   niveau4Types: {
     label: "Type niveau 4",
-    defaultCategoryIds: [32],
+    defaultCategoryIds: [],
   },
   niveau5Types: {
     label: "Type niveau 5",
-    defaultCategoryIds: [32],
+    defaultCategoryIds: [],
   },
   niveau4Statuses: {
     label: "Statut niveau 4",
-    defaultCategoryIds: [4],
+    defaultCategoryIds: [],
   },
   niveau5Statuses: {
     label: "Statut niveau 5",
-    defaultCategoryIds: [4],
+    defaultCategoryIds: [],
   },
   networkAvailabilities: {
     label: "Disponibilite reseau",
-    defaultCategoryIds: [19],
+    defaultCategoryIds: [],
     fallbackKeywords: ["disporeseau", "reseau"],
   },
   zsAsAccessRoutes: {
     label: "Voie acces ZS-AS",
-    defaultCategoryIds: [29],
+    defaultCategoryIds: [],
   },
   zsSiteAccessRoutes: {
     label: "Voie acces ZS-Site",
-    defaultCategoryIds: [29],
+    defaultCategoryIds: [],
   },
   roofTypes: {
     label: "Type de toit",
-    defaultCategoryIds: [18],
+    defaultCategoryIds: [],
   },
 };
 const HIERARCHY_OPTION_SOURCE_CONFIG = {
@@ -662,25 +665,9 @@ function getConfiguredCategoryIdsForSource(source, overrides) {
   return parsedOverride && parsedOverride.length > 0 ? parsedOverride : config.defaultCategoryIds;
 }
 
-function buildGenericSupportList(source, generics, overrides) {
-  const config = GENERIC_OPTION_SOURCE_CONFIG[source];
-
-  if (!config) {
-    return [];
-  }
-
-  const categoryIds = getConfiguredCategoryIdsForSource(source, overrides);
-  let matches = filterGenericsByCategoryIds(generics, categoryIds, config.predicate || null);
-
-  if (matches.length === 0 && config.fallbackMode === "withoutPredicate" && config.predicate) {
-    matches = filterGenericsByCategoryIds(generics, categoryIds);
-  }
-
-  if (matches.length === 0 && Array.isArray(config.fallbackKeywords) && config.fallbackKeywords.length > 0) {
-    matches = filterGenericsByCategory(generics, config.fallbackKeywords);
-  }
-
-  return matches;
+function buildGenericSupportList() {
+  // Les valeurs génériques sont chargées par champ physique via le service central.
+  return [];
 }
 
 function getHierarchyFilterMode(source, modes) {
@@ -942,7 +929,10 @@ function sortSelectOptions(options) {
   );
 }
 
-function getFieldOptions(field, supportData, editorValues = {}, hierarchyFilterModes = {}) {
+function getFieldOptions(field, supportData, editorValues = {}, hierarchyFilterModes = {}, physicalTable="") {
+  if (physicalTable && GENERIC_OPTION_SOURCE_CONFIG[field.optionsSource]) {
+    return referenceOptions(supportData.referenceByField?.[physicalTable+"."+field.name]?.options || []);
+  }
   if (Array.isArray(field.options)) {
     return sortSelectOptions(field.options);
   }
@@ -1035,7 +1025,7 @@ function getFieldOptions(field, supportData, editorValues = {}, hierarchyFilterM
   if (field.optionsSource === "roles") {
     return sortSelectOptions(supportData.roles.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || `Role ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
@@ -1056,126 +1046,126 @@ function getFieldOptions(field, supportData, editorValues = {}, hierarchyFilterM
   if (field.optionsSource === "entityTypes") {
     return sortSelectOptions(supportData.entityTypes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || `Type ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "licenseStatuses") {
     return sortSelectOptions(supportData.licenseStatuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || `Statut ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau2Types") {
     return sortSelectOptions(supportData.niveau2Types.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau3Types") {
     return sortSelectOptions(supportData.niveau3Types.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau2Statuses") {
     return sortSelectOptions(supportData.niveau2Statuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau3Statuses") {
     return sortSelectOptions(supportData.niveau3Statuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "deploymentStatuses") {
     return sortSelectOptions(supportData.deploymentStatuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Deploiement ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "dpsAccessRoutes") {
     return sortSelectOptions(supportData.dpsAccessRoutes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "antBczAccessRoutes") {
     return sortSelectOptions(supportData.antBczAccessRoutes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "dpsBczAccessRoutes") {
     return sortSelectOptions(supportData.dpsBczAccessRoutes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau4Types") {
     return sortSelectOptions(supportData.niveau4Types.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau5Types") {
     return sortSelectOptions(supportData.niveau5Types.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Type ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau4Statuses") {
     return sortSelectOptions(supportData.niveau4Statuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "niveau5Statuses") {
     return sortSelectOptions(supportData.niveau5Statuses.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Statut ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "networkAvailabilities") {
     return sortSelectOptions(supportData.networkAvailabilities.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Reseau ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "zsAsAccessRoutes") {
     return sortSelectOptions(supportData.zsAsAccessRoutes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "zsSiteAccessRoutes") {
     return sortSelectOptions(supportData.zsSiteAccessRoutes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Voie ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
   if (field.optionsSource === "roofTypes") {
     return sortSelectOptions(supportData.roofTypes.map((item) => ({
       value: String(item.ID_Generique),
-      label: item.NomGenerique || item.AbrGenerique || `Toit ${item.ID_Generique}`,
+      label: referenceLabel(item),
     })));
   }
 
@@ -1316,7 +1306,8 @@ function ensureCurrentSelectOptionWithLabel(options, value, fallbackLabel) {
   return [
     {
       value: normalizedValue,
-      label: fallbackLabel || `Valeur actuelle (${normalizedValue})`,
+      label: fallbackLabel || "Valeur actuelle",
+      disabled:true,incompatible:true,
     },
     ...options,
   ];
@@ -1469,6 +1460,7 @@ function AdminViewButton({ view, isActive, onSelect }) {
 }
 
 export default function Admin({ schemaOnly = "", moduleTitle = "Administration" }) {
+  const entityReferenceScope=useEntityScope();
   const { user: currentUser } = useAuth();
   const [mailSettingsOpen,setMailSettingsOpen]=useState(false);
   const [availableViews, setAvailableViews] = useState([]);
@@ -1550,7 +1542,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [expandedCells, setExpandedCells] = useState({});
   const [showFkMappingPanel, setShowFkMappingPanel] = useState(false);
-  const [genericCategoryOverrides, setGenericCategoryOverrides] = useState(() => readGenericCategoryOverrides());
+  const [genericCategoryOverrides, setGenericCategoryOverrides] = useState({});
   const [genericCategoryDrafts, setGenericCategoryDrafts] = useState({});
   const [hierarchyFilterModes, setHierarchyFilterModes] = useState(() => readHierarchyFilterModes());
   const [loadingSharedFkSettings, setLoadingSharedFkSettings] = useState(true);
@@ -1767,7 +1759,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
   const sharedFkLoadedScopeLabel = sharedFkLoadedScope ? buildAdminUiScopeLabel(sharedFkLoadedScope) : "";
   function applySharedFkServerPayload(payload, scope) {
     setSharedFkSettingsError("");
-    setGenericCategoryOverrides(normalizeStringRecord(payload.genericCategoryOverrides));
+    setGenericCategoryOverrides({});
     setHierarchyFilterModes(normalizeHierarchyModes(payload.hierarchyFilterModes));
     setGenericCategoryDrafts({});
     setSharedFkLoadedScope(scope);
@@ -1843,13 +1835,6 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     return filteredRows.slice(0, 4);
   }, [sharedFkAuditRows, sharedFkAuditTargetScope]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(ADMIN_GENERIC_CATEGORY_STORAGE_KEY, JSON.stringify(genericCategoryOverrides));
-  }, [genericCategoryOverrides]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -2614,6 +2599,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
         niveaux3ViewPayload,
         niveaux4ViewPayload,
         niveaux5ViewPayload,
+        fieldReferencesPayload,
       ] = await Promise.all([
         fetchAdminEntities({ take: 100 }),
         fetchCompleteReferenceRows("T_CategorieGenerique"),
@@ -2634,6 +2620,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
         fetchViewData("geolocalisation", "V_Niveau_3", { take: 4000 }),
         fetchViewData("geolocalisation", "V_Niveau_4", { take: 6000 }),
         fetchViewData("geolocalisation", "V_Niveau_5", { take: 8000 }),
+        fetchTerritorialReferences(),
       ]);
 
       if (!active) {
@@ -2675,6 +2662,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       const niveaux5 = preferSupportRows(extractPayloadRows(niveaux5ViewPayload), extractPayloadRows(niveaux5Payload));
 
       setSupportData({
+        referenceByField:fieldReferencesPayload.byField || {},
         entities: entitiesPayload?.success && Array.isArray(entitiesPayload.data) ? entitiesPayload.data : [],
         categories,
         roles: roles.length > 0 ? roles : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
@@ -2715,6 +2703,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       });
 
       if (
+        !fieldReferencesPayload?.success ||
         !entitiesPayload?.success ||
         !categoriesPayload?.success ||
         (!genericViewsPayload?.success && !genericTablePayload?.success) ||
@@ -2738,24 +2727,25 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     return () => {
       active = false;
     };
-  }, [genericCategoryOverrides,schemaOnly]);
+  }, [genericCategoryOverrides,schemaOnly,entityReferenceScope.scopeKey]);
 
   useEffect(() => {
     if (!referenceVersion || loadingSupport) return;
     let active = true;
     async function refreshReferenceOptions() {
-      const [categoriesPayload, genericsPayload] = await Promise.all([
+      const [categoriesPayload, genericsPayload,fieldReferencesPayload] = await Promise.all([
         fetchCompleteReferenceRows("T_CategorieGenerique"),
         fetchCompleteReferenceRows("T_Generique"),
+        fetchTerritorialReferences(),
       ]);
       if (!active) return;
-      if (!categoriesPayload?.success || !genericsPayload?.success) {
+      if (!categoriesPayload?.success || !genericsPayload?.success || !fieldReferencesPayload?.success) {
         setSupportError("Les références n’ont pas pu être actualisées. Les listes précédentes restent disponibles.");
         return;
       }
       const categories = extractPayloadRows(categoriesPayload);
       const generics = normalizeGenericRows(extractPayloadRows(genericsPayload), categories);
-      setSupportData(current => ({ ...current, categories,
+      setSupportData(current => ({ ...current, categories,referenceByField:fieldReferencesPayload.byField || {},
         ...Object.fromEntries(Object.keys(GENERIC_OPTION_SOURCE_CONFIG).map(key => [key, buildGenericSupportList(key, generics, genericCategoryOverrides)])),
       }));
       setSupportError("");
@@ -3662,7 +3652,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
     if (field.type === "select") {
       const fallbackLabel = getSelectFallbackLabel(field, value, editorSourceRow);
       const options = ensureCurrentSelectOptionWithLabel(
-        getFieldOptions(field, supportData, editorValues, hierarchyFilterModes),
+        getFieldOptions(field, supportData, editorValues, hierarchyFilterModes, selectedCrudConfig?.model),
         value,
         fallbackLabel
       );
@@ -3678,11 +3668,12 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
           >
             <option value="">Selectionner</option>
             {options.map((option) => (
-              <option key={`${field.name}-${option.value}`} value={option.value}>
+              <option key={`${field.name}-${option.value}`} value={option.value} disabled={option.disabled}>
                 {option.label}
               </option>
             ))}
           </CategoricalSelect>
+          {options.some(option=>option.incompatible&&String(option.value)===String(value))?<small className="record-editor-note">{REFERENCE_RETAINED_HINT}</small>:null}
         </label>
       );
     }
@@ -4051,9 +4042,9 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
               <section className="admin-fk-mapping-card">
                 <div className="admin-fk-mapping-head">
                   <div>
-                    <strong>Correspondances FK et comportement des listes</strong>
+                    <strong>Correspondances FK et comportement des listes</strong><a href="/referentiels?onglet=champs">Référencement des champs</a>{schemaOnly==="geolocalisation"?<div className="reference-groups">{Object.entries(supportData.referenceByField||{}).filter(([name])=>name.startsWith(selectedCrudConfig.model+".")).map(([name,reference])=><article className="reference-group" key={name}><strong>{name.split(".").slice(1).join(".")}</strong><p>{(reference.categoryIds||[]).join(", ")||"—"} · {(reference.categoryLabels||[]).join(", ")||"Non configurée"}</p></article>)}</div>:null}
                     <p>
-                      Ajustez ici les categories generiques et le filtrage des listes hierarchiques pour cette vue.
+                      Les catégories sont gérées dans le référencement des champs. Le filtrage hiérarchique conserve ses réglages.
                     </p>
                   </div>
                   <div className="admin-fk-mapping-head-side">
@@ -4061,7 +4052,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                       {`${configurableFkMappings.length + configurableHierarchyMappings.length} reglages configurables`}
                     </span>
                     <div className="admin-fk-mapping-head-actions">
-                      {genericMappingStates.length > 0 ? (
+                      {schemaOnly !== "geolocalisation" && genericMappingStates.length > 0 ? (
                         <button
                           className="secondary-action"
                           type="button"
@@ -4147,7 +4138,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                   ) : null}
                 </div>
 
-                {configurableFkMappings.length > 0 ? (
+                {schemaOnly !== "geolocalisation" && configurableFkMappings.length > 0 ? (
                   <>
                     <div className="admin-fk-mapping-section-head">
                       <strong>Categories generiques</strong>
@@ -4155,7 +4146,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
                     </div>
 
                     <div className="admin-fk-mapping-grid">
-                      {genericMappingStates.map((mapping) => {
+                      {(schemaOnly === "geolocalisation" ? [] : genericMappingStates).map((mapping) => {
                         return (
                           <article key={mapping.source} className="admin-fk-mapping-item">
                             <div className="admin-fk-mapping-meta">

@@ -1,3 +1,4 @@
+import {referenceLabel} from "../utils/referenceOptions";
 import lazyView, { ScreenPlaceholder } from "../components/LazyView";
 import {TIERS_CHANGED} from "../services/tiers";
 import {useEntityScope} from "../contexts/EntityScopeContext";
@@ -146,7 +147,7 @@ function buildGenericReferenceOptions(sourceKey, generics, overrides) {
   return matches
     .map((item) => ({
       id: item.ID_Generique,
-      label: item.NomGenerique || item.AbrGenerique || `Valeur #${item.ID_Generique}`,
+      label: referenceLabel(item),
       abbr: item.AbrGenerique || "",
       categoryId: item.ID_CategorieGeneriqueFk,
     }))
@@ -157,37 +158,10 @@ function isLockedLogistiqueGenericSource(sourceKey) {
   return Boolean(LOGISTIQUE_GENERIC_SOURCE_CONFIG[sourceKey]?.locked);
 }
 
-function buildLogistiqueReferences(baseReferences, generics, overrides) {
-  if (!baseReferences) {
-    return null;
-  }
-
-  if (!Array.isArray(generics) || generics.length === 0) {
-    return baseReferences;
-  }
-
-  const nextReferences = { ...baseReferences };
-
-  Object.entries(LOGISTIQUE_GENERIC_SOURCE_CONFIG).forEach(([sourceKey, config]) => {
-    const generatedOptions = buildGenericReferenceOptions(sourceKey, generics, overrides);
-    const backendOptions = Array.isArray(baseReferences[config.referenceKey]) ? baseReferences[config.referenceKey] : [];
-
-    const configuredIds = getConfiguredCategoryIdsForSource(sourceKey, overrides);
-    const canonical = configuredIds.length === config.defaultCategoryIds.length && configuredIds.every(id => config.defaultCategoryIds.includes(id));
-    if ((config.locked || canonical) && Array.isArray(baseReferences[config.referenceKey])) {
-      // La projection métier est exhaustive ; une liste vide ne doit pas réintroduire d’anciennes valeurs.
-      const byId = new Map(generics.map(item => [String(item.ID_Generique), item]));
-      nextReferences[config.referenceKey] = backendOptions.filter(option => {
-        const reference = byId.get(String(option.id));
-        return !reference || (reference.ValideGenerique === true && reference.ValideCategorieGenerique === true);
-      });
-      return;
-    }
-
-    nextReferences[config.referenceKey] = generatedOptions.length > 0 ? generatedOptions : backendOptions;
-  });
-
-  return nextReferences;
+function buildLogistiqueReferences(baseReferences) {
+  // Les listes et leurs catégories sont résolues par le serveur au même périmètre.
+  // Conserver notamment kind/stockEffect/canInvoice des types de bons.
+  return baseReferences;
 }
 
 function pickLogistiqueOverrides(overrides) {
@@ -609,6 +583,8 @@ export default function Logistique() {
     reglements: { search: "", selectedRow: null },
   });
   const [baseReferences, setBaseReferences] = useState(null);
+  const [referenceScope,setReferenceScope]=useState("");
+  const hasScopedReferences=referenceScope===entityScope.scopeKey;
   const [referenceVersion, setReferenceVersion] = useState(0);
   useReferencesRefresh(() => setReferenceVersion(version => version + 1));
   useEffect(()=>{const refresh=()=>setReferenceVersion(version=>version+1);window.addEventListener(TIERS_CHANGED,refresh);return()=>window.removeEventListener(TIERS_CHANGED,refresh);},[]);
@@ -648,7 +624,7 @@ export default function Logistique() {
 
     async function loadReferences() {
       // Une actualisation conserve les formulaires et leurs listes déjà chargées.
-      if (!baseReferences) setReferencesLoading(true);
+      if (!baseReferences || !hasScopedReferences) setReferencesLoading(true);
       setReferencesError("");
       setGenericSupportError("");
 
@@ -663,14 +639,14 @@ export default function Logistique() {
       }
 
       if (!referencesResponse?.success) {
-        if (!baseReferences) setReferencesError(referencesResponse?.message || "Impossible de charger les références logistiques.");
+        if (!baseReferences || !hasScopedReferences) setReferencesError(referencesResponse?.message || "Impossible de charger les références logistiques.");
         else setGenericSupportError(referencesResponse?.message || "Les références n’ont pas pu être actualisées. Réessayez.");
         setReferencesLoading(false);
         return;
       }
 
       const categories = categoriesResponse?.success ? extractPayloadRows(categoriesResponse) : referenceCategories;
-      setBaseReferences(referencesResponse.data);
+      setBaseReferences(referencesResponse.data);setReferenceScope(entityScope.scopeKey);
       if (categoriesResponse?.success) setReferenceCategories(categories);
       if (genericsResponse?.success && categoriesResponse?.success) setGenericRows(normalizeGenericRows(extractPayloadRows(genericsResponse), categories));
 
@@ -686,68 +662,14 @@ export default function Logistique() {
     return () => {
       isMounted = false;
     };
-  }, [referenceVersion, refreshKey]);
+  }, [referenceVersion, refreshKey,entityScope.scopeKey]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadSharedLogistiqueSettings() {
-      setLoadingSharedFkSettings(true);
-      setSharedFkSettingsError("");
-
-      try {
-        const response = await fetchAdminUiSettings({ scope: "global" });
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (response?.success && response.data?.exists) {
-          const allOverrides = normalizeStringRecord(response.data.genericCategoryOverrides);
-          setAllServerGenericOverrides(allOverrides);
-          setServerHierarchyModes(response.data.hierarchyFilterModes || {});
-          setGenericCategoryOverrides(pickLogistiqueOverrides(allOverrides));
-          setSharedFkSettingsReady(true);
-          setGenericCategoryDrafts({});
-          setSharedFkSettingsMeta({
-            updatedAt: response.data.updatedAt || null,
-            updatedByUserId: response.data.updatedByUserId ?? null,
-            updatedByName: response.data.updatedByName || null,
-          });
-        } else {
-          if (!response?.success) setSharedFkSettingsError(response?.message || "Les réglages n’ont pas pu être chargés.");
-          setSharedFkSettingsReady(response?.success===true);
-          setGenericCategoryOverrides({});
-          setGenericCategoryDrafts({});
-          setAllServerGenericOverrides({});
-          setServerHierarchyModes({});
-          setSharedFkSettingsMeta({
-            updatedAt: null,
-            updatedByUserId: null,
-            updatedByName: null,
-          });
-        }
-      } catch (_error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setSharedFkSettingsError("Les réglages n’ont pas pu être chargés.");
-        setSharedFkSettingsReady(false);
-        setGenericCategoryOverrides({});
-      } finally {
-        if (isMounted) {
-          setLoadingSharedFkSettings(false);
-        }
-      }
-    }
-
-    loadSharedLogistiqueSettings();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [settingsVersion,referenceVersion,entityScope.scopeKey]);
+    // Le référencement physique central fait autorité ; aucun réglage navigateur parallèle.
+    setLoadingSharedFkSettings(false);setSharedFkSettingsReady(true);setSharedFkSettingsError("");
+    setGenericCategoryOverrides({});setGenericCategoryDrafts({});
+    setSharedFkSettingsMeta({updatedAt:null,updatedByUserId:null,updatedByName:null});
+  }, [referenceVersion,entityScope.scopeKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -839,8 +761,8 @@ export default function Logistique() {
   }
 
   const references = useMemo(
-    () => buildLogistiqueReferences(baseReferences, genericRows, genericCategoryOverrides),
-    [baseReferences, genericRows, genericCategoryOverrides]
+    () => hasScopedReferences?buildLogistiqueReferences(baseReferences, genericRows, genericCategoryOverrides):null,
+    [baseReferences, genericRows, genericCategoryOverrides,hasScopedReferences]
   );
 
   const activeTabConfig = useMemo(
@@ -918,42 +840,13 @@ export default function Logistique() {
     [referenceCategories]
   );
 
-  const genericMappingStates = useMemo(
-    () =>
-      activeGenericMappings.map((mapping) => {
-        const config = LOGISTIQUE_GENERIC_SOURCE_CONFIG[mapping.sourceKey];
-        const defaultValue = serializeCategoryIds(config.defaultCategoryIds);
-        const isLocked = Boolean(config.locked);
-        const storedOverride = isLocked ? "" : genericCategoryOverrides[mapping.sourceKey];
-        const inputValue = isLocked ? defaultValue : genericCategoryDrafts[mapping.sourceKey] ?? storedOverride ?? defaultValue;
-        const parsedInput = parseCategoryOverrideInput(inputValue);
-        const isValid = Boolean(parsedInput && parsedInput.length > 0);
-        const normalizedInput = isValid ? serializeCategoryIds(parsedInput) : String(inputValue ?? "").trim();
-        const isDirty = isLocked ? false : normalizedInput !== String(storedOverride ?? defaultValue);
-        const effectiveIds = getConfiguredCategoryIdsForSource(mapping.sourceKey, genericCategoryOverrides);
-        const effectiveCategoryLabels = effectiveIds
-          .map((categoryId) => categoryNameById.get(String(categoryId)) || `Categorie ${categoryId}`)
-          .join(", ");
-        const optionsCount = Array.isArray(references?.[config.referenceKey]) ? references[config.referenceKey].length : 0;
-
-        return {
-          ...mapping,
-          config,
-          defaultValue,
-          storedOverride,
-          inputValue,
-          parsedInput,
-          isValid,
-          isDirty,
-          isCustom: isLocked ? false : Boolean(storedOverride),
-          isLocked,
-          effectiveIds,
-          effectiveCategoryLabels,
-          optionsCount,
-        };
-      }),
-    [activeGenericMappings, categoryNameById, genericCategoryDrafts, genericCategoryOverrides, references]
-  );
+  const genericMappingStates = useMemo(() => activeGenericMappings.map(mapping => {
+    const config=LOGISTIQUE_GENERIC_SOURCE_CONFIG[mapping.sourceKey];
+    const metadata=references?.referenceMeta?.[config.referenceKey] || {};
+    const effectiveIds=metadata.categoryIds || [];
+    const categoryLabels=metadata.categoryLabels || effectiveIds.map(id=>categoryNameById.get(String(id)) || "Catégorie indisponible");
+    return {...mapping,config,defaultValue:String(metadata.defaultCategoryId??""),inputValue:effectiveIds.join(", "),parsedInput:effectiveIds,isValid:true,isDirty:false,isCustom:metadata.effectiveSource && metadata.effectiveSource!=="default",isLocked:true,effectiveIds,effectiveCategoryLabels:categoryLabels.join(", "),defaultCategoryId:metadata.defaultCategoryId,optionsCount:references?.[config.referenceKey]?.length??0};
+  }),[activeGenericMappings,categoryNameById,references]);
 
   const visibleSharedFkAuditRows = useMemo(
     () => sharedFkAuditRows.filter(hasLogistiqueAuditChange).slice(0, 4),
@@ -1154,14 +1047,14 @@ export default function Logistique() {
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
             {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
-            {referencesLoading ? <ScreenPlaceholder label="Chargement des références…"/> : null}
+            {referencesLoading || !hasScopedReferences&&!referencesError ? <ScreenPlaceholder label="Chargement des références…"/> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
             {!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
 
-            {!referencesLoading && !referencesError && sharedFkSettingsReady ? (
+            {!referencesLoading && !referencesError && sharedFkSettingsReady && hasScopedReferences ? (
               <div className="logistics-shell-view">
                 {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
-                  <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={canEditReferences} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setSettingsVersion(version=>version+1)} />
+                  <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={false} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setReferenceVersion(version=>version+1)} />
                 ) : null}
 
                 {activeTab === "inventaires" ? <Inventaires/> : null}

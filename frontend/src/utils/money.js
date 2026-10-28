@@ -37,14 +37,20 @@ export function formatCurrency(value, code) {
 }
 export function currencyOptions(references, unknown = false) {
   const items = (references?.currencies || []).map(item => {
-    const code=currencyCode(item.code),label=String(item.label || "").trim();
-    return {value:String(item.id),label:label&&label.toUpperCase()!==code?[code,label].filter(Boolean).join(" · "):code || label};
+    const code=currencyCode(item.code||item.abbr||item.AbrGenerique),label=String(item.name||item.NomGenerique||item.label||"").trim();
+    return {...item,value:String(item.id),label:code||label,disabled:item.disabled===true||item.incompatible===true||item.active===false};
   });
   return unknown ? [...items, { value:"sans-devise", label:"Devise non renseignée" }] : items;
 }
+/** Une liste propre au champ, même vide, prime sur le contrat historique partagé. */
+export function fieldCurrencyReferences(references,key) {
+ if(!Array.isArray(references?.[key]))return references;
+ const currencies=references[key],usd=currencies.filter(item=>currencyCode(item.code||item.abbr)==="USD"&&!item.disabled&&!item.incompatible&&item.active!==false);
+ return {...references,currencies,defaultCurrencyId:usd.length===1?usd[0].id:null};
+}
 export function newCurrencyId(references) {
   const id = references?.defaultCurrencyId;
-  return id != null && (references?.currencies || []).some(item => String(item.id) === String(id)) ? String(id) : "";
+  return id != null && (references?.currencies || []).some(item => String(item.id) === String(id)&&!item.disabled&&!item.incompatible&&item.active!==false) ? String(id) : "";
 }
 export function formatCurrencyGroups(groups) {
   return Array.isArray(groups) && groups.length ? groups.map(group => formatCurrency(group.value ?? group.montant, group.code)).join(" · ") : "—";

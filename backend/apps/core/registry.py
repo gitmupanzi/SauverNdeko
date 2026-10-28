@@ -10,7 +10,7 @@ VIEWS = DATA["views"]
 def model(name):
     if name == 'T_BonCodeHistorique':
         raise APIError('Le journal des références est conservé par la base de données.', 'HISTORY_READ_ONLY', 403)
-    if name in {"T_InterfaceTableau", "T_PreferenceTableau"}:
+    if name in {"T_InterfaceTableau", "T_PreferenceTableau", "T_ChampReferentiel"}:
         raise APIError("Ces réglages personnels utilisent leur interface dédiée.", "DEDICATED_SETTINGS_REQUIRED", 403)
     if name not in MODELS:
         raise APIError("Modèle non disponible dans PostgreSQL.", "NOT_FOUND", 404)

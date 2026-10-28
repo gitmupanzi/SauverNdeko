@@ -97,7 +97,7 @@ export default function Mouvements({references,refreshKey,sharedTable,onToggleFk
  const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null),[feedback,setFeedback]=useState(null);
  const appliedColumnFilters=criteria.columnFilters||{},activeFilters=activeEntries(criteria).length+Object.keys(appliedColumnFilters).length;
  const pending=search.trim()!==criteria.q||Object.keys(EMPTY).some(key=>draft[key]!==criteria[key])||JSON.stringify(cleanColumns(columnDraft))!==JSON.stringify(appliedColumnFilters);
- const options=useMemo(()=>({categorieId:buildReferenceOptions(references?.articleCategories,"Catégorie"),articleTypeId:buildReferenceOptions(references?.articleTypes,"Type"),typeId:buildReferenceOptions(references?.commandeTypes,"Type"),deviseId:currencyOptions(references,true),sens:DIRECTIONS,
+ const options=useMemo(()=>({categorieId:buildReferenceOptions(references?.articleCategories,"Catégorie"),articleTypeId:buildReferenceOptions(references?.articleTypes,"Type"),typeId:buildReferenceOptions(references?.movementTypes,"Type"),deviseId:currencyOptions(references,true),sens:DIRECTIONS,
   origine:(meta?.options?.origines||[]).map(option=>({value:String(option.value),label:String(option.label)}))}),[references,meta?.options?.origines]);
  const contextChanged=previousScope.current!==scopeKey,blocked=loading||Boolean(error)||!canRead||contextChanged||denied;
  function changeGrid(patch){setLoading(true);setGrid(current=>({...current,...patch}));}

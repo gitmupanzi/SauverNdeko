@@ -45,11 +45,7 @@ class PersonnelReferencesView(APIView):
         require_module(request.user,'administration','read')
         if request.query_params:raise APIError('Aucun critère n’est attendu.')
         result={}
-        for key,label in [('personnelServices','Service'),('personnelFonctions','Fonction')]:
-            result[key]=db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,
-              NOT (g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) AS disabled
-              FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-                ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-              WHERE lower(btrim(c."NomCategorieGenerique"))=lower(%s)
-              ORDER BY lower(g."NomGenerique"),g."ID_Generique"''',[label])
+        from .field_references import reference_options
+        for key,field in [('personnelServices','ID_ServiceFk'),('personnelFonctions','ID_FonctionFk')]:
+            result[key]=reference_options(request.user,'systeme','T_Utilisateurs',field)
         return ok(result)

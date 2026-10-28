@@ -75,6 +75,14 @@ Les évolutions SQL du 28 octobre 2026 distinguent les données métier, leur hi
 
 Les tableaux, indicateurs et exports reprennent les mêmes unités, devises et périmètres. Une somme de quantités de plusieurs unités n’est pas présentée comme un total unique. Les exports respectent exactement les colonnes et leur ordre, proposent sélection ou résultats filtrés complets et conservent les références textuelles dans le XLSX. Le CSV UTF-8 avec BOM est adapté à Excel français mais reste sans types ; les zéros initiaux sont garantis par le XLSX.
 
+## Référencement physique commun
+
+Les champs catégoriels reposent sur `T_ChampReferentiel` et leurs vraies clés étrangères. Le défaut immuable est une référence prouvée ; NULL signifie qu’aucune famille n’est connue. La catégorie courante reste une configuration dans `T_Fk_Correspondance`, résolue en SQL par entreprise puis global puis défaut. Ne pas créer une deuxième autorité dans un composant, un JSON de code ou une autre table. Rétablir conserve explicitement le défaut au scope choisi, sans effacer les autres contextes.
+
+La portée entreprise exige `SupportsEntityScope` et un propriétaire durable prouvé. La géographie et les autres tables partagées gardent leurs références globales ; l’utilisateur associé ne leur attribue pas une entreprise par déduction. Le contexte et les validations viennent du même résolveur SQL. Les métadonnées d’une nouvelle installation excluent auteurs, révisions et surcharges de l’instance source.
+
+Les rôles de sécurité ne changent pas de famille. Une configuration n’est pas une migration de données : conserver les anciennes références, les copies exactes de parent et les valeurs financières/physiques historiques. Les nouvelles affectations sont validées au serveur dans les catégories actives ; libellés, abréviations et visibilités restent distincts des identifiants. Lire [le contrat de référencement des champs](../../SQL/documentation/Referencement_Champs_20261028.md) avant d’ajouter un consommateur ou un réglage.
+
 ## Biens de l’entreprise et données professionnelles
 
 La tranche Patrimoine sépare les immobilisations des Articles et du stock commercial. Les références, affectations, quantités entières et calculs de valeur appartiennent aux vues et gardes SQL ; aucun retrait de stock, amortissement ou droit d’accès n’en découle automatiquement. Les données RH minimales complètent les comptes existants, restent privées et se gèrent dans l’onglet Utilisateurs fusionné ; la source Profils conserve sa compatibilité. Lire [la règle de patrimoine](references/patrimoine-affectations.md) avant d’étendre ce parcours.

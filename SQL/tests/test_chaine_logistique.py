@@ -215,10 +215,14 @@ for kind,pk,format_name in [('bon',entry_id,'entree'),('bon',sale_id,'sortie'),(
  artifacts[format_name]=response.content
  denied=cb.get(path,HTTP_ACCEPT='application/pdf');check(denied.status_code==404,'PDF autre entreprise refusé '+format_name)
  check('no-store' in response.get('Cache-Control',''),'PDF privé sans cache '+format_name)
-# Identité documentaire émise figée malgré un changement de l'entreprise ensuite.
-frozen=documents.document_data(a,'facture',sale_id,'facture')['emitter'];frozen_tier=documents.document_data(a,'facture',sale_id,'facture')['thirdParty']
+# L'émetteur est courant depuis07 ; les valeurs financières et le tiers émis
+# restent figés et les pièces archivées sont toujours téléchargées à l'octet près.
+issued_before=documents.document_data(a,'facture',sale_id,'facture')
+frozen_tier=issued_before['thirdParty']
 db.query('UPDATE systeme."T_Entite" SET "NomEntite"=%s WHERE "IdEntite"=%s',['Entreprise fictive A renommée '+tag,entity_a])
-check(documents.document_data(a,'facture',sale_id,'facture')['emitter']==frozen,'identité de facture émise conservée')
+issued_after=documents.document_data(a,'facture',sale_id,'facture')
+check(issued_after['emitter']['NomEntite']=='Entreprise fictive A renommée '+tag,'identité courante de l’émetteur appliquée à la régénération de facture')
+check(issued_after['lines']==issued_before['lines'] and issued_after['totals']==issued_before['totals'] and issued_after['parentCode']==issued_before['parentCode'],'lignes, montants et référence émis conservés après changement de présentation de l’entreprise')
 db.query('UPDATE logistique."T_Client" SET "Nom"=%s WHERE "ID_Client"=%s',['Client renommé fictif '+tag,tier_a])
 check(documents.document_data(a,'facture',sale_id,'facture')['thirdParty']==frozen_tier,'identité du tiers facturé conservée')
 # Les pièces jointes sont privées et ne passent pas par une URL de fichier publique.

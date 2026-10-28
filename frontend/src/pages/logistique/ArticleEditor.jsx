@@ -1,3 +1,5 @@
+import {fieldCurrencyReferences} from "../../utils/money";
+import {REFERENCE_RETAINED_HINT,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import { newCurrencyId, currencyOptions } from "../../utils/money";
 import SearchSelect from "../../components/SearchSelect";
 import ConsultationTabs from "../../components/ConsultationTabs";
@@ -19,7 +21,8 @@ function Field({name,label,error,hint,wide=false,children}) {
   return <div className={"record-field"+(wide?" is-wide":"")}><label htmlFor={name}>{label}</label>{children}{error?<small className="record-field-error" id={name+"-error"}>{error}</small>:hint?<small id={name+"-hint"}>{hint}</small>:null}</div>;
 }
 function Section({icon,title,children}) {return <section className="record-editor-section"><h3><AppIcon name={icon}/>{title}</h3><div className="record-editor-grid">{children}</div></section>;}
-export default function ArticleEditor({articleId,onClose,onSaved,references}) {
+export default function ArticleEditor({articleId,onClose,onSaved,references:receivedReferences}) {
+ const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const {user}=useAuth(),creating=!articleId;
   const {openProductLots}=useConsultations();
   const [active,setActive]=useState("article");
@@ -73,9 +76,9 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
   }
   function select(name,label,source,locked=false){
     const id=prefix+name,options=buildReferenceOptions(source,label),known=options.some(x=>String(x.value)===String(values[name]));
-    const choices=!known&&values[name]?[{value:values[name],label:record?.[{ID_TypeArticleFk:"TypeArticle",ID_CategorieArticleFk:"CategorieArticle",ID_UniteFk:"Unite",ID_UnitePoidsFk:"UnitePoids",ID_DeviseFk:"DeviseCode"}[name]]||"Valeur actuelle"},...options]:options;
-    const hint=locked?(name==="ID_DeviseFk"?"La devise est conservée après une opération de stock.":"L’unité est conservée après le premier mouvement."):!options.length?"Aucune valeur disponible. Vérifiez les références.":"";
-    return <Field name={id} label={label} error={errors[name]} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={name==="ID_UnitePoidsFk"?[{value:"",label:"Non renseignée"},...choices]:choices} onChange={next=>change(name,next)} disabled={busy||!canWrite||locked||!options.length} invalid={Boolean(errors[name])} describedBy={errors[name]?id+"-error":hint?id+"-hint":undefined}/></Field>;
+    const choices=retainReference(options,values[name],record?.[{ID_TypeArticleFk:"TypeArticle",ID_CategorieArticleFk:"CategorieArticle",ID_UniteFk:"Unite",ID_UnitePoidsFk:"UnitePoids",ID_DeviseFk:"DeviseCode"}[name]]||"Valeur actuelle");
+    const hint=isRetainedReference(choices,values[name])?REFERENCE_RETAINED_HINT:locked?(name==="ID_DeviseFk"?"La devise est conservée après une opération de stock.":"L’unité est conservée après le premier mouvement."):!options.length?"Aucune valeur disponible. Vérifiez les références.":"";
+    return <Field name={id} label={label} error={errors[name]} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={name==="ID_UnitePoidsFk"?[{value:"",label:"Non renseignée"},...choices]:choices} onChange={next=>change(name,next)} disabled={busy||!canWrite||locked||(!options.length&&!values[name])} invalid={Boolean(errors[name])} describedBy={errors[name]?id+"-error":hint?id+"-hint":undefined}/></Field>;
   }
   function readOnly(name,label,value,hint="") {
     const id=prefix+name;
@@ -134,7 +137,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
         {input("PoidsUnitaire","Poids unitaire",{inputMode:"decimal"})}
         {select("ID_UnitePoidsFk","Unité de poids",references?.weightUnits)}
         {input("QteMinArticle","Seuil minimum",{inputMode:"decimal"})}
-        {select("ID_DeviseFk","Devise *",currencyOptions(references).map(option=>({id:option.value,label:option.label})),!creating&&meta?.canChangeCurrency===false)}
+        {select("ID_DeviseFk","Devise *",currencyOptions(references).map(option=>({...option,id:option.value})),!creating&&meta?.canChangeCurrency===false)}
         {input("PUArticle","Prix d’achat *",{inputMode:"decimal"})}
         {input("PVArticle","Prix de vente *",{inputMode:"decimal"})}
       </Section>

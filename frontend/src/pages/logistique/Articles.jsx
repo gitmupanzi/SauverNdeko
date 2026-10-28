@@ -1,3 +1,4 @@
+import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {moduleRights} from "../../services/moduleAccess";
 import lazyView from "../../components/LazyView";
@@ -51,7 +52,8 @@ function expiryTone(value) {
 }
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
-export default function Articles({ references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+export default function Articles({ references:receivedReferences, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+ const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const preferences=useTablePreferences("logistique.articles");
   const { user: currentUser } = useAuth();
   const { openProduct, openProductLots, openOrder } = useConsultations();

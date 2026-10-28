@@ -1,3 +1,6 @@
+import useReferencesRefresh from "../hooks/useReferencesRefresh";
+import {fetchFieldValues} from "../services/fieldReferences";
+import {referenceOptions,retainReference} from "../utils/referenceOptions";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../contexts/AuthContext";
 import {useEntityScope} from "../contexts/EntityScopeContext";
@@ -22,8 +25,9 @@ export default function EntityProfileEditor({context="active",recordId=null,mode
   const globalAdmin=scope.globalAdmin===true||user?.Is_Admin===true,allowed=settled&&canWrite&&record?.canConfigure===true&&(creating?globalAdmin&&record?.IdEntite==null:context==="admin"||scope.canWrite);
   const manageStructure=context==="admin"&&globalAdmin&&canWrite&&(creating||record?.canManageEntity!==false);
   const changed=Boolean(baseline)&&(JSON.stringify(values)!==JSON.stringify(baseline)||Boolean(logo.file)||logo.remove),readOnly=!editing||!allowed,disabled=loading||busy||uncertain;
-  const typeOptions=(record?.references?.entityTypes||[]).map(item=>({value:String(item.id),label:item.label||item.abbr||"Valeur sans libellé",disabled:item.disabled===true}));
-  if(values.IdTypeEntiteFk&&!typeOptions.some(item=>item.value===values.IdTypeEntiteFk))typeOptions.unshift({value:values.IdTypeEntiteFk,label:record?.TypeEntite||"Type actuel"});
+  const typeOptions=referenceOptions(record?.references?.entityTypes||[]);
+  if(values.IdTypeEntiteFk&&!typeOptions.some(item=>item.value===values.IdTypeEntiteFk))typeOptions.unshift({value:values.IdTypeEntiteFk,label:record?.TypeEntite||"Type actuel",disabled:true,incompatible:true});
+  useReferencesRefresh(async()=>{if(!settled||disabled||!manageStructure)return;const expected=identity,response=await fetchFieldValues("systeme","T_Entite","IdTypeEntiteFk",{currentId:values.IdTypeEntiteFk});if(current.current===expected&&response?.success)setRecord(previous=>({...previous,references:{...previous.references,entityTypes:response.data?.options||[]}}));},{enabled:settled&&manageStructure});
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
     const controller=new AbortController(),key=identity;setRecord(null);setBaseline(null);setValues(entityProfileValues());setLogo(emptyLogo());setMotif("");setLoading(true);setBusy(false);setError("");setErrors({});setUncertain(false);setConfirmReload(false);setFeedback("");setActive("identity");setEditing(creating||mode==="edit");saving.current=false;ticket.current=null;

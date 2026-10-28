@@ -3,6 +3,7 @@ Le CRUD métier utilise les services SQL et les triggers existants.
 """
 
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 
 class T_InterfaceTableau(models.Model):
@@ -487,6 +488,7 @@ class T_Audit_Log(models.Model):
 
 
 class T_Fk_Correspondance(models.Model):
+    IdChampReferentielFk = models.IntegerField(null=True)
     IdFkCorrespondance = models.AutoField(primary_key=True)
     ModuleName = models.TextField()
     SchemaName = models.TextField()
@@ -756,3 +758,24 @@ class T_Immobilisation(models.Model):
     class Meta:
         managed = False
         db_table = '"logistique"."T_Immobilisation"'
+
+
+class T_ChampReferentiel(models.Model):
+    ID_ChampReferentiel = models.AutoField(primary_key=True)
+    SchemaName = models.CharField(max_length=80)
+    TableName = models.CharField(max_length=120)
+    ColumnName = models.CharField(max_length=120)
+    ChampLabel = models.CharField(max_length=255)
+    ModuleName = models.CharField(max_length=80)
+    ID_CategorieDefautFk = models.IntegerField(null=True)
+    AliasSourceKeys = ArrayField(models.TextField(), default=list)
+    CanConfigure = models.BooleanField(default=True)
+    SupportsEntityScope = models.BooleanField()
+    Revision = models.BigIntegerField(default=1)
+    CreeLe = models.DateTimeField()
+    ModifieLe = models.DateTimeField()
+    ModifieParUserFk = models.IntegerField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = '"referentiel"."T_ChampReferentiel"'

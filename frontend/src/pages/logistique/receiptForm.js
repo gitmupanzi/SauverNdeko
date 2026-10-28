@@ -8,7 +8,7 @@ export function createReceiptRequestId(cryptoSource=globalThis.crypto) {
 }
 export function receiptForm(data) {
   const defaults=data?.defaults||{};
-  return {ID_TypeCmdFk:defaults.ID_TypeCmdFk==null?String(data?.type?.id??""):String(defaults.ID_TypeCmdFk),QteCmdDetail:"",PUCmdDetail:defaults.PUCmdDetail==null?"":String(defaults.PUCmdDetail),ID_DeviseFk:defaults.ID_DeviseFk==null?"":String(defaults.ID_DeviseFk),DateCmd:defaults.DateCmd||"",RefCmd:"",ID_TiersFk:"",NomClientSaisi:"",ObsCmd:""};
+  return {ID_TypeCmdFk:defaults.ID_TypeCmdFk==null?String(data?.type?.id??""):String(defaults.ID_TypeCmdFk),QteCmdDetail:"",PUCmdDetail:data?.priceToConfirm||defaults.PUCmdDetail==null?"":String(defaults.PUCmdDetail),ID_DeviseFk:data?.currencyToConfirm||defaults.ID_DeviseFk==null?"":String(defaults.ID_DeviseFk),DateCmd:defaults.DateCmd||"",RefCmd:"",ID_TiersFk:"",NomClientSaisi:"",ObsCmd:""};
 }
 export function receiptErrors(values,typeIds=null) {
   const errors={};

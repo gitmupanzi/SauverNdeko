@@ -1,3 +1,4 @@
+import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {moduleRights} from "../../services/moduleAccess";
@@ -29,7 +30,8 @@ function fieldValue(key,value,references){
  if(key==="etat")return value==="conforme"?"Conformes":"Incohérentes";
  return key==="dateFrom"||key==="dateTo"?formatDate(value):value;
 }
-export default function CommandeDetails({selectedCommande,references,refreshKey,onDataChanged,sharedTable,onToggleFkMappings,onClearCommande}) {
+export default function CommandeDetails({selectedCommande,references:receivedReferences,refreshKey,onDataChanged,sharedTable,onToggleFkMappings,onClearCommande}) {
+ const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.lignes");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders();
  const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;

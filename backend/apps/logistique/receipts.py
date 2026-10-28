@@ -18,7 +18,6 @@ from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
 from apps.core.repository import audit, coerce, get_record, mutate, positive
 from apps.core.responses import APIError, ExactEncoder, ok
-from apps.core.ui_settings import SOURCES
 from .currency import validate_currency
 from .lots import normalize as normalize_lots
 from .services import mutate_line
@@ -37,24 +36,14 @@ def normalized(value):
                    if not unicodedata.combining(char)).strip().lower()
 
 
-def entry_types(*, lock=False):
-    source=SOURCES["generic"].get("logistique.commandeTypes",{})
-    relation=next((item for item in model("T_Commande")["relations"]
-        if item.get("from")==["ID_TypeCmdFk"] and item.get("target")=="T_Generique"
-        and item.get("to")==["ID_Generique"]),None)
-    if not relation or source.get("fieldName")!="ID_TypeCmdFk" or source.get("referenceSchemaName")!="referentiel" or source.get("referenceObjectName")!="T_Generique" or source.get("referenceFieldName")!="ID_Generique":
-        raise APIError("La liste des types de bon n’est pas configurée.", "RECEIPT_CONFIGURATION", 503)
-    categories=source.get("defaultCategoryIds",[])
-    if not isinstance(categories,list) or not categories:
-        raise APIError("La catégorie des types de bon n’est pas configurée.", "RECEIPT_CONFIGURATION", 503)
-    category_ids=[positive(value,"Catégorie de type de bon") for value in categories]
-    rows=db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbreviation
-        FROM referentiel."T_Generique" g
-        JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE g."ID_CategorieGeneriqueFk"=ANY(%s)
-          AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE
-          AND g."AbrGenerique" ILIKE %s
-        ORDER BY LOWER(g."NomGenerique"),g."ID_Generique" ''' + ('FOR SHARE OF g,c' if lock else ''),[category_ids,'entr%'])
+def entry_types(actor=None, *, lock=False):
+    from apps.core.field_references import reference_options
+    rows=[{**row,'abbreviation':row['abbr']} for row in reference_options(actor,'logistique','T_Commande','ID_TypeCmdFk')
+          if row.get('kind')=='entree']
+    if lock and rows:
+        db.query('SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN '
+            'referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" '
+            'WHERE g."ID_Generique"=ANY(%s::integer[]) FOR SHARE OF g,c',[[row['id'] for row in rows]])
     if not rows:
         raise APIError("Ajoutez un type de bon d’entrée actif dans le référentiel.", "RECEIPT_CONFIGURATION", 503)
     return rows
@@ -66,8 +55,8 @@ def default_entry_type(rows):
     return {"id":preferred["id"],"label":preferred["label"]} if preferred else None
 
 
-def entry_type(identifier=None, *, lock=False):
-    rows=entry_types(lock=lock)
+def entry_type(identifier=None, *, lock=False, actor=None):
+    rows=entry_types(actor,lock=lock)
     if identifier is None:
         selected=default_entry_type(rows)
     else:
@@ -89,12 +78,26 @@ def article_context(actor, pk, *, active=True):
 def receipt_defaults(actor, pk):
     require_module(actor, "logistique")
     record = article_context(actor, pk)
-    types=entry_types()
+    types=entry_types(actor)
     selected=default_entry_type(types)
-    return {"article":record, "defaults":{"ID_TypeCmdFk":selected["id"] if selected else None,"ID_DeviseFk":record.get("ID_DeviseFk"),
-            "PUCmdDetail":record.get("PUArticle"),
+    currency=record.get('ID_DeviseFk'); price=record.get('PUArticle'); confirm=False
+    try:
+        if currency is None:
+            confirm=True
+        else:
+            validate_currency(currency,actor=actor,table='T_Commande')
+    except APIError as error:
+        if error.status_code not in {400,503}:
+            raise
+        confirm=True
+    if confirm:
+        currency=None;price=None
+    return {"article":record, "defaults":{"ID_TypeCmdFk":selected["id"] if selected else None,"ID_DeviseFk":currency,
+            "PUCmdDetail":price,
             "DateCmd":datetime.now(ZoneInfo(settings.TIME_ZONE)).replace(tzinfo=None).isoformat(timespec="minutes")},
-            "types":[{"id":row["id"],"label":row["label"]} for row in types], "type":selected, "timeZone":settings.TIME_ZONE, "canReceive":not settings.DB_READ_ONLY}
+            "types":[{"id":row["id"],"label":row["label"]} for row in types], "type":selected, "timeZone":settings.TIME_ZONE,
+            "currencyToConfirm":confirm,"priceToConfirm":confirm,
+            "canReceive":not settings.DB_READ_ONLY}
 
 
 def receipt_data(body):
@@ -213,8 +216,8 @@ def receive_article(actor, pk, body):
             article_context(actor,article_id,active=False)
             return receipt_result(actor,article_id,positive(saved.get("ID_Commande")),replayed=True)
         article_context(actor,article_id)
-        validate_currency(data["ID_DeviseFk"])
-        received_type=entry_type(data.get("ID_TypeCmdFk"),lock=True)
+        validate_currency(data["ID_DeviseFk"],actor=actor,table='T_Commande')
+        received_type=entry_type(data.get("ID_TypeCmdFk"),lock=True,actor=actor)
         data["ID_TypeCmdFk"]=received_type["id"]
         fingerprint=payload_hash(article_id,data,actor)
         header={key:data[key] for key in ("ID_DeviseFk","DateCmd","RefCmd","ID_ClientFk","ID_TiersFk","NomClientSaisi","ObsCmd") if key in data}

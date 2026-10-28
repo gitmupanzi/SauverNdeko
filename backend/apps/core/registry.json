@@ -7359,6 +7359,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Fk_Correspondance",
+          "column_name": "IdChampReferentielFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -7385,6 +7397,18 @@
             "IdUser"
           ],
           "relation": "FkCorrespondanceUpdatedBy"
+        },
+        {
+          "name": "T_ChampReferentiel",
+          "many": false,
+          "relation": "T_ChampReferentiel_IdChampReferentielFk",
+          "target": "T_ChampReferentiel",
+          "from": [
+            "IdChampReferentielFk"
+          ],
+          "to": [
+            "ID_ChampReferentiel"
+          ]
         }
       ],
       "fields": [
@@ -10429,6 +10453,209 @@
           ],
           "to": [
             "IdEntite"
+          ]
+        },
+        {
+          "name": "T_Utilisateurs",
+          "many": false,
+          "relation": "T_Utilisateurs_ModifieParUserFk",
+          "target": "T_Utilisateurs",
+          "from": [
+            "ModifieParUserFk"
+          ],
+          "to": [
+            "IdUser"
+          ]
+        }
+      ]
+    },
+    "T_ChampReferentiel": {
+      "schema": "referentiel",
+      "name": "T_ChampReferentiel",
+      "primaryKey": [
+        "ID_ChampReferentiel"
+      ],
+      "columns": [
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ID_ChampReferentiel",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "YES"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "SchemaName",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 80,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "TableName",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 120,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ColumnName",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 120,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ChampLabel",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ModuleName",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 80,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ID_CategorieDefautFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "AliasSourceKeys",
+          "data_type": "ARRAY",
+          "is_nullable": "NO",
+          "column_default": "'{}'::text[]",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "CanConfigure",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "SupportsEntityScope",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "false",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "Revision",
+          "data_type": "bigint",
+          "is_nullable": "NO",
+          "column_default": "1",
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "CreeLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "clock_timestamp()",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "NO",
+          "column_default": "clock_timestamp()",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_ChampReferentiel",
+          "column_name": "ModifieParUserFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        }
+      ],
+      "relations": [
+        {
+          "name": "T_CategorieGenerique",
+          "many": false,
+          "relation": "T_CategorieGenerique_ID_CategorieDefautFk",
+          "target": "T_CategorieGenerique",
+          "from": [
+            "ID_CategorieDefautFk"
+          ],
+          "to": [
+            "ID_CategorieGenerique"
           ]
         },
         {
@@ -23919,6 +24146,279 @@
           "table_name": "V_User_Affectation",
           "column_name": "_version",
           "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ]
+    },
+    "referentiel.V_ReferencementChamp": {
+      "schema": "referentiel",
+      "name": "V_ReferencementChamp",
+      "primaryKey": [
+        "ID_ChampReferentiel"
+      ],
+      "columns": [
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ID_ChampReferentiel",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "SchemaName",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 80,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "TableName",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 120,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ColumnName",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 120,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ChampLabel",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ModuleName",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 80,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ID_CategorieDefautFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "AliasSourceKeys",
+          "data_type": "ARRAY",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CanConfigure",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "SupportsEntityScope",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "Revision",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CreeLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ModifieParUserFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CategoryIds",
+          "data_type": "ARRAY",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CategoryLabels",
+          "data_type": "ARRAY",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CategoriesActuelles",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "CategorieDefaut",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "DefaultCategoryId",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "OrigineReglage",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "_version",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_ReferencementChamp",
+          "column_name": "ReferenceHeriteeParent",
+          "data_type": "boolean",
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,

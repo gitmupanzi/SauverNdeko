@@ -432,6 +432,74 @@ $$;
 COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
 
 --
+-- Name: tr_correspondance_champ_integrite(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_correspondance_champ_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE row_data jsonb; r referentiel."T_ChampReferentiel"; cat integer;
+BEGIN
+ row_data:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+ IF (row_data->>'IdChampReferentielFk') IS NULL THEN
+  PERFORM 1 FROM referentiel."T_ChampReferentiel" c WHERE row_data->>'SourceKey'=ANY(c."AliasSourceKeys") ORDER BY c."ID_ChampReferentiel" FOR UPDATE;
+  IF row_data->>'SourceKey' LIKE 'champ.%' THEN RAISE EXCEPTION 'Identité de champ canonique obligatoire' USING ERRCODE='23514';END IF;
+  IF EXISTS(SELECT FROM referentiel."T_ChampReferentiel" c WHERE NOT c."CanConfigure" AND row_data->>'SourceKey'=ANY(c."AliasSourceKeys") AND (row_data->>'TargetCategoryIdFk')::integer IS DISTINCT FROM c."ID_CategorieDefautFk") THEN
+   RAISE EXCEPTION 'Famille de sécurité protégée.' USING ERRCODE='23514';END IF;
+  RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+ END IF;
+ SELECT * INTO r FROM referentiel."T_ChampReferentiel" WHERE "ID_ChampReferentiel"=(row_data->>'IdChampReferentielFk')::integer FOR UPDATE;
+ IF NOT FOUND OR NOT r."CanConfigure" THEN RAISE EXCEPTION 'Champ absent ou protégé.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND NEW."IdChampReferentielFk" IS DISTINCT FROM OLD."IdChampReferentielFk" THEN RAISE EXCEPTION 'Identité du réglage conservée.' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ IF NEW."MappingType"<>'generic_category' OR NEW."SourceKey"<>'champ.'||r."ID_ChampReferentiel"::text OR NEW."SchemaName"<>r."SchemaName" OR NEW."FieldName"<>r."ColumnName" OR NEW."ModuleName"<>r."ModuleName" OR NEW."ViewName" IS NOT NULL
+  OR NEW."ReferenceSchemaName" IS DISTINCT FROM 'referentiel' OR NEW."ReferenceObjectName" IS DISTINCT FROM 'T_Generique' OR NEW."ReferenceFieldName" IS DISTINCT FROM 'ID_Generique'
+  OR NEW."SettingScope" NOT IN ('global','entity') OR NEW."DisplayOrder"<0 THEN RAISE EXCEPTION 'Correspondance et colonne physique incohérentes.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entity' AND NOT r."SupportsEntityScope" THEN RAISE EXCEPTION 'Ce champ partagé ne possède pas de portée entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entity' AND (NEW."ScopeValue" !~ '^[1-9][0-9]{0,9}$' OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"::text=NEW."ScopeValue")) THEN RAISE EXCEPTION 'Entreprise de réglage introuvable.' USING ERRCODE='23514';END IF;
+ IF NEW."MappingValue"='@default' THEN
+  IF NEW."TargetCategoryIdFk" IS NOT NULL OR NOT NEW."IsDefaultMapping" THEN RAISE EXCEPTION 'Marqueur de restauration invalide.' USING ERRCODE='23514';END IF;
+ ELSE
+  IF NEW."TargetCategoryIdFk" IS NULL OR NEW."MappingValue"<>NEW."TargetCategoryIdFk"::text OR NOT EXISTS(SELECT FROM referentiel."T_CategorieGenerique" WHERE "ID_CategorieGenerique"=NEW."TargetCategoryIdFk" AND "ValideCategorieGenerique") THEN
+   RAISE EXCEPTION 'Catégorie courante active requise.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF EXISTS(SELECT FROM systeme."T_Fk_Correspondance" f WHERE f."IdChampReferentielFk"=r."ID_ChampReferentiel" AND f."SettingScope"=NEW."SettingScope" AND f."ScopeValue" IS NOT DISTINCT FROM NEW."ScopeValue" AND f."IdFkCorrespondance"<>coalesce(NEW."IdFkCorrespondance",-1)
+  AND ((NEW."MappingValue"='@default')<>(f."MappingValue"='@default'))) THEN RAISE EXCEPTION 'Un jeu de réglage ne mélange pas restauration et catégories.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $_$;
+
+--
+-- Name: FUNCTION tr_correspondance_champ_integrite(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_correspondance_champ_integrite() IS 'Contrôle des jeux canoniques : champ physique, famille active, portée existante, restauration explicite et verrou du catalogue. Les anciens réglages restent conservés, les rôles de sécurité ne changent pas de famille.';
+
+--
+-- Name: tr_correspondance_champ_revision(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_correspondance_champ_revision() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE before_data jsonb; after_data jsonb;
+BEGIN
+ IF TG_OP<>'INSERT' THEN before_data:=to_jsonb(OLD);END IF;
+ IF TG_OP<>'DELETE' THEN after_data:=to_jsonb(NEW);END IF;
+ UPDATE referentiel."T_ChampReferentiel" c SET "Revision"=c."Revision"+1,"ModifieLe"=clock_timestamp(),"ModifieParUserFk"=systeme.fn_admin_actor_user_id()
+ WHERE c."ID_ChampReferentiel" IN (nullif(before_data->>'IdChampReferentielFk','')::integer,nullif(after_data->>'IdChampReferentielFk','')::integer)
+ OR coalesce(before_data->>'SourceKey','')=ANY(c."AliasSourceKeys") OR coalesce(after_data->>'SourceKey','')=ANY(c."AliasSourceKeys");
+ RETURN NULL;
+END $$;
+
+--
+-- Name: FUNCTION tr_correspondance_champ_revision(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_correspondance_champ_revision() IS 'Révision opaque commune au champ : chaque modification canonique ou de son alias historique invalide les lectures concurrentes, toutes portées confondues, avec auteur et horodatage factuels.';
+
+--
 -- Name: tr_localisation_patrimoine_proprietaire(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -1445,6 +1513,7 @@ CREATE TABLE systeme."T_Fk_Correspondance" (
     "UpdatedAt" timestamp(6) without time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT "T_Fk_Correspondance_UpdatedAt_not_null" NOT NULL,
     "UpdatedByUserFk" integer,
     "ObsFkCorrespondance" text,
+    "IdChampReferentielFk" integer,
     CONSTRAINT "Ck_FkCorrespondance_ScopeValue" CHECK ((((("SettingScope")::text = 'global'::text) AND ("ScopeValue" IS NULL)) OR ((("SettingScope")::text <> 'global'::text) AND (NULLIF(btrim(("ScopeValue")::text), ''::text) IS NOT NULL)))),
     CONSTRAINT chk_fkcorrespondance_mappingtype CHECK ((("MappingType")::text = ANY (ARRAY[('generic_category'::character varying)::text, ('direct_source'::character varying)::text, ('hierarchy_mode'::character varying)::text]))),
     CONSTRAINT chk_fkcorrespondance_scope CHECK ((("SettingScope")::text = ANY (ARRAY[('global'::character varying)::text, ('country'::character varying)::text, ('entity'::character varying)::text])))
@@ -1581,6 +1650,12 @@ COMMENT ON COLUMN systeme."T_Fk_Correspondance"."UpdatedByUserFk" IS 'Auteur act
 --
 
 COMMENT ON COLUMN systeme."T_Fk_Correspondance"."ObsFkCorrespondance" IS 'Observations enregistrées sur la correspondance.';
+
+--
+-- Name: COLUMN "T_Fk_Correspondance"."IdChampReferentielFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Fk_Correspondance"."IdChampReferentielFk" IS 'Champ physique canonique pour un jeu de catégories courant ; NULL conserve une correspondance historique ou non catégorielle.';
 
 --
 -- Name: CONSTRAINT "T_Fk_Correspondance_IdFkCorrespondance_not_null" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
@@ -2794,6 +2869,18 @@ CREATE UNIQUE INDEX uq_audit_immobilisation_request ON systeme."T_Audit_Log" USI
 COMMENT ON INDEX systeme.uq_audit_immobilisation_request IS 'Une seule preuve UUID d’immobilisation par entreprise et auteur, quelle que soit l’opération ou le contenu ; le service compare hash/opération et sérialise les rejeux avant réponse.';
 
 --
+-- Name: uq_fk_champ_categorie_scope; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_fk_champ_categorie_scope ON systeme."T_Fk_Correspondance" USING btree ("IdChampReferentielFk", "SettingScope", "ScopeValue", "MappingValue") NULLS NOT DISTINCT WHERE ("IdChampReferentielFk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_fk_champ_categorie_scope; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.uq_fk_champ_categorie_scope IS 'Une occurrence par catégorie et portée dans le jeu canonique ; plusieurs catégories historiques restent représentables sans CSV.';
+
+--
 -- Name: uq_user_matricule_entite; Type: INDEX; Schema: systeme; Owner: -
 --
 
@@ -2812,6 +2899,18 @@ COMMENT ON INDEX systeme.uq_user_matricule_entite IS 'Matricule facultatif uniqu
 COMMENT ON INDEX systeme.utilisateurs_emailuser_key IS 'Index d’unicité sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX utilisateurs_emailuser_key ON systeme."T_Utilisateurs" USING btree ("EmailUser").';
 
 --
+-- Name: T_Fk_Correspondance a_correspondance_champ_integrite; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER a_correspondance_champ_integrite BEFORE INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.tr_correspondance_champ_integrite();
+
+--
+-- Name: TRIGGER a_correspondance_champ_integrite ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER a_correspondance_champ_integrite ON systeme."T_Fk_Correspondance" IS 'Valide une correspondance canonique avant les dates/audits existants, sans remplacer les contrôles de droits applicatifs.';
+
+--
 -- Name: T_Entite_Localisation aa_localisation_patrimoine_proprietaire; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
@@ -2822,6 +2921,66 @@ CREATE TRIGGER aa_localisation_patrimoine_proprietaire BEFORE UPDATE OF "IdEntit
 --
 
 COMMENT ON TRIGGER aa_localisation_patrimoine_proprietaire ON systeme."T_Entite_Localisation" IS 'Conserve le propriétaire des lieux d’affectation liés au patrimoine.';
+
+--
+-- Name: T_Entite aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Entite" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Entite" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Licence aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Licence" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Licence"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Licence" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Login aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Login" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Login"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Login" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_RoleModule aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_RoleModule" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_RoleModule"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_RoleModule" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+--
+-- Name: T_Utilisateurs aa_reference_champ; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON systeme."T_Utilisateurs" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 --
 -- Name: T_Utilisateurs aa_utilisateur_affectation_verifier; Type: TRIGGER; Schema: systeme; Owner: -
@@ -3026,6 +3185,18 @@ CREATE TRIGGER trigger_update_licence_status BEFORE INSERT OR UPDATE ON systeme.
 --
 
 COMMENT ON TRIGGER trigger_update_licence_status ON systeme."T_Licence" IS 'BEFORE INSERT OR UPDATE sur "systeme"."T_Licence", pour chaque ligne. Appelle "systeme"."update_licence_status" : Avant INSERT/UPDATE de licence, fixe ExpireeLicence selon DateFin < NOW() ; une date NULL suit la branche false. Aucun recalcul périodique indépendant d’une écriture.';
+
+--
+-- Name: T_Fk_Correspondance zz_correspondance_champ_revision; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER zz_correspondance_champ_revision AFTER INSERT OR DELETE OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.tr_correspondance_champ_revision();
+
+--
+-- Name: TRIGGER zz_correspondance_champ_revision ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER zz_correspondance_champ_revision ON systeme."T_Fk_Correspondance" IS 'Invalide la révision du catalogue après changement de correspondance et conserve les audits existants.';
 
 --
 -- Name: T_Admin_UI_Setting Fk_Admin_UI_Setting_User; Type: FK CONSTRAINT; Schema: systeme; Owner: -
@@ -3234,6 +3405,19 @@ ALTER TABLE ONLY systeme."T_Entite"
 --
 
 COMMENT ON CONSTRAINT "Fk_TypeEntite" ON systeme."T_Entite" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "systeme"."T_Entite". Définition : FOREIGN KEY ("IdTypeEntiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE SET NULL.';
+
+--
+-- Name: T_Fk_Correspondance T_Fk_Correspondance_IdChampReferentielFk_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_Fk_Correspondance"
+    ADD CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" FOREIGN KEY ("IdChampReferentielFk") REFERENCES referentiel."T_ChampReferentiel"("ID_ChampReferentiel") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Fk_Correspondance_IdChampReferentielFk_fkey" ON systeme."T_Fk_Correspondance" IS 'Intégrité du référencement physique : FOREIGN KEY ("IdChampReferentielFk") REFERENCES referentiel."T_ChampReferentiel"("ID_ChampReferentiel") ON DELETE RESTRICT';
 
 --
 -- Name: T_LicenceModule T_LicenceModule_CodeModule_fkey; Type: FK CONSTRAINT; Schema: systeme; Owner: -

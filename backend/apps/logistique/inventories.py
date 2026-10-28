@@ -250,7 +250,9 @@ class UnitPrecisionView(APIView):
             else:
                 row=db.one('''INSERT INTO logistique."T_PrecisionStock"("ID_UniteFk","DecimalesStock")
                   SELECT "ID_Generique",%s FROM referentiel."T_Generique"
-                  WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=34 RETURNING *''',[body['Decimales'],unit_id])
+                  WHERE "ID_Generique"=%s AND referentiel.fn_valider_reference_champ(
+                    'logistique','T_PrecisionStock','ID_UniteFk',"ID_Generique",NULL)
+                  RETURNING *''',[body['Decimales'],unit_id])
             if not row:raise APIError('Unité introuvable.','NOT_FOUND',404)
             audit({'schema':'logistique','name':'T_PrecisionStock'},'UPDATE' if previous else 'INSERT',old=previous,new=row,actor=request.user)
             return ok(clean({'ID_PrecisionStock':row['ID_PrecisionStock'],'ID_UniteFk':row['ID_UniteFk'],'Decimales':row['DecimalesStock'],'ModifieLe':row['ModifieLe']}))

@@ -137,36 +137,18 @@ def normalized(value):
     return ''.join(char for char in unicodedata.normalize('NFKD', str(value or '')) if not unicodedata.combining(char)).strip().casefold()
 
 
-def category_ids(entity, source_key, label):
-    from apps.core.ui_settings import rows_for
-    rows = [row for row in rows_for('entity', str(entity)) if row['SourceKey'] == source_key and row['MappingType'] == 'generic_category'] if entity else []
-    rows = rows or [row for row in rows_for('global', None) if row['SourceKey'] == source_key and row['MappingType'] == 'generic_category']
-    if rows:
-        return list(dict.fromkeys(positive(row['MappingValue'], 'Catégorie') for row in rows))
-    found = db.query('SELECT "ID_CategorieGenerique" AS id,"NomCategorieGenerique" AS label FROM referentiel."T_CategorieGenerique" WHERE "ValideCategorieGenerique" IS TRUE')
-    result = [row['id'] for row in found if normalized(row['label']) == normalized(label)]
-    if len(result) != 1:
-        fail('La catégorie « ' + label + ' » doit être configurée dans les références.', code='IMMOBILISATION_CONFIGURATION', status=503)
-    return result
-
-
 def references(actor, current=None):
+    from apps.core.field_references import reference_context, reference_options
+    from apps.core.reference_integration import entity_actor
     require_module(actor, 'logistique')
     entity = (current or {}).get('IdEntiteFk') or read_entity(actor)
+    context_actor = entity_actor(actor, entity)
     result, meta = {}, {}
     for key, (field, source_key, label) in REFERENCE_RULES.items():
-        categories = category_ids(entity, source_key, label)
-        result[key] = db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,
-            g."ID_CategorieGeneriqueFk" AS "categoryId" FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_CategorieGeneriqueFk"=ANY(%s) AND c."ValideCategorieGenerique" IS TRUE
-              AND g."ValideGenerique" IS TRUE ORDER BY lower(g."NomGenerique"),g."ID_Generique"''', [categories])
-        meta[key] = {'fieldName': field, 'sourceKey': source_key, 'categoryIds': categories, 'categoryLabel': label}
-        retained = (current or {}).get(field)
-        if retained is not None and not any(row['id'] == retained for row in result[key]):
-            old = db.one('SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [retained])
-            if old:
-                result[key].append({**old, 'disabled': True})
+        result[key] = reference_options(context_actor, 'logistique', TABLE, field, current=(current or {}).get(field))
+        meta[key] = {**reference_context(context_actor, 'logistique', TABLE, field),
+                     'schemaName': 'logistique', 'tableName': TABLE,
+                     'fieldName': field, 'sourceKey': source_key, 'fieldLabel': label}
     # L’affectation RH passée/future n’est pas une affectation matérielle. Seuls
     # les comptes actuellement affectables peuvent être choisis à nouveau.
     scope, params = ('u."IdEntiteFk"=%s', [entity]) if entity else ('TRUE', [])
@@ -187,11 +169,11 @@ def references(actor, current=None):
             old = db.one(sql, [retained, entity])
             if old:
                 result[key].append({**old, 'disabled': True})
-    result['currencies'] = currency_references()
+    result['currencies'] = currency_references(context_actor, table=TABLE)
     retained_currency = (current or {}).get('ID_DeviseFk')
     if retained_currency is not None and not any(item['id'] == retained_currency for item in result['currencies']):
-        result['currencies'].append({**validate_currency(retained_currency, unchanged=True), 'disabled': True})
-    result['defaultCurrencyId'] = default_currency()['id']
+        result['currencies'].append({**validate_currency(retained_currency, unchanged=True, actor=context_actor, table=TABLE), 'disabled': True})
+    result['defaultCurrencyId'] = default_currency(context_actor, table=TABLE)['id']
     result['referenceMeta'] = meta
     can_write = rights(actor)['canWrite']
     result.update({'canCreate': can_write, 'canWrite': can_write})
@@ -245,12 +227,12 @@ def validate(actor, body, old=None):
     if values.get('PrixUnitaire') is not None and values['PrixUnitaire'] < 0:
         fail('Le prix ne peut pas être négatif.', 'PrixUnitaire')
     if old is None and 'ID_DeviseFk' not in values:
-        values['ID_DeviseFk'] = default_currency()['id']
+        values['ID_DeviseFk'] = default_currency(actor, table=TABLE)['id']
     currency = values.get('ID_DeviseFk', (old or {}).get('ID_DeviseFk'))
     if currency is None and effective.get('PrixUnitaire') is not None:
         fail('Choisissez une devise pour ce prix.', 'ID_DeviseFk')
     if currency is not None and ('ID_DeviseFk' in values or old is None):
-        validate_currency(currency, unchanged=old is not None and currency == old.get('ID_DeviseFk'))
+        validate_currency(currency, unchanged=old is not None and currency == old.get('ID_DeviseFk'), actor=actor, table=TABLE)
     effective.update(values)
     refs = references(actor)
     for field, key in [('ID_CategorieFk', 'types'), ('ID_EtatFk', 'etats'), ('ID_ServiceFk', 'services'), ('ID_ResponsableFk', 'responsables'), ('ID_LocalisationFk', 'localisations')]:

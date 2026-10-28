@@ -34,8 +34,9 @@ def record(actor,pk,lock=False):
     return row
 
 def references(actor):
+    from apps.core.field_references import reference_options
     entity=read_entity(actor)
-    return {'typesClients':db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE lower(btrim(c."NomCategorieGenerique"))='type de personne' AND c."ValideCategorieGenerique" AND g."ValideGenerique" ORDER BY g."NomGenerique"'''),
+    return {'typesClients':reference_options(actor, 'logistique', 'T_Client', 'ID_TypeClientFk'),
       'users':db.query('''SELECT "IdUser" AS id,concat_ws(' ',"PrenomUser","NomUser") AS label FROM systeme."T_Utilisateurs" WHERE "ValideUser" AND "IdEntiteFk"=%s ORDER BY label''',[entity]) if entity else [],
       'professionnels':db.query('''SELECT p."IdProfessionnel" AS id,p."IdUserFk" AS "userId",concat_ws(' ',u."PrenomUser",u."NomUser") AS label FROM professionnel."T_Professionnel" p JOIN systeme."T_Utilisateurs" u ON u."IdUser"=p."IdUserFk" WHERE p."ValideProfessionnel" AND u."ValideUser" AND (u."IdEntiteFk"=%s OR EXISTS(SELECT 1 FROM professionnel."T_Professionnel_Entite" l WHERE l."IdProfessionnelFk"=p."IdProfessionnel" AND l."IdEntiteFk"=%s AND (l."DateFin" IS NULL OR l."DateFin">=CURRENT_TIMESTAMP))) ORDER BY label''',[entity,entity]) if entity else [],
       'entites':db.query('SELECT "IdEntite" AS id,"NomEntite" AS label FROM systeme."T_Entite" WHERE "ValideEntite" IS NOT FALSE ORDER BY "NomEntite"')}

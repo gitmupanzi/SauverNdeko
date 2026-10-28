@@ -28,6 +28,10 @@ def source_definition(actor, interface_key):
         obj, _, _ = register_source(kind, {}, for_export=True)
         return obj, LABELS, "logistique"
     if module == "referentiels":
+        if kind == "champs":
+            from apps.core.field_references import table_source, LABELS, _admin
+            _admin(actor)
+            return table_source(), LABELS, "referentiels"
         from apps.core.reference_exports import SOURCES, LABELS
         from apps.core.registry import view
         require_module(actor, "referentiels")

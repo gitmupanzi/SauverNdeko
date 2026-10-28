@@ -24,40 +24,19 @@ def validate_header(obj, data, old, actor):
         from .destinations import validate_destination
         validate_destination(data,old)
     effective = {**(old or {}), **data}
-    rules = {
-        "T_Article": {
-            "ID_TypeArticleFk": 46,
-            "ID_CategorieArticleFk": 40,
-            "ID_UniteFk": 34,
-        },
-        "T_Commande": {
-            "ID_TypeCmdFk": 64,
-            "ID_StatutCmdFk": 28,
-            "ID_ConditionPaiementFk": 37,
-            "ID_ModePaiementFk": 36,
-        },
-        "T_Reglements": {"ID_ModeReglementFk": 36},
-    }
-    for field, category in rules.get(name, {}).items():
-        if field in data and data[field] is not None and (old is None or data[field] != old.get(field)):
-            row = db.one(
-                '''SELECT g."ID_CategorieGeneriqueFk",g."ValideGenerique",c."ValideCategorieGenerique"
-                   FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-                   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-                   WHERE g."ID_Generique"=%s FOR SHARE OF g,c''',
-                [data[field]],
-            )
-            if not row or row["ID_CategorieGeneriqueFk"] != category:
-                raise APIError("Référence incompatible : " + field)
-            if row["ValideGenerique"] is not True or row["ValideCategorieGenerique"] is not True:
-                raise APIError({field:"Cette référence n’est plus disponible. Actualisez la liste."},"REFERENCE_INACTIVE",400)
+    if name in {'T_Article', 'T_Commande'}:
+        from apps.core.reference_integration import validate_changed
+        validate_changed(obj, data, old, actor)
+    elif name == 'T_Reglements' and data.get('ID_ModeReglementFk') is not None and (not old or data['ID_ModeReglementFk'] != old.get('ID_ModeReglementFk')):
+        from apps.core.reference_integration import validate_changed
+        validate_changed(obj, {'ID_ModeReglementFk': data['ID_ModeReglementFk']}, old, actor)
     if name == "T_Commande":
         from .order_types import type_context
         type_context(effective.get('ID_TypeCmdFk'))
         from .document_rules import validate_header as validate_document
         validate_document(data,old,actor)
         from .currency import write_currency
-        write_currency(data, old)
+        write_currency(data, old, actor=actor, table='T_Commande')
         effective = {**(old or {}), **data}
         if old and "ID_DeviseFk" in data and data["ID_DeviseFk"] != old.get("ID_DeviseFk"):
             linked = db.one('''SELECT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=%s)
@@ -351,50 +330,46 @@ def article_reference(x):
 
 
 def references(actor):
+    from apps.core.field_references import reference_context, reference_options
     from .currency import currency_references
-    currencies = currency_references()
+    currencies = currency_references(actor, table='T_Article')
     usd = [item for item in currencies if item["code"] == "USD"]
     if len(usd) != 1:
         raise APIError("Une devise USD active et unique doit être définie dans le référentiel.", "CURRENCY_CONFIGURATION", 503)
-    result = {"currencies": currencies, "defaultCurrencyId": usd[0]["id"], "defaultCurrencyCode": "USD"}
-    meta = {"currencies": {"referenceKey":"currencies", "sourceKey":"logistique.currencies", "locked":True, "categoryLabel":"Devise", "fieldLabel":"Devise"}}
+    result = {"currencies": currencies, "articleCurrencies": currencies,
+              "commandeCurrencies": currency_references(actor, table='T_Commande'),
+              "defaultCurrencyId": usd[0]["id"], "defaultCurrencyCode": "USD"}
+    result['defaultCommandeCurrencyId'] = next((item['id'] for item in result['commandeCurrencies'] if item['code'] == 'USD'), None)
+    meta = {}
     rules = [
-        ("articleTypes", 46, "Type produit", "Type d’article"),
-        ("articleCategories", 40, "Categorie produit", "Categorie d’article"),
-        ("articleUnits", 34, "Unites", "Unite"),
-        ("commandeTypes", 64, "Type de commande", "Type de commande"),
-        ("commandeStatuses", 28, "Statut", "Statut de commande"),
-        (
-            "commandeConditionPaiements",
-            37,
-            "Condition de paiement",
-            "Condition de paiement",
-        ),
-        ("commandeModesPaiement", 36, "Mode paiement", "Mode de paiement"),
-        ("reglementModes", 36, "Mode paiement", "Mode de reglement"),
+        ('articleTypes', 'T_Article', 'ID_TypeArticleFk', 'Type d’article'),
+        ('articleCategories', 'T_Article', 'ID_CategorieArticleFk', 'Catégorie d’article'),
+        ('articleUnits', 'T_Article', 'ID_UniteFk', 'Unité'),
+        ('weightUnits', 'T_Article', 'ID_UnitePoidsFk', 'Unité de poids'),
+        ('commandeTypes', 'T_Commande', 'ID_TypeCmdFk', 'Type de bon'),
+        ('movementTypes', 'T_Mouvement', 'ID_TypeMvtFk', 'Type de mouvement'),
+        ('commandeStatuses', 'T_Commande', 'ID_StatutCmdFk', 'Statut du bon'),
+        ('commandeConditionPaiements', 'T_Commande', 'ID_ConditionPaiementFk', 'Condition de paiement'),
+        ('commandeModesPaiement', 'T_Commande', 'ID_ModePaiementFk', 'Mode de paiement'),
+        ('reglementModes', 'T_Reglements', 'ID_ModeReglementFk', 'Mode de règlement'),
+        ('currencies', 'T_Article', 'ID_DeviseFk', 'Devise des articles'),
+        ('commandeCurrencies', 'T_Commande', 'ID_DeviseFk', 'Devise du bon'),
     ]
-    for key, category, label, field in rules:
-        nature = (''',COALESCE(logistique.fn_nature_bon(g."ID_Generique"),'inconnu') AS kind,
-            logistique.fn_effet_type_bon(g."ID_Generique") AS "stockEffect",
-            logistique.fn_effet_type_bon(g."ID_Generique") AS sign,
-            (logistique.fn_nature_bon(g."ID_Generique")='sortie') IS TRUE AS "canInvoice"'''
-            if key == 'commandeTypes' else '')
-        result[key] = db.query(
-            '''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,g."ID_CategorieGeneriqueFk" AS "categoryId"'''+nature+'''
-               FROM referentiel."T_Generique" g
-               JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-               WHERE g."ID_CategorieGeneriqueFk"=%s AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE
-               ORDER BY COALESCE(NULLIF(trim(g."AbrGenerique"),''),g."NomGenerique"),g."ID_Generique"''',
-            [category],
-        )
-        meta[key] = {
+    for key, table, column, field in rules:
+        if key not in {'currencies', 'commandeCurrencies'}:
+            result[key] = reference_options(actor, 'logistique', table, column)
+        if key == 'weightUnits':
+            result[key] = [item for item in result[key] if str(item.get('abbr') or '').strip().lower() in {'mg', 'g', 'kg', 't'}]
+        context = reference_context(actor, 'logistique', table, column)
+        meta[key] = {**context,
             "referenceKey": key,
             "sourceKey": "logistique." + key,
             "locked": True,
-            "categoryIds": [category],
-            "categoryLabel": label,
+            'schemaName': 'logistique', 'tableName': table, 'fieldName': column,
+            "categoryLabel": ' · '.join(context.get('categoryLabels', [])),
             "fieldLabel": field,
         }
+    meta['articleCurrencies'] = meta['currencies']
     uobj = model("T_Utilisateurs")
     where, values = scope_for(uobj, actor)
     users = db.query(
@@ -414,11 +389,6 @@ def references(actor):
     from .tiers import scope as tiers_scope
     tiers_where,tiers_args=tiers_scope(actor)
     clients=db.query('SELECT t."ID_Client" AS id,t."Nom" AS label,t."ID_TypeClientFk" AS "typeId",t."TypeClient" AS "typeLabel" FROM logistique."V_Client" t WHERE '+tiers_where+' AND t."Actif" ORDER BY t."Nom",t."ID_Client"',tiers_args)
-    result["weightUnits"] = db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr
-        FROM referentiel."T_Generique" g
-        JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE g."ID_CategorieGeneriqueFk"=34 AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE
-          AND lower(btrim(g."AbrGenerique")) IN (%s,%s,%s,%s) ORDER BY g."NomGenerique"''',["mg","g","kg","t"])
     result.update(
         users=[
             {"id": x["IdUser"], "label": (x["NomUser"] + " " + x["PrenomUser"]).strip()}

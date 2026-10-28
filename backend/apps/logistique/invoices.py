@@ -130,20 +130,19 @@ def request_hash(actor,command_id,data,operation):
     return hashlib.sha256(json.dumps(canonical,cls=ExactEncoder,sort_keys=True,separators=(',',':')).encode('utf8')).hexdigest()
 
 
-def payment_references(selected=None,lock=False):
+def payment_references(selected=None,lock=False,actor=None):
     selected=selected or {}
-    ids=[value for value in (selected.get('ID_ModePaiementFk'),selected.get('ID_ConditionPaiementFk')) if value]
-    rows=db.query('''SELECT g."ID_Generique" AS id,g."ID_CategorieGeneriqueFk" AS category,
-        g."NomGenerique" AS label,g."AbrGenerique" AS abbreviation,
-        (g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) AS active
-        FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-        ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE g."ID_CategorieGeneriqueFk" IN (36,37)
-          AND ((g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) OR g."ID_Generique"=ANY(%s))
-        ORDER BY g."NomGenerique",g."ID_Generique"'''+(' FOR SHARE OF g,c' if lock else ''),[ids])
-    return {'modesPaiement':[{'id':row['id'],'label':row['label'],'active':row['active']} for row in rows if row['category']==36],
-            'conditionsPaiement':[{'id':row['id'],'label':row['label'],'active':row['active'],
-                                   'delayDays':delay_days(row['label'],row['abbreviation'])} for row in rows if row['category']==37]}
+    from apps.core.field_references import reference_options
+    result={}
+    for key,field in [('modesPaiement','ID_ModePaiementFk'),('conditionsPaiement','ID_ConditionPaiementFk')]:
+        rows=reference_options(actor,'logistique','T_Commande',field,current=selected.get(field))
+        if lock and rows:
+            db.query('SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN '
+                'referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" '
+                'WHERE g."ID_Generique"=ANY(%s::integer[]) FOR SHARE OF g,c',[[row['id'] for row in rows]])
+        result[key]=[{**row,'active':row['active'] and not row['disabled'],
+                      **({'delayDays':delay_days(row['name'],row['abbr'])} if key=='conditionsPaiement' else {})} for row in rows]
+    return result
 
 
 def resolve_metadata(data,references,previous=None):
@@ -227,7 +226,7 @@ def context(actor,command_id):
     if issued and not actor.global_admin and issued['IdEntiteFk']!=actor.organisation:
         raise APIError('Facture introuvable dans votre organisation.','NOT_FOUND',404)
     legacy=bool(str(parent.get('CodeFacture') or '').strip()) and not issued
-    refs=payment_references(issued or parent)
+    refs=payment_references(issued or parent,actor=actor)
     source_reason='';candidates=[];net=Decimal('0')
     try:candidates,net=candidate_lines(snapshot,returned)
     except APIError as error:source_reason=str(error.detail)
@@ -235,9 +234,8 @@ def context(actor,command_id):
         coherence=db.one('SELECT EXISTS(SELECT 1 FROM logistique."V_RetourArticle" WHERE "ID_CommandeOrigineFk"=%s AND NOT "SourceCoherente") AS invalid',[command_id])
         if coherence['invalid']:source_reason='Rapprochez les lignes et mouvements du bon avant facturation.'
     returns=return_context(command_id)
-    kind=db.one('''SELECT "AbrGenerique" AS abbreviation FROM referentiel."T_Generique"
-        WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=64''',[parent.get('ID_TypeCmdFk')])
-    outgoing=bool(kind and str(kind['abbreviation'] or '').lower().startswith('sort'))
+    kind=db.one('SELECT logistique.fn_nature_bon(%s) AS nature',[parent.get('ID_TypeCmdFk')])
+    outgoing=bool(kind and kind['nature']=='sortie')
     owner=bool(actor.organisation) and snapshot['owner_entity']==actor.organisation and (not issued or issued['IdEntiteFk']==actor.organisation)
     manage=bool(actor.admin) and not settings.DB_READ_ONLY
     if manage:
@@ -341,7 +339,7 @@ def write_invoice(actor,command_id,body,operation):
         action='canIssue' if operation=='issue' else 'canEdit'
         if not meta[action]:raise APIError(meta['reason'] or 'Cette opération n’est plus disponible.','INVOICE_LOCKED',409)
         previous=current['data']['facture']
-        references=payment_references(previous or raw,lock=True)
+        references=payment_references(previous or raw,lock=True,actor=actor)
         values=resolve_metadata(data,references,previous)
         if operation=='issue':
             # La devise appartient au bon, jamais au prix actuel du catalogue.

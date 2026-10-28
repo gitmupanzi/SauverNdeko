@@ -79,6 +79,7 @@ def return_snapshot(actor,command_id):
     where,values=predicate(model('T_Commande'),actor,keys={'ID_Commande':command_id})
     snapshot=db.one('''SELECT to_jsonb(v) AS raw,to_jsonb(cv)||to_jsonb(v) AS bon,
         t."AbrGenerique" AS direction,t."ID_CategorieGeneriqueFk" AS type_category,
+        logistique.fn_nature_bon(v."ID_TypeCmdFk") AS nature,
         (SELECT COALESCE(jsonb_agg(to_jsonb(d) ORDER BY d."ID_ArticleFk"),'[]'::jsonb)
          FROM logistique."T_CommandeDetail" d WHERE d."ID_CmdFk"=v."ID_Commande") AS raw_lines,
         (SELECT COALESCE(jsonb_agg(to_jsonb(m)||jsonb_build_object('Lots',
@@ -111,7 +112,7 @@ def return_policy(actor,snapshot,*,writing=False):
         reason='Un bon de stock initial ou de reprise se corrige par un nouveau bon, sans restitution commerciale.'
     elif inventory_adjustment(snapshot['raw']['ID_Commande']):
         reason='Un bon d’inventaire se corrige par le comptage ou son annulation, sans restitution commerciale.'
-    elif snapshot['is_return'] or snapshot['type_category']!=64 or not str(snapshot['direction'] or '').lower().startswith('sort'):
+    elif snapshot['is_return'] or snapshot['nature']!='sortie':
         reason='Seul un bon de sortie peut recevoir une restitution.'
     elif not snapshot['lignes']:reason='Ce bon ne comporte aucun article sorti.'
     elif any(not row['SourceCoherente'] or Decimal(str(row['QteRestante']))<0 or Decimal(str(row['QteSansLotRestante']))<0 or any(Decimal(str(lot['QteRestante']))<0 for lot in row['Lots']) for row in snapshot['lignes']):
@@ -119,8 +120,8 @@ def return_policy(actor,snapshot,*,writing=False):
     elif not any(Decimal(str(row['QteRestante']))>0 for row in snapshot['lignes']):reason='Tous les articles de ce bon ont déjà été restitués.'
     else:
         try:
-            validate_currency(snapshot['raw'].get('ID_DeviseFk'))
-            selected=default_entry_type(entry_types(lock=writing))
+            validate_currency(snapshot['raw'].get('ID_DeviseFk'),unchanged=True,actor=actor,table='T_Commande')
+            selected=default_entry_type(entry_types(actor,lock=writing))
             if not selected:reason='Définissez un type de bon d’entrée unique dans le référentiel.'
         except APIError as error:
             if writing:raise error
@@ -275,19 +276,20 @@ def annotate_return_context(rows,actor):
     if not available or not rows:return [{**row,'returnContext':dict(empty)} for row in rows]
     identifiers=[row['ID_Commande'] for row in rows]
     contexts=db.query('''SELECT c."ID_Commande",c."IdEntiteFk" AS organisation,t."AbrGenerique" AS direction,logistique.fn_bon_inventaire(c."ID_Commande") AS inventory_adjustment,
-        t."ID_CategorieGeneriqueFk" AS category,
+        t."ID_CategorieGeneriqueFk" AS category,logistique.fn_nature_bon(c."ID_TypeCmdFk") AS nature,
         (SELECT r."ID_CommandeOrigineFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeRetourFk"=c."ID_Commande") AS origin,
         ARRAY(SELECT r."ID_CommandeRetourFk" FROM logistique."T_RetourBon" r WHERE r."ID_CommandeOrigineFk"=c."ID_Commande" ORDER BY r."ID_RetourBon") AS children,
         (SELECT bool_and(ra."SourceCoherente") AND bool_and(ra."QteRestante">=0) AND bool_and(ra."QteSansLotRestante">=0) FROM logistique."V_RetourArticle" ra WHERE ra."ID_CommandeOrigineFk"=c."ID_Commande") AS coherent,
         (SELECT bool_or(ra."QteRestante">0) FROM logistique."V_RetourArticle" ra WHERE ra."ID_CommandeOrigineFk"=c."ID_Commande") AS remaining,
-        (cu."ValideGenerique" IS TRUE AND cat."ValideCategorieGenerique" IS TRUE AND lower(btrim(cat."NomCategorieGenerique"))='devise') AS currency_active
+        (cu."ID_Generique" IS NOT NULL) AS currency_present,
+        COALESCE(NULLIF(btrim(cu."AbrGenerique"),''),cu."NomGenerique") AS currency_code
         FROM logistique."T_Commande" c
         LEFT JOIN referentiel."T_Generique" t ON t."ID_Generique"=c."ID_TypeCmdFk"
         LEFT JOIN referentiel."T_Generique" cu ON cu."ID_Generique"=c."ID_DeviseFk"
         LEFT JOIN referentiel."T_CategorieGenerique" cat ON cat."ID_CategorieGenerique"=cu."ID_CategorieGeneriqueFk"
         WHERE c."ID_Commande"=ANY(%s)''',[identifiers])
     from .receipts import entry_types,default_entry_type
-    try:configured=default_entry_type(entry_types()) is not None
+    try:configured=default_entry_type(entry_types(actor)) is not None
     except APIError:configured=False
     manage=access_snapshot(actor)['modules']['logistique']['canManage']
     indexed={row['ID_Commande']:row for row in contexts};result=[]
@@ -295,12 +297,15 @@ def annotate_return_context(rows,actor):
         state=indexed.get(row['ID_Commande'])
         if not state:context=dict(empty)
         else:
+            from .currency import normalize_code
+            try:currency_valid=state['currency_present'] and bool(normalize_code(state['currency_code']))
+            except APIError:currency_valid=False
             reason=('Effectuez le retour dans l’organisation du bon.' if state['organisation']!=actor.organisation else
                     'Un bon d’inventaire ne permet pas de restitution commerciale.' if state['inventory_adjustment'] else
-                    'Ce document n’est pas une sortie originale.' if state['origin'] is not None or state['category']!=64 or not str(state['direction'] or '').lower().startswith('sort') else
+                    'Ce document n’est pas une sortie originale.' if state['origin'] is not None or state['nature']!='sortie' else
                     'Rapprochez les lignes et mouvements historiques avant un retour.' if not state['coherent'] else
                     'Tous les articles ont déjà été restitués.' if not state['remaining'] else
-                    'Vérifiez la devise et le type de bon d’entrée dans le référentiel.' if not configured or not state['currency_active'] else
+                    'Vérifiez la devise et le type de bon d’entrée dans le référentiel.' if not configured or not currency_valid else
                     'Votre rôle ne permet pas de valider un retour.' if not manage else
                     'Les écritures sont momentanément indisponibles.' if settings.DB_READ_ONLY else '')
             context={'available':True,'canReturn':not reason,'reason':reason,'isReturn':state['origin'] is not None,

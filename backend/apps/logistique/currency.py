@@ -21,41 +21,56 @@ def normalize_code(value):
     return code
 
 
-def currency_references(*, active=True):
-    rows = db.query('''SELECT g."ID_Generique" AS id, g."NomGenerique" AS label,
+def currency_references(actor=None, *, active=True, table='T_Article', column='ID_DeviseFk'):
+    from apps.core.field_references import reference_context
+    categories = (reference_context(actor, 'logistique', table, column)['categoryIds'] if actor is not None else
+                  db.one('SELECT referentiel.fn_categories_champ(%s,%s,%s,NULL) AS ids',
+                         ['logistique', table, column])['ids']) or []
+    rows = db.query('''SELECT g."ID_Generique" AS id, g."NomGenerique" AS name,g."AbrGenerique" AS abbr,
+        COALESCE(NULLIF(BTRIM(g."AbrGenerique"),''),g."NomGenerique") AS label,
         COALESCE(NULLIF(BTRIM(g."AbrGenerique"),''),g."NomGenerique") AS code
         FROM referentiel."T_Generique" g
         JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE LOWER(BTRIM(c."NomCategorieGenerique"))='devise' '''
+        WHERE g."ID_CategorieGeneriqueFk"=ANY(%s::integer[]) '''
         + ('AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE ' if active else '')
-        + 'ORDER BY g."ID_Generique"')
+        + 'ORDER BY g."ID_Generique"', [categories])
     return sorted([{**row, "code": normalize_code(row["code"])} for row in rows], key=lambda row: (row["code"],row["id"]))
 
 
-def default_currency():
-    rows = [row for row in currency_references() if row["code"] == "USD"]
+def default_currency(actor=None, *, table='T_Article'):
+    rows = [row for row in currency_references(actor, table=table) if row["code"] == "USD"]
     if len(rows) != 1:
         raise APIError("Une devise USD active et unique doit être définie dans le référentiel.", "CURRENCY_CONFIGURATION", 503)
     return rows[0]
 
 
-def validate_currency(value, *, unchanged=False):
+def validate_currency(value, *, unchanged=False, actor=None, table='T_Article'):
     identifier = positive(value, "Devise")
-    row = next((row for row in currency_references(active=not unchanged) if row["id"] == identifier), None)
+    if unchanged:
+        # Le service appelant a déjà autorisé le parent historique. Un changement
+        # de nomenclature ne remplace jamais sa devise ni ses montants.
+        row = db.one('SELECT "ID_Generique" AS id,"NomGenerique" AS name,"AbrGenerique" AS abbr,'
+                     'COALESCE(NULLIF(btrim("AbrGenerique"),\'\'),"NomGenerique") AS label,'
+                     'COALESCE(NULLIF(btrim("AbrGenerique"),\'\'),"NomGenerique") AS code '
+                     'FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [identifier])
+        if row:
+            row['code'] = normalize_code(row['code'])
+    else:
+        row = next((row for row in currency_references(actor, table=table) if row["id"] == identifier), None)
     if not row:
         raise APIError("Choisissez une devise active dans la liste proposée.", "CURRENCY_VALIDATION", 400)
     return row
 
 
-def write_currency(data, old):
+def write_currency(data, old, actor=None, *, table='T_Article'):
     if old is None and "ID_DeviseFk" not in data:
-        data["ID_DeviseFk"] = default_currency()["id"]
+        data["ID_DeviseFk"] = default_currency(actor, table=table)["id"]
     value = data.get("ID_DeviseFk", (old or {}).get("ID_DeviseFk"))
     if value is None:
         raise APIError("Choisissez une devise.", "CURRENCY_VALIDATION", 400)
     unchanged = old is not None and value == old.get("ID_DeviseFk")
     if "ID_DeviseFk" in data or old is None:
-        validate_currency(value, unchanged=unchanged)
+        validate_currency(value, unchanged=unchanged, actor=actor, table=table)
     return value
 
 

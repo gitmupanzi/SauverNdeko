@@ -208,10 +208,14 @@ class ViewsView(APIView):
     def get(self, request, schema=None, name=None):
         if schema is not None:
             obj = view(schema, name)
+            if (schema, name) == ('referentiel', 'V_ReferencementChamp') and not request.user.global_admin:
+                raise APIError('Ce registre est réservé à l’administration de la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
             rows, meta = listing(obj, request.user, request.query_params.dict())
             return ok(rows, meta=meta)
         result = []
         for obj in VIEWS.values():
+            if (obj['schema'],obj['name']) == ('referentiel','V_ReferencementChamp') and not request.user.global_admin:
+                continue
             try:
                 scope_for(obj, request.user)
                 require_module(request.user,module_for_object(obj))

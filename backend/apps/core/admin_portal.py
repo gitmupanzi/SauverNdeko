@@ -157,15 +157,19 @@ def selection(actor, kind, raw, *, action="read", pk=None):
     if set(filters) & {"SettingValue", "SettingValueJson", "OldData", "NewData"}:
         raise APIError("Colonne de filtre non autorisée.")
     if kind == "roles":
-        if "ID_CategorieGeneriqueFk" in filters and filters["ID_CategorieGeneriqueFk"] != 39:
+        from .field_references import reference_context
+        role_categories=reference_context(actor,'systeme','T_Utilisateurs','IdRoleFk')['categoryIds']
+        if "ID_CategorieGeneriqueFk" in filters and filters["ID_CategorieGeneriqueFk"] not in role_categories:
             raise APIError("Choisissez un rôle de la catégorie Rôle.")
-        filters["ID_CategorieGeneriqueFk"] = 39
     sort = raw.get("sortBy") or default_sort
     direction = str(raw.get("sortDir", "desc" if date_field else "asc")).lower()
     if sort not in available or sort in {"OldData", "NewData", "SettingValue", "SettingValueJson"} or direction not in {"asc", "desc"}:
         raise APIError("Tri non autorisé.")
     query_obj = {**obj, "columns": [c for c in obj["columns"] if c["column_name"] not in {"OldData", "NewData", "SettingValue", "SettingValueJson"}]}
     where, values = predicate(query_obj, scope_actor(actor, kind), {"q": raw.get("q", ""), "filters": filters}, keys={identity: positive(pk)} if pk is not None else None)
+    if kind == 'roles':
+        where += ' AND v."ID_CategorieGeneriqueFk"=ANY(%s::integer[])'
+        values.append(role_categories)
     if kind == "localisations":
         # Cette vue LEFT JOIN inclut aussi les entreprises sans localisation.
         # Elles ne constituent pas des points identifiables/consultables.
@@ -219,8 +223,9 @@ class AdminRegisterView(APIView):
         take, skip = page(raw)
         scope, scope_values = scope_for(obj, scope_actor(request.user, kind))
         if kind == "roles":
-            scope += ' AND v."ID_CategorieGeneriqueFk"=%s'
-            scope_values.append(39)
+            from .field_references import reference_context
+            scope += ' AND v."ID_CategorieGeneriqueFk"=ANY(%s::integer[])'
+            scope_values.append(reference_context(request.user,'systeme','T_Utilisateurs','IdRoleFk')['categoryIds'])
         if kind == "localisations":
             scope += ' AND v."IdEntiteLocalisation" IS NOT NULL'
         total = db.one("SELECT count(*) AS n FROM " + sql_source + " WHERE " + scope, scope_values)["n"]

@@ -237,6 +237,7 @@ function stringifyNullableValue(value) {
 
 function createCrudConfig({ viewName, model, primaryKey, resourceLabel, createLabel, fields, buildPayload, mapRecord }) {
   return {
+    model,
     primaryKey,
     resourceLabel,
     createLabel,

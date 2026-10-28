@@ -1,3 +1,4 @@
+import {referenceOptions,retainReference} from "../../utils/referenceOptions";
 import {commandeDateInput,validCommandeDate} from "./commandeForm";
 import {multiplyDecimal,newCurrencyId} from "../../utils/money";
 
@@ -45,7 +46,6 @@ export function immobilisationPayload(values,{record=null,revision,motif,request
 }
 export function immobilisationValue(values){return multiplyDecimal(values.Quantite,values.PrixUnitaire);}
 export function immobilisationOptions(items=[],{optional=true,current="",currentLabel=""}={}){
-  const options=items.map(item=>({value:String(item.id),label:item.label||item.code||"Valeur sans libellé",disabled:item.disabled===true}));
-  if(current&&!options.some(item=>item.value===String(current)))options.push({value:String(current),label:currentLabel||"Valeur actuelle",disabled:true});
+  const options=retainReference(referenceOptions(items),current,currentLabel);
   return optional?[{value:"",label:"Non renseigné"},...options]:[{value:"",label:"Choisir…"},...options];
 }

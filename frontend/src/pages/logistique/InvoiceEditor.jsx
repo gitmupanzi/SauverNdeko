@@ -1,3 +1,5 @@
+import useReferencesRefresh from "../../hooks/useReferencesRefresh";
+import {REFERENCE_RETAINED_HINT,referenceOptions,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
@@ -28,6 +30,7 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
       const next=invoiceForm(response.data);baseline.current=next;setValues(next);setRecord(response.data);setMeta(response.meta||{});setLoading(false);
     });return()=>{live=false;};
   },[commandeId,revision]);
+  useReferencesRefresh(async()=>{if(disabled||!record)return;const response=await requestJson("/api/logistique/commandes/"+commandeId+"/facture",{requiresAuth:true});if(mounted.current&&response?.success)setRecord(previous=>previous?{...previous,references:response.data?.references||{}}:previous);},{enabled:!disabled&&Boolean(record)});
   function change(name,value){
     if(disabled)return;
     setValues(current=>{
@@ -40,7 +43,8 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
     });setIssues(current=>({...current,[name]:"",...(["ID_ConditionPaiementFk","DateFacture"].includes(name)?{DateEcheancePaiement:""}:{})}));
   }
   function dateField(name,label,{readOnly=false,hint}={}){const fieldId=id+name,invalid=issues[name];return <Field id={fieldId} label={label} error={invalid} hint={hint}><input id={fieldId} type="datetime-local" step="1" value={values[name]} onChange={event=>change(name,event.target.value)} readOnly={readOnly} disabled={disabled} aria-invalid={Boolean(invalid)} aria-describedby={invalid?fieldId+"-error":hint?fieldId+"-hint":undefined}/></Field>;}
-  function selector(name,label,options){const fieldId=id+name,invalid=issues[name];return <Field id={fieldId} label={label} error={invalid}><SearchSelect id={fieldId} label={label} value={values[name]} options={[{value:"",label:"Choisir"},...(options||[]).map(row=>({value:String(row.id),label:row.label}))]} onChange={value=>change(name,value)} disabled={disabled} invalid={Boolean(invalid)} describedBy={invalid?fieldId+"-error":undefined}/></Field>;}
+  function selector(name,label,items){const fieldId=id+name,invalid=issues[name],options=retainReference(referenceOptions(items||[]),values[name],record?.facture?.[name==="ID_ModePaiementFk"?"ModePaiement":"ConditionPaiement"]||"Valeur enregistrée");return <Field id={fieldId} label={label} error={invalid} hint={isRetainedReference(options,values[name])?REFERENCE_RETAINED_HINT:undefined}><SearchSelect id={fieldId} label={label} value={values[name]} options={[{value:"",label:"Choisir"},...options]} onChange={value=>change(name,value)} disabled={disabled} invalid={Boolean(invalid)} describedBy={invalid?fieldId+"-error":undefined}/></Field>;}
+
   function requestClose(){if(busy)return;if(uncertain){setCloseWarning(true);return;}onClose();}
   function reload(){if(busy||uncertain)return;if(dirty){setReloadWarning(true);return;}setRevision(value=>value+1);}
   async function submit(){

@@ -20,6 +20,7 @@ import "./logistique/LogistiqueModern.css";
 import "./referentiels/Referentiels.css";
 
 const ReferenceEditor = lazyView(() => import("./referentiels/ReferenceEditor"), { label:"Ouverture de la fiche…", compact:true });
+const FieldReferencesRegister = lazyView(() => import("./referentiels/FieldReferencesRegister"), { label:"Chargement du référencement…", compact:true });
 const DEFINITIONS = {
   values: { title:"Valeurs de référence", subtitle:"Les listes partagées de vos applications.", view:"V_Generique", pk:"ID_Generique", name:"NomGenerique", active:"ValideGenerique", icon:"list", create:"Nouvelle valeur", defaults:["NomCategorieGenerique","NomGenerique","AbrGenerique","ModuleCategorieGenerique","ValideGenerique","actions"] },
   categories: { title:"Catégories", subtitle:"Organisez les valeurs du référentiel par usage.", view:"V_CategorieGenerique", pk:"ID_CategorieGenerique", name:"NomCategorieGenerique", active:"ValideCategorieGenerique", icon:"folder", create:"Nouvelle catégorie", defaults:["NomCategorieGenerique","ModuleCategorieGenerique","ValideCategorieGenerique","actions"] },
@@ -144,21 +145,21 @@ function ReferenceDeletion({kind,row,canWrite,onClose,onDeleted}) {
 
 export default function Referentiels() {
   const {user}=useAuth(),[params,setParams]=useSearchParams();
-  const kind=params.get("onglet")==="categories"?"categories":"values",category=params.get("categorie")||"";
+  const kind=params.get("onglet")==="champs"&&user?.Is_Admin===true?"fields":params.get("onglet")==="categories"?"categories":"values",category=params.get("categorie")||"";
   const [collapsed,setCollapsed]=useState(()=>readPreference("sauverndeko.references.sidebar-collapsed","false")==="true");
   const [categories,setCategories]=useState([]),[categoryError,setCategoryError]=useState(""),[refresh,setRefresh]=useState(0);
   useReferencesRefresh(()=>setRefresh(value=>value+1));
   useEffect(()=>{try{localStorage.setItem("sauverndeko.references.sidebar-collapsed",String(collapsed));}catch{}},[collapsed]);
   useEffect(()=>{let current=true;fetchCompleteReferenceRows("T_CategorieGenerique").then(response=>{if(!current)return;if(response?.success){setCategories(response.data);setCategoryError("");}else setCategoryError("La liste des catégories est indisponible.");});return()=>{current=false;};},[refresh]);
-  function navigate(next,id="") {const query=new URLSearchParams();query.set("onglet",next==="categories"?"categories":"valeurs");if(id)query.set("categorie",String(id));setParams(query);}
+  function navigate(next,id="") {const query=new URLSearchParams();query.set("onglet",next==="fields"?"champs":next==="categories"?"categories":"valeurs");if(id)query.set("categorie",String(id));setParams(query);}
   const browseCategory=id=>navigate("values",id);
   return <div className={"logistics-modern logistics-app references-app"+(collapsed?" is-menu-collapsed":"")}>
     <aside className={"logistics-sidebar-shell"+(collapsed?" is-collapsed":"")}>
       <div className="logistics-sidebar-top"><Link to="/" className="logistics-brand-lockup" aria-label="SauverNdeko — Applications"><img className="logistics-brand-logo" src="/sauverndeko-logo.jpg" alt="" width="34" height="34"/>{!collapsed?<div className="logistics-brand-copy"><strong>SauverNdeko</strong><span>Référentiels</span></div>:null}</Link><button type="button" className="logistics-sidebar-toggle" onClick={()=>setCollapsed(value=>!value)} aria-label={collapsed?"Afficher le menu Référentiels":"Replier le menu Référentiels"} title={collapsed?"Déplier":"Replier"}><AppIcon name="sidebar"/></button></div>
-      <nav className="logistics-sidebar-nav" aria-label="Menu Référentiels"><div className="logistics-nav-group">{!collapsed?<span className="logistics-nav-heading">Nomenclatures</span>:null}{Object.entries(DEFINITIONS).map(([key,definition])=><button key={key} type="button" className={"logistics-sidebar-link"+(kind===key?" is-active":"")} aria-current={kind===key?"page":undefined} aria-label={definition.title} title={definition.title} onClick={()=>navigate(key)}><span className="logistics-sidebar-icon"><AppIcon name={definition.icon} size={18}/></span>{!collapsed?<span className="logistics-sidebar-label">{definition.title}</span>:null}</button>)}</div></nav>
+      <nav className="logistics-sidebar-nav" aria-label="Menu Référentiels"><div className="logistics-nav-group">{!collapsed?<span className="logistics-nav-heading">Nomenclatures</span>:null}{Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{})}).map(([key,definition])=><button key={key} type="button" className={"logistics-sidebar-link"+(kind===key?" is-active":"")} aria-current={kind===key?"page":undefined} aria-label={definition.title} title={definition.title} onClick={()=>navigate(key)}><span className="logistics-sidebar-icon"><AppIcon name={definition.icon} size={18}/></span>{!collapsed?<span className="logistics-sidebar-label">{definition.title}</span>:null}</button>)}</div></nav>
       <div className="logistics-app-switcher">{user?.moduleAccess?.modules?.logistique?.canRead?<Link to="/logistique" aria-label="Logistique" title="Logistique"><span><AppIcon name="box"/></span>{!collapsed?<><span>Logistique</span><AppIcon name="arrow-up-right"/></>:null}</Link>:null}{user?.permissions?.canAccessAdmin?<Link to="/admin" aria-label="Administration" title="Administration"><span><AppIcon name="shield"/></span>{!collapsed?<><span>Administration</span><AppIcon name="arrow-up-right"/></>:null}</Link>:null}<Link to="/" aria-label="Toutes les applications" title="Applications"><span><AppIcon name="apps"/></span>{!collapsed?<><span>Applications</span><AppIcon name="arrow-up-right"/></>:null}</Link></div>
     </aside>
     <ModuleHeader title="Référentiels"/>
-    <main className="references-main"><ReferenceRegister key={kind+":"+category} kind={kind} categories={categories} initialCategory={category} onBrowseCategory={browseCategory} refresh={refresh} onChanged={()=>setRefresh(value=>value+1)} categoryError={categoryError}/></main>
+    <main className="references-main">{kind==="fields"?<FieldReferencesRegister categories={categories}/>:<ReferenceRegister key={kind+":"+category} kind={kind} categories={categories} initialCategory={category} onBrowseCategory={browseCategory} refresh={refresh} onChanged={()=>setRefresh(value=>value+1)} categoryError={categoryError}/>}</main>
   </div>;
 }

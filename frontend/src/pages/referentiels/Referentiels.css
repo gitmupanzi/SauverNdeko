@@ -12,3 +12,5 @@
 @media(max-width:760px){.references-app .references-main{padding:20px 14px}.references-app .reference-register-context{padding:12px 14px;font-size:11px}.references-app .erp-register-heading h1{font-size:23px}}
 @media(max-width:430px){.references-app .references-main{padding:18px 10px}.references-app .erp-register-heading h1{font-size:21px}.references-app .erp-register-actions{width:100%}.references-app .erp-register-actions>.ui-action{width:100%;justify-content:center}}
 .references-app .reference-module{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}.references-app .reference-module strong{font-size:12px;font-weight:550;color:var(--erp-text)}.references-app .reference-module small{font-size:11px;color:var(--erp-muted)}
+
+.references-app .reference-register-context .search-select-trigger{max-width:270px;margin-left:auto;min-width:170px}

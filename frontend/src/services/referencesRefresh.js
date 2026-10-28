@@ -1,4 +1,4 @@
-const MODELS = new Set(["T_Generique", "T_CategorieGenerique"]);
+const MODELS = new Set(["T_Generique", "T_CategorieGenerique", "T_ChampReferentiel"]);
 const CHANNEL = "sauverndeko.references.v1";
 const STORAGE_KEY = "sauverndeko.references.changed";
 const listeners = new Set();
@@ -59,6 +59,7 @@ export function notifyReferencesMutation(path, method, payload) {
   const pathname = String(path || "").split(/[?#]/, 1)[0];
   if (/^\/api\/(?:referentiel\/generiques|models\/T_Generique)(?:\/\d+)?\/?$/.test(pathname)) publishReferencesRefresh("T_Generique");
   else if (/^\/api\/(?:referentiel\/categories-generiques|models\/T_CategorieGenerique)(?:\/\d+)?\/?$/.test(pathname)) publishReferencesRefresh("T_CategorieGenerique");
+  else if (/^\/api\/referentiel\/champs-references\/\d+(?:\/retablir)?\/?$/.test(pathname)) publishReferencesRefresh("T_ChampReferentiel");
 }
 
 if (import.meta.hot) import.meta.hot.dispose(() => {
