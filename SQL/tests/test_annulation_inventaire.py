@@ -95,7 +95,11 @@ c.force_authenticate(g);resp=c.post('/api/logistique/inventaires/'+str(r['ID_Inv
 with transaction.atomic():
  db.query('INSERT INTO logistique."T_PrecisionStock" ("ID_UniteFk","DecimalesStock") VALUES (%s,3) ON CONFLICT ("ID_UniteFk") DO UPDATE SET "DecimalesStock"=EXCLUDED."DecimalesStock"',[unit])
  check(for_unit('1.125',unit,'q')==Decimal('1.125'),'fractional quantity')
- a=art();db.query('UPDATE logistique."T_Article" SET "QteArticle"=10.125 WHERE "ID_Article"=%s',[a])
+ # Depuis migration01, le stock courant ne se corrige plus directement :
+ # cette fraction supplémentaire doit être justifiée par son BE et sa ligne.
+ a=art()
+ reception=repository.mutate('T_Commande',g,{'ID_TypeCmdFk':entry,'ID_DeviseFk':currency,'DateCmd':'2026-10-28T10:00:00'},operation='create')
+ mutate_line(g,reception['ID_Commande'],{'ID_ArticleFk':a,'QteCmdDetail':'0.125','PUCmdDetail':'10.00'})
  reject(lambda:db.query('UPDATE logistique."T_PrecisionStock" SET "DecimalesStock"=0 WHERE "ID_UniteFk"=%s',[unit]),'incompatible precision reduction')
  transaction.set_rollback(True)
 print('PASS',len(checks),checks)

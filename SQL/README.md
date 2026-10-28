@@ -1,6 +1,6 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’aux migrations `20261028_01` à `20261028_04`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_05`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
@@ -197,3 +197,15 @@ Les deux instantanés globaux et les extraits Référentiel/Logistique ont été
 Une nouvelle installation doit aussi charger le dictionnaire fermé du paquet produit par `preparer_installation`. Il inclut maintenant `referentiel.T_InterfaceTableau` avec les vingt catalogues de référence. Les préférences personnelles `T_PreferenceTableau`, comptes, entreprises, articles et documents clients ne sont jamais repris dans ce paquet. La restauration du paquet vierge a confirmé cette séparation.
 
 Voir [stock initial et numérotation](documentation/Stock_Initial_Documents_20261028.md), [préférences de tableaux et exports](documentation/Preferences_Tableaux_Exports_20261028.md) et les recettes `tests/test_stock_initial_documents.py`, `tests/test_preferences_tableaux.py` et `tests/test_tracabilite_logistique.py`. Les recettes d’écriture refusent une base ne commençant pas par `sauverndeko_test_`.
+
+## Bons de commande sans mouvement — 28 octobre 2026
+
+La migration [20261028_05_bons_commande.sql](migrations/20261028_05_bons_commande.sql), installée après les migrations précédentes, ajoute **Bon de commande**, code `CMD`, à la catégorie partagée **Type de commande**. Les nouveaux documents reçoivent `BE-ID` pour une entrée effective, `BS-ID` pour une sortie effective et `CMD-ID` pour une commande préparatoire. Aucun code antérieur n’est renuméroté.
+
+`fn_nature_bon` et `fn_effet_type_bon` classent le type depuis le référentiel : un CMD explicite a un effet zéro ; un type inconnu retourne NULL et reste refusé. Les lignes CMD conservent quantités et prix convenus, sans mouvement, réservation, lot ou valorisation CUMP. La facturation, la restitution et la livraison physique sont interdites pour CMD, y compris par écriture SQL directe. Le type CMD ne peut pas être converti en BE/BS ; les opérations réelles ont leurs propres documents. Les trois vues de bons/lignes exposent `NatureBon` et le suivi indique « Sans facturation » sans créer de dette.
+
+L’application réelle a conservé les 65 autres tables et les références historiques ; seule la nouvelle valeur CMD a été ajoutée au dictionnaire. La migration refuse son rejeu. Une nouvelle installation utilise les sources canoniques et le dictionnaire fermé produit par `preparer_installation`, sans rejouer les migrations sur ce socle déjà installé.
+
+Les six sources Référentiel/Logistique et globales ont été régénérées. Deux restaurations privées ont comparé les définitions et commentaires au catalogue installé : **66 tables, 80 vues, 125 triggers** pour le global ; **56 tables, 80 vues, 125 triggers** pour le métier, avec zéro ligne de données. `NatureBon`, les trois fonctions de classification et les gardes supplémentaires sont commentés.
+
+Recettes privées : 51 contrôles SQL CMD, 10 tests API, puis 112 contrôles de chaîne logistique, 31 d’annulation d’inventaire et 45 de CUMP. La recette stock initial passe aussi sur le socle05 avec 35 contrôles ; elle conserve conditionnellement l’attente historique01 lorsque seule cette migration est installée. La fixture de précision de l’inventaire utilise désormais un BE de 0,125 plutôt qu’une modification directe du stock courant. Voir [le contrat des bons](../docs/bons-entree-sortie-commande.md), `tests/test_bons_commande_postgresql.py` et `tests/test_bons_commande_api.py`.

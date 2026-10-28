@@ -176,3 +176,8 @@ Articles → Conservation utilise RecordEditorFrame et SearchSelect, avec entrep
 ## Registre Lots de stock et fiche Lot 360
 
 Le registre commun des lots suit Articles et présente tous les lots, y compris épuisés/archivés par défaut. Réutiliser les composants de registre, filtres catégoriels recherchables, pagination/tri serveur et menu ⋯. Le sélecteur d’article distant doit paginer ses options, jamais charger un catalogue exhaustif pour un simple choix. Lot 360 reprend DrawerDialog et ConsultationTabs avec Synthèse/Mouvements ; les mouvements sont demandés au serveur uniquement pour le lot choisi. Chaque quantité conserve son abréviation d’unité. Les changements de contexte d’Entité effacent les lignes et la fiche ; une ancienne réponse ou un téléchargement annulé ne doit pas réafficher les données précédentes. Proposer la fiche Excel dans les actions, sans PDF fictif ni édition directe du stock.
+
+
+### Composition d’un bon de commande
+
+Réutiliser BonComposer pour l’ajout et la modification de BE, BS et CMD, avec le même panier compact et les contrôles du Drawer. Le mode CMD conserve Bon, Articles, Suivi bon et Traçabilité ; ne pas afficher Facturation, Lots ou un lien de bon de livraison. L’éditeur individuel de ligne suit les mêmes règles : prix convenu vide en création, quantités valides selon l’unité, aucun contrôle de disponibilité physique pour CMD, aucun lot dans le payload. Les valeurs antérieures du document et du prix saisi réapparaissent en modification. Le changement d’un type physique vers CMD, ou l’inverse, ne sert jamais de conversion implicite ; créer un document distinct.

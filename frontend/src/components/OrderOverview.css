@@ -51,6 +51,7 @@ button.commande360-metric:hover { border-color:var(--erp-action-border); backgro
 .commande360 [data-density="compact"] .admin-table { font-size:12px; }
 @container commande360 (min-width:900px) {
   .commande360-metrics { grid-template-columns:repeat(4,minmax(0,1fr)); grid-column:1 / -1; }
+  .commande360-metrics.is-order { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .commande360-overview { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .commande360-note { grid-column:1 / -1; }
   .commande360-control { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }

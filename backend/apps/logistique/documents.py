@@ -27,7 +27,7 @@ from apps.core.responses import APIError, ok
 
 MAX_BYTES=8*1024*1024
 KINDS={'bon','facture','reglement','avoir'}
-PDF_TYPES={'bon':{'entree','sortie','livraison'},'facture':{'facture'},'reglement':{'recu'},'avoir':{'avoir'}}
+PDF_TYPES={'bon':{'entree','sortie','livraison','commande'},'facture':{'facture'},'reglement':{'recu'},'avoir':{'avoir'}}
 
 
 def document_parent(actor,kind,object_id,lock=False):
@@ -112,9 +112,11 @@ def document_data(actor,kind,object_id,document_type):
         if parent.get('ID_TiersFk'):
             result['thirdParty']=db.one('SELECT * FROM logistique."T_Client" WHERE "ID_Client"=%s AND "IdEntiteFk"=%s',[parent['ID_TiersFk'],entity])
         incoming=source.get('EstCommandeEntree') is True;outgoing=source.get('EstCommandeSortie') is True
-        if document_type=='entree' and not incoming or document_type in {'sortie','livraison'} and not outgoing:
+        from .order_types import type_context
+        order=type_context(parent.get('ID_TypeCmdFk'),required=False)['kind']=='commande'
+        if document_type=='commande' and not order or document_type=='entree' and not incoming or document_type in {'sortie','livraison'} and not outgoing:
             raise APIError('Ce type de document ne correspond pas au bon.','DOCUMENT_TYPE_MISMATCH',409)
-        result.update({'title':{'entree':'Bon d’entrée','sortie':'Bon de sortie','livraison':'Bon de livraison'}[document_type],
+        result.update({'title':{'entree':'Bon d’entrée','sortie':'Bon de sortie','livraison':'Bon de livraison','commande':'Bon de commande'}[document_type],
           'code':parent.get('CodeCmd'),'date':parent.get('DateCmd')})
         rows=db.query('''SELECT d."ID_ArticleFk",a."NomArticle",a."RefArticle",u."AbrGenerique" AS "Unite",d."QteCmdDetail",d."PUCmdDetail"
           FROM logistique."T_CommandeDetail" d JOIN logistique."T_Article" a ON a."ID_Article"=d."ID_ArticleFk"
@@ -123,6 +125,7 @@ def document_data(actor,kind,object_id,document_type):
         result['totals']=[('Montant du bon',source.get('MontantTTC'))]
         if parent.get('ObsCmd'):result['notes'].append(parent['ObsCmd'])
         if document_type=='livraison':result['notes'].append('Réceptionnaire et visa à compléter lors de la remise des articles.')
+        if document_type=='commande':result['notes'].append('Document préparatoire. Aucune réception, sortie de stock ou facture n’est constatée par cette commande.')
     elif kind=='facture':
         result.update({'title':'Facture','code':record['CodeFacture'],'date':record['DateFacture'],'dueDate':record.get('DateEcheancePaiement')})
         rows=db.query('SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Facture']])

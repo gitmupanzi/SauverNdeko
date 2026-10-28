@@ -2,6 +2,7 @@ import BusinessDocuments from "./BusinessDocuments";
 import CreditNotes from "../pages/logistique/CreditNotes";
 import { formatConsumptionMoney, formatCurrencyGroups } from "../utils/money";
 import { moduleRights } from "../services/moduleAccess";
+import {isStockOrder,stockDocumentKind,canCreateStockInvoice} from "../utils/stockDocumentTypes";
 import { RecordFolderLinks } from "./FollowupFolderWidgets";
 import { useFollowupFolders } from "../contexts/FollowupFoldersContext";
 import ProductOverview, { ProductHeading } from "./ProductOverview";
@@ -163,7 +164,8 @@ function OrderObjectContent({entry,update,open,openFolder}){
   const record=header.payload?.data?.record;
   const sections=header.payload?.data?.sections || [];
   const features=header.payload?.meta?.features||{},returnContext=header.payload?.meta?.returnContext||{};
-  const tabs=orderConsultationTabs(sections,{returns:features.returns===true&&record?.EstCommandeSortie===true&&!returnContext.isReturn});
+  const order=isStockOrder(record),outgoing=stockDocumentKind(record)==="sortie";
+  const tabs=orderConsultationTabs(sections,{returns:features.returns===true&&outgoing&&!returnContext.isReturn,stockOrder:order});
   const requested=["facture","reglements"].includes(entry.section)?"facturation":entry.section || "identite";
   const section=tabs.some(tab=>tab.key===requested)?requested:"identite";
   const invoiceTabs=[{key:"facture",label:"Facture",icon:"document"},{key:"reglements",label:"Règlements",icon:"wallet"}].filter(tab=>sections.includes(tab.key));
@@ -211,14 +213,14 @@ function OrderObjectContent({entry,update,open,openFolder}){
     <div className="consult-object-overview commande360-heading"><OrderHeading record={record}/><RecordFolderLinks data={header.payload.data.dossiers} recordId={entry.id} objectType="bon" hasInvoice={invoiced} onOpen={openFolder}/></div>
     <div className="commande360-workflow-actions">
       {returnContext.isReturn&&returnContext.originId?<ActionButton icon="receipt" onClick={()=>openRelated("commande",returnContext.originId,"Bon d’origine")}>Voir le bon d’origine</ActionButton>:null}
-      {canWrite&&features.returns===true&&record.EstCommandeSortie===true&&!returnContext.isReturn?<ActionButton icon="stock-in" onClick={()=>setEditor("retour")}>Restituer des articles</ActionButton>:null}
-      {canWrite&&features.invoices===true&&record.EstCommandeSortie===true&&!returnContext.isReturn?<ActionButton icon="document" onClick={()=>setEditor("facture")}>{invoiced?"Consulter la facture":"Créer la facture"}</ActionButton>:null}
+      {canWrite&&features.returns===true&&outgoing&&!returnContext.isReturn?<ActionButton icon="stock-in" onClick={()=>setEditor("retour")}>Restituer des articles</ActionButton>:null}
+      {canWrite&&features.invoices===true&&canCreateStockInvoice(record)&&!returnContext.isReturn?<ActionButton icon="document" onClick={()=>setEditor("facture")}>{invoiced?"Consulter la facture":"Créer la facture"}</ActionButton>:null}
     </div>
-    {record.AvoirAEtablir===true?<p className="commande360-return-notice"><AppIcon name="alert"/>Avoir à établir · {formatCurrency(record.MontantAvoirAEtablir,record.DeviseCode)}. La facture émise reste conservée.</p>:null}
+    {!order&&record.AvoirAEtablir===true?<p className="commande360-return-notice"><AppIcon name="alert"/>Avoir à établir · {formatCurrency(record.MontantAvoirAEtablir,record.DeviseCode)}. La facture émise reste conservée.</p>:null}
     <ConsultationTabs tabs={tabs} value={section} onChange={changeSection} label="Rubriques du bon de stock" idPrefix={prefix}/>
     {tabs.map(tab=><section key={tab.key} className="commande360-tabpanel consultation-tabpanel" role="tabpanel" id={prefix+"-panel-"+tab.key} aria-labelledby={prefix+"-tab-"+tab.key} tabIndex={tab.key===section?0:-1} hidden={tab.key!==section}>
       {tab.key===section?<>
-        {section==="identite"?<><OrderOverview record={record} onSection={changeSection}/><BusinessDocuments kind="bon" objectId={entry.id} types={record.EstCommandeSortie?["sortie","livraison"]:record.EstCommandeEntree?["entree"]:[]}/></>:section==="retours"?<OrderReturnHistory remote={returns} onOpen={openRelated} onReturn={()=>setEditor("retour")} canWrite={canWrite}/>:section==="controle"?<OrderControl record={record} onSection={changeSection}/>:section==="facturation"?<>
+        {section==="identite"?<><OrderOverview record={record} onSection={changeSection}/><BusinessDocuments kind="bon" objectId={entry.id} types={order?["commande"]:outgoing?["sortie","livraison"]:stockDocumentKind(record)==="entree"?["entree"]:[]}/></>:section==="retours"?<OrderReturnHistory remote={returns} onOpen={openRelated} onReturn={()=>setEditor("retour")} canWrite={canWrite}/>:section==="controle"?<OrderControl record={record} onSection={changeSection}/>:section==="facturation"?<>
           <OrderBillingHeading record={record}/>
           {invoiced?<><BusinessDocuments kind="facture" objectId={entry.id} types={["facture"]}/><CreditNotes commandId={entry.id} refreshKey={workflowVersion} onChanged={()=>{setWorkflowVersion(v=>v+1);refresh();}}/></>:null}
           {invoiced?<><div className="commande360-invoice-tabs"><ConsultationTabs tabs={invoiceTabs} value={invoiceSection} onChange={key=>changeSection("facturation",key)} label="Facture et règlements du bon" idPrefix={prefix+"-billing"}/></div>

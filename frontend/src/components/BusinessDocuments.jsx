@@ -7,7 +7,7 @@ import AppIcon from "./AppIcon";
 import {requestJson,downloadApiFile} from "../services/api";
 import {formatDate} from "../pages/logistique/logistiqueShared";
 import "./BusinessDocuments.css";
-const LABELS={entree:"Bon d’entrée",sortie:"Bon de sortie",livraison:"Bon de livraison",facture:"Facture",recu:"Reçu",avoir:"Avoir"};
+const LABELS={commande:"Bon de commande",entree:"Bon d’entrée",sortie:"Bon de sortie",livraison:"Bon de livraison",facture:"Facture",recu:"Reçu",avoir:"Avoir"};
 const MIME_TYPES=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 export default function BusinessDocuments({kind,objectId,types=[],refreshKey=0}){
  const {user}=useAuth(),scope=useEntityScope(),input=useRef(null),mounted=useRef(true),operation=useRef(null),activeIdentity=useRef("");

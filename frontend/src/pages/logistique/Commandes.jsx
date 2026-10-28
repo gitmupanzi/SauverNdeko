@@ -11,6 +11,7 @@ import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import RowActionsMenu from "../../components/RowDocumentActions";
 import {stockDocuments,recordExcel} from "../../utils/rowDocuments";
+import {stockDocumentKind,canCreateStockInvoice} from "../../utils/stockDocumentTypes";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import CategoricalSelect from "../../components/CategoricalSelect";
@@ -72,7 +73,7 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
   function addLine(row){if(canWrite&&!closed(row))setLineBon(row);}
   function saved(record,operation){setEditor(null);setDeleting(null);setSavedRecord(operation==="deleted"?null:record);setSavedOperation(operation);setFeedback({type:"success",message:{created:"Bon de stock créé.",updated:"Bon de stock mis à jour.",deleted:"Bon de stock supprimé."}[operation]});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();if(operation==="deleted"){setSelectionResetKey(value=>value+1);sharedTable?.clearSelectedRow?.();}}
   function savedLine(){setLineBon(null);setSavedRecord(lineBon);setSavedOperation("lineCreated");setFeedback({type:"success",message:"Ligne ajoutée au bon."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
-  function openInvoice(id){if(meta?.features?.invoices!==true)return;setEditor(null);setInvoiceEditorId(id);}
+  function openInvoice(id){const row=rows.find(item=>String(item.ID_Commande)===String(id));if(meta?.features?.invoices!==true||row&&!row.CodeFacture&&!canCreateStockInvoice(row))return;setEditor(null);setInvoiceEditorId(id);}
   function savedReturn(result){setReturnEditorId(null);setSavedRecord(result.bonRetour);setSavedOperation("return");setFeedback({type:"success",message:"Restitution enregistrée."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
   function savedInvoice(record,operation){setInvoiceEditorId(null);setSavedRecord(record);setSavedOperation("invoice");setFeedback({type:"success",message:operation==="created"?"Facture créée.":"Facture mise à jour."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
   useEffect(()=>{try{localStorage.setItem("sauverndeko.table.density",density);}catch{/* Préférence facultative. */}},[density]);
@@ -119,8 +120,8 @@ export default function Commandes({references,refreshKey,onDataChanged,onOpenDet
       {label:"Voir les lignes",icon:"list",onSelect:()=>openLines(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite||closed(row),reason:!canWrite?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>edit(row)},
       {label:"Ajouter une ligne",icon:"plus",disabled:!canWrite||closed(row),reason:!canWrite?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>addLine(row)},
-      ...(row.returnContext?.available===true&&!row.returnContext.isReturn?[{label:"Restituer des articles",icon:"stock-in",disabled:!canWrite||row.returnContext.canReturn!==true,reason:!canWrite?"Accès en consultation":row.returnContext.reason||"",onSelect:()=>{if(canWrite&&row.returnContext.canReturn===true)setReturnEditorId(row.ID_Commande);}}]:[]),
-      ...(meta?.features?.invoices===true?[{label:row.CodeFacture?"Consulter / modifier la facture":"Créer la facture",icon:"document",disabled:!canWrite&&!row.CodeFacture,reason:!canWrite&&!row.CodeFacture?"Accès en consultation":"",onSelect:()=>openInvoice(row.ID_Commande)}]:[]),
+      ...(stockDocumentKind(row)==="sortie"&&row.returnContext?.available===true&&!row.returnContext.isReturn?[{label:"Restituer des articles",icon:"stock-in",disabled:!canWrite||row.returnContext.canReturn!==true,reason:!canWrite?"Accès en consultation":row.returnContext.reason||"",onSelect:()=>{if(canWrite&&stockDocumentKind(row)==="sortie"&&row.returnContext.canReturn===true)setReturnEditorId(row.ID_Commande);}}]:[]),
+      ...(meta?.features?.invoices===true&&(row.CodeFacture||canCreateStockInvoice(row))?[{label:row.CodeFacture?"Consulter / modifier la facture":"Créer la facture",icon:"document",disabled:!canWrite&&!row.CodeFacture,reason:!canWrite&&!row.CodeFacture?"Accès en consultation":"",onSelect:()=>openInvoice(row.ID_Commande)}]:[]),
       {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite,reason:!canWrite?"Accès en consultation":"Les conditions de suppression seront vérifiées.",onSelect:()=>{if(canWrite)setDeleting(row.ID_Commande);}},
     ]}/></div>},
   ].sort((a,b)=>(DEFAULT_COLUMNS.indexOf(a.key)<0?99:DEFAULT_COLUMNS.indexOf(a.key))-(DEFAULT_COLUMNS.indexOf(b.key)<0?99:DEFAULT_COLUMNS.indexOf(b.key)));

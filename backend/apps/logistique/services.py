@@ -52,6 +52,8 @@ def validate_header(obj, data, old, actor):
             if row["ValideGenerique"] is not True or row["ValideCategorieGenerique"] is not True:
                 raise APIError({field:"Cette référence n’est plus disponible. Actualisez la liste."},"REFERENCE_INACTIVE",400)
     if name == "T_Commande":
+        from .order_types import type_context
+        type_context(effective.get('ID_TypeCmdFk'))
         from .document_rules import validate_header as validate_document
         validate_document(data,old,actor)
         from .currency import write_currency
@@ -127,6 +129,11 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         )
         from apps.core.tenancy import assert_document
         assert_document(actor,commande)
+        from .order_types import type_context, reject_order_lots
+        order_kind = type_context(commande.get('ID_TypeCmdFk'))['kind']
+        if order_kind == 'commande':
+            reject_order_lots(lots)
+            lots = None
         from .document_rules import assert_stock_editable
         from .stock_returns import is_historical_return_line
         assert_stock_editable(commande)
@@ -238,7 +245,8 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             except APIError as error:
                 raise APIError({"Lots":str(error.detail)},error.default_code,error.status_code) from error
         # Les contraintes de lots sont différées : cibler la ligne avant de quitter sa transaction.
-        for current_id in sorted({next_id,*([positive(article_id)] if article_id is not None else [])}):validate_stock(current_id)
+        if order_kind != 'commande':
+            for current_id in sorted({next_id,*([positive(article_id)] if article_id is not None else [])}):validate_stock(current_id)
         next_lots=line_lots(commande_id,next_id) if operation!="delete" else []
         audit(obj, operation.upper(), {**old,"Lots":previous_lots} if old else None, {**row,"Lots":next_lots}, actor)
         return clean({**row,"Lots":next_lots})
@@ -366,8 +374,13 @@ def references(actor):
         ("reglementModes", 36, "Mode paiement", "Mode de reglement"),
     ]
     for key, category, label, field in rules:
+        nature = (''',COALESCE(logistique.fn_nature_bon(g."ID_Generique"),'inconnu') AS kind,
+            logistique.fn_effet_type_bon(g."ID_Generique") AS "stockEffect",
+            logistique.fn_effet_type_bon(g."ID_Generique") AS sign,
+            (logistique.fn_nature_bon(g."ID_Generique")='sortie') IS TRUE AS "canInvoice"'''
+            if key == 'commandeTypes' else '')
         result[key] = db.query(
-            '''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,g."ID_CategorieGeneriqueFk" AS "categoryId"
+            '''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,g."AbrGenerique" AS abbr,g."ID_CategorieGeneriqueFk" AS "categoryId"'''+nature+'''
                FROM referentiel."T_Generique" g
                JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
                WHERE g."ID_CategorieGeneriqueFk"=%s AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE

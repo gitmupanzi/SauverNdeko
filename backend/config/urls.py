@@ -71,7 +71,7 @@ urlpatterns = [
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/export\.xlsx/?$", LotMovementsExcelView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/?$", LotMovementsView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/?$", LotDetailView.as_view()),
-    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|facture|recu|avoir)\.pdf/?$", DocumentPdfView.as_view()),
+    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|commande|facture|recu|avoir)\.pdf/?$", DocumentPdfView.as_view()),
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),

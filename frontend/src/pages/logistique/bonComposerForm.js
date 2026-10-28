@@ -1,16 +1,11 @@
 import {compareDecimal,decimalParts,multiplyDecimal} from "../../utils/money";
 import {quantityError,roundMoney} from "../../utils/quantities";
 import {commandeErrors,commandePayload} from "./commandeForm";
+import {stockDocumentKind} from "../../utils/stockDocumentTypes";
 
 export const MAX_COMPOSITION_LINES=50;
-const normalise=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
-export function compositionDirection(type) {
-  if(type?.sign===1)return "entree";
-  if(type?.sign===-1)return "sortie";
-  const abbr=normalise(type?.abbr);
-  return abbr.startsWith("entr")?"entree":abbr.startsWith("sort")?"sortie":"";
-}
-export function compositionType(references,values,record=null) {return references?.commandeTypes?.find(type=>String(type.id)===String(values.ID_TypeCmdFk))||(record&&String(record.ID_TypeCmdFk)===String(values.ID_TypeCmdFk)?{id:record.ID_TypeCmdFk,label:record.TypeCmd,abbr:record.AbrTypeCmd,sign:Number(record.SigneCommande)}:null);}
+export const compositionDirection=stockDocumentKind;
+export function compositionType(references,values,record=null) {return references?.commandeTypes?.find(type=>String(type.id)===String(values.ID_TypeCmdFk))||(record&&String(record.ID_TypeCmdFk)===String(values.ID_TypeCmdFk)?{...record,id:record.ID_TypeCmdFk,label:record.TypeCmd,abbr:record.AbrTypeCmd,sign:record.SigneCommande}:null);}
 export function cataloguePrice(article,values,references,record=null) {
   if(article?.ID_DeviseFk==null||String(article.ID_DeviseFk)!==String(values.ID_DeviseFk))return "";
   const direction=compositionDirection(compositionType(references,values,record));
@@ -37,13 +32,16 @@ export function compositionTotal(lines) {
 }
 export function compositionHeaderErrors(values,references,record=null) {
   const errors=commandeErrors(values,record);
-  if(!compositionDirection(compositionType(references,values,record)))errors.ID_TypeCmdFk="Choisissez un type de bon d’entrée ou de sortie disponible.";
+  const kind=compositionDirection(compositionType(references,values,record));
+  if(!kind)errors.ID_TypeCmdFk="Choisissez un type de bon disponible.";
+  if(record&&String(values.ID_TypeCmdFk)!==String(record.ID_TypeCmdFk)&&(stockDocumentKind(record)==="commande"||kind==="commande"))errors.ID_TypeCmdFk="Le type d’un bon de commande est conservé. Créez un bon distinct pour l’entrée ou la sortie effective.";
   if((!record||String(values.ID_DeviseFk)!==String(record.ID_DeviseFk))&&!(references?.currencies||[]).some(item=>String(item.id)===String(values.ID_DeviseFk)))errors.ID_DeviseFk="Choisissez une devise disponible.";
   return errors;
 }
 export function compositionLineErrors(line,direction) {
   const errors={},quantity=String(line.QteCmdDetail||"").trim(),price=String(line.PUCmdDetail??"").trim();
-  if(quantityError(quantity))errors.QteCmdDetail=quantityError(quantity);
+  const precision=Number.isInteger(line.article?.DecimalesStock)?line.article.DecimalesStock:null;
+  if(quantityError(quantity,false,precision))errors.QteCmdDetail=quantityError(quantity,false,precision);
   if(!/^\d+(?:[.,]\d{1,2})?$/.test(price)||compareDecimal(price,"9999999999.99")===1)errors.PUCmdDetail="Renseignez le prix du document, avec deux décimales au maximum.";
   const amount=multiplyDecimal(quantity,price);
   if(amount&&compareDecimal(amount,"9999999999.99")===1)errors.PUCmdDetail="Le montant de cette ligne dépasse la limite autorisée.";
@@ -61,8 +59,9 @@ export function compositionLineErrors(line,direction) {
   }
   return errors;
 }
-export function compositionPayload(values,lines,userId,record=null,version=null) {
+export function compositionPayload(values,lines,userId,record=null,version=null,references=null) {
   const bon=commandePayload(values,record,version,userId);
   for(const field of ["_version","CodeFacture","DateFacture","StatusFacture","ValideRemiseFacture","UrlFacture"])delete bon[field];
-  return {...(record?{_version:version}:{}),bon,lignes:lines.map(linePayload)};
+  const order=compositionDirection(compositionType(references,values,record))==="commande";
+  return {...(record?{_version:version}:{}),bon,lignes:lines.map(line=>({...linePayload(line),...(order?{Lots:[]}: {})}))};
 }

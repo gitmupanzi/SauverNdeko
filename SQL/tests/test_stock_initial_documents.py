@@ -1,7 +1,8 @@
 """Recette du stock initial, uniquement dans une base sauverndeko_test_*.
 
-La base contient la structure au 20261026_12. Cette recette y prépare des
-antécédents fictifs, applique la migration 20261028_01 puis vérifie SQL/API.
+La base contient soit la structure historique au 20261026_12 (la recette y
+applique migration01), soit le socle actuel déjà migré. Les attentes de
+numérotation distinguent le contrat01 du type CMD explicite ajouté en05.
 Elle ne charge aucune donnée d'une entreprise cliente.
 """
 import copy
@@ -131,7 +132,15 @@ new_entry=command(entry)
 check(new_entry['CodeCmd'].startswith('BE-'),'Entree manuelle numerotee BE-ID')
 rejected(lambda:db.query('UPDATE logistique."T_Commande" SET "ID_TypeCmdFk"=%s WHERE "ID_Commande"=%s',[outgoing,new_entry['ID_Commande']]),'Changement de sens ne contredit pas le prefixe BE du bon')
 check(command(outgoing)['CodeCmd'].startswith('BS-'),'Sortie manuelle numerotee BS-ID')
-check(db.one('SELECT logistique.fn_code_bon(42,%s) code',[neutral])['code']=='cmd-42','Prefixe cmd reserve aux commandes hors entree sortie')
+if db.one("SELECT to_regprocedure('logistique.fn_nature_bon(integer)') IS NOT NULL installed")['installed']:
+    # Depuis05, seul le code de référence CMD connu peut être neutre ;
+    # une abréviation quelconque de signe zéro n'est plus autorisée.
+    cmd_kind=db.one('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=64 AND upper(btrim("AbrGenerique"))=%s',['CMD'])
+    cmd_kind=cmd_kind['id'] if cmd_kind else generic(64,'Bon de commande','CMD')
+    check(db.one('SELECT logistique.fn_code_bon(42,%s) code',[cmd_kind])['code']=='CMD-42','Prefixe CMD court reserve au type explicite Bon de commande en05')
+    rejected(lambda:db.query('SELECT logistique.fn_code_bon(42,%s)',[neutral]),'Type neutre inconnu refuse depuis05')
+else:
+    check(db.one('SELECT logistique.fn_code_bon(42,%s) code',[neutral])['code']=='cmd-42','Contrat historique01 : prefixe generique cmd avant type CMD explicite')
 def simultaneous(i):
     try:return repository.mutate('T_Commande',bind_context(actor_by_id(uid),SimpleNamespace(headers={'X-Entite-ID':str(entity)})),{'ID_TypeCmdFk':entry if i%2 else outgoing,'ID_DeviseFk':currency})['CodeCmd']
     finally:connections.close_all()

@@ -14645,6 +14645,18 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "NatureBon",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -15025,6 +15037,8 @@
           "is_identity": "NO"
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
           "column_name": "IdEntiteFk",
           "data_type": "integer",
           "is_nullable": "YES",
@@ -15032,11 +15046,11 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_CommandeDetail"
+          "is_identity": "NO"
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
           "column_name": "ID_TiersFk",
           "data_type": "bigint",
           "is_nullable": "YES",
@@ -15044,11 +15058,11 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_CommandeDetail"
+          "is_identity": "NO"
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
           "column_name": "TiersNom",
           "data_type": "text",
           "is_nullable": "YES",
@@ -15056,9 +15070,19 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO",
+          "is_identity": "NO"
+        },
+        {
           "table_schema": "logistique",
-          "table_name": "V_CommandeDetail"
+          "table_name": "V_CommandeDetail",
+          "column_name": "NatureBon",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ]
     },
@@ -15430,6 +15454,18 @@
           "table_schema": "logistique",
           "table_name": "V_CommandeOverview",
           "column_name": "DeviseLibelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeOverview",
+          "column_name": "NatureBon",
           "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,

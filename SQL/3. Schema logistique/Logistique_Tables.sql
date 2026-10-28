@@ -392,18 +392,17 @@ CREATE FUNCTION logistique.fn_code_bon(p_id integer, p_type integer) RETURNS cha
     LANGUAGE plpgsql STABLE STRICT
     SET search_path TO 'pg_catalog'
     AS $$
-DECLARE abbreviation text;
+DECLARE nature text:=logistique.fn_nature_bon(p_type);
 BEGIN
- IF p_id<=0 THEN RAISE EXCEPTION 'Identite positive requise' USING ERRCODE='23514';END IF;
- SELECT "AbrGenerique" INTO abbreviation FROM referentiel."T_Generique" WHERE "ID_Generique"=p_type AND "ID_CategorieGeneriqueFk"=64;
- RETURN CASE WHEN abbreviation ILIKE 'entr%' THEN 'BE-' WHEN abbreviation ILIKE 'sort%' THEN 'BS-' ELSE 'cmd-' END||p_id::text;
+ IF p_id IS NULL OR p_id<=0 OR nature IS NULL THEN RAISE EXCEPTION 'Identité ou type de bon inconnu.' USING ERRCODE='23514';END IF;
+ RETURN CASE nature WHEN 'entree' THEN 'BE-' WHEN 'sortie' THEN 'BS-' WHEN 'commande' THEN 'CMD-' END||p_id::text;
 END $$;
 
 --
 -- Name: FUNCTION fn_code_bon(p_id integer, p_type integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_code_bon(p_id integer, p_type integer) IS 'Code court des nouveaux documents selon le type du referentiel: BE-ID entree, BS-ID sortie, cmd-ID autres commandes. Aucune renumerotation historique.';
+COMMENT ON FUNCTION logistique.fn_code_bon(p_id integer, p_type integer) IS 'Numéro court automatique des nouveaux documents : BE-ID, BS-ID et CMD-ID selon le type explicite du référentiel. Les numéros déjà émis restent inchangés.';
 
 --
 -- Name: fn_code_commande(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -565,6 +564,21 @@ $$;
 COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Résout exactement une référence USD active dans la catégorie Devise active ; aucun identifiant numérique codé en dur.';
 
 --
+-- Name: fn_effet_type_bon(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_effet_type_bon(p_type integer) RETURNS smallint
+    LANGUAGE sql STABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT CASE logistique.fn_nature_bon(p_type) WHEN 'entree' THEN 1 WHEN 'sortie' THEN -1 WHEN 'commande' THEN 0 ELSE NULL END::smallint $$;
+
+--
+-- Name: FUNCTION fn_effet_type_bon(p_type integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_effet_type_bon(p_type integer) IS 'Effet stock du type connu : +1 entrée, -1 sortie, 0 pour CMD explicite. Un type absent ou inconnu retourne NULL et doit être refusé en écriture.';
+
+--
 -- Name: fn_entite_document(text, bigint); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -711,6 +725,39 @@ $$;
 --
 
 COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS 'Montant exact des retours après facture qui ne sont pas encore couverts par un avoir émis.';
+
+--
+-- Name: fn_nature_bon(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_nature_bon(p_type integer) RETURNS text
+    LANGUAGE sql STABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT logistique.fn_nature_type_bon(g."AbrGenerique")
+ FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type AND g."ID_CategorieGeneriqueFk"=64 $$;
+
+--
+-- Name: FUNCTION fn_nature_bon(p_type integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_nature_bon(p_type integer) IS 'Nature métier du type du référentiel Type de commande : entree, sortie, commande ou NULL. Ne fige aucun identifiant de valeur CMD ; conserve la lecture des types historiques désactivés.';
+
+--
+-- Name: fn_nature_type_bon(text); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_nature_type_bon(p_abbreviation text) RETURNS text
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT CASE WHEN upper(btrim(p_abbreviation))='CMD' THEN 'commande'
+ WHEN p_abbreviation ILIKE 'entr%' THEN 'entree'
+ WHEN p_abbreviation ILIKE 'sort%' THEN 'sortie' ELSE NULL END $$;
+
+--
+-- Name: FUNCTION fn_nature_type_bon(p_abbreviation text); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_nature_type_bon(p_abbreviation text) IS 'Classe une abréviation de type : CMD exact prépare une commande ; entr*/sort* constatent une opération physique. NULL désigne un type inconnu, jamais un bon neutre autorisé.';
 
 --
 -- Name: fn_precision_stock_compatible(integer, integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1032,8 +1079,9 @@ BEGIN
  PERFORM logistique.fn_assert_generique_category(p_new_id_mode_paiement,36,'Commande','ID_ModePaiementFk');
  SELECT "AbrGenerique" INTO new_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_new_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
  new_sign:=CASE WHEN new_abr ILIKE 'entr%' THEN 1 WHEN new_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
- IF new_sign=0 THEN RAISE EXCEPTION 'Une commande exige un type Entrée ou Sortie.' USING ERRCODE='23514'; END IF;
+ IF logistique.fn_nature_bon(p_new_id_type_cmd) IS NULL THEN RAISE EXCEPTION 'Type de bon inconnu.' USING ERRCODE='23514'; END IF;
  IF op='INSERT' OR p_old_id_type_cmd IS NOT DISTINCT FROM p_new_id_type_cmd THEN RETURN; END IF;
+ IF logistique.fn_nature_bon(p_old_id_type_cmd)='commande' OR logistique.fn_nature_bon(p_new_id_type_cmd)='commande' THEN RAISE EXCEPTION 'Un bon de commande ne se convertit pas en mouvement physique ; créez un BE ou BS distinct.' USING ERRCODE='23514';END IF;
  IF NOT EXISTS(SELECT 1 FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=p_id_commande) THEN RETURN; END IF;
  SELECT "AbrGenerique" INTO old_abr FROM referentiel."T_Generique" WHERE "ID_Generique"=p_old_id_type_cmd AND "ID_CategorieGeneriqueFk"=64;
  old_sign:=CASE WHEN old_abr ILIKE 'entr%' THEN 1 WHEN old_abr ILIKE 'sort%' THEN -1 ELSE 0 END;
@@ -1055,7 +1103,7 @@ $$;
 -- Name: PROCEDURE ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Valide les catégories du référentiel et un sens Entrée/Sortie dès la création. Un changement de type applique le delta net par article dans un ordre de verrouillage stable et réaligne les mouvements liés, sans doublon.';
+COMMENT ON PROCEDURE logistique.ps_crud_commande(IN p_id_commande integer, IN p_old_id_type_cmd integer, IN p_new_id_type_cmd integer, IN p_new_id_statut_cmd integer, IN p_new_id_condition_paiement integer, IN p_new_id_mode_paiement integer, IN p_operation character varying) IS 'Valide les catégories et la nature explicite du bon : CMD ne produit aucun effet stock ; les changements physiques autorisés conservent le calcul net historique. Toute conversion vers ou depuis CMD est interdite.';
 
 --
 -- Name: ps_crud_commandedetail(integer, integer, numeric, numeric, integer, integer, numeric, numeric, character varying); Type: PROCEDURE; Schema: logistique; Owner: -
@@ -1090,6 +1138,21 @@ BEGIN
 
  IF op NOT IN ('INSERT','UPDATE','DELETE') OR op IS NULL THEN
   RAISE EXCEPTION 'Opération de ligne inconnue.' USING ERRCODE='23514';
+ END IF;
+ -- Le cas neutre est explicite ; l'absence de mouvement ne prouve jamais un CMD.
+ IF op IN ('INSERT','UPDATE') AND logistique.fn_nature_bon((SELECT c."ID_TypeCmdFk" FROM logistique."T_Commande" c WHERE c."ID_Commande"=p_new_cmd_fk))='commande' THEN
+  IF p_new_qte IS NULL OR p_new_qte<=0 OR p_new_pu IS NULL OR p_new_pu<0 THEN RAISE EXCEPTION 'Quantité positive et prix convenu non négatif requis.' USING ERRCODE='23514';END IF;
+  IF op='UPDATE' AND logistique.fn_nature_bon((SELECT c."ID_TypeCmdFk" FROM logistique."T_Commande" c WHERE c."ID_Commande"=p_old_cmd_fk)) IS DISTINCT FROM 'commande' THEN RAISE EXCEPTION 'Déplacement entre commande et opération physique interdit.' USING ERRCODE='23514';END IF;
+  IF EXISTS(SELECT FROM logistique."T_Mouvement" m WHERE m."ID_cmdFk"=ANY(ARRAY[p_old_cmd_fk,p_new_cmd_fk])) THEN RAISE EXCEPTION 'Un bon de commande ne doit avoir aucun mouvement.' USING ERRCODE='23514';END IF;
+  PERFORM 1 FROM logistique."T_Article" a WHERE a."ID_Article"=ANY(ARRAY[p_old_article_fk,p_new_article_fk]) ORDER BY a."ID_Article" FOR NO KEY UPDATE;
+  IF NOT EXISTS(SELECT FROM logistique."T_Article" a WHERE a."ID_Article"=p_new_article_fk AND a."ValideArticle" IS TRUE) THEN RAISE EXCEPTION 'Article absent ou désactivé.' USING ERRCODE='23514';END IF;
+  RETURN;
+ END IF;
+ IF op IN ('UPDATE','DELETE') AND logistique.fn_nature_bon((SELECT c."ID_TypeCmdFk" FROM logistique."T_Commande" c WHERE c."ID_Commande"=p_old_cmd_fk))='commande' THEN
+  IF op='UPDATE' THEN RAISE EXCEPTION 'Déplacement entre commande et opération physique interdit.' USING ERRCODE='23514';END IF;
+  IF EXISTS(SELECT FROM logistique."T_Mouvement" m WHERE m."ID_cmdFk"=p_old_cmd_fk) THEN RAISE EXCEPTION 'Un bon de commande ne doit avoir aucun mouvement.' USING ERRCODE='23514';END IF;
+  PERFORM 1 FROM logistique."T_Article" a WHERE a."ID_Article"=p_old_article_fk FOR NO KEY UPDATE;
+  RETURN;
  END IF;
  IF op IN ('UPDATE','DELETE') THEN
   IF p_old_qte IS NULL OR p_old_qte<=0 THEN
@@ -1159,7 +1222,7 @@ $$;
 -- Name: PROCEDURE ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON PROCEDURE logistique.ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying) IS 'Effet stock et mouvement unique des lignes; le seul flux interne de stock initial conserve la quantite deja inscrite et rattache les reprises sans double mouvement. Les autres lignes appliquent leur delta habituel.';
+COMMENT ON PROCEDURE logistique.ps_crud_commandedetail(IN p_old_cmd_fk integer, IN p_old_article_fk integer, IN p_old_qte numeric, IN p_old_pu numeric, IN p_new_cmd_fk integer, IN p_new_article_fk integer, IN p_new_qte numeric, IN p_new_pu numeric, IN p_operation character varying) IS 'Lignes CMD : quantité et prix convenu valides, aucun stock, mouvement, lot ni coût ; les totaux restent calculés par les triggers de transition. Préserve les flux physiques et le stock initial sans double mouvement.';
 
 --
 -- Name: ps_crud_reglement(integer, integer, character varying); Type: PROCEDURE; Schema: logistique; Owner: -
@@ -1393,6 +1456,42 @@ END $$;
 --
 
 COMMENT ON FUNCTION logistique.tr_bon_initial_protection() IS 'Conserve demandes de creation et bons techniques initiaux; interdit suppression, facturation, restitution et modification silencieuse de leurs lignes.';
+
+--
+-- Name: tr_commande_sans_stock(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_commande_sans_stock() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE nature text;
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF logistique.fn_nature_bon(OLD."ID_TypeCmdFk")='commande' AND EXISTS(SELECT FROM logistique."T_CommandeDetail" d WHERE d."ID_CmdFk"=OLD."ID_Commande") THEN
+   RAISE EXCEPTION 'Retirez les articles du bon de commande avant sa suppression.' USING ERRCODE='23514';
+  END IF;
+  RETURN OLD;
+ END IF;
+ nature:=logistique.fn_nature_bon(NEW."ID_TypeCmdFk");
+ IF nature IS NULL THEN RAISE EXCEPTION 'Type de bon inconnu ; choisissez un type du référentiel.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND NEW."ID_TypeCmdFk" IS DISTINCT FROM OLD."ID_TypeCmdFk" AND (nature='commande' OR logistique.fn_nature_bon(OLD."ID_TypeCmdFk")='commande') THEN
+  RAISE EXCEPTION 'Nature CMD immuable ; créez un BE ou BS distinct.' USING ERRCODE='23514';
+ END IF;
+ IF nature='commande' AND (NEW."OrigineBon" IS NOT NULL OR NEW."DateFacture" IS NOT NULL OR NEW."DateHeureAutoFacture" IS NOT NULL
+  OR nullif(btrim(NEW."CodeFacture"),'') IS NOT NULL OR nullif(btrim(NEW."UrlFacture"),'') IS NOT NULL OR nullif(btrim(NEW."UrlBL"),'') IS NOT NULL
+  OR nullif(btrim(NEW."StatusFacture"),'') IS NOT NULL OR NEW."ValideRemiseFacture" IS TRUE
+  OR coalesce(NEW."MontantRegleFacture",0)<>0 OR coalesce(NEW."MontantResteFacture",0)<>0) THEN
+  RAISE EXCEPTION 'Une commande prépare des articles sans facture, règlement, livraison physique ni mouvement.' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_commande_sans_stock(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_commande_sans_stock() IS 'Garde SQL du bon : refuse les types inconnus, la conversion CMD/physique et la facturation/livraison de CMD. Pour supprimer un CMD, retirer ses lignes préalablement afin de conserver une classification explicite.';
 
 --
 -- Name: tr_crud_article_after(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1917,6 +2016,31 @@ $$;
 COMMENT ON FUNCTION logistique.tr_lock_mouvement_direct() IS 'Bloque les écritures sur T_Mouvement sauf si le drapeau transactionnel logistique.allow_t_mouvement_write vaut on ; valide alors la catégorie 64 du type pour INSERT/UPDATE.';
 
 --
+-- Name: tr_mouvement_physique(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_mouvement_physique() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE nature text; parent_nature text;
+BEGIN
+ nature:=logistique.fn_nature_bon(NEW."ID_TypeMvtFk");
+ IF nature IS NULL OR nature='commande' THEN RAISE EXCEPTION 'Un mouvement exige une entrée ou sortie physique.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_cmdFk" IS NOT NULL THEN
+  SELECT logistique.fn_nature_bon(c."ID_TypeCmdFk") INTO parent_nature FROM logistique."T_Commande" c WHERE c."ID_Commande"=NEW."ID_cmdFk" FOR NO KEY UPDATE;
+  IF parent_nature IS DISTINCT FROM nature THEN RAISE EXCEPTION 'Mouvement incompatible avec la nature du bon ; aucun mouvement pour CMD.' USING ERRCODE='23514';END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_mouvement_physique(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_mouvement_physique() IS 'Refuse tout mouvement CMD, inconnu ou lié à un parent CMD, même avec le drapeau interne d’écriture activé et un type physique falsifié. Vérifie le sens commun du parent verrouillé et du mouvement.';
+
+--
 -- Name: tr_numero_commande(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -1934,6 +2058,7 @@ BEGIN
   IF NULLIF(btrim(NEW."CodeFacture"),'') IS NOT NULL THEN RAISE EXCEPTION 'La facture est emise apres le bon.' USING ERRCODE='23514';END IF;
   NEW."CodeFacture"=NULL;
  ELSE
+  IF NEW."ID_TypeCmdFk" IS DISTINCT FROM OLD."ID_TypeCmdFk" AND (logistique.fn_nature_bon(OLD."ID_TypeCmdFk")='commande' OR logistique.fn_nature_bon(NEW."ID_TypeCmdFk")='commande') THEN RAISE EXCEPTION 'Nature CMD immuable ; créez un BE ou BS distinct.' USING ERRCODE='23514';END IF;
   IF NEW."ID_Commande" IS DISTINCT FROM OLD."ID_Commande" OR NEW."CodeCmd" IS DISTINCT FROM OLD."CodeCmd" THEN RAISE EXCEPTION 'Identite et code du bon immuables.' USING ERRCODE='23514';END IF;
   IF NEW."ID_TypeCmdFk" IS DISTINCT FROM OLD."ID_TypeCmdFk" AND OLD."CodeCmd" ~ '^(BE|BS)-' AND logistique.fn_code_bon(NEW."ID_Commande",NEW."ID_TypeCmdFk") IS DISTINCT FROM OLD."CodeCmd" THEN RAISE EXCEPTION 'Le sens du bon est conserve avec son numero; creez un nouveau bon.' USING ERRCODE='23514';END IF;
   IF NEW."CodeFacture" IS DISTINCT FROM OLD."CodeFacture" THEN
@@ -1947,7 +2072,7 @@ END $$;
 -- Name: FUNCTION tr_numero_commande(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_numero_commande() IS 'Numerotation typee atomique a la creation; conserve les anciens codes et leur immutabilite ainsi que le code fac-ID emis par la facture.';
+COMMENT ON FUNCTION logistique.tr_numero_commande() IS 'Attribue BE-/BS-/CMD- aux nouvelles identités, conserve les codes historiques et interdit toute conversion vers ou depuis CMD, même sans ligne. Les factures gardent leur numérotation dédiée.';
 
 --
 -- Name: tr_numero_facture(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -3660,7 +3785,7 @@ CREATE TABLE logistique."T_Commande" (
 -- Name: TABLE "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_Commande" IS 'En-tête de commande d’entrée ou de sortie, avec tiers, dates, facturation et modalités de paiement. Le stock est affecté par les lignes et par leur réalignement lors d’un changement de type.';
+COMMENT ON TABLE logistique."T_Commande" IS 'Documents d’articles typés par le référentiel : BE entrée physique, BS sortie physique, CMD préparation sans stock. Identités et numéros émis immuables ; facturation dédiée aux sorties autorisées.';
 
 --
 -- Name: COLUMN "T_Commande"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3672,7 +3797,7 @@ COMMENT ON COLUMN logistique."T_Commande"."ID_Commande" IS 'Identifiant de la co
 -- Name: COLUMN "T_Commande"."ID_TypeCmdFk"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Commande"."ID_TypeCmdFk" IS 'Type de commande dans la catégorie 64 ; son abréviation entr*/sort* détermine le sens du stock. Relation imposée : FOREIGN KEY ("ID_TypeCmdFk") REFERENCES referentiel."T_Generique"("ID_Generique") NOT VALID.';
+COMMENT ON COLUMN logistique."T_Commande"."ID_TypeCmdFk" IS 'Valeur Type de commande dans le référentiel : entr*/sort* pour les mouvements physiques, CMD exact pour le bon de commande sans stock, facture ni restitution. Une nature inconnue est refusée.';
 
 --
 -- Name: COLUMN "T_Commande"."ID_StatutCmdFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3899,7 +4024,7 @@ CREATE TABLE logistique."T_CommandeDetail" (
 -- Name: TABLE "T_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_CommandeDetail" IS 'Lignes de commande identifiées par le couple article/commande. Les routines appliquent les effets de stock, synchronisent les mouvements et recalculent les totaux ; les quantités fractionnaires sont refusées par les routines installées.';
+COMMENT ON TABLE logistique."T_CommandeDetail" IS 'Articles et prix convenus d’un bon ; totaux exacts partagés. BE/BS pilotent un seul mouvement par ligne ; CMD ne produit aucun stock, lot, mouvement ou coût.';
 
 --
 -- Name: COLUMN "T_CommandeDetail"."ID_CmdFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -7132,6 +7257,30 @@ CREATE TRIGGER a00_stock_initial_retour BEFORE INSERT OR UPDATE ON logistique."T
 --
 
 COMMENT ON TRIGGER a00_stock_initial_retour ON logistique."T_RetourBon" IS 'Refuse un retour commercial sur un bon technique de stock initial ou de reprise.';
+
+--
+-- Name: T_Commande a01_commande_sans_stock; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER a01_commande_sans_stock BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION logistique.tr_commande_sans_stock();
+
+--
+-- Name: TRIGGER a01_commande_sans_stock ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER a01_commande_sans_stock ON logistique."T_Commande" IS 'Avant toute écriture d’en-tête, distingue la commande préparatoire des entrées/sorties et protège son identité et son absence de facturation.';
+
+--
+-- Name: T_Mouvement a01_mouvement_physique; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER a01_mouvement_physique BEFORE INSERT OR UPDATE ON logistique."T_Mouvement" FOR EACH ROW EXECUTE FUNCTION logistique.tr_mouvement_physique();
+
+--
+-- Name: TRIGGER a01_mouvement_physique ON "T_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER a01_mouvement_physique ON logistique."T_Mouvement" IS 'Défense SQL indépendante du service : seul un mouvement réel de même nature que son bon peut être enregistré.';
 
 --
 -- Name: T_Commande a0_numero_commande; Type: TRIGGER; Schema: logistique; Owner: -

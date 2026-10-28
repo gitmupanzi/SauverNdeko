@@ -6,6 +6,7 @@
 
 - Articles : formulaire commun ajout/modification, Produit 360, photo, informations complémentaires, poids/unité, devise du référentiel et réception préremplie.
 - Bons de stock et lignes : composition depuis le catalogue, codes automatiques, édition commune, consultations liées, réceptions, sorties et restitutions partielles avec un seul effet sur le stock.
+- Bons de commande CMD : préparation des articles, quantités et prix convenus sans effet sur le stock ; PDF dédié et types issus du référentiel commun. Le rapprochement automatique commande/réception/livraison partielle demeure une extension à cadrer.
 - Factures et règlements séparés : instantanés de facturation, paiements groupés, avoirs après retour facturé, imputations et remboursements enregistrés.
 - PDF des bons d’entrée/sortie/livraison, factures, reçus et avoirs ; justificatifs privés ; identités financières conservées.
 - Clients et fournisseurs dans T_Client, types issus du référentiel, Tiers 360, tiers référencé dans les bons et destinations géographiques typées.

@@ -13,6 +13,7 @@ Dans **Articles → ⋯ → Valorisation CUMP**, confirmez les coûts d’ouvert
 | Besoin | Parcours | Résultat à contrôler |
 |---|---|---|
 | Préparer le catalogue | Articles → Nouvel article | Unité, précision, prix/devise et photo corrects. Un stock initial positif produit une seule entrée. |
+| Préparer une commande | Bons de stock → Nouveau bon → Bon de commande → Articles | Articles, quantités et prix convenus ; code CMD automatique, sans mouvement ni réservation de stock. |
 | Réceptionner | Article → ⋯ → Réceptionner du stock, ou Bons de stock → Nouveau bon → Entrée | Fournisseur, prix d’achat, quantités et lots correspondent à la livraison. |
 | Sortir des articles | Bons de stock → Nouveau bon → Sortie → Articles | Le catalogue alimente le bon ; quantités, prix et lots sont vérifiés avant enregistrement. |
 | Consulter un lot | Lots de stock → lot ou Consulter | Article, stock restant, péremption et mouvements sont ceux du lot choisi. |
@@ -24,6 +25,8 @@ Dans **Articles → ⋯ → Valorisation CUMP**, confirmez les coûts d’ouvert
 | Corriger un inventaire validé | Inventaire → ⋯ → Annuler la validation | Motif obligatoire et mouvements compensateurs ; le comptage et les écritures d’origine restent consultables. |
 
 Les bons d’écart d’inventaire sont internes : ils se corrigent dans Inventaires et ne servent pas à facturer un client ou à effectuer une restitution commerciale.
+
+**BE** constate une entrée effective et **BS** une sortie effective. **CMD** prépare une commande : les quantités peuvent dépasser le stock disponible, et aucun lot n’est affecté. La réception ou la sortie réelle s’enregistre ensuite dans un BE ou un BS séparé. Le CMD garde son numéro ; le rapprochement automatique des réceptions partielles reste une évolution distincte. Voir [les trois types de bons](bons-entree-sortie-commande.md).
 
 ## Documents et recherches
 

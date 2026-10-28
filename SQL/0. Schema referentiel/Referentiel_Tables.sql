@@ -57,26 +57,25 @@ COMMENT ON FUNCTION referentiel.fn_catalogue_tableau_verifier() IS 'Vérifie les
 
 CREATE FUNCTION referentiel.fn_guard_sens_stock() RETURNS trigger
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
     AS $$
-DECLARE old_sign integer; new_sign integer;
+DECLARE old_nature text; new_nature text;
 BEGIN
  IF OLD."ID_CategorieGeneriqueFk"=64 AND (
- EXISTS(SELECT 1 FROM logistique."T_Commande" WHERE "ID_TypeCmdFk"=OLD."ID_Generique") OR
- EXISTS(SELECT 1 FROM logistique."T_Mouvement" WHERE "ID_TypeMvtFk"=OLD."ID_Generique")) THEN
-  old_sign:=CASE WHEN OLD."AbrGenerique" ILIKE 'entr%' THEN 1 WHEN OLD."AbrGenerique" ILIKE 'sort%' THEN -1 ELSE 0 END;
-  new_sign:=CASE WHEN NEW."AbrGenerique" ILIKE 'entr%' THEN 1 WHEN NEW."AbrGenerique" ILIKE 'sort%' THEN -1 ELSE 0 END;
-  IF NEW."ID_CategorieGeneriqueFk"<>64 OR new_sign<>old_sign THEN
-   RAISE EXCEPTION 'Le sens d’un type de stock déjà utilisé ne peut pas être changé.' USING ERRCODE='23514';
+  EXISTS(SELECT FROM logistique."T_Commande" WHERE "ID_TypeCmdFk"=OLD."ID_Generique") OR EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_TypeMvtFk"=OLD."ID_Generique")) THEN
+  old_nature:=logistique.fn_nature_type_bon(OLD."AbrGenerique");new_nature:=logistique.fn_nature_type_bon(NEW."AbrGenerique");
+  IF NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM 64 OR new_nature IS DISTINCT FROM old_nature THEN
+   RAISE EXCEPTION 'La nature d’un type de bon déjà utilisé ne peut pas changer.' USING ERRCODE='23514';
   END IF;
  END IF;
  RETURN NEW;
-END;$$;
+END $$;
 
 --
 -- Name: FUNCTION fn_guard_sens_stock(); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_guard_sens_stock() IS 'Protège le signe Entrée/Sortie et la catégorie 64 d’un type déjà utilisé par une commande ou un mouvement ; évite une réinterprétation rétroactive du stock. Un changement de libellé conservant le signe reste permis.';
+COMMENT ON FUNCTION referentiel.fn_guard_sens_stock() IS 'Préserve la nature exacte des types utilisés : CMD ne peut pas devenir un autre type de signe zéro. Les libellés peuvent évoluer en conservant la catégorie et la nature métier.';
 
 --
 -- Name: fn_preference_tableau_verifier(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -742,6 +741,18 @@ COMMENT ON INDEX referentiel."T_InterfaceTableau_pkey" IS 'Accès exact au catal
 COMMENT ON INDEX referentiel."T_PreferenceTableau_pkey" IS 'Recherche technique d’une préférence.';
 
 --
+-- Name: generique_type_cmd_unique; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE UNIQUE INDEX generique_type_cmd_unique ON referentiel."T_Generique" USING btree ("ID_CategorieGeneriqueFk") WHERE (("ID_CategorieGeneriqueFk" = 64) AND (upper(btrim(("AbrGenerique")::text)) = 'CMD'::text));
+
+--
+-- Name: INDEX generique_type_cmd_unique; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.generique_type_cmd_unique IS 'Une seule valeur CMD dans Type de commande ; l’identifiant est attribué par le référentiel et non figé dans les services.';
+
+--
 -- Name: idx_generique_id_categorie; Type: INDEX; Schema: referentiel; Owner: -
 --
 
@@ -805,7 +816,7 @@ CREATE TRIGGER tr_guard_sens_stock BEFORE UPDATE ON referentiel."T_Generique" FO
 -- Name: TRIGGER tr_guard_sens_stock ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON TRIGGER tr_guard_sens_stock ON referentiel."T_Generique" IS 'Empêche qu’une modification du référentiel inverse ou efface le sens d’un historique de stock existant.';
+COMMENT ON TRIGGER tr_guard_sens_stock ON referentiel."T_Generique" IS 'Protège les sens physiques et la nature CMD des types déjà utilisés, sans figer les libellés ni les nouveaux identifiants de valeur.';
 
 --
 -- Name: T_PreferenceTableau tr_preference_tableau_verifier; Type: TRIGGER; Schema: referentiel; Owner: -

@@ -58,7 +58,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
  const [lots,setLots]=useState([]),[knownLots,setKnownLots]=useState({rows:[],meta:null,retry:0}),[lotsLoading,setLotsLoading]=useState(false),[lotsFailure,setLotsFailure]=useState("");
  const [bonFailure,setBonFailure]=useState(""),[articleFailure,setArticleFailure]=useState("");
  const canWrite=user?.permissions?.canWriteData===true,dirty=JSON.stringify({values,lots})!==initial;
- const direction=lineDirection(bon),outgoing=direction==="sortie",availability=lotAvailability(knownLots.meta,knownLots.rows,record);
+ const direction=lineDirection(bon),order=direction==="commande",outgoing=direction==="sortie",availability=lotAvailability(knownLots.meta,knownLots.rows,record);
  const reason=bonFailure||articleFailure||(!creating&&meta?.canEdit!==true?(meta?.editReason||"Cette ligne n’est pas modifiable."):bonMeta?.canEdit===false?(bonMeta.editReason||"Ce bon n’est pas modifiable."):closedBon(bon)?"Ce bon est clôturé.":bon&&bon.ID_DeviseFk==null?"Renseignez la devise du bon avant ses lignes.":article?.ValideArticle===false?"Cet article est inactif.":"");
  const blocked=!canWrite||busy||loading||bonLoading||articleLoading;
  const canSubmit=canWrite&&!blocked&&!lotsLoading&&!lotsFailure&&!reason&&Boolean(bon&&article)&&(creating||Boolean(meta?.revision&&dirty));
@@ -123,12 +123,12 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
  function reloadRecord(){if(dirty)setConfirmReload(true);else setReload(x=>x+1);}
  async function submit(){
   if(!canSubmit||saving.current)return;
-  const invalid=lineErrors(values,bon,article,record),lotError=outgoing&&unchangedLotAllocation(lots,values.QteCmdDetail,record)?"":lotErrors(lots,values.QteCmdDetail,{outgoing,availability});
+  const invalid=lineErrors(values,bon,article,record),lotError=order||outgoing&&unchangedLotAllocation(lots,values.QteCmdDetail,record)?"":lotErrors(lots,values.QteCmdDetail,{outgoing,availability});
   if(lotError)invalid.Lots=lotError;
   setErrors(invalid);setError("");setConflict(false);
   if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
   saving.current=true;setBusy(true);
-  const payload=linePayload(values,lots,creating?null:meta.revision);
+  const payload=linePayload(values,lots,creating?null:meta.revision,bon);
   if(creating)payload.ID_CmdFk=values.ID_CmdFk;
   const response=await requestJson("/api/logistique/commande-details"+(creating?"":"/"+record.ID_CmdFk+"/"+record.ID_ArticleFk),{requiresAuth:true,method:creating?"POST":"PUT",body:JSON.stringify(payload)});
   if(!mounted.current)return;saving.current=false;setBusy(false);
@@ -143,6 +143,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
    {confirmReload?<div className="record-editor-error" role="alert"><span>Recharger abandonnera les modifications de cette fiche.</span><ActionButton onClick={()=>setConfirmReload(false)}>Continuer</ActionButton><ActionButton onClick={()=>{setConfirmReload(false);setReload(x=>x+1);}}>Recharger</ActionButton></div>:null}
    {!loading?<>
     {reason?<p className="record-editor-error" role="status">{reason}</p>:null}
+    {order?<p className="record-editor-note">Bon de commande · Sans mouvement de stock.</p>:null}
     <Section title="Bon et article" icon="box">
      {creating?<><PagedChoice id={prefix+"ID_CmdFk"} label="Bon de stock *" path="/registre/commandes" idKey="ID_Commande" labelFor={bonLabel} value={values.ID_CmdFk} selected={bon} disabled={busy||!canWrite} error={errors.ID_CmdFk} onChange={value=>{if(!canWrite||value===values.ID_CmdFk)return;setBon(null);setArticle(null);setLots([]);setValues(current=>({...current,ID_CmdFk:value,ID_ArticleFk:"",PUCmdDetail:""}));setErrors({});}}/>
      <PagedChoice id={prefix+"ID_ArticleFk"} label="Article *" path="/registre/articles" idKey="ID_Article" labelFor={articleLabel} value={values.ID_ArticleFk} selected={article} disabled={busy||!canWrite||bonLoading||!bon||bonMeta?.canEdit===false} error={errors.ID_ArticleFk} onChange={value=>{if(!canWrite||value===values.ID_ArticleFk)return;setArticle(null);setLots([]);setValues(current=>({...current,ID_ArticleFk:value,PUCmdDetail:""}));setErrors(current=>({...current,ID_ArticleFk:""}));}}/></>:<><Field id={prefix+"ID_CmdFk"} label="Bon de stock"><input id={prefix+"ID_CmdFk"} readOnly value={bon?bonLabel(bon):"—"}/></Field><Field id={prefix+"ID_ArticleFk"} label="Article"><input id={prefix+"ID_ArticleFk"} readOnly value={article?articleLabel(article):"—"}/></Field></>}
@@ -151,14 +152,14 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
     </Section>
     <Section title="Quantité et prix" icon="cash">
      {input("QteCmdDetail","Quantité *",{inputMode:"decimal",maxLength:15})}
-     {input("PUCmdDetail","Prix unitaire *"+(bon?.DeviseCode?" · "+bon.DeviseCode:""),{inputMode:"decimal",hint:direction==="entree"?"Prix d’achat dans la devise du bon.":"Prix dans la devise du bon, sans conversion automatique."})}
+     {input("PUCmdDetail",(order?"Prix convenu *":"Prix unitaire *")+(bon?.DeviseCode?" · "+bon.DeviseCode:""),{inputMode:"decimal",hint:direction==="entree"?"Prix d’achat dans la devise du bon.":"Prix dans la devise du bon, sans conversion automatique."})}
      <Field id={prefix+"total"} label="Montant de la ligne" wide><output id={prefix+"total"} className="stock-receipt-total">{formatCurrency(roundMoney(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail)),bon?.DeviseCode)}</output></Field>
     </Section>
-    <div id={prefix+"Lots"} tabIndex={-1}><LotFields articleId={article?.ID_Article} value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>
+    {!order?<div id={prefix+"Lots"} tabIndex={-1}><LotFields articleId={article?.ID_Article} value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>:null}
     <Section title="Informations complémentaires" icon="document">
      <Field id={prefix+"ObsCmdDetail"} label="Observation" wide><textarea id={prefix+"ObsCmdDetail"} name="ObsCmdDetail" value={values.ObsCmdDetail} onChange={e=>change("ObsCmdDetail",e.target.value)} disabled={blocked||Boolean(reason)}/></Field>
      {input("LieuCmdDetail","Identifiant du lieu",{inputMode:"numeric",hint:"Facultatif, selon le paramétrage de votre organisation."})}
-     <div className="record-field"><label htmlFor={prefix+"RemiseCmdDetail"}>Remise historique</label><input id={prefix+"RemiseCmdDetail"} readOnly value={values.RemiseCmdDetail==null?"Non renseignée":values.RemiseCmdDetail?"Oui":"Non"}/></div>
+     {!order?<div className="record-field"><label htmlFor={prefix+"RemiseCmdDetail"}>Remise historique</label><input id={prefix+"RemiseCmdDetail"} readOnly value={values.RemiseCmdDetail==null?"Non renseignée":values.RemiseCmdDetail?"Oui":"Non"}/></div>:null}
      {[['SelectCmdDetail','Sélection enregistrée']].map(([name,label])=><div key={name} className="record-field"><label className="record-editor-check" htmlFor={prefix+name}><input id={prefix+name} type="checkbox" checked={values[name]===true} disabled={blocked||Boolean(reason)} onChange={e=>change(name,e.target.checked)}/>{label}</label></div>)}
     </Section>
    </>:null}
@@ -175,7 +176,7 @@ export function BonLineDelete({line,onClose,onSaved}) {
  async function submit(){if(!enabled||saving.current)return;saving.current=true;setBusy(true);setError("");const response=await requestJson("/api/logistique/commande-details/"+line.ID_CmdFk+"/"+line.ID_ArticleFk,{requiresAuth:true,method:"DELETE",body:JSON.stringify({_version:meta.revision})});if(!mounted.current)return;saving.current=false;setBusy(false);if(!response?.success){setError(response?.message||"La ligne n’a pas pu être supprimée.");return;}onSaved(record,"deleted");}
  return <DrawerDialog title="Supprimer la ligne du bon" icon="trash" onClose={onClose} busy={busy} defaultWidth={540} storageKey="sauverndeko.bon-line-delete.width" bodyClassName="record-editor-body" footer={<footer className="record-editor-footer"><span/><div><ActionButton disabled={busy} onClick={onClose}>Annuler</ActionButton><ActionButton variant="primary" icon="trash" className="is-danger" disabled={!enabled} onClick={submit}>{busy?"Suppression…":"Supprimer la ligne"}</ActionButton></div></footer>}>
   {loading?<p className="record-editor-state" role="status">Chargement de la ligne…</p>:null}
-  {record?<><div className="record-action-summary"><strong>{record.NomArticle||line.NomArticle||"Article"}</strong><p>{record.CodeCmd||line.CodeCmd||"Bon #"+line.ID_CmdFk} · {formatNumber(record.QteCmdDetail)} {record.AbrUnite||""} · {formatCurrency(record.MontantLigne,record.DeviseCode)}</p></div><p className="record-action-copy">La ligne et son mouvement seront annulés. Le stock et le montant du bon seront recalculés.</p></>:null}
+  {record?<><div className="record-action-summary"><strong>{record.NomArticle||line.NomArticle||"Article"}</strong><p>{record.CodeCmd||line.CodeCmd||"Bon #"+line.ID_CmdFk} · {formatNumber(record.QteCmdDetail)} {record.AbrUnite||""} · {formatCurrency(record.MontantLigne,record.DeviseCode)}</p></div><p className="record-action-copy">{lineDirection(record)==="commande"||meta?.kind==="commande"?"La ligne sera supprimée et le montant de la commande recalculé, sans mouvement de stock.":"La ligne et son mouvement seront annulés. Le stock et le montant du bon seront recalculés."}</p></>:null}
   {meta?.canEdit===false?<p className="record-editor-error" role="status">{meta.editReason||"Cette ligne n’est pas modifiable."}</p>:null}
   {error?<div className="record-editor-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={()=>setReload(x=>x+1)} disabled={busy}>Recharger</ActionButton></div>:null}
  </DrawerDialog>;

@@ -85,16 +85,19 @@ def usage(record, actor):
     delete_reason=reason or ('Un bon avec des lignes ou un historique ne peut pas être supprimé.' if any(links.values()) else
                             'Un bon facturé ne peut pas être supprimé.' if invoice else '')
     fixed=links['lignes'] or links['mouvements'] or links['reglements'] or invoice
+    from .order_types import type_context
+    nature=type_context(record.get('ID_TypeCmdFk'),required=False)
     return {'revision':revision(record),'canEdit':not is_closed and not state['initial'],'editReason':reason,
             'canDelete':not delete_reason,'deleteReason':delete_reason,
-            'canChangeType':not fixed and not is_closed,'canChangeCurrency':not fixed and not is_closed,
-            'canChangeInvoiceCode':not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
+            'canChangeType':not fixed and not is_closed and nature['kind']!='commande','canChangeCurrency':not fixed and not is_closed,
+            'canChangeInvoiceCode':nature['canInvoice'] and not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
 
 
 def line_usage(record, parent):
     state=stock_write_state(parent)
+    from .order_types import type_context
     return {'revision':revision(record,'ligne'),'canEdit':state['canEdit'],'canDelete':state['canEdit'],
-            'editReason':state['reason']}
+            'editReason':state['reason'],**type_context(parent.get('ID_TypeCmdFk'),required=False)}
 
 
 def validate_header(data, old, actor):

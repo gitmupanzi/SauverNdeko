@@ -34,8 +34,8 @@ INDICATORS.update({
     "commandesEnCours": ("V_Commande", "UPPER(BTRIM(COALESCE(\"StatutCmd\",'')))='EN COURS'", "COUNT(*)", "Bons en cours", "commande", "Bons dont le statut est En cours."),
     "commandesEntree": ("V_Commande", '"EstCommandeEntree"=true', "COUNT(*)", "Bons d’entrée", "commande", "Bons de stock de type Entrée."),
     "commandesSortie": ("V_Commande", '"EstCommandeSortie"=true', "COUNT(*)", "Bons de sortie", "commande", "Bons de stock de type Sortie."),
-    "commandesNonFacturees": ("V_Commande", '"CodeFacture" IS NULL OR BTRIM("CodeFacture")=\'\'', "COUNT(*)", "Bons non facturés", "commande", "Bons sans référence de facture."),
-    "montantBons": ("V_Commande", "TRUE", 'SUM("MontantTTC")', "Valeur des bons", "commande", "Somme des montants TTC des bons de stock."),
+    "commandesNonFacturees": ("V_Commande", '"NatureBon"<>\'commande\' AND ("CodeFacture" IS NULL OR BTRIM("CodeFacture")=\'\')', "COUNT(*)", "Bons non facturés", "commande", "Bons d’entrée ou de sortie sans référence de facture, hors commandes préparatoires."),
+    "montantBons": ("V_Commande", '"NatureBon"<>\'commande\'', 'SUM("MontantTTC")', "Valeur des bons", "commande", "Somme des montants TTC des bons de stock effectifs, hors commandes préparatoires."),
     "factures": ("V_Commande", INVOICE, "COUNT(*)", "Factures", "commande", "Bons portant une référence de facture non vide."),
     "facturesSoldees": ("V_Commande", INVOICE + ' AND "MontantResteFacture"<=0', "COUNT(*)", "Factures soldées", "commande", "Factures dont le solde restant est nul ou négatif."),
     "facturesPartielles": ("V_Commande", INVOICE + ' AND "MontantRegleFacture">0 AND "MontantResteFacture">0', "COUNT(*)", "Partiellement réglées", "commande", "Factures avec un règlement positif et un solde restant positif."),
@@ -215,7 +215,7 @@ def register_source(kind, raw, for_export=False):
     else:
         if raw.get("sansDetails") == "true":
             conditions.append('"EstCommandeSansDetails"=true')
-        payments = {"all": "TRUE", "": "TRUE", "reglee": '"CodeFacture" IS NOT NULL AND "MontantResteFacture"<=0', "partielle": '"MontantRegleFacture">0 AND "MontantResteFacture">0', "non-reglee": 'COALESCE("MontantRegleFacture",0)<=0 AND "MontantResteFacture">0', "non-facturee": '"CodeFacture" IS NULL', "retard": '"EstPaiementEnRetard"=true'}
+        payments = {"all": "TRUE", "": "TRUE", "reglee": '"CodeFacture" IS NOT NULL AND "MontantResteFacture"<=0', "partielle": '"MontantRegleFacture">0 AND "MontantResteFacture">0', "non-reglee": 'COALESCE("MontantRegleFacture",0)<=0 AND "MontantResteFacture">0', "non-facturee": '"NatureBon"<>\'commande\' AND "CodeFacture" IS NULL', "retard": '"EstPaiementEnRetard"=true'}
         selected = raw.get("payment") or "all"
         if selected not in payments:
             raise APIError("État de paiement invalide.")
@@ -267,6 +267,8 @@ def consultation(actor, kind, pk, section, raw):
             from .stock_returns import return_context,return_feature_ready
             from .invoices import storage_ready as invoice_storage_ready
             meta={"features":{"returns":return_feature_ready(),"invoices":invoice_storage_ready()},"returnContext":return_context(pk)}
+            from .order_types import type_context
+            meta.update(type_context(header.get('ID_TypeCmdFk'),required=False))
         return clean(data), meta
     if section not in SECTIONS[kind]:
         raise APIError("Rubrique introuvable.", "NOT_FOUND", 404)
