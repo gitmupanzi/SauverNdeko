@@ -19,7 +19,7 @@ import {commandeForm} from "./commandeForm";
 import {createReceiptRequestId} from "./receiptForm";
 import {cataloguePrice,compositionBasket,compositionBasketSnapshot,compositionDirection,compositionHeaderErrors,compositionLine,compositionLineErrors,compositionLotsUnchanged,compositionPayload,compositionTotal,compositionType,MAX_COMPOSITION_LINES} from "./bonComposerForm";
 import {lotAvailability,requiredLotQuantity,allocatedQuantity,wholeQuantity} from "../../utils/lotAllocation";
-import {isStockOrder} from "../../utils/stockDocumentTypes";
+import {isStockOrder,previousStockCode} from "../../utils/stockDocumentTypes";
 import "./BonComposer.css";
 import "../../components/DataTable.css";
 
@@ -230,7 +230,7 @@ export default function BonComposer({commandeId=null,references,onClose,onSaved,
       </section>:null}
       <section role="tabpanel" id={prefix+"-panel-tracabilite"} aria-labelledby={prefix+"-tab-tracabilite"} hidden={active!=="tracabilite"} tabIndex={active==="tracabilite"?0:-1}>
         <section className="record-editor-section"><h3><AppIcon name="user"/>Traçabilité</h3><div className="record-editor-grid">
-          {readonly("CodeCmd","Code du bon",creating?"Attribué à l’enregistrement":sourceBon?.CodeCmd)}{readonly("ID_UserFk","Responsable",creating?[user?.PrenomUser,user?.NomUser].filter(Boolean).join(" "):sourceBon?.NomComplet||references?.users?.find(item=>String(item.id)===String(sourceBon?.ID_UserFk))?.label||(sourceBon?.ID_UserFk==null?null:"Utilisateur #"+sourceBon.ID_UserFk))}
+          {readonly("CodeCmd","Code du bon",creating?"Attribué à l’enregistrement":sourceBon?.CodeCmd)}{!creating&&previousStockCode(sourceBon)?<>{readonly("AncienCodeCmd","Ancien code",previousStockCode(sourceBon))}{sourceBon.RenumeroteLe?readonly("RenumeroteLe","Renuméroté le",formatDate(sourceBon.RenumeroteLe)):null}</>:null}{readonly("ID_UserFk","Responsable",creating?[user?.PrenomUser,user?.NomUser].filter(Boolean).join(" "):sourceBon?.NomComplet||references?.users?.find(item=>String(item.id)===String(sourceBon?.ID_UserFk))?.label||(sourceBon?.ID_UserFk==null?null:"Utilisateur #"+sourceBon.ID_UserFk))}
           {readonly("DateHeureAutoCmd","Créé le",creating?"À l’enregistrement":sourceBon?.DateHeureAutoCmd?formatDate(sourceBon.DateHeureAutoCmd):null)}{!order?readonly("DateHeureAutoFacture","Facturation enregistrée le",creating?"À l’émission de la facture":sourceBon?.DateHeureAutoFacture?formatDate(sourceBon.DateHeureAutoFacture):null):null}
           {!order?readonly("ValideRemiseFacture","Remise historique",sourceBon?.ValideRemiseFacture==null?null:sourceBon.ValideRemiseFacture?"Oui":"Non"):null}
         </div></section>

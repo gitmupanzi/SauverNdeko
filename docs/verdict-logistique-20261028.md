@@ -2,6 +2,8 @@
 
 Les corrections du verdict de test sont installées dans **SauverNdeko** après une sauvegarde vérifiée de la base et des médias. Les essais d’écriture et de concurrence utilisent des bases privées `sauverndeko_test_*`, sans données clients.
 
+Évolution ultérieure demandée le même jour : la migration06 [harmonise les anciens codes des bons](../SQL/documentation/Nomenclature_Bons_Historiques_20261028.md). Les constats ci-dessous décrivent l’installation01–04, qui ne les renumérotait pas encore.
+
 ## Données et contrôles PostgreSQL
 
 - Le stock initial positif crée un bon d’entrée, une ligne et un seul mouvement dans la transaction de création de l’article. Un stock nul ne crée aucun mouvement. Les modifications descriptives ne recréent aucune entrée. La demande conserve son UUID et son empreinte pour reconnaître les nouvelles tentatives.

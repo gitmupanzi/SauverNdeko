@@ -12,3 +12,8 @@ export function stockDocumentKind(type) {
 
 export const isStockOrder = record => stockDocumentKind(record) === "commande";
 export const canCreateStockInvoice = record => stockDocumentKind(record) === "sortie" && record?.returnContext?.isReturn !== true && record?.canInvoice !== false;
+
+export function previousStockCode(record) {
+  const previous=typeof record?.AncienCodeCmd === "string" ? record.AncienCodeCmd.trim() : "";
+  return previous && previous !== String(record?.CodeCmd ?? "").trim() ? previous : "";
+}

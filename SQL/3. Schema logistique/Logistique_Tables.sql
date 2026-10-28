@@ -405,6 +405,28 @@ END $$;
 COMMENT ON FUNCTION logistique.fn_code_bon(p_id integer, p_type integer) IS 'Numéro court automatique des nouveaux documents : BE-ID, BS-ID et CMD-ID selon le type explicite du référentiel. Les numéros déjà émis restent inchangés.';
 
 --
+-- Name: fn_code_bon_a_date(integer, timestamp with time zone); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone) RETURNS character varying
+    LANGUAGE sql STABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT CASE WHEN h."ID_Commande" IS NOT NULL AND (p_emis_le IS NULL OR p_emis_le<=h."RenumeroteLe") THEN h."AncienCodeCmd"
+  ELSE coalesce(c."CodeCmd",h."NouveauCodeCmd") END
+ FROM (SELECT 1) source
+ LEFT JOIN logistique."T_Commande" c ON c."ID_Commande"=p_id
+ LEFT JOIN logistique."T_BonCodeHistorique" h ON h."ID_Commande"=p_id
+ WHERE c."ID_Commande" IS NOT NULL OR h."ID_Commande" IS NOT NULL
+$$;
+
+--
+-- Name: FUNCTION fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone) IS 'Référence du bon à l’émission documentaire : ancien code exact si émission antérieure/égale à la reprise06 ou date historique absente, sinon code courant. Le service appelant doit d’abord autoriser le parent et son entreprise.';
+
+--
 -- Name: fn_code_commande(integer); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -1420,6 +1442,22 @@ END $$;
 --
 
 COMMENT ON FUNCTION logistique.tr_avoir_total() IS 'Vérifie au commit que les lignes couvrent exactement le montant émis.';
+
+--
+-- Name: tr_bon_code_historique_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_bon_code_historique_immuable() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN RAISE EXCEPTION 'Journal de nomenclature conservé ; alimentation réservée aux migrations contrôlées.' USING ERRCODE='23514';END $$;
+
+--
+-- Name: FUNCTION tr_bon_code_historique_immuable(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_bon_code_historique_immuable() IS 'Ferme le journal après la reprise06 : aucune insertion, modification ni suppression applicative ; une évolution ultérieure exige sa propre migration contrôlée.';
 
 --
 -- Name: tr_bon_initial_protection(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -3437,6 +3475,178 @@ ALTER TABLE logistique."T_Avoir" ALTER COLUMN "ID_Avoir" ADD GENERATED ALWAYS AS
 );
 
 --
+-- Name: T_BonCodeHistorique; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_BonCodeHistorique" (
+    "ID_BonCodeHistorique" bigint CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" NOT NULL,
+    "ID_Commande" integer CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" NOT NULL,
+    "IdEntiteFk" integer,
+    "AncienCodeCmd" character varying(20),
+    "NouveauCodeCmd" character varying(20) CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" NOT NULL,
+    "RenumeroteLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" NOT NULL,
+    "Motif" text CONSTRAINT "T_BonCodeHistorique_Motif_not_null" NOT NULL,
+    "VersionMigration" character varying(20) CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" NOT NULL,
+    "UtilisateurBase" text DEFAULT CURRENT_USER CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" NOT NULL,
+    CONSTRAINT bon_code_historique_identite CHECK (("ID_Commande" > 0)),
+    CONSTRAINT bon_code_historique_motif CHECK (((length(btrim("Motif")) >= 10) AND (length(btrim("Motif")) <= 1000))),
+    CONSTRAINT bon_code_historique_nouveau CHECK (((("NouveauCodeCmd")::text ~ '^(BE|BS|CMD)-[1-9][0-9]*$'::text) AND (regexp_replace(("NouveauCodeCmd")::text, '^[A-Z]+-'::text, ''::text) = ("ID_Commande")::text))),
+    CONSTRAINT bon_code_historique_utilisateur CHECK ((length(btrim("UtilisateurBase")) > 0)),
+    CONSTRAINT bon_code_historique_version CHECK ((("VersionMigration")::text = '20261028_06'::text))
+);
+
+--
+-- Name: TABLE "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_BonCodeHistorique" IS 'Correspondances factuelles de la reprise autorisée06 : anciens codes vers BE-/BS-/CMD-, date, entreprise, motif et utilisateur SQL. Journal fermé et immuable ; conserve la référence même après suppression d’un bon non protégé. Aucun CRUD applicatif.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."ID_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."ID_BonCodeHistorique" IS 'Identité technique de la correspondance ; ne réalloue jamais l’identité du bon.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."ID_Commande" IS 'Identité stable du bon renommé, sans FK de suppression pour conserver la preuve historique.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."IdEntiteFk" IS 'Entreprise propriétaire constatée lors du renommage ; la conservation historique ne dépend pas d’une suppression ultérieure de l’entreprise.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."AncienCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."AncienCodeCmd" IS 'Code exact avant06 ; NULL reste l’absence historique réelle de code.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."NouveauCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."NouveauCodeCmd" IS 'Code canonique BE-ID, BS-ID ou CMD-ID attribué au même identifiant de bon.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."RenumeroteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."RenumeroteLe" IS 'Instant PostgreSQL réel du changement de nomenclature ; distingue les références des documents émis avant et après la reprise.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."Motif" IS 'Motif de la reprise documentaire autorisée ; aucun ajustement de stock ou de montant.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."VersionMigration"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."VersionMigration" IS 'Migration ayant produit cette correspondance ; valeur contrôlée 20261028_06.';
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."UtilisateurBase"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."UtilisateurBase" IS 'Utilisateur PostgreSQL ayant exécuté la reprise ; ne prétend pas identifier une personne applicative absente du contexte de migration.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_Motif_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_Motif_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT bon_code_historique_identite ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_identite ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT bon_code_historique_motif ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_motif ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT bon_code_historique_nouveau ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_nouveau ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT bon_code_historique_utilisateur ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_utilisateur ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: CONSTRAINT bon_code_historique_version ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_version ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: T_BonCodeHistorique_ID_BonCodeHistorique_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_BonCodeHistorique" ALTER COLUMN "ID_BonCodeHistorique" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_BonCodeHistorique_ID_BonCodeHistorique_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_BonCodeHistorique_ID_BonCodeHistorique_seq"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON SEQUENCE logistique."T_BonCodeHistorique_ID_BonCodeHistorique_seq" IS 'Séquence technique du journal de correspondance ; indépendante des identités et numéros des bons.';
+
+--
 -- Name: T_CategorieDossierSuivi; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -3839,7 +4049,7 @@ COMMENT ON COLUMN logistique."T_Commande"."DateCmd" IS 'Date métier de la comma
 -- Name: COLUMN "T_Commande"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Référence serveur courte immuable : cmd-ID_Commande ; anciens codes conservés dans l’audit de migration20261025_08.';
+COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Code serveur immuable BE-ID pour une entrée effective, BS-ID pour une sortie, CMD-ID pour une commande préparatoire. Les anciens codes renommés par06 restent dans T_BonCodeHistorique.';
 
 --
 -- Name: COLUMN "T_Commande"."RefCmd"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6189,6 +6399,45 @@ ALTER TABLE ONLY logistique."T_Avoir"
     ADD CONSTRAINT "T_Avoir_pkey" PRIMARY KEY ("ID_Avoir");
 
 --
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_ID_Commande_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" UNIQUE ("ID_Commande");
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_NouveauCodeCmd_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" UNIQUE ("NouveauCodeCmd");
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_pkey" PRIMARY KEY ("ID_BonCodeHistorique");
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_pkey" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_pkey" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+--
 -- Name: T_CategorieDossierSuivi T_CategorieDossierSuivi_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -6553,6 +6802,24 @@ COMMENT ON CONSTRAINT uq_retour_bon_entree ON logistique."T_RetourBon" IS 'Un bo
 --
 
 COMMENT ON INDEX logistique."T_Article_pkey" IS 'Index support de la clé primaire sur "logistique"."T_Article". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Article_pkey" ON logistique."T_Article" USING btree ("ID_Article").';
+
+--
+-- Name: INDEX "T_BonCodeHistorique_ID_Commande_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_ID_Commande_key" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
+
+--
+-- Name: INDEX "T_BonCodeHistorique_NouveauCodeCmd_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_NouveauCodeCmd_key" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
+
+--
+-- Name: INDEX "T_BonCodeHistorique_pkey"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_pkey" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
 
 --
 -- Name: INDEX "T_CommandeDetail_pkey"; Type: COMMENT; Schema: logistique; Owner: -
@@ -7629,6 +7896,18 @@ CREATE CONSTRAINT TRIGGER avoir_total AFTER INSERT ON logistique."T_Avoir" DEFER
 --
 
 COMMENT ON TRIGGER avoir_total ON logistique."T_Avoir" IS 'Contrôle différé de la somme émise.';
+
+--
+-- Name: T_BonCodeHistorique bon_code_historique_immuable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER bon_code_historique_immuable BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_BonCodeHistorique" FOR EACH ROW EXECUTE FUNCTION logistique.tr_bon_code_historique_immuable();
+
+--
+-- Name: TRIGGER bon_code_historique_immuable ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER bon_code_historique_immuable ON logistique."T_BonCodeHistorique" IS 'Conserve toutes les correspondances, sans dérogation applicative ni GUC permanent.';
 
 --
 -- Name: T_CategorieDossierSuivi categorie_dossier_suivi_integrite; Type: TRIGGER; Schema: logistique; Owner: -

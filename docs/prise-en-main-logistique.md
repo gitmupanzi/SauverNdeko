@@ -32,6 +32,8 @@ Les bons d’écart d’inventaire sont internes : ils se corrigent dans Inventa
 
 Les menus ⋯ proposent les documents disponibles pour l’enregistrement sélectionné. Les justificatifs restent privés. Un export Excel suit les filtres et porte sur tous les résultats autorisés, même si l’écran ne montre qu’une page. Les prix restent numériques avec leur devise ; les dates de mouvement conservent l’heure.
 
+Les anciens bons ont été harmonisés en BE, BS ou CMD. Leur fiche conserve l’**Ancien code**, également recherchable dans les bons et leurs lignes. Les factures, reçus et avoirs déjà émis gardent leur référence d’origine lors d’une réimpression ; leur numéro et leurs montants restent conservés.
+
 Un clic sur un indicateur du tableau de bord affiche sa liste en dessous. Le lien de retour ramène à l’indicateur. Les fenêtres Produit 360, Bon de stock 360, Lot 360 et Tiers 360 conservent le contexte de consultation.
 
 ## En cas de message d’erreur

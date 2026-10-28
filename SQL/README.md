@@ -1,6 +1,6 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_05`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_06`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
@@ -200,7 +200,7 @@ Voir [stock initial et numérotation](documentation/Stock_Initial_Documents_2026
 
 ## Bons de commande sans mouvement — 28 octobre 2026
 
-La migration [20261028_05_bons_commande.sql](migrations/20261028_05_bons_commande.sql), installée après les migrations précédentes, ajoute **Bon de commande**, code `CMD`, à la catégorie partagée **Type de commande**. Les nouveaux documents reçoivent `BE-ID` pour une entrée effective, `BS-ID` pour une sortie effective et `CMD-ID` pour une commande préparatoire. Aucun code antérieur n’est renuméroté.
+La migration [20261028_05_bons_commande.sql](migrations/20261028_05_bons_commande.sql), installée après les migrations précédentes, ajoute **Bon de commande**, code `CMD`, à la catégorie partagée **Type de commande**. Les nouveaux documents reçoivent `BE-ID` pour une entrée effective, `BS-ID` pour une sortie effective et `CMD-ID` pour une commande préparatoire. Cette migration05 avait conservé les codes antérieurs ; leur harmonisation ultérieure relève de06 ci-dessous.
 
 `fn_nature_bon` et `fn_effet_type_bon` classent le type depuis le référentiel : un CMD explicite a un effet zéro ; un type inconnu retourne NULL et reste refusé. Les lignes CMD conservent quantités et prix convenus, sans mouvement, réservation, lot ou valorisation CUMP. La facturation, la restitution et la livraison physique sont interdites pour CMD, y compris par écriture SQL directe. Le type CMD ne peut pas être converti en BE/BS ; les opérations réelles ont leurs propres documents. Les trois vues de bons/lignes exposent `NatureBon` et le suivi indique « Sans facturation » sans créer de dette.
 
@@ -209,3 +209,17 @@ L’application réelle a conservé les 65 autres tables et les références his
 Les six sources Référentiel/Logistique et globales ont été régénérées. Deux restaurations privées ont comparé les définitions et commentaires au catalogue installé : **66 tables, 80 vues, 125 triggers** pour le global ; **56 tables, 80 vues, 125 triggers** pour le métier, avec zéro ligne de données. `NatureBon`, les trois fonctions de classification et les gardes supplémentaires sont commentés.
 
 Recettes privées : 51 contrôles SQL CMD, 10 tests API, puis 112 contrôles de chaîne logistique, 31 d’annulation d’inventaire et 45 de CUMP. La recette stock initial passe aussi sur le socle05 avec 35 contrôles ; elle conserve conditionnellement l’attente historique01 lorsque seule cette migration est installée. La fixture de précision de l’inventaire utilise désormais un BE de 0,125 plutôt qu’une modification directe du stock courant. Voir [le contrat des bons](../docs/bons-entree-sortie-commande.md), `tests/test_bons_commande_postgresql.py` et `tests/test_bons_commande_api.py`.
+
+## Harmonisation des codes historiques — 28 octobre 2026
+
+Sur demande explicite du propriétaire, la migration [20261028_06_nomenclature_bons_historiques.sql](migrations/20261028_06_nomenclature_bons_historiques.sql) a aussi harmonisé les anciens bons : **17 codes modifiés**, quatre déjà conformes conservés. Chaque code est calculé depuis le même identifiant et le type réel du bon. Les bons n’ont pas changé d’identité, de type, de quantité, de montant ou d’entreprise.
+
+`T_BonCodeHistorique` conserve le code antérieur exact, le nouveau code, l’entreprise, la date réelle, le motif, la migration et l’utilisateur PostgreSQL. Ce journal fermé refuse les écritures applicatives et ne possède aucune FK de suppression vers le bon, afin de conserver la correspondance après une suppression autorisée. Aucune colonne n’est ajoutée à `T_Commande` : les révisions et contenus idempotents existants conservent leur structure. Les vues `V_Commande`, `V_CommandeDetail` et `V_CommandeOverview` exposent `AncienCodeCmd` et `RenumeroteLe` par jointure sur l’identifiant.
+
+Les sept fonctions de garde concernées ont été adaptées uniquement dans la transaction de reprise, pour autoriser exactement la modification de `CodeCmd` prévue par le mapping temporaire. Elles ont ensuite été intégralement restaurées ; aucun trigger n’a été désactivé et aucun contournement permanent n’est laissé. Les **64 autres tables antérieures** sont inchangées. Les deux catalogues Bons de stock/Lignes gagnent seulement deux possibilités facultatives, sans déplacer les définitions existantes ni modifier les préférences personnelles. Ces champs sont masqués dans le tableau et exclus de l’export par défaut.
+
+Les factures, leurs numéros et lignes, les règlements, les identités documentaires, les justificatifs, les retours, les mouvements, la valorisation et les audits antérieurs sont conservés. `fn_code_bon_a_date` restitue l’ancienne référence pour un document émis avant ou au moment de la reprise, ainsi que pour une date historique absente ; un document émis ensuite utilise le code actuel. Le service vérifie d’abord l’autorisation sur le parent et son entreprise.
+
+La recette privée de reprise vérifie **52 contrôles spécifiques**, avec préparation par 112 contrôles de chaîne complète et 31 d’inventaires. Elle couvre notamment bons facturés/clôturés, restitutions, stocks initiaux et inventaires protégés ; aucune écriture fictive ne vise SauverNdeko. Voir `tests/test_nomenclature_bons.py` et la recette API/PDF associée.
+
+Les six sources canoniques ont été régénérées après cette application. Leurs deux restaurations privées conservent les définitions et commentaires du catalogue installé : **67 tables, 80 vues, 126 triggers** pour la structure globale ; **57 tables, 80 vues, 126 triggers** pour le métier. Les restaurations restent sans données. Une nouvelle installation produit un nouveau paquet avec le dictionnaire fermé actuel ; les journaux historiques, comptes, entreprises et documents ne sont jamais repris depuis l’instance source.

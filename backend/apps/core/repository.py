@@ -167,6 +167,12 @@ def predicate(obj, actor, params=None, keys=None):
         if params.get(alias) not in (None, ""):
             if alias == "deviseId" and params[alias] == "all":
                 continue
+            if alias == 'code' and {'CodeCmd','AncienCodeCmd'}.issubset(columns):
+                # Le même parent autorisé répond à sa référence courante et à
+                # son alias historique ; aucun accès à une autre entreprise.
+                clauses.append('(v."CodeCmd"=%s OR v."AncienCodeCmd"=%s)')
+                values.extend([params[alias],params[alias]])
+                continue
             found = next((c for c in choices if c in columns), None)
             if found:
                 filters[found] = (None if params[alias] == "sans-devise" else positive(params[alias], "Devise")) if alias == "deviseId" else params[alias]

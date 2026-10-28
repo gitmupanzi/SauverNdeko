@@ -8,7 +8,7 @@ Le type est une valeur du référentiel partagé, dans la catégorie **Type de c
 | Bon de sortie | `BS-<identifiant>` | Sortie effective, mouvement négatif |
 | Bon de commande | `CMD-<identifiant>` | Aucun mouvement ; quantités et prix commandés |
 
-Les codes existants restent conservés. Le numéro est attribué par PostgreSQL et demeure non modifiable.
+Le numéro est attribué par PostgreSQL et demeure non modifiable dans l’application. À la demande explicite du propriétaire, la migration06 harmonise aussi les anciens bons selon ces préfixes ; chaque ancienne référence reste conservée dans un journal immuable. Voir [la reprise de nomenclature](../SQL/documentation/Nomenclature_Bons_Historiques_20261028.md).
 
 ## Bon de commande
 

@@ -95,13 +95,28 @@ def money(value,currency):
     return numeric(value,2)+(' '+str(currency) if currency else ' · devise à préciser')
 
 
+def issued_parent_code(kind,record,parent):
+    """Référence au moment d'émission, après contrôle du parent et de son périmètre.
+
+    Une date de création absente reste inconnue : la fonction SQL conserve alors
+    l'ancienne référence, sans supposer que la date métier prouve l'émission.
+    """
+    issued_at = record.get('CreeLe')
+    if kind == 'facture':
+        snapshot = db.one('SELECT "CreeLe" FROM logistique."T_Facture" WHERE "ID_CommandeFk"=%s', [parent['ID_Commande']])
+        issued_at = (snapshot or {}).get('CreeLe')
+    return db.one('SELECT logistique.fn_code_bon_a_date(%s,%s::timestamptz) AS code',
+                  [parent['ID_Commande'],issued_at])['code']
+
+
 def document_data(actor,kind,object_id,document_type):
     record,parent,entity=document_parent(actor,kind,object_id)
     if document_type not in PDF_TYPES[kind]:raise APIError('Format de document introuvable.','NOT_FOUND',404)
     frozen=identity(kind,object_id,entity)
     currency=record.get('DeviseCode') or db.one('SELECT "DeviseCode" FROM logistique."V_Commande" WHERE "ID_Commande"=%s',[parent['ID_Commande']])['DeviseCode']
     result={'emitter':frozen['IdentiteEmetteur'],'thirdParty':frozen.get('IdentiteTiers'),
-      'historical':frozen['RepriseHistorique'],'currency':currency,'parentCode':parent.get('CodeCmd'),
+      'historical':frozen['RepriseHistorique'],'currency':currency,
+      'parentCode':parent.get('CodeCmd') if kind=='bon' else issued_parent_code(kind,record,parent),
       'recipient':parent.get('NomClientSaisi'),'reference':parent.get('RefCmd') or parent.get('ReferenceCmd'),
       'destination':parent.get('DestinationLibelle') or parent.get('geolocalisationCmd') or parent.get('LieuLivraison'),'lines':[],'totals':[],'notes':[]}
     if kind=='bon':
@@ -123,6 +138,9 @@ def document_data(actor,kind,object_id,document_type):
           LEFT JOIN referentiel."T_Generique" u ON u."ID_Generique"=a."ID_UniteFk" WHERE d."ID_CmdFk"=%s ORDER BY d."ID_ArticleFk"''',[object_id])
         result['lines']=[{'name':r['NomArticle'],'reference':r['RefArticle'],'quantity':r['QteCmdDetail'],'unit':r['Unite'],'price':r['PUCmdDetail'],'amount':Decimal(str(r['QteCmdDetail']))*Decimal(str(r['PUCmdDetail'])) if r['PUCmdDetail'] is not None else None} for r in rows]
         result['totals']=[('Montant du bon',source.get('MontantTTC'))]
+        previous=source.get('AncienCodeCmd')
+        if previous and previous!=parent.get('CodeCmd'):
+            result['notes'].append('Ancienne référence du bon : '+str(previous))
         if parent.get('ObsCmd'):result['notes'].append(parent['ObsCmd'])
         if document_type=='livraison':result['notes'].append('Réceptionnaire et visa à compléter lors de la remise des articles.')
         if document_type=='commande':result['notes'].append('Document préparatoire. Aucune réception, sortie de stock ou facture n’est constatée par cette commande.')

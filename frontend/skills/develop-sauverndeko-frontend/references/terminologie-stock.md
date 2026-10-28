@@ -26,3 +26,10 @@ Reconnaître le type depuis `kind`/`NatureBon` de l’API ou le code exact `CMD`
 Bon de commande/CMD accepte tous les articles actifs, même sans stock disponible, et les quantités selon la précision de leur unité. Son prix convenu est saisi explicitement ; ne préremplir ni prix d’achat ni prix de vente et ne convertir aucune devise. Il ne crée ni mouvement, ni réservation, ni affectation de lots. Les payloads de composition et de ligne transmettent `Lots: []`. Le type CMD reste immuable en modification ; les opérations physiques utilisent des bons BE/BS distincts.
 
 Le 360 CMD conserve Synthèse, Lignes, Contrôle, justificatifs, Excel et Bon de commande · PDF (`/api/logistique/documents/bon/<id>/commande.pdf`). Retirer les rubriques et actions de lots, mouvements, restitution et facturation qui ne le concernent pas ; afficher sobrement Sans mouvement de stock. Une création de facture est réservée à une sortie éligible, avec vérification serveur, et les anciennes factures restent consultables.
+
+
+## Renumérotation explicitement demandée
+
+Les codes de bons sont normalement attribués et conservés par la base de données. Une renumérotation historique expressément demandée par le propriétaire constitue une opération de maintenance journalisée, jamais un champ modifiable du formulaire. Le code courant suit BE/BS/CMD selon le type ; les factures conservent leur propre numéro. Les vues exposent `AncienCodeCmd` et `RenumeroteLe`, en lecture seule, pour garder la correspondance.
+
+Présenter un ancien code différent du code courant dans Informations du bon du 360 et dans Traçabilité du compositeur ; omettre les champs quand aucun ancien code n’existe. Dans Bons de stock, Ancien code est une colonne facultative, sans modification des colonnes par défaut. Sa consultation utilise le même ID_Commande courant. La recherche des anciens codes est effectuée par le serveur et reste limitée à l’entreprise autorisée. Ne jamais reconstruire une route à partir de l’ancien code, ni réécrire RefCmd, les références libres de retour ou les snapshots financiers pour suivre une nouvelle numérotation.

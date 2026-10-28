@@ -1,6 +1,6 @@
 import AppIcon from "./AppIcon";
 import { formatCurrency, formatDate, formatNumber } from "../pages/logistique/logistiqueShared";
-import {isStockOrder} from "../utils/stockDocumentTypes";
+import {isStockOrder,previousStockCode} from "../utils/stockDocumentTypes";
 import "./OrderOverview.css";
 
 const text=value=>value==null || value==="" ? "—" : String(value);
@@ -83,7 +83,7 @@ export default function OrderOverview({record,onSection}){
   const invoiced=hasOrderInvoice(record),order=isStockOrder(record);
   const party=order?"Tiers":record.EstCommandeEntree===true?"Fournisseur":record.EstCommandeSortie===true?"Client":"Tiers";
   return <div className="commande360-overview"><OrderInvoiceMetrics record={record} onSection={onSection}/>
-    <Group title="Informations du bon" icon="receipt"><dl><Field label="Référence" value={record.RefCmd}/><Field label="Date et heure du bon" value={record.DateCmd} date/><Field label={party} value={record.NomClientSaisi}/><Field label="Responsable" value={record.NomComplet}/><Field label="Créé le" value={record.DateHeureAutoCmd} date/><Field label="Devise" value={record.DeviseCode}/></dl></Group>
+    <Group title="Informations du bon" icon="receipt"><dl><Field label="Référence" value={record.RefCmd}/>{previousStockCode(record)?<><Field label="Ancien code" value={previousStockCode(record)}/>{record.RenumeroteLe?<Field label="Renuméroté le" value={record.RenumeroteLe} date/>:null}</>:null}<Field label="Date et heure du bon" value={record.DateCmd} date/><Field label={party} value={record.NomClientSaisi}/><Field label="Responsable" value={record.NomComplet}/><Field label="Créé le" value={record.DateHeureAutoCmd} date/><Field label="Devise" value={record.DeviseCode}/></dl></Group>
     {order?<Group title="Bon de commande" icon="receipt"><p className="commande360-muted">Sans mouvement de stock.</p></Group>:<Group title="Facturation" icon="document">{invoiced?<dl><Field label="Facture" value={record.CodeFacture}/><Field label="Montant facturé" value={record.MontantFacture??record.MontantTTC} money code={record.DeviseCode}/><Field label="Valeur du bon d’origine" value={record.MontantTTC} money code={record.DeviseCode}/><Field label="Date de facture" value={record.DateFacture} date/><Field label="Échéance" value={record.DateEcheancePaiement} date/><Field label="Dernier règlement" value={record.DernierReglement} date/><Field label="Condition de paiement" value={record.ConditionPaiement}/><Field label="Mode de paiement" value={record.ModePaiement}/></dl>:<p className="commande360-muted">Aucune facture associée à ce bon.</p>}{onSection?<button type="button" className="erp-object-link commande360-group-link" onClick={()=>onSection("facturation")}>Consulter la facturation<AppIcon name="chevron-right" size={13}/></button>:null}</Group>}
     {record.ObsCmd?<Group title="Observation" icon="document" className="commande360-note"><p>{record.ObsCmd}</p></Group>:null}
   </div>;

@@ -5,7 +5,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 6GgRIB8Gwp5aq0GqS5hcJ9I1W0KHPv6TlCLSZ5V1yMA4niX9y3sLPSmi7QbIuL6
+\restrict aJOifWP23K54d7UGvhlYixx7XWPbHgqzRHiEwXivzvyX8qWEII5Vf0J2C2hdalG
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -617,6 +617,30 @@ END $$;
 --
 
 COMMENT ON FUNCTION logistique.fn_code_bon(p_id integer, p_type integer) IS 'Numéro court automatique des nouveaux documents : BE-ID, BS-ID et CMD-ID selon le type explicite du référentiel. Les numéros déjà émis restent inchangés.';
+
+
+--
+-- Name: fn_code_bon_a_date(integer, timestamp with time zone); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone) RETURNS character varying
+    LANGUAGE sql STABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT CASE WHEN h."ID_Commande" IS NOT NULL AND (p_emis_le IS NULL OR p_emis_le<=h."RenumeroteLe") THEN h."AncienCodeCmd"
+  ELSE coalesce(c."CodeCmd",h."NouveauCodeCmd") END
+ FROM (SELECT 1) source
+ LEFT JOIN logistique."T_Commande" c ON c."ID_Commande"=p_id
+ LEFT JOIN logistique."T_BonCodeHistorique" h ON h."ID_Commande"=p_id
+ WHERE c."ID_Commande" IS NOT NULL OR h."ID_Commande" IS NOT NULL
+$$;
+
+
+--
+-- Name: FUNCTION fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_code_bon_a_date(p_id integer, p_emis_le timestamp with time zone) IS 'Référence du bon à l’émission documentaire : ancien code exact si émission antérieure/égale à la reprise06 ou date historique absente, sinon code courant. Le service appelant doit d’abord autoriser le parent et son entreprise.';
 
 
 --
@@ -1700,6 +1724,24 @@ END $$;
 --
 
 COMMENT ON FUNCTION logistique.tr_avoir_total() IS 'Vérifie au commit que les lignes couvrent exactement le montant émis.';
+
+
+--
+-- Name: tr_bon_code_historique_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_bon_code_historique_immuable() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN RAISE EXCEPTION 'Journal de nomenclature conservé ; alimentation réservée aux migrations contrôlées.' USING ERRCODE='23514';END $$;
+
+
+--
+-- Name: FUNCTION tr_bon_code_historique_immuable(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_bon_code_historique_immuable() IS 'Ferme le journal après la reprise06 : aucune insertion, modification ni suppression applicative ; une évolution ultérieure exige sa propre migration contrôlée.';
 
 
 --
@@ -10042,6 +10084,203 @@ ALTER TABLE logistique."T_Avoir" ALTER COLUMN "ID_Avoir" ADD GENERATED ALWAYS AS
 
 
 --
+-- Name: T_BonCodeHistorique; Type: TABLE; Schema: logistique; Owner: -
+--
+
+CREATE TABLE logistique."T_BonCodeHistorique" (
+    "ID_BonCodeHistorique" bigint CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" NOT NULL,
+    "ID_Commande" integer CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" NOT NULL,
+    "IdEntiteFk" integer,
+    "AncienCodeCmd" character varying(20),
+    "NouveauCodeCmd" character varying(20) CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" NOT NULL,
+    "RenumeroteLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" NOT NULL,
+    "Motif" text CONSTRAINT "T_BonCodeHistorique_Motif_not_null" NOT NULL,
+    "VersionMigration" character varying(20) CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" NOT NULL,
+    "UtilisateurBase" text DEFAULT CURRENT_USER CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" NOT NULL,
+    CONSTRAINT bon_code_historique_identite CHECK (("ID_Commande" > 0)),
+    CONSTRAINT bon_code_historique_motif CHECK (((length(btrim("Motif")) >= 10) AND (length(btrim("Motif")) <= 1000))),
+    CONSTRAINT bon_code_historique_nouveau CHECK (((("NouveauCodeCmd")::text ~ '^(BE|BS|CMD)-[1-9][0-9]*$'::text) AND (regexp_replace(("NouveauCodeCmd")::text, '^[A-Z]+-'::text, ''::text) = ("ID_Commande")::text))),
+    CONSTRAINT bon_code_historique_utilisateur CHECK ((length(btrim("UtilisateurBase")) > 0)),
+    CONSTRAINT bon_code_historique_version CHECK ((("VersionMigration")::text = '20261028_06'::text))
+);
+
+
+--
+-- Name: TABLE "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TABLE logistique."T_BonCodeHistorique" IS 'Correspondances factuelles de la reprise autorisée06 : anciens codes vers BE-/BS-/CMD-, date, entreprise, motif et utilisateur SQL. Journal fermé et immuable ; conserve la référence même après suppression d’un bon non protégé. Aucun CRUD applicatif.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."ID_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."ID_BonCodeHistorique" IS 'Identité technique de la correspondance ; ne réalloue jamais l’identité du bon.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."ID_Commande" IS 'Identité stable du bon renommé, sans FK de suppression pour conserver la preuve historique.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."IdEntiteFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."IdEntiteFk" IS 'Entreprise propriétaire constatée lors du renommage ; la conservation historique ne dépend pas d’une suppression ultérieure de l’entreprise.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."AncienCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."AncienCodeCmd" IS 'Code exact avant06 ; NULL reste l’absence historique réelle de code.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."NouveauCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."NouveauCodeCmd" IS 'Code canonique BE-ID, BS-ID ou CMD-ID attribué au même identifiant de bon.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."RenumeroteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."RenumeroteLe" IS 'Instant PostgreSQL réel du changement de nomenclature ; distingue les références des documents émis avant et après la reprise.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."Motif"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."Motif" IS 'Motif de la reprise documentaire autorisée ; aucun ajustement de stock ou de montant.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."VersionMigration"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."VersionMigration" IS 'Migration ayant produit cette correspondance ; valeur contrôlée 20261028_06.';
+
+
+--
+-- Name: COLUMN "T_BonCodeHistorique"."UtilisateurBase"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_BonCodeHistorique"."UtilisateurBase" IS 'Utilisateur PostgreSQL ayant exécuté la reprise ; ne prétend pas identifier une personne applicative absente du contexte de migration.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_BonCodeHistorique_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_Commande_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_RenumeroteLe_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_Motif_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_Motif_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_VersionMigration_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_UtilisateurBase_not_null" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT bon_code_historique_identite ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_identite ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT bon_code_historique_motif ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_motif ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT bon_code_historique_nouveau ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_nouveau ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT bon_code_historique_utilisateur ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_utilisateur ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: CONSTRAINT bon_code_historique_version ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT bon_code_historique_version ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: T_BonCodeHistorique_ID_BonCodeHistorique_seq; Type: SEQUENCE; Schema: logistique; Owner: -
+--
+
+ALTER TABLE logistique."T_BonCodeHistorique" ALTER COLUMN "ID_BonCodeHistorique" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME logistique."T_BonCodeHistorique_ID_BonCodeHistorique_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: SEQUENCE "T_BonCodeHistorique_ID_BonCodeHistorique_seq"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON SEQUENCE logistique."T_BonCodeHistorique_ID_BonCodeHistorique_seq" IS 'Séquence technique du journal de correspondance ; indépendante des identités et numéros des bons.';
+
+
+--
 -- Name: T_CategorieDossierSuivi; Type: TABLE; Schema: logistique; Owner: -
 --
 
@@ -10497,7 +10736,7 @@ COMMENT ON COLUMN logistique."T_Commande"."DateCmd" IS 'Date métier de la comma
 -- Name: COLUMN "T_Commande"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Référence serveur courte immuable : cmd-ID_Commande ; anciens codes conservés dans l’audit de migration20261025_08.';
+COMMENT ON COLUMN logistique."T_Commande"."CodeCmd" IS 'Code serveur immuable BE-ID pour une entrée effective, BS-ID pour une sortie, CMD-ID pour une commande préparatoire. Les anciens codes renommés par06 restent dans T_BonCodeHistorique.';
 
 
 --
@@ -15962,110 +16201,87 @@ COMMENT ON COLUMN logistique."V_Facture"."MontantNetARegler" IS 'Montant émis d
 --
 
 CREATE VIEW logistique."V_Commande" AS
- SELECT "ID_Commande",
-    "ID_TypeCmdFk",
-    "ID_StatutCmdFk",
-    "ID_ClientFk",
-    "ID_UserFk",
-    "geolocalisationCmd",
-    "DateHeureAutoCmd",
-    "DateCmd",
-    "CodeCmd",
-    "RefCmd",
-    "MontantHT",
-    "MontantTTC",
-    "UrlBL",
-    "ObsCmd",
-    "SelectCmd",
-    "DateHeureAutoFacture",
-    "DateFacture",
-    "CodeFacture",
-    "MontantRegleFacture",
-    "MontantResteFacture",
-    "StatusFacture",
-    "ValideRemiseFacture",
-    "UrlFacture",
-    "ID_ConditionPaiementFk",
-    "DateEcheancePaiement",
-    "ID_ModePaiementFk",
-    "NomClientSaisi",
-    "AbrTypeCmd",
-    "TypeCmd",
-    "SigneCommande",
-    "EstCommandeEntree",
-    "EstCommandeSortie",
-    "AbrStatutCmd",
-    "StatutCmd",
-    "NomUser",
-    "PrenomUser",
-    "NomComplet",
-    "AbrConditionPaiement",
-    "ConditionPaiement",
-    "AbrModePaiement",
-    "ModePaiement",
-    "MontantHTCalc",
-    "MontantTTCCalc",
-    (
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
-            ELSE "MontantRegleFactureCalc"
-        END)::numeric(12,2) AS "MontantRegleFactureCalc",
-    (
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
-            ELSE "MontantResteFactureCalc"
-        END)::numeric(12,2) AS "MontantResteFactureCalc",
-    (
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
-            ELSE "TotalRegleReel"
-        END)::numeric(12,2) AS "TotalRegleReel",
-    (
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
-            ELSE "ResteReel"
-        END)::numeric(12,2) AS "ResteReel",
-    "NbReglements",
-    "DernierReglement",
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN 'Sans facturation'::text
-            ELSE "EtatPaiement"
-        END AS "EtatPaiement",
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN false
-            ELSE "EstPaiementEnRetard"
-        END AS "EstPaiementEnRetard",
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::integer
-            ELSE "JoursAvantEcheance"
-        END AS "JoursAvantEcheance",
-    "NbLignes",
-    "NbArticlesDistincts",
-    "QteTotale",
-    "MontantDetails",
-    "ListeArticles",
-    "EstCommandeSansDetails",
-    "EcartMontantDetails",
-    "EstMontantIncoherent",
-    "EtatControleCommande",
-    "ID_DeviseFk",
-    "DeviseCode",
-    "DeviseLibelle",
-    "ID_Facture",
-    "EstFactureSnapshot",
-    "MontantFacture",
-    "MontantAvoirAEtablir",
-    "AvoirAEtablir",
-    "IdEntiteFk",
-    "ID_TiersFk",
-    "TiersNom",
-    "ID_DestinationFk",
-    "DestinationLibelle",
-    "AvoirImpute",
-    "OrigineBon",
-    "ID_ArticleInitialFk",
-    logistique.fn_nature_bon("ID_TypeCmdFk") AS "NatureBon"
-   FROM ( SELECT source_1."ID_Commande",
+ SELECT source."ID_Commande",
+    source."ID_TypeCmdFk",
+    source."ID_StatutCmdFk",
+    source."ID_ClientFk",
+    source."ID_UserFk",
+    source."geolocalisationCmd",
+    source."DateHeureAutoCmd",
+    source."DateCmd",
+    source."CodeCmd",
+    source."RefCmd",
+    source."MontantHT",
+    source."MontantTTC",
+    source."UrlBL",
+    source."ObsCmd",
+    source."SelectCmd",
+    source."DateHeureAutoFacture",
+    source."DateFacture",
+    source."CodeFacture",
+    source."MontantRegleFacture",
+    source."MontantResteFacture",
+    source."StatusFacture",
+    source."ValideRemiseFacture",
+    source."UrlFacture",
+    source."ID_ConditionPaiementFk",
+    source."DateEcheancePaiement",
+    source."ID_ModePaiementFk",
+    source."NomClientSaisi",
+    source."AbrTypeCmd",
+    source."TypeCmd",
+    source."SigneCommande",
+    source."EstCommandeEntree",
+    source."EstCommandeSortie",
+    source."AbrStatutCmd",
+    source."StatutCmd",
+    source."NomUser",
+    source."PrenomUser",
+    source."NomComplet",
+    source."AbrConditionPaiement",
+    source."ConditionPaiement",
+    source."AbrModePaiement",
+    source."ModePaiement",
+    source."MontantHTCalc",
+    source."MontantTTCCalc",
+    source."MontantRegleFactureCalc",
+    source."MontantResteFactureCalc",
+    source."TotalRegleReel",
+    source."ResteReel",
+    source."NbReglements",
+    source."DernierReglement",
+    source."EtatPaiement",
+    source."EstPaiementEnRetard",
+    source."JoursAvantEcheance",
+    source."NbLignes",
+    source."NbArticlesDistincts",
+    source."QteTotale",
+    source."MontantDetails",
+    source."ListeArticles",
+    source."EstCommandeSansDetails",
+    source."EcartMontantDetails",
+    source."EstMontantIncoherent",
+    source."EtatControleCommande",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    source."ID_Facture",
+    source."EstFactureSnapshot",
+    source."MontantFacture",
+    source."MontantAvoirAEtablir",
+    source."AvoirAEtablir",
+    source."IdEntiteFk",
+    source."ID_TiersFk",
+    source."TiersNom",
+    source."ID_DestinationFk",
+    source."DestinationLibelle",
+    source."AvoirImpute",
+    source."OrigineBon",
+    source."ID_ArticleInitialFk",
+    source."NatureBon",
+    h."AncienCodeCmd",
+    h."RenumeroteLe"
+   FROM (( SELECT source_1."ID_Commande",
             source_1."ID_TypeCmdFk",
             source_1."ID_StatutCmdFk",
             source_1."ID_ClientFk",
@@ -16108,15 +16324,40 @@ CREATE VIEW logistique."V_Commande" AS
             source_1."ModePaiement",
             source_1."MontantHTCalc",
             source_1."MontantTTCCalc",
-            source_1."MontantRegleFactureCalc",
-            source_1."MontantResteFactureCalc",
-            source_1."TotalRegleReel",
-            source_1."ResteReel",
+            (
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
+                    ELSE source_1."MontantRegleFactureCalc"
+                END)::numeric(12,2) AS "MontantRegleFactureCalc",
+            (
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
+                    ELSE source_1."MontantResteFactureCalc"
+                END)::numeric(12,2) AS "MontantResteFactureCalc",
+            (
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
+                    ELSE source_1."TotalRegleReel"
+                END)::numeric(12,2) AS "TotalRegleReel",
+            (
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
+                    ELSE source_1."ResteReel"
+                END)::numeric(12,2) AS "ResteReel",
             source_1."NbReglements",
             source_1."DernierReglement",
-            source_1."EtatPaiement",
-            source_1."EstPaiementEnRetard",
-            source_1."JoursAvantEcheance",
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN 'Sans facturation'::text
+                    ELSE source_1."EtatPaiement"
+                END AS "EtatPaiement",
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN false
+                    ELSE source_1."EstPaiementEnRetard"
+                END AS "EstPaiementEnRetard",
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::integer
+                    ELSE source_1."JoursAvantEcheance"
+                END AS "JoursAvantEcheance",
             source_1."NbLignes",
             source_1."NbArticlesDistincts",
             source_1."QteTotale",
@@ -16140,490 +16381,569 @@ CREATE VIEW logistique."V_Commande" AS
             source_1."ID_DestinationFk",
             source_1."DestinationLibelle",
             source_1."AvoirImpute",
-            c."OrigineBon",
-            c."ID_ArticleInitialFk"
-           FROM (( SELECT b."ID_Commande",
-                    b."ID_TypeCmdFk",
-                    b."ID_StatutCmdFk",
-                    b."ID_ClientFk",
-                    b."ID_UserFk",
-                    b."geolocalisationCmd",
-                    b."DateHeureAutoCmd",
-                    b."DateCmd",
-                    b."CodeCmd",
-                    b."RefCmd",
-                    b."MontantHT",
-                    b."MontantTTC",
-                    b."UrlBL",
-                    b."ObsCmd",
-                    b."SelectCmd",
-                    b."DateHeureAutoFacture",
-                    b."DateFacture",
-                    b."CodeFacture",
-                    b."MontantRegleFacture",
-                    b."MontantResteFacture",
-                    b."StatusFacture",
-                    b."ValideRemiseFacture",
-                    b."UrlFacture",
-                    b."ID_ConditionPaiementFk",
-                    b."DateEcheancePaiement",
-                    b."ID_ModePaiementFk",
-                    b."NomClientSaisi",
-                    b."AbrTypeCmd",
-                    b."TypeCmd",
-                    b."SigneCommande",
-                    b."EstCommandeEntree",
-                    b."EstCommandeSortie",
-                    b."AbrStatutCmd",
-                    b."StatutCmd",
-                    b."NomUser",
-                    b."PrenomUser",
-                    b."NomComplet",
-                    b."AbrConditionPaiement",
-                    b."ConditionPaiement",
-                    b."AbrModePaiement",
-                    b."ModePaiement",
-                    b."MontantHTCalc",
-                    b."MontantTTCCalc",
-                    b."MontantRegleFactureCalc",
-                    b."MontantResteFactureCalc",
-                    b."TotalRegleReel",
-                    b."ResteReel",
-                    b."NbReglements",
-                    b."DernierReglement",
-                    b."EtatPaiement",
-                    b."EstPaiementEnRetard",
-                    b."JoursAvantEcheance",
-                    b."NbLignes",
-                    b."NbArticlesDistincts",
-                    b."QteTotale",
-                    b."MontantDetails",
-                    b."ListeArticles",
-                    b."EstCommandeSansDetails",
-                    b."EcartMontantDetails",
-                    b."EstMontantIncoherent",
-                    b."EtatControleCommande",
-                    b."ID_DeviseFk",
-                    b."DeviseCode",
-                    b."DeviseLibelle",
-                    b."ID_Facture",
-                    b."EstFactureSnapshot",
-                    b."MontantFacture",
-                    (pending.amount)::numeric(12,2) AS "MontantAvoirAEtablir",
-                    (pending.amount > (0)::numeric) AS "AvoirAEtablir",
-                    b."IdEntiteFk",
-                    b."ID_TiersFk",
-                    b."TiersNom",
-                    b."ID_DestinationFk",
-                    b."DestinationLibelle",
-                    (COALESCE(cr.total, (0)::numeric))::numeric(12,2) AS "AvoirImpute"
-                   FROM ((( SELECT s."ID_Commande",
-                            s."ID_TypeCmdFk",
-                            s."ID_StatutCmdFk",
-                            s."ID_ClientFk",
-                            s."ID_UserFk",
-                            s."geolocalisationCmd",
-                            s."DateHeureAutoCmd",
-                            s."DateCmd",
-                            s."CodeCmd",
-                            s."RefCmd",
-                            s."MontantHT",
-                            s."MontantTTC",
-                            s."UrlBL",
-                            s."ObsCmd",
-                            s."SelectCmd",
-                            s."DateHeureAutoFacture",
-                            s."DateFacture",
-                            s."CodeFacture",
-                            s."MontantRegleFacture",
-                            s."MontantResteFacture",
-                            s."StatusFacture",
-                            s."ValideRemiseFacture",
-                            s."UrlFacture",
-                            s."ID_ConditionPaiementFk",
-                            s."DateEcheancePaiement",
-                            s."ID_ModePaiementFk",
-                            s."NomClientSaisi",
-                            s."AbrTypeCmd",
-                            s."TypeCmd",
-                            s."SigneCommande",
-                            s."EstCommandeEntree",
-                            s."EstCommandeSortie",
-                            s."AbrStatutCmd",
-                            s."StatutCmd",
-                            s."NomUser",
-                            s."PrenomUser",
-                            s."NomComplet",
-                            s."AbrConditionPaiement",
-                            s."ConditionPaiement",
-                            s."AbrModePaiement",
-                            s."ModePaiement",
-                            s."MontantHTCalc",
-                            s."MontantTTCCalc",
-                            s."MontantRegleFactureCalc",
-                            s."MontantResteFactureCalc",
-                            s."TotalRegleReel",
-                            s."ResteReel",
-                            s."NbReglements",
-                            s."DernierReglement",
-                            s."EtatPaiement",
-                            s."EstPaiementEnRetard",
-                            s."JoursAvantEcheance",
-                            s."NbLignes",
-                            s."NbArticlesDistincts",
-                            s."QteTotale",
-                            s."MontantDetails",
-                            s."ListeArticles",
-                            s."EstCommandeSansDetails",
-                            s."EcartMontantDetails",
-                            s."EstMontantIncoherent",
-                            s."EtatControleCommande",
-                            s."ID_DeviseFk",
-                            s."DeviseCode",
-                            s."DeviseLibelle",
-                            s."ID_Facture",
-                            s."EstFactureSnapshot",
-                            s."MontantFacture",
-                            s."MontantAvoirAEtablir",
-                            s."AvoirAEtablir",
-                            s."IdEntiteFk",
-                            s."ID_TiersFk",
-                            s."TiersNom",
-                            c_1."ID_DestinationFk",
-                            d.label AS "DestinationLibelle"
-                           FROM ((( SELECT source_1_1."ID_Commande",
-                                    source_1_1."ID_TypeCmdFk",
-                                    source_1_1."ID_StatutCmdFk",
-                                    source_1_1."ID_ClientFk",
-                                    source_1_1."ID_UserFk",
-                                    source_1_1."geolocalisationCmd",
-                                    source_1_1."DateHeureAutoCmd",
-                                    source_1_1."DateCmd",
-                                    source_1_1."CodeCmd",
-                                    source_1_1."RefCmd",
-                                    source_1_1."MontantHT",
-                                    source_1_1."MontantTTC",
-                                    source_1_1."UrlBL",
-                                    source_1_1."ObsCmd",
-                                    source_1_1."SelectCmd",
-                                    source_1_1."DateHeureAutoFacture",
-                                    source_1_1."DateFacture",
-                                    source_1_1."CodeFacture",
-                                    source_1_1."MontantRegleFacture",
-                                    source_1_1."MontantResteFacture",
-                                    source_1_1."StatusFacture",
-                                    source_1_1."ValideRemiseFacture",
-                                    source_1_1."UrlFacture",
-                                    source_1_1."ID_ConditionPaiementFk",
-                                    source_1_1."DateEcheancePaiement",
-                                    source_1_1."ID_ModePaiementFk",
-                                    source_1_1."NomClientSaisi",
-                                    source_1_1."AbrTypeCmd",
-                                    source_1_1."TypeCmd",
-                                    source_1_1."SigneCommande",
-                                    source_1_1."EstCommandeEntree",
-                                    source_1_1."EstCommandeSortie",
-                                    source_1_1."AbrStatutCmd",
-                                    source_1_1."StatutCmd",
-                                    source_1_1."NomUser",
-                                    source_1_1."PrenomUser",
-                                    source_1_1."NomComplet",
-                                    source_1_1."AbrConditionPaiement",
-                                    source_1_1."ConditionPaiement",
-                                    source_1_1."AbrModePaiement",
-                                    source_1_1."ModePaiement",
-                                    source_1_1."MontantHTCalc",
-                                    source_1_1."MontantTTCCalc",
-                                    source_1_1."MontantRegleFactureCalc",
-                                    source_1_1."MontantResteFactureCalc",
-                                    source_1_1."TotalRegleReel",
-                                    source_1_1."ResteReel",
-                                    source_1_1."NbReglements",
-                                    source_1_1."DernierReglement",
-                                    source_1_1."EtatPaiement",
-                                    source_1_1."EstPaiementEnRetard",
-                                    source_1_1."JoursAvantEcheance",
-                                    source_1_1."NbLignes",
-                                    source_1_1."NbArticlesDistincts",
-                                    source_1_1."QteTotale",
-                                    source_1_1."MontantDetails",
-                                    source_1_1."ListeArticles",
-                                    source_1_1."EstCommandeSansDetails",
-                                    source_1_1."EcartMontantDetails",
-                                    source_1_1."EstMontantIncoherent",
-                                    source_1_1."EtatControleCommande",
-                                    source_1_1."ID_DeviseFk",
-                                    source_1_1."DeviseCode",
-                                    source_1_1."DeviseLibelle",
-                                    source_1_1."ID_Facture",
-                                    source_1_1."EstFactureSnapshot",
-                                    source_1_1."MontantFacture",
-                                    source_1_1."MontantAvoirAEtablir",
-                                    source_1_1."AvoirAEtablir",
-                                    r."IdEntiteFk",
-                                    r."ID_TiersFk",
-                                    t."Nom" AS "TiersNom"
-                                   FROM ((( SELECT base."ID_Commande",
-    base."ID_TypeCmdFk",
-    base."ID_StatutCmdFk",
-    base."ID_ClientFk",
-    base."ID_UserFk",
-    base."geolocalisationCmd",
-    base."DateHeureAutoCmd",
-    base."DateCmd",
-    base."CodeCmd",
-    base."RefCmd",
-    base."MontantHT",
-    base."MontantTTC",
-    base."UrlBL",
-    base."ObsCmd",
-    base."SelectCmd",
-    base."DateHeureAutoFacture",
-    base."DateFacture",
-    base."CodeFacture",
-    COALESCE(f."TotalRegle", base."MontantRegleFacture") AS "MontantRegleFacture",
-    COALESCE(f."Reste", base."MontantResteFacture") AS "MontantResteFacture",
-    base."StatusFacture",
-    base."ValideRemiseFacture",
-    base."UrlFacture",
-    base."ID_ConditionPaiementFk",
-    base."DateEcheancePaiement",
-    base."ID_ModePaiementFk",
-    base."NomClientSaisi",
-    base."AbrTypeCmd",
-    base."TypeCmd",
-    base."SigneCommande",
-    base."EstCommandeEntree",
-    base."EstCommandeSortie",
-    base."AbrStatutCmd",
-    base."StatutCmd",
-    base."NomUser",
-    base."PrenomUser",
-    base."NomComplet",
-    base."AbrConditionPaiement",
-    base."ConditionPaiement",
-    base."AbrModePaiement",
-    base."ModePaiement",
-    base."MontantHTCalc",
-    base."MontantTTCCalc",
-    COALESCE(f."TotalRegle", base."MontantRegleFactureCalc") AS "MontantRegleFactureCalc",
-    COALESCE(f."Reste", base."MontantResteFactureCalc") AS "MontantResteFactureCalc",
-    COALESCE(f."TotalRegle", base."TotalRegleReel") AS "TotalRegleReel",
-    COALESCE(f."Reste", base."ResteReel") AS "ResteReel",
-    base."NbReglements",
-    base."DernierReglement",
-    COALESCE(f."EtatReglement", base."EtatPaiement") AS "EtatPaiement",
-    COALESCE(f."EstEnRetard", base."EstPaiementEnRetard") AS "EstPaiementEnRetard",
-    base."JoursAvantEcheance",
-    base."NbLignes",
-    base."NbArticlesDistincts",
-    base."QteTotale",
-    base."MontantDetails",
-    base."ListeArticles",
-    base."EstCommandeSansDetails",
-    base."EcartMontantDetails",
-    base."EstMontantIncoherent",
-    base."EtatControleCommande",
-    base."ID_DeviseFk",
-    COALESCE(f."DeviseCode", base."DeviseCode") AS "DeviseCode",
-    COALESCE(f."DeviseLibelle", base."DeviseLibelle") AS "DeviseLibelle",
-    f."ID_Facture",
-    (f."ID_Facture" IS NOT NULL) AS "EstFactureSnapshot",
-    (
-  CASE
-   WHEN (NULLIF(btrim((base."CodeFacture")::text), ''::text) IS NOT NULL) THEN COALESCE(f."MontantTTC", base."MontantTTC")
-   ELSE NULL::numeric
-  END)::numeric(12,2) AS "MontantFacture",
-    (COALESCE(f."MontantAvoirAEtablir", (0)::numeric))::numeric(12,2) AS "MontantAvoirAEtablir",
-    COALESCE(f."AvoirAEtablir", false) AS "AvoirAEtablir"
-   FROM (( SELECT historique."ID_Commande",
-      historique."ID_TypeCmdFk",
-      historique."ID_StatutCmdFk",
-      historique."ID_ClientFk",
-      historique."ID_UserFk",
-      historique."geolocalisationCmd",
-      historique."DateHeureAutoCmd",
-      historique."DateCmd",
-      historique."CodeCmd",
-      historique."RefCmd",
-      historique."MontantHT",
-      historique."MontantTTC",
-      historique."UrlBL",
-      historique."ObsCmd",
-      historique."SelectCmd",
-      historique."DateHeureAutoFacture",
-      historique."DateFacture",
-      historique."CodeFacture",
-      historique."MontantRegleFacture",
-      historique."MontantResteFacture",
-      historique."StatusFacture",
-      historique."ValideRemiseFacture",
-      historique."UrlFacture",
-      historique."ID_ConditionPaiementFk",
-      historique."DateEcheancePaiement",
-      historique."ID_ModePaiementFk",
-      historique."NomClientSaisi",
-      historique."AbrTypeCmd",
-      historique."TypeCmd",
-      historique."SigneCommande",
-      historique."EstCommandeEntree",
-      historique."EstCommandeSortie",
-      historique."AbrStatutCmd",
-      historique."StatutCmd",
-      historique."NomUser",
-      historique."PrenomUser",
-      historique."NomComplet",
-      historique."AbrConditionPaiement",
-      historique."ConditionPaiement",
-      historique."AbrModePaiement",
-      historique."ModePaiement",
-      historique."MontantHTCalc",
-      historique."MontantTTCCalc",
-      historique."MontantRegleFactureCalc",
-      historique."MontantResteFactureCalc",
-      historique."TotalRegleReel",
-      historique."ResteReel",
-      historique."NbReglements",
-      historique."DernierReglement",
-      historique."EtatPaiement",
-      historique."EstPaiementEnRetard",
-      historique."JoursAvantEcheance",
-      historique."NbLignes",
-      historique."NbArticlesDistincts",
-      historique."QteTotale",
-      historique."MontantDetails",
-      historique."ListeArticles",
-      historique."EstCommandeSansDetails",
-      historique."EcartMontantDetails",
-      historique."EstMontantIncoherent",
-      historique."EtatControleCommande",
-      source_1_1_1."ID_DeviseFk",
-      logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
-      (devise."NomGenerique")::text AS "DeviseLibelle"
-     FROM ((( WITH cd_stats AS (
-       SELECT cd."ID_CmdFk",
-          (count(*))::integer AS "NbLignes",
-          (count(DISTINCT cd."ID_ArticleFk"))::integer AS "NbArticlesDistincts",
-          (COALESCE(sum(COALESCE(cd."QteCmdDetail", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteTotale",
-          (COALESCE(sum(round((COALESCE(cd."QteCmdDetail", (0)::numeric) * COALESCE(cd."PUCmdDetail", (0)::numeric)), 2)), (0)::numeric))::numeric(12,2) AS "MontantDetails",
-          string_agg(DISTINCT (a."NomArticle")::text, ', '::text ORDER BY (a."NomArticle")::text) AS "ListeArticles"
-         FROM (logistique."T_CommandeDetail" cd
-           LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = cd."ID_ArticleFk")))
-        GROUP BY cd."ID_CmdFk"
-      ), reg_stats AS (
-       SELECT r_1."CodeFactureFk",
-          (COALESCE(sum(COALESCE(r_1."MontantRegle", (0)::numeric)), (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
-          (count(*))::integer AS "NbReglements",
-          max(r_1."DateReglement") AS "DernierReglement"
-         FROM logistique."T_Reglements" r_1
-        GROUP BY r_1."CodeFactureFk"
-      )
-     SELECT c_1_1."ID_Commande",
-        c_1_1."ID_TypeCmdFk",
-        c_1_1."ID_StatutCmdFk",
-        c_1_1."ID_ClientFk",
-        c_1_1."ID_UserFk",
-        c_1_1."geolocalisationCmd",
-        c_1_1."DateHeureAutoCmd",
-        c_1_1."DateCmd",
-        c_1_1."CodeCmd",
-        c_1_1."RefCmd",
-        c_1_1."MontantHT",
-        c_1_1."MontantTTC",
-        c_1_1."UrlBL",
-        c_1_1."ObsCmd",
-        c_1_1."SelectCmd",
-        c_1_1."DateHeureAutoFacture",
-        c_1_1."DateFacture",
-        c_1_1."CodeFacture",
-        c_1_1."MontantRegleFacture",
-        c_1_1."MontantResteFacture",
-        c_1_1."StatusFacture",
-        c_1_1."ValideRemiseFacture",
-        c_1_1."UrlFacture",
-        c_1_1."ID_ConditionPaiementFk",
-        c_1_1."DateEcheancePaiement",
-        c_1_1."ID_ModePaiementFk",
-        c_1_1."NomClientSaisi",
-        type_cmd."AbrGenerique" AS "AbrTypeCmd",
-        type_cmd."NomGenerique" AS "TypeCmd",
-      CASE
-       WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-       WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-       ELSE 0
-      END AS "SigneCommande",
-        COALESCE(((type_cmd."AbrGenerique")::text ~~* 'entr%'::text), false) AS "EstCommandeEntree",
-        COALESCE(((type_cmd."AbrGenerique")::text ~~* 'sort%'::text), false) AS "EstCommandeSortie",
-        statut_cmd."AbrGenerique" AS "AbrStatutCmd",
-        statut_cmd."NomGenerique" AS "StatutCmd",
-        u."NomUser",
-        u."PrenomUser",
-        NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
-        condition_paiement."AbrGenerique" AS "AbrConditionPaiement",
-        condition_paiement."NomGenerique" AS "ConditionPaiement",
-        mode_paiement."AbrGenerique" AS "AbrModePaiement",
-        mode_paiement."NomGenerique" AS "ModePaiement",
-        (COALESCE(c_1_1."MontantHT", (0)::numeric))::numeric(12,2) AS "MontantHTCalc",
-        (COALESCE(c_1_1."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTCCalc",
-        (COALESCE(c_1_1."MontantRegleFacture", (0)::numeric))::numeric(12,2) AS "MontantRegleFactureCalc",
-        (COALESCE(c_1_1."MontantResteFacture", (0)::numeric))::numeric(12,2) AS "MontantResteFactureCalc",
-        (COALESCE(reg_stats."TotalRegleReel", (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
-        ((COALESCE(c_1_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", (0)::numeric)))::numeric(12,2) AS "ResteReel",
-        COALESCE(reg_stats."NbReglements", 0) AS "NbReglements",
-        reg_stats."DernierReglement",
-      CASE
-       WHEN (c_1_1."CodeFacture" IS NULL) THEN 'Non facturée'::text
-       WHEN (COALESCE(c_1_1."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
-       WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
-       WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) < COALESCE(c_1_1."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
-       WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) >= COALESCE(c_1_1."MontantTTC", (0)::numeric)) THEN 'Réglée'::text
-       ELSE 'Indéterminé'::text
-      END AS "EtatPaiement",
-        ((c_1_1."DateEcheancePaiement" IS NOT NULL) AND ((c_1_1."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c_1_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric)) > (0)::numeric)) AS "EstPaiementEnRetard",
-      CASE
-       WHEN (c_1_1."DateEcheancePaiement" IS NOT NULL) THEN ((c_1_1."DateEcheancePaiement")::date - CURRENT_DATE)
-       ELSE NULL::integer
-      END AS "JoursAvantEcheance",
-        COALESCE(cd_stats."NbLignes", 0) AS "NbLignes",
-        COALESCE(cd_stats."NbArticlesDistincts", 0) AS "NbArticlesDistincts",
-        (COALESCE(cd_stats."QteTotale", (0)::numeric))::numeric(14,3) AS "QteTotale",
-        (COALESCE(cd_stats."MontantDetails", (0)::numeric))::numeric(12,2) AS "MontantDetails",
-        cd_stats."ListeArticles",
-        (COALESCE(cd_stats."NbLignes", 0) = 0) AS "EstCommandeSansDetails",
-        ((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric)))::numeric(12,2) AS "EcartMontantDetails",
-        (abs((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) AS "EstMontantIncoherent",
-      CASE
-       WHEN (COALESCE(cd_stats."NbLignes", 0) = 0) THEN 'Sans détails'::text
-       WHEN (abs((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) THEN 'Montant incohérent'::text
-       ELSE 'Cohérente'::text
-      END AS "EtatControleCommande"
-       FROM (((((((logistique."T_Commande" c_1_1
-         LEFT JOIN systeme."T_Utilisateurs" u ON ((c_1_1."ID_UserFk" = u."IdUser")))
-         LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-         LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c_1_1."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-         LEFT JOIN referentiel."T_Generique" condition_paiement ON (((c_1_1."ID_ConditionPaiementFk" = condition_paiement."ID_Generique") AND (condition_paiement."ID_CategorieGeneriqueFk" = 37))))
-         LEFT JOIN referentiel."T_Generique" mode_paiement ON (((c_1_1."ID_ModePaiementFk" = mode_paiement."ID_Generique") AND (mode_paiement."ID_CategorieGeneriqueFk" = 36))))
-         LEFT JOIN cd_stats ON ((cd_stats."ID_CmdFk" = c_1_1."ID_Commande")))
-         LEFT JOIN reg_stats ON (((reg_stats."CodeFactureFk")::text = (c_1_1."CodeFacture")::text)))) historique
-       LEFT JOIN logistique."T_Commande" source_1_1_1 ON ((source_1_1_1."ID_Commande" = historique."ID_Commande")))
-       LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1_1."ID_DeviseFk")))) base
-     LEFT JOIN logistique."V_Facture" f ON ((f."ID_CommandeFk" = base."ID_Commande")))) source_1_1
-                                     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source_1_1."ID_Commande")))
-                                     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) s
-                             JOIN logistique."T_Commande" c_1 ON ((c_1."ID_Commande" = s."ID_Commande")))
-                             LEFT JOIN geolocalisation."V_DestinationLogistique" d ON ((d.id = c_1."ID_DestinationFk")))) b
-                     LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS total
-                           FROM logistique."T_AvoirAffectation"
-                          WHERE ("T_AvoirAffectation"."ID_CommandeCibleFk" = b."ID_Commande")) cr ON (true))
-                     LEFT JOIN LATERAL ( SELECT logistique.fn_montant_avoir_attente(b."ID_Commande") AS amount) pending ON (true))) source_1
-             JOIN logistique."T_Commande" c ON ((c."ID_Commande" = source_1."ID_Commande")))) source;
+            source_1."OrigineBon",
+            source_1."ID_ArticleInitialFk",
+            logistique.fn_nature_bon(source_1."ID_TypeCmdFk") AS "NatureBon"
+           FROM ( SELECT source_1_1."ID_Commande",
+                    source_1_1."ID_TypeCmdFk",
+                    source_1_1."ID_StatutCmdFk",
+                    source_1_1."ID_ClientFk",
+                    source_1_1."ID_UserFk",
+                    source_1_1."geolocalisationCmd",
+                    source_1_1."DateHeureAutoCmd",
+                    source_1_1."DateCmd",
+                    source_1_1."CodeCmd",
+                    source_1_1."RefCmd",
+                    source_1_1."MontantHT",
+                    source_1_1."MontantTTC",
+                    source_1_1."UrlBL",
+                    source_1_1."ObsCmd",
+                    source_1_1."SelectCmd",
+                    source_1_1."DateHeureAutoFacture",
+                    source_1_1."DateFacture",
+                    source_1_1."CodeFacture",
+                    source_1_1."MontantRegleFacture",
+                    source_1_1."MontantResteFacture",
+                    source_1_1."StatusFacture",
+                    source_1_1."ValideRemiseFacture",
+                    source_1_1."UrlFacture",
+                    source_1_1."ID_ConditionPaiementFk",
+                    source_1_1."DateEcheancePaiement",
+                    source_1_1."ID_ModePaiementFk",
+                    source_1_1."NomClientSaisi",
+                    source_1_1."AbrTypeCmd",
+                    source_1_1."TypeCmd",
+                    source_1_1."SigneCommande",
+                    source_1_1."EstCommandeEntree",
+                    source_1_1."EstCommandeSortie",
+                    source_1_1."AbrStatutCmd",
+                    source_1_1."StatutCmd",
+                    source_1_1."NomUser",
+                    source_1_1."PrenomUser",
+                    source_1_1."NomComplet",
+                    source_1_1."AbrConditionPaiement",
+                    source_1_1."ConditionPaiement",
+                    source_1_1."AbrModePaiement",
+                    source_1_1."ModePaiement",
+                    source_1_1."MontantHTCalc",
+                    source_1_1."MontantTTCCalc",
+                    source_1_1."MontantRegleFactureCalc",
+                    source_1_1."MontantResteFactureCalc",
+                    source_1_1."TotalRegleReel",
+                    source_1_1."ResteReel",
+                    source_1_1."NbReglements",
+                    source_1_1."DernierReglement",
+                    source_1_1."EtatPaiement",
+                    source_1_1."EstPaiementEnRetard",
+                    source_1_1."JoursAvantEcheance",
+                    source_1_1."NbLignes",
+                    source_1_1."NbArticlesDistincts",
+                    source_1_1."QteTotale",
+                    source_1_1."MontantDetails",
+                    source_1_1."ListeArticles",
+                    source_1_1."EstCommandeSansDetails",
+                    source_1_1."EcartMontantDetails",
+                    source_1_1."EstMontantIncoherent",
+                    source_1_1."EtatControleCommande",
+                    source_1_1."ID_DeviseFk",
+                    source_1_1."DeviseCode",
+                    source_1_1."DeviseLibelle",
+                    source_1_1."ID_Facture",
+                    source_1_1."EstFactureSnapshot",
+                    source_1_1."MontantFacture",
+                    source_1_1."MontantAvoirAEtablir",
+                    source_1_1."AvoirAEtablir",
+                    source_1_1."IdEntiteFk",
+                    source_1_1."ID_TiersFk",
+                    source_1_1."TiersNom",
+                    source_1_1."ID_DestinationFk",
+                    source_1_1."DestinationLibelle",
+                    source_1_1."AvoirImpute",
+                    c."OrigineBon",
+                    c."ID_ArticleInitialFk"
+                   FROM (( SELECT b."ID_Commande",
+                            b."ID_TypeCmdFk",
+                            b."ID_StatutCmdFk",
+                            b."ID_ClientFk",
+                            b."ID_UserFk",
+                            b."geolocalisationCmd",
+                            b."DateHeureAutoCmd",
+                            b."DateCmd",
+                            b."CodeCmd",
+                            b."RefCmd",
+                            b."MontantHT",
+                            b."MontantTTC",
+                            b."UrlBL",
+                            b."ObsCmd",
+                            b."SelectCmd",
+                            b."DateHeureAutoFacture",
+                            b."DateFacture",
+                            b."CodeFacture",
+                            b."MontantRegleFacture",
+                            b."MontantResteFacture",
+                            b."StatusFacture",
+                            b."ValideRemiseFacture",
+                            b."UrlFacture",
+                            b."ID_ConditionPaiementFk",
+                            b."DateEcheancePaiement",
+                            b."ID_ModePaiementFk",
+                            b."NomClientSaisi",
+                            b."AbrTypeCmd",
+                            b."TypeCmd",
+                            b."SigneCommande",
+                            b."EstCommandeEntree",
+                            b."EstCommandeSortie",
+                            b."AbrStatutCmd",
+                            b."StatutCmd",
+                            b."NomUser",
+                            b."PrenomUser",
+                            b."NomComplet",
+                            b."AbrConditionPaiement",
+                            b."ConditionPaiement",
+                            b."AbrModePaiement",
+                            b."ModePaiement",
+                            b."MontantHTCalc",
+                            b."MontantTTCCalc",
+                            b."MontantRegleFactureCalc",
+                            b."MontantResteFactureCalc",
+                            b."TotalRegleReel",
+                            b."ResteReel",
+                            b."NbReglements",
+                            b."DernierReglement",
+                            b."EtatPaiement",
+                            b."EstPaiementEnRetard",
+                            b."JoursAvantEcheance",
+                            b."NbLignes",
+                            b."NbArticlesDistincts",
+                            b."QteTotale",
+                            b."MontantDetails",
+                            b."ListeArticles",
+                            b."EstCommandeSansDetails",
+                            b."EcartMontantDetails",
+                            b."EstMontantIncoherent",
+                            b."EtatControleCommande",
+                            b."ID_DeviseFk",
+                            b."DeviseCode",
+                            b."DeviseLibelle",
+                            b."ID_Facture",
+                            b."EstFactureSnapshot",
+                            b."MontantFacture",
+                            (pending.amount)::numeric(12,2) AS "MontantAvoirAEtablir",
+                            (pending.amount > (0)::numeric) AS "AvoirAEtablir",
+                            b."IdEntiteFk",
+                            b."ID_TiersFk",
+                            b."TiersNom",
+                            b."ID_DestinationFk",
+                            b."DestinationLibelle",
+                            (COALESCE(cr.total, (0)::numeric))::numeric(12,2) AS "AvoirImpute"
+                           FROM ((( SELECT s."ID_Commande",
+                                    s."ID_TypeCmdFk",
+                                    s."ID_StatutCmdFk",
+                                    s."ID_ClientFk",
+                                    s."ID_UserFk",
+                                    s."geolocalisationCmd",
+                                    s."DateHeureAutoCmd",
+                                    s."DateCmd",
+                                    s."CodeCmd",
+                                    s."RefCmd",
+                                    s."MontantHT",
+                                    s."MontantTTC",
+                                    s."UrlBL",
+                                    s."ObsCmd",
+                                    s."SelectCmd",
+                                    s."DateHeureAutoFacture",
+                                    s."DateFacture",
+                                    s."CodeFacture",
+                                    s."MontantRegleFacture",
+                                    s."MontantResteFacture",
+                                    s."StatusFacture",
+                                    s."ValideRemiseFacture",
+                                    s."UrlFacture",
+                                    s."ID_ConditionPaiementFk",
+                                    s."DateEcheancePaiement",
+                                    s."ID_ModePaiementFk",
+                                    s."NomClientSaisi",
+                                    s."AbrTypeCmd",
+                                    s."TypeCmd",
+                                    s."SigneCommande",
+                                    s."EstCommandeEntree",
+                                    s."EstCommandeSortie",
+                                    s."AbrStatutCmd",
+                                    s."StatutCmd",
+                                    s."NomUser",
+                                    s."PrenomUser",
+                                    s."NomComplet",
+                                    s."AbrConditionPaiement",
+                                    s."ConditionPaiement",
+                                    s."AbrModePaiement",
+                                    s."ModePaiement",
+                                    s."MontantHTCalc",
+                                    s."MontantTTCCalc",
+                                    s."MontantRegleFactureCalc",
+                                    s."MontantResteFactureCalc",
+                                    s."TotalRegleReel",
+                                    s."ResteReel",
+                                    s."NbReglements",
+                                    s."DernierReglement",
+                                    s."EtatPaiement",
+                                    s."EstPaiementEnRetard",
+                                    s."JoursAvantEcheance",
+                                    s."NbLignes",
+                                    s."NbArticlesDistincts",
+                                    s."QteTotale",
+                                    s."MontantDetails",
+                                    s."ListeArticles",
+                                    s."EstCommandeSansDetails",
+                                    s."EcartMontantDetails",
+                                    s."EstMontantIncoherent",
+                                    s."EtatControleCommande",
+                                    s."ID_DeviseFk",
+                                    s."DeviseCode",
+                                    s."DeviseLibelle",
+                                    s."ID_Facture",
+                                    s."EstFactureSnapshot",
+                                    s."MontantFacture",
+                                    s."MontantAvoirAEtablir",
+                                    s."AvoirAEtablir",
+                                    s."IdEntiteFk",
+                                    s."ID_TiersFk",
+                                    s."TiersNom",
+                                    c_1."ID_DestinationFk",
+                                    d.label AS "DestinationLibelle"
+                                   FROM ((( SELECT source_1_1_1."ID_Commande",
+    source_1_1_1."ID_TypeCmdFk",
+    source_1_1_1."ID_StatutCmdFk",
+    source_1_1_1."ID_ClientFk",
+    source_1_1_1."ID_UserFk",
+    source_1_1_1."geolocalisationCmd",
+    source_1_1_1."DateHeureAutoCmd",
+    source_1_1_1."DateCmd",
+    source_1_1_1."CodeCmd",
+    source_1_1_1."RefCmd",
+    source_1_1_1."MontantHT",
+    source_1_1_1."MontantTTC",
+    source_1_1_1."UrlBL",
+    source_1_1_1."ObsCmd",
+    source_1_1_1."SelectCmd",
+    source_1_1_1."DateHeureAutoFacture",
+    source_1_1_1."DateFacture",
+    source_1_1_1."CodeFacture",
+    source_1_1_1."MontantRegleFacture",
+    source_1_1_1."MontantResteFacture",
+    source_1_1_1."StatusFacture",
+    source_1_1_1."ValideRemiseFacture",
+    source_1_1_1."UrlFacture",
+    source_1_1_1."ID_ConditionPaiementFk",
+    source_1_1_1."DateEcheancePaiement",
+    source_1_1_1."ID_ModePaiementFk",
+    source_1_1_1."NomClientSaisi",
+    source_1_1_1."AbrTypeCmd",
+    source_1_1_1."TypeCmd",
+    source_1_1_1."SigneCommande",
+    source_1_1_1."EstCommandeEntree",
+    source_1_1_1."EstCommandeSortie",
+    source_1_1_1."AbrStatutCmd",
+    source_1_1_1."StatutCmd",
+    source_1_1_1."NomUser",
+    source_1_1_1."PrenomUser",
+    source_1_1_1."NomComplet",
+    source_1_1_1."AbrConditionPaiement",
+    source_1_1_1."ConditionPaiement",
+    source_1_1_1."AbrModePaiement",
+    source_1_1_1."ModePaiement",
+    source_1_1_1."MontantHTCalc",
+    source_1_1_1."MontantTTCCalc",
+    source_1_1_1."MontantRegleFactureCalc",
+    source_1_1_1."MontantResteFactureCalc",
+    source_1_1_1."TotalRegleReel",
+    source_1_1_1."ResteReel",
+    source_1_1_1."NbReglements",
+    source_1_1_1."DernierReglement",
+    source_1_1_1."EtatPaiement",
+    source_1_1_1."EstPaiementEnRetard",
+    source_1_1_1."JoursAvantEcheance",
+    source_1_1_1."NbLignes",
+    source_1_1_1."NbArticlesDistincts",
+    source_1_1_1."QteTotale",
+    source_1_1_1."MontantDetails",
+    source_1_1_1."ListeArticles",
+    source_1_1_1."EstCommandeSansDetails",
+    source_1_1_1."EcartMontantDetails",
+    source_1_1_1."EstMontantIncoherent",
+    source_1_1_1."EtatControleCommande",
+    source_1_1_1."ID_DeviseFk",
+    source_1_1_1."DeviseCode",
+    source_1_1_1."DeviseLibelle",
+    source_1_1_1."ID_Facture",
+    source_1_1_1."EstFactureSnapshot",
+    source_1_1_1."MontantFacture",
+    source_1_1_1."MontantAvoirAEtablir",
+    source_1_1_1."AvoirAEtablir",
+    r."IdEntiteFk",
+    r."ID_TiersFk",
+    t."Nom" AS "TiersNom"
+   FROM ((( SELECT base."ID_Commande",
+      base."ID_TypeCmdFk",
+      base."ID_StatutCmdFk",
+      base."ID_ClientFk",
+      base."ID_UserFk",
+      base."geolocalisationCmd",
+      base."DateHeureAutoCmd",
+      base."DateCmd",
+      base."CodeCmd",
+      base."RefCmd",
+      base."MontantHT",
+      base."MontantTTC",
+      base."UrlBL",
+      base."ObsCmd",
+      base."SelectCmd",
+      base."DateHeureAutoFacture",
+      base."DateFacture",
+      base."CodeFacture",
+      COALESCE(f."TotalRegle", base."MontantRegleFacture") AS "MontantRegleFacture",
+      COALESCE(f."Reste", base."MontantResteFacture") AS "MontantResteFacture",
+      base."StatusFacture",
+      base."ValideRemiseFacture",
+      base."UrlFacture",
+      base."ID_ConditionPaiementFk",
+      base."DateEcheancePaiement",
+      base."ID_ModePaiementFk",
+      base."NomClientSaisi",
+      base."AbrTypeCmd",
+      base."TypeCmd",
+      base."SigneCommande",
+      base."EstCommandeEntree",
+      base."EstCommandeSortie",
+      base."AbrStatutCmd",
+      base."StatutCmd",
+      base."NomUser",
+      base."PrenomUser",
+      base."NomComplet",
+      base."AbrConditionPaiement",
+      base."ConditionPaiement",
+      base."AbrModePaiement",
+      base."ModePaiement",
+      base."MontantHTCalc",
+      base."MontantTTCCalc",
+      COALESCE(f."TotalRegle", base."MontantRegleFactureCalc") AS "MontantRegleFactureCalc",
+      COALESCE(f."Reste", base."MontantResteFactureCalc") AS "MontantResteFactureCalc",
+      COALESCE(f."TotalRegle", base."TotalRegleReel") AS "TotalRegleReel",
+      COALESCE(f."Reste", base."ResteReel") AS "ResteReel",
+      base."NbReglements",
+      base."DernierReglement",
+      COALESCE(f."EtatReglement", base."EtatPaiement") AS "EtatPaiement",
+      COALESCE(f."EstEnRetard", base."EstPaiementEnRetard") AS "EstPaiementEnRetard",
+      base."JoursAvantEcheance",
+      base."NbLignes",
+      base."NbArticlesDistincts",
+      base."QteTotale",
+      base."MontantDetails",
+      base."ListeArticles",
+      base."EstCommandeSansDetails",
+      base."EcartMontantDetails",
+      base."EstMontantIncoherent",
+      base."EtatControleCommande",
+      base."ID_DeviseFk",
+      COALESCE(f."DeviseCode", base."DeviseCode") AS "DeviseCode",
+      COALESCE(f."DeviseLibelle", base."DeviseLibelle") AS "DeviseLibelle",
+      f."ID_Facture",
+      (f."ID_Facture" IS NOT NULL) AS "EstFactureSnapshot",
+      (
+    CASE
+     WHEN (NULLIF(btrim((base."CodeFacture")::text), ''::text) IS NOT NULL) THEN COALESCE(f."MontantTTC", base."MontantTTC")
+     ELSE NULL::numeric
+    END)::numeric(12,2) AS "MontantFacture",
+      (COALESCE(f."MontantAvoirAEtablir", (0)::numeric))::numeric(12,2) AS "MontantAvoirAEtablir",
+      COALESCE(f."AvoirAEtablir", false) AS "AvoirAEtablir"
+     FROM (( SELECT historique."ID_Commande",
+        historique."ID_TypeCmdFk",
+        historique."ID_StatutCmdFk",
+        historique."ID_ClientFk",
+        historique."ID_UserFk",
+        historique."geolocalisationCmd",
+        historique."DateHeureAutoCmd",
+        historique."DateCmd",
+        historique."CodeCmd",
+        historique."RefCmd",
+        historique."MontantHT",
+        historique."MontantTTC",
+        historique."UrlBL",
+        historique."ObsCmd",
+        historique."SelectCmd",
+        historique."DateHeureAutoFacture",
+        historique."DateFacture",
+        historique."CodeFacture",
+        historique."MontantRegleFacture",
+        historique."MontantResteFacture",
+        historique."StatusFacture",
+        historique."ValideRemiseFacture",
+        historique."UrlFacture",
+        historique."ID_ConditionPaiementFk",
+        historique."DateEcheancePaiement",
+        historique."ID_ModePaiementFk",
+        historique."NomClientSaisi",
+        historique."AbrTypeCmd",
+        historique."TypeCmd",
+        historique."SigneCommande",
+        historique."EstCommandeEntree",
+        historique."EstCommandeSortie",
+        historique."AbrStatutCmd",
+        historique."StatutCmd",
+        historique."NomUser",
+        historique."PrenomUser",
+        historique."NomComplet",
+        historique."AbrConditionPaiement",
+        historique."ConditionPaiement",
+        historique."AbrModePaiement",
+        historique."ModePaiement",
+        historique."MontantHTCalc",
+        historique."MontantTTCCalc",
+        historique."MontantRegleFactureCalc",
+        historique."MontantResteFactureCalc",
+        historique."TotalRegleReel",
+        historique."ResteReel",
+        historique."NbReglements",
+        historique."DernierReglement",
+        historique."EtatPaiement",
+        historique."EstPaiementEnRetard",
+        historique."JoursAvantEcheance",
+        historique."NbLignes",
+        historique."NbArticlesDistincts",
+        historique."QteTotale",
+        historique."MontantDetails",
+        historique."ListeArticles",
+        historique."EstCommandeSansDetails",
+        historique."EcartMontantDetails",
+        historique."EstMontantIncoherent",
+        historique."EtatControleCommande",
+        source_1_1_1_1."ID_DeviseFk",
+        logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+        (devise."NomGenerique")::text AS "DeviseLibelle"
+       FROM ((( WITH cd_stats AS (
+         SELECT cd."ID_CmdFk",
+            (count(*))::integer AS "NbLignes",
+            (count(DISTINCT cd."ID_ArticleFk"))::integer AS "NbArticlesDistincts",
+            (COALESCE(sum(COALESCE(cd."QteCmdDetail", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteTotale",
+            (COALESCE(sum(round((COALESCE(cd."QteCmdDetail", (0)::numeric) * COALESCE(cd."PUCmdDetail", (0)::numeric)), 2)), (0)::numeric))::numeric(12,2) AS "MontantDetails",
+            string_agg(DISTINCT (a."NomArticle")::text, ', '::text ORDER BY (a."NomArticle")::text) AS "ListeArticles"
+           FROM (logistique."T_CommandeDetail" cd
+             LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = cd."ID_ArticleFk")))
+          GROUP BY cd."ID_CmdFk"
+        ), reg_stats AS (
+         SELECT r_1."CodeFactureFk",
+            (COALESCE(sum(COALESCE(r_1."MontantRegle", (0)::numeric)), (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
+            (count(*))::integer AS "NbReglements",
+            max(r_1."DateReglement") AS "DernierReglement"
+           FROM logistique."T_Reglements" r_1
+          GROUP BY r_1."CodeFactureFk"
+        )
+       SELECT c_1_1."ID_Commande",
+          c_1_1."ID_TypeCmdFk",
+          c_1_1."ID_StatutCmdFk",
+          c_1_1."ID_ClientFk",
+          c_1_1."ID_UserFk",
+          c_1_1."geolocalisationCmd",
+          c_1_1."DateHeureAutoCmd",
+          c_1_1."DateCmd",
+          c_1_1."CodeCmd",
+          c_1_1."RefCmd",
+          c_1_1."MontantHT",
+          c_1_1."MontantTTC",
+          c_1_1."UrlBL",
+          c_1_1."ObsCmd",
+          c_1_1."SelectCmd",
+          c_1_1."DateHeureAutoFacture",
+          c_1_1."DateFacture",
+          c_1_1."CodeFacture",
+          c_1_1."MontantRegleFacture",
+          c_1_1."MontantResteFacture",
+          c_1_1."StatusFacture",
+          c_1_1."ValideRemiseFacture",
+          c_1_1."UrlFacture",
+          c_1_1."ID_ConditionPaiementFk",
+          c_1_1."DateEcheancePaiement",
+          c_1_1."ID_ModePaiementFk",
+          c_1_1."NomClientSaisi",
+          type_cmd."AbrGenerique" AS "AbrTypeCmd",
+          type_cmd."NomGenerique" AS "TypeCmd",
+        CASE
+         WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+         WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+         ELSE 0
+        END AS "SigneCommande",
+          COALESCE(((type_cmd."AbrGenerique")::text ~~* 'entr%'::text), false) AS "EstCommandeEntree",
+          COALESCE(((type_cmd."AbrGenerique")::text ~~* 'sort%'::text), false) AS "EstCommandeSortie",
+          statut_cmd."AbrGenerique" AS "AbrStatutCmd",
+          statut_cmd."NomGenerique" AS "StatutCmd",
+          u."NomUser",
+          u."PrenomUser",
+          NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
+          condition_paiement."AbrGenerique" AS "AbrConditionPaiement",
+          condition_paiement."NomGenerique" AS "ConditionPaiement",
+          mode_paiement."AbrGenerique" AS "AbrModePaiement",
+          mode_paiement."NomGenerique" AS "ModePaiement",
+          (COALESCE(c_1_1."MontantHT", (0)::numeric))::numeric(12,2) AS "MontantHTCalc",
+          (COALESCE(c_1_1."MontantTTC", (0)::numeric))::numeric(12,2) AS "MontantTTCCalc",
+          (COALESCE(c_1_1."MontantRegleFacture", (0)::numeric))::numeric(12,2) AS "MontantRegleFactureCalc",
+          (COALESCE(c_1_1."MontantResteFacture", (0)::numeric))::numeric(12,2) AS "MontantResteFactureCalc",
+          (COALESCE(reg_stats."TotalRegleReel", (0)::numeric))::numeric(12,2) AS "TotalRegleReel",
+          ((COALESCE(c_1_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", (0)::numeric)))::numeric(12,2) AS "ResteReel",
+          COALESCE(reg_stats."NbReglements", 0) AS "NbReglements",
+          reg_stats."DernierReglement",
+        CASE
+         WHEN (c_1_1."CodeFacture" IS NULL) THEN 'Non facturée'::text
+         WHEN (COALESCE(c_1_1."MontantTTC", (0)::numeric) = (0)::numeric) THEN 'Montant nul'::text
+         WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) <= (0)::numeric) THEN 'Non réglée'::text
+         WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) < COALESCE(c_1_1."MontantTTC", (0)::numeric)) THEN 'Partiellement réglée'::text
+         WHEN (COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric) >= COALESCE(c_1_1."MontantTTC", (0)::numeric)) THEN 'Réglée'::text
+         ELSE 'Indéterminé'::text
+        END AS "EtatPaiement",
+          ((c_1_1."DateEcheancePaiement" IS NOT NULL) AND ((c_1_1."DateEcheancePaiement")::date < CURRENT_DATE) AND ((COALESCE(c_1_1."MontantTTC", (0)::numeric) - COALESCE(reg_stats."TotalRegleReel", COALESCE(c_1_1."MontantRegleFacture", (0)::numeric), (0)::numeric)) > (0)::numeric)) AS "EstPaiementEnRetard",
+        CASE
+         WHEN (c_1_1."DateEcheancePaiement" IS NOT NULL) THEN ((c_1_1."DateEcheancePaiement")::date - CURRENT_DATE)
+         ELSE NULL::integer
+        END AS "JoursAvantEcheance",
+          COALESCE(cd_stats."NbLignes", 0) AS "NbLignes",
+          COALESCE(cd_stats."NbArticlesDistincts", 0) AS "NbArticlesDistincts",
+          (COALESCE(cd_stats."QteTotale", (0)::numeric))::numeric(14,3) AS "QteTotale",
+          (COALESCE(cd_stats."MontantDetails", (0)::numeric))::numeric(12,2) AS "MontantDetails",
+          cd_stats."ListeArticles",
+          (COALESCE(cd_stats."NbLignes", 0) = 0) AS "EstCommandeSansDetails",
+          ((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric)))::numeric(12,2) AS "EcartMontantDetails",
+          (abs((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) AS "EstMontantIncoherent",
+        CASE
+         WHEN (COALESCE(cd_stats."NbLignes", 0) = 0) THEN 'Sans détails'::text
+         WHEN (abs((COALESCE(c_1_1."MontantHT", (0)::numeric) - COALESCE(cd_stats."MontantDetails", (0)::numeric))) > 0.01) THEN 'Montant incohérent'::text
+         ELSE 'Cohérente'::text
+        END AS "EtatControleCommande"
+         FROM (((((((logistique."T_Commande" c_1_1
+           LEFT JOIN systeme."T_Utilisateurs" u ON ((c_1_1."ID_UserFk" = u."IdUser")))
+           LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+           LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c_1_1."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
+           LEFT JOIN referentiel."T_Generique" condition_paiement ON (((c_1_1."ID_ConditionPaiementFk" = condition_paiement."ID_Generique") AND (condition_paiement."ID_CategorieGeneriqueFk" = 37))))
+           LEFT JOIN referentiel."T_Generique" mode_paiement ON (((c_1_1."ID_ModePaiementFk" = mode_paiement."ID_Generique") AND (mode_paiement."ID_CategorieGeneriqueFk" = 36))))
+           LEFT JOIN cd_stats ON ((cd_stats."ID_CmdFk" = c_1_1."ID_Commande")))
+           LEFT JOIN reg_stats ON (((reg_stats."CodeFactureFk")::text = (c_1_1."CodeFacture")::text)))) historique
+         LEFT JOIN logistique."T_Commande" source_1_1_1_1 ON ((source_1_1_1_1."ID_Commande" = historique."ID_Commande")))
+         LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1_1_1."ID_DeviseFk")))) base
+       LEFT JOIN logistique."V_Facture" f ON ((f."ID_CommandeFk" = base."ID_Commande")))) source_1_1_1
+     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source_1_1_1."ID_Commande")))
+     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) s
+                                     JOIN logistique."T_Commande" c_1 ON ((c_1."ID_Commande" = s."ID_Commande")))
+                                     LEFT JOIN geolocalisation."V_DestinationLogistique" d ON ((d.id = c_1."ID_DestinationFk")))) b
+                             LEFT JOIN LATERAL ( SELECT sum("T_AvoirAffectation"."Montant") AS total
+                                   FROM logistique."T_AvoirAffectation"
+                                  WHERE ("T_AvoirAffectation"."ID_CommandeCibleFk" = b."ID_Commande")) cr ON (true))
+                             LEFT JOIN LATERAL ( SELECT logistique.fn_montant_avoir_attente(b."ID_Commande") AS amount) pending ON (true))) source_1_1
+                     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = source_1_1."ID_Commande")))) source_1) source
+     LEFT JOIN logistique."T_BonCodeHistorique" h ON ((h."ID_Commande" = source."ID_Commande")));
 
 
 --
 -- Name: VIEW "V_Commande"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Commande" IS 'Projection métier commune des bons et lignes : NatureBon distingue CMD sans effet stock des BE/BS. Une commande ne porte ni dette ni alerte de facture manquante ; totaux exacts conservés.';
+COMMENT ON VIEW logistique."V_Commande" IS 'Projection commune des bons ou lignes avec nature BE/BS/CMD, montants exacts et correspondance historique de code issue du journal06. Les identifiants et écritures métier restent inchangés.';
 
 
 --
@@ -16686,7 +17006,7 @@ COMMENT ON COLUMN logistique."V_Commande"."DateCmd" IS 'Date métier de la comma
 -- Name: COLUMN "V_Commande"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."CodeCmd" IS 'Référence métier unique de la commande ; les codes C_000E et C_000S sont exclus de la vue des commandes sans lignes. Expression projetée : c."CodeCmd".';
+COMMENT ON COLUMN logistique."V_Commande"."CodeCmd" IS 'Code actuel du bon après nomenclature06 ; AncienCodeCmd et RenumeroteLe conservent sa correspondance historique.';
 
 
 --
@@ -17173,50 +17493,62 @@ COMMENT ON COLUMN logistique."V_Commande"."NatureBon" IS 'entree ou sortie pour 
 
 
 --
+-- Name: COLUMN "V_Commande"."AncienCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."AncienCodeCmd" IS 'Code exact avant la nomenclature06 si ce bon a été renommé ; issu du journal immuable, sans réécrire le document ni les écritures émises.';
+
+
+--
+-- Name: COLUMN "V_Commande"."RenumeroteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Commande"."RenumeroteLe" IS 'Instant de la reprise06 de ce bon ; absent pour un code déjà canonique ou une création ultérieure.';
+
+
+--
 -- Name: V_CommandeDetail; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_CommandeDetail" AS
- SELECT "ID_CmdFk",
-    "ID_Commande",
-    "DateCmd",
-    "CodeCmd",
-    "CodeFacture",
-    "ID_TypeCmdFk",
-    "AbrTypeCmd",
-    "TypeCmd",
-    "SigneCommande",
-    "ID_StatutCmdFk",
-    "ID_StatutCmd",
-    "AbrStatutCmd",
-    "StatutCmd",
-    "ID_ArticleFk",
-    "CodeArticleInterne",
-    "NomArticle",
-    "ID_UniteFk",
-    "AbrUnite",
-    "StockActuel",
-    (
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
-            ELSE "StockAvantLigneTheorique"
-        END)::numeric(14,3) AS "StockAvantLigneTheorique",
-    "QteCmdDetail",
-    "PUCmdDetail",
-    "MontantLigne",
-    "ObsCmdDetail",
-    "RemiseCmdDetail",
-    "LieuCmdDetail",
-    "SelectCmdDetail",
-    "EtatLigne",
-    "ID_DeviseFk",
-    "DeviseCode",
-    "DeviseLibelle",
-    "IdEntiteFk",
-    "ID_TiersFk",
-    "TiersNom",
-    logistique.fn_nature_bon("ID_TypeCmdFk") AS "NatureBon"
-   FROM ( SELECT source_1."ID_CmdFk",
+ SELECT source."ID_CmdFk",
+    source."ID_Commande",
+    source."DateCmd",
+    source."CodeCmd",
+    source."CodeFacture",
+    source."ID_TypeCmdFk",
+    source."AbrTypeCmd",
+    source."TypeCmd",
+    source."SigneCommande",
+    source."ID_StatutCmdFk",
+    source."ID_StatutCmd",
+    source."AbrStatutCmd",
+    source."StatutCmd",
+    source."ID_ArticleFk",
+    source."CodeArticleInterne",
+    source."NomArticle",
+    source."ID_UniteFk",
+    source."AbrUnite",
+    source."StockActuel",
+    source."StockAvantLigneTheorique",
+    source."QteCmdDetail",
+    source."PUCmdDetail",
+    source."MontantLigne",
+    source."ObsCmdDetail",
+    source."RemiseCmdDetail",
+    source."LieuCmdDetail",
+    source."SelectCmdDetail",
+    source."EtatLigne",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    source."IdEntiteFk",
+    source."ID_TiersFk",
+    source."TiersNom",
+    source."NatureBon",
+    h."AncienCodeCmd",
+    h."RenumeroteLe"
+   FROM (( SELECT source_1."ID_CmdFk",
             source_1."ID_Commande",
             source_1."DateCmd",
             source_1."CodeCmd",
@@ -17235,7 +17567,11 @@ CREATE VIEW logistique."V_CommandeDetail" AS
             source_1."ID_UniteFk",
             source_1."AbrUnite",
             source_1."StockActuel",
-            source_1."StockAvantLigneTheorique",
+            (
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN NULL::numeric
+                    ELSE source_1."StockAvantLigneTheorique"
+                END)::numeric(14,3) AS "StockAvantLigneTheorique",
             source_1."QteCmdDetail",
             source_1."PUCmdDetail",
             source_1."MontantLigne",
@@ -17247,97 +17583,133 @@ CREATE VIEW logistique."V_CommandeDetail" AS
             source_1."ID_DeviseFk",
             source_1."DeviseCode",
             source_1."DeviseLibelle",
-            r."IdEntiteFk",
-            r."ID_TiersFk",
-            t."Nom" AS "TiersNom"
-           FROM ((( SELECT historique."ID_CmdFk",
-                    historique."ID_Commande",
-                    historique."DateCmd",
-                    historique."CodeCmd",
-                    historique."CodeFacture",
-                    historique."ID_TypeCmdFk",
-                    historique."AbrTypeCmd",
-                    historique."TypeCmd",
-                    historique."SigneCommande",
-                    historique."ID_StatutCmdFk",
-                    historique."ID_StatutCmd",
-                    historique."AbrStatutCmd",
-                    historique."StatutCmd",
-                    historique."ID_ArticleFk",
-                    historique."CodeArticleInterne",
-                    historique."NomArticle",
-                    historique."ID_UniteFk",
-                    historique."AbrUnite",
-                    historique."StockActuel",
-                    historique."StockAvantLigneTheorique",
-                    historique."QteCmdDetail",
-                    historique."PUCmdDetail",
-                    historique."MontantLigne",
-                    historique."ObsCmdDetail",
-                    historique."RemiseCmdDetail",
-                    historique."LieuCmdDetail",
-                    historique."SelectCmdDetail",
-                    historique."EtatLigne",
+            source_1."IdEntiteFk",
+            source_1."ID_TiersFk",
+            source_1."TiersNom",
+            logistique.fn_nature_bon(source_1."ID_TypeCmdFk") AS "NatureBon"
+           FROM ( SELECT source_1_1."ID_CmdFk",
+                    source_1_1."ID_Commande",
+                    source_1_1."DateCmd",
+                    source_1_1."CodeCmd",
+                    source_1_1."CodeFacture",
+                    source_1_1."ID_TypeCmdFk",
+                    source_1_1."AbrTypeCmd",
+                    source_1_1."TypeCmd",
+                    source_1_1."SigneCommande",
+                    source_1_1."ID_StatutCmdFk",
+                    source_1_1."ID_StatutCmd",
+                    source_1_1."AbrStatutCmd",
+                    source_1_1."StatutCmd",
+                    source_1_1."ID_ArticleFk",
+                    source_1_1."CodeArticleInterne",
+                    source_1_1."NomArticle",
+                    source_1_1."ID_UniteFk",
+                    source_1_1."AbrUnite",
+                    source_1_1."StockActuel",
+                    source_1_1."StockAvantLigneTheorique",
+                    source_1_1."QteCmdDetail",
+                    source_1_1."PUCmdDetail",
+                    source_1_1."MontantLigne",
+                    source_1_1."ObsCmdDetail",
+                    source_1_1."RemiseCmdDetail",
+                    source_1_1."LieuCmdDetail",
+                    source_1_1."SelectCmdDetail",
+                    source_1_1."EtatLigne",
                     source_1_1."ID_DeviseFk",
-                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
-                    (devise."NomGenerique")::text AS "DeviseLibelle"
-                   FROM ((( SELECT d."ID_CmdFk",
-                            c."ID_Commande",
-                            c."DateCmd",
-                            c."CodeCmd",
-                            c."CodeFacture",
-                            c."ID_TypeCmdFk",
-                            type_cmd."AbrGenerique" AS "AbrTypeCmd",
-                            type_cmd."NomGenerique" AS "TypeCmd",
-                                CASE
-                                    WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                                    WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                                    ELSE 0
-                                END AS "SigneCommande",
-                            c."ID_StatutCmdFk",
-                            c."ID_StatutCmdFk" AS "ID_StatutCmd",
-                            statut_cmd."AbrGenerique" AS "AbrStatutCmd",
-                            statut_cmd."NomGenerique" AS "StatutCmd",
-                            d."ID_ArticleFk",
-                            a."CodeArticleInterne",
-                            a."NomArticle",
-                            a."ID_UniteFk",
-                            unite."AbrGenerique" AS "AbrUnite",
-                            (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "StockActuel",
-                                CASE
-                                    WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) + COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
-                                    WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
-                                    ELSE (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3)
-                                END AS "StockAvantLigneTheorique",
-                            (COALESCE(d."QteCmdDetail", (0)::numeric))::numeric(14,3) AS "QteCmdDetail",
-                            (COALESCE(d."PUCmdDetail", (0)::numeric))::numeric(12,2) AS "PUCmdDetail",
-                            ((COALESCE(d."QteCmdDetail", (0)::numeric) * COALESCE(d."PUCmdDetail", (0)::numeric)))::numeric(12,2) AS "MontantLigne",
-                            d."ObsCmdDetail",
-                            d."RemiseCmdDetail",
-                            d."LieuCmdDetail",
-                            d."SelectCmdDetail",
-                                CASE
-                                    WHEN ((d."QteCmdDetail" IS NULL) OR (d."QteCmdDetail" <= (0)::numeric)) THEN 'Quantité invalide'::text
-                                    WHEN (d."PUCmdDetail" IS NULL) THEN 'Prix non renseigné'::text
-                                    ELSE 'Valide'::text
-                                END AS "EtatLigne"
-                           FROM (((((logistique."T_CommandeDetail" d
-                             JOIN logistique."T_Commande" c ON ((c."ID_Commande" = d."ID_CmdFk")))
-                             JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
-                             LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-                             LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-                             LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))) historique
-                     LEFT JOIN logistique."T_Commande" source_1_1 ON ((source_1_1."ID_Commande" = historique."ID_CmdFk")))
-                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1
-             LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source_1."ID_Commande")))
-             LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) source;
+                    source_1_1."DeviseCode",
+                    source_1_1."DeviseLibelle",
+                    r."IdEntiteFk",
+                    r."ID_TiersFk",
+                    t."Nom" AS "TiersNom"
+                   FROM ((( SELECT historique."ID_CmdFk",
+                            historique."ID_Commande",
+                            historique."DateCmd",
+                            historique."CodeCmd",
+                            historique."CodeFacture",
+                            historique."ID_TypeCmdFk",
+                            historique."AbrTypeCmd",
+                            historique."TypeCmd",
+                            historique."SigneCommande",
+                            historique."ID_StatutCmdFk",
+                            historique."ID_StatutCmd",
+                            historique."AbrStatutCmd",
+                            historique."StatutCmd",
+                            historique."ID_ArticleFk",
+                            historique."CodeArticleInterne",
+                            historique."NomArticle",
+                            historique."ID_UniteFk",
+                            historique."AbrUnite",
+                            historique."StockActuel",
+                            historique."StockAvantLigneTheorique",
+                            historique."QteCmdDetail",
+                            historique."PUCmdDetail",
+                            historique."MontantLigne",
+                            historique."ObsCmdDetail",
+                            historique."RemiseCmdDetail",
+                            historique."LieuCmdDetail",
+                            historique."SelectCmdDetail",
+                            historique."EtatLigne",
+                            source_1_1_1."ID_DeviseFk",
+                            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                            (devise."NomGenerique")::text AS "DeviseLibelle"
+                           FROM ((( SELECT d."ID_CmdFk",
+                                    c."ID_Commande",
+                                    c."DateCmd",
+                                    c."CodeCmd",
+                                    c."CodeFacture",
+                                    c."ID_TypeCmdFk",
+                                    type_cmd."AbrGenerique" AS "AbrTypeCmd",
+                                    type_cmd."NomGenerique" AS "TypeCmd",
+CASE
+ WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
+ WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
+ ELSE 0
+END AS "SigneCommande",
+                                    c."ID_StatutCmdFk",
+                                    c."ID_StatutCmdFk" AS "ID_StatutCmd",
+                                    statut_cmd."AbrGenerique" AS "AbrStatutCmd",
+                                    statut_cmd."NomGenerique" AS "StatutCmd",
+                                    d."ID_ArticleFk",
+                                    a."CodeArticleInterne",
+                                    a."NomArticle",
+                                    a."ID_UniteFk",
+                                    unite."AbrGenerique" AS "AbrUnite",
+                                    (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "StockActuel",
+CASE
+ WHEN ((type_cmd."AbrGenerique")::text ~~* 'sort%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) + COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
+ WHEN ((type_cmd."AbrGenerique")::text ~~* 'entr%'::text) THEN ((COALESCE(a."QteArticle", (0)::numeric) - COALESCE(d."QteCmdDetail", (0)::numeric)))::numeric(14,3)
+ ELSE (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3)
+END AS "StockAvantLigneTheorique",
+                                    (COALESCE(d."QteCmdDetail", (0)::numeric))::numeric(14,3) AS "QteCmdDetail",
+                                    (COALESCE(d."PUCmdDetail", (0)::numeric))::numeric(12,2) AS "PUCmdDetail",
+                                    ((COALESCE(d."QteCmdDetail", (0)::numeric) * COALESCE(d."PUCmdDetail", (0)::numeric)))::numeric(12,2) AS "MontantLigne",
+                                    d."ObsCmdDetail",
+                                    d."RemiseCmdDetail",
+                                    d."LieuCmdDetail",
+                                    d."SelectCmdDetail",
+CASE
+ WHEN ((d."QteCmdDetail" IS NULL) OR (d."QteCmdDetail" <= (0)::numeric)) THEN 'Quantité invalide'::text
+ WHEN (d."PUCmdDetail" IS NULL) THEN 'Prix non renseigné'::text
+ ELSE 'Valide'::text
+END AS "EtatLigne"
+                                   FROM (((((logistique."T_CommandeDetail" d
+                                     JOIN logistique."T_Commande" c ON ((c."ID_Commande" = d."ID_CmdFk")))
+                                     JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
+                                     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+                                     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
+                                     LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))) historique
+                             LEFT JOIN logistique."T_Commande" source_1_1_1 ON ((source_1_1_1."ID_Commande" = historique."ID_CmdFk")))
+                             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1_1."ID_DeviseFk")))) source_1_1
+                     LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source_1_1."ID_Commande")))
+                     LEFT JOIN logistique."T_Client" t ON ((t."ID_Client" = r."ID_TiersFk")))) source_1) source
+     LEFT JOIN logistique."T_BonCodeHistorique" h ON ((h."ID_Commande" = source."ID_Commande")));
 
 
 --
 -- Name: VIEW "V_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Projection métier commune des bons et lignes : NatureBon distingue CMD sans effet stock des BE/BS. Une commande ne porte ni dette ni alerte de facture manquante ; totaux exacts conservés.';
+COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Projection commune des bons ou lignes avec nature BE/BS/CMD, montants exacts et correspondance historique de code issue du journal06. Les identifiants et écritures métier restent inchangés.';
 
 
 --
@@ -17365,7 +17737,7 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."DateCmd" IS 'Date métier de la
 -- Name: COLUMN "V_CommandeDetail"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."CodeCmd" IS 'Référence métier unique de la commande ; les codes C_000E et C_000S sont exclus de la vue des commandes sans lignes. Expression projetée : c."CodeCmd".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."CodeCmd" IS 'Code actuel du bon parent ; l’ancien code reste consultable dans AncienCodeCmd, sans changer la clé ID_CmdFk.';
 
 
 --
@@ -17586,114 +17958,163 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."NatureBon" IS 'entree ou sortie
 
 
 --
+-- Name: COLUMN "V_CommandeDetail"."AncienCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."AncienCodeCmd" IS 'Code exact avant la nomenclature06 si ce bon a été renommé ; issu du journal immuable, sans réécrire le document ni les écritures émises.';
+
+
+--
+-- Name: COLUMN "V_CommandeDetail"."RenumeroteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeDetail"."RenumeroteLe" IS 'Instant de la reprise06 de ce bon ; absent pour un code déjà canonique ou une création ultérieure.';
+
+
+--
 -- Name: V_CommandeOverview; Type: VIEW; Schema: logistique; Owner: -
 --
 
 CREATE VIEW logistique."V_CommandeOverview" AS
- SELECT "ID_Commande",
-    "DateCmd",
-    "CodeCmd",
-    "ID_TypeCmdFk",
-    "AbrTypeCmd",
-    "TypeCmd",
-    "ID_StatutCmdFk",
-    "AbrStatutCmd",
-    "StatutCmd",
-    "ID_ClientFk",
-    "NomClientSaisi",
-    "MontantHT",
-    "MontantTTC",
-    "MontantRegleFacture",
-    "MontantResteFacture",
-        CASE
-            WHEN (logistique.fn_nature_bon("ID_TypeCmdFk") = 'commande'::text) THEN 'Sans facturation'::text
-            ELSE "EtatPaiement"
-        END AS "EtatPaiement",
-    "StatusFacture",
-    "DateFacture",
-    "CodeFacture",
-    "DateEcheancePaiement",
-    "NbLignes",
-    "NbArticlesDistincts",
-    "QteTotale",
-    "MontantDetails",
-    "ListeArticles",
-    "EstCommandeSansDetails",
-    "EstMontantIncoherent",
-    "EtatControleCommande",
-    "ID_DeviseFk",
-    "DeviseCode",
-    "DeviseLibelle",
-    logistique.fn_nature_bon("ID_TypeCmdFk") AS "NatureBon"
-   FROM ( SELECT historique."ID_Commande",
-            historique."DateCmd",
-            historique."CodeCmd",
-            historique."ID_TypeCmdFk",
-            historique."AbrTypeCmd",
-            historique."TypeCmd",
-            historique."ID_StatutCmdFk",
-            historique."AbrStatutCmd",
-            historique."StatutCmd",
-            historique."ID_ClientFk",
-            historique."NomClientSaisi",
-            historique."MontantHT",
-            historique."MontantTTC",
-            historique."MontantRegleFacture",
-            historique."MontantResteFacture",
-            historique."EtatPaiement",
-            historique."StatusFacture",
-            historique."DateFacture",
-            historique."CodeFacture",
-            historique."DateEcheancePaiement",
-            historique."NbLignes",
-            historique."NbArticlesDistincts",
-            historique."QteTotale",
-            historique."MontantDetails",
-            historique."ListeArticles",
-            historique."EstCommandeSansDetails",
-            historique."EstMontantIncoherent",
-            historique."EtatControleCommande",
+ SELECT source."ID_Commande",
+    source."DateCmd",
+    source."CodeCmd",
+    source."ID_TypeCmdFk",
+    source."AbrTypeCmd",
+    source."TypeCmd",
+    source."ID_StatutCmdFk",
+    source."AbrStatutCmd",
+    source."StatutCmd",
+    source."ID_ClientFk",
+    source."NomClientSaisi",
+    source."MontantHT",
+    source."MontantTTC",
+    source."MontantRegleFacture",
+    source."MontantResteFacture",
+    source."EtatPaiement",
+    source."StatusFacture",
+    source."DateFacture",
+    source."CodeFacture",
+    source."DateEcheancePaiement",
+    source."NbLignes",
+    source."NbArticlesDistincts",
+    source."QteTotale",
+    source."MontantDetails",
+    source."ListeArticles",
+    source."EstCommandeSansDetails",
+    source."EstMontantIncoherent",
+    source."EtatControleCommande",
+    source."ID_DeviseFk",
+    source."DeviseCode",
+    source."DeviseLibelle",
+    source."NatureBon",
+    h."AncienCodeCmd",
+    h."RenumeroteLe"
+   FROM (( SELECT source_1."ID_Commande",
+            source_1."DateCmd",
+            source_1."CodeCmd",
+            source_1."ID_TypeCmdFk",
+            source_1."AbrTypeCmd",
+            source_1."TypeCmd",
+            source_1."ID_StatutCmdFk",
+            source_1."AbrStatutCmd",
+            source_1."StatutCmd",
+            source_1."ID_ClientFk",
+            source_1."NomClientSaisi",
+            source_1."MontantHT",
+            source_1."MontantTTC",
+            source_1."MontantRegleFacture",
+            source_1."MontantResteFacture",
+                CASE
+                    WHEN (logistique.fn_nature_bon(source_1."ID_TypeCmdFk") = 'commande'::text) THEN 'Sans facturation'::text
+                    ELSE source_1."EtatPaiement"
+                END AS "EtatPaiement",
+            source_1."StatusFacture",
+            source_1."DateFacture",
+            source_1."CodeFacture",
+            source_1."DateEcheancePaiement",
+            source_1."NbLignes",
+            source_1."NbArticlesDistincts",
+            source_1."QteTotale",
+            source_1."MontantDetails",
+            source_1."ListeArticles",
+            source_1."EstCommandeSansDetails",
+            source_1."EstMontantIncoherent",
+            source_1."EtatControleCommande",
             source_1."ID_DeviseFk",
-            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
-            (devise."NomGenerique")::text AS "DeviseLibelle"
-           FROM ((( SELECT c."ID_Commande",
-                    c."DateCmd",
-                    c."CodeCmd",
-                    c."ID_TypeCmdFk",
-                    c."AbrTypeCmd",
-                    c."TypeCmd",
-                    c."ID_StatutCmdFk",
-                    c."AbrStatutCmd",
-                    c."StatutCmd",
-                    c."ID_ClientFk",
-                    c."NomClientSaisi",
-                    c."MontantHT",
-                    c."MontantTTC",
-                    c."MontantRegleFacture",
-                    c."MontantResteFacture",
-                    c."EtatPaiement",
-                    c."StatusFacture",
-                    c."DateFacture",
-                    c."CodeFacture",
-                    c."DateEcheancePaiement",
-                    c."NbLignes",
-                    c."NbArticlesDistincts",
-                    c."QteTotale",
-                    c."MontantDetails",
-                    c."ListeArticles",
-                    c."EstCommandeSansDetails",
-                    c."EstMontantIncoherent",
-                    c."EtatControleCommande"
-                   FROM logistique."V_Commande" c) historique
-             LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_Commande")))
-             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source;
+            source_1."DeviseCode",
+            source_1."DeviseLibelle",
+            logistique.fn_nature_bon(source_1."ID_TypeCmdFk") AS "NatureBon"
+           FROM ( SELECT historique."ID_Commande",
+                    historique."DateCmd",
+                    historique."CodeCmd",
+                    historique."ID_TypeCmdFk",
+                    historique."AbrTypeCmd",
+                    historique."TypeCmd",
+                    historique."ID_StatutCmdFk",
+                    historique."AbrStatutCmd",
+                    historique."StatutCmd",
+                    historique."ID_ClientFk",
+                    historique."NomClientSaisi",
+                    historique."MontantHT",
+                    historique."MontantTTC",
+                    historique."MontantRegleFacture",
+                    historique."MontantResteFacture",
+                    historique."EtatPaiement",
+                    historique."StatusFacture",
+                    historique."DateFacture",
+                    historique."CodeFacture",
+                    historique."DateEcheancePaiement",
+                    historique."NbLignes",
+                    historique."NbArticlesDistincts",
+                    historique."QteTotale",
+                    historique."MontantDetails",
+                    historique."ListeArticles",
+                    historique."EstCommandeSansDetails",
+                    historique."EstMontantIncoherent",
+                    historique."EtatControleCommande",
+                    source_1_1."ID_DeviseFk",
+                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                    (devise."NomGenerique")::text AS "DeviseLibelle"
+                   FROM ((( SELECT c."ID_Commande",
+                            c."DateCmd",
+                            c."CodeCmd",
+                            c."ID_TypeCmdFk",
+                            c."AbrTypeCmd",
+                            c."TypeCmd",
+                            c."ID_StatutCmdFk",
+                            c."AbrStatutCmd",
+                            c."StatutCmd",
+                            c."ID_ClientFk",
+                            c."NomClientSaisi",
+                            c."MontantHT",
+                            c."MontantTTC",
+                            c."MontantRegleFacture",
+                            c."MontantResteFacture",
+                            c."EtatPaiement",
+                            c."StatusFacture",
+                            c."DateFacture",
+                            c."CodeFacture",
+                            c."DateEcheancePaiement",
+                            c."NbLignes",
+                            c."NbArticlesDistincts",
+                            c."QteTotale",
+                            c."MontantDetails",
+                            c."ListeArticles",
+                            c."EstCommandeSansDetails",
+                            c."EstMontantIncoherent",
+                            c."EtatControleCommande"
+                           FROM logistique."V_Commande" c) historique
+                     LEFT JOIN logistique."T_Commande" source_1_1 ON ((source_1_1."ID_Commande" = historique."ID_Commande")))
+                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1) source
+     LEFT JOIN logistique."T_BonCodeHistorique" h ON ((h."ID_Commande" = source."ID_Commande")));
 
 
 --
 -- Name: VIEW "V_CommandeOverview"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandeOverview" IS 'Projection métier commune des bons et lignes : NatureBon distingue CMD sans effet stock des BE/BS. Une commande ne porte ni dette ni alerte de facture manquante ; totaux exacts conservés.';
+COMMENT ON VIEW logistique."V_CommandeOverview" IS 'Projection commune des bons ou lignes avec nature BE/BS/CMD, montants exacts et correspondance historique de code issue du journal06. Les identifiants et écritures métier restent inchangés.';
 
 
 --
@@ -17714,7 +18135,7 @@ COMMENT ON COLUMN logistique."V_CommandeOverview"."DateCmd" IS 'Date métier de 
 -- Name: COLUMN "V_CommandeOverview"."CodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeOverview"."CodeCmd" IS 'Référence métier unique de la commande ; les codes C_000E et C_000S sont exclus de la vue des commandes sans lignes. Expression projetée : "CodeCmd".';
+COMMENT ON COLUMN logistique."V_CommandeOverview"."CodeCmd" IS 'Code courant BE-/BS-/CMD- ; les références documentaires émises se résolvent par fn_code_bon_a_date.';
 
 
 --
@@ -17918,6 +18339,20 @@ COMMENT ON COLUMN logistique."V_CommandeOverview"."DeviseLibelle" IS 'Libellé d
 --
 
 COMMENT ON COLUMN logistique."V_CommandeOverview"."NatureBon" IS 'entree ou sortie pour un document physique ; commande pour CMD explicite du référentiel ; NULL si un ancien type est inconnu.';
+
+
+--
+-- Name: COLUMN "V_CommandeOverview"."AncienCodeCmd"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeOverview"."AncienCodeCmd" IS 'Code exact avant la nomenclature06 si ce bon a été renommé ; issu du journal immuable, sans réécrire le document ni les écritures émises.';
+
+
+--
+-- Name: COLUMN "V_CommandeOverview"."RenumeroteLe"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_CommandeOverview"."RenumeroteLe" IS 'Instant de la reprise06 de ce bon ; absent pour un code déjà canonique ou une création ultérieure.';
 
 
 --
@@ -28030,6 +28465,51 @@ ALTER TABLE ONLY logistique."T_Avoir"
 
 
 --
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_ID_Commande_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" UNIQUE ("ID_Commande");
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_ID_Commande_key" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_NouveauCodeCmd_key; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" UNIQUE ("NouveauCodeCmd");
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_NouveauCodeCmd_key" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
+-- Name: T_BonCodeHistorique T_BonCodeHistorique_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
+--
+
+ALTER TABLE ONLY logistique."T_BonCodeHistorique"
+    ADD CONSTRAINT "T_BonCodeHistorique_pkey" PRIMARY KEY ("ID_BonCodeHistorique");
+
+
+--
+-- Name: CONSTRAINT "T_BonCodeHistorique_pkey" ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_BonCodeHistorique_pkey" ON logistique."T_BonCodeHistorique" IS 'Intégrité du journal de nomenclature06 : identité, unicité, champs obligatoires et métadonnées factuelles conservées.';
+
+
+--
 -- Name: T_CategorieDossierSuivi T_CategorieDossierSuivi_pkey; Type: CONSTRAINT; Schema: logistique; Owner: -
 --
 
@@ -29896,6 +30376,27 @@ COMMENT ON INDEX geolocalisation.idx_n5_id_voieaccessite_fk_ref IS 'Index d’ac
 --
 
 COMMENT ON INDEX logistique."T_Article_pkey" IS 'Index support de la clé primaire sur "logistique"."T_Article". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "T_Article_pkey" ON logistique."T_Article" USING btree ("ID_Article").';
+
+
+--
+-- Name: INDEX "T_BonCodeHistorique_ID_Commande_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_ID_Commande_key" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
+
+
+--
+-- Name: INDEX "T_BonCodeHistorique_NouveauCodeCmd_key"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_NouveauCodeCmd_key" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
+
+
+--
+-- Name: INDEX "T_BonCodeHistorique_pkey"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON INDEX logistique."T_BonCodeHistorique_pkey" IS 'Index d’intégrité et de recherche du journal06 : une correspondance par bon et un nouveau code unique.';
 
 
 --
@@ -32235,6 +32736,20 @@ CREATE CONSTRAINT TRIGGER avoir_total AFTER INSERT ON logistique."T_Avoir" DEFER
 --
 
 COMMENT ON TRIGGER avoir_total ON logistique."T_Avoir" IS 'Contrôle différé de la somme émise.';
+
+
+--
+-- Name: T_BonCodeHistorique bon_code_historique_immuable; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER bon_code_historique_immuable BEFORE INSERT OR DELETE OR UPDATE ON logistique."T_BonCodeHistorique" FOR EACH ROW EXECUTE FUNCTION logistique.tr_bon_code_historique_immuable();
+
+
+--
+-- Name: TRIGGER bon_code_historique_immuable ON "T_BonCodeHistorique"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER bon_code_historique_immuable ON logistique."T_BonCodeHistorique" IS 'Conserve toutes les correspondances, sans dérogation applicative ni GUC permanent.';
 
 
 --
@@ -35804,7 +36319,7 @@ ALTER TABLE ONLY systeme."T_RoleModule"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6GgRIB8Gwp5aq0GqS5hcJ9I1W0KHPv6TlCLSZ5V1yMA4niX9y3sLPSmi7QbIuL6
+\unrestrict aJOifWP23K54d7UGvhlYixx7XWPbHgqzRHiEwXivzvyX8qWEII5Vf0J2C2hdalG
 
 COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
