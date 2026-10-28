@@ -4,7 +4,7 @@
 
 Suivre la [charte](charte_documentaire.md) et les valeurs de la [configuration](../assets/charte_sauverndeko.json). A4 portrait, marges gauche 2,5 cm et autres 2 cm ; texte Aptos 11 pt, titres 18/14/12/11 pt, interligne 1,15. Utiliser une section paysage pour un tableau large et conserver une taille lisible.
 
-En-tête compact : logo proportionnel à gauche, identité de l’organisation émettrice si fournie, titre/référence à droite ou dessous. SauverNdeko identifie le logiciel ; il ne remplace pas l’émetteur. Le logo local fait 2 cm de large par défaut. Aucun nom, logo, adresse ou compte d’un autre client n’est repris.
+En-tête compact : logo proportionnel de l’entreprise à gauche, identité émettrice et titre/référence à droite ou dessous. SauverNdeko identifie le logiciel ; il ne remplace pas l’émetteur. Le logo a une largeur de référence de 2 cm. Pour les PDF métier, suivre les options et la règle d’identité courante de la [charte](charte_documentaire.md) ; le nom de l’entreprise demeure visible même sans bloc d’en-tête. Aucun nom, logo, adresse ou compte d’un autre client n’est repris.
 
 Les informations utiles — référence, organisation, période/date de situation, portée et statut réel — restent visibles sans longs commentaires techniques. Une page de garde est utile pour un rapport long, pas obligatoire pour une fiche ou un bon d’une page.
 
@@ -38,4 +38,4 @@ Préserver les informations d’accessibilité réellement produites : titres st
 
 ## Moteur logistique installé
 
-Le service backend apps/logistique/documents.py produit les bons d’entrée, sortie et livraison, factures, reçus et avoirs. ReportLab utilise Helvetica comme police de repli, A4 et des tableaux à en-têtes répétés avec Page X sur Y. Les identités sont figées à l’émission des documents financiers ; les reprises historiques sont signalées. Les pièces PDF et images restent privées. Les PDF de recette ont été rendus et contrôlés sur une page et sur cinq pages. Une nouvelle modification du gabarit demande une nouvelle vérification de toutes les pages.
+Le service backend apps/logistique/documents.py produit les bons d’entrée, sortie, livraison et commande CMD, factures, reçus et avoirs. ReportLab utilise les polices Vera.ttf et VeraBd.ttf livrées avec sa distribution et embarquées dans le PDF ; le rendu ne dépend pas d’une police installée sur Windows ou sur le serveur. Le format est A4 avec des tableaux à en-têtes répétés ; Page X sur Y est affiché lorsque le pied est activé. La présentation de l’émetteur utilise le profil courant à chaque génération ; les identités historiques en base, tiers et valeurs financières sont conservés. Les pièces PDF et images archivées restent privées et inchangées. Une modification du gabarit demande une nouvelle vérification de toutes les pages, notamment avec les quatre combinaisons d’en-tête/pied, un logo transparent, un nom long et une page supplémentaire.

@@ -4,6 +4,7 @@ import ConsultationTabs from "../../components/ConsultationTabs";
 import SearchSelect from "../../components/SearchSelect";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
+import EntityProfileEditor from "../../components/EntityProfileEditor";
 import { SYSTEME_ADMIN_SCHEMA } from "./systeme";
 import {
   fetchAdminEntity, createAdminEntity, updateAdminEntity,
@@ -140,7 +141,10 @@ export function buildAdminEditorPayload(type, fields, values, initial, { creatin
 }
 
 /** Fenêtre commune d’administration : identifiants stables, fiche fraîche et modification partielle. */
-export default function AdminRecordEditor({ type = "users", recordId = null, mode = "create", row = null, support = {}, canWrite = false, onClose, onSaved }) {
+export default function AdminRecordEditor(props){
+  return props.type==="entities"?<EntityProfileEditor context="admin" recordId={props.recordId??null} mode={props.mode||"create"} support={props.support} canWrite={props.canWrite===true} onClose={props.onClose} onSaved={props.onSaved}/>:<AdminGenericRecordEditor {...props}/>;
+}
+function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "create", row = null, support = {}, canWrite = false, onClose, onSaved }) {
   const prefix = useId(), creating = recordId == null;
   const fields = definition(type, creating), groups = groupsFor(type, fields);
   const [record, setRecord] = useState(null), [values, setValues] = useState(() => initialForm(fields, null)), [initial, setInitial] = useState(null);

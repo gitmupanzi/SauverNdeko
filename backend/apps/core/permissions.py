@@ -20,7 +20,7 @@ def scope_for(obj, actor, alias="v"):
     if schema in {'geolocalisation','referentiel'}:return 'TRUE',[]
     if not org:raise APIError('Organisation requise.','ORGANISATION_REQUIRED',403)
     columns={x['column_name'] for x in obj['columns']}
-    if name in {'T_Entite','V_Entite','V_Entite_Localisation_Detail'} and 'IdEntite' in columns:return f'{a}."IdEntite"=%s',[org]
+    if name in {'T_Entite','V_Entite','V_Entite_Localisation_Detail','V_IdentiteDocumentaire'} and 'IdEntite' in columns:return f'{a}."IdEntite"=%s',[org]
     for field in ('IdEntiteFk','ID_EntiteFk'):
         if field in columns:return f'{a}."{field}"=%s',[org]
     if schema=='systeme' and {'SettingScope','ScopeValue'}.issubset(columns):return f'{a}."SettingScope"=%s AND {a}."ScopeValue"=%s',['entity',str(org)]

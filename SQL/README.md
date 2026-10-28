@@ -1,6 +1,6 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_06`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_07`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
@@ -24,7 +24,7 @@ La migration 04 est transactionnelle et réexécutable. Son retour arrière ne c
 
 ## Nouvelle installation
 
-Utiliser une base vide et les outils PostgreSQL 18 compatibles. Le fichier métier s’exécute avec psql -X -v ON_ERROR_STOP=1 --dbname NOM_BASE --file SQL/SauverNdeko_Metier_Structure.sql. Il ne charge aucun compte, dictionnaire, organisation, article ni événement.
+Utiliser une base vide et les outils PostgreSQL 18 compatibles. Créer d’abord l’extension `pg_trgm` dans `public`. Le fichier métier s’exécute avec psql -X -v ON_ERROR_STOP=1 --dbname NOM_BASE --file SQL/SauverNdeko_Metier_Structure.sql. Il ne charge aucun compte, dictionnaire, organisation, article ni événement. Pour préparer l’installation complète, utiliser un nouveau paquet `preparer_installation` produit depuis ce socle : structure, dictionnaire fermé et manifeste de contrôle, sans données clientes ni préférences personnelles.
 
 Configurer ensuite le backend vers cette base et installer le socle natif public avec manage.py migrate, dans une fenêtre d’écriture explicitement choisie. Ne pas charger les tables natives vides du fichier complet avant cette migration : elles seraient présentes sans historique django_migrations. Les référentiels et paramètres nécessaires à l’exploitation restent à initialiser selon l’organisation ; aucune donnée client n’est incluse dans ces fichiers.
 
@@ -223,3 +223,13 @@ Les factures, leurs numéros et lignes, les règlements, les identités document
 La recette privée de reprise vérifie **52 contrôles spécifiques**, avec préparation par 112 contrôles de chaîne complète et 31 d’inventaires. Elle couvre notamment bons facturés/clôturés, restitutions, stocks initiaux et inventaires protégés ; aucune écriture fictive ne vise SauverNdeko. Voir `tests/test_nomenclature_bons.py` et la recette API/PDF associée.
 
 Les six sources canoniques ont été régénérées après cette application. Leurs deux restaurations privées conservent les définitions et commentaires du catalogue installé : **67 tables, 80 vues, 126 triggers** pour la structure globale ; **57 tables, 80 vues, 126 triggers** pour le métier. Les restaurations restent sans données. Une nouvelle installation produit un nouveau paquet avec le dictionnaire fermé actuel ; les journaux historiques, comptes, entreprises et documents ne sont jamais repris depuis l’instance source.
+
+## Identité courante et présentation des PDF — 28 octobre 2026
+
+La migration [20261028_07_identite_documents_entreprise.sql](migrations/20261028_07_identite_documents_entreprise.sql) est installée après sauvegarde et recette privée. Elle ajoute huit champs dans `systeme.T_Entite` : site web, téléphone secondaire facultatif, deux options de présentation activées par défaut et quatre champs cohérents de logo PNG privé (octets, MIME, SHA-256 et date). Sept contraintes nouvelles, y compris les deux NOT NULL, sont commentées. Les anciennes colonnes des entreprises et les **66 autres tables** restent inchangées ; aucun instantané, montant, audit, stock ou document historique n’est réécrit.
+
+`V_IdentiteDocumentaire` et `fn_identite_documentaire` exposent le profil courant avec `HasLogo` et les seules métadonnées de l’image. Les octets restent dans `T_Entite` et les routes binaires autorisées ; le nettoyage d’audit les retire récursivement. Chaque PDF généré ou régénéré utilise l’identité actuelle de son entreprise. Les tiers, montants, références et instantanés historiques restent conservés, comme les octets des PDF archivés. Les deux réglages persistés sont appliqués directement au téléchargement : le nom reste visible sans en-tête ; un pied désactivé est entièrement retiré, pagination comprise.
+
+Les **huit sources canoniques** ont été régénérées : deux structures globales et les extraits Tables/Views de Référentiel, Logistique et Système. Deux restaurations privées vides ont confirmé les définitions et commentaires : **67 tables, 80 vues, 126 triggers et 149 routines** pour le global ; **57 tables, 80 vues, 126 triggers et 118 routines** pour le métier. Les contrôles ciblés vérifient les seize commentaires des nouvelles colonnes de table/vue, les sept contraintes, les options true et l’absence de binaire en vue/JSON. Les valeurs CRLF/LF des contraintes sont écrites avec la notation SQL échappée explicite, afin que la conversion des fins de ligne de Git sur Windows n’en change pas le sens.
+
+Recette finale sur des fixtures privées : **57 contrôles SQL**, **13 tests API de profil**, **312 contrôles API/PDF** sur sept documents et les quatre combinaisons de réglages, puis **189 contrôles de mise en page** et **48 pages rendues inspectées**. Voir [le contrat et les preuves](documentation/Identite_Documents_Entreprise_20261028.md), [le guide utilisateur](../docs/identite-entreprise-pdf.md) et `tests/test_identite_documents_entreprise_postgresql.py`. Une installation neuve utilise le socle canonique actuel et son dictionnaire fermé ; ne pas rejouer07 sur une base qui le possède déjà.

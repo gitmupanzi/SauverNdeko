@@ -22,6 +22,8 @@ Une réception ou une sortie réelle s’enregistre dans son propre BE ou BS. La
 
 ## Socle et vérification
 
+La présentation PDF des BE, BS et CMD utilise le profil courant de l’entreprise, comme les factures, reçus et avoirs. Les valeurs métier, tiers et références émis restent conservés. Les options d’en-tête/pied sont indépendantes et le nom de l’entreprise reste visible ; un fichier archivé garde son contenu d’origine. Voir [l’identité et les options PDF](identite-entreprise-pdf.md).
+
 La migration `20261028_05_bons_commande.sql` porte la valeur référentielle, la classification, la numérotation et les protections SQL. Les tables de documents existantes sont réutilisées ; aucune table de type parallèle n’est créée.
 
 La recette d’écriture utilise uniquement des bases privées `sauverndeko_test_*`. Avant installation réelle : vérifier sauvegarde, conservation des données historiques, absence d’effet de stock du CMD et maintien des mouvements uniques BE/BS. Les règles sont contrôlées au niveau SQL, puis dans les services et l’interface.

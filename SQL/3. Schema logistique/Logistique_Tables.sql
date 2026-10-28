@@ -2679,7 +2679,7 @@ DECLARE a record;m record;bound integer;BEGIN
   INSERT INTO logistique."T_ValorisationEvenement"("ID_ArticleFk","IdEntiteFk","Operation","Motif","Avant","Apres") SELECT source_article."ID_Article",source_article."IdEntiteFk",'mouvement_update','Rattachement documentaire; mouvement, quantite, prix et arrete conserves',to_jsonb(OLD),to_jsonb(NEW) FROM logistique."T_Article" source_article WHERE source_article."ID_Article"=NEW."ID_ArticleFk";
   RETURN NEW;
  END IF;
-
+ 
  IF TG_OP='DELETE' THEN m=OLD;ELSE m=NEW;END IF;
  SELECT * INTO a FROM logistique."T_Article" WHERE "ID_Article"=m."ID_ArticleFk" FOR NO KEY UPDATE;
  IF TG_OP IN ('UPDATE','DELETE') THEN

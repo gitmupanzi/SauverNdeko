@@ -32,6 +32,7 @@ La [configuration de charte](assets/charte_sauverndeko.json) porte les valeurs c
 7. Word utilise styles, listes, en-têtes et champs de pagination natifs. Les tableaux restent dans la zone imprimable, avec en-têtes répétés ; les données chiffrées sont alignées à droite.
 8. Réutiliser la charte commune, en adaptant seulement les données d’identité autorisées et les besoins du document. Ne pas inventer une adresse, une signature, un numéro de facture ou une validation.
 9. Vérifier le rendu des fichiers effectivement générés : toutes les pages Word/PDF des cas de recette, cellules et impression Excel. Une génération ou une extraction de texte réussie ne prouve pas le rendu.
+10. Pour les PDF métier de l’application, appliquer l’identité **courante** de l’entreprise, y compris lors d’une régénération : la demande explicite du 28/10/2026 remplace l’ancienne présentation de l’émetteur figé. Les montants, tiers et instantanés historiques restent conservés ; les fichiers déjà archivés gardent leurs octets. Respecter les options d’en-tête/pied, avec nom d’entreprise toujours visible. Voir [la règle commune](references/charte_documentaire.md).
 
 Pour les exports Excel de listes, appliquer la préférence explicite du 25/10/2026 : en-têtes à la première ligne, données dès la deuxième, gris clair et texte sombre. Aucun logo ou bloc de présentation au-dessus du tableau ; conserver le contexte dans Informations. Cette règle remplace la présentation bleue antérieure pour Excel.
 

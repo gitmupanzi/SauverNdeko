@@ -7639,6 +7639,150 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "AlertePeremptionJours",
+          "data_type": "smallint",
+          "is_nullable": "NO",
+          "column_default": "30",
+          "character_maximum_length": null,
+          "numeric_precision": 16,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "BloquerLotsPerimes",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "false",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "IdentifiantsLegauxEntite",
+          "data_type": "jsonb",
+          "is_nullable": "NO",
+          "column_default": "'[]'::jsonb",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "MentionDocumentaireEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 1000,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "SiteWebEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "AfficherEnteteDocument",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "AfficherPiedDocument",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "LogoEntite",
+          "data_type": "bytea",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "LogoMimeEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 32,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "LogoSha256Entite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 64,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "LogoModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "PhoneSecondaireEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 20,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -7807,6 +7951,90 @@
           "required": false,
           "id": false,
           "default": true
+        },
+        {
+          "name": "AlertePeremptionJours",
+          "type": "Int",
+          "required": true,
+          "id": false,
+          "default": true
+        },
+        {
+          "name": "BloquerLotsPerimes",
+          "type": "Boolean",
+          "required": true,
+          "id": false,
+          "default": true
+        },
+        {
+          "name": "IdentifiantsLegauxEntite",
+          "type": "Json",
+          "required": true,
+          "id": false,
+          "default": true
+        },
+        {
+          "name": "MentionDocumentaireEntite",
+          "type": "String",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "SiteWebEntite",
+          "type": "String",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "AfficherEnteteDocument",
+          "type": "Boolean",
+          "required": true,
+          "id": false,
+          "default": true
+        },
+        {
+          "name": "AfficherPiedDocument",
+          "type": "Boolean",
+          "required": true,
+          "id": false,
+          "default": true
+        },
+        {
+          "name": "LogoEntite",
+          "type": "Bytes",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "LogoMimeEntite",
+          "type": "String",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "LogoSha256Entite",
+          "type": "String",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "LogoModifieLe",
+          "type": "DateTime",
+          "required": false,
+          "id": false,
+          "default": false
+        },
+        {
+          "name": "PhoneSecondaireEntite",
+          "type": "String",
+          "required": false,
+          "id": false,
+          "default": false
         }
       ]
     },
@@ -22351,6 +22579,204 @@
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        }
+      ]
+    },
+    "systeme.V_IdentiteDocumentaire": {
+      "schema": "systeme",
+      "name": "V_IdentiteDocumentaire",
+      "columns": [
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "IdEntite",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "NomEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "AdresseEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "EmailEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "PhoneEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 20,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "IdentifiantsLegauxEntite",
+          "data_type": "jsonb",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "MentionDocumentaireEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 1000,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "_version",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "SiteWebEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "AfficherEnteteDocument",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "AfficherPiedDocument",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "HasLogo",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "LogoMimeEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 32,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "LogoSha256Entite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 64,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "LogoModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "V_IdentiteDocumentaire",
+          "column_name": "PhoneSecondaireEntite",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"

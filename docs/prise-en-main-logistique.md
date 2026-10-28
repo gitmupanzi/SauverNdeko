@@ -4,7 +4,7 @@
 
 Connectez-vous et ouvrez Logistique. Le compte de plateforme choisit une entreprise dans l’en-tête ; « Toutes les entreprises » permet la consultation globale. Les utilisateurs locaux travaillent dans leur propre entreprise selon leurs droits.
 
-Dans **Identité de l’entreprise**, vérifiez nom, adresse, téléphone et e-mail. Les identifiants légaux et la mention sont facultatifs et doivent correspondre aux informations réelles. Une modification s’applique aux nouveaux documents ; les documents déjà émis conservent leur identité historique.
+Dans **Identité de l’entreprise**, vérifiez nom, logo, adresse, téléphone principal, téléphone secondaire facultatif, e-mail et site web. Renseignez les identifiants réels utiles, par exemple RCCM ou NIF, et la mention facultative. Une modification apparaît sur les prochains PDF générés, même pour un ancien bon ou une facture déjà émise. Les montants, tiers et écritures historiques restent conservés. Voir [le profil et les options PDF](identite-entreprise-pdf.md).
 
 Dans **Articles → ⋯ → Valorisation CUMP**, confirmez les coûts d’ouverture uniquement sur justificatif. « À initialiser » indique un coût encore inconnu, pas une valeur nulle. Le prix catalogue reste distinct du coût moyen.
 
@@ -33,6 +33,8 @@ Les bons d’écart d’inventaire sont internes : ils se corrigent dans Inventa
 Les menus ⋯ proposent les documents disponibles pour l’enregistrement sélectionné. Les justificatifs restent privés. Un export Excel suit les filtres et porte sur tous les résultats autorisés, même si l’écran ne montre qu’une page. Les prix restent numériques avec leur devise ; les dates de mouvement conservent l’heure.
 
 Les anciens bons ont été harmonisés en BE, BS ou CMD. Leur fiche conserve l’**Ancien code**, également recherchable dans les bons et leurs lignes. Les factures, reçus et avoirs déjà émis gardent leur référence d’origine lors d’une réimpression ; leur numéro et leurs montants restent conservés.
+
+L’en-tête et le pied sont activés par défaut pour les PDF. Modifiez ces réglages dans le profil de l’entreprise ; le téléchargement les applique directement. Le nom reste visible sans en-tête, et un pied désactivé est entièrement retiré. Un justificatif ou PDF archivé garde son contenu d’origine ; une régénération utilise la présentation courante.
 
 Un clic sur un indicateur du tableau de bord affiche sa liste en dessous. Le lien de retour ramène à l’indicateur. Les fenêtres Produit 360, Bon de stock 360, Lot 360 et Tiers 360 conservent le contexte de consultation.
 

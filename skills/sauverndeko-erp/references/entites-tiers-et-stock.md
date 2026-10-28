@@ -26,7 +26,7 @@ Ajouter une FK d'Entité propriétaire obligatoire et immuable aux racines méti
 
 Actuellement, une partie de la portée Article/Commande est déduite de T_Utilisateurs.IdEntiteFk. Un changement d'affectation du créateur ne doit plus déplacer l'historique. Le trigger de facture doit aussi utiliser l'entreprise du bon plutôt que celle du créateur actuel.
 
-Pour la reprise, analyser les liens existants avant d'attribuer une entreprise ; signaler les objets orphelins ou contradictoires. Ne pas attribuer arbitrairement les cas non résolus à l'entreprise de l'administrateur global. Les PDF et pièces justificatives suivent la même entreprise, avec identité du document conservée lors de son émission.
+Pour la reprise, analyser les liens existants avant d'attribuer une entreprise ; signaler les objets orphelins ou contradictoires. Ne pas attribuer arbitrairement les cas non résolus à l'entreprise de l'administrateur global. Les PDF et pièces justificatives suivent la même entreprise. Les instantanés d’identité émis, tiers et montants historiques restent conservés ; depuis la demande du 28/10/2026, la présentation de l’émetteur des PDF générés ou régénérés utilise le profil courant. Les fichiers archivés restent inchangés. Appliquer la [charte d’identité PDF](../../document-mise-en-forme/references/charte_documentaire.md).
 
 ## Référentiel de clients et fournisseurs
 

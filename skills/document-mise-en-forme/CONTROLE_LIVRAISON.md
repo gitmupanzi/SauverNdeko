@@ -21,6 +21,10 @@ Aucun document Word, classeur Excel ou PDF réel n’est généré par cette ada
 
 Les tests synthétiques ne vérifient ni l’exhaustivité des requêtes serveur, ni les droits API, ni la pagination des exporteurs réels. Pour chaque export implémenté, suivre le modèle de recette et inspecter les fichiers effectivement produits. Aucune donnée métier réelle, police distribuée ou publication externe n’est incluse.
 
+## Mise à jour du 28 octobre 2026 — PDF 3.2
+
+La règle PDF du 28 octobre 2026 est décrite dans la charte et dans la référence Word/PDF : identité émettrice courante à chaque génération, options indépendantes d’en-tête/pied et archives inchangées. La présente adaptation du skill est contrôlée par liens, empreintes et tests synthétiques ; elle ne constitue pas à elle seule une validation visuelle du nouveau moteur PDF.
+
 ## Mise à jour du 25 octobre 2026 — Excel 3.1
 
 Le propriétaire demande désormais un tableau direct : en-têtes en première ligne, données dès la deuxième, gris clair et texte sombre. Aucun logo, titre ou bloc de présentation ne précède les listes. Le contexte et le décompte restent dans Informations. La charte JSON et les règles du skill reprennent cette préférence.

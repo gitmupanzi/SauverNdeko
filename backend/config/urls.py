@@ -5,7 +5,7 @@ from apps.logistique.excel import RegisterCSVView
 from apps.core.reference_exports import ReferenceExcelView
 from apps.core.admin_portal import AdminOverviewView, AdminRegisterView, AdminExcelView
 from apps.logistique.expiry import ExpiryPolicyView
-from apps.logistique.entity_documents import EntityDocumentIdentityView
+from apps.logistique.entity_documents import EntityDocumentIdentityView, EntityLogoView, EntityIdentityDefaultsView
 from apps.logistique.valuation import ArticleValuationView, ArticleValuationExcelView
 from apps.logistique.lot_register import LotDetailView, LotMovementsView, LotMovementsExcelView
 from apps.logistique.inventories import InventoriesView, UnitPrecisionView
@@ -67,6 +67,8 @@ urlpatterns = [
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/export\.xlsx/?$", ArticleValuationExcelView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/valorisation/?$", ArticleValuationView.as_view()),
     re_path(r"^api/logistique/entreprise/identite/?$", EntityDocumentIdentityView.as_view()),
+    re_path(r"^api/systeme/entites/identite-defaut/?$", EntityIdentityDefaultsView.as_view()),
+    re_path(r"^api/systeme/entites/(?P<pk>[0-9]+)/logo/?$", EntityLogoView.as_view()),
     re_path(r"^api/logistique/peremption/politique/?$", ExpiryPolicyView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/export\.xlsx/?$", LotMovementsExcelView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/?$", LotMovementsView.as_view()),

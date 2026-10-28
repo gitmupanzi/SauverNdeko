@@ -6,6 +6,8 @@ Pour un même document et la même portée, Excel, Word et PDF conservent réfé
 
 Les exports ne recalculent pas une logique parallèle. Ils consomment les vues/services communs décrits dans [l’intégration](integration_plateforme.md). Une donnée historique figée reste attachée à sa date ; un stock courant n’est pas présenté comme le stock de fin d’une ancienne période.
 
+Pour les PDF métier, distinguer les valeurs historiques du document de l’identité de présentation : l’émetteur vient du profil courant à chaque génération, selon la [charte](charte_documentaire.md). Le tiers émis, les montants et références historiques ne changent pas. Les fichiers archivés sont conservés à l’octet près ; une régénération est un nouveau rendu, avec les options d’en-tête/pied enregistrées dans le profil.
+
 ## Contexte à tracer
 
 Adapter aux objets réellement disponibles : identifiant du document/export, type, organisation autorisée, génération et fuseau connu, période ou date de situation, filtres appliqués, portée page/synthèse/complet, ordre de tri, nombre de lignes et version de charte. L’identifiant de version source est repris lorsqu’il existe ; ne pas inventer un modèle d’exécution ou un job absent du backend.

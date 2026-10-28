@@ -518,11 +518,23 @@ class T_Entite(models.Model):
     IdEntite = models.AutoField(primary_key=True)
     NomEntite = models.TextField()
     PhoneEntite = models.TextField(null=True)
+    PhoneSecondaireEntite = models.CharField(max_length=20, null=True)
     EmailEntite = models.TextField()
     AdresseEntite = models.TextField(null=True)
     DateCreationEntite = models.DateTimeField(null=True)
     IdTypeEntiteFk = models.IntegerField(null=True)
     ValideEntite = models.BooleanField(null=True)
+    AlertePeremptionJours = models.SmallIntegerField(default=30)
+    BloquerLotsPerimes = models.BooleanField(default=False)
+    IdentifiantsLegauxEntite = models.JSONField(default=list)
+    MentionDocumentaireEntite = models.CharField(max_length=1000, null=True)
+    SiteWebEntite = models.TextField(null=True)
+    AfficherEnteteDocument = models.BooleanField(default=True)
+    AfficherPiedDocument = models.BooleanField(default=True)
+    LogoEntite = models.BinaryField(null=True, editable=False)
+    LogoMimeEntite = models.CharField(max_length=32, null=True, editable=False)
+    LogoSha256Entite = models.CharField(max_length=64, null=True, editable=False)
+    LogoModifieLe = models.DateTimeField(null=True, editable=False)
 
     class Meta:
         managed = False

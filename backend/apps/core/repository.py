@@ -10,7 +10,8 @@ from .registry import model, MODELS
 from .permissions import scope_for, check_global_write
 from .responses import APIError
 
-PRIVATE = {"MotdepasseUser", "password", "Password", "MotDePasse"}
+PRIVATE = {"MotdepasseUser", "password", "Password", "MotDePasse", "LogoEntite"}
+ENTITY_LOGO_GENERATED = {"LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe", "HasLogo"}
 READONLY = {"T_Mouvement", "T_Login", "T_Audit_Log", "T_Paiement_Archive", "T_RetourBon", "T_Facture", "T_FactureLigne"}
 
 
@@ -27,7 +28,7 @@ def clean(value):
         result = {}
         protected_setting = secret_key(value.get("SettingKey", ""))
         for key, item in value.items():
-            if key in PRIVATE or secret_key(key):
+            if key in PRIVATE or str(key).casefold() == 'logoentite' or secret_key(key):
                 continue
             if protected_setting and key in {"SettingValue", "SettingValueJson"}:
                 result[key] = "[Masqué]"
@@ -45,6 +46,8 @@ def clean(value):
         return result
     if isinstance(value, list):
         return [clean(x) for x in value]
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return '[Binaire masqué]'
     return value
 
 
@@ -134,7 +137,8 @@ def coerce(col, value):
 
 def predicate(obj, actor, params=None, keys=None):
     params = params or {}
-    columns = {c["column_name"]: c for c in obj["columns"]}
+    columns = {c["column_name"]: c for c in obj["columns"]
+               if obj['name'] != 'T_Entite' or c['column_name'] not in ENTITY_LOGO_GENERATED}
     scope, values = scope_for(obj, actor)
     clauses = [scope]
     if keys:
@@ -191,7 +195,7 @@ def predicate(obj, actor, params=None, keys=None):
         raise APIError("Recherche trop longue.")
     search = [
         c["column_name"]
-        for c in obj["columns"]
+        for c in columns.values()
         if c["data_type"] in {"text", "character varying", "character"}
         and c["column_name"] not in PRIVATE
     ]
@@ -233,6 +237,7 @@ def listing(obj, actor, params=None):
     take, skip = page(params)
     columns = [
         c["column_name"] for c in obj["columns"] if c["column_name"] not in PRIVATE
+        and (obj['name'] != 'T_Entite' or c['column_name'] not in ENTITY_LOGO_GENERATED)
     ]
     sort = params.get("sortBy") or (obj.get("primaryKey") or columns)[0]
     if sort not in columns:
@@ -280,8 +285,9 @@ def listing(obj, actor, params=None):
 
 def get_record(obj, actor, keys, lock=False):
     where, values = predicate(obj, actor, keys=keys)
+    projection = ','.join('v.' + db.ident(c['column_name']) for c in obj['columns'] if c['column_name'] not in PRIVATE | ENTITY_LOGO_GENERATED) if obj['name'] == 'T_Entite' else 'v.*'
     row = db.one(
-        "SELECT v.* FROM "
+        "SELECT " + projection + " FROM "
         + db.qualified(obj["schema"], obj["name"])
         + " v WHERE "
         + where
@@ -299,6 +305,8 @@ def payload(obj, body, actor, creating=False):
     columns = {c["column_name"]: c for c in obj["columns"]}
     result = {}
     for key, value in body.items():
+        if obj['name'] == 'T_Entite' and key in ENTITY_LOGO_GENERATED:
+            raise APIError('Le logo utilise le formulaire sécurisé de l’entreprise.', 'DEDICATED_ENTITY_LOGO', 400)
         if key not in columns:
             raise APIError("Champ non autorisé : " + key)
         if (
@@ -571,7 +579,7 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
         audit(obj, operation.upper(), old, row, actor)
     if name == "T_Utilisateurs" and old and "MotdepasseUser" in data and data["MotdepasseUser"] != old.get("MotdepasseUser"):
         audit(obj,"PASSWORD_CHANGE",new={"IdUser":row["IdUser"],"passwordChanged":True},actor=actor)
-    return clean(row)
+    return clean({key: value for key, value in row.items() if key not in ENTITY_LOGO_GENERATED}) if name == 'T_Entite' else clean(row)
 
 
 def mutate(name, actor, body=None, keys=None, operation="create", hard=False, *, _creation_metadata=None):

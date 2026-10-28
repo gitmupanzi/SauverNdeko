@@ -1,5 +1,14 @@
 # Historique du skill
 
+## 3.2 — 28 octobre 2026 — Identité de présentation des PDF
+
+- Demande explicite : les PDF métier générés ou régénérés utilisent le profil courant de l’entreprise, avec son logo et ses coordonnées réels.
+- Les identités historiques, tiers et montants restent conservés ; les fichiers archivés gardent leurs octets.
+- Options d’en-tête/pied persistées, activées par défaut et appliquées directement au téléchargement ; nom d’entreprise toujours visible. Le pied désactivé est entièrement retiré.
+- Règles de confidentialité du logo et recette des quatre combinaisons, des identités longues et des documents multipages.
+- Moteur PDF logistique : Vera et Vera Bold fournies par ReportLab et embarquées dans les fichiers, sans dépendance à une police du système hôte.
+- Profil documentaire avec téléphone principal et secondaire facultatif ; pied limité au nom, identifiants, mentions et pagination.
+
 ## 3.1 — 25 octobre 2026 — Tableaux Excel
 
 - Préférence explicite du propriétaire : en-têtes en première ligne, données dès la deuxième, sans logo ou bandeau ; gris clair et texte sombre au lieu du bleu.

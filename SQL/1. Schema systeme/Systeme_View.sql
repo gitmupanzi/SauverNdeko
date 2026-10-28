@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 26/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -1213,14 +1213,22 @@ CREATE VIEW systeme."V_IdentiteDocumentaire" AS
     "PhoneEntite",
     "IdentifiantsLegauxEntite",
     "MentionDocumentaireEntite",
-    (xmin)::text AS _version
+    (xmin)::text AS _version,
+    "SiteWebEntite",
+    "AfficherEnteteDocument",
+    "AfficherPiedDocument",
+    ("LogoEntite" IS NOT NULL) AS "HasLogo",
+    "LogoMimeEntite",
+    "LogoSha256Entite",
+    "LogoModifieLe",
+    "PhoneSecondaireEntite"
    FROM systeme."T_Entite";
 
 --
 -- Name: VIEW "V_IdentiteDocumentaire"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil documentaire courant et révision de l’entreprise. Le service impose une entreprise active et les droits de gestion ; les documents émis lisent leurs instantanés.';
+COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil de présentation courant et révision de l’entreprise : identité, coordonnées, identifiants déclaratifs, site, options PDF et métadonnées du logo. Aucun octet binaire ; le service impose le parent et les droits de son entreprise.';
 
 --
 -- Name: COLUMN "V_IdentiteDocumentaire"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1262,13 +1270,61 @@ COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."IdentifiantsLegauxEntite" IS
 -- Name: COLUMN "V_IdentiteDocumentaire"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" IS 'Mention libre reprise uniquement par les nouveaux documents.';
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" IS 'Mention courante affichée selon le réglage du pied ; les instantanés documentaires historiques restent séparés.';
 
 --
 -- Name: COLUMN "V_IdentiteDocumentaire"._version; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"._version IS 'Révision opaque du profil, obligatoire avant modification concurrente.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."SiteWebEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."SiteWebEntite" IS 'Site web actuel de l’entreprise, facultatif et validé en SQL.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."AfficherEnteteDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."AfficherEnteteDocument" IS 'Option persistante du haut de page PDF, activée par défaut.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."AfficherPiedDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."AfficherPiedDocument" IS 'Option persistante du pied de page PDF, activée par défaut.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."HasLogo"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."HasLogo" IS 'Présence d’un logo PNG courant ; les octets restent exclusivement dans T_Entite et les routes binaires autorisées.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoMimeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoMimeEntite" IS 'MIME du logo courant, sans contenu binaire.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoSha256Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoSha256Entite" IS 'Version d’intégrité du logo courant, utilisable après autorisation du parent.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoModifieLe" IS 'Date de dernière installation du logo courant, sans modifier les dates d’émission des documents.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."PhoneSecondaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."PhoneSecondaireEntite" IS 'Téléphone secondaire courant facultatif de l’entreprise ; seconde coordonnée distincte du téléphone principal.';
 
 --
 -- Name: V_Licence_active; Type: VIEW; Schema: systeme; Owner: -

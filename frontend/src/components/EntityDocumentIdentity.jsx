@@ -1,46 +1,4 @@
-import {useEffect,useId,useRef,useState} from "react";
-import {useEntityScope} from "../contexts/EntityScopeContext";
-import {requestJson} from "../services/api";
-import RecordEditorFrame from "./RecordEditorFrame";
-import ActionButton from "./ActionButton";
-import AppIcon from "./AppIcon";
-import "./EntityDocumentIdentity.css";
-
-const PATH="/api/logistique/entreprise/identite";
-const FIELDS=[["NomEntite","Nom de l’entreprise","text",200],["EmailEntite","Adresse e-mail","email",255],["PhoneEntite","Téléphone","tel",20],["AdresseEntite","Adresse","textarea",1000]];
-const valuesOf=record=>Object.fromEntries([...FIELDS.map(([key])=>[key,record?.[key]??""]),["MentionDocumentaireEntite",record?.MentionDocumentaireEntite??""],["IdentifiantsLegauxEntite",(record?.IdentifiantsLegauxEntite||[]).map(row=>({libelle:row.libelle??"",valeur:row.valeur??""}))]]);
-const flatten=value=>Array.isArray(value)?value.map(flatten).join(" "):typeof value==="string"?value:"";
+import EntityProfileEditor from "./EntityProfileEditor";
 export default function EntityDocumentIdentity({onClose,onSaved}){
- const scope=useEntityScope(),prefix=useId(),current=useRef(""),ticket=useRef(null),version=useRef(null),mounted=useRef(true);
- const [record,setRecord]=useState(null),[draft,setDraft]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({}),[editing,setEditing]=useState(false),[reason,setReason]=useState(""),[revision,setRevision]=useState(0),[uncertain,setUncertain]=useState(false),[feedback,setFeedback]=useState(""),[confirmReload,setConfirmReload]=useState(false);
- current.current=scope.scopeKey;
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{const controller=new AbortController(),key=scope.scopeKey;setRecord(null);setDraft(null);setLoading(true);setBusy(false);setError("");setErrors({});setEditing(false);setReason("");setUncertain(false);setFeedback("");setConfirmReload(false);ticket.current=null;
-  requestJson(PATH,{requiresAuth:true,signal:controller.signal}).then(result=>{if(controller.signal.aborted||current.current!==key)return;setLoading(false);if(!result?.success){setError(result?.message||"L’identité de l’entreprise n’a pas pu être chargée.");return;}setRecord(result.data);setDraft(valuesOf(result.data));});return()=>controller.abort();
- },[scope.scopeKey,revision]);
- const canEdit=scope.canWrite&&record?.canConfigure===true,changed=Boolean(record&&draft&&JSON.stringify(valuesOf(record))!==JSON.stringify(draft));
- function startEdit(){version.current=record._version;setDraft(valuesOf(record));setEditing(true);setErrors({});setError("");setFeedback("");setReason("");setUncertain(false);ticket.current=null;}
- function change(key,value){if(busy||uncertain)return;setDraft(previous=>({...previous,[key]:value}));setErrors(previous=>({...previous,[key]:""}));}
- function changeLegal(index,key,value){change("IdentifiantsLegauxEntite",draft.IdentifiantsLegauxEntite.map((row,i)=>i===index?{...row,[key]:value}:row));}
- async function submit(){if(!canEdit||!editing||!changed||!reason.trim()||busy)return;const key=current.current,values={...draft,IdEntite:record.IdEntite,_version:version.current,motif:reason.trim()},fingerprint=JSON.stringify(values);if(!ticket.current||ticket.current.fingerprint!==fingerprint)ticket.current={fingerprint,body:{...values,requestId:crypto.randomUUID()}};
-  setBusy(true);setError("");setErrors({});const response=await requestJson(PATH,{method:"PUT",requiresAuth:true,body:JSON.stringify(ticket.current.body)});if(!mounted.current||current.current!==key)return;setBusy(false);
-  if(!response?.success){setUncertain(!response?.status||response.status>=500);setError(response?.message||"L’identité n’a pas pu être enregistrée.");const detail=response?.error?.details;if(detail&&typeof detail==="object")setErrors(Object.fromEntries(Object.entries(detail).map(([field,value])=>[field,flatten(value)])));return;}
-  setRecord(response.data);setDraft(valuesOf(response.data));setReason("");setEditing(false);setUncertain(false);ticket.current=null;setFeedback("Identité de l’entreprise mise à jour.");onSaved?.(response.data);
- }
- return <RecordEditorFrame title="Identité de l’entreprise" subtitle={record?.NomEntite||"Documents de l’entreprise active"} icon="document" onClose={onClose} onSubmit={submit} busy={busy} loading={loading} readOnly={!editing} dirty={editing&&(changed||Boolean(reason))} canSubmit={canEdit&&changed&&Boolean(reason.trim())&&!loading} submitLabel={uncertain?"Vérifier l’enregistrement":"Enregistrer"} onReload={()=>{if(!busy){if(editing&&(changed||reason))setConfirmReload(true);else setRevision(value=>value+1);}}} error={error} defaultWidth={830} storageKey="sauverndeko.entity-document-identity.width">
-  {confirmReload?<div className="record-discard" role="alert"><span>Recharger la fiche et abandonner les modifications ?</span><div><ActionButton onClick={()=>setConfirmReload(false)}>Continuer la saisie</ActionButton><ActionButton onClick={()=>setRevision(value=>value+1)}>Recharger</ActionButton></div></div>:null}
-  {record&&draft?<div className="entity-document-identity">
-   {feedback?<p className="entity-document-feedback" role="status">{feedback}</p>:null}
-   <section className="record-editor-section"><div className="entity-document-section-head"><h3><AppIcon name="apps"/>Coordonnées de l’entreprise</h3>{canEdit&&!editing?<ActionButton icon="edit" onClick={startEdit}>Modifier</ActionButton>:null}</div>
-    <p className="record-editor-note">Les nouveaux documents utilisent cette identité. Les documents déjà émis conservent leur historique.</p>
-    {editing?<div className="record-editor-grid">{FIELDS.map(([key,label,type,max])=><label key={key} className={"record-field"+(key==="AdresseEntite"?" is-wide":"")} htmlFor={prefix+key}>{label}{key==="NomEntite"?" *":""}{type==="textarea"?<textarea aria-label={label} id={prefix+key} value={draft[key]} rows={3} maxLength={max} disabled={busy||uncertain} onChange={event=>change(key,event.target.value)}/>:<input id={prefix+key} type={type} required={key==="NomEntite"} value={draft[key]} maxLength={max} disabled={busy||uncertain} aria-invalid={Boolean(errors[key])} onChange={event=>change(key,event.target.value)}/>} {errors[key]?<small className="record-field-error" role="alert">{errors[key]}</small>:null}</label>)}</div>:<dl className="entity-document-details">{FIELDS.map(([key,label])=><div key={key}><dt>{label}</dt><dd>{record[key]||"Non renseigné"}</dd></div>)}</dl>}
-   </section>
-   <section className="record-editor-section"><div className="entity-document-section-head"><h3><AppIcon name="list"/>Identifiants légaux</h3>{editing?<ActionButton icon="plus" disabled={busy||uncertain||draft.IdentifiantsLegauxEntite.length>=10} onClick={()=>change("IdentifiantsLegauxEntite",[...draft.IdentifiantsLegauxEntite,{libelle:"",valeur:""}])}>Ajouter</ActionButton>:null}</div>
-    {draft.IdentifiantsLegauxEntite.length?<div className="entity-document-legal-list">{draft.IdentifiantsLegauxEntite.map((row,index)=>editing?<div className="entity-document-legal-row" key={index}><label className="record-field" htmlFor={prefix+"legal-label-"+index}>Libellé<input id={prefix+"legal-label-"+index} value={row.libelle} maxLength={60} disabled={busy||uncertain} placeholder="RCCM, identifiant fiscal…" onChange={event=>changeLegal(index,"libelle",event.target.value)}/></label><label className="record-field" htmlFor={prefix+"legal-value-"+index}>Numéro ou référence<input id={prefix+"legal-value-"+index} value={row.valeur} maxLength={180} disabled={busy||uncertain} onChange={event=>changeLegal(index,"valeur",event.target.value)}/></label><ActionButton icon="trash" className="is-icon" aria-label={"Retirer l’identifiant "+(index+1)} disabled={busy||uncertain} onClick={()=>change("IdentifiantsLegauxEntite",draft.IdentifiantsLegauxEntite.filter((_,i)=>i!==index))}/></div>:<dl className="entity-document-details" key={index}><div><dt>{row.libelle}</dt><dd>{row.valeur}</dd></div></dl>)}</div>:<p className="record-editor-note">Aucun identifiant renseigné.</p>}
-    {errors.IdentifiantsLegauxEntite?<p className="record-field-error" role="alert">{errors.IdentifiantsLegauxEntite}</p>:null}
-   </section>
-   <section className="record-editor-section"><h3><AppIcon name="document"/>Mention documentaire</h3>{editing?<label className="record-field" htmlFor={prefix+"MentionDocumentaireEntite"}><span className="visually-hidden">Mention documentaire</span><textarea aria-label="Mention documentaire" id={prefix+"MentionDocumentaireEntite"} rows={3} maxLength={1000} disabled={busy||uncertain} value={draft.MentionDocumentaireEntite} onChange={event=>change("MentionDocumentaireEntite",event.target.value)}/>{errors.MentionDocumentaireEntite?<small className="record-field-error">{errors.MentionDocumentaireEntite}</small>:null}</label>:<p className="entity-document-mention">{record.MentionDocumentaireEntite||"Aucune mention supplémentaire."}</p>}</section>
-   {editing?<section className="record-editor-section"><label className="record-field" htmlFor={prefix+"reason"}>Motif de la modification *<textarea aria-label="Motif de la modification *" id={prefix+"reason"} required rows={2} maxLength={1000} value={reason} disabled={busy||uncertain} onChange={event=>setReason(event.target.value)} placeholder="Précisez la raison de cette mise à jour."/></label>{uncertain?<p role="status">La réponse reste à confirmer. Réessayez pour vérifier la même demande, ou rechargez la fiche.</p>:null}</section>:null}
-  </div>:null}
- </RecordEditorFrame>;
+  return <EntityProfileEditor context="active" onClose={onClose} onSaved={onSaved}/>;
 }

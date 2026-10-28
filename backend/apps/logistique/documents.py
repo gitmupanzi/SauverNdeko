@@ -114,11 +114,14 @@ def document_data(actor,kind,object_id,document_type):
     if document_type not in PDF_TYPES[kind]:raise APIError('Format de document introuvable.','NOT_FOUND',404)
     frozen=identity(kind,object_id,entity)
     currency=record.get('DeviseCode') or db.one('SELECT "DeviseCode" FROM logistique."V_Commande" WHERE "ID_Commande"=%s',[parent['ID_Commande']])['DeviseCode']
-    result={'emitter':frozen['IdentiteEmetteur'],'thirdParty':frozen.get('IdentiteTiers'),
+    # Le parent a été autorisé avant la lecture du logo privé. Seule la
+    # présentation de l'émetteur est courante ; tiers et finance restent figés.
+    from .entity_documents import current_identity
+    result={'emitter':current_identity(entity,include_logo=True),'thirdParty':frozen.get('IdentiteTiers'),
       'historical':frozen['RepriseHistorique'],'currency':currency,
       'parentCode':parent.get('CodeCmd') if kind=='bon' else issued_parent_code(kind,record,parent),
       'recipient':parent.get('NomClientSaisi'),'reference':parent.get('RefCmd') or parent.get('ReferenceCmd'),
-      'destination':parent.get('DestinationLibelle') or parent.get('geolocalisationCmd') or parent.get('LieuLivraison'),'lines':[],'totals':[],'notes':[]}
+      'destination':parent.get('DestinationLibelle') or parent.get('geolocalisationCmd') or parent.get('LieuLivraison'),'documentType':document_type,'lines':[],'totals':[],'notes':[]}
     if kind=='bon':
         # Le bon préparatoire reste modifiable ; son tiers courant est celui du bon.
         result['thirdParty']=None
@@ -165,63 +168,184 @@ def document_data(actor,kind,object_id,document_type):
 
 
 def render_pdf(data):
+    """Modèle A4 commun ; zones mesurées et identité actuelle de l'émetteur.
+
+    Les tableaux peuvent se fractionner dans une ligne longue, leurs titres
+    se répètent. En-tête et pied réservent leur hauteur réelle sur chaque page.
+    Aucun téléchargement externe ni mutation n'est effectué pendant le rendu.
+    """
+    import reportlab
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_RIGHT
-    from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle,KeepTogether
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import BaseDocTemplate,Frame,PageTemplate,Paragraph,Spacer,Table,TableStyle,Image
     from reportlab.pdfgen.canvas import Canvas
-    output=io.BytesIO();styles=getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='BodyERP',fontName='Helvetica',fontSize=10,leading=14,textColor=colors.HexColor('#252525'),spaceAfter=4))
-    styles.add(ParagraphStyle(name='SmallERP',parent=styles['BodyERP'],fontSize=8,leading=11,textColor=colors.HexColor('#5F6B7A')))
-    styles.add(ParagraphStyle(name='CellERP',parent=styles['BodyERP'],fontSize=9,leading=12,spaceAfter=0))
-    styles.add(ParagraphStyle(name='RightERP',parent=styles['CellERP'],alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='TitleERP',parent=styles['BodyERP'],fontName='Helvetica-Bold',fontSize=18,leading=23,spaceAfter=8))
-    def p(text,style='BodyERP'):return Paragraph(escape(str(text if text is not None else '—')).replace('\n','<br/>'),styles[style])
-    emitter=data.get('emitter') or {};currency=data.get('currency');story=[]
-    story.append(p(emitter.get('NomEntite') or 'Entreprise à renseigner','TitleERP'))
-    for key in ('AdresseEntite','EmailEntite','PhoneEntite'):
-        if emitter.get(key):story.append(p(emitter[key],'SmallERP'))
-    for identifier in emitter.get('IdentifiantsLegauxEntite') or []:
-        if isinstance(identifier,dict) and identifier.get('libelle') and identifier.get('valeur'):
-            story.append(p(str(identifier['libelle'])+' : '+str(identifier['valeur']),'SmallERP'))
-    if emitter.get('MentionDocumentaireEntite'):story.append(p(emitter['MentionDocumentaireEntite'],'SmallERP'))
-    story.append(Spacer(1,7*mm));story.append(p(data['title'],'TitleERP'))
-    story.append(p('N° '+str(data.get('code') or '—')+' · '+date_label(data.get('date'))))
-    if data.get('parentCode') and data['parentCode']!=data.get('code'):story.append(p('Bon d’origine : '+str(data['parentCode']),'SmallERP'))
+
+    # Polices embarquées, identiques sous Windows et sur le serveur de livraison.
+    font_dir=Path(reportlab.__file__).parent/'fonts'
+    if 'ERPDocument' not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont('ERPDocument',str(font_dir/'Vera.ttf')))
+        pdfmetrics.registerFont(TTFont('ERPDocumentBold',str(font_dir/'VeraBd.ttf')))
+        pdfmetrics.registerFontFamily('ERPDocument',normal='ERPDocument',bold='ERPDocumentBold')
+    ink=colors.HexColor('#23364A');muted=colors.HexColor('#596777')
+    rule=colors.HexColor('#D9E0E7');pale=colors.HexColor('#F1F4F7')
+    styles={
+      'body':ParagraphStyle('ERPBody',fontName='ERPDocument',fontSize=10,leading=14,textColor=ink,spaceAfter=0),
+      'small':ParagraphStyle('ERPSmall',fontName='ERPDocument',fontSize=8,leading=11,textColor=muted,spaceAfter=0),
+      'cell':ParagraphStyle('ERPCell',fontName='ERPDocument',fontSize=9,leading=12,textColor=ink,spaceAfter=0),
+      'head':ParagraphStyle('ERPHead',fontName='ERPDocumentBold',fontSize=8,leading=11,textColor=ink,spaceAfter=0),
+      'company':ParagraphStyle('ERPCompany',fontName='ERPDocumentBold',fontSize=16,leading=20,textColor=ink,spaceAfter=4),
+      'title':ParagraphStyle('ERPTitle',fontName='ERPDocumentBold',fontSize=18,leading=23,textColor=ink,spaceAfter=4),
+      'footer':ParagraphStyle('ERPFooter',fontName='ERPDocument',fontSize=7,leading=9,textColor=muted,spaceAfter=0),
+    }
+    styles['right']=ParagraphStyle('ERPRight',parent=styles['cell'],alignment=TA_RIGHT)
+    styles['total']=ParagraphStyle('ERPTotal',parent=styles['right'],fontName='ERPDocumentBold',fontSize=10,leading=14)
+    def p(text,style='body'):
+        value=str(text if text is not None else '—').replace('\r\n','\n').replace('\r','\n')
+        return Paragraph(escape(value).replace('\n','<br/>'),styles[style])
+    emitter=data.get('emitter') or {};currency=data.get('currency')
+    show_header=emitter.get('AfficherEnteteDocument') is not False
+    show_footer=emitter.get('AfficherPiedDocument') is not False
+    company=str(emitter.get('NomEntite') or 'Entreprise à renseigner')
+    width,height=A4;left=25*mm;right=20*mm;content_width=width-left-right
+    top_edge=height-16*mm;bottom_edge=12*mm
+
+    header=None;header_height=0
+    if show_header:
+        company_lines=[p(company,'company')]
+        for key in ('AdresseEntite','PhoneEntite','PhoneSecondaireEntite','EmailEntite','SiteWebEntite'):
+            if emitter.get(key):company_lines.append(p(emitter[key],'small'))
+        logo=None
+        if emitter.get('LogoEntite'):
+            # Le fichier normalisé est lu dans la même révision que le profil.
+            raw=bytes(emitter['LogoEntite']);logo=Image(io.BytesIO(raw))
+            ratio=min(22*mm/logo.imageWidth,22*mm/logo.imageHeight)
+            logo.drawWidth=logo.imageWidth*ratio;logo.drawHeight=logo.imageHeight*ratio
+            logo.hAlign='LEFT'
+        header=Table([[logo or '',company_lines]] if logo else [[company_lines]],
+                     colWidths=[28*mm,content_width-28*mm] if logo else [content_width])
+        header.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),0),
+          ('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),5*mm),
+          ('LINEBELOW',(0,-1),(-1,-1),.7,rule)]))
+        header_height=header.wrap(content_width,height)[1]
+
+    footer=None;footer_height=0
+    if show_footer:
+        footer_rows=[[p(company,'footer'),'']]
+        identifiers=[item for item in emitter.get('IdentifiantsLegauxEntite') or []
+                     if isinstance(item,dict) and item.get('libelle') and item.get('valeur')]
+        for offset in range(0,len(identifiers),2):
+            pair=[p(str(item['libelle'])+' : '+str(item['valeur']),'footer') for item in identifiers[offset:offset+2]]
+            footer_rows.append(pair+['']*(2-len(pair)))
+        spans=[('SPAN',(0,0),(1,0))]
+        if emitter.get('MentionDocumentaireEntite'):
+            footer_rows.append([p(emitter['MentionDocumentaireEntite'],'footer'),''])
+            spans.append(('SPAN',(0,len(footer_rows)-1),(1,len(footer_rows)-1)))
+        footer=Table(footer_rows,colWidths=[content_width/2]*2)
+        footer.setStyle(TableStyle(spans+[('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),0),
+          ('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)]))
+        footer_height=footer.wrap(content_width,height)[1]
+
+    signatures={
+      'entree':['Réceptionné par','Visa du magasinier'],
+      'sortie':['Remis par','Reçu par'],
+      'livraison':['Livré par','Réceptionnaire / visa'],
+      'commande':['Établi par','Bon pour accord'],
+      'recu':['Reçu par','Signature'],
+    }.get(data.get('documentType'))
+    signature_table=None;signature_height=0
+    if signatures:
+        signature_table=Table([[p(value,'head') for value in signatures],['','']],colWidths=[content_width/2]*2,rowHeights=[None,14*mm])
+        signature_table.setStyle(TableStyle([('LINEABOVE',(0,0),(-1,0),.5,rule),('TOPPADDING',(0,0),(-1,0),7),('VALIGN',(0,0),(-1,-1),'TOP')]))
+        signature_height=signature_table.wrap(content_width,height)[1]
+    top_margin=height-top_edge+(header_height+6*mm if show_header else 0)
+    footer_margin=bottom_edge+(footer_height+13*mm if show_footer else 3*mm)
+    # Une zone fixe est réservée sous le contenu ; elle n'est dessinée qu'à
+    # la dernière page. Les signatures ne repoussent jamais seules une page.
+    bottom_margin=footer_margin+(signature_height+6*mm if signatures else 0)
+    usable_height=height-top_margin-bottom_margin
+    if usable_height<110:
+        # Refuser explicitement un profil anormal au lieu de couper les mentions.
+        raise APIError('Les coordonnées et mentions sont trop longues pour la mise en page A4. Réduisez-les dans la fiche entreprise.','PDF_PROFILE_TOO_LONG',400)
+
+    story=[]
+    if not show_header:
+        story.extend([p('Émetteur : '+company,'cell'),Spacer(1,4*mm)])
+    story.extend([p(data['title'],'title'),p('N° '+str(data.get('code') or '—'),'body'),Spacer(1,4*mm)])
+    details=[('Date et heure',date_label(data.get('date')))]
+    if data.get('parentCode') and data['parentCode']!=data.get('code'):details.append(('Bon d’origine',data['parentCode']))
+    if data.get('reference'):details.append(('Référence',data['reference']))
     third=data.get('thirdParty') or {}
     recipient=third.get('Nom') or third.get('NomTiers') or third.get('NomClient') or data.get('recipient')
-    if recipient:story.append(p('Tiers : '+str(recipient)))
-    if data.get('destination'):story.append(p('Destination : '+str(data['destination'])))
-    if data.get('dueDate'):story.append(p('Échéance : '+date_label(data['dueDate'])))
-    story.append(Spacer(1,5*mm))
-    header=['Désignation','Quantité','Unité','Prix unitaire','Montant']
-    rows=[[p(x,'CellERP') for x in header]]
-    for row in data['lines']:
+    if recipient:details.append(('Tiers',recipient))
+    if data.get('destination'):details.append(('Destination',data['destination']))
+    if data.get('dueDate'):details.append(('Échéance',date_label(data['dueDate'])))
+    detail_rows=[[p(label,'head'),p(value,'cell')] for label,value in details]
+    meta=Table(detail_rows,colWidths=[34*mm,content_width-34*mm],splitInRow=1)
+    meta.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),pale),('VALIGN',(0,0),(-1,-1),'TOP'),
+       ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]))
+    story.extend([meta,Spacer(1,5*mm)])
+
+    receipt=data.get('documentType')=='recu' or data.get('title')=='Reçu de règlement'
+    labels=['Désignation','Mode de règlement','Montant'] if receipt else ['Désignation','Quantité','Unité','Prix unitaire','Montant']
+    columns=[85*mm,43*mm,37*mm] if receipt else [62*mm,21*mm,16*mm,32*mm,34*mm]
+    rows=[[p(label,'head') for label in labels]]
+    for row in data.get('lines',[]):
         name=str(row.get('name') or '—')
-        if row.get('reference'):name+='\n'+str(row['reference'])
-        rows.append([p(name,'CellERP'),p(numeric(row.get('quantity')),'RightERP'),p(row.get('unit'),'CellERP'),p(money(row.get('price'),currency) if row.get('price') is not None else '—','RightERP'),p(money(row.get('amount'),currency),'RightERP')])
-    if len(rows)==1:rows.append([p('Aucune ligne','CellERP'),'','','',''])
-    table=Table(rows,colWidths=[66*mm,22*mm,14*mm,30*mm,33*mm],repeatRows=1,hAlign='LEFT')
-    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#EAF1FF')),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#F4F4F4')]),('LINEBELOW',(0,0),(-1,0),.6,colors.HexColor('#D8E1EC')),('LINEBELOW',(0,1),(-1,-1),.25,colors.HexColor('#D8E1EC')),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
-    story.append(table);story.append(Spacer(1,5*mm))
-    totals=Table([[p(label,'CellERP'),p(money(value,currency),'RightERP')] for label,value in data['totals']],colWidths=[110*mm,55*mm],hAlign='RIGHT')
-    totals.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),('LINEABOVE',(0,-1),(-1,-1),.6,colors.HexColor('#D8E1EC'))]))
-    story.append(KeepTogether([totals,Spacer(1,4*mm)]))
-    for note in data.get('notes',[]):story.append(p(note,'SmallERP'))
-    if data.get('historical'):story.append(p('Identité de l’entreprise reprise lors de la mise en service des documents.','SmallERP'))
-    if data['title']=='Bon de livraison':story.extend([Spacer(1,8*mm),p('Réceptionnaire : ____________________     Date : ____________________','SmallERP'),p('Visa : ____________________','SmallERP')])
+        if row.get('reference') and not receipt:name+='\n'+str(row['reference'])
+        if receipt:
+            rows.append([p(name,'cell'),p(row.get('reference'),'cell'),p(money(row.get('amount'),currency),'right')])
+        else:
+            rows.append([p(name,'cell'),p(numeric(row.get('quantity')),'right'),p(row.get('unit'),'cell'),
+                         p(money(row.get('price'),currency) if row.get('price') is not None else '—','right'),
+                         p(money(row.get('amount'),currency),'right')])
+    if len(rows)==1:rows.append([p('Aucune ligne','cell')]+['']*(len(labels)-1))
+    table=Table(rows,colWidths=columns,repeatRows=1,splitInRow=1,hAlign='LEFT')
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),pale),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#FAFBFC')]),
+      ('LINEBELOW',(0,0),(-1,0),.7,rule),('LINEBELOW',(0,1),(-1,-1),.3,rule),('VALIGN',(0,0),(-1,-1),'TOP'),
+      ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),8),('RIGHTPADDING',(0,0),(-1,-1),8)]))
+    story.extend([table,Spacer(1,5*mm)])
+    total_rows=[(label,value) for label,value in data.get('totals',[]) if value is not None]
+    if total_rows:
+        totals=Table([[p(label,'cell'),p(money(value,currency),'total' if index==len(total_rows)-1 else 'right')]
+                       for index,(label,value) in enumerate(total_rows)],colWidths=[65*mm,44*mm],hAlign='RIGHT')
+        totals.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),
+           ('BACKGROUND',(0,-1),(-1,-1),pale),('LINEABOVE',(0,-1),(-1,-1),.7,rule)]))
+        story.extend([totals,Spacer(1,5*mm)])
+    for note in data.get('notes',[]):
+        if note:story.extend([p(note,'small'),Spacer(1,2*mm)])
+    def draw_header(canvas,document):
+        if header:
+            canvas.saveState();header.drawOn(canvas,left,top_edge-header_height);canvas.restoreState()
     class Pages(Canvas):
         def __init__(self,*args,**kwargs):super().__init__(*args,**kwargs);self.states=[]
         def showPage(self):self.states.append(dict(self.__dict__));self._startPage()
         def save(self):
             count=len(self.states)
             for state in self.states:
-                self.__dict__.update(state);self.saveState();self.setStrokeColor(colors.HexColor('#D8E1EC'));self.line(25*mm,18*mm,190*mm,18*mm)
-                self.setFont('Helvetica',8);self.setFillColor(colors.HexColor('#5F6B7A'));self.drawString(25*mm,13*mm,'SauverNdeko · '+str(data.get('code') or 'Document'));self.drawRightString(190*mm,13*mm,'Page '+str(self._pageNumber)+' sur '+str(count));self.restoreState();Canvas.showPage(self)
+                self.__dict__.update(state)
+                if signature_table and self._pageNumber==count:
+                    self.saveState();signature_table.drawOn(self,left,footer_margin+3*mm);self.restoreState()
+                if footer:
+                    self.saveState();footer.drawOn(self,left,bottom_edge+7*mm)
+                    self.setStrokeColor(rule);self.line(left,bottom_edge+footer_height+9*mm,width-right,bottom_edge+footer_height+9*mm)
+                    self.setFont('ERPDocument',7);self.setFillColor(muted)
+                    self.drawString(left,bottom_edge,str(data.get('code') or 'Document'))
+                    self.drawRightString(width-right,bottom_edge,'Page '+str(self._pageNumber)+' sur '+str(count));self.restoreState()
+                Canvas.showPage(self)
             Canvas.save(self)
-    SimpleDocTemplate(output,pagesize=A4,leftMargin=25*mm,rightMargin=20*mm,topMargin=20*mm,bottomMargin=25*mm,title=data['title']+' '+str(data.get('code') or ''),author=str(emitter.get('NomEntite') or '')).build(story,canvasmaker=Pages)
+    output=io.BytesIO()
+    document=BaseDocTemplate(output,pagesize=A4,leftMargin=left,rightMargin=right,topMargin=top_margin,bottomMargin=bottom_margin,
+      title=data['title']+' '+str(data.get('code') or ''),author=company,allowSplitting=True)
+    # Sans marges internes implicites de Frame : toutes les zones partagent
+    # exactement les mêmes bords, même lorsqu'une ligne se coupe entre pages.
+    frame=Frame(left,bottom_margin,content_width,usable_height,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0,id='contenu')
+    document.addPageTemplates(PageTemplate(id='ERP',frames=frame,onPage=draw_header))
+    document.build(story,canvasmaker=Pages)
     return output.getvalue()
 
 

@@ -78,6 +78,9 @@ class ModuleView(APIView):
         if category:
             params["categorie"] = category
         if pk is not None:
+            if obj['name'] == 'T_Entite':
+                from apps.logistique.entity_documents import profile
+                return ok(profile(request.user, positive(pk), administration=True))
             if len(obj["primaryKey"]) != 1:
                 raise APIError("Clé composée : utiliser la route métier.")
             source = (
@@ -111,6 +114,11 @@ class ModuleView(APIView):
 
     def post(self, request, module=None, model_name=None):
         obj, _ = self.objects(module, model_name)
+        if obj['name'] == 'T_Entite':
+            from apps.logistique.entity_documents import request_data, save
+            body, logo = request_data(request)
+            data, replayed = save(request.user, body, logo, administration=True, creating=True)
+            return ok(data, status=200 if replayed else 201, meta={'replayed': replayed})
         if obj["name"] == "T_Article":
             from apps.logistique.photos import request_data, save_article
             body, photo = request_data(request)
@@ -122,6 +130,11 @@ class ModuleView(APIView):
         obj, _ = self.objects(module, model_name)
         if pk is None or len(obj["primaryKey"]) != 1:
             raise APIError("Identifiant requis.")
+        if obj['name'] == 'T_Entite':
+            from apps.logistique.entity_documents import request_data, save
+            body, logo = request_data(request)
+            data, replayed = save(request.user, body, logo, entity=positive(pk), administration=True)
+            return ok(data, meta={'replayed': replayed})
         if obj["name"] == "T_Article":
             from apps.logistique.photos import request_data, save_article
             body, photo = request_data(request)
@@ -142,6 +155,8 @@ class ModuleView(APIView):
         obj, _ = self.objects(module, model_name)
         if pk is None or len(obj["primaryKey"]) != 1:
             raise APIError("Identifiant requis.")
+        if obj['name'] == 'T_Entite' and not request.user.global_admin:
+            raise APIError('L’état de l’entreprise est géré par la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
         return ok(
             mutate(
                 obj["name"],

@@ -5,7 +5,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict aJOifWP23K54d7UGvhlYixx7XWPbHgqzRHiEwXivzvyX8qWEII5Vf0J2C2hdalG
+\restrict MsjU5JOXymdvom3cw1PeL4YD1700WIdSWiryWx6Vy84H6G4Ld3lYw77D81AoQIh
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -3040,7 +3040,7 @@ DECLARE a record;m record;bound integer;BEGIN
   INSERT INTO logistique."T_ValorisationEvenement"("ID_ArticleFk","IdEntiteFk","Operation","Motif","Avant","Apres") SELECT source_article."ID_Article",source_article."IdEntiteFk",'mouvement_update','Rattachement documentaire; mouvement, quantite, prix et arrete conserves',to_jsonb(OLD),to_jsonb(NEW) FROM logistique."T_Article" source_article WHERE source_article."ID_Article"=NEW."ID_ArticleFk";
   RETURN NEW;
  END IF;
-
+ 
  IF TG_OP='DELETE' THEN m=OLD;ELSE m=NEW;END IF;
  SELECT * INTO a FROM logistique."T_Article" WHERE "ID_Article"=m."ID_ArticleFk" FOR NO KEY UPDATE;
  IF TG_OP IN ('UPDATE','DELETE') THEN
@@ -3714,7 +3714,7 @@ COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Après mutation 
 CREATE FUNCTION operations.notification_payment_success() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-DECLARE
+DECLARE 
     utilisateur_id INT;
     montant        NUMERIC(10,2);
     devise_nom     VARCHAR;
@@ -3746,7 +3746,7 @@ BEGIN
 
     utilisateur_id := NEW."IdUserFk";
     montant        := NEW."MontantPaiement";
-
+    
     -- Vérifier que le statut n'est pas "En attente"
     IF statut_nom NOT IN ('En attente') THEN
         INSERT INTO communication."T_Communication" (
@@ -3759,8 +3759,8 @@ BEGIN
             "IdEntiteFk"
         )
         VALUES (
-            utilisateur_id,
-            type_notif,
+            utilisateur_id, 
+            type_notif, 
             'Votre paiement de ' || montant || ' ' || devise_nom ||
             ' a été reçu avec succès. Statut: ' || statut_nom ||
             ', Mouvement: ' || mouvement_nom || '.',
@@ -4141,36 +4141,25 @@ COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Horodate et
 CREATE FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) RETURNS jsonb
     LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
     AS $$
-DECLARE v_type text; v_result jsonb; v_key text; v_value jsonb;
-        v_setting_secret boolean:=false; v_decoded jsonb; v_string text;
+DECLARE v_type text;v_result jsonb;v_key text;v_value jsonb;v_setting_secret boolean:=false;v_decoded jsonb;v_string text;
 BEGIN
- IF p_data IS NULL THEN RETURN NULL; END IF;
+ IF p_data IS NULL THEN RETURN NULL;END IF;
  v_type:=jsonb_typeof(p_data);
  IF v_type='object' THEN
-  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value #>> '{}')),false)
-   INTO v_setting_secret FROM jsonb_each(p_data)
-   WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
+  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value#>>'{}')),false) INTO v_setting_secret FROM jsonb_each(p_data) WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
   v_result:='{}'::jsonb;
   FOR v_key,v_value IN SELECT key,value FROM jsonb_each(p_data) LOOP
-   IF systeme.fn_admin_cle_sensible(v_key) THEN CONTINUE; END IF;
-   IF v_setting_secret AND regexp_replace(lower(v_key),'[^a-z0-9]','','g')
-      IN ('settingvalue','settingvaluejson') THEN
-    v_result:=v_result||jsonb_build_object(v_key,'[Masqué]');
-   ELSE
-    v_result:=v_result||jsonb_build_object(v_key,systeme.fn_audit_sans_secrets(v_value));
-   END IF;
+   IF systeme.fn_admin_cle_sensible(v_key) OR regexp_replace(lower(v_key),'[^a-z0-9]','','g')='logoentite' THEN CONTINUE;END IF;
+   IF v_setting_secret AND regexp_replace(lower(v_key),'[^a-z0-9]','','g') IN ('settingvalue','settingvaluejson') THEN v_result:=v_result||jsonb_build_object(v_key,'[Masqué]');
+   ELSE v_result:=v_result||jsonb_build_object(v_key,systeme.fn_audit_sans_secrets(v_value));END IF;
   END LOOP;
   RETURN v_result;
  ELSIF v_type='array' THEN
-  SELECT coalesce(jsonb_agg(systeme.fn_audit_sans_secrets(value) ORDER BY ord),'[]'::jsonb)
-   INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);
-  RETURN v_result;
+  SELECT coalesce(jsonb_agg(systeme.fn_audit_sans_secrets(value) ORDER BY ord),'[]'::jsonb) INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);RETURN v_result;
  ELSIF v_type='string' THEN
-  -- Les anciennes images JSON parfois doublement encodées restent nettoyables.
-  v_string:=btrim(p_data #>> '{}');
+  v_string:=btrim(p_data#>>'{}');
   IF left(v_string,1) IN ('{','[') THEN
-   BEGIN v_decoded:=v_string::jsonb;
-   EXCEPTION WHEN invalid_text_representation THEN RETURN p_data; END;
+   BEGIN v_decoded:=v_string::jsonb;EXCEPTION WHEN invalid_text_representation THEN RETURN p_data;END;
    RETURN systeme.fn_audit_sans_secrets(v_decoded);
   END IF;
  END IF;
@@ -4182,7 +4171,7 @@ END $$;
 -- Name: FUNCTION fn_audit_sans_secrets(p_data jsonb); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement objets, listes et images JSON encodées ; retire les clés secrètes et masque les valeurs des SettingKey sensibles sans réécrire les journaux historiques.';
+COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement secrets, anciennes images JSON encodées et octets LogoEntite ; conserve les métadonnées de logo comme SHA/MIME/date. N’effectue aucune réécriture des journaux antérieurs.';
 
 
 --
@@ -4249,8 +4238,10 @@ CREATE FUNCTION systeme.fn_identite_documentaire(p_entite integer) RETURNS jsonb
     SET search_path TO 'pg_catalog'
     AS $$
  SELECT jsonb_build_object('IdEntite',"IdEntite",'NomEntite',"NomEntite",'AdresseEntite',"AdresseEntite",
- 'EmailEntite',"EmailEntite",'PhoneEntite',"PhoneEntite",'IdentifiantsLegauxEntite',"IdentifiantsLegauxEntite",
- 'MentionDocumentaireEntite',"MentionDocumentaireEntite") FROM systeme."T_Entite" WHERE "IdEntite"=p_entite
+  'EmailEntite',"EmailEntite",'PhoneEntite',"PhoneEntite",'IdentifiantsLegauxEntite',"IdentifiantsLegauxEntite",'MentionDocumentaireEntite',"MentionDocumentaireEntite",
+  'SiteWebEntite',"SiteWebEntite",'AfficherEnteteDocument',"AfficherEnteteDocument",'AfficherPiedDocument',"AfficherPiedDocument",
+  'HasLogo',"LogoEntite" IS NOT NULL,'LogoMimeEntite',"LogoMimeEntite",'LogoSha256Entite',"LogoSha256Entite",'LogoModifieLe',"LogoModifieLe",'PhoneSecondaireEntite',"PhoneSecondaireEntite")
+ FROM systeme."T_Entite" WHERE "IdEntite"=p_entite
 $$;
 
 
@@ -4258,7 +4249,7 @@ $$;
 -- Name: FUNCTION fn_identite_documentaire(p_entite integer); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Source canonique de l’identité documentaire actuelle d’une entreprise. Ne modifie jamais les identités déjà émises.';
+COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Identité de présentation courante et métadonnées du logo, sans octets binaires. Source des PDF à la demande du propriétaire ; les instantanés financiers et identités antérieurs restent immuables et ne sont pas réécrits.';
 
 
 --
@@ -5435,10 +5426,21 @@ CREATE TABLE systeme."T_Entite" (
     "BloquerLotsPerimes" boolean DEFAULT false NOT NULL,
     "IdentifiantsLegauxEntite" jsonb DEFAULT '[]'::jsonb NOT NULL,
     "MentionDocumentaireEntite" character varying(1000),
+    "SiteWebEntite" text,
+    "AfficherEnteteDocument" boolean DEFAULT true CONSTRAINT "T_Entite_AfficherEnteteDocument_not_null" NOT NULL,
+    "AfficherPiedDocument" boolean DEFAULT true CONSTRAINT "T_Entite_AfficherPiedDocument_not_null" NOT NULL,
+    "LogoEntite" bytea,
+    "LogoMimeEntite" character varying(32),
+    "LogoSha256Entite" character varying(64),
+    "LogoModifieLe" timestamp with time zone,
+    "PhoneSecondaireEntite" character varying(20),
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
-    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
-'::text, ''::text) !~ '[[:cntrl:]]'::text)))
+    CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
+    CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR (((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152)) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
+    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))),
+    CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR (((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20)) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR (((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255)) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text))))
 );
 
 
@@ -5446,7 +5448,7 @@ CREATE TABLE systeme."T_Entite" (
 -- Name: TABLE "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON TABLE systeme."T_Entite" IS 'Organisations et structures : identité, coordonnées, type, date de création et validité. Source des rattachements utilisateurs, professionnels, licences et opérations.';
+COMMENT ON TABLE systeme."T_Entite" IS 'Entreprises propriétaires : identité, coordonnées, licence et profil documentaire courant avec logo PNG privé, site et options d’en-tête/pied. L’identité de présentation peut évoluer sans modifier les écritures ou instantanés historiques.';
 
 
 --
@@ -5523,14 +5525,70 @@ COMMENT ON COLUMN systeme."T_Entite"."BloquerLotsPerimes" IS 'Refuse les nouveau
 -- Name: COLUMN "T_Entite"."IdentifiantsLegauxEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Entite"."IdentifiantsLegauxEntite" IS 'Identifiants déclarés par l’entreprise, sans pays ni régime fiscal imposé : liste facultative de dix couples libelle/valeur. Figés lors de la création de chaque nouveau document.';
+COMMENT ON COLUMN systeme."T_Entite"."IdentifiantsLegauxEntite" IS 'Dix identifiants déclaratifs génériques facultatifs au maximum : RCCM, NIF, identification nationale ou autre libellé/valeur. Source courante pour la présentation ; les instantanés historiques restent conservés.';
 
 
 --
 -- Name: COLUMN "T_Entite"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."T_Entite"."MentionDocumentaireEntite" IS 'Mention libre facultative de l’émetteur, limitée à 1000 caractères, conservée dans les nouveaux instantanés documentaires. Aucun taux ou texte légal n’est inventé.';
+COMMENT ON COLUMN systeme."T_Entite"."MentionDocumentaireEntite" IS 'Mention courante facultative, maximum1000 caractères avec sauts de ligne ; ne modifie jamais les montants, tiers ou identités historiques conservés.';
+
+
+--
+-- Name: COLUMN "T_Entite"."SiteWebEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."SiteWebEntite" IS 'Site web facultatif actuel de l’entreprise, HTTP ou HTTPS, sans identifiants intégrés ni espace ; maximum255 caractères.';
+
+
+--
+-- Name: COLUMN "T_Entite"."AfficherEnteteDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."AfficherEnteteDocument" IS 'Affiche l’identité courante de l’entreprise en haut de ses PDF métier ; true par défaut. Aucun effet sur les montants et lignes historiques.';
+
+
+--
+-- Name: COLUMN "T_Entite"."AfficherPiedDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."AfficherPiedDocument" IS 'Affiche le nom, les identifiants et mentions courants ainsi que la pagination dans le pied des PDF métier ; true par défaut. false supprime entièrement le pied de page.';
+
+
+--
+-- Name: COLUMN "T_Entite"."LogoEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."LogoEntite" IS 'Octets PNG privés normalisés par le service après décodage image ; maximum2Mo, signature/structure externe et SHA-256 contrôlés en SQL. Jamais inclus dans les vues JSON, audits ou exports génériques.';
+
+
+--
+-- Name: COLUMN "T_Entite"."LogoMimeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."LogoMimeEntite" IS 'MIME du logo normalisé : image/png ; NULL en l’absence de logo. Cohérent avec les trois autres champs du logo.';
+
+
+--
+-- Name: COLUMN "T_Entite"."LogoSha256Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."LogoSha256Entite" IS 'Empreinte SHA-256 hexadécimale minuscule des octets PNG exacts stockés en base ; vérifiée indépendamment par PostgreSQL.';
+
+
+--
+-- Name: COLUMN "T_Entite"."LogoModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."LogoModifieLe" IS 'Horodatage serveur de la dernière installation du logo normalisé ; NULL si aucune image. Métadonnée contrôlée par le service de téléversement.';
+
+
+--
+-- Name: COLUMN "T_Entite"."PhoneSecondaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."PhoneSecondaireEntite" IS 'Deuxième numéro de téléphone facultatif courant de l’entreprise ; 1 à 20 caractères sans espaces extérieurs ni contrôles. NULL signifie non renseigné.';
 
 
 --
@@ -5555,6 +5613,20 @@ COMMENT ON CONSTRAINT "T_Entite_EmailEntite_not_null" ON systeme."T_Entite" IS '
 
 
 --
+-- Name: CONSTRAINT "T_Entite_AfficherEnteteDocument_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Entite_AfficherEnteteDocument_not_null" ON systeme."T_Entite" IS 'Option documentaire obligatoire ; true par défaut, false explicite pour masquer cette zone.';
+
+
+--
+-- Name: CONSTRAINT "T_Entite_AfficherPiedDocument_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Entite_AfficherPiedDocument_not_null" ON systeme."T_Entite" IS 'Option documentaire obligatoire ; true par défaut, false explicite pour masquer cette zone.';
+
+
+--
 -- Name: CONSTRAINT ck_entite_identifiants_legaux ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
@@ -5562,10 +5634,38 @@ COMMENT ON CONSTRAINT ck_entite_identifiants_legaux ON systeme."T_Entite" IS 'Id
 
 
 --
+-- Name: CONSTRAINT ck_entite_logo_complet ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_logo_complet ON systeme."T_Entite" IS 'Logo absent : quatre champs NULL ; logo présent : octets, MIME, empreinte et horodatage obligatoires ensemble.';
+
+
+--
+-- Name: CONSTRAINT ck_entite_logo_png ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_logo_png ON systeme."T_Entite" IS 'Signature PNG, IHDR et fin IEND, taille45octets à2Mo, MIME PNG et SHA exact ; le décodage complet et la normalisation relèvent du service image.';
+
+
+--
 -- Name: CONSTRAINT ck_entite_mention_documentaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON CONSTRAINT ck_entite_mention_documentaire ON systeme."T_Entite" IS 'Mention documentaire sans caractères de contrôle, à l’exception du saut de ligne pour sa mise en forme.';
+
+
+--
+-- Name: CONSTRAINT ck_entite_phone_secondaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_phone_secondaire ON systeme."T_Entite" IS 'Téléphone secondaire facultatif limité à20 caractères, non vide, sans contrôles ni espaces avant ou après ; aucun numéro supposé ou généré.';
+
+
+--
+-- Name: CONSTRAINT ck_entite_site_web ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_site_web ON systeme."T_Entite" IS 'URL de présentation facultative limitée à HTTP/HTTPS et255 caractères ; refus des espaces, contrôles et identifiants dans l’autorité.';
 
 
 --
@@ -27729,7 +27829,15 @@ CREATE VIEW systeme."V_IdentiteDocumentaire" AS
     "PhoneEntite",
     "IdentifiantsLegauxEntite",
     "MentionDocumentaireEntite",
-    (xmin)::text AS _version
+    (xmin)::text AS _version,
+    "SiteWebEntite",
+    "AfficherEnteteDocument",
+    "AfficherPiedDocument",
+    ("LogoEntite" IS NOT NULL) AS "HasLogo",
+    "LogoMimeEntite",
+    "LogoSha256Entite",
+    "LogoModifieLe",
+    "PhoneSecondaireEntite"
    FROM systeme."T_Entite";
 
 
@@ -27737,7 +27845,7 @@ CREATE VIEW systeme."V_IdentiteDocumentaire" AS
 -- Name: VIEW "V_IdentiteDocumentaire"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil documentaire courant et révision de l’entreprise. Le service impose une entreprise active et les droits de gestion ; les documents émis lisent leurs instantanés.';
+COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil de présentation courant et révision de l’entreprise : identité, coordonnées, identifiants déclaratifs, site, options PDF et métadonnées du logo. Aucun octet binaire ; le service impose le parent et les droits de son entreprise.';
 
 
 --
@@ -27786,7 +27894,7 @@ COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."IdentifiantsLegauxEntite" IS
 -- Name: COLUMN "V_IdentiteDocumentaire"."MentionDocumentaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" IS 'Mention libre reprise uniquement par les nouveaux documents.';
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" IS 'Mention courante affichée selon le réglage du pied ; les instantanés documentaires historiques restent séparés.';
 
 
 --
@@ -27794,6 +27902,62 @@ COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."MentionDocumentaireEntite" I
 --
 
 COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"._version IS 'Révision opaque du profil, obligatoire avant modification concurrente.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."SiteWebEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."SiteWebEntite" IS 'Site web actuel de l’entreprise, facultatif et validé en SQL.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."AfficherEnteteDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."AfficherEnteteDocument" IS 'Option persistante du haut de page PDF, activée par défaut.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."AfficherPiedDocument"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."AfficherPiedDocument" IS 'Option persistante du pied de page PDF, activée par défaut.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."HasLogo"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."HasLogo" IS 'Présence d’un logo PNG courant ; les octets restent exclusivement dans T_Entite et les routes binaires autorisées.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoMimeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoMimeEntite" IS 'MIME du logo courant, sans contenu binaire.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoSha256Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoSha256Entite" IS 'Version d’intégrité du logo courant, utilisable après autorisation du parent.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."LogoModifieLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoModifieLe" IS 'Date de dernière installation du logo courant, sans modifier les dates d’émission des documents.';
+
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."PhoneSecondaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."PhoneSecondaireEntite" IS 'Téléphone secondaire courant facultatif de l’entreprise ; seconde coordonnée distincte du téléphone principal.';
 
 
 --
@@ -29591,6 +29755,21 @@ ALTER TABLE ONLY systeme."T_Admin_UI_Setting"
 --
 
 COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Setting" IS 'Une seule clé par portée et contexte ; NULL global est une valeur unique.';
+
+
+--
+-- Name: T_Entite ck_entite_adresse_documentaire; Type: CHECK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE systeme."T_Entite"
+    ADD CONSTRAINT ck_entite_adresse_documentaire CHECK ((("AdresseEntite" IS NULL) OR ((char_length("AdresseEntite") <= 1000) AND (replace(replace("AdresseEntite", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))) NOT VALID;
+
+
+--
+-- Name: CONSTRAINT ck_entite_adresse_documentaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_adresse_documentaire ON systeme."T_Entite" IS 'Nouvelles écritures d’adresse limitées à1000 caractères, avec LF/CRLF autorisés et autres contrôles refusés ; NOT VALID préserve les données historiques sans les réécrire.';
 
 
 --
@@ -36319,7 +36498,7 @@ ALTER TABLE ONLY systeme."T_RoleModule"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aJOifWP23K54d7UGvhlYixx7XWPbHgqzRHiEwXivzvyX8qWEII5Vf0J2C2hdalG
+\unrestrict MsjU5JOXymdvom3cw1PeL4YD1700WIdSWiryWx6Vy84H6G4Ld3lYw77D81AoQIh
 
 COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';

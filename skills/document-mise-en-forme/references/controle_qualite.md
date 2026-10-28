@@ -14,6 +14,9 @@ Consigner les niveaux effectivement couverts. Le contrôle du dossier et les tes
 ## Contrôles d’un export applicatif
 
 - Identité de l’émetteur et logo du bon contexte ; absence d’identité d’un autre client.
+- PDF métier régénéré après modification du profil : identité émettrice courante, tiers et valeurs historiques inchangés ; archive téléchargée identique à son contenu enregistré.
+- Quatre combinaisons persistées en-tête/pied : nom d’entreprise toujours visible, pied entièrement retiré lorsqu’il est désactivé et aucun dialogue avant le téléchargement.
+- Logo normalisé et autorisé, sans octets dans les JSON/audits/exports ; rendu sans logo, avec transparence et avec identité longue sur plusieurs pages.
 - Références, critères, dates et portée conformes à la demande.
 - Même résultat autorisé entre formats, sans recalcul métier local.
 - Codes texte, zéros initiaux, grands identifiants, montants/quantités numériques et dates natives.

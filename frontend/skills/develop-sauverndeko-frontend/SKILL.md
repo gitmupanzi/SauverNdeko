@@ -102,6 +102,12 @@ Réutiliser BusinessDocuments pour PDF et justificatifs privés ; conserver les 
 
 ## Paramétrage documentaire et livraison
 
-EntityDocumentIdentity fournit la consultation puis le formulaire commun du profil de l’entreprise active. Réutiliser sa révision figée et son UUID lors d’une réponse incertaine ; rafraîchir le sélecteur d’entreprise après sauvegarde, sans recharger la page. Les identifiants légaux sont des couples libelle/valeur facultatifs, indépendants du pays ; les documents émis conservent leurs instantanés. Ne pas préremplir de coordonnées ou mentions fictives.
+Administration → Entreprises et EntityDocumentIdentity réutilisent EntityProfileEditor : mêmes rubriques Coordonnées, Identifiants légaux et Documents, mêmes validations et protection des modifications non enregistrées. Les types d’entreprise viennent des références de l’API, sans catégorie numérique figée. Seule l’administration de plateforme peut créer une entreprise ou modifier son type et son état ; l’identité documentaire respecte les droits de l’entreprise choisie. Réutiliser la révision figée et le même UUID/contenu lors d’une réponse incertaine ; rafraîchir le sélecteur d’entreprise après sauvegarde, sans recharger la page.
+
+Les coordonnées proposent un téléphone principal et un téléphone secondaire facultatif (`PhoneSecondaireEntite`, 20 caractères maximum), sans numéro inventé. Ils suivent le même formulaire partagé et sont présentés depuis le profil reçu du serveur.
+
+Le logo est une image privée téléversée (PNG, JPEG ou WebP, 2 Mo maximum), avec aperçu authentifié, remplacement et retrait explicites. Le profil complet et le logo sont sauvegardés atomiquement ; aucun contenu binaire ni secret n’est placé dans le JSON, une URL distante ou le stockage du navigateur. Les identifiants légaux sont des couples libelle/valeur facultatifs, indépendants du pays : proposer RCCM, ID national et N° d’impôt comme libellés assistés, jamais comme valeurs inventées.
+
+Afficher l’en-tête et Afficher le pied de page sont deux options indépendantes, vraies par défaut ; conserver explicitement une valeur false reçue. L’identité actuelle de l’entreprise est reprise lors de chaque impression et réimpression, tandis que les données financières historiques restent protégées côté serveur. Ne pas préremplir de coordonnées, références légales ou mentions fictives.
 
 AdminMailSettings distingue configuration présente et connexion prouvée. Tester la connexion appelle un POST réservé à l’administration de plateforme, sans destinataire ni e-mail envoyé. Les valeurs par défaut viennent du compte d’envoi configuré, pas du compte utilisateur connecté. Une réussite du test ne prouve pas la réception d’un message.

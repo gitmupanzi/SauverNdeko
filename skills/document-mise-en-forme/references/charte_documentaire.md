@@ -4,9 +4,21 @@ La [configuration JSON](../assets/charte_sauverndeko.json) est la référence de
 
 ## Identité et émetteur
 
-Le nom du logiciel est SauverNdeko. Utiliser le [logo local](../assets/sauverndeko-logo.jpg), fourni par l’application, sans déformation, recoloration ou recadrage. Son original est frontend/public/sauverndeko-logo.jpg ; son empreinte est enregistrée dans le registre de provenance.
+Le nom du logiciel est SauverNdeko. Le [logo local](../assets/sauverndeko-logo.jpg) identifie le logiciel ; son original est frontend/public/sauverndeko-logo.jpg et son empreinte est enregistrée dans le registre de provenance. Sur les documents métier d’une entreprise, utiliser son propre logo autorisé, sans déformation. En son absence, conserver son nom sans lui attribuer le logo du logiciel.
 
 Pour une organisation utilisatrice, les documents métier portent son nom, son identité et son logo lorsqu’ils sont disponibles et autorisés dans le contexte. La mention SauverNdeko reste une identification du logiciel. Ne pas attribuer les opérations à SauverNdeko comme société vendeuse, ni reprendre l’identité d’un autre client. Une identité incomplète demeure un brouillon, avec les champs manquants signalés.
+
+### Identité courante sur les PDF métier
+
+La demande explicite du propriétaire du 28/10/2026 s’applique aux bons d’entrée, de sortie, de livraison, aux commandes CMD, factures, reçus et avoirs générés par l’application. Chaque génération ou régénération utilise l’identité courante de l’entreprise propriétaire : nom, logo, adresse, contacts, site, identifiants déclaratifs comme RCCM/NIF et mention. Une modification de ce profil apparaît donc aussi sur le PDF régénéré d’un ancien document.
+
+Cette présentation ne réécrit ni les identités historiques conservées en base, ni le tiers figé, les lignes, montants, dates, références d’émission ou écritures financières. Un justificatif ou PDF déjà archivé reste téléchargé à l’octet près ; seule une nouvelle génération adopte le profil courant.
+
+Le profil permet de renseigner un téléphone principal et un téléphone secondaire facultatif, ainsi que l’adresse, l’e-mail, le site et les identifiants déclaratifs. Reprendre les informations réellement saisies ; ne pas inventer de coordonnée manquante.
+
+Les options persistées `AfficherEnteteDocument` et `AfficherPiedDocument` sont activées par défaut. Elles se règlent dans le profil de l’entreprise ; le téléchargement les applique directement, sans dialogue ni option ponctuelle. Masquer l’en-tête retire son bloc détaillé ; **le nom de l’entreprise reste visible** dans la présentation compacte. Le pied présente le nom, les identifiants, les mentions et la pagination ; le masquer retire entièrement ce bloc. Les références métier restent dans le corps. Vérifier les quatre combinaisons, les contenus longs et les documents multipages.
+
+La source commune est `systeme.V_IdentiteDocumentaire` / `fn_identite_documentaire`. Le logo normalisé PNG est stocké dans `T_Entite`, avec MIME, SHA-256 et date ; ses octets ne vont ni dans les JSON de profil, ni dans les audits ou exports génériques. Le service autorise d’abord l’entreprise et le document. Ne pas charger de logo par une URL externe ni reprendre la marque d’une autre entreprise. Voir [le parcours utilisateur](../../../docs/identite-entreprise-pdf.md).
 
 ## Palette commune
 
