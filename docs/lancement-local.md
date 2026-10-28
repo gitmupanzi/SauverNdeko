@@ -54,6 +54,8 @@ Utiliser l’adresse affichée par adresse-reseau.bat : le port frontend reste 5
 
 L’arrêt vérifie le chemin du script, l’identifiant de l’instance et la date de création de chaque processus suivi. Une ancienne instance lancée dans une autre session Windows peut nécessiter sa fermeture depuis cette session.
 
+Si Windows masque l’identité d’un processus au lanceur, celui-ci conserve les informations de suivi et refuse l’arrêt ou le redémarrage avant de toucher aux services. Relancer avec les mêmes droits que lors du démarrage, ou fermer les services depuis leur session d’origine. Un démarrage simple réutilise les deux services qui répondent déjà dans le même mode. Un processus dont l’arrêt n’est pas confirmé reste suivi : un échec ne vide pas le fichier d’état.
+
 ## Accès depuis le réseau local
 
 Pour démarrer ou redémarrer avec l’accès réseau :

@@ -31,28 +31,53 @@ function Save-State($State) {
 function Process-Info([int]$ProcessId) {
  return Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
 }
+function Get-ServiceRecordStatus($Record) {
+ if ($null -eq $Record) { return 'absent' }
+ try {
+  $Info=Process-Info ([int]$Record.pid)
+  if ($null -eq $Info) {
+   # Une lecture CIM refusee ne prouve pas que le processus est termine.
+   if ($null -ne (Get-Process -Id ([int]$Record.pid) -ErrorAction SilentlyContinue)) { return 'inaccessible' }
+   return 'absent'
+  }
+  if ($null -eq $Info.CreationDate -or [string]::IsNullOrWhiteSpace([string]$Record.created)) { return 'inaccessible' }
+  $Created=([datetime]$Record.created).ToUniversalTime()
+  if ($Info.CreationDate.ToUniversalTime().Ticks -ne $Created.Ticks) { return 'foreign' }
+  $Command=[string]$Info.CommandLine
+  if ([string]::IsNullOrWhiteSpace($Command) -or [string]::IsNullOrWhiteSpace([string]$Record.instance)) { return 'inaccessible' }
+  if ($Command.IndexOf($ServiceScript,[StringComparison]::OrdinalIgnoreCase) -ge 0 -and $Command.Contains([string]$Record.instance)) { return 'owned' }
+  return 'foreign'
+ } catch { return 'inaccessible' }
+}
 function Expected-Process($Record) {
- if ($null -eq $Record) { return $false }
- $Info=Process-Info ([int]$Record.pid)
- if ($null -eq $Info) { return $false }
- $Command=[string]$Info.CommandLine
- return ($Command.IndexOf($ServiceScript,[StringComparison]::OrdinalIgnoreCase) -ge 0 -and
-         $Command.Contains([string]$Record.instance) -and
-         $Info.CreationDate.ToUniversalTime().ToString('o') -eq [string]$Record.created)
+ return (Get-ServiceRecordStatus $Record) -eq 'owned'
+}
+function Assert-ServiceRecordsInspectable($State) {
+ foreach ($Record in @($State.services)) {
+  if ((Get-ServiceRecordStatus $Record) -eq 'inaccessible') {
+   throw ('Identite du service '+$Record.name+' inaccessible avec les droits Windows actuels. Fermer ce service depuis la session qui l''a lance, ou relancer avec les memes droits. Aucun processus arrete ; informations de suivi conservees.')
+  }
+ }
 }
 function Stop-ServiceRecord($Record) {
- if (-not (Expected-Process $Record)) { Step ('Processus '+$Record.name+' deja absent ou identite non correspondante ; aucun arret force.'); return }
+ $Status=Get-ServiceRecordStatus $Record
+ if ($Status -eq 'inaccessible') { throw ('Identite du service '+$Record.name+' inaccessible ; arret refuse et informations de suivi conservees.') }
+ if ($Status -ne 'owned') { Step ('Processus '+$Record.name+' deja absent ou identite non correspondante ; aucun arret force.'); return }
  function Stop-Children([int]$ParentProcessId) {
   $Children=@(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentProcessId" -ErrorAction SilentlyContinue)
   foreach ($Child in $Children) {
    Stop-Children ([int]$Child.ProcessId)
    # Verifier la date avant l'arret pour ne pas prendre un PID recycle.
    $Current=Process-Info ([int]$Child.ProcessId)
-   if ($null -ne $Current -and $Current.CreationDate -eq $Child.CreationDate) { Stop-Process -Id ([int]$Child.ProcessId) -Force -ErrorAction SilentlyContinue }
+   if ($null -ne $Current -and $null -ne $Current.CreationDate -and $Current.CreationDate -eq $Child.CreationDate) { Stop-Process -Id ([int]$Child.ProcessId) -Force -ErrorAction Stop }
   }
  }
  Stop-Children ([int]$Record.pid)
- if (Expected-Process $Record) { Stop-Process -Id ([int]$Record.pid) -Force -ErrorAction SilentlyContinue }
+ $Status=Get-ServiceRecordStatus $Record
+ if ($Status -eq 'inaccessible') { throw ('Identite du service '+$Record.name+' devenue inaccessible ; informations de suivi conservees.') }
+ if ($Status -eq 'owned') { Stop-Process -Id ([int]$Record.pid) -Force -ErrorAction Stop }
+ $Status=Get-ServiceRecordStatus $Record
+ if ($Status -in @('owned','inaccessible')) { throw ('Arret du service '+$Record.name+' non confirme ; informations de suivi conservees.') }
  Step ($Record.name+' arrete.')
 }
 function Port-InUse([int]$Port) {
@@ -106,6 +131,7 @@ function Show-Addresses($State) {
  $Port=if ($null -ne $State) {[int]$State.frontend_port} else {$RequiredFrontendPort}
  $Lines=@('SauverNdeko',('Sur ce PC : http://localhost:'+ $Port +'/'))
  $Active=$null -ne $State -and @($State.services | Where-Object {Expected-Process $_}).Count -gt 0
+ $Inaccessible=$null -ne $State -and @($State.services | Where-Object {(Get-ServiceRecordStatus $_) -eq 'inaccessible'}).Count -gt 0
  if ($Active -and $State.network_mode -eq 'lan') {
   $Lines+='Acces sur le meme reseau :'
   foreach ($Adapter in [Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {
@@ -118,6 +144,7 @@ function Show-Addresses($State) {
   }
   foreach ($Name in ([string]$State.network_hosts).Split(',')) { $Lines+='Nom du PC ou alias DNS : http://'+$Name+':'+$Port+'/' }
  } elseif ($Active) { $Lines+='Acces local. Pour le reseau : redemarrer.bat -Reseau' }
+ elseif ($Inaccessible) { $Lines+='Identite des processus inaccessible avec les droits Windows actuels. Informations de suivi conservees ; aucun arret force.' }
  else { $Lines+='Application arretee. Lancer demarrer.bat ; ajouter -Reseau pour le reseau local.' }
  $Lines | ForEach-Object {Write-Host $_}
  New-Item -ItemType Directory -Path $RuntimeRoot -Force | Out-Null
@@ -147,6 +174,7 @@ function Start-ServiceRecord([string]$Name,[int]$Port,[int]$BackendPort,[int]$Fr
 function Stop-Project {
  $State=Read-State
  if ($null -eq $State) { Step 'Aucun service lance par ces fichiers.'; return }
+ Assert-ServiceRecordsInspectable $State
  foreach ($Record in @($State.services | Sort-Object name -Descending)) { Stop-ServiceRecord $Record }
  $State.services=@();Save-State $State
 }
@@ -154,9 +182,11 @@ function Start-Project {
  $State=Read-State;$Network=Network-Settings
  if ($null -ne $State) {
   $Alive=@($State.services | Where-Object {Expected-Process $_})
-  if ($Alive.Count -eq 2 -and [int]$State.frontend_port -eq $RequiredFrontendPort -and $State.network_mode -eq $Network.mode -and $State.network_hosts -eq $Network.hosts) {
+  $Known=@($State.services | Where-Object {(Get-ServiceRecordStatus $_) -in @('owned','inaccessible')})
+  if ($Known.Count -eq 2 -and [int]$State.frontend_port -eq $RequiredFrontendPort -and $State.network_mode -eq $Network.mode -and $State.network_hosts -eq $Network.hosts) {
    if ((Http-Ready ('http://127.0.0.1:'+$State.frontend_port+'/health')) -and (Http-Ready ('http://127.0.0.1:'+$State.backend_port+'/health'))) { Step 'Application deja demarree.';Show-Addresses $State;return }
   }
+  Assert-ServiceRecordsInspectable $State
   if ($Alive.Count) { Stop-Project }
  }
  if (-not (Test-Path -LiteralPath $ManagePath)) { throw 'backend/manage.py introuvable.' }
@@ -189,7 +219,7 @@ function Start-Project {
 try {
  if ($Action -eq 'Status') {
   $State=Read-State
-  if ($null -ne $State) {foreach ($Record in $State.services) {Step ($Record.name+' : '+$(if(Expected-Process $Record){'actif'}else{'arrete'})+' (port '+$Record.port+')')}}
+  if ($null -ne $State) {foreach ($Record in $State.services) {$Status=Get-ServiceRecordStatus $Record;$Label=switch($Status){'owned'{'actif'} 'absent'{'arrete'} 'inaccessible'{'identite inaccessible'} default{'ancienne instance'}};Step ($Record.name+' : '+$Label+' (port '+$Record.port+')')}}
   Show-Addresses $State
  } else {
   New-Item -ItemType Directory -Path $RuntimeRoot -Force | Out-Null
