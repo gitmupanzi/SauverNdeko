@@ -48,8 +48,18 @@ class AdminPortalTests(unittest.TestCase):
         self.actor = Actor({"IdUser": 2147483600, "Is_Admin": True})
         self.client = APIClient()
         self.client.force_authenticate(self.actor)
+        def fake_catalogue(actor, interface_key):
+            # Les contrats d'export restent sans SQL ; la persistance réelle est
+            # couverte séparément par test_preferences_tableaux.py en base privée.
+            obj, *_ = portal.source(actor, interface_key.split(".",1)[1])
+            return ([{"id":c["column_name"], "label":portal.LABELS[c["column_name"]],
+                      "exportable":True} for c in obj["columns"]], 1, True)
+        self.catalogue_patch=patch("apps.core.table_preferences.catalogue",side_effect=fake_catalogue)
+        self.catalogue_patch.start()
 
-    def tearDown(self): self.override.disable()
+    def tearDown(self):
+        self.catalogue_patch.stop()
+        self.override.disable()
 
     def url(self, kind, suffix=""):
         return "/api/systeme/administration/registres/" + kind + suffix

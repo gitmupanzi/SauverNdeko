@@ -350,9 +350,10 @@ export function saveAdminUiSettings(payload) {
   });
 }
 
-export async function downloadApiFile(path, { signal, filename = "SauverNdeko_Export_Complet.xlsx", contentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } = {}) {
-  const allowedTypes=new Set(["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/pdf","image/jpeg","image/png","image/webp"]);
-  const expectedType=String(contentType).toLowerCase();
+export async function downloadApiFile(path, { signal, filename = "SauverNdeko_Export_Complet.xlsx", contentType=null } = {}) {
+  const allowedTypes=new Set(["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","text/csv","application/pdf","image/jpeg","image/png","image/webp"]);
+  const expectedType=String(contentType || (/\.csv(?:\?|$)/i.test(String(path)) ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).toLowerCase();
+  if(expectedType==="text/csv"&&filename==="SauverNdeko_Export_Complet.xlsx")filename="SauverNdeko_Export_Complet.csv";
   if(!allowedTypes.has(expectedType))throw new Error("Ce format de fichier n’est pas autorisé.");
   const entityScope=captureEntityScope(path);
   const accessToken = getAccessToken();

@@ -1,4 +1,4 @@
-"""Numérotation indexée : recette sur une base sauverndeko_test_* migrée au 20261026_06.
+"""Numérotation indexée : recette sur une base sauverndeko_test_* migrée au 20261028_01.
 Crée des données fictives dans cette base dédiée ; aucun repli sur DATABASE_URL.
 """
 import os,sys,uuid
@@ -61,6 +61,7 @@ check(identities(None) is None,'NULL input keeps STRICT contract')
 check(identities({})==[] and identities([])==[] and identities('text')==[],'Non-object and empty data ignored')
 check(identities({'ID_Commande':'000042','CodeCmd':'C_000042','CodeFacture':'fac-000042'})==[Decimal(42)],'Leading zeros normalized and deduplicated')
 check(identities({'ID_CommandeFk':'11','ID_CommandeRetourFk':'00012','CodeCmd':'CmD-00013','CodeFacture':'f_00014'})==list(map(Decimal,[11,12,13,14])),'All identity fields and case-insensitive formats recognized')
+check(identities({'CodeCmd':'BE-00042'})==[Decimal(42)] and identities({'CodeCmd':'BS-00043'})==[Decimal(43)],'Typed BE/BS identities retain the same non-reuse protection')
 check(identities({'ID_Commande':True,'ID_CommandeFk':'-1','ID_CommandeRetourFk':'12oops','CodeCmd':'cmd-4xx','CodeFacture':{}})==[],'Malformed identities do not reserve numbers')
 check(identities({'CodeCmd':'C_'+('9'*1000)})==[Decimal('9'*1000)],'Large historical identities do not overflow integer or bigint')
 check(identities({'CodeCmd':'cmd-'+('9'*1001)})==[],'Impossible oversized numeric identities bounded for GIN')
@@ -95,6 +96,7 @@ def concurrent_create(_):
  finally:connections.close_all()
 with ThreadPoolExecutor(max_workers=4) as workers:ids=list(workers.map(concurrent_create,range(16)))
 check(len(set(ids))==16,'Concurrent creations get distinct identities')
+check(all(db.one('SELECT "CodeCmd" FROM logistique."T_Commande" WHERE "ID_Commande"=%s',[i])['CodeCmd']=='BE-'+str(i) for i in ids),'New entry notes use BE-ID')
 check(all(db.one('SELECT logistique.fn_identite_commande_deja_utilisee(%s) used',[i])['used'] for i in ids),'Every concurrent identity retained in current rows and audit')
 check(db.one('SELECT count(*) n FROM systeme."T_Audit_Log" WHERE "Operation"=\'DOCUMENT_NUMBER\' AND ("NewData"->>\'ID_Commande\')::integer=ANY(%s)',[ids])['n']==16,'Exactly one first-number audit per concurrent creation')
 print('PASS',len(checks),'contrôles de numérotation sur base privée.')

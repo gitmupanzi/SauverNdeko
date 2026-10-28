@@ -108,3 +108,7 @@ def query_order(obj, raw):
         if key != sort:
             order += ",v." + db.ident(key) + " ASC"
     return order, sort, direction
+
+LABELS.update({"CodeArticleExterne":"Code externe","ObsArticle":"Observations","DateHeureAuto":"Créé le","DatePeremptionAlerteArticle":"Début alerte péremption","NbreJoursAlerteArticle":"Délai alerte péremption (jours)","NomComplet":"Responsable","StockVentileLots":"Stock ventilé par lot","StockSansLot":"Stock sans lot","ValeurStockVente":"Valeur catalogue (vente)","TauxMargePct":"Taux de marge (%)","QuantitesParUnite":"Quantités par unité"})
+
+LABELS.update({"OrigineBon":"Origine"})

@@ -171,7 +171,7 @@ def register_source(kind, raw, for_export=False):
     if kind in KINDS:return ledger_source(kind,raw,for_export)
     if kind not in {"articles", "commandes", "lignes"}:
         raise APIError("Registre introuvable.", "NOT_FOUND", 404)
-    unknown = set(raw) - (BASE_QUERY_KEYS | ({"contexte"} if kind == "articles" else set()) | ({"commandeId","articleId","etat"} if kind == "lignes" else set()) | ({"columns"} if for_export else set()))
+    unknown = set(raw) - (BASE_QUERY_KEYS | ({"contexte"} if kind == "articles" else set()) | ({"commandeId","articleId","etat"} if kind == "lignes" else set()) | ({"columns","selection"} if for_export else set()))
     if unknown:
         raise APIError("Critère non autorisé.")
     if kind == "lignes":
@@ -183,6 +183,12 @@ def register_source(kind, raw, for_export=False):
         return obj,states[state],filters
     article = kind == "articles"
     obj = view("logistique", "V_Article" if article else "V_Commande")
+    if not article:
+        # La vue commune ne produit jamais une somme de quantités d’unités différentes.
+        names=[col["column_name"] for col in obj["columns"] if col["column_name"]!="QteTotale"]
+        projection=",".join("c."+db.ident(name) for name in names)
+        obj={**obj,"columns":[*obj["columns"],{"column_name":"QuantitesParUnite","data_type":"jsonb","is_nullable":"YES"}],
+             "_row_source":"(SELECT "+projection+",CASE WHEN q.\"NombreUnites\" IS NULL THEN 0::numeric ELSE q.\"QuantiteHomogene\" END AS \"QteTotale\",COALESCE(q.\"QuantitesParUnite\",'[]'::jsonb) AS \"QuantitesParUnite\" FROM logistique.\"V_Commande\" c LEFT JOIN logistique.\"V_QuantitesBonUnite\" q ON q.\"ID_CmdFk\"=c.\"ID_Commande\") v"}
     filters = {}
     if article:
         context = raw.get("contexte")

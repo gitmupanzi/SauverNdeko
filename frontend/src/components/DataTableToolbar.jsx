@@ -3,7 +3,7 @@ import { useId } from "react";
 import AppIcon from "./AppIcon";
 import ActionButton from "./ActionButton";
 import "./DataTable.css";
-export default function DataTableToolbar({ search, setSearch, onApply, onReset, pending, take, onTake, filtersOpen, toggleFilters, activeFilters, density, toggleDensity, columnsOpen, columnsButtonRef, toggleColumns, loading, exportFile, exporting, exportDisabled, error, placeholder = "Rechercher un code, un article, un tiers ou un statut…", filterContent = null, filterControlsId, showFilters=true }) {
+export default function DataTableToolbar({ search, setSearch, onApply, onReset, pending, take, onTake, filtersOpen, toggleFilters, activeFilters, density, toggleDensity, columnsOpen, columnsButtonRef, toggleColumns, loading, exportFile, exportCsv, exporting, exportDisabled, error, placeholder = "Rechercher un code, un article, un tiers ou un statut…", filterContent = null, filterControlsId, showFilters=true, settingsLabel="Colonnes", showSettings=true }) {
   const id = useId();
   const { user } = useAuth();
   return <>
@@ -14,8 +14,9 @@ export default function DataTableToolbar({ search, setSearch, onApply, onReset, 
       {showFilters?<ActionButton icon="filter" className={filtersOpen ? "is-active" : ""} aria-expanded={filtersOpen} aria-controls={filterControlsId} onClick={toggleFilters}>Filtrer{activeFilters ? <span className="erp-filter-count">{activeFilters}</span> : null}</ActionButton>:null}
       <ActionButton icon="reset" onClick={onReset} disabled={loading || (!search && !activeFilters && !pending)}>Réinitialiser</ActionButton>
       <ActionButton icon={density === "airy" ? "compact" : "expand"} aria-pressed={density === "airy"} onClick={toggleDensity}>{density === "airy" ? "Vue compacte" : "Vue aérée"}</ActionButton>
-      <ActionButton ref={columnsButtonRef} icon="columns" className="is-icon" title="Colonnes" aria-label="Colonnes" aria-expanded={columnsOpen} onClick={toggleColumns} />
+      {showSettings?<ActionButton ref={columnsButtonRef} icon={settingsLabel === "Réglages" ? "settings" : "columns"} className={settingsLabel === "Colonnes" ? "is-icon" : ""} title={settingsLabel} aria-label={settingsLabel} aria-expanded={columnsOpen} onClick={toggleColumns}>{settingsLabel === "Colonnes" ? null : settingsLabel}</ActionButton>:null}
       {exportFile ? <ActionButton icon="download" onClick={exportFile} disabled={user?.permissions?.canExportData === false || loading || exporting || exportDisabled || pending} title={pending ? "Appliquez les filtres avant l’export." : "Exporter tous les résultats filtrés en Excel"}>{exporting ? "Préparation…" : "Excel"}</ActionButton> : null}
+      {exportCsv ? <ActionButton icon="download" onClick={exportCsv} disabled={user?.permissions?.canExportData === false || loading || exporting || exportDisabled || pending} title={pending ? "Appliquez les filtres avant l’export." : "Exporter tous les résultats filtrés en CSV"}>CSV</ActionButton> : null}
     </form>
     {filterContent}
     {pending ? <p className="erp-table-pending" role="status">Filtres à appliquer.</p> : null}

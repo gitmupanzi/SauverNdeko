@@ -113,6 +113,7 @@ try:
             "/api/logistique/articles",
             {
                 "NomArticle": "Article API fictif",
+                "requestId": str(uuid.uuid4()),
                 "ID_TypeArticleFk": 1101,
                 "ID_CategorieArticleFk": 1102,
                 "ID_UniteFk": 1103,

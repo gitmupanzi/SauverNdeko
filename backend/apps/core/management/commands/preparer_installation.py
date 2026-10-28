@@ -25,9 +25,9 @@ class Command(BaseCommand):
             structure=target/'structure.sql';refs=target/'references.sql'
             result=subprocess.run([*base,'--schema-only',*[f'--schema={schema}' for schema in SCHEMAS],'--file',str(structure)],env=pg_environment(),capture_output=True,timeout=180)
             if result.returncode:raise CommandError('Export structure refusé.')
-            result=subprocess.run([*base,'--data-only','--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"','--table=systeme."T_ModuleApplication"','--table=logistique."T_PrecisionStock"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
+            result=subprocess.run([*base,'--data-only','--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"','--table=referentiel."T_InterfaceTableau"','--table=systeme."T_ModuleApplication"','--table=logistique."T_PrecisionStock"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
             if result.returncode:raise CommandError('Export dictionnaire refusé.')
             migrations=sorted((Path(__file__).resolve().parents[5]/'SQL/migrations').glob('*.sql'))
-            manifest={'format':1,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs)},'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
+            manifest={'format':1,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs)},'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','referentiel.T_InterfaceTableau','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
             (target/'manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf8')
         self.stdout.write(f'Paquet vierge préparé : {target} ; aucune donnée client ni identité de compte incluse.')

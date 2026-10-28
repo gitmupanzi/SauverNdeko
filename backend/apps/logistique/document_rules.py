@@ -38,11 +38,13 @@ def stock_write_state(record):
     if not invoice and db.one("SELECT to_regclass('logistique.\"T_Facture\"') IS NOT NULL AS ready")['ready']:
         invoice=bool(db.one('SELECT EXISTS(SELECT 1 FROM logistique."T_Facture" WHERE "ID_CommandeFk"=%s) AS present',[record['ID_Commande']])['present'])
     is_closed=closed(record)
-    reason=('Ce bon corrige un inventaire validé. Créez un nouveau comptage pour le corriger.' if inventory else 'Ce bon est clôturé.' if is_closed else
+    initial=record.get('OrigineBon') in {'stock_initial','reprise_mouvement'}
+    reason=('Ce bon documente un stock initial ou une reprise. Utilisez un nouveau bon pour corriger le stock.' if initial else
+            'Ce bon corrige un inventaire validé. Créez un nouveau comptage pour le corriger.' if inventory else 'Ce bon est clôturé.' if is_closed else
             'Un bon de retour est conservé avec son historique.' if returns['isReturn'] else
             'Ce bon possède des retours. Son panier est conservé.' if returns['hasReturns'] else
             'Une facture a été émise. Le panier est conservé.' if invoice else '')
-    return {'canEdit':not reason,'reason':reason,'invoice':invoice,'closed':is_closed,'returns':returns}
+    return {'canEdit':not reason,'reason':reason,'invoice':invoice,'closed':is_closed,'returns':returns,'initial':initial}
 
 
 def assert_stock_editable(record):
@@ -59,7 +61,7 @@ def protect_stock_header(data,old):
     if not old:return
     state=stock_write_state(old)
     if state['canEdit']:return
-    if state['returns']['isReturn']:
+    if state['returns']['isReturn'] or state['initial']:
         if any(value!=old.get(key) for key,value in data.items()):
             raise APIError(state['reason'],'ORDER_HISTORY_LOCKED',409)
     elif any(key not in FINANCIAL_METADATA and value!=old.get(key) for key,value in data.items()):
@@ -83,7 +85,7 @@ def usage(record, actor):
     delete_reason=reason or ('Un bon avec des lignes ou un historique ne peut pas être supprimé.' if any(links.values()) else
                             'Un bon facturé ne peut pas être supprimé.' if invoice else '')
     fixed=links['lignes'] or links['mouvements'] or links['reglements'] or invoice
-    return {'revision':revision(record),'canEdit':not is_closed,'editReason':reason,
+    return {'revision':revision(record),'canEdit':not is_closed and not state['initial'],'editReason':reason,
             'canDelete':not delete_reason,'deleteReason':delete_reason,
             'canChangeType':not fixed and not is_closed,'canChangeCurrency':not fixed and not is_closed,
             'canChangeInvoiceCode':not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
@@ -193,4 +195,6 @@ def generate_command_identity():
         if not isinstance(code,str) or not code or code.strip()!=code or len(code)>20:raise ValueError()
     except (APIError,DatabaseError,ValueError,TypeError):
         raise APIError('La numérotation des bons est indisponible. Contactez votre administrateur.','ORDER_NUMBERING_UNAVAILABLE',503)
-    return {'ID_Commande':identifier,'CodeCmd':code}
+    # Le préfixe dépend du type final du bon; seul le trigger connaît cette
+    # donnée au moment de l'INSERT. La réservation conserve l'identité globale.
+    return {'ID_Commande':identifier}

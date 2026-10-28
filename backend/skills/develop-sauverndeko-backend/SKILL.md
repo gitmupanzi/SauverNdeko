@@ -16,6 +16,7 @@ Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/
 - Lire [messagerie et réinitialisation](references/messagerie-reinitialisation.md) pour l’expéditeur, les secrets SMTP locaux et la récupération sécurisée des comptes.
 - Pour la propriété durable des documents, T_Client et les opérations du compte global, lire les [décisions Entités, tiers et stock](../../../skills/sauverndeko-erp/references/entites-tiers-et-stock.md).
 - Lire [Articles, photos et lots](references/articles-lots-photos.md) pour les écritures avec révision, poids, informations et ventilation des mouvements par lot.
+- Lire [les préférences de tableaux et exports](../../../SQL/documentation/Preferences_Tableaux_Exports_20261028.md) pour le catalogue PostgreSQL, l’isolation personnelle par entreprise, l’indépendance tableau/export et les formats XLSX/CSV.
 - Lire [la décision d’accès PostgreSQL](references/decision-acces-postgresql.md) pour la décision mise à jour.
 - Lire [le bilan métier et technique](../../../SQL/documentation/Audit_Metier_20261024.md) pour les vérifications et limites.
 - Lire [vues et commentaires](references/vues-et-commentaires.md) pour les sources SQL ; ses évolutions déjà appliquées sont historiques et ne doivent pas être rejouées pendant une conversion de code.

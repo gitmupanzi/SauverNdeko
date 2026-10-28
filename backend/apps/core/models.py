@@ -5,6 +5,34 @@ Le CRUD métier utilise les services SQL et les triggers existants.
 from django.db import models
 
 
+class T_InterfaceTableau(models.Model):
+    CleInterface = models.TextField(primary_key=True)
+    Module = models.TextField()
+    Version = models.IntegerField()
+    Colonnes = models.JSONField()
+    Actif = models.BooleanField()
+    ModifieLe = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = '"referentiel"."T_InterfaceTableau"'
+
+
+class T_PreferenceTableau(models.Model):
+    ID_PreferenceTableau = models.BigAutoField(primary_key=True)
+    CleInterfaceFk = models.TextField()
+    IdUserFk = models.IntegerField()
+    IdEntiteFk = models.IntegerField(null=True)
+    Usage = models.TextField()
+    Colonnes = models.JSONField()
+    Version = models.BigIntegerField()
+    ModifieLe = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = '"referentiel"."T_PreferenceTableau"'
+
+
 class T_Chat(models.Model):
     IdChat = models.AutoField(primary_key=True)
     TextChat = models.TextField(null=True)
@@ -199,6 +227,8 @@ class T_Niveau_5(models.Model):
 
 
 class T_Article(models.Model):
+    CreationRequestId = models.UUIDField(null=True, editable=False)
+    CreationPayloadHash = models.CharField(max_length=64, null=True, editable=False)
     IdEntiteFk = models.IntegerField(null=True)
     ID_DeviseFk = models.IntegerField()
     PoidsUnitaire = models.DecimalField(max_digits=14, decimal_places=6, null=True)
@@ -231,6 +261,8 @@ class T_Article(models.Model):
 
 
 class T_Commande(models.Model):
+    OrigineBon = models.TextField(null=True, editable=False)
+    ID_ArticleInitialFk = models.IntegerField(null=True, editable=False)
     ID_DestinationFk = models.IntegerField(null=True)
     IdEntiteFk = models.IntegerField(null=True)
     ID_TiersFk = models.BigIntegerField(null=True)
@@ -305,6 +337,10 @@ class T_Mouvement(models.Model):
 
 
 class T_Reglements(models.Model):
+    CreeParUserFk = models.IntegerField(null=True)
+    ModifieParUserFk = models.IntegerField(null=True)
+    CreeLe = models.DateTimeField(null=True)
+    ModifieLe = models.DateTimeField(null=True)
     ID_TiersFk = models.BigIntegerField(null=True)
     ID_DeviseFk = models.IntegerField()
     ID_Reglement = models.AutoField(primary_key=True)

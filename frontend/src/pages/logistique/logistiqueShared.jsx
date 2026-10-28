@@ -3,6 +3,7 @@ export { formatCurrency } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
 import TablePagination from "../../components/TablePagination";
 import ColumnPicker from "../../components/ColumnPicker";
+import TableSettings from "../../components/TableSettings";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -498,6 +499,7 @@ export function SimpleTable({
   columnFilters = {},
   onColumnFilterChange,
   onApplyColumnFilters,
+  tablePreferences = null,
 }) {
   const tableWrapRef = useRef(null);
   const settledTableHeight = useRef(0);
@@ -545,7 +547,9 @@ export function SimpleTable({
     selectionCallback.current(nextSelection);
   },[selectionKey,rows,getRowId,onSelectionChange]);
   const [pinnedColumns, setPinnedColumns] = useState(defaultPinnedColumns);
-  const [visibleColumns, setVisibleColumns] = useState(() => columns.filter((column) => !defaultVisibleColumns || defaultVisibleColumns.includes(column.key)).map((column) => column.key));
+  const [visibleColumns, setVisibleColumns] = useState(() => defaultVisibleColumns
+    ? [...new Set(defaultVisibleColumns)].filter(key => columns.some(column => column.key === key))
+    : columns.map(column => column.key));
   const [columnWidths, setColumnWidths] = useState(() =>
     Object.fromEntries(columns.map((column) => [column.key, getColumnDefaultWidth(column)]))
   );
@@ -608,8 +612,10 @@ export function SimpleTable({
   }, [getRowId, rows]);
 
   const effectiveVisibleColumns = useMemo(
-    () => columns.filter((column) => visibleColumns.includes(column.key)),
-    [columns, visibleColumns]
+    () => tablePreferences?.ready
+      ? tablePreferences.tableKeys.map(key => columns.find(column => column.key === key)).filter(Boolean)
+      : visibleColumns.map(key => columns.find(column => column.key === key)).filter(Boolean),
+    [columns, visibleColumns, tablePreferences?.ready, tablePreferences?.tableKeys.join("|")]
   );
 
   const visibleKeys = effectiveVisibleColumns.map((column) => column.key).join("|");
@@ -915,7 +921,9 @@ export function SimpleTable({
   }
 
 
-  const exportableColumns = effectiveVisibleColumns.filter((column) => column.key !== "actions");
+  const exportableColumns = tablePreferences?.ready
+    ? tablePreferences.exportKeys.map(key => columns.find(column => column.key === key)).filter(column => column && column.key !== "actions")
+    : effectiveVisibleColumns.filter((column) => column.key !== "actions");
   const exportBaseFilename = String(exportFilename || "logistique-tableau").replace(/\.(csv|xls|xlsx|pdf)$/i, "");
   const exportRows =
     selectedRowIds.length > 0
@@ -954,7 +962,7 @@ export function SimpleTable({
                 </select>
               </label>
 
-              <ActionButton ref={columnsTrigger} icon="columns" disabled={loading} aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>Colonnes</ActionButton>
+              <ActionButton ref={columnsTrigger} icon={tablePreferences ? "settings" : "columns"} disabled={loading} aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>{tablePreferences ? "Réglages" : "Colonnes"}</ActionButton>
 
               <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export logistique">
                 <ActionButton icon="download"
@@ -1089,7 +1097,7 @@ export function SimpleTable({
           </div>
 
           </>}
-          <ColumnPicker open={controlsOpen} anchorRef={columnsTrigger} onClose={closeColumns} columns={columns} visibleKeys={visibleColumns} pinnedKeys={pinnedColumns} onToggleVisible={handleToggleVisibleColumn} onTogglePinned={handleTogglePinnedColumn} onShowAll={()=>setVisibleColumns(columns.map(column=>column.key))} onResetWidth={handleResetColumnWidth} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))} />
+          {tablePreferences ? controlsOpen ? <TableSettings key={tablePreferences.contextKey} preferences={tablePreferences} onClose={()=>closeColumns(true)} pinnedKeys={pinnedColumns} onTogglePinned={handleTogglePinnedColumn} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))}/> : null : <ColumnPicker open={controlsOpen} anchorRef={columnsTrigger} onClose={closeColumns} columns={columns} visibleKeys={visibleColumns} pinnedKeys={pinnedColumns} onToggleVisible={handleToggleVisibleColumn} onTogglePinned={handleTogglePinnedColumn} onShowAll={()=>setVisibleColumns(columns.map(column=>column.key))} onResetWidth={handleResetColumnWidth} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))} />}
         </section>
       ) : null}
 

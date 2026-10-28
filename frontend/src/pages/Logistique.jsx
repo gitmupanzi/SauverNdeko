@@ -35,7 +35,6 @@ const Mouvements=lazyView(()=>import("./logistique/Mouvements"),{label:"Chargeme
 const Reglements=lazyView(()=>import("./logistique/Reglements"),{label:"Chargement de la vue…"});
 const StockAudit=lazyView(()=>import("./logistique/StockAudit"),{label:"Chargement de la vue…"});
 
-const LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY = "logistique.generic-category-overrides";
 const LOGISTIQUE_SIDEBAR_STORAGE_KEY = "logistique.sidebar-collapsed";
 
 function normalizeStringRecord(value) {
@@ -53,25 +52,6 @@ function normalizeStringRecord(value) {
 
     return accumulator;
   }, {});
-}
-
-function readLogistiqueCategoryOverrides() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY);
-
-    if (!rawValue) {
-      return {};
-    }
-
-    const parsed = JSON.parse(rawValue);
-    return normalizeStringRecord(parsed);
-  } catch (_error) {
-    return {};
-  }
 }
 
 function readSidebarCollapsedPreference() {
@@ -634,7 +614,8 @@ export default function Logistique() {
   const [referencesLoading, setReferencesLoading] = useState(true);
   const [referencesError, setReferencesError] = useState("");
   const [genericSupportError, setGenericSupportError] = useState("");
-  const [genericCategoryOverrides, setGenericCategoryOverrides] = useState(() => readLogistiqueCategoryOverrides());
+  const [genericCategoryOverrides, setGenericCategoryOverrides] = useState({});
+  const [sharedFkSettingsReady,setSharedFkSettingsReady]=useState(false);
   const [genericCategoryDrafts, setGenericCategoryDrafts] = useState({});
   const [allServerGenericOverrides, setAllServerGenericOverrides] = useState({});
   const [serverHierarchyModes, setServerHierarchyModes] = useState({});
@@ -650,14 +631,6 @@ export default function Logistique() {
   const [sharedFkAuditRows, setSharedFkAuditRows] = useState([]);
   const [loadingSharedFkAudit, setLoadingSharedFkAudit] = useState(false);
   const [sharedFkAuditError, setSharedFkAuditError] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(LOGISTIQUE_GENERIC_CATEGORY_STORAGE_KEY, JSON.stringify(genericCategoryOverrides));
-  }, [genericCategoryOverrides]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -731,6 +704,7 @@ export default function Logistique() {
           setAllServerGenericOverrides(allOverrides);
           setServerHierarchyModes(response.data.hierarchyFilterModes || {});
           setGenericCategoryOverrides(pickLogistiqueOverrides(allOverrides));
+          setSharedFkSettingsReady(true);
           setGenericCategoryDrafts({});
           setSharedFkSettingsMeta({
             updatedAt: response.data.updatedAt || null,
@@ -739,6 +713,9 @@ export default function Logistique() {
           });
         } else {
           if (!response?.success) setSharedFkSettingsError(response?.message || "Les réglages n’ont pas pu être chargés.");
+          setSharedFkSettingsReady(response?.success===true);
+          setGenericCategoryOverrides({});
+          setGenericCategoryDrafts({});
           setAllServerGenericOverrides({});
           setServerHierarchyModes({});
           setSharedFkSettingsMeta({
@@ -753,6 +730,8 @@ export default function Logistique() {
         }
 
         setSharedFkSettingsError("Les réglages n’ont pas pu être chargés.");
+        setSharedFkSettingsReady(false);
+        setGenericCategoryOverrides({});
       } finally {
         if (isMounted) {
           setLoadingSharedFkSettings(false);
@@ -765,7 +744,7 @@ export default function Logistique() {
     return () => {
       isMounted = false;
     };
-  }, [settingsVersion]);
+  }, [settingsVersion,referenceVersion,entityScope.scopeKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -826,6 +805,7 @@ export default function Logistique() {
       },
       details: {
         ...current.details,
+        search: "",
         selectedRow: null,
         composerMode,
       },
@@ -978,7 +958,7 @@ export default function Logistique() {
   );
 
   async function persistSharedFkSettings(nextLogistiqueOverrides) {
-    if (!canEditReferences || savingSharedFkSettings || loadingSharedFkSettings) return false;
+    if (!canEditReferences || !sharedFkSettingsReady || savingSharedFkSettings || loadingSharedFkSettings) return false;
     setSavingSharedFkSettings(true);
     setSharedFkSettingsError("");
 
@@ -1173,8 +1153,9 @@ export default function Logistique() {
             {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
             {referencesLoading ? <ScreenPlaceholder label="Chargement des références…"/> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
+            {!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
 
-            {!referencesLoading && !referencesError ? (
+            {!referencesLoading && !referencesError && sharedFkSettingsReady ? (
               <div className="logistics-shell-view">
                 {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
                   <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={canEditReferences} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setSettingsVersion(version=>version+1)} />

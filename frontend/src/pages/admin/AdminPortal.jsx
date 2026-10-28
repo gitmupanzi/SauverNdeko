@@ -1,3 +1,4 @@
+import useTablePreferences from "../../hooks/useTablePreferences";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -5,6 +6,7 @@ import ModuleHeader from "../../components/ModuleHeader";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
 import RegisterSurface from "../../components/RegisterSurface";
+import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import RowActionsMenu from "../../components/RowActionsMenu";
 import SearchSelect from "../../components/SearchSelect";
@@ -57,6 +59,7 @@ function serializeCriteria(criteria, grid, columns) {
 
 function AdminRegister({ kind, initial = {}, support, supportError, canWrite, canExport, refresh, onChanged, onNavigate }) {
   const definition = ADMIN_REGISTERS[kind], id = useId();
+  const preferences=useTablePreferences("admin."+kind);
   const base = { q: "", dateFrom: "", dateTo: "", ...Object.fromEntries(definition.filters.map(field => [field.key, ""])), ...initial };
   const [draft, setDraft] = useState(base), [criteria, setCriteria] = useState(base);
   const [grid, setGrid] = useState({ take: 25, skip: 0, sortBy: definition.sort[0], sortDir: definition.sort[1] });
@@ -93,13 +96,14 @@ function AdminRegister({ kind, initial = {}, support, supportError, canWrite, ca
     return () => { current = false; controller.abort(); };
   }, [kind, criteria, grid, refresh, retry]);
   useEffect(() => { exportRequest.current?.abort(); setExporting(false); setExportError(""); return () => exportRequest.current?.abort(); }, [criteria, grid.sortBy, grid.sortDir]);
-  async function exportExcel() {
-    if (pending || exporting || !canExport) return;
-    const controller = new AbortController(); exportRequest.current?.abort(); exportRequest.current = controller;
-    setExporting(true); setExportError("");
-    try { await downloadApiFile(ADMIN_ROOT + "/registres/" + kind + "/export.xlsx?" + serializeCriteria(criteria, grid, visible.filter(key => key !== "actions")), { signal: controller.signal }); }
-    catch (failure) { if (!controller.signal.aborted) setExportError(failure.message || "L’export n’a pas abouti."); }
-    finally { if (!controller.signal.aborted) setExporting(false); }
+  async function exportExcel(format="xlsx",selection=null) {
+    if(pending||exporting||loading||error||!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length)return;
+    const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
+    const params=serializeCriteria(criteria,{sortBy:grid.sortBy,sortDir:grid.sortDir},preferences.exportKeys);
+    if(selection)params.set("selection",JSON.stringify(selection.map(row=>row[definition.pk])));
+    try{await downloadApiFile(ADMIN_ROOT+"/registres/"+kind+"/export."+format+"?"+params,{signal:controller.signal});}
+    catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas abouti.");}
+    finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
   }
   const columns = [...definition.columns, {
     key: "actions", label: "Actions", width: 120, sortable: false,
@@ -127,16 +131,17 @@ function AdminRegister({ kind, initial = {}, support, supportError, canWrite, ca
   return <>
     {feedback ? <div className="admin-feedback" role="status"><AppIcon name="check-circle"/><span>{feedback}</span><button type="button" aria-label="Fermer le message" onClick={() => setFeedback("")}><AppIcon name="close"/></button></div> : null}
     <RegisterSurface title={definition.title} subtitle={definition.description} actions={<>
+      <RegisterSettingsButton buttonRef={anchor} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)}/>
       {kind === "parametres" ? <ActionButton icon="clock" onClick={() => onNavigate("audit-parametres")}>Historique</ActionButton> : null}
       {kind === "licences" ? <Link className="ui-action is-secondary" to="/abonnements"><AppIcon name="apps"/>Applications</Link> : null}
       {definition.create ? <ActionButton icon="plus" variant="primary" disabled={!effectiveWrite || Boolean(error)} onClick={() => open(null, "create")}>{definition.create}</ActionButton> : null}
     </>}>
       <div className="admin-register-context"><AppIcon name={definition.platform ? "shield" : "apps"}/><span>{definition.platform ? "Administration de la plateforme" : "Données des entreprises autorisées"}</span>{!definition.editor ? <span className="admin-context-note">Consultation</span> : null}</div>
       <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
-        {selected.length ? <div className="erp-register-selection"><strong>{selected.length} {selected.length > 1 ? "lignes sélectionnées" : "ligne sélectionnée"}</strong>{selected.length === 1 ? <><ActionButton icon="eye" disabled={loading} onClick={() => open(selected[0])}>Consulter</ActionButton>{definition.editor ? <ActionButton icon="edit" disabled={loading || !mayEdit(selected[0])} onClick={() => open(selected[0], "edit")}>Modifier</ActionButton> : null}</> : null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => setSelectionReset(value => value + 1)}/></div> : null}
+        {selected.length ? <div className="erp-register-selection"><strong>{selected.length} {selected.length > 1 ? "lignes sélectionnées" : "ligne sélectionnée"}</strong>{canExport?<><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportExcel("xlsx",selected)}>Excel · sélection</ActionButton><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportExcel("csv",selected)}>CSV · sélection</ActionButton></>:null}{selected.length === 1 ? <><ActionButton icon="eye" disabled={loading} onClick={() => open(selected[0])}>Consulter</ActionButton>{definition.editor ? <ActionButton icon="edit" disabled={loading || !mayEdit(selected[0])} onClick={() => open(selected[0], "edit")}>Modifier</ActionButton> : null}</> : null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => setSelectionReset(value => value + 1)}/></div> : null}
         {error ? <div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" disabled={loading} onClick={() => setRetry(value => value + 1)}>Réessayer</ActionButton></div> : null}
-        <SimpleTable rows={rows} columns={columns} getRowId={row => row[definition.pk]} enableSelection onSelectionChange={setSelected} selectionResetKey={selectionReset} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={row => open(row)} consultColumns={[definition.name]} loading={loading} emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun résultat pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={anchor} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisible} toolbar={<>
-          <DataTableToolbar search={draft.q} setSearch={q => setDraft(old => ({ ...old, q }))} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take => changeGrid({ take, skip: 0 })} filtersOpen={filtersOpen} toggleFilters={() => setFiltersOpen(value => !value)} filterControlsId={id + "-filters"} activeFilters={appliedCount} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={anchor} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher dans ce registre…" exportFile={canExport ? exportExcel : undefined} exporting={exporting} exportDisabled={Boolean(error) || !meta?.filteredCount || !visible.some(key => key !== "actions")} error={exportError}/>
+        <SimpleTable tablePreferences={preferences} rows={rows} columns={columns} getRowId={row => row[definition.pk]} enableSelection onSelectionChange={setSelected} selectionResetKey={selectionReset} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={row => open(row)} consultColumns={[definition.name]} loading={loading} emptyMessage={error ? "Les données ne sont pas disponibles." : "Aucun résultat pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={anchor} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisible} toolbar={<>
+          <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={draft.q} setSearch={q => setDraft(old => ({ ...old, q }))} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take => changeGrid({ take, skip: 0 })} filtersOpen={filtersOpen} toggleFilters={() => setFiltersOpen(value => !value)} filterControlsId={id + "-filters"} activeFilters={appliedCount} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={anchor} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher dans ce registre…" exportFile={canExport ? ()=>exportExcel() : undefined} exportCsv={canExport ? ()=>exportExcel("csv") : undefined} exporting={exporting} exportDisabled={Boolean(error) || !meta?.filteredCount || !preferences.ready || !preferences.canExport || !preferences.exportKeys.length} error={exportError||preferences.error}/>
           {filtersOpen ? <form className="erp-register-filters" id={id + "-filters"} onSubmit={event => { event.preventDefault(); apply(); }}><div className="erp-register-filter-grid">
             {definition.filters.map(field => <label key={field.key}><span>{field.label}</span><SearchSelect label={field.label} value={draft[field.key] ?? ""} options={[{ value: "", label: "Tous" }, ...optionsFor(field, support)]} onChange={value => setDraft(old => ({ ...old, [field.key]: value }))}/></label>)}
             {definition.dateKey ? <><label><span>{kind === "licences" ? "Échéance à partir du" : "Du"}</span><input type="date" value={draft.dateFrom} onChange={event => setDraft(old => ({ ...old, dateFrom: event.target.value }))}/></label><label><span>{kind === "licences" ? "Échéance jusqu’au" : "Au"}</span><input type="date" value={draft.dateTo} min={draft.dateFrom || undefined} onChange={event => setDraft(old => ({ ...old, dateTo: event.target.value }))}/></label></> : null}

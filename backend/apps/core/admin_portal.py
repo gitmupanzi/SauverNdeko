@@ -133,7 +133,7 @@ def parse_filters(raw):
 
 
 def selection(actor, kind, raw, *, action="read", pk=None):
-    if set(raw) - {"q", "filters", "sortBy", "sortDir", "take", "skip", "dateFrom", "dateTo", "timeZone", "columns"}:
+    if set(raw) - {"q", "filters", "sortBy", "sortDir", "take", "skip", "dateFrom", "dateTo", "timeZone", "columns", "selection"}:
         raise APIError("Critère non autorisé.")
     obj, identity, default_sort, date_field = source(actor, kind, action)
     available = {c["column_name"]: c for c in obj["columns"]}
@@ -215,8 +215,13 @@ class AdminRegisterView(APIView):
             "take": take, "skip": skip, "sortBy": sort, "sortDir": direction, **capabilities(request.user)})
 
 
-def admin_workbook(actor, kind, raw):
+def admin_workbook(actor, kind, raw, file_format="xlsx"):
+    from apps.core.table_preferences import export_keys
+    from apps.core.tabular_exports import selected_scope, write_tabular
+    raw = {**raw,"columns":json.dumps(export_keys(actor,"admin."+kind,raw))}
     obj, where, values, order, sort, direction = selection(actor, kind, raw, action="export")
+    clause,params=selected_scope(raw,SOURCES[kind][2])
+    where += clause; values = [*values,*params]
     available = {c["column_name"]: c for c in obj["columns"]}
     try:
         wanted = json.loads(raw["columns"]) if raw.get("columns") else DEFAULTS[kind]
@@ -244,9 +249,9 @@ def admin_workbook(actor, kind, raw):
                     for values_row in batch:
                         row = clean(dict(zip(projected, values_row)))
                         yield {name: str(row[name]) if name.lower().startswith("id") and row.get(name) is not None else row.get(name) for name in wanted}
-            count = write_workbook(stream, fields, rows(), context)
+            count = write_tabular(stream, fields, rows(), context,file_format)
         stream.seek(0)
-        return stream, count, "SauverNdeko_Administration_" + kind + "_" + generated.strftime("%Y-%m-%d") + ".xlsx"
+        return stream, count, "SauverNdeko_Administration_" + kind + "_" + generated.strftime("%Y-%m-%d") + ("_Selection." if raw.get("selection") is not None else ".") + file_format
     except Exception:
         stream.close()
         raise
@@ -312,3 +317,16 @@ class AdminOverviewView(APIView):
         return ok({"generatedAt": now.isoformat(), "scope": {"kind": "global" if read_entity(actor) is None else "entity", "id": read_entity(actor)},
             "metrics": metrics, "unavailable": unavailable, "roleDistribution": roles, "activity": activity,
             "recentAudit": recent, "expiringLicences": expiring, **capabilities(actor)})
+
+
+class AdminCSVView(ExcelDownloadView):
+    from apps.logistique.excel import CSVFileRenderer
+    from apps.core.responses import ExactJSONRenderer
+    renderer_classes=[ExactJSONRenderer,CSVFileRenderer]
+
+    def get(self,request,kind):
+        stream,count,filename=admin_workbook(request.user,kind,request.query_params.dict(),file_format="csv")
+        response=FileResponse(stream,as_attachment=True,filename=filename,content_type="text/csv; charset=utf-8")
+        response["X-Export-Row-Count"]=str(count)
+        response["Cache-Control"]="no-store, private"
+        return response

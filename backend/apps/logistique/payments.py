@@ -10,7 +10,7 @@ from apps.core import db
 from apps.core.module_access import require_module,access_snapshot
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model
-from apps.core.repository import positive,coerce,get_record,predicate,audit,clean
+from apps.core.repository import positive,coerce,get_record,predicate,audit,clean,set_admin_actor
 from apps.core.responses import APIError,ExactEncoder,ok
 
 FIELDS={'ID_TiersFk','CodeFactureFk','ID_ModeReglementFk','ID_ClientFk','DateReglement','MontantRegle','ID_DeviseFk'}
@@ -39,8 +39,8 @@ def snapshot(actor,payment_id):
       'ID_Commande',c."ID_Commande",'CodeCmd',c."CodeCmd",'NomClientSaisi',c."NomClientSaisi",'ModeReglement',g."NomGenerique") AS record,
       to_jsonb(c) AS parent,to_jsonb(f) AS facture,
       NOT EXISTS(SELECT 1 FROM logistique."T_Reglements" p WHERE p."CodeFactureFk"=c."CodeFacture" AND p."ID_DeviseFk" IS DISTINCT FROM c."ID_DeviseFk") AS currency_coherent,
-      (SELECT a."NewData"->'_actor'->>'IdUser' FROM systeme."T_Audit_Log" a WHERE a."TableName"='logistique.T_Reglements'
-       AND a."Operation"='CREATE' AND a."NewData"->>'ID_Reglement'=v."ID_Reglement"::text ORDER BY a."IdLog" LIMIT 1) AS creator
+      COALESCE(v."CreeParUserFk"::text,(SELECT a."NewData"->'_actor'->>'IdUser' FROM systeme."T_Audit_Log" a WHERE a."TableName"='logistique.T_Reglements'
+       AND a."Operation"='CREATE' AND a."NewData"->>'ID_Reglement'=v."ID_Reglement"::text ORDER BY a."IdLog" LIMIT 1)) AS creator
       FROM logistique."T_Reglements" v LEFT JOIN logistique."V_Reglements" rv ON rv."ID_Reglement"=v."ID_Reglement"
       LEFT JOIN logistique."T_Commande" c ON c."CodeFacture"=v."CodeFactureFk"
       LEFT JOIN logistique."V_SuiviReglements" f ON f."ID_Commande"=c."ID_Commande"
@@ -146,6 +146,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
     request_id,received,provided=request_data(body,operation)
     fingerprint=digest({'operation':operation,'ID_Reglement':payment_id,'fields':provided,'actor':actor.pk,'entity':actor.organisation})
     with transaction.atomic():
+        set_admin_actor(actor)
         db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['payment:'+str(actor.pk)+':'+request_id])
         proof=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log" WHERE "TableName"='logistique.T_Reglements'
           AND "Operation" IN ('PAYMENT_CREATE','PAYMENT_UPDATE','PAYMENT_DELETE') AND "NewData"->>'requestId'=%s
@@ -206,7 +207,8 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
                 columns=list(fields);row=db.one('INSERT INTO logistique."T_Reglements" ('+','.join(db.ident(key) for key in columns)+') VALUES ('+','.join(['%s']*len(columns))+') RETURNING *',list(fields.values()))
             elif fields:row=db.one('UPDATE logistique."T_Reglements" SET '+','.join(db.ident(key)+'=%s' for key in fields)+' WHERE "ID_Reglement"=%s RETURNING *',[*fields.values(),payment_id])
             else:row=old
-        audit(model('T_Reglements'),operation.upper(),old,row,actor)
+        # L'image métier avant/après est auditée une seule fois par le trigger SQL.
+        # La preuve PAYMENT_* conserve uniquement le rejeu transactionnel de la demande.
         audit(model('T_Reglements'),'PAYMENT_'+operation.upper(),new={'ID_Reglement':row['ID_Reglement'],'ID_Commande':parent['ID_Commande'],
           'requestId':request_id,'payloadHash':fingerprint,'IdEntiteFk':actor.organisation},actor=actor)
         return {'ID_Reglement':row['ID_Reglement'],'deleted':True,'replayed':False} if operation=='delete' else {**record_data(snapshot(actor,row['ID_Reglement'])),'replayed':False}
@@ -272,6 +274,7 @@ def mutate_payment_batch(actor,body):
     canonical={'actor':actor.pk,'entity':actor.organisation,'reglements':[{'commandeId':row['commandeId'],**row['fields']} for row in lines]}
     fingerprint=digest(canonical)
     with transaction.atomic():
+        set_admin_actor(actor)
         db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['payment-batch:'+str(actor.pk)+':'+request_id])
         saved=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log" WHERE "TableName"='logistique.T_Reglements'
           AND "Operation"='PAYMENT_BATCH' AND "NewData"->>'requestId'=%s AND "NewData"->'_actor'->>'IdUser'=%s ORDER BY "IdLog" DESC LIMIT 1''',[request_id,str(actor.pk)])

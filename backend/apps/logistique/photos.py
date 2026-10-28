@@ -1,5 +1,7 @@
 """Photos privées d’articles : fichiers contrôlés, noms métier et compensation en cas d’échec."""
 import io
+import hashlib
+import hmac
 import json
 import re
 import unicodedata
@@ -15,8 +17,8 @@ from rest_framework.views import APIView
 from apps.core import db
 from apps.core.permissions import IsERPAdmin, HasModuleAccess
 from apps.core.registry import model
-from apps.core.repository import get_record, mutate, positive
-from apps.core.responses import APIError
+from apps.core.repository import get_record, mutate, positive, check_global_write, clean
+from apps.core.responses import APIError, ExactEncoder
 from .article_rules import check_revision
 
 MAX_BYTES=8*1024*1024
@@ -65,6 +67,11 @@ def save_article(actor,body,upload=None,pk=None):
     db.ensure_writable()
     if not isinstance(body,dict):raise APIError("Objet JSON attendu.")
     data=dict(body)
+    request_id=data.pop("requestId",None)
+    if pk is None:
+        try:request_id=str(uuid.UUID(str(request_id)))
+        except (ValueError,TypeError,AttributeError):raise APIError("Identifiant de création requis. Rouvrez le formulaire.","ARTICLE_REQUEST_REQUIRED",400)
+    elif request_id is not None:raise APIError("Identifiant de création inattendu à la modification.","ARTICLE_VALIDATION",400)
     old=get_record(model("T_Article"),actor,{"ID_Article":positive(pk)}) if pk is not None else None
     if old:check_revision(old,data.get("_version"))
     if "PhotoArticle" in data:
@@ -77,18 +84,33 @@ def save_article(actor,body,upload=None,pk=None):
     if old and initial is not None:raise APIError("Les lots se renseignent depuis les bons de stock.","LOT_INITIAL_ONLY",400)
     new_path=None
     try:
-        if upload:
-            encoded=normalize_photo(upload)
-            name=str(data.get("NomArticle") or (old or {}).get("NomArticle") or "article")
-            name=unicodedata.normalize("NFKD",name).encode("ascii","ignore").decode()
-            name=re.sub(r"[^a-zA-Z0-9_-]+","-",name).strip("-_")[:90] or "article"
-            relative="Article/"+name+"_"+uuid.uuid4().hex+".jpg"
-            new_path=photo_path(relative);new_path.parent.mkdir(parents=True,exist_ok=True)
-            with new_path.open("xb") as destination:destination.write(encoded)
-            data["PhotoArticle"]=relative
-        elif remove:data["PhotoArticle"]=None
+        encoded=normalize_photo(upload) if upload else None
         with transaction.atomic():
-            row=mutate("T_Article",actor,data,{"ID_Article":positive(pk)} if pk else None,"update" if pk else "create")
+            metadata=None
+            if pk is None:
+                from apps.core.tenancy import require_entity
+                entity=require_entity(actor)
+                check_global_write(model("T_Article"),actor)
+                fingerprint=hashlib.sha256(json.dumps({"body":data,"removePhoto":remove,"LotsInitiaux":initial,
+                    "photo":hashlib.sha256(encoded).hexdigest() if encoded is not None else None},
+                    cls=ExactEncoder,sort_keys=True,ensure_ascii=False,separators=(",",":")).encode("utf8")).hexdigest()
+                db.query("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",[f"article-create:{entity}:{actor.pk}:{request_id}"])
+                replay=db.one('''SELECT * FROM logistique."T_Article" WHERE "IdEntiteFk"=%s AND "ID_UserFK"=%s AND "CreationRequestId"=%s''',[entity,actor.pk,request_id])
+                if replay is not None:
+                    if not hmac.compare_digest(replay.get("CreationPayloadHash") or "",fingerprint):
+                        raise APIError("Cette demande a déjà été utilisée avec un autre contenu.","ARTICLE_REQUEST_CONFLICT",409)
+                    return clean(replay)
+                metadata={"CreationRequestId":request_id,"CreationPayloadHash":fingerprint}
+            if encoded is not None:
+                name=str(data.get("NomArticle") or (old or {}).get("NomArticle") or "article")
+                name=unicodedata.normalize("NFKD",name).encode("ascii","ignore").decode()
+                name=re.sub(r"[^a-zA-Z0-9_-]+","-",name).strip("-_")[:90] or "article"
+                relative="Article/"+name+"_"+uuid.uuid4().hex+".jpg"
+                new_path=photo_path(relative);new_path.parent.mkdir(parents=True,exist_ok=True)
+                with new_path.open("xb") as destination:destination.write(encoded)
+                data["PhotoArticle"]=relative
+            elif remove:data["PhotoArticle"]=None
+            row=mutate("T_Article",actor,data,{"ID_Article":positive(pk)} if pk else None,"update" if pk else "create",_creation_metadata=metadata)
             if initial:
                 from .lots import initial_lots
                 initial_lots(row,initial)

@@ -247,6 +247,7 @@ def context(actor,command_id):
             'Vous ne disposez pas du droit de facturation.' if not manage else
             'Ce bon appartient à une autre organisation.' if not owner else
             'Ce bon est clôturé.' if closed(parent) else
+            'Un bon de stock initial ou de reprise ne peut pas être facturé.' if parent.get('OrigineBon') in {'stock_initial','reprise_mouvement'} else
             'Un bon d’inventaire ne peut pas être facturé.' if inventory_adjustment(command_id) else
             'Un bon de retour ne peut pas être facturé.' if returns['isReturn'] else
             'La facturation concerne les bons de sortie.' if not outgoing else

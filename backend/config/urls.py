@@ -1,3 +1,7 @@
+from apps.core.table_preferences import TablePreferencesView
+from apps.core.reference_exports import ReferenceCSVView
+from apps.core.admin_portal import AdminCSVView
+from apps.logistique.excel import RegisterCSVView
 from apps.core.reference_exports import ReferenceExcelView
 from apps.core.admin_portal import AdminOverviewView, AdminRegisterView, AdminExcelView
 from apps.logistique.expiry import ExpiryPolicyView
@@ -52,6 +56,10 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/tableaux/(?P<interface_key>[a-z]+[.][a-z-]+)/preferences/?$", TablePreferencesView.as_view()),
+    re_path(r"^api/referentiel/exports/(?P<kind>categories|valeurs)\.csv/?$", ReferenceCSVView.as_view()),
+    re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)/export\.csv/?$", AdminCSVView.as_view()),
+    re_path(r"^api/logistique/registre/(?P<kind>articles|lots|commandes|lignes|mouvements|factures|reglements)/export\.csv/?$", RegisterCSVView.as_view()),
     re_path(r"^api/systeme/administration/synthese/?$", AdminOverviewView.as_view()),
     re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)/export\.xlsx/?$", AdminExcelView.as_view()),
     re_path(r"^api/systeme/administration/registres/(?P<kind>utilisateurs|entites|roles|audit|correspondances|localisations|licences|connexions|profils|parametres|audit-parametres)(?:/(?P<pk>[0-9]+))?/?$", AdminRegisterView.as_view()),

@@ -1,9 +1,11 @@
+import useTablePreferences from "../hooks/useTablePreferences";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import ModuleHeader from "../components/ModuleHeader";
 import AppIcon from "../components/AppIcon";
 import ActionButton from "../components/ActionButton";
 import RegisterSurface from "../components/RegisterSurface";
+import RegisterSettingsButton from "../components/RegisterSettingsButton";
 import DataTableToolbar from "../components/DataTableToolbar";
 import RowActionsMenu from "../components/RowActionsMenu";
 import SearchSelect from "../components/SearchSelect";
@@ -37,6 +39,7 @@ function apiFilters(kind, criteria) {
 
 function ReferenceRegister({kind,categories,initialCategory,onBrowseCategory,refresh,onChanged,categoryError}) {
   const {user}=useAuth(), definition=DEFINITIONS[kind];
+  const preferences=useTablePreferences("referentiels."+(kind==="values"?"valeurs":"categories"));
   const canWrite=user?.Is_Admin===true && user?.permissions?.canWriteData===true;
   const canExport=user?.permissions?.canExportData===true;
   const [search,setSearch]=useState("");
@@ -76,13 +79,13 @@ function ReferenceRegister({kind,categories,initialCategory,onBrowseCategory,ref
     return()=>{current=false;};
   },[kind,criteria,grid,refresh,retry]);
   useEffect(()=>{exportRequest.current?.abort();setExporting(false);setExportError("");return()=>exportRequest.current?.abort();},[criteria,grid.sortBy,grid.sortDir]);
-  async function exportExcel() {
-    if(!canExport||exporting||pending)return;
+  async function exportExcel(format="xlsx",selection=null) {
+    if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||exporting||pending||loading||error)return;
     const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
-    const params=new URLSearchParams({q:criteria.q,filters:JSON.stringify(apiFilters(kind,criteria)),sortBy:grid.sortBy,sortDir:grid.sortDir,columns:JSON.stringify(visibleColumns.filter(key=>key!=="actions"))});
-    try{await downloadApiFile("/api/referentiel/exports/"+(kind==="values"?"valeurs":"categories")+".xlsx?"+params,{signal:controller.signal});}
+    const params=new URLSearchParams({q:criteria.q,filters:JSON.stringify(apiFilters(kind,criteria)),sortBy:grid.sortBy,sortDir:grid.sortDir,columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row[definition.pk]))}:{})});
+    try{await downloadApiFile("/api/referentiel/exports/"+(kind==="values"?"valeurs":"categories")+"."+format+"?"+params,{signal:controller.signal});}
     catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export a échoué.");}
-    finally{if(!controller.signal.aborted)setExporting(false);}
+    finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
   }
   function saved(_record,info) {setEditor(null);setFeedback(info?.mode==="create"?"Référence créée.":"Référence mise à jour.");onChanged();}
   const columns=useMemo(()=>[
@@ -105,13 +108,13 @@ function ReferenceRegister({kind,categories,initialCategory,onBrowseCategory,ref
   const chips=Object.entries(criteria).filter(([,value])=>Boolean(value));
   return <>
     {feedback?<div className="reference-feedback" role="status"><AppIcon name="check-circle"/><span>{feedback}</span><button type="button" aria-label="Fermer le message" onClick={()=>setFeedback("")}><AppIcon name="close"/></button></div>:null}
-    <RegisterSurface title={definition.title} subtitle={definition.subtitle} actions={<ActionButton icon="plus" variant="primary" disabled={!canWrite} title={!canWrite?"Accès en consultation":undefined} onClick={()=>open(null,"create")}>{definition.create}</ActionButton>}>
+    <RegisterSurface title={definition.title} subtitle={definition.subtitle} actions={<><RegisterSettingsButton buttonRef={columnsAnchor} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)}/><ActionButton icon="plus" variant="primary" disabled={!canWrite} title={!canWrite?"Accès en consultation":undefined} onClick={()=>open(null,"create")}>{definition.create}</ActionButton></>}>
       <div className="reference-register-context"><AppIcon name="globe"/><span>Référentiel commun à toutes les entreprises</span></div>
       <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
-        {selected.length?<div className="erp-register-selection"><strong>{selected.length} {selected.length>1?"lignes sélectionnées":"ligne sélectionnée"}</strong>{selected.length===1?<><ActionButton icon="eye" onClick={()=>open(selected[0])}>Consulter</ActionButton><ActionButton icon="edit" disabled={!canWrite||loading} onClick={()=>open(selected[0],"edit")}>Modifier</ActionButton></>:null}<ActionButton icon="download" disabled={!canExport||loading} onClick={()=>exportRowsToCsv("Referentiel_selection.csv",columns.filter(column=>column.key!=="actions"&&visibleColumns.includes(column.key)),selected.map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,typeof value==="string"&&/^[=+\-@\t\r]/.test(value)?"'"+value:value]))))}>CSV · sélection</ActionButton><ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={()=>setSelectionReset(value=>value+1)}/></div>:null}
+        {selected.length?<div className="erp-register-selection"><strong>{selected.length} {selected.length>1?"lignes sélectionnées":"ligne sélectionnée"}</strong>{selected.length===1?<><ActionButton icon="eye" onClick={()=>open(selected[0])}>Consulter</ActionButton><ActionButton icon="edit" disabled={!canWrite||loading} onClick={()=>open(selected[0],"edit")}>Modifier</ActionButton></>:null}{canExport?<><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportExcel("xlsx",selected)}>Excel · sélection</ActionButton><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportExcel("csv",selected)}>CSV · sélection</ActionButton></>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={()=>setSelectionReset(value=>value+1)}/></div>:null}
         {error?<div className="reference-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)} disabled={loading}>Réessayer</ActionButton></div>:null}
-        <SimpleTable rows={rows} columns={columns} getRowId={row=>row[definition.pk]} enableSelection onSelectionChange={setSelected} selectionResetKey={selectionReset} defaultVisibleColumns={definition.defaults} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={row=>open(row)} consultColumns={[definition.name]} loading={loading} emptyMessage={error?"Les données ne sont pas disponibles.":"Aucune référence pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchor} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} toolbar={<>
-          <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={"reference-filters-"+kind} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchor} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder={kind==="values"?"Rechercher un libellé, une catégorie ou un code…":"Rechercher une catégorie ou un module…"} exportFile={canExport?exportExcel:undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!visibleColumns.some(key=>key!=="actions")} error={exportError}/>
+        <SimpleTable tablePreferences={preferences} rows={rows} columns={columns} getRowId={row=>row[definition.pk]} enableSelection onSelectionChange={setSelected} selectionResetKey={selectionReset} defaultVisibleColumns={definition.defaults} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={row=>open(row)} consultColumns={[definition.name]} loading={loading} emptyMessage={error?"Les données ne sont pas disponibles.":"Aucune référence pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchor} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} toolbar={<>
+          <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={"reference-filters-"+kind} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchor} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder={kind==="values"?"Rechercher un libellé, une catégorie ou un code…":"Rechercher une catégorie ou un module…"} exportFile={canExport?()=>exportExcel():undefined} exportCsv={canExport?()=>exportExcel("csv"):undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length} error={exportError||preferences.error}/>
           {filtersOpen?<form id={"reference-filters-"+kind} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">
             {kind==="values"?<label><span>Catégorie</span><SearchSelect label="Catégorie" value={draft.category} options={[{value:"",label:"Toutes les catégories"},...categories.map(row=>({value:String(row.ID_CategorieGenerique),label:row.NomCategorieGenerique}))]} onChange={category=>setDraft(current=>({...current,category}))}/></label>:null}
             <label><span>État</span><SearchSelect label="État" value={draft.state} options={[{value:"",label:"Tous les états"},{value:"true",label:"Actif"},{value:"false",label:"Inactif"}]} onChange={state=>setDraft(current=>({...current,state}))}/></label>

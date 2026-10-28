@@ -28,7 +28,7 @@ DEFAULT_FIELDS = {
     "V_RegistreMouvementLot":["DateMvt","NumeroLot","NomArticle","NomTypeMvt","SensMouvement","Quantite","QuantiteSignee","AbrUnite","CodeCmd","DatePeremptionLot","MotifDerogationPeremption","DateDerogationPeremption"],
     "V_Mouvement":["DateMvt","CodeArticleInterne","NomArticle","AbrUnite","NomTypeMvt","CodeCmd","RefArticle","CategorieArticle","TypeArticle","StockActuel","QteMvt","QteMvtSigned","PUMvt","MontantMvt","MontantMvtSigned","OrigineMouvement"],
     "V_Reglements":["CodeFactureFk","CodeCmd","DateReglement","NomClientSaisi","ModeReglement","MontantRegle"],
-    "V_Article":["CodeArticleInterne","NomArticle","TypeArticle","CategorieArticle","Unite","QteArticle","QteMinArticle","PUArticle","PVArticle","DatePeremptionArticle","EtatStock","EtatPeremption"],
+    "V_Article":["NomArticle","CodeArticleInterne","RefArticle","CodeArticleExterne","TypeArticle","CategorieArticle","Unite","QteArticle","QteMinArticle","PUArticle","PVArticle","DeviseCode","NombreLots","InformationArticle","ObsArticle","ValideArticle","DatePeremptionArticle","EtatStock","EtatPeremption"],
     "V_CommandeDetail":["CodeCmd","DateCmd","TypeCmd","StatutCmd","CodeArticleInterne","NomArticle","QteCmdDetail","AbrUnite","PUCmdDetail","MontantLigne","EtatLigne"],
     "V_Commande":["CodeCmd","RefCmd","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","MontantHT","MontantTTC","MontantFacture","CodeFacture","DateFacture","MontantRegleFacture","MontantResteFacture","EtatPaiement"],
     "V_SuiviReglements":["CodeFacture","CodeCmd","DateFacture","DateEcheancePaiement","NomClientSaisi","MontantFacture","MontantBon","TotalRegle","Reste","EtatReglement"],
@@ -46,28 +46,12 @@ def export_columns(obj, raw):
             raise APIError("Colonnes d’export invalides.")
     else:
         wanted = DEFAULT_FIELDS.get(obj["name"],[])
-    if not isinstance(wanted,list) or not wanted or len(wanted)>40 or any(not isinstance(k,str) for k in wanted) or len(set(wanted)) != len(wanted):
+    if not isinstance(wanted,list) or not wanted or len(wanted)>100 or any(not isinstance(k,str) for k in wanted) or len(set(wanted)) != len(wanted):
         raise APIError("Colonnes d’export invalides.")
     if any(k not in available or k not in LABELS for k in wanted):
         raise APIError("Colonne d’export non autorisée.")
     wanted = list(wanted)
-    # Les quantités restent numériques ; leur unité accompagne le tableau exporté.
-    quantities = {"StockLot","QuantiteEntree","QuantiteSortie","Quantite","QuantiteSignee","QteArticle","QteMinArticle","QteACommander","StockActuel","StockArticle","StockMouvements","ConsoMensuelle","ConsoMoyMensuelle","QteCmdDetail","QteMvt","QteMvtSigned"}
-    if quantities.intersection(wanted) and not {"Unite","AbrUnite"}.intersection(wanted):
-        unit = next((key for key in ("Unite","AbrUnite") if key in available),None)
-        if unit:
-            position = max(index for index,key in enumerate(wanted) if key in quantities)+1
-            wanted.insert(position,unit)
-    if AMOUNT_FIELDS.intersection(wanted):
-        if "DeviseCode" not in available:
-            raise APIError("La devise doit accompagner les montants exportés.", "CURRENCY_SOURCE_UNAVAILABLE", 503)
-        if "DeviseCode" not in wanted:
-            wanted.insert(max(index for index,key in enumerate(wanted) if key in AMOUNT_FIELDS)+1,"DeviseCode")
-        if "MontantsParDevise" in available and "MontantsParDevise" not in wanted:
-            wanted.append("MontantsParDevise")
-    if "PoidsUnitaire" in wanted and "UnitePoids" in available and "UnitePoids" not in wanted:
-        wanted.insert(wanted.index("PoidsUnitaire")+1,"UnitePoids")
-    return [{**available[k],"label":LABELS[k]} for k in wanted]
+    return [{**available[k],"label":LABELS[k],**({"data_type":"text"} if k.startswith("ID_") else {})} for k in wanted]
 
 def write_workbook(target, columns, rows, context):
     charter = json.loads((ASSETS / "charte_sauverndeko.json").read_text(encoding="utf-8"))
@@ -150,7 +134,7 @@ def write_workbook(target, columns, rows, context):
         info = book.add_worksheet("Informations")
         info.set_column(0,0,28)
         info.set_column(1,1,100)
-        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
+        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Sélection parmi les résultats filtrés" if context["raw"].get("selection") is not None else "Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
         for key, value in context["filters"].items():
             records.append(("Filtre · "+LABELS[key],value))
         if context.get("folder"):
@@ -183,13 +167,45 @@ def indicator_workbook(actor, key, raw):
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed,raw.get("populationQ"))
     return scope_workbook(actor,key,obj,raw,where,values,order,sort,direction,applied,label)
 
-def register_workbook(actor, kind, raw):
+def register_workbook(actor, kind, raw, file_format="xlsx"):
+    from apps.core.table_preferences import export_keys
+    from apps.core.tabular_exports import selected_scope
+    raw = dict(raw)
+    document_scope=raw.pop("documentScope",None)
+    if document_scope not in (None,"record"):
+        raise APIError("Portée documentaire non autorisée.")
+    if document_scope == "record":
+        # Une fiche individuelle conserve son contenu métier complet ; les
+        # préférences d'un registre ne redéfinissent pas son gabarit documentaire.
+        # Le signal ne donne aucun droit et doit désigner exactement une identité.
+        if "columns" in raw:
+            raise APIError("La fiche individuelle utilise ses colonnes de référence.")
+        try:
+            selection=json.loads(raw.get("selection","null")) if isinstance(raw.get("selection"),str) else raw.get("selection")
+        except (ValueError,TypeError):
+            raise APIError("Sélection documentaire invalide.")
+        if not isinstance(selection,list) or len(selection)!=1:
+            raise APIError("Choisissez un seul enregistrement pour sa fiche.")
+        identities={"articles":"ID_Article","commandes":"ID_Commande","lignes":["ID_CmdFk","ID_ArticleFk"],"lots":"ID_LotArticle","mouvements":"ID_Mvt","factures":"ID_Commande","reglements":"ID_Reglement"}
+        if kind not in identities:
+            raise APIError("Fiche non disponible.")
+        selected_scope(raw,identities[kind])
+        source,_,_=register_source(kind,raw,for_export=True)
+        raw["columns"]=json.dumps(DEFAULT_FIELDS[source["name"]])
+    else:
+        raw["columns"]=json.dumps(export_keys(actor,"logistique."+kind,raw))
     obj,condition,fixed = register_source(kind,raw,for_export=True)
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
     label = {"lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
-    return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label)
+    return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label,file_format=file_format)
 
-def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label):
+def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label, file_format="xlsx"):
+    from apps.core.tabular_exports import selected_scope, write_tabular
+    identities = {"V_Article":"ID_Article","V_Commande":"ID_Commande","V_CommandeDetail":["ID_CmdFk","ID_ArticleFk"],"V_Mouvement":"ID_Mvt","V_RegistreLots":"ID_LotArticle","V_SuiviReglements":"ID_Commande","V_Reglements":"ID_Reglement"}
+    if raw.get("selection") is not None:
+        if obj["name"] not in identities: raise APIError("Cette liste ne propose pas l’export d’une sélection.")
+        selection_where,selection_values = selected_scope(raw,identities[obj["name"]])
+        where += selection_where; values = [*values,*selection_values]
     require_module(actor,"logistique","export")
     folder_context = label if isinstance(label,dict) else None
     if folder_context: label=folder_context["title"]
@@ -201,16 +217,19 @@ def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, 
     output = SpooledTemporaryFile(max_size=8*1024*1024,mode="w+b")
     try:
         with connection.cursor() as cursor:
-            sql = "SELECT " + ",".join("v."+db.ident(f["column_name"]) for f in fields) + " FROM " + row_source(obj) + " WHERE " + where + " ORDER BY " + order + " LIMIT %s"
+            # Le contexte de devise est lu sans ajouter de colonne au fichier.
+            available={col["column_name"] for col in obj["columns"]}
+            names=list(dict.fromkeys([*[f["column_name"] for f in fields],*[key for key in ("DeviseCode","MontantsParDevise") if key in available]]))
+            sql = "SELECT " + ",".join("v."+db.ident(name) for name in names) + " FROM " + row_source(obj) + " WHERE " + where + " ORDER BY " + order + " LIMIT %s"
             cursor.execute(sql,[*values,MAX_EXPORT_ROWS+1])
             def rows():
-                names = [f["column_name"] for f in fields]
+                json_fields={col["column_name"] for col in obj["columns"] if col["data_type"] in {"json","jsonb"}}
                 while batch := cursor.fetchmany(500):
                     for row in batch:
-                        yield dict(zip(names,row))
-            count = write_workbook(output,fields,rows(),context)
+                        yield {name:json.loads(value,parse_float=Decimal) if name in json_fields and isinstance(value,str) else value for name,value in zip(names,row)}
+            count = write_tabular(output,fields,rows(),context,file_format)
         output.seek(0)
-        return output,count,"SauverNdeko_"+key+"_"+generated.strftime("%Y-%m-%d")+"_Complet.xlsx"
+        return output,count,"SauverNdeko_"+key+"_"+generated.strftime("%Y-%m-%d")+("_Selection." if raw.get("selection") is not None else "_Complet.")+file_format
     except Exception:
         output.close()
         raise
@@ -272,6 +291,22 @@ class FolderExcelView(ExcelDownloadView):
         obj,_,where,values,order,sort,direction,applied = folder_scope(request.user,folder,request.query_params.dict())
         stream,count,filename = scope_workbook(request.user,key,obj,request.query_params.dict(),where,values,order,sort,direction,applied,{"title":folder["name"],"objectType":folder["objectType"],"mode":folder["mode"],"rules":folder["rules"]})
         response = FileResponse(stream,as_attachment=True,filename=filename,content_type=XLSX_MEDIA_TYPE)
+        response["X-Export-Row-Count"] = str(count)
+        response["Cache-Control"] = "no-store, private"
+        return response
+
+
+class CSVFileRenderer(ExcelFileRenderer):
+    media_type = "text/csv"
+    format = "csv"
+
+
+class RegisterCSVView(ExcelDownloadView):
+    renderer_classes = [ExactJSONRenderer, CSVFileRenderer]
+
+    def get(self,request,kind):
+        stream,count,filename = register_workbook(request.user,kind,request.query_params.dict(),file_format="csv")
+        response = FileResponse(stream,as_attachment=True,filename=filename,content_type="text/csv; charset=utf-8")
         response["X-Export-Row-Count"] = str(count)
         response["Cache-Control"] = "no-store, private"
         return response

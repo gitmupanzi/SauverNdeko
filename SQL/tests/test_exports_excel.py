@@ -100,11 +100,13 @@ class ExportHTTP(unittest.TestCase):
                         self.assertEqual(json.loads(response.content)["error"]["code"],"EXPORT_TEST")
                         self.assertNotIn("Content-Disposition",response)
 
-    def test_quantity_keeps_its_unit_when_columns_are_selected(self):
+    def test_export_respects_exact_columns_without_adding_units(self):
         from apps.logistique.excel import export_columns
         obj={"name":"V_Article","columns":[{"column_name":key,"data_type":"text"} for key in ["NomArticle","QteArticle","Unite"]]}
         fields=export_columns(obj,{"columns":json.dumps(["NomArticle","QteArticle"])})
-        self.assertEqual([field["column_name"] for field in fields],["NomArticle","QteArticle","Unite"])
+        self.assertEqual([field["column_name"] for field in fields],["NomArticle","QteArticle"])
+        fields=export_columns(obj,{"columns":json.dumps(["Unite","NomArticle","QteArticle"])})
+        self.assertEqual([field["column_name"] for field in fields],["Unite","NomArticle","QteArticle"])
 
     def test_sort_is_stable_for_equal_values(self):
         from apps.logistique.table_queries import query_order

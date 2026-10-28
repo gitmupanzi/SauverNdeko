@@ -1,6 +1,6 @@
 # Logistique — livraison et travaux restants
 
-État au 26 octobre 2026, après installation des migrations 20261026_04 à 09 dans SauverNdeko. Ce relevé complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md) et distingue les fonctions exécutées des validations externes encore nécessaires.
+État de livraison initial au 26 octobre 2026. Les corrections installées le 28 octobre — stock initial documenté, numérotation des nouveaux bons, préférences de tableaux/exports et traçabilité SQL des règlements — sont détaillées dans le [bilan du verdict logistique](verdict-logistique-20261028.md). Ce relevé complète la [trajectoire ERP](../skills/sauverndeko-erp/references/trajectoire-erp.md) et distingue les fonctions exécutées des validations externes encore nécessaires.
 
 ## Déjà livré
 
@@ -10,7 +10,7 @@
 - PDF des bons d’entrée/sortie/livraison, factures, reçus et avoirs ; justificatifs privés ; identités financières conservées.
 - Clients et fournisseurs dans T_Client, types issus du référentiel, Tiers 360, tiers référencé dans les bons et destinations géographiques typées.
 - Propriété durable par Entité, contexte d’entreprise du compte global, droits serveur et dossiers personnalisés privés.
-- Inventaires physiques, écarts justifiés, validation et annulation motivée avec mouvements compensateurs ; quantités fractionnaires selon la précision de l’unité dans le référentiel générique.
+- Inventaires physiques, écarts justifiés, validation et annulation motivée avec mouvements compensateurs ; quantités fractionnaires selon `logistique.T_PrecisionStock`, liée aux unités du référentiel générique.
 - Lots de stock : onglet après Articles, tous les lots y compris épuisés ou archivés, filtres et pagination serveur, export Excel et Lot 360 avec journal propre au lot. Les soldes sont calculés depuis les mouvements, sans saisie directe.
 - Identité documentaire : réglage commun en consultation/modification, coordonnées et identifiants légaux facultatifs, motif, révision et rejeu de demande ; les nouveaux documents utilisent le profil confirmé et les instantanés émis restent immuables.
 - Diagnostic de livraison en lecture seule : contrôle des licences, identités, stock/lots, CUMP, paramètres de déploiement et sauvegardes, avec actions à effectuer et éléments non vérifiés explicitement indiqués.

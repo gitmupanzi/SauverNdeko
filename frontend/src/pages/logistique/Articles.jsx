@@ -1,3 +1,4 @@
+import useTablePreferences from "../../hooks/useTablePreferences";
 import {moduleRights} from "../../services/moduleAccess";
 import lazyView from "../../components/LazyView";
 const StockValuation=lazyView(()=>import("../../components/StockValuation"),{label:"Chargement de la valorisation…",compact:true});
@@ -14,6 +15,7 @@ import RowActionsMenu from "../../components/RowDocumentActions";
 import {recordExcel} from "../../utils/rowDocuments";
 import AppIcon from "../../components/AppIcon";
 import RegisterSurface from "../../components/RegisterSurface";
+import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import { downloadApiFile } from "../../services/api";
 import ActionButton from "../../components/ActionButton";
@@ -22,7 +24,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   asArrayPayload,
-  exportRowsToCsv,
   buildReferenceLabelMap,
   buildReferenceOptions,
   formatCurrency,
@@ -51,6 +52,7 @@ function expiryTone(value) {
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
 export default function Articles({ references, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+  const preferences=useTablePreferences("logistique.articles");
   const { user: currentUser } = useAuth();
   const { openProduct, openProductLots, openOrder } = useConsultations();
   const {assign,refresh:refreshFolders}=useFollowupFolders();
@@ -85,16 +87,14 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   function chooseStock(stockState) { setDraftFilters(current => ({...current,stockState})); setCriteria(current => ({...current,stockState})); changeGrid({skip:0}); }
   useEffect(() => { try { localStorage.setItem("sauverndeko.table.density",density); } catch { /* Préférence facultative. */ } },[density]);
   useEffect(() => { setExportError(""); exportRequest.current?.abort(); setExporting(false); return () => exportRequest.current?.abort(); },[criteria,gridState.sortBy,gridState.sortDir]);
-  async function exportArticles() {
-    const controller = new AbortController(); exportRequest.current?.abort(); exportRequest.current = controller;
-    setExporting(true); setExportError("");
-    const columns = visibleColumns.filter(key => key !== "actions");
-    if(columns.includes("NomArticle") && !columns.includes("CodeArticleInterne")) columns.unshift("CodeArticleInterne");
-    if(columns.includes("PoidsUnitaire")&&!columns.includes("UnitePoids"))columns.push("UnitePoids");
-    const params = new URLSearchParams({...criteria,sortBy:gridState.sortBy,sortDir:gridState.sortDir,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,columns:JSON.stringify(columns)});
-    try { await downloadApiFile("/api/logistique/registre/articles/export.xlsx?"+params,{signal:controller.signal}); }
-    catch(error) { if(!controller.signal.aborted) setExportError(error.message || "L’export a échoué."); }
-    finally { if(!controller.signal.aborted) setExporting(false); }
+  async function exportArticles(format="xlsx", selection=null) {
+    if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||loading||pending||exporting||error)return;
+    const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;
+    setExporting(true);setExportError("");
+    const params=new URLSearchParams({...criteria,sortBy:gridState.sortBy,sortDir:gridState.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row.ID_Article))}:{})});
+    try{await downloadApiFile("/api/logistique/registre/articles/export."+format+"?"+params,{signal:controller.signal});}
+    catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export a échoué.");}
+    finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
   }
   useEffect(() => {
     if (sharedTable?.composerMode === "create") {
@@ -139,8 +139,9 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
   const visibleRows = rows;
 
   const tableColumns = useMemo(() => [
-    { key:"NomArticle", label:"Article", width:270, render:row => <span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle || "Article sans nom"}</strong><small>{row.CodeArticleInterne || row.RefArticle || "Code non renseigné"}</small>{row.ValideArticle===false?<small>Inactif</small>:null}</span></span>, renderText:row => row.NomArticle || "—" },
+    { key:"NomArticle", label:"Article", width:270, render:row => <span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle || "Article sans nom"}</strong><small>{row.CodeArticleInterne ? "Code : "+row.CodeArticleInterne : "Code interne non renseigné"}</small><small>{row.RefArticle ? "Réf. : "+row.RefArticle : "Référence non renseignée"}</small>{row.ValideArticle===false?<small>Inactif</small>:null}</span></span>, renderText:row => row.NomArticle || "—" },
     { key:"CodeArticleInterne", label:"Code interne", width:150 },
+    { key:"RefArticle", label:"Référence", width:180 },
     { key:"CategorieArticle", label:"Catégorie", width:160, render:row => row.CategorieArticle || categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || "—" },
     { key:"TypeArticle", label:"Type", width:140, render:row => row.TypeArticle || typeLabelMap.get(String(row.ID_TypeArticleFk)) || "—" },
     { key:"Unite", label:"Unité", width:120, render:row => row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || "—" },
@@ -215,21 +216,21 @@ export default function Articles({ references, refreshKey, onDataChanged, shared
     <div className="logistics-screen">
       <div aria-live="polite"><StatusBanner feedback={feedback} />{savedRecord?<button type="button" className="application-back" onClick={()=>openProduct(savedRecord)}>Consulter l’article<AppIcon name="arrow-up-right"/></button>:null}{savedReceipt?<button type="button" className="application-back" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée<AppIcon name="arrow-up-right"/></button>:null}</div>
       <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
-        <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><ActionButton icon="settings" onClick={onToggleFkMappings} title="Réglages des références">Réglages</ActionButton>
+        <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
       </>} tabs={<RegisterCategoryFilter label="État du stock" value={criteria.stockState} options={[{value:"all",label:"Tous les articles"},{value:"disponible",label:"Disponibles"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Ruptures"}]} onChange={chooseStock}/>}>
         <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
             {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}
             {canWrite ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
-            <ActionButton icon="download" disabled={!canExport || loading} title={!canExport ? "L’export n’est pas autorisé." : "Exporter les articles sélectionnés en CSV"} onClick={() => { if(canExport && !loading) exportRowsToCsv("Articles_selection.csv",tableColumns.filter(column => column.key !== "actions"),selectedRows); }}>CSV · sélection</ActionButton>
+            {canExport?<><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportArticles("xlsx",selectedRows)}>Excel · sélection</ActionButton><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportArticles("csv",selectedRows)}>CSV · sélection</ActionButton></>:null}
             {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
             <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>
           </div> : null}
           {error ? <div className="erp-table-error" role="alert">{error}</div> : null}
-          <SimpleTable rows={visibleRows} columns={tableColumns} selectedRowId={selectedArticle?.ID_Article ?? null} enableSelection onSelectionChange={selected => { setSelectedRows(selected); sharedTable?.setSelectedRow?.(selected.length === 1 ? selected[0] : null); }} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={serverMeta} serverState={gridState} onServerChange={changeGrid} onRowConsult={openProduct} consultColumns={["NomArticle","CodeArticleInterne"]} isCellConsultable={(row,key) => row[key] != null && row[key] !== ""} loading={loading} emptyMessage={error ? "Les articles ne sont pas disponibles." : "Aucun article pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns}
+          <SimpleTable tablePreferences={preferences} rows={visibleRows} columns={tableColumns} selectedRowId={selectedArticle?.ID_Article ?? null} enableSelection onSelectionChange={selected => { setSelectedRows(selected); sharedTable?.setSelectedRow?.(selected.length === 1 ? selected[0] : null); }} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={serverMeta} serverState={gridState} onServerChange={changeGrid} onRowConsult={openProduct} consultColumns={["NomArticle","CodeArticleInterne"]} isCellConsultable={(row,key) => row[key] != null && row[key] !== ""} loading={loading} emptyMessage={error ? "Les articles ne sont pas disponibles." : "Aucun article pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns}
             toolbar={<>
-              <DataTableToolbar search={search} setSearch={setSearch} onApply={applyFilters} onReset={resetFilters} pending={pending} take={gridState.take} onTake={take => changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId="article-filters" toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher un article, un code ou une référence…" exportFile={exportArticles} exporting={exporting} exportDisabled={Boolean(error) || !serverMeta?.filteredCount || !visibleColumns.some(key => key !== "actions")} error={exportError}/>
+              <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={search} setSearch={setSearch} onApply={applyFilters} onReset={resetFilters} pending={pending} take={gridState.take} onTake={take => changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId="article-filters" toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher un article, un code ou une référence…" exportFile={canExport?()=>exportArticles():undefined} exportCsv={canExport?()=>exportArticles("csv"):undefined} exporting={exporting} exportDisabled={Boolean(error) || !serverMeta?.filteredCount || !preferences.ready || !preferences.canExport || !preferences.exportKeys.length} error={exportError||preferences.error}/>
               {filtersOpen ? <form id="article-filters" className="erp-register-filters" onSubmit={event => {event.preventDefault();applyFilters();}}><div className="erp-register-filter-grid">
                 {[{key:"deviseId",label:"Devise",options:currencyOptions(references,true)},{key:"categorieId",label:"Catégorie",options:articleCategoryOptions},{key:"typeId",label:"Type",options:articleTypeOptions},{key:"uniteId",label:"Unité",options:articleUnitOptions},{key:"stockState",label:"État du stock",options:[{value:"disponible",label:"Disponible"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Rupture"}]},{key:"peremption",label:"Péremption",options:[{value:"valide",label:"Valide"},{value:"alerte",label:"Alerte de péremption"},{value:"perime",label:"Périmé"},{value:"non-renseignee",label:"Non renseignée"}]},{key:"statut",label:"État de l’article",options:[{value:"true",label:"Actif"},{value:"false",label:"Inactif"}]}].map(({key,label,options}) => <label key={key}><span>{label}</span><CategoricalSelect aria-label={label} value={draftFilters[key]} onChange={event => setDraftFilters(current => ({...current,[key]:event.target.value}))}><option value={EMPTY_FILTERS[key]}>Tous</option>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</CategoricalSelect></label>)}
               </div><div className="erp-register-filters-footer"><ActionButton type="submit" variant="primary" disabled={loading}>Appliquer les filtres</ActionButton></div></form> : null}

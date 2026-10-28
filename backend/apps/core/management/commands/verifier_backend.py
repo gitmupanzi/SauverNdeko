@@ -72,6 +72,9 @@ class Command(BaseCommand):
             ]
             urls.append("/api/systeme/administration/synthese")
             urls.extend("/api/systeme/administration/registres/" + kind + "?take=1" for kind in ADMIN_REGISTERS)
+            urls.extend("/api/tableaux/"+key+"/preferences" for key in (
+                *["logistique."+kind for kind in ("articles","commandes","lignes","lots","mouvements","factures","reglements")],
+                "referentiels.categories","referentiels.valeurs",*["admin."+kind for kind in ADMIN_REGISTERS]))
             urls.extend(["/api/logistique/synthese", "/api/logistique/registre/articles?take=1", "/api/logistique/registre/commandes?take=1", "/api/logistique/registre/lignes?take=1"])
             urls.extend("/api/logistique/registre/"+kind+"?take=1" for kind in ("lots","mouvements","factures","reglements"))
             urls.append("/api/logistique/registre/articles?contexte=composition&take=1")

@@ -5,6 +5,7 @@ import {useAuth} from "../../contexts/AuthContext";
 import {useFollowupFolders} from "../../contexts/FollowupFoldersContext";
 import {useConsultations} from "../../components/ConsultationProvider";
 import RegisterSurface from "../../components/RegisterSurface";
+import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
 import SearchSelect from "../../components/SearchSelect";
 import RowActionsMenu from "../../components/RowDocumentActions";
@@ -12,10 +13,11 @@ import {stockDocuments,recordExcel} from "../../utils/rowDocuments";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
+import useTablePreferences from "../../hooks/useTablePreferences";
 import {requestJson,downloadApiFile} from "../../services/api";
 import {accessSignature,moduleRights} from "../../services/moduleAccess";
 import {currencyOptions} from "../../utils/money";
-import {asArrayPayload,buildReferenceOptions,exportRowsToCsv,formatCurrency,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
+import {asArrayPayload,buildReferenceOptions,formatCurrency,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
 import StockReceiptEditor from "./StockReceiptEditor";
 import "./Mouvements.css";
 
@@ -35,10 +37,7 @@ const cleanColumns=values=>Object.fromEntries(Object.entries(values).map(([key,v
 const initialCriteria=q=>({...EMPTY,q:q||"",columnFilters:{}});
 
 export function movementExportColumns(keys){
- const columns=keys.filter(key=>key!=="actions");
- if(columns.some(key=>["QteMvt","QteMvtSigned","StockActuel"].includes(key))&&!columns.includes("AbrUnite"))columns.push("AbrUnite");
- if(columns.some(key=>["PUMvt","MontantMvt","MontantMvtSigned"].includes(key))&&!columns.includes("DeviseCode"))columns.push("DeviseCode");
- return [...new Set(columns)];
+ return [...new Set(keys.filter(key=>key!=="actions"))];
 }
 export function buildMovementQuery(criteria,grid={},columns){
  const params=new URLSearchParams();
@@ -80,6 +79,7 @@ function MovementRecordFilter({id,label,kind,value,selectedLabel,onChange,scopeK
 }
 
 export default function Mouvements({references,refreshKey,sharedTable,onToggleFkMappings,onDataChanged}){
+ const preferences=useTablePreferences("logistique.mouvements");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
  const rights=moduleRights(user,"logistique"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
  const scopeKey=JSON.stringify([user?.IdUser,user?.IdEntiteFk,user?.permissions?.canAccessAdmin,user?.permissions?.canWriteData,user?.permissions?.canExportData,accessSignature(user)]);
@@ -131,16 +131,17 @@ export default function Mouvements({references,refreshKey,sharedTable,onToggleFk
   return()=>{active=false;};
  },[criteria,grid,refreshKey,revision,scopeKey]);
  useEffect(()=>{setExportError("");exportRequest.current?.abort();exportRequest.current=null;setExporting(false);return()=>{exportRequest.current?.abort();};},[criteria,grid.sortBy,grid.sortDir,scopeKey,denied]);
- async function exportExcel(){
-  if(!canExport||blocked||pending||exporting||!meta?.filteredCount||!visibleColumns.some(key=>key!=="actions"))return;
+ async function exportData(format="xlsx",selection=null){
+  if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||blocked||pending||exporting||!meta?.filteredCount||selection&&!selection.length)return;
   const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
-  const params=buildMovementQuery(criteria,{sortBy:grid.sortBy,sortDir:grid.sortDir},visibleColumns);
-  try{await downloadApiFile(API+"/export.xlsx?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
+  const params=buildMovementQuery(criteria,{sortBy:grid.sortBy,sortDir:grid.sortDir},preferences.exportKeys);
+  if(selection)params.set("selection",JSON.stringify(selection.map(row=>row.ID_Mvt)));
+  try{await downloadApiFile(API+"/export."+format+"?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
  }
  const columns=useMemo(()=>[
   {key:"ID_Mvt",label:"N° de mouvement",width:155,align:"right",filterType:"number",render:row=>formatNumber(row.ID_Mvt)},
   {key:"DateMvt",label:"Date et heure",width:180,filterType:"date",render:row=>formatDate(row.DateMvt)},
-  {key:"NomArticle",label:"Article",width:260,filterType:"text",render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle||"Article sans libellé"}</strong><small>{row.CodeArticleInterne||"Code non renseigné"}</small></span></span>,renderText:row=>row.NomArticle||""},
+  {key:"NomArticle",label:"Article",width:260,filterType:"text",render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="box" size={19}/></span><span className="erp-product-identity"><strong>{row.NomArticle||"Article sans libellé"}</strong><small>{row.CodeArticleInterne?"Code : "+row.CodeArticleInterne:"Code interne non renseigné"}</small><small>{row.RefArticle?"Réf. : "+row.RefArticle:"Référence non renseignée"}</small></span></span>,renderText:row=>row.NomArticle||""},
   {key:"CodeArticleInterne",label:"Code article",width:155,filterType:"text"},
   {key:"RefArticle",label:"Référence article",width:170,filterType:"text"},
   {key:"CategorieArticle",label:"Catégorie d’article",width:190},
@@ -166,17 +167,16 @@ export default function Mouvements({references,refreshKey,sharedTable,onToggleFk
  ],[options.origine,blocked,canManage,openProduct,openOrder]);
  const columnsByKey=Object.fromEntries(columns.map(column=>[column.key,column]));
  function valueLabel(key,value){return appliedLabels[key]||options[key]?.find(option=>option.value===String(value))?.label||(key==="dateFrom"||key==="dateTo"?formatDate(value):value);}
- function exportSelection(){if(!canExport||blocked||pending||!selected.length)return;const fields=movementExportColumns(visibleColumns).map(key=>columnsByKey[key]).filter(Boolean);exportRowsToCsv("Mouvements_selection.csv",fields,selected);}
  const summary=meta?.summary;
  if(contextChanged||!canRead||denied)return <div className="logistics-screen mouvements-register"><RegisterSurface title="Mouvements de stock" subtitle="Journal des entrées, sorties et ajustements"><div className="erp-register-table" role={canRead&&!denied?"status":"alert"}>{contextChanged&&canRead?"Chargement du registre…":error||"Vous n’avez pas accès aux mouvements de stock."}{denied?<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton>:null}</div></RegisterSurface></div>;
  return <div className="logistics-screen mouvements-register">
   <div aria-live="polite"><StatusBanner feedback={feedback}/>{savedReceipt?<ActionButton icon="receipt" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée</ActionButton>:null}</div>
-  <RegisterSurface title="Mouvements de stock" subtitle="Journal des entrées, sorties et ajustements" actions={typeof onToggleFkMappings==="function"?<ActionButton icon="settings" onClick={onToggleFkMappings}>Réglages</ActionButton>:null} tabs={<RegisterCategoryFilter label="Sens du mouvement" value={criteria.sens} options={[{value:"all",label:"Tous les mouvements"},{value:"entree",label:"Entrées"},{value:"sortie",label:"Sorties"}]} onChange={chooseDirection} disabled={loading}/>}>
+  <RegisterSurface title="Mouvements de stock" subtitle="Journal des entrées, sorties et ajustements" actions={<RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>} tabs={<RegisterCategoryFilter label="Sens du mouvement" value={criteria.sens} options={[{value:"all",label:"Tous les mouvements"},{value:"entree",label:"Entrées"},{value:"sortie",label:"Sorties"}]} onChange={chooseDirection} disabled={loading}/>}>
    <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
-    {selected.length?<div className="erp-register-selection"><strong>{formatNumber(selected.length)} mouvement{selected.length===1?"":"s"} sélectionné{selected.length===1?"":"s"}</strong>{selected.length===1?<><ActionButton icon="box" disabled={blocked||!hasProduct(selected[0])} onClick={()=>product(selected[0])}>Article</ActionButton>{hasOrder(selected[0])?<ActionButton icon="receipt" disabled={blocked} onClick={()=>order(selected[0])}>Bon de stock</ActionButton>:null}</>:null}{canExport?<ActionButton icon="download" disabled={blocked||pending||!visibleColumns.some(key=>key!=="actions")} onClick={exportSelection}>CSV · sélection</ActionButton>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" disabled={loading} onClick={()=>{setSelectionReset(value=>value+1);shared.current?.clearSelectedRow?.();}}/></div>:null}
+    {selected.length?<div className="erp-register-selection"><strong>{formatNumber(selected.length)} mouvement{selected.length===1?"":"s"} sélectionné{selected.length===1?"":"s"}</strong>{selected.length===1?<><ActionButton icon="box" disabled={blocked||!hasProduct(selected[0])} onClick={()=>product(selected[0])}>Article</ActionButton>{hasOrder(selected[0])?<ActionButton icon="receipt" disabled={blocked} onClick={()=>order(selected[0])}>Bon de stock</ActionButton>:null}</>:null}{canExport?["xlsx","csv"].map(format=><ActionButton key={format} icon="download" disabled={blocked||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length} onClick={()=>exportData(format,selected)}>{format==="xlsx"?"Excel":"CSV"} · sélection</ActionButton>):null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" disabled={loading} onClick={()=>{setSelectionReset(value=>value+1);shared.current?.clearSelectedRow?.();}}/></div>:null}
     {error?<div className="erp-table-error" role="alert">{error}<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton></div>:null}
-    <SimpleTable rows={rows} columns={columns} getRowId={movementId} enableSelection selectedRowId={sharedTable?.selectedRow?.ID_Mvt??null} onSelectionChange={selectionChanged} selectionResetKey={selectionReset} defaultVisibleColumns={MOVEMENT_DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} loading={loading} emptyMessage={error?"Les mouvements ne sont pas disponibles.":"Aucun mouvement pour ces critères."} onRowConsult={consult} consultColumns={["NomArticle","CodeArticleInterne","RefArticle","CodeCmd"]} isCellConsultable={(row,key)=>hasValue(row,key)&&(key==="CodeCmd"?hasOrder(row):hasProduct(row))} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={columnDraft} onColumnFilterChange={(key,value)=>setColumnDraft(current=>({...current,[key]:value}))} onApplyColumnFilters={apply} toolbar={<>
-     <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={filterId} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder="Rechercher un article, une référence ou un bon…" exportFile={canExport?exportExcel:undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!visibleColumns.some(key=>key!=="actions")} error={criteriaError||exportError}/>
+    <SimpleTable tablePreferences={preferences} rows={rows} columns={columns} getRowId={movementId} enableSelection selectedRowId={sharedTable?.selectedRow?.ID_Mvt??null} onSelectionChange={selectionChanged} selectionResetKey={selectionReset} defaultVisibleColumns={MOVEMENT_DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} loading={loading} emptyMessage={error?"Les mouvements ne sont pas disponibles.":"Aucun mouvement pour ces critères."} onRowConsult={consult} consultColumns={["NomArticle","CodeArticleInterne","RefArticle","CodeCmd"]} isCellConsultable={(row,key)=>hasValue(row,key)&&(key==="CodeCmd"?hasOrder(row):hasProduct(row))} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={columnDraft} onColumnFilterChange={(key,value)=>setColumnDraft(current=>({...current,[key]:value}))} onApplyColumnFilters={apply} toolbar={<>
+     <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={filterId} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder="Rechercher un article, une référence ou un bon…" exportFile={canExport?()=>exportData("xlsx"):undefined} exportCsv={canExport?()=>exportData("csv"):undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length} error={criteriaError||exportError||preferences.error}/>
      {filtersOpen?<form id={filterId} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">
       {[["articleId","Article","article"],["commandeId","Bon de stock","commande"]].map(([key,label,kind])=><MovementRecordFilter key={scopeKey+key} id={filterId+key} label={label} kind={kind} value={draft[key]} selectedLabel={recordLabels[key]} scopeKey={scopeKey} onChange={(value,labelValue)=>{setDraft(current=>({...current,[key]:value}));setRecordLabels(current=>({...current,[key]:value?labelValue:""}));}}/>)}
       {["categorieId","articleTypeId","typeId","origine","sens","deviseId"].map(key=><div key={key} className="mouvements-filter-field"><label htmlFor={filterId+key}>{LABELS[key]}</label><SearchSelect id={filterId+key} label={LABELS[key]} value={draft[key]} options={[{value:EMPTY[key],label:key==="origine"?"Toutes les origines":key==="deviseId"?"Toutes les devises":"Tous"},...options[key]]} onChange={value=>setDraft(current=>({...current,[key]:value}))}/></div>)}

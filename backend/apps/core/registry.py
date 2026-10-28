@@ -8,6 +8,8 @@ VIEWS = DATA["views"]
 
 
 def model(name):
+    if name in {"T_InterfaceTableau", "T_PreferenceTableau"}:
+        raise APIError("Ces réglages personnels utilisent leur interface dédiée.", "DEDICATED_SETTINGS_REQUIRED", 403)
     if name not in MODELS:
         raise APIError("Modèle non disponible dans PostgreSQL.", "NOT_FOUND", 404)
     return MODELS[name]

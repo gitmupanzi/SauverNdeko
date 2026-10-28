@@ -1,6 +1,6 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 26 octobre 2026, jusqu’aux contrôles `20261026_11` et à leur complément documentaire `20261026_12`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’aux migrations `20261028_01` à `20261028_04`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
@@ -181,3 +181,19 @@ La sauvegarde `.runtime/backups/avant-controles-admin-20261026-195858` a été v
 Les sources canoniques ont été régénérées depuis cette structure. Elles ont réellement été restaurées dans deux bases isolées : 64 tables/79 vues pour la structure globale ; 54 tables/79 vues pour la structure métier. Cette dernière nécessite l’extension `pg_trgm` dans `public` avant restauration. Ces restaurations de structure ne constituent pas un essai de restauration de la sauvegarde complète avec données et médias.
 
 Recette : 14 contrôles SQL privés, parcours réel API → auteur transactionnel → audit unique, tests de contrat API et onze registres/exports Excel contrôlés en lecture seule sur SauverNdeko. Les recettes ne visent que des bases explicitement nommées `sauverndeko_test_*`. Le diagnostic `verifier_backend` inclut aussi la synthèse et les registres d’administration. Le frontend `/admin` réutilise les tableaux, filtres, fenêtres et thèmes de Logistique ; la compatibilité du module territorial reste conservée.
+
+
+## Socle logistique et préférences — 28 octobre 2026
+
+Les quatre migrations du 28 octobre sont installées dans SauverNdeko après sauvegarde et recette privée :
+
+- `20261028_01_stock_initial_documents.sql` : stock initial documenté par un bon d’entrée et sa ligne, origine durable, création idempotente, nouveaux préfixes BE/BS et reprise documentaire des mouvements initiaux orphelins. Les quatre mouvements historiques concernés conservent identifiants, quantités, prix, dates et lots ; aucun code historique n’est renuméroté.
+- `20261028_02_preferences_tableaux.sql` : catalogues de colonnes communs et préférences personnelles indépendantes pour le tableau et l’export dans `referentiel`, plus quantités des bons ventilées par unité. Les choix sont isolés par utilisateur, entreprise et interface.
+- `20261028_03_tracabilite_logistique.sql` : auteurs et dates techniques des règlements, contrôles financiers lors d’une modification, unicité des codes Article par entreprise et intégrité SHA-256 des justificatifs binaires.
+- `20261028_04_commentaires_socle.sql` : commentaires des treize contraintes NOT NULL implicites des nouvelles tables, sans modification de données.
+
+Les deux instantanés globaux et les extraits Référentiel/Logistique ont été régénérés à partir du catalogue installé. Leur restauration sur deux bases privées vides a vérifié **66 tables** pour la structure complète, **56 tables** pour le métier, **80 vues** et **123 triggers**, sans aucune donnée. Les définitions, relations, contraintes, index, routines, séquences et commentaires ont été comparés au catalogue source ; les commentaires des contraintes associées aux triggers sont conservés explicitement dans les sources, en complément de pg_dump.
+
+Une nouvelle installation doit aussi charger le dictionnaire fermé du paquet produit par `preparer_installation`. Il inclut maintenant `referentiel.T_InterfaceTableau` avec les vingt catalogues de référence. Les préférences personnelles `T_PreferenceTableau`, comptes, entreprises, articles et documents clients ne sont jamais repris dans ce paquet. La restauration du paquet vierge a confirmé cette séparation.
+
+Voir [stock initial et numérotation](documentation/Stock_Initial_Documents_20261028.md), [préférences de tableaux et exports](documentation/Preferences_Tableaux_Exports_20261028.md) et les recettes `tests/test_stock_initial_documents.py`, `tests/test_preferences_tableaux.py` et `tests/test_tracabilite_logistique.py`. Les recettes d’écriture refusent une base ne commençant pas par `sauverndeko_test_`.

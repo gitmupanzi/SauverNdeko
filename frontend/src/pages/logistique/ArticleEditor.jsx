@@ -12,6 +12,7 @@ import AppIcon from "../../components/AppIcon";
 import {fetchLogistiqueArticle,createLogistiqueArticle,updateLogistiqueArticle} from "../../services/logistique";
 import {buildReferenceOptions,formatDate} from "./logistiqueShared";
 import {articleForm,articleErrors,articlePayload,alertDate} from "./articleForm";
+import {createReceiptRequestId} from "./receiptForm";
 import "./ArticleEditor.css";
 
 function Field({name,label,error,hint,wide=false,children}) {
@@ -23,6 +24,8 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
   const {openProductLots}=useConsultations();
   const [active,setActive]=useState("article");
   const prefix=useId(),mounted=useRef(true),saving=useRef(false),focusRef=useRef(null);
+  const creationRequestId=useRef(null);
+  if(!creationRequestId.current)creationRequestId.current=createReceiptRequestId();
   const createForm=()=>({...articleForm(null),ID_DeviseFk:newCurrencyId(references)});
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState(createForm);
   const [initial,setInitial]=useState(()=>JSON.stringify(createForm()));
@@ -89,6 +92,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
     if(lotError){setError("Vérifiez les lots du stock initial.");focusLots();return;}
     saving.current=true;setBusy(true);
     const payload=articlePayload(values,record,meta?.revision);
+    if(creating)payload.requestId=creationRequestId.current;
     delete payload.PhotoArticle;
     if(creating&&initialLots.length)payload.LotsInitiaux=initialLots;
     if(photo.remove)payload._removePhoto=true;
@@ -112,7 +116,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references}) {
       <ConsultationTabs tabs={[{key:"article",label:"Article",icon:"tag"},{key:"stock",label:"Stock et prix",icon:"box"},{key:"lots",label:"Lots",icon:"box"},{key:"conservation",label:"Conservation",icon:"calendar"},{key:"informations",label:"Informations",icon:"document"},{key:"tracabilite",label:"Traçabilité",icon:"user"}]} value={active} onChange={setActive} label="Rubriques de l’article" idPrefix={prefix}/>
       <section role="tabpanel" id={prefix+"-panel-article"} aria-labelledby={prefix+"-tab-article"} hidden={active!=="article"} tabIndex={active==="article"?0:-1}>
         <div id={prefix+"photo"} tabIndex={-1}>{active==="article"?<ProductPhotoPicker record={record} value={photo} onChange={next=>{if(busy||!canWrite)return;setPhoto(next);setErrors(current=>({...current,photo:""}));}} disabled={busy||!canWrite} error={errors.photo}/>:null}</div>
-      {!creating?<div className="record-editor-identity"><AppIcon name="box"/><div><strong>{record.NomArticle}</strong><small>{record.CodeArticleInterne||record.RefArticle||"Code non renseigné"}</small></div></div>:null}
+      {!creating?<div className="record-editor-identity"><AppIcon name="box"/><div><strong>{record.NomArticle}</strong><small>{record.CodeArticleInterne?"Code : "+record.CodeArticleInterne:"Code interne non renseigné"}</small><small>{record.RefArticle?"Réf. : "+record.RefArticle:"Référence non renseignée"}</small></div></div>:null}
       <Section title="Identification" icon="tag">
         {input("NomArticle","Nom de l’article *",{maxLength:100,autoComplete:"off",wide:true})}
         {input("CodeArticleInterne","Code interne",{maxLength:243})}

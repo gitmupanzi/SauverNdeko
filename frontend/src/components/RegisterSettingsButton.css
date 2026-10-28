@@ -1,0 +1,5 @@
+.register-settings-menu { padding:6px; border-radius:12px; }
+.register-settings-menu button { display:flex; align-items:center; gap:11px; width:100%; min-height:42px; padding:10px 12px; color:var(--erp-text); background:transparent; border:0; border-radius:7px; text-align:left; font:inherit; cursor:pointer; }
+.register-settings-menu button svg { flex:none; color:var(--erp-muted); }
+.register-settings-menu button:hover,.register-settings-menu button:focus-visible { background:var(--erp-hover); }
+.register-settings-menu button:focus-visible { outline:2px solid var(--erp-link); outline-offset:-2px; }

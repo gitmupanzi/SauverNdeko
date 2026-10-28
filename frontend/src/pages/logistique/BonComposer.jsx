@@ -26,7 +26,7 @@ function Field({id,label,error,hint,wide=false,children}) {return <div className
 const read=path=>requestJson("/api/logistique"+path,{requiresAuth:true});
 const headerReferences={ID_StatutCmdFk:"commandeStatuses",ID_TiersFk:"clients",ID_ConditionPaiementFk:"commandeConditionPaiements",ID_ModePaiementFk:"commandeModesPaiement"};
 const text=value=>value==null?"":String(value).trim();
-const articleReferences=article=>[text(article.CodeArticleInterne)||(article.CodeArticleExterne==null?"":"Code ext. "+article.CodeArticleExterne),text(article.RefArticle)?"Réf. "+text(article.RefArticle):""].filter(Boolean).join(" · ")||"Code non renseigné";
+const articleReferences=article=>[text(article.CodeArticleInterne)?"Code : "+text(article.CodeArticleInterne):"Code interne non renseigné",text(article.RefArticle)?"Réf. : "+text(article.RefArticle):"Référence non renseignée"].join(" · ");
 const articleContext=article=>[text(article.CategorieArticle)||text(article.AbrCategorieArticle),text(article.TypeArticle)||text(article.AbrTypeArticle)].filter(Boolean).join(" · ");
 const stockUnit=article=>text(article.AbrUnite)||text(article.Unite);
 

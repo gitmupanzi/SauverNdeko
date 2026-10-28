@@ -72,7 +72,10 @@ def sync_movement(article_id,movement_id,rows,quantity,*,actor=None):
 
 def initial_lots(article,rows):
     if not rows:return
-    movement=db.one('SELECT "ID_Mvt" FROM logistique."T_Mouvement" WHERE "ID_ArticleFk"=%s AND "ID_cmdFk" IS NULL ORDER BY "ID_Mvt" LIMIT 1',[article["ID_Article"]])
+    movement=db.one('''SELECT m."ID_Mvt" FROM logistique."T_Mouvement" m
+        JOIN logistique."T_Commande" c ON c."ID_Commande"=m."ID_cmdFk"
+        WHERE m."ID_ArticleFk"=%s AND c."ID_ArticleInitialFk"=m."ID_ArticleFk" AND c."OrigineBon"='stock_initial'
+        ORDER BY m."ID_Mvt" LIMIT 1''',[article["ID_Article"]])
     if not movement:raise APIError("Un stock initial positif est requis pour renseigner ses lots.","LOT_INITIAL_QUANTITY",400)
     sync_movement(article["ID_Article"],movement["ID_Mvt"],rows,article["QteArticle"])
 

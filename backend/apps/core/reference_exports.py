@@ -72,9 +72,12 @@ def export_columns(obj, kind, raw):
     ]
 
 
-def reference_workbook(actor, kind, raw):
+def reference_workbook(actor, kind, raw, file_format="xlsx"):
+    from apps.core.table_preferences import export_keys
+    from apps.core.tabular_exports import selected_scope, write_tabular
+    raw = {**raw,"columns":json.dumps(export_keys(actor,"referentiels."+kind,raw))}
     require_module(actor, "referentiels", "export")
-    if set(raw) - {"q", "filters", "sortBy", "sortDir", "columns", "timeZone", "take", "skip"}:
+    if set(raw) - {"q", "filters", "sortBy", "sortDir", "columns", "timeZone", "take", "skip", "selection"}:
         raise APIError("Critère non autorisé.")
     if kind not in SOURCES:
         raise APIError("Référentiel non disponible.", "NOT_FOUND", 404)
@@ -88,6 +91,8 @@ def reference_workbook(actor, kind, raw):
         raise APIError("Tri non autorisé.")
     # Le même prédicat applique recherche et filtres avant pagination sur la liste et l’export.
     where, values = predicate(obj, actor, raw)
+    clause,params = selected_scope(raw,primary_key)
+    where += clause; values = [*values,*params]
     order = "v." + db.ident(sort) + " " + direction.upper() + " NULLS LAST"
     if sort != primary_key:
         order += ",v." + db.ident(primary_key) + " ASC"
@@ -125,9 +130,9 @@ def reference_workbook(actor, kind, raw):
                             key: str(value) if key.startswith("ID_") and value is not None else value
                             for key, value in zip(keys, values_row)
                         }
-            count = write_workbook(stream, fields, rows(), context)
+            count = write_tabular(stream, fields, rows(), context,file_format)
         stream.seek(0)
-        filename = "SauverNdeko_Referentiels_" + kind + "_" + generated.strftime("%Y-%m-%d") + "_Complet.xlsx"
+        filename = "SauverNdeko_Referentiels_" + kind + "_" + generated.strftime("%Y-%m-%d") + ("_Selection." if raw.get("selection") is not None else "_Complet.") + file_format
         return stream, count, filename
     except Exception:
         stream.close()
@@ -142,4 +147,17 @@ class ReferenceExcelView(ExcelDownloadView):
         response = FileResponse(stream, as_attachment=True, filename=filename, content_type=XLSX_MEDIA_TYPE)
         response["X-Export-Row-Count"] = str(count)
         response["Cache-Control"] = "no-store, private"
+        return response
+
+
+class ReferenceCSVView(ExcelDownloadView):
+    from apps.logistique.excel import CSVFileRenderer
+    from apps.core.responses import ExactJSONRenderer
+    renderer_classes = [ExactJSONRenderer, CSVFileRenderer]
+
+    def get(self, request, kind):
+        stream,count,filename=reference_workbook(request.user,kind,request.query_params.dict(),file_format="csv")
+        response=FileResponse(stream,as_attachment=True,filename=filename,content_type="text/csv; charset=utf-8")
+        response["X-Export-Row-Count"]=str(count)
+        response["Cache-Control"]="no-store, private"
         return response

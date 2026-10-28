@@ -107,7 +107,9 @@ def return_policy(actor,snapshot,*,writing=False):
     from .receipts import entry_types,default_entry_type
     from .currency import validate_currency
     reason='';selected=None
-    if inventory_adjustment(snapshot['raw']['ID_Commande']):
+    if snapshot['raw'].get('OrigineBon') in {'stock_initial','reprise_mouvement'}:
+        reason='Un bon de stock initial ou de reprise se corrige par un nouveau bon, sans restitution commerciale.'
+    elif inventory_adjustment(snapshot['raw']['ID_Commande']):
         reason='Un bon d’inventaire se corrige par le comptage ou son annulation, sans restitution commerciale.'
     elif snapshot['is_return'] or snapshot['type_category']!=64 or not str(snapshot['direction'] or '').lower().startswith('sort'):
         reason='Seul un bon de sortie peut recevoir une restitution.'

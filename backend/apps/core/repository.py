@@ -403,7 +403,7 @@ def set_admin_actor(actor):
 
 
 @transaction.atomic
-def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
+def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *, _creation_metadata=None):
     db.ensure_writable()
     if name=="T_Reglements":
         if hard and not actor.global_admin:raise APIError("Suppression définitive réservée à un administrateur global.","GLOBAL_ADMIN_REQUIRED",403)
@@ -463,6 +463,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
         if not isinstance(body or {}, dict):
             raise APIError("Objet JSON attendu.")
         body = dict(body or {})
+        if {"CreationRequestId", "CreationPayloadHash"}.intersection(body):
+            raise APIError("Les informations techniques de création sont produites par le serveur.", "ARTICLE_VALIDATION", 400)
         received = body.pop("_version", None)
         if old:
             check_revision(old, received)
@@ -504,6 +506,10 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
         from apps.logistique.services import validate_header
 
         validate_header(obj, data, old, actor)
+    if _creation_metadata is not None:
+        if name != "T_Article" or operation != "create" or set(_creation_metadata) != {"CreationRequestId", "CreationPayloadHash"}:
+            raise APIError("Informations techniques de création invalides.", "ARTICLE_VALIDATION", 400)
+        data.update(_creation_metadata)
     if name in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:
         set_admin_actor(actor)
     table = db.qualified(obj["schema"], obj["name"])
@@ -562,10 +568,10 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False):
     return clean(row)
 
 
-def mutate(name, actor, body=None, keys=None, operation="create", hard=False):
+def mutate(name, actor, body=None, keys=None, operation="create", hard=False, *, _creation_metadata=None):
     db.ensure_writable()
     try:
-        return _mutate(name, actor, body, keys, operation, hard)
+        return _mutate(name, actor, body, keys, operation, hard, _creation_metadata=_creation_metadata)
     except IntegrityError as exc:
         constraint = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", "")
         if name == "T_Article" and constraint == "uq_article_codeinterne":

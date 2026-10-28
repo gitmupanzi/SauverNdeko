@@ -1,4 +1,4 @@
-"""Recette Articles/lots/photos/concurrence, exclusivement sur une base sauverndeko_test_* indépendante. Appliquer les migrations 20261025_01 à 03 avant exécution."""
+"""Recette Articles/lots/photos/concurrence, exclusivement sur une base sauverndeko_test_* indépendante. Structure courante incluant 20261028_01 requise."""
 import os,sys,json,io,zipfile,copy,uuid
 from pathlib import Path
 from urllib.parse import quote
@@ -38,6 +38,7 @@ def check(value,label):
  checks+=1
  assert value,label
 def expect(method,url,body=None,status=200,format='json'):
+ if method=='post' and url=='/api/logistique/articles' and format=='json':body={**body,'requestId':str(uuid.uuid4())}
  response=getattr(client,method)(url,body,format=format) if body is not None else getattr(client,method)(url)
  check(response.status_code==status,str((method,url,response.status_code,getattr(response,'data',None))))
  return response
@@ -62,6 +63,11 @@ body={'NomArticle':'Produit de recette','ID_TypeArticleFk':1101,'ID_CategorieArt
 with TemporaryDirectory(prefix='sauverndeko-photos-recette-') as media_root, override_settings(ALLOWED_HOSTS=['testserver','localhost','127.0.0.1'],ARTICLE_MEDIA_ROOT=media_root):
  created=expect('post','/api/logistique/articles',body,201).data['data'];pk=created['ID_Article']
  check(stock(pk)==6,'stock initial une seule fois')
+ initial_bon=db.one('''SELECT c."CodeCmd",m."ID_Mvt" FROM logistique."T_Commande" c
+  JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=c."ID_Commande"
+  JOIN logistique."T_Mouvement" m ON m."ID_cmdFk"=d."ID_CmdFk" AND m."ID_ArticleFk"=d."ID_ArticleFk"
+  WHERE c."OrigineBon"='stock_initial' AND d."ID_ArticleFk"=%s''',[pk])
+ check(initial_bon and initial_bon['CodeCmd'].startswith('BE-'),'stock initial relie a un bon et sa ligne')
  check(lots(pk)=={'L-A':4,'L-B':2},'ventilation initiale')
  record,version=read(pk)
  check(record['InformationArticle']==body['InformationArticle'],'champ libre conservé')
