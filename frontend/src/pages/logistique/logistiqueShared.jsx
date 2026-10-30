@@ -7,6 +7,7 @@ import ColumnPicker from "../../components/ColumnPicker";
 import TableSettings from "../../components/TableSettings";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
+import "../../components/DataTable.css";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_ROWS_PER_PAGE = 25;
@@ -932,7 +933,7 @@ export function SimpleTable({
       : sortedRows;
 
   return (
-    <div className={"logistics-advanced-table" + (toolbar ? " erp-data-grid" : "") + (loading ? " is-loading" : "")} aria-busy={loading}>
+    <div className={"logistics-advanced-table erp-data-grid" + (loading ? " is-loading" : "")} aria-busy={loading}>
       {loading ? <span className="erp-grid-loading" role="status">{rows.length ? "Actualisation des résultats…" : "Chargement des résultats…"}</span> : null}
       {showControls ? (
         <section className="admin-search-card logistics-table-controls logistics-table-toolbar-card">

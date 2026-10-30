@@ -6243,6 +6243,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_CategorieGenerique",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -6261,6 +6273,18 @@
           "from": [],
           "to": [],
           "relation": "FkCorrespondanceCategory"
+        },
+        {
+          "name": "T_Entite",
+          "many": false,
+          "relation": "T_Entite_IdEntiteFk",
+          "target": "T_Entite",
+          "from": [
+            "IdEntiteFk"
+          ],
+          "to": [
+            "IdEntite"
+          ]
         }
       ],
       "fields": [
@@ -6491,6 +6515,18 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "T_Generique",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
           "is_identity": "NO"
         }
       ],
@@ -6826,6 +6862,18 @@
           "from": [],
           "to": [],
           "relation": "UserRole"
+        },
+        {
+          "name": "T_Entite",
+          "many": false,
+          "relation": "T_Entite_IdEntiteFk",
+          "target": "T_Entite",
+          "from": [
+            "IdEntiteFk"
+          ],
+          "to": [
+            "IdEntite"
+          ]
         }
       ],
       "fields": [
@@ -18009,8 +18057,48 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_CategorieGenerique",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_CategorieGenerique",
+          "column_name": "NomEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_CategorieGenerique",
+          "column_name": "Portee",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
-      ]
+      ],
+      "primaryKey": [
+        "ID_CategorieGenerique"
+      ],
+      "relations": []
     },
     "referentiel.V_Generique": {
       "schema": "referentiel",
@@ -18231,8 +18319,60 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_Generique",
+          "column_name": "IdEntiteFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_Generique",
+          "column_name": "NomEntite",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_Generique",
+          "column_name": "Portee",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_Generique",
+          "column_name": "IdEntiteCategorieFk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
-      ]
+      ],
+      "primaryKey": [
+        "ID_Generique"
+      ],
+      "relations": []
     },
     "systeme.V_Admin_UI_Setting": {
       "schema": "systeme",
@@ -24427,6 +24567,112 @@
           "is_identity": "NO"
         }
       ]
+    },
+    "referentiel.V_InterfaceTableau": {
+      "schema": "referentiel",
+      "name": "V_InterfaceTableau",
+      "primaryKey": [
+        "CleInterface"
+      ],
+      "columns": [
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "CleInterface",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "Libelle",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "Module",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "Version",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "Colonnes",
+          "data_type": "jsonb",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "Actif",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "ModifieLe",
+          "data_type": "timestamp with time zone",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "referentiel",
+          "table_name": "V_InterfaceTableau",
+          "column_name": "NbColonnes",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        }
+      ],
+      "relations": []
     }
   }
 }

@@ -73,7 +73,7 @@ def context(actor,command_id):
     manage=bool(actor.admin) and not settings.DB_READ_ONLY
     try:require_module(actor,'logistique','manage');assert_document(actor,parent)
     except APIError:manage=False
-    data={'bon':parent,'facture':invoice,'lignesEnAttente':pending,'MontantEnAttente':total,'avoirs':[note_details(n) for n in notes],'references':{'modesPaiement':modes()}}
+    data={'bon':parent,'facture':invoice,'lignesEnAttente':pending,'MontantEnAttente':total,'avoirs':[note_details(n) for n in notes],'references':{'modesPaiement':modes(actor,entity=parent.get('IdEntiteFk'),table='T_Remboursement',column='ID_ModePaiementFk')}}
     revision=digest({'invoice':invoice,'lines':invoice_lines,'returned':sorted(returned.items()),'notes':data['avoirs'],'owner':parent.get('IdEntiteFk')})
     return {'data':data,'meta':{'revision':revision,'canIssue':manage and bool(invoice) and total>0,'canManage':manage,'reason':None if invoice else 'Émettez d’abord la facture du bon.'}}
 
@@ -138,7 +138,8 @@ def settle(actor,credit_id,operation,body):
             db.query('''INSERT INTO logistique."T_AvoirAffectation"("ID_AvoirFk","ID_CommandeCibleFk","Montant","ID_UserFk","RequestId","PayloadHash") VALUES(%s,%s,%s,%s,%s,%s)''',[credit_id,target,value,actor.pk,rid,fingerprint])
         else:
             if date<note['DateAvoir']:fail('DateRemboursement','Le remboursement ne peut pas précéder l’avoir.')
-            if not any(r['id']==mode and r['active'] for r in modes()):fail('ID_ModePaiementFk','Choisissez un mode actif de la liste.')
+            if not any(r['id']==mode and r['active'] for r in modes(actor,entity=parent.get('IdEntiteFk'),table='T_Remboursement',column='ID_ModePaiementFk',lock=True)):
+                fail('ID_ModePaiementFk','Choisissez un mode actif de la liste.')
             db.query('''INSERT INTO logistique."T_Remboursement"("ID_AvoirFk","Montant","DateRemboursement","ID_ModePaiementFk","ReferenceRemboursement","ID_UserFk","RequestId","PayloadHash") VALUES(%s,%s,%s,%s,%s,%s,%s,%s)''',[credit_id,value,date,mode,reference or None,actor.pk,rid,fingerprint])
         audit({'schema':'logistique','name':table},'CREDIT_ALLOCATE' if target else 'CREDIT_REFUND',new={'ID_AvoirFk':credit_id,'ID_CommandeCibleFk':target,'Montant':value,'IdEntiteFk':note['IdEntiteFk'],'requestId':rid},actor=actor)
         return clean({'avoir':note_details(credit_record(actor,credit_id)[0]),'replayed':False})
@@ -164,7 +165,7 @@ class CreditView(APIView):
             note,parent=credit_record(request.user,pk);manage=False
             try:authorize(request.user,parent);manage=True
             except APIError:pass
-            data={**note_details(note),'references':{'facturesCibles':targets(request.user,note,parent),'modesPaiement':modes()}}
+            data={**note_details(note),'references':{'facturesCibles':targets(request.user,note,parent),'modesPaiement':modes(request.user,entity=parent.get('IdEntiteFk'),table='T_Remboursement',column='ID_ModePaiementFk')}}
             revision=note_revision(note)
         return ok(clean(data),meta={'revision':revision,'canManage':manage})
     def post(self,request,pk,operation=None):

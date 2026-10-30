@@ -6,7 +6,7 @@ from apps.core import db
 from apps.core.repository import mutate, audit
 from apps.core.responses import APIError
 from .inventories import access, header, snapshot, check_version, request_id, digest, OBJECT
-from .lots import validate_stock,expiry_storage_ready
+from .lots import validate_stock,expiry_storage_ready,stock_document_types
 
 
 def compensation_lots(actor,original_movement,new_movement,outgoing,reason,inventory):
@@ -56,6 +56,7 @@ def cancel(actor, identifier, body):
             "ID_AnnulateurFk"=%s,"MotifAnnulation"=%s,"AnnulationRequest"=%s,"AnnulationHash"=%s WHERE "ID_Inventaire"=%s''',
             [actor.pk, reason, request, fingerprint, identifier])
         commands = []
+        types = stock_document_types(actor,lock=True)
         for line in lines:
             if line['QteComptee'] == line['QteTheorique']:
                 continue
@@ -66,12 +67,10 @@ def cancel(actor, identifier, body):
                 [line['ID_CommandeCorrectionFk'], line['ID_ArticleFk'], entity])
             if not original or original['SigneStock'] not in (-1, 1):
                 raise APIError('Le mouvement d’origine doit être vérifié avant annulation.', 'INVENTORY_SOURCE_INVALID', 409)
-            kind = db.one('''SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-                WHERE g."ID_CategorieGeneriqueFk"=64 AND g."AbrGenerique" ILIKE %s AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1''',
-                ['sort%' if original['SigneStock'] == 1 else 'entr%'])
+            kind = types.get(-original['SigneStock'])
             if not kind:
                 raise APIError('Configurez les types de bon Entrée et Sortie dans les références.', 'INVENTORY_TYPE_REQUIRED', 409)
-            command = mutate('T_Commande', actor, {'ID_TypeCmdFk': kind['ID_Generique'], 'ID_DeviseFk': original['ID_DeviseFk'],
+            command = mutate('T_Commande', actor, {'ID_TypeCmdFk': kind, 'ID_DeviseFk': original['ID_DeviseFk'],
                 'DateCmd': timezone.now(), 'RefCmd': f'Annulation inv-{identifier}', 'ObsCmd': reason[:255]}, operation='create')
             cid = command['ID_Commande']
             # Les triggers existants créent l’unique mouvement. On conserve le prix réellement utilisé,

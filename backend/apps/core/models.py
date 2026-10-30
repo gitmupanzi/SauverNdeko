@@ -444,6 +444,7 @@ class T_CategorieGenerique(models.Model):
     NomCategorieGenerique = models.TextField(null=True)
     ModuleCategorieGenerique = models.TextField(null=True)
     ValideCategorieGenerique = models.BooleanField(null=True)
+    IdEntiteFk = models.IntegerField(null=True)
 
     class Meta:
         managed = False
@@ -467,6 +468,7 @@ class T_Generique(models.Model):
     VisibleAll = models.BooleanField(null=True)
     ObsGenerique = models.TextField(null=True)
     ValideGenerique = models.BooleanField()
+    IdEntiteFk = models.IntegerField(null=True)
 
     class Meta:
         managed = False

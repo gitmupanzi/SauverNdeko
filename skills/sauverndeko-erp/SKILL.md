@@ -33,6 +33,10 @@ La première intervention porte sur la cartographie et les skills. Elle ne valid
 6. Faire respecter les droits par le serveur sur chaque route et chaque objet lié. Une portée de réglage global/country/entity n’assure pas l’isolation des données métier.
 7. Mettre à jour les références du domaine et indiquer ce qui a été effectivement exécuté. Ne pas déclarer un module livré sur la seule présence de son modèle Django ou d’un écran.
 
+### Saisie de plusieurs enregistrements similaires
+
+Dans tous les modules où des créations similaires s’y prêtent, privilégier un panier de lignes. Un seul bouton de création (« Nouveau… » / « Nouvelle… », par exemple « Nouvelle valeur ») ouvre ce formulaire, utilisable aussi avec une seule ligne ; ne pas dédoubler cette action avec un bouton « Saisie multiple ». Le compositeur des Bons de stock sert de référence d’interaction : ajouter, corriger, retirer une ligne, annuler l’ensemble puis enregistrer une seule fois. Lorsque les lignes partagent un parent, employer un en-tête/détails : par exemple une catégorie puis ses valeurs. Le collage Excel alimente ce même brouillon ; les validations et doublons sont indiqués par ligne, sans perdre la saisie. Le serveur enregistre tout le lot et son audit dans une transaction unique ; aucune réussite partielle. Un rejeu après une réponse incertaine conserve la même demande et son contenu. Conserver un formulaire individuel pour les opérations qui ne se prêtent pas à un panier.
+
 ## Invariants SauverNdeko
 
 - PostgreSQL reste organisé par schémas métier ; les noms qualifiés existants et leur casse sont des contrats.

@@ -132,7 +132,8 @@ def request_hash(actor,command_id,data,operation):
 
 def payment_references(selected=None,lock=False,actor=None):
     selected=selected or {}
-    from apps.core.field_references import reference_options
+    from apps.core.field_references import reference_options,document_reference_actor
+    actor=document_reference_actor(actor,selected.get('IdEntiteFk'))
     result={}
     for key,field in [('modesPaiement','ID_ModePaiementFk'),('conditionsPaiement','ID_ConditionPaiementFk')]:
         rows=reference_options(actor,'logistique','T_Commande',field,current=selected.get(field))

@@ -76,6 +76,9 @@ class Command(BaseCommand):
                 "/api/tableaux/logistique.immobilisations/preferences"])
             urls.extend(["/api/referentiel/champs-references?take=1",
                 "/api/tableaux/referentiels.champs/preferences",
+                "/api/referentiel/tableaux?take=1",
+                "/api/referentiel/tableaux/referentiels.categories",
+                "/api/tableaux/referentiels.tableaux/preferences",
                 "/api/referentiel/champs-references/valeurs?schema=logistique&table=T_Article&column=ID_CategorieArticleFk"])
             with connection.cursor() as reference_cursor:
                 reference_cursor.execute('SELECT "ID_ChampReferentiel" FROM referentiel."T_ChampReferentiel" '

@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -7,18 +7,25 @@ SELECT pg_catalog.set_config('search_path', '', false);
 --
 
 CREATE VIEW referentiel."V_CategorieGenerique" AS
- SELECT "ID_CategorieGenerique",
-    "NomCategorieGenerique",
-    "ModuleCategorieGenerique",
-    "ValideCategorieGenerique"
-   FROM referentiel."T_CategorieGenerique" c
-  ORDER BY "NomCategorieGenerique", "ModuleCategorieGenerique";
+ SELECT c."ID_CategorieGenerique",
+    c."NomCategorieGenerique",
+    c."ModuleCategorieGenerique",
+    c."ValideCategorieGenerique",
+    c."IdEntiteFk",
+    e."NomEntite",
+        CASE
+            WHEN (c."IdEntiteFk" IS NULL) THEN 'Commun'::text
+            ELSE 'Entreprise'::text
+        END AS "Portee"
+   FROM (referentiel."T_CategorieGenerique" c
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = c."IdEntiteFk")))
+  ORDER BY c."NomCategorieGenerique", c."ModuleCategorieGenerique";
 
 --
 -- Name: VIEW "V_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON VIEW referentiel."V_CategorieGenerique" IS 'Projection au grain catégorie de nomenclature : identité, module d’usage et validité. Aucun filtre de validité n’est appliqué.';
+COMMENT ON VIEW referentiel."V_CategorieGenerique" IS 'Registre transversal des catégories, avec propriétaire et portée explicites. L’API limite les lignes au commun et à l’entreprise autorisée ; aucun nom ne sert de clé.';
 
 --
 -- Name: COLUMN "V_CategorieGenerique"."ID_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
@@ -45,6 +52,24 @@ COMMENT ON COLUMN referentiel."V_CategorieGenerique"."ModuleCategorieGenerique" 
 COMMENT ON COLUMN referentiel."V_CategorieGenerique"."ValideCategorieGenerique" IS 'Indique si la catégorie est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues. Expression projetée : "ValideCategorieGenerique".';
 
 --
+-- Name: COLUMN "V_CategorieGenerique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_CategorieGenerique"."IdEntiteFk" IS 'Propriétaire de la famille, NULL commun.';
+
+--
+-- Name: COLUMN "V_CategorieGenerique"."NomEntite"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_CategorieGenerique"."NomEntite" IS 'Nom actuel de l’entreprise propriétaire, absent pour le commun.';
+
+--
+-- Name: COLUMN "V_CategorieGenerique"."Portee"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_CategorieGenerique"."Portee" IS 'Portée lisible calculée depuis la FK propriétaire.';
+
+--
 -- Name: V_Generique; Type: VIEW; Schema: referentiel; Owner: -
 --
 
@@ -66,16 +91,24 @@ CREATE VIEW referentiel."V_Generique" AS
     g."VisibleVoie",
     g."VisibleAll",
     g."ObsGenerique",
-    g."ValideGenerique"
-   FROM (referentiel."T_Generique" g
-     JOIN referentiel."T_CategorieGenerique" c ON ((g."ID_CategorieGeneriqueFk" = c."ID_CategorieGenerique")))
+    g."ValideGenerique",
+    g."IdEntiteFk",
+    e."NomEntite",
+        CASE
+            WHEN (g."IdEntiteFk" IS NULL) THEN 'Commun'::text
+            ELSE 'Entreprise'::text
+        END AS "Portee",
+    c."IdEntiteFk" AS "IdEntiteCategorieFk"
+   FROM ((referentiel."T_Generique" g
+     JOIN referentiel."T_CategorieGenerique" c ON ((c."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk")))
+     LEFT JOIN systeme."T_Entite" e ON ((e."IdEntite" = g."IdEntiteFk")))
   ORDER BY c."NomCategorieGenerique", g."NomGenerique", g."AbrGenerique";
 
 --
 -- Name: VIEW "V_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON VIEW referentiel."V_Generique" IS 'Valeurs de nomenclature enrichies avec leur catégorie et module, au grain valeur générique ; expose visibilité et validité sans filtrer les valeurs inactives.';
+COMMENT ON VIEW referentiel."V_Generique" IS 'Valeurs, catégories et visibilités inchangées, avec portée durable et propriétaire de la famille pour les contrôles de lecture/export ; aucun filtre implicite de validité.';
 
 --
 -- Name: COLUMN "V_Generique"."ID_CategorieGeneriqueFk"; Type: COMMENT; Schema: referentiel; Owner: -
@@ -184,6 +217,99 @@ COMMENT ON COLUMN referentiel."V_Generique"."ObsGenerique" IS 'Observations enre
 --
 
 COMMENT ON COLUMN referentiel."V_Generique"."ValideGenerique" IS 'Indique si la valeur de nomenclature est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues. Expression projetée : g."ValideGenerique".';
+
+--
+-- Name: COLUMN "V_Generique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_Generique"."IdEntiteFk" IS 'Propriétaire de la valeur, NULL commun.';
+
+--
+-- Name: COLUMN "V_Generique"."NomEntite"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_Generique"."NomEntite" IS 'Nom actuel du propriétaire de la valeur, absent pour le commun.';
+
+--
+-- Name: COLUMN "V_Generique"."Portee"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_Generique"."Portee" IS 'Portée calculée depuis le propriétaire de la valeur.';
+
+--
+-- Name: COLUMN "V_Generique"."IdEntiteCategorieFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_Generique"."IdEntiteCategorieFk" IS 'Propriétaire de la famille pour vérifier que toute valeur privée est dans le même contexte.';
+
+--
+-- Name: V_InterfaceTableau; Type: VIEW; Schema: referentiel; Owner: -
+--
+
+CREATE VIEW referentiel."V_InterfaceTableau" AS
+ SELECT "CleInterface",
+    replace(replace("CleInterface", '.'::text, ' · '::text), '_'::text, ' '::text) AS "Libelle",
+    "Module",
+    "Version",
+    "Colonnes",
+    "Actif",
+    "ModifieLe",
+    jsonb_array_length("Colonnes") AS "NbColonnes"
+   FROM referentiel."T_InterfaceTableau" i;
+
+--
+-- Name: VIEW "V_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON VIEW referentiel."V_InterfaceTableau" IS 'Catalogue réel des interfaces de tableaux et exports, en consultation. Libellé lisible dérivé de la clé, colonnes structurées et nombre calculé ; les préférences personnelles utilisent leur service existant.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."CleInterface"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."CleInterface" IS 'Clé stable du catalogue PostgreSQL et des services de préférences.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."Libelle"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."Libelle" IS 'Libellé de lecture dérivé de la clé, sans deuxième définition persistée.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."Module"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."Module" IS 'Application propriétaire déclarée par le catalogue réel.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."Version"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."Version" IS 'Version effective de la définition des colonnes.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."Colonnes"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."Colonnes" IS 'Définitions JSON validées des colonnes, de leurs usages et de leur ordre par défaut.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."Actif"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."Actif" IS 'Disponibilité de cette interface dans le catalogue.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."ModifieLe"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."ModifieLe" IS 'Horodatage du dernier changement de définition.';
+
+--
+-- Name: COLUMN "V_InterfaceTableau"."NbColonnes"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."V_InterfaceTableau"."NbColonnes" IS 'Nombre de définitions de colonnes calculé depuis le JSON.';
 
 --
 -- Name: V_ReferencementChamp; Type: VIEW; Schema: referentiel; Owner: -

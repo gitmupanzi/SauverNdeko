@@ -15,7 +15,7 @@ from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit, clean, mutate, positive
 from apps.core.responses import APIError, ExactEncoder, ok
-from apps.core.tenancy import require_entity, assert_document
+from apps.core.tenancy import require_entity, assert_document, read_entity
 from .quantities import for_unit, quantity, line_amount
 from .lots import normalize as normalize_lots
 
@@ -157,11 +157,8 @@ def validate(actor,identifier,body):
         lines=db.query('SELECT * FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Inventaire']])
         if not lines:failure('lignes','Ajoutez les articles comptés.')
         articles=lock_articles(actor,lines)
-        types={}
-        for sign,pattern in ((1,'entr%'),(-1,'sort%')):
-            rows=db.query('''SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-                WHERE g."ID_CategorieGeneriqueFk"=64 AND g."AbrGenerique" ILIKE %s AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique"''',[pattern])
-            if rows:types[sign]=rows[0]['ID_Generique']
+        from .lots import stock_document_types
+        types=stock_document_types(actor,lock=True)
         corrections={}
         from .services import mutate_line
         for line in lines:
@@ -235,7 +232,9 @@ class UnitPrecisionView(APIView):
         access(request.user)
         return ok(db.query('''SELECT "ID_PrecisionStock","ID_UniteFk","Unite","Abreviation",
           "DecimalesStock" AS "Decimales","ModifieLe"
-          FROM logistique."V_PrecisionStock" ORDER BY "Unite","ID_UniteFk"'''))
+          FROM logistique."V_PrecisionStock"
+          WHERE referentiel.fn_reference_visible("ID_UniteFk",%s)
+          ORDER BY "Unite","ID_UniteFk"''', [read_entity(request.user)]))
     def put(self,request):
         access(request.user,True)
         if not request.user.global_admin:raise APIError('Le paramétrage partagé des unités exige un administrateur de plateforme.','GLOBAL_ADMIN_REQUIRED',403)
@@ -243,6 +242,10 @@ class UnitPrecisionView(APIView):
         if not isinstance(body,dict) or set(body)!={'ID_UniteFk','Decimales'} or type(body['Decimales']) is not int or body['Decimales'] not in range(4):raise APIError('Choisissez une unité et une précision de zéro à trois décimales.')
         unit_id=positive(body['ID_UniteFk'])
         with transaction.atomic():
+            unit=db.one('''SELECT "IdEntiteFk" FROM referentiel."T_Generique"
+              WHERE "ID_Generique"=%s AND referentiel.fn_reference_visible("ID_Generique",%s) FOR SHARE''',
+              [unit_id,read_entity(request.user)])
+            if unit is None:raise APIError('Unité introuvable dans cet espace.','NOT_FOUND',404)
             previous=db.one('''SELECT * FROM logistique."T_PrecisionStock" WHERE "ID_UniteFk"=%s FOR UPDATE''',[unit_id])
             if previous:
                 row=db.one('''UPDATE logistique."T_PrecisionStock" SET "DecimalesStock"=%s
@@ -251,8 +254,8 @@ class UnitPrecisionView(APIView):
                 row=db.one('''INSERT INTO logistique."T_PrecisionStock"("ID_UniteFk","DecimalesStock")
                   SELECT "ID_Generique",%s FROM referentiel."T_Generique"
                   WHERE "ID_Generique"=%s AND referentiel.fn_valider_reference_champ(
-                    'logistique','T_PrecisionStock','ID_UniteFk',"ID_Generique",NULL)
-                  RETURNING *''',[body['Decimales'],unit_id])
+                    'logistique','T_PrecisionStock','ID_UniteFk',"ID_Generique",%s)
+                  RETURNING *''',[body['Decimales'],unit_id,unit['IdEntiteFk']])
             if not row:raise APIError('Unité introuvable.','NOT_FOUND',404)
             audit({'schema':'logistique','name':'T_PrecisionStock'},'UPDATE' if previous else 'INSERT',old=previous,new=row,actor=request.user)
             return ok(clean({'ID_PrecisionStock':row['ID_PrecisionStock'],'ID_UniteFk':row['ID_UniteFk'],'Decimales':row['DecimalesStock'],'ModifieLe':row['ModifieLe']}))

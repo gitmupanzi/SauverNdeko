@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -430,6 +430,31 @@ $$;
 --
 
 COMMENT ON FUNCTION systeme.prevention_delete_if_dependent() IS 'Avant DELETE utilisateur, bloque la suppression si des paiements liés par IdUserFk ou des présences/évaluations liées existent dans les tables que la fonction trouve. Ne couvre pas à elle seule toutes les dépendances : les contraintes FK restent applicables.';
+
+--
+-- Name: tr_correspondance_categorie_portee(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_correspondance_categorie_portee() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE cible_entite integer;
+BEGIN
+ IF NEW."MappingType"<>'generic_category' OR NEW."TargetCategoryIdFk" IS NULL THEN RETURN NEW;END IF;
+ SELECT "IdEntiteFk" INTO cible_entite FROM referentiel."T_CategorieGenerique" WHERE "ID_CategorieGenerique"=NEW."TargetCategoryIdFk" FOR SHARE;
+ IF cible_entite IS NOT NULL AND (NEW."SettingScope"<>'entity' OR NEW."ScopeValue" IS DISTINCT FROM cible_entite::text
+  OR EXISTS(SELECT FROM referentiel."T_ChampReferentiel" c WHERE NOT c."SupportsEntityScope" AND
+   (c."ID_ChampReferentiel"=NEW."IdChampReferentielFk" OR NEW."SourceKey"=ANY(c."AliasSourceKeys")))) THEN
+  RAISE EXCEPTION 'Une catégorie privée exige le champ et la portée de son entreprise.' USING ERRCODE='23514',CONSTRAINT='ck_correspondance_categorie_portee';END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_correspondance_categorie_portee(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_correspondance_categorie_portee() IS 'Une famille privée ne peut configurer que son entreprise et un champ supportant réellement ce contexte ; protège aussi les anciens alias sans modifier leur résolution.';
 
 --
 -- Name: tr_correspondance_champ_integrite(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -2993,6 +3018,18 @@ CREATE TRIGGER aa_utilisateur_affectation_verifier BEFORE INSERT OR UPDATE ON sy
 --
 
 COMMENT ON TRIGGER aa_utilisateur_affectation_verifier ON systeme."T_Utilisateurs" IS 'Intégrité des nouvelles affectations professionnelles et conservation de l’entreprise des responsables de biens.';
+
+--
+-- Name: T_Fk_Correspondance ab_correspondance_categorie_portee; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER ab_correspondance_categorie_portee BEFORE INSERT OR UPDATE ON systeme."T_Fk_Correspondance" FOR EACH ROW EXECUTE FUNCTION systeme.tr_correspondance_categorie_portee();
+
+--
+-- Name: TRIGGER ab_correspondance_categorie_portee ON "T_Fk_Correspondance"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER ab_correspondance_categorie_portee ON systeme."T_Fk_Correspondance" IS 'Complète la garde canonique existante par la propriété de la catégorie choisie.';
 
 --
 -- Name: T_LicenceModule licence_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -

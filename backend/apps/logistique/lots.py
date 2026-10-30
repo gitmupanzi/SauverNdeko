@@ -82,9 +82,25 @@ def initial_lots(article,rows):
 
 def outgoing_type(type_id):
     """Le sens est résolu dans le référentiel serveur, jamais reçu comme drapeau client."""
-    row=db.one('''SELECT "AbrGenerique" ILIKE 'sort%%' AS outgoing FROM referentiel."T_Generique"
-        WHERE "ID_Generique"=%s AND "ID_CategorieGeneriqueFk"=64''',[type_id])
+    row=db.one("SELECT logistique.fn_nature_bon(%s)='sortie' AS outgoing",[type_id])
     return bool(row and row["outgoing"])
+
+
+def stock_document_types(actor,*,lock=False):
+    """Types d'écart effectifs : même configuration que le formulaire des bons."""
+    from apps.core.field_references import reference_options
+    rows=reference_options(actor,'logistique','T_Commande','ID_TypeCmdFk')
+    result={}
+    for item in sorted(rows,key=lambda row:row['id']):
+        sign=item.get('stockEffect')
+        if sign in (1,-1) and not item.get('disabled'):
+            result.setdefault(sign,item['id'])
+    if lock and result:
+        db.query('SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN '
+            'referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" '
+            'WHERE g."ID_Generique"=ANY(%s::integer[]) ORDER BY g."ID_Generique" FOR SHARE OF g,c',
+            [sorted(result.values())])
+    return result
 
 
 def stock_state(article_id):

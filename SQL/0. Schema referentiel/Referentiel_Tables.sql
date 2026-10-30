@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -52,6 +52,23 @@ END $_$;
 COMMENT ON FUNCTION referentiel.fn_catalogue_tableau_verifier() IS 'Vérifie les identifiants, options et doublons du catalogue ; interdit l’export des actions et versionne ses modifications.';
 
 --
+-- Name: fn_categorie_visible(integer, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_categorie_visible(p_categorie integer, p_entite integer DEFAULT NULL::integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT EXISTS(SELECT FROM referentiel."T_CategorieGenerique" c WHERE c."ID_CategorieGenerique"=p_categorie
+  AND (c."IdEntiteFk" IS NULL OR c."IdEntiteFk"=p_entite)) $$;
+
+--
+-- Name: FUNCTION fn_categorie_visible(p_categorie integer, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_categorie_visible(p_categorie integer, p_entite integer) IS 'Visibilité de portée uniquement : catégorie commune ou de l’entreprise explicitement indiquée, jamais d’une autre. NULL entreprise ne désigne que les catégories communes ; validité contrôlée séparément.';
+
+--
 -- Name: fn_categories_champ(text, text, text, integer); Type: FUNCTION; Schema: referentiel; Owner: -
 --
 
@@ -79,6 +96,8 @@ BEGIN
  -- L'entreprise de l'utilisateur ou d'un résultat de recherche n'est pas
  -- un propriétaire durable d'une ligne partagée.
  IF p_ligne IS NULL OR NOT EXISTS(SELECT FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "SupportsEntityScope") THEN RETURN NULL;END IF;
+ IF (p_schema,p_table)=('logistique','T_PrecisionStock') THEN
+  SELECT "IdEntiteFk" INTO owner_id FROM referentiel."T_Generique" WHERE "ID_Generique"=nullif(p_ligne->>'ID_UniteFk','')::integer;RETURN owner_id;END IF;
  IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
  owner_id:=coalesce(nullif(p_ligne->>'IdEntiteFk','')::integer,nullif(p_ligne->>'ID_EntiteFk','')::integer);
  IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
@@ -101,7 +120,7 @@ END $$;
 -- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Entreprise de la vraie ligne : FK directe, PK de T_Entite ou parent logistique prouvé. Retourne NULL pour les tables partagées ; ne déduit jamais une propriété depuis l’utilisateur, la session ou un résultat de recherche. Fonction de lecture sans autorisation supplémentaire.';
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Propriétaire stable de la vraie ligne : FK directe, PK Entité, parent logistique ou unité de précision à propriétaire immuable. Les tables partagées sans propriétaire restent globales ; aucune déduction depuis l’utilisateur ou la session.';
 
 --
 -- Name: fn_guard_sens_stock(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -123,6 +142,22 @@ END $$;
 --
 
 COMMENT ON FUNCTION referentiel.fn_guard_sens_stock() IS 'Conserve le sens des types de bon déjà utilisés, dans toute famille actuelle ou ancienne, sans dépendre de l’identifiant historique64.';
+
+--
+-- Name: fn_normaliser_libelle(text); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_normaliser_libelle(p_texte text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT lower(btrim(regexp_replace(p_texte,'[[:space:]'||chr(160)||']+',' ','g'))) $$;
+
+--
+-- Name: FUNCTION fn_normaliser_libelle(p_texte text); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_normaliser_libelle(p_texte text) IS 'Clé de comparaison des libellés/codes : casse et espaces normalisés, y compris espace insécable. Les accents restent distincts ; la forme affichée et les identifiants ne sont jamais réécrits.';
 
 --
 -- Name: fn_preference_tableau_verifier(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -200,6 +235,24 @@ END $_$;
 COMMENT ON FUNCTION referentiel.fn_reference_champ_connue(p_schema text, p_table text, p_colonne text, p_valeur integer) IS 'Reconnaissance de lecture et des procédures historiques : famille de référence, catégorie déclarée ou valeur déjà utilisée dans la vraie FK. Ne remplace jamais la validation stricte d’une nouvelle affectation.';
 
 --
+-- Name: fn_reference_visible(integer, integer); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.fn_reference_visible(p_valeur integer, p_entite integer DEFAULT NULL::integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT EXISTS(SELECT FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_valeur
+  AND (g."IdEntiteFk" IS NULL OR g."IdEntiteFk"=p_entite)
+  AND referentiel.fn_categorie_visible(g."ID_CategorieGeneriqueFk",p_entite)) $$;
+
+--
+-- Name: FUNCTION fn_reference_visible(p_valeur integer, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.fn_reference_visible(p_valeur integer, p_entite integer) IS 'Visibilité d’une valeur et de sa famille dans le même périmètre commun/entreprise, sans autorisation d’accès supplémentaire. Ne confond ni valeur inactive ni référence hors catégorie avec une autre entreprise.';
+
+--
 -- Name: fn_resolution_champ(text, text, text, integer); Type: FUNCTION; Schema: referentiel; Owner: -
 --
 
@@ -237,15 +290,18 @@ COMMENT ON FUNCTION referentiel.fn_resolution_champ(p_schema text, p_table text,
 CREATE FUNCTION referentiel.fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer DEFAULT NULL::integer) RETURNS boolean
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
-    AS $$ SELECT p_valeur IS NULL OR EXISTS(
- SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
- WHERE g."ID_Generique"=p_valeur AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ(p_schema,p_table,p_colonne,p_entite))) $$;
+    AS $$
+ SELECT p_valeur IS NULL OR EXISTS(SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+  JOIN referentiel."T_ChampReferentiel" r ON r."SchemaName"=p_schema AND r."TableName"=p_table AND r."ColumnName"=p_colonne
+  WHERE g."ID_Generique"=p_valeur AND g."ValideGenerique" AND c."ValideCategorieGenerique"
+   AND g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ(p_schema,p_table,p_colonne,p_entite))
+   AND referentiel.fn_reference_visible(p_valeur,CASE WHEN r."SupportsEntityScope" THEN p_entite END)) $$;
 
 --
 -- Name: FUNCTION fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer) IS 'Vérifie une nouvelle affectation de référence : valeur et famille actives, famille courante du champ et de l’entreprise. NULL reste soumis à la contrainte NOT NULL de la vraie colonne.';
+COMMENT ON FUNCTION referentiel.fn_valider_reference_champ(p_schema text, p_table text, p_colonne text, p_valeur integer, p_entite integer) IS 'Nouvelle sélection active de la catégorie configurée et de la portée propriétaire réelle. Les champs communs excluent toutes les valeurs privées ; les références historiques inchangées restent gérées par la garde physique existante.';
 
 --
 -- Name: tr_catalogue_champ_integrite(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -273,6 +329,81 @@ END $$;
 --
 
 COMMENT ON FUNCTION referentiel.tr_catalogue_champ_integrite() IS 'Conserve la clé physique, le défaut prouvé et la politique de sécurité ; seule une révision interne issue des correspondances peut modifier les métadonnées. Un chargement initial doit prouver la vraie FK ; les clés déjà installées sont uniques.';
+
+--
+-- Name: tr_categorie_portee_doublon(); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.tr_categorie_portee_doublon() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE normalise text; duplicate_id integer;
+BEGIN
+ IF TG_OP='UPDATE' AND NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" THEN
+  RAISE EXCEPTION 'La portée d’une catégorie enregistrée est conservée.' USING ERRCODE='23514',CONSTRAINT='ck_categorie_portee_immuable';END IF;
+ normalise:=referentiel.fn_normaliser_libelle(NEW."NomCategorieGenerique");
+ IF TG_OP='UPDATE' AND normalise IS NOT DISTINCT FROM referentiel.fn_normaliser_libelle(OLD."NomCategorieGenerique") THEN RETURN NEW;END IF;
+ IF coalesce(normalise,'')='' THEN RAISE EXCEPTION 'Indiquez le libellé de la catégorie.' USING ERRCODE='23514',CONSTRAINT='ck_categorie_nom_requis';END IF;
+ -- Un verrou commun sérialise les lots de catégories dans un ordre unique.
+ PERFORM pg_advisory_xact_lock(hashtextextended('referentiel:categories:identite',0));
+ SELECT "ID_CategorieGenerique" INTO duplicate_id FROM referentiel."T_CategorieGenerique" c
+  WHERE c."ID_CategorieGenerique"<>NEW."ID_CategorieGenerique"
+   AND referentiel.fn_normaliser_libelle(c."NomCategorieGenerique")=normalise
+   AND (NEW."IdEntiteFk" IS NULL OR c."IdEntiteFk" IS NULL OR c."IdEntiteFk"=NEW."IdEntiteFk") LIMIT 1;
+ IF FOUND THEN RAISE EXCEPTION 'Une catégorie de même nom existe déjà dans cette portée.' USING ERRCODE='23505',CONSTRAINT='uq_categorie_nom_effectif';END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_categorie_portee_doublon(); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.tr_categorie_portee_doublon() IS 'Propriété immuable et noms non vides non ambigus entre commun et entreprise. Les identités historiques inchangées restent modifiables descriptivement ; le verrou transactionnel interdit les doublons concurrents.';
+
+--
+-- Name: tr_generique_portee_doublon(); Type: FUNCTION; Schema: referentiel; Owner: -
+--
+
+CREATE FUNCTION referentiel.tr_generique_portee_doublon() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE famille_entite integer; nom text; code text; nom_change boolean; code_change boolean;
+BEGIN
+ IF TG_OP='UPDATE' AND NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" THEN
+  RAISE EXCEPTION 'La portée d’une valeur enregistrée est conservée.' USING ERRCODE='23514',CONSTRAINT='ck_generique_portee_immuable';END IF;
+ SELECT "IdEntiteFk" INTO famille_entite FROM referentiel."T_CategorieGenerique" WHERE "ID_CategorieGenerique"=NEW."ID_CategorieGeneriqueFk" FOR SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Catégorie introuvable.' USING ERRCODE='23503';END IF;
+ IF famille_entite IS NOT NULL AND NEW."IdEntiteFk" IS DISTINCT FROM famille_entite THEN
+  RAISE EXCEPTION 'Une valeur de catégorie privée appartient à la même entreprise.' USING ERRCODE='23514',CONSTRAINT='ck_generique_categorie_portee';END IF;
+ IF NEW."IdEntiteFk" IS NOT NULL AND EXISTS(SELECT FROM referentiel."T_ChampReferentiel" r
+  WHERE NOT r."CanConfigure" AND r."ID_CategorieDefautFk"=NEW."ID_CategorieGeneriqueFk") THEN
+  RAISE EXCEPTION 'Les valeurs d’une famille de sécurité restent communes.' USING ERRCODE='23514',CONSTRAINT='ck_generique_securite_commune';END IF;
+ nom:=referentiel.fn_normaliser_libelle(NEW."NomGenerique");code:=referentiel.fn_normaliser_libelle(NEW."AbrGenerique");
+ nom_change:=TG_OP='INSERT';code_change:=TG_OP='INSERT';
+ IF TG_OP='UPDATE' THEN
+  nom_change:=nom IS DISTINCT FROM referentiel.fn_normaliser_libelle(OLD."NomGenerique") OR NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM OLD."ID_CategorieGeneriqueFk";
+  code_change:=code IS DISTINCT FROM referentiel.fn_normaliser_libelle(OLD."AbrGenerique") OR NEW."ID_CategorieGeneriqueFk" IS DISTINCT FROM OLD."ID_CategorieGeneriqueFk";
+ END IF;
+ IF NOT(nom_change OR code_change) THEN RETURN NEW;END IF;
+ IF nom_change AND coalesce(nom,'')='' THEN RAISE EXCEPTION 'Indiquez le libellé de la valeur.' USING ERRCODE='23514',CONSTRAINT='ck_generique_nom_requis';END IF;
+ -- Une famille est commune au lot de valeurs, comme l’en-tête d’un bon.
+ PERFORM pg_advisory_xact_lock(hashtextextended('referentiel:valeurs:'||NEW."ID_CategorieGeneriqueFk"::text,0));
+ IF nom_change AND EXISTS(SELECT FROM referentiel."T_Generique" g WHERE g."ID_Generique"<>NEW."ID_Generique" AND g."ID_CategorieGeneriqueFk"=NEW."ID_CategorieGeneriqueFk"
+  AND referentiel.fn_normaliser_libelle(g."NomGenerique")=nom AND (NEW."IdEntiteFk" IS NULL OR g."IdEntiteFk" IS NULL OR g."IdEntiteFk"=NEW."IdEntiteFk")) THEN
+  RAISE EXCEPTION 'Un libellé identique existe déjà dans cette catégorie et cette portée.' USING ERRCODE='23505',CONSTRAINT='uq_generique_nom_effectif';END IF;
+ IF code_change AND coalesce(code,'')<>'' AND EXISTS(SELECT FROM referentiel."T_Generique" g WHERE g."ID_Generique"<>NEW."ID_Generique" AND g."ID_CategorieGeneriqueFk"=NEW."ID_CategorieGeneriqueFk"
+  AND referentiel.fn_normaliser_libelle(g."AbrGenerique")=code AND (NEW."IdEntiteFk" IS NULL OR g."IdEntiteFk" IS NULL OR g."IdEntiteFk"=NEW."IdEntiteFk")) THEN
+  RAISE EXCEPTION 'Un code identique existe déjà dans cette catégorie et cette portée.' USING ERRCODE='23505',CONSTRAINT='uq_generique_code_effectif';END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_generique_portee_doublon(); Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON FUNCTION referentiel.tr_generique_portee_doublon() IS 'Cohérence de propriétaire catégorie/valeur et contrôle des nouveaux libellés/codes, sérialisé par famille. Les familles de sécurité non configurables restent communes. Un doublon privé entre entreprises distinctes reste autorisé ; aucun ancien doublon n’est fusionné ou effacé.';
 
 --
 -- Name: tr_reference_utilisee_integrite(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -370,14 +501,15 @@ CREATE TABLE referentiel."T_Generique" (
     "VisibleVoie" boolean DEFAULT true,
     "VisibleAll" boolean DEFAULT true,
     "ObsGenerique" text,
-    "ValideGenerique" boolean DEFAULT true CONSTRAINT "T_Generique_ValideGenerique_not_null" NOT NULL
+    "ValideGenerique" boolean DEFAULT true CONSTRAINT "T_Generique_ValideGenerique_not_null" NOT NULL,
+    "IdEntiteFk" integer
 );
 
 --
 -- Name: TABLE "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON TABLE referentiel."T_Generique" IS 'Valeurs des nomenclatures rattachées à une catégorie : libellé, abréviation, visibilité par usage et validité. La signification métier dépend de la catégorie.';
+COMMENT ON TABLE referentiel."T_Generique" IS 'Valeurs du référentiel, identifiées par ID_Generique, classées par catégorie et protégées par une portée commune ou entreprise ; les drapeaux de visibilité historiques restent distincts.';
 
 --
 -- Name: COLUMN "T_Generique"."ID_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
@@ -476,6 +608,12 @@ COMMENT ON COLUMN referentiel."T_Generique"."ObsGenerique" IS 'Observations enre
 COMMENT ON COLUMN referentiel."T_Generique"."ValideGenerique" IS 'Indique si la valeur de nomenclature est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
 --
+-- Name: COLUMN "T_Generique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_Generique"."IdEntiteFk" IS 'Propriétaire durable facultatif : NULL commun, sinon valeur privée de cette entreprise. Une catégorie privée impose la même entreprise ; aucune réattribution des données antérieures.';
+
+--
 -- Name: CONSTRAINT "T_Generique_ID_Generique_not_null" ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
@@ -507,14 +645,15 @@ CREATE TABLE referentiel."T_CategorieGenerique" (
     "ID_CategorieGenerique" integer CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" NOT NULL,
     "NomCategorieGenerique" character varying(255),
     "ModuleCategorieGenerique" text,
-    "ValideCategorieGenerique" boolean DEFAULT true
+    "ValideCategorieGenerique" boolean DEFAULT true,
+    "IdEntiteFk" integer
 );
 
 --
 -- Name: TABLE "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON TABLE referentiel."T_CategorieGenerique" IS 'Catégories de nomenclature : nom, module d’usage et validité. Regroupe les valeurs de T_Generique.';
+COMMENT ON TABLE referentiel."T_CategorieGenerique" IS 'Familles transversales communes ou propres à une entreprise, réutilisées par les champs catalogués. Identifiants et familles antérieures conservés.';
 
 --
 -- Name: COLUMN "T_CategorieGenerique"."ID_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
@@ -539,6 +678,12 @@ COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ModuleCategorieGenerique" 
 --
 
 COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ValideCategorieGenerique" IS 'Indique si la catégorie est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."IdEntiteFk" IS 'Propriétaire durable facultatif : NULL désigne le référentiel commun. Toutes les catégories antérieures restent communes ; une propriété enregistrée est immuable.';
 
 --
 -- Name: CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" ON "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
@@ -1233,6 +1378,30 @@ CREATE INDEX idx_generique_id_categorie ON referentiel."T_Generique" USING btree
 COMMENT ON INDEX referentiel.idx_generique_id_categorie IS 'Index d’accès sur "referentiel"."T_Generique". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_generique_id_categorie ON referentiel."T_Generique" USING btree ("ID_CategorieGeneriqueFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
 
 --
+-- Name: ix_categorie_generique_entite; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_categorie_generique_entite ON referentiel."T_CategorieGenerique" USING btree ("IdEntiteFk");
+
+--
+-- Name: INDEX ix_categorie_generique_entite; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_categorie_generique_entite IS 'Lecture des catégories communes et propres au contexte autorisé.';
+
+--
+-- Name: ix_categorie_generique_nom_normalise; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_categorie_generique_nom_normalise ON referentiel."T_CategorieGenerique" USING btree (referentiel.fn_normaliser_libelle(("NomCategorieGenerique")::text));
+
+--
+-- Name: INDEX ix_categorie_generique_nom_normalise; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_categorie_generique_nom_normalise IS 'Recherche des ambiguïtés de nom sans supprimer les anciens doublons ; la garde sérialise les nouvelles identités.';
+
+--
 -- Name: ix_champ_referentiel_alias; Type: INDEX; Schema: referentiel; Owner: -
 --
 
@@ -1243,6 +1412,42 @@ CREATE INDEX ix_champ_referentiel_alias ON referentiel."T_ChampReferentiel" USIN
 --
 
 COMMENT ON INDEX referentiel.ix_champ_referentiel_alias IS 'Résolution explicite des anciens SourceKey partagés vers leurs colonnes physiques, sans supposer que les alias sont des noms de champs.';
+
+--
+-- Name: ix_generique_code_normalise; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_generique_code_normalise ON referentiel."T_Generique" USING btree ("ID_CategorieGeneriqueFk", referentiel.fn_normaliser_libelle(("AbrGenerique")::text));
+
+--
+-- Name: INDEX ix_generique_code_normalise; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_generique_code_normalise IS 'Comparaison du code facultatif dans la catégorie ; les anciens codes identiques restent conservés.';
+
+--
+-- Name: ix_generique_entite_categorie; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_generique_entite_categorie ON referentiel."T_Generique" USING btree ("IdEntiteFk", "ID_CategorieGeneriqueFk");
+
+--
+-- Name: INDEX ix_generique_entite_categorie; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_generique_entite_categorie IS 'Lecture des valeurs d’une catégorie dans la portée propriétaire autorisée.';
+
+--
+-- Name: ix_generique_nom_normalise; Type: INDEX; Schema: referentiel; Owner: -
+--
+
+CREATE INDEX ix_generique_nom_normalise ON referentiel."T_Generique" USING btree ("ID_CategorieGeneriqueFk", referentiel.fn_normaliser_libelle(("NomGenerique")::text));
+
+--
+-- Name: INDEX ix_generique_nom_normalise; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON INDEX referentiel.ix_generique_nom_normalise IS 'Comparaison du libellé dans sa famille et sa portée effective ; aucune consolidation des identifiants historiques.';
 
 --
 -- Name: INDEX uq_champ_referentiel_physique; Type: COMMENT; Schema: referentiel; Owner: -
@@ -1267,6 +1472,30 @@ CREATE TRIGGER aa_reference_utilisee_integrite BEFORE DELETE OR UPDATE ON refere
 --
 
 COMMENT ON TRIGGER aa_reference_utilisee_integrite ON referentiel."T_Generique" IS 'Protection transversale des références utilisées, sans réécrire les anciennes données hors famille.';
+
+--
+-- Name: T_CategorieGenerique ab_categorie_portee_doublon; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER ab_categorie_portee_doublon BEFORE INSERT OR UPDATE ON referentiel."T_CategorieGenerique" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_categorie_portee_doublon();
+
+--
+-- Name: TRIGGER ab_categorie_portee_doublon ON "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_categorie_portee_doublon ON referentiel."T_CategorieGenerique" IS 'Garde des nouvelles identités de familles et de leur portée durable, sans correction implicite des données anciennes.';
+
+--
+-- Name: T_Generique ab_generique_portee_doublon; Type: TRIGGER; Schema: referentiel; Owner: -
+--
+
+CREATE TRIGGER ab_generique_portee_doublon BEFORE INSERT OR UPDATE ON referentiel."T_Generique" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_generique_portee_doublon();
+
+--
+-- Name: TRIGGER ab_generique_portee_doublon ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_generique_portee_doublon ON referentiel."T_Generique" IS 'Valide la portée et les changements d’identité ; respecte les gardes métier existantes des devises, unités et types de bon utilisés.';
 
 --
 -- Name: T_Generique devise_logistique_reference_integrite; Type: TRIGGER; Schema: referentiel; Owner: -
@@ -1354,6 +1583,19 @@ ALTER TABLE ONLY referentiel."T_Generique"
 COMMENT ON CONSTRAINT "Fk_ID_CategorieGenerique" ON referentiel."T_Generique" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "referentiel"."T_Generique". Définition : FOREIGN KEY ("ID_CategorieGeneriqueFk") REFERENCES referentiel."T_CategorieGenerique"("ID_CategorieGenerique") ON UPDATE CASCADE.';
 
 --
+-- Name: T_CategorieGenerique T_CategorieGenerique_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_CategorieGenerique"
+    ADD CONSTRAINT "T_CategorieGenerique_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CategorieGenerique_IdEntiteFk_fkey" ON "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CategorieGenerique_IdEntiteFk_fkey" ON referentiel."T_CategorieGenerique" IS 'La catégorie privée appartient à une entreprise réelle qui ne peut être supprimée tant que la référence existe.';
+
+--
 -- Name: T_ChampReferentiel T_ChampReferentiel_ID_CategorieDefautFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
 --
 
@@ -1378,6 +1620,19 @@ ALTER TABLE ONLY referentiel."T_ChampReferentiel"
 --
 
 COMMENT ON CONSTRAINT "T_ChampReferentiel_ModifieParUserFk_fkey" ON referentiel."T_ChampReferentiel" IS 'Intégrité du référencement physique : FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE SET NULL';
+
+--
+-- Name: T_Generique T_Generique_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -
+--
+
+ALTER TABLE ONLY referentiel."T_Generique"
+    ADD CONSTRAINT "T_Generique_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_Generique_IdEntiteFk_fkey" ON "T_Generique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Generique_IdEntiteFk_fkey" ON referentiel."T_Generique" IS 'La valeur privée appartient à une entreprise réelle ; ses identifiants métier ne sont pas déplacés à la suppression du propriétaire.';
 
 --
 -- Name: T_PreferenceTableau T_PreferenceTableau_CleInterfaceFk_fkey; Type: FK CONSTRAINT; Schema: referentiel; Owner: -

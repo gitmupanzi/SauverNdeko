@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -552,6 +552,7 @@ BEGIN
   ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
  WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Article','ID_DeviseFk',NULL))
    AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE
+   AND referentiel.fn_reference_visible(g."ID_Generique",NULL)
    AND logistique.fn_code_devise(g."AbrGenerique")='USD';
  IF nombre<>1 THEN
   RAISE EXCEPTION 'Une seule devise USD active est requise dans la catégorie Devise active (trouvées : %).',nombre USING ERRCODE='23514';
@@ -564,7 +565,7 @@ $$;
 -- Name: FUNCTION fn_devise_usd(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Défaut USD global résolu dans la catégorie courante du champ devise Article ; exige une seule valeur USD active et conserve son code ISO. Les choix d’entreprise sont explicitement transmis par les services.';
+COMMENT ON FUNCTION logistique.fn_devise_usd() IS 'Défaut USD actif unique du référentiel commun, sans compter les devises privées des entreprises. Les services propriétaires résolvent explicitement leur contexte.';
 
 --
 -- Name: fn_effet_type_bon(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -681,7 +682,7 @@ BEGIN
   qty=a."QteArticle";price=a."PUArticle";business_date=coalesce(a."DateHeureAuto"::timestamp,clock_timestamp()::timestamp);origin='stock_initial';
   IF coalesce(qty,0)=0 THEN RETURN NULL;END IF;
   IF EXISTS(SELECT FROM logistique."T_Mouvement" WHERE "ID_ArticleFk"=p_article) THEN RAISE EXCEPTION 'Stock deja historise: rapprochez les mouvements existants.' USING ERRCODE='23514';END IF;
-  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('logistique','T_Commande','ID_TypeCmdFk',a."IdEntiteFk")) AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
+  SELECT g."ID_Generique" INTO kind FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE referentiel.fn_valider_reference_champ('logistique','T_Commande','ID_TypeCmdFk',g."ID_Generique",a."IdEntiteFk") AND g."AbrGenerique" ILIKE 'entr%' AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE ORDER BY g."ID_Generique" LIMIT 1;
  ELSE
   SELECT * INTO m FROM logistique."T_Mouvement" WHERE "ID_Mvt"=p_mouvement AND "ID_ArticleFk"=p_article FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Mouvement absent.' USING ERRCODE='23503';END IF;
@@ -706,7 +707,7 @@ END $$;
 -- Name: FUNCTION fn_materialiser_stock_initial(p_article integer, p_mouvement integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Stock initial positif matérialisé une seule fois par BE, ligne et mouvement ; type d’entrée actif résolu dans la famille de commande effective de son entreprise. Reprise historique inchangée.';
+COMMENT ON FUNCTION logistique.fn_materialiser_stock_initial(p_article integer, p_mouvement integer) IS 'Stock initial physique inchangé, un BE/ligne/mouvement atomique. Le type d’entrée est actif, dans la catégorie et la portée réelles de l’article, sans choisir le type privé d’une autre entreprise.';
 
 --
 -- Name: fn_montant_avoir_attente(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -2315,8 +2316,7 @@ BEGIN
      RAISE EXCEPTION 'Facture réglée en tout ou partie : métadonnées conservées.' USING ERRCODE='23514'; END IF;
  ELSE
   IF NULLIF(btrim(parent."CodeFacture"),'') IS NOT NULL THEN RAISE EXCEPTION 'Une facture historique existe déjà.' USING ERRCODE='23514'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=parent."ID_TypeCmdFk"
-    AND "ID_CategorieGeneriqueFk"=64 AND "AbrGenerique" ILIKE 'sort%')
+  IF logistique.fn_nature_bon(parent."ID_TypeCmdFk") IS DISTINCT FROM 'sortie'
     OR EXISTS(SELECT 1 FROM logistique."T_RetourBon" WHERE "ID_CommandeRetourFk"=parent."ID_Commande") THEN
     RAISE EXCEPTION 'Seul un bon de sortie original peut être facturé.' USING ERRCODE='23514'; END IF;
   source_entity:=parent."IdEntiteFk";
@@ -2344,7 +2344,7 @@ END $$;
 -- Name: FUNCTION tr_proteger_facture(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_proteger_facture() IS 'Interdit suppression et modification du snapshot ; seules les métadonnées restent modifiables avant règlement.';
+COMMENT ON FUNCTION logistique.tr_proteger_facture() IS 'Protection des factures emises et de leurs instantanes. La nature sortie du document est reconnue par le catalogue actuel ou historique via fn_nature_bon, sans categorie fixe ; aucune facture de retour ou CMD physique ne devient admissible.';
 
 --
 -- Name: tr_proteger_identite_lot_facture(); Type: FUNCTION; Schema: logistique; Owner: -

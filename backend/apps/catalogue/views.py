@@ -4,6 +4,7 @@ from apps.core.permissions import HasModuleAccess
 from apps.core import db
 from apps.core.repository import page, positive
 from apps.core.responses import ok, APIError
+from apps.core.tenancy import read_entity
 
 EXPERT_SQL = 'SELECT p.* FROM professionnel."V_Professionnel_Public" p'
 ENTITY_SQL = 'SELECT e.* FROM systeme."V_Entite_Public" e'
@@ -88,8 +89,16 @@ class PublicView(APIView):
                 }
             )
         if kind == "stats":
-            sql = '''SELECT (SELECT count(*) FROM logistique."V_Article" WHERE "ValideArticle"=true) AS "productsCount",(SELECT count(*) FROM systeme."V_Entite_Public") AS "pharmaciesCount",(SELECT count(*) FROM professionnel."V_Professionnel_Public") AS "expertsCount",(SELECT count(*) FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie') AS "diseasesCount",(SELECT count(*) FROM systeme."T_Entite" WHERE "ValideEntite"=true) AS "activeStructures"'''
-            data = db.one(sql)
+            sql = '''SELECT
+              (SELECT count(*) FROM logistique."V_Article" WHERE "ValideArticle"=true) AS "productsCount",
+              (SELECT count(*) FROM systeme."V_Entite_Public") AS "pharmaciesCount",
+              (SELECT count(*) FROM professionnel."V_Professionnel_Public") AS "expertsCount",
+              (SELECT count(*) FROM referentiel."T_Generique" g
+                JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+                WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie'
+                  AND referentiel.fn_reference_visible(g."ID_Generique",%s)) AS "diseasesCount",
+              (SELECT count(*) FROM systeme."T_Entite" WHERE "ValideEntite"=true) AS "activeStructures"'''
+            data = db.one(sql, [read_entity(request.user)])
             data.update(
                 latestAnnouncements=min(data["productsCount"], 6),
                 responseLabel="Réponse rapide",
@@ -114,6 +123,8 @@ class PublicView(APIView):
             order = 'p."IdProfessionnel" DESC'
         elif kind == "maladies":
             sql = """SELECT g."ID_Generique",g."NomGenerique",g."AbrGenerique",g."ObsGenerique",jsonb_build_object('ID_CategorieGenerique',c."ID_CategorieGenerique",'NomCategorieGenerique',c."NomCategorieGenerique") AS "T_CategorieGenerique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie' """
+            sql += ' AND referentiel.fn_reference_visible(g."ID_Generique",%s)'
+            values.append(read_entity(request.user))
             fields = ['g."NomGenerique"', 'g."AbrGenerique"', 'g."ObsGenerique"']
             order = 'g."NomGenerique" ASC,g."ID_Generique" DESC'
         else:

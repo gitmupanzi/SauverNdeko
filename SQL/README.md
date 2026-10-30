@@ -1,6 +1,6 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 28 octobre 2026, jusqu’à la migration `20261028_08`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 30 octobre 2026, jusqu’aux migrations `20261030_01` et `20261030_02`, après le socle `20261028_09`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 ## Choisir le fichier adapté
 
@@ -27,6 +27,14 @@ La migration 04 est transactionnelle et réexécutable. Son retour arrière ne c
 `migrations/20261028_09_referencement_champs.sql` ajoute le catalogue des 60 vraies colonnes liées à `T_Generique`, leur défaut immuable et la résolution des correspondances courantes dans `T_Fk_Correspondance`. Les références historiques et les 60 FK sont conservées ; les tables partagées restent globales et les surcharges d’entreprise exigent un propriétaire durable. Les rôles de sécurité, codes de stock, devises et précisions gardent leurs protections. Cette évolution se prépare et se recette avant l’application contrôlée ; ne pas la lancer au démarrage ni la rejouer sur une instance déjà équipée.
 
 Lire [le contrat et les vérifications de référencement](documentation/Referencement_Champs_20261028.md). La recette SQL dédiée exige un socle08 dans une base privée locale ; les recettes de chaîne, CUMP et annulation d’inventaire vérifient aussi la compatibilité physique. Le paquet d’installation contient seulement les métadonnées immuables du nouveau catalogue, avec des révisions, dates et auteurs locaux ; il exclut les correspondances clientes et les préférences de l’instance source.
+
+## Référentiels transversaux — 30 octobre 2026
+
+Après le socle09, `migrations/20261030_01_referentiels_transversaux.sql` prépare les catégories et valeurs communes ou privées d’entreprise, sans attribuer les données anciennes. Les propriétaires sont immuables ; les nouveaux doublons sont contrôlés dans leur portée effective et les doublons historiques sont conservés. Les champs métier gardent `ID_Generique` et leurs FK. Les cinq tables réelles sont présentées dans quatre pages : catégories, valeurs, référencement des champs et tableaux/exports. Voir [le contrat, la préservation et les recettes](documentation/Referentiels_Transversaux_20261030.md).
+
+La précision d’une unité privée suit son propriétaire sans nouvelle table de portée. L’unique politique correspondante du catalogue fermé est auditée ; les rôles de sécurité restent communs. Le paquet d’installation ne copie que les références communes et leurs précisions ; aucune référence privée d’entreprise, correspondance cliente ou préférence personnelle ne migre vers une installation neuve. Les recettes durables sont `tests/test_referentiels_transversaux_postgresql.py` et `tests/test_referentiels_installation.py`, exclusivement sur bases privées locales.
+
+`migrations/20261030_02_lectures_logistiques_dynamiques.sql` complète cette évolution : les huit vues logistiques concernées lisent les identifiants stockés sans filtre de famille numérique fixe. Les signes de mouvement utilisent `fn_effet_type_bon` et la garde de facture reconnaît les BS par `fn_nature_bon`. Les types historiques retirés des choix gardent leur effet et leurs libellés. Les deux migrations sont appliquées dans SauverNdeko après sauvegardes privées vérifiées et contrôles stricts des 69 tables ; aucun test métier fictif n’a été exécuté dans la source. La recette02 comporte 21 contrôles supplémentaires, dans `tests/test_lectures_logistiques_dynamiques.py`.
 
 ## Nouvelle installation
 

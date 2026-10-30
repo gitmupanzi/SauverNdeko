@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 28/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -755,9 +755,9 @@ CREATE VIEW logistique."V_Article" AS
                                   WHERE (l."ID_ArticleFk" = a."ID_Article"))) AS "StockSansLot",
                             a."InformationArticle"
                            FROM ((((logistique."T_Article" a
-                             LEFT JOIN referentiel."T_Generique" type_article ON (((a."ID_TypeArticleFk" = type_article."ID_Generique") AND (type_article."ID_CategorieGeneriqueFk" = 46))))
-                             LEFT JOIN referentiel."T_Generique" categorie_article ON (((a."ID_CategorieArticleFk" = categorie_article."ID_Generique") AND (categorie_article."ID_CategorieGeneriqueFk" = 40))))
-                             LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))
+                             LEFT JOIN referentiel."T_Generique" type_article ON ((a."ID_TypeArticleFk" = type_article."ID_Generique")))
+                             LEFT JOIN referentiel."T_Generique" categorie_article ON ((a."ID_CategorieArticleFk" = categorie_article."ID_Generique")))
+                             LEFT JOIN referentiel."T_Generique" unite ON ((a."ID_UniteFk" = unite."ID_Generique")))
                              LEFT JOIN systeme."T_Utilisateurs" u ON ((a."ID_UserFK" = u."IdUser")))) historique
                      LEFT JOIN logistique."T_Article" source_1_1 ON ((source_1_1."ID_Article" = historique."ID_Article")))
                      LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1
@@ -768,7 +768,7 @@ CREATE VIEW logistique."V_Article" AS
 -- Name: VIEW "V_Article"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Article" IS 'Catalogue partagé avec stock et conservation exhaustifs par lots restants et stock sans lot ; les prix catalogue ne constituent pas un coût moyen comptable.';
+COMMENT ON VIEW logistique."V_Article" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_Article"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
@@ -834,13 +834,13 @@ COMMENT ON COLUMN logistique."V_Article"."ID_TypeArticleFk" IS 'Type d’article
 -- Name: COLUMN "V_Article"."AbrTypeArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."AbrTypeArticle" IS 'Abréviation du type d’article. Expression projetée : type_article."AbrGenerique" AS "AbrTypeArticle".';
+COMMENT ON COLUMN logistique."V_Article"."AbrTypeArticle" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."TypeArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."TypeArticle" IS 'Libellé du type d’article. Expression projetée : type_article."NomGenerique" AS "TypeArticle".';
+COMMENT ON COLUMN logistique."V_Article"."TypeArticle" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."ID_CategorieArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -852,13 +852,13 @@ COMMENT ON COLUMN logistique."V_Article"."ID_CategorieArticleFk" IS 'Catégorie 
 -- Name: COLUMN "V_Article"."AbrCategorieArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."AbrCategorieArticle" IS 'Abréviation de la catégorie d’article. Expression projetée : categorie_article."AbrGenerique" AS "AbrCategorieArticle".';
+COMMENT ON COLUMN logistique."V_Article"."AbrCategorieArticle" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."CategorieArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."CategorieArticle" IS 'Libellé de la catégorie d’article. Expression projetée : categorie_article."NomGenerique" AS "CategorieArticle".';
+COMMENT ON COLUMN logistique."V_Article"."CategorieArticle" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."ID_UniteFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -870,13 +870,13 @@ COMMENT ON COLUMN logistique."V_Article"."ID_UniteFk" IS 'Unité de référence 
 -- Name: COLUMN "V_Article"."AbrUnite"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."AbrUnite" IS 'Abréviation de l’unité de référence de l’article. Expression projetée : unite."AbrGenerique" AS "AbrUnite".';
+COMMENT ON COLUMN logistique."V_Article"."AbrUnite" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Article"."Unite" IS 'Libellé de l’unité de référence de l’article. Expression projetée : unite."NomGenerique" AS "Unite".';
+COMMENT ON COLUMN logistique."V_Article"."Unite" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Article"."QteArticle"; Type: COMMENT; Schema: logistique; Owner: -
@@ -1547,24 +1547,10 @@ CREATE VIEW logistique."V_MouvementStock" AS
                     g."NomGenerique" AS "TypeMvt",
                     COALESCE(m."QteMvt", (0)::numeric) AS "QteMvt",
                     (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
-                        CASE
-                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                            ELSE 0
-                        END AS "SigneStock",
-                    (COALESCE(m."QteMvt", (0)::numeric) * (
-                        CASE
-                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                            ELSE 0
-                        END)::numeric) AS "QteMvtSigned",
+                    COALESCE((logistique.fn_effet_type_bon(m."ID_TypeMvtFk"))::integer, 0) AS "SigneStock",
+                    (COALESCE(m."QteMvt", (0)::numeric) * (COALESCE((logistique.fn_effet_type_bon(m."ID_TypeMvtFk"))::integer, 0))::numeric) AS "QteMvtSigned",
                     ((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
-                    (((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)) * (
-                        CASE
-                            WHEN ((g."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                            WHEN ((g."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                            ELSE 0
-                        END)::numeric))::numeric(14,2) AS "MontantMvtSigned",
+                    (((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)) * (COALESCE((logistique.fn_effet_type_bon(m."ID_TypeMvtFk"))::integer, 0))::numeric))::numeric(14,2) AS "MontantMvtSigned",
                         CASE
                             WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
                             ELSE 'Commande'::text
@@ -1572,7 +1558,7 @@ CREATE VIEW logistique."V_MouvementStock" AS
                    FROM (((logistique."T_Mouvement" m
                      LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = m."ID_ArticleFk")))
                      LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = m."ID_cmdFk")))
-                     LEFT JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = m."ID_TypeMvtFk") AND (g."ID_CategorieGeneriqueFk" = 64))))) historique
+                     LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = m."ID_TypeMvtFk")))) historique
              LEFT JOIN logistique."T_Mouvement" source_1 ON ((source_1."ID_Mvt" = historique."ID_Mvt")))
              LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
      LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_cmdFk")))
@@ -1582,7 +1568,7 @@ CREATE VIEW logistique."V_MouvementStock" AS
 -- Name: VIEW "V_MouvementStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_MouvementStock" IS 'Source commune au grain mouvement pour les calculs de stock : signe tiré du type historique catégorie 64, quantité/valeur signées et origine. Le type de commande actuel est exposé séparément. Devise du mouvement historique explicitée ; anciens grain et périmètre conservés.';
+COMMENT ON VIEW logistique."V_MouvementStock" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves. Le signe de stock est celui du type historique, calcule par fn_effet_type_bon, jamais par la categorie actuelle.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."ID_Mvt"; Type: COMMENT; Schema: logistique; Owner: -
@@ -1654,13 +1640,13 @@ COMMENT ON COLUMN logistique."V_MouvementStock"."ID_TypeMvt" IS 'Alias de l’id
 -- Name: COLUMN "V_MouvementStock"."AbrTypeMvt"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_MouvementStock"."AbrTypeMvt" IS 'Abréviation du type historique de mouvement. Expression projetée : g."AbrGenerique" AS "AbrTypeMvt".';
+COMMENT ON COLUMN logistique."V_MouvementStock"."AbrTypeMvt" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."TypeMvt"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_MouvementStock"."TypeMvt" IS 'Libellé du type historique de mouvement ; la projection exacte dépend de la vue. Expression projetée : g."NomGenerique" AS "TypeMvt".';
+COMMENT ON COLUMN logistique."V_MouvementStock"."TypeMvt" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."QteMvt"; Type: COMMENT; Schema: logistique; Owner: -
@@ -1678,13 +1664,13 @@ COMMENT ON COLUMN logistique."V_MouvementStock"."PUMvt" IS 'Prix unitaire histor
 -- Name: COLUMN "V_MouvementStock"."SigneStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_MouvementStock"."SigneStock" IS 'Signe du type historique : +1 pour entr*, -1 pour sort*, 0 sinon ; indépendant du type actuel de commande. Expression projetée : CASE WHEN g."AbrGenerique"::text ~~* ''entr%''::text THEN 1 WHEN g."AbrGenerique"::text ~~* ''sort%''::text THEN ''-1''::integer ELSE 0 END AS "SigneStock".';
+COMMENT ON COLUMN logistique."V_MouvementStock"."SigneStock" IS 'Effet du type historique reconnu par fn_effet_type_bon : +1 entree, -1 sortie, 0 CMD/neutre ; les quantites et montants signes conservent cet effet sans categorie numerique fixe.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."QteMvtSigned"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_MouvementStock"."QteMvtSigned" IS 'Quantité de mouvement multipliée par le signe du type historique. Expression projetée : (COALESCE(m."QteMvt", 0) * CASE WHEN g."AbrGenerique"::text ~~* ''entr%''::text THEN 1 WHEN g."AbrGenerique"::text ~~* ''sort%''::text THEN ''-1''::integer ELSE 0 END)::numeric AS "QteMvtSigned".';
+COMMENT ON COLUMN logistique."V_MouvementStock"."QteMvtSigned" IS 'Effet du type historique reconnu par fn_effet_type_bon : +1 entree, -1 sortie, 0 CMD/neutre ; les quantites et montants signes conservent cet effet sans categorie numerique fixe.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."MontantMvt"; Type: COMMENT; Schema: logistique; Owner: -
@@ -1696,7 +1682,7 @@ COMMENT ON COLUMN logistique."V_MouvementStock"."MontantMvt" IS 'Quantité × pr
 -- Name: COLUMN "V_MouvementStock"."MontantMvtSigned"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_MouvementStock"."MontantMvtSigned" IS 'Quantité × prix historique × signe du type de mouvement. Expression projetée : (COALESCE(m."QteMvt", 0)::numeric * COALESCE(m."PUMvt", 0::numeric) * CASE WHEN g."AbrGenerique"::text ~~* ''entr%''::text THEN 1 WHEN g."AbrGenerique"::text ~~* ''sort%''::text THEN ''-1''::integer ELSE 0 END::numeric)::numeric(14,2) AS "MontantMvtSigned".';
+COMMENT ON COLUMN logistique."V_MouvementStock"."MontantMvtSigned" IS 'Effet du type historique reconnu par fn_effet_type_bon : +1 entree, -1 sortie, 0 CMD/neutre ; les quantites et montants signes conservent cet effet sans categorie numerique fixe.';
 
 --
 -- Name: COLUMN "V_MouvementStock"."OrigineMouvement"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3171,10 +3157,10 @@ CREATE VIEW logistique."V_Commande" AS
         END AS "EtatControleCommande"
          FROM (((((((logistique."T_Commande" c_1_1
            LEFT JOIN systeme."T_Utilisateurs" u ON ((c_1_1."ID_UserFk" = u."IdUser")))
-           LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-           LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c_1_1."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-           LEFT JOIN referentiel."T_Generique" condition_paiement ON (((c_1_1."ID_ConditionPaiementFk" = condition_paiement."ID_Generique") AND (condition_paiement."ID_CategorieGeneriqueFk" = 37))))
-           LEFT JOIN referentiel."T_Generique" mode_paiement ON (((c_1_1."ID_ModePaiementFk" = mode_paiement."ID_Generique") AND (mode_paiement."ID_CategorieGeneriqueFk" = 36))))
+           LEFT JOIN referentiel."T_Generique" type_cmd ON ((c_1_1."ID_TypeCmdFk" = type_cmd."ID_Generique")))
+           LEFT JOIN referentiel."T_Generique" statut_cmd ON ((c_1_1."ID_StatutCmdFk" = statut_cmd."ID_Generique")))
+           LEFT JOIN referentiel."T_Generique" condition_paiement ON ((c_1_1."ID_ConditionPaiementFk" = condition_paiement."ID_Generique")))
+           LEFT JOIN referentiel."T_Generique" mode_paiement ON ((c_1_1."ID_ModePaiementFk" = mode_paiement."ID_Generique")))
            LEFT JOIN cd_stats ON ((cd_stats."ID_CmdFk" = c_1_1."ID_Commande")))
            LEFT JOIN reg_stats ON (((reg_stats."CodeFactureFk")::text = (c_1_1."CodeFacture")::text)))) historique
          LEFT JOIN logistique."T_Commande" source_1_1_1_1 ON ((source_1_1_1_1."ID_Commande" = historique."ID_Commande")))
@@ -3195,7 +3181,7 @@ CREATE VIEW logistique."V_Commande" AS
 -- Name: VIEW "V_Commande"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Commande" IS 'Projection commune des bons ou lignes avec nature BE/BS/CMD, montants exacts et correspondance historique de code issue du journal06. Les identifiants et écritures métier restent inchangés.';
+COMMENT ON VIEW logistique."V_Commande" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_Commande"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3363,13 +3349,13 @@ COMMENT ON COLUMN logistique."V_Commande"."NomClientSaisi" IS 'Nom du client sai
 -- Name: COLUMN "V_Commande"."AbrTypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."AbrTypeCmd" IS 'Abréviation du type de commande issu de la catégorie 64. Expression projetée : type_cmd."AbrGenerique" AS "AbrTypeCmd".';
+COMMENT ON COLUMN logistique."V_Commande"."AbrTypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."TypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."TypeCmd" IS 'Libellé du type de commande issu de la catégorie 64. Expression projetée : type_cmd."NomGenerique" AS "TypeCmd".';
+COMMENT ON COLUMN logistique."V_Commande"."TypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."SigneCommande"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3393,13 +3379,13 @@ COMMENT ON COLUMN logistique."V_Commande"."EstCommandeSortie" IS 'Vrai si l’ab
 -- Name: COLUMN "V_Commande"."AbrStatutCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."AbrStatutCmd" IS 'Abréviation du statut de commande. Expression projetée : statut_cmd."AbrGenerique" AS "AbrStatutCmd".';
+COMMENT ON COLUMN logistique."V_Commande"."AbrStatutCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."StatutCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."StatutCmd" IS 'Libellé du statut de commande. Expression projetée : statut_cmd."NomGenerique" AS "StatutCmd".';
+COMMENT ON COLUMN logistique."V_Commande"."StatutCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."NomUser"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3423,25 +3409,25 @@ COMMENT ON COLUMN logistique."V_Commande"."NomComplet" IS 'Prénom et nom de l�
 -- Name: COLUMN "V_Commande"."AbrConditionPaiement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."AbrConditionPaiement" IS 'Abréviation de la condition de paiement. Expression projetée : condition_paiement."AbrGenerique" AS "AbrConditionPaiement".';
+COMMENT ON COLUMN logistique."V_Commande"."AbrConditionPaiement" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."ConditionPaiement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."ConditionPaiement" IS 'Libellé de la condition de paiement. Expression projetée : condition_paiement."NomGenerique" AS "ConditionPaiement".';
+COMMENT ON COLUMN logistique."V_Commande"."ConditionPaiement" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."AbrModePaiement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."AbrModePaiement" IS 'Abréviation du mode de paiement prévu. Expression projetée : mode_paiement."AbrGenerique" AS "AbrModePaiement".';
+COMMENT ON COLUMN logistique."V_Commande"."AbrModePaiement" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."ModePaiement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Commande"."ModePaiement" IS 'Libellé du mode de paiement prévu. Expression projetée : mode_paiement."NomGenerique" AS "ModePaiement".';
+COMMENT ON COLUMN logistique."V_Commande"."ModePaiement" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Commande"."MontantHTCalc"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3866,9 +3852,9 @@ END AS "EtatLigne"
                                    FROM (((((logistique."T_CommandeDetail" d
                                      JOIN logistique."T_Commande" c ON ((c."ID_Commande" = d."ID_CmdFk")))
                                      JOIN logistique."T_Article" a ON ((a."ID_Article" = d."ID_ArticleFk")))
-                                     LEFT JOIN referentiel."T_Generique" type_cmd ON (((c."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
-                                     LEFT JOIN referentiel."T_Generique" statut_cmd ON (((c."ID_StatutCmdFk" = statut_cmd."ID_Generique") AND (statut_cmd."ID_CategorieGeneriqueFk" = 28))))
-                                     LEFT JOIN referentiel."T_Generique" unite ON (((a."ID_UniteFk" = unite."ID_Generique") AND (unite."ID_CategorieGeneriqueFk" = 34))))) historique
+                                     LEFT JOIN referentiel."T_Generique" type_cmd ON ((c."ID_TypeCmdFk" = type_cmd."ID_Generique")))
+                                     LEFT JOIN referentiel."T_Generique" statut_cmd ON ((c."ID_StatutCmdFk" = statut_cmd."ID_Generique")))
+                                     LEFT JOIN referentiel."T_Generique" unite ON ((a."ID_UniteFk" = unite."ID_Generique")))) historique
                              LEFT JOIN logistique."T_Commande" source_1_1_1 ON ((source_1_1_1."ID_Commande" = historique."ID_CmdFk")))
                              LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1_1."ID_DeviseFk")))) source_1_1
                      LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source_1_1."ID_Commande")))
@@ -3879,7 +3865,7 @@ END AS "EtatLigne"
 -- Name: VIEW "V_CommandeDetail"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Projection commune des bons ou lignes avec nature BE/BS/CMD, montants exacts et correspondance historique de code issue du journal06. Les identifiants et écritures métier restent inchangés.';
+COMMENT ON VIEW logistique."V_CommandeDetail" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."ID_CmdFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3921,13 +3907,13 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."ID_TypeCmdFk" IS 'Type de comma
 -- Name: COLUMN "V_CommandeDetail"."AbrTypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrTypeCmd" IS 'Abréviation du type de commande issu de la catégorie 64. Expression projetée : type_cmd."AbrGenerique" AS "AbrTypeCmd".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrTypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."TypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."TypeCmd" IS 'Libellé du type de commande issu de la catégorie 64. Expression projetée : type_cmd."NomGenerique" AS "TypeCmd".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."TypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."SigneCommande"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3951,13 +3937,13 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."ID_StatutCmd" IS 'Alias de comp
 -- Name: COLUMN "V_CommandeDetail"."AbrStatutCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrStatutCmd" IS 'Abréviation du statut de commande. Expression projetée : statut_cmd."AbrGenerique" AS "AbrStatutCmd".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrStatutCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."StatutCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."StatutCmd" IS 'Libellé du statut de commande. Expression projetée : statut_cmd."NomGenerique" AS "StatutCmd".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."StatutCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3987,7 +3973,7 @@ COMMENT ON COLUMN logistique."V_CommandeDetail"."ID_UniteFk" IS 'Unité de réf�
 -- Name: COLUMN "V_CommandeDetail"."AbrUnite"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrUnite" IS 'Abréviation de l’unité de référence de l’article. Expression projetée : unite."AbrGenerique" AS "AbrUnite".';
+COMMENT ON COLUMN logistique."V_CommandeDetail"."AbrUnite" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandeDetail"."StockActuel"; Type: COMMENT; Schema: logistique; Owner: -
@@ -4507,7 +4493,7 @@ CREATE VIEW logistique."V_CommandesSansDetails" AS
                             c_1."ObsCmd"
                            FROM ((logistique."T_Commande" c_1
                              LEFT JOIN logistique."T_CommandeDetail" d_1 ON ((d_1."ID_CmdFk" = c_1."ID_Commande")))
-                             LEFT JOIN referentiel."T_Generique" type_cmd ON (((c_1."ID_TypeCmdFk" = type_cmd."ID_Generique") AND (type_cmd."ID_CategorieGeneriqueFk" = 64))))
+                             LEFT JOIN referentiel."T_Generique" type_cmd ON ((c_1."ID_TypeCmdFk" = type_cmd."ID_Generique")))
                           WHERE ((d_1."ID_CmdFk" IS NULL) AND ((COALESCE(c_1."CodeCmd", ''::character varying))::text <> ALL (ARRAY[('C_000E'::character varying)::text, ('C_000S'::character varying)::text])))) historique
                      LEFT JOIN logistique."T_Commande" source_1 ON ((source_1."ID_Commande" = historique."ID_Commande")))
                      LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
@@ -4520,7 +4506,7 @@ CREATE VIEW logistique."V_CommandesSansDetails" AS
 -- Name: VIEW "V_CommandesSansDetails"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_CommandesSansDetails" IS 'Commandes sans aucune ligne dans T_CommandeDetail ; les références C_000E et C_000S sont exclues. Grain : commande. Devise du bon et de sa facture explicitée ; anciens grain et périmètre conservés.';
+COMMENT ON VIEW logistique."V_CommandesSansDetails" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_CommandesSansDetails"."ID_Commande"; Type: COMMENT; Schema: logistique; Owner: -
@@ -4550,13 +4536,13 @@ COMMENT ON COLUMN logistique."V_CommandesSansDetails"."ID_TypeCmdFk" IS 'Type de
 -- Name: COLUMN "V_CommandesSansDetails"."AbrTypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandesSansDetails"."AbrTypeCmd" IS 'Abréviation du type de commande issu de la catégorie 64. Expression projetée : type_cmd."AbrGenerique" AS "AbrTypeCmd".';
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."AbrTypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandesSansDetails"."TypeCmd"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_CommandesSansDetails"."TypeCmd" IS 'Libellé du type de commande issu de la catégorie 64. Expression projetée : type_cmd."NomGenerique" AS "TypeCmd".';
+COMMENT ON COLUMN logistique."V_CommandesSansDetails"."TypeCmd" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_CommandesSansDetails"."NomClientSaisi"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6147,17 +6133,8 @@ CREATE VIEW logistique."V_Mouvement" AS
                     c."DateCmd",
                     COALESCE(m."QteMvt", (0)::numeric) AS "QteMvt",
                     (COALESCE(m."PUMvt", (0)::numeric))::numeric(12,2) AS "PUMvt",
-                        CASE
-                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                            ELSE 0
-                        END AS "SigneStock",
-                    (COALESCE(m."QteMvt", (0)::numeric) * (
-                        CASE
-                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'entr%'::text) THEN 1
-                            WHEN ((g_typemvt."AbrGenerique")::text ~~* 'sort%'::text) THEN '-1'::integer
-                            ELSE 0
-                        END)::numeric) AS "QteMvtSigned",
+                    COALESCE((logistique.fn_effet_type_bon(m."ID_TypeMvtFk"))::integer, 0) AS "SigneStock",
+                    (COALESCE(m."QteMvt", (0)::numeric) * (COALESCE((logistique.fn_effet_type_bon(m."ID_TypeMvtFk"))::integer, 0))::numeric) AS "QteMvtSigned",
                     ((COALESCE(m."QteMvt", (0)::numeric) * COALESCE(m."PUMvt", (0)::numeric)))::numeric(14,2) AS "MontantMvt",
                         CASE
                             WHEN (m."ID_cmdFk" IS NULL) THEN 'Ajustement direct article'::text
@@ -6166,7 +6143,7 @@ CREATE VIEW logistique."V_Mouvement" AS
                    FROM (((logistique."T_Mouvement" m
                      LEFT JOIN logistique."T_Article" a ON ((m."ID_ArticleFk" = a."ID_Article")))
                      LEFT JOIN logistique."T_Commande" c ON ((m."ID_cmdFk" = c."ID_Commande")))
-                     LEFT JOIN referentiel."T_Generique" g_typemvt ON (((m."ID_TypeMvtFk" = g_typemvt."ID_Generique") AND (g_typemvt."ID_CategorieGeneriqueFk" = 64))))) historique
+                     LEFT JOIN referentiel."T_Generique" g_typemvt ON ((m."ID_TypeMvtFk" = g_typemvt."ID_Generique")))) historique
              LEFT JOIN logistique."T_Mouvement" source_1 ON ((source_1."ID_Mvt" = historique."ID_Mvt")))
              LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1."ID_DeviseFk")))) source
      LEFT JOIN logistique."T_Commande" r ON ((r."ID_Commande" = source."ID_cmdFk")))
@@ -6176,7 +6153,7 @@ CREATE VIEW logistique."V_Mouvement" AS
 -- Name: VIEW "V_Mouvement"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_Mouvement" IS 'Historique enrichi au grain mouvement : article, commande, type historique, quantité, signe, prix et origine. TypeMvt contient ici l’abréviation ; les ajustements directs ont une commande NULL. Devise du mouvement historique explicitée ; anciens grain et périmètre conservés.';
+COMMENT ON VIEW logistique."V_Mouvement" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves. Le signe de stock est celui du type historique, calcule par fn_effet_type_bon, jamais par la categorie actuelle.';
 
 --
 -- Name: COLUMN "V_Mouvement"."DateHeureAutoMvt"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6206,13 +6183,13 @@ COMMENT ON COLUMN logistique."V_Mouvement"."ID_TypeMvtFk" IS 'Type historique du
 -- Name: COLUMN "V_Mouvement"."TypeMvt"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Mouvement"."TypeMvt" IS 'Abréviation du type historique de mouvement, issue de AbrGenerique ; distincte du libellé complet NomTypeMvt. Expression projetée : g_typemvt."AbrGenerique" AS "TypeMvt".';
+COMMENT ON COLUMN logistique."V_Mouvement"."TypeMvt" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Mouvement"."NomTypeMvt"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Mouvement"."NomTypeMvt" IS 'Libellé complet du type de mouvement. Expression projetée : g_typemvt."NomGenerique" AS "NomTypeMvt".';
+COMMENT ON COLUMN logistique."V_Mouvement"."NomTypeMvt" IS 'Libelle ou abbreviation du seul ID_Generique enregistre ; conserve sa lecture lors du changement de categorie configuree.';
 
 --
 -- Name: COLUMN "V_Mouvement"."ID_ArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6266,13 +6243,13 @@ COMMENT ON COLUMN logistique."V_Mouvement"."PUMvt" IS 'Prix unitaire historique 
 -- Name: COLUMN "V_Mouvement"."SigneStock"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Mouvement"."SigneStock" IS 'Signe du type historique : +1 pour entr*, -1 pour sort*, 0 sinon ; indépendant du type actuel de commande. Expression projetée : CASE WHEN g_typemvt."AbrGenerique"::text ~~* ''entr%''::text THEN 1 WHEN g_typemvt."AbrGenerique"::text ~~* ''sort%''::text THEN ''-1''::integer ELSE 0 END AS "SigneStock".';
+COMMENT ON COLUMN logistique."V_Mouvement"."SigneStock" IS 'Effet du type historique reconnu par fn_effet_type_bon : +1 entree, -1 sortie, 0 CMD/neutre ; les quantites et montants signes conservent cet effet sans categorie numerique fixe.';
 
 --
 -- Name: COLUMN "V_Mouvement"."QteMvtSigned"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."V_Mouvement"."QteMvtSigned" IS 'Quantité de mouvement multipliée par le signe du type historique. Expression projetée : (COALESCE(m."QteMvt", 0) * CASE WHEN g_typemvt."AbrGenerique"::text ~~* ''entr%''::text THEN 1 WHEN g_typemvt."AbrGenerique"::text ~~* ''sort%''::text THEN ''-1''::integer ELSE 0 END)::numeric AS "QteMvtSigned".';
+COMMENT ON COLUMN logistique."V_Mouvement"."QteMvtSigned" IS 'Effet du type historique reconnu par fn_effet_type_bon : +1 entree, -1 sortie, 0 CMD/neutre ; les quantites et montants signes conservent cet effet sans categorie numerique fixe.';
 
 --
 -- Name: COLUMN "V_Mouvement"."MontantMvt"; Type: COMMENT; Schema: logistique; Owner: -
@@ -7277,13 +7254,13 @@ CREATE VIEW logistique."V_RetourArticle" AS
      LEFT JOIN mouvements m ON (((m."ID_cmdFk" = d."ID_CmdFk") AND (m."ID_ArticleFk" = d."ID_ArticleFk"))))
      LEFT JOIN lots l ON (((l."ID_cmdFk" = d."ID_CmdFk") AND (l."ID_ArticleFk" = d."ID_ArticleFk"))))
      LEFT JOIN rendus r ON (((r.origine = d."ID_CmdFk") AND (r."ID_ArticleFk" = d."ID_ArticleFk"))))
-  WHERE ((t."ID_CategorieGeneriqueFk" = 64) AND ((t."AbrGenerique")::text ~~* 'sort%'::text));
+  WHERE (logistique.fn_nature_bon(c."ID_TypeCmdFk") = 'sortie'::text);
 
 --
 -- Name: VIEW "V_RetourArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_RetourArticle" IS 'Budget exhaustif par sortie et article : quantité sortie, déjà restituée et restante, prix du mouvement historique, fraction sans lot et indicateur de cohérence ; aucune conversion monétaire.';
+COMMENT ON VIEW logistique."V_RetourArticle" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_RetourArticle"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -7565,14 +7542,14 @@ CREATE VIEW logistique."V_RetourLot" AS
      JOIN logistique."T_MouvementLot" ml ON ((ml."ID_MvtFk" = m."ID_Mvt")))
      JOIN logistique."T_LotArticle" l ON ((l."ID_LotArticle" = ml."ID_LotArticleFk")))
      LEFT JOIN rendus r ON (((r.origine = m."ID_cmdFk") AND (r."ID_ArticleFk" = m."ID_ArticleFk") AND (r."ID_LotArticleFk" = l."ID_LotArticle"))))
-  WHERE ((t."ID_CategorieGeneriqueFk" = 64) AND ((t."AbrGenerique")::text ~~* 'sort%'::text))
+  WHERE (logistique.fn_nature_bon(c."ID_TypeCmdFk") = 'sortie'::text)
   GROUP BY m."ID_cmdFk", m."ID_ArticleFk", l."ID_LotArticle", l."NumeroLot", l."DatePeremptionLot";
 
 --
 -- Name: VIEW "V_RetourLot"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_RetourLot" IS 'Budget par lot réellement sorti sur un bon ; un lot actuel non présent dans la sortie ne peut pas être emprunté pour un retour.';
+COMMENT ON VIEW logistique."V_RetourLot" IS 'Lecture historique par les identifiants exacts des references stockees, sans filtre numerique de famille. Les nouvelles selections restent validees par le catalogue physique ; les identifiants et colonnes de la vue sont conserves.';
 
 --
 -- Name: COLUMN "V_RetourLot"."ID_CommandeOrigineFk"; Type: COMMENT; Schema: logistique; Owner: -

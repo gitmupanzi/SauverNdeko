@@ -23,6 +23,8 @@ def normalize_code(value):
 
 def currency_references(actor=None, *, active=True, table='T_Article', column='ID_DeviseFk'):
     from apps.core.field_references import reference_context
+    from apps.core.tenancy import read_entity
+    entity = read_entity(actor) if actor is not None else None
     categories = (reference_context(actor, 'logistique', table, column)['categoryIds'] if actor is not None else
                   db.one('SELECT referentiel.fn_categories_champ(%s,%s,%s,NULL) AS ids',
                          ['logistique', table, column])['ids']) or []
@@ -31,9 +33,10 @@ def currency_references(actor=None, *, active=True, table='T_Article', column='I
         COALESCE(NULLIF(BTRIM(g."AbrGenerique"),''),g."NomGenerique") AS code
         FROM referentiel."T_Generique" g
         JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-        WHERE g."ID_CategorieGeneriqueFk"=ANY(%s::integer[]) '''
+        WHERE g."ID_CategorieGeneriqueFk"=ANY(%s::integer[])
+          AND referentiel.fn_reference_visible(g."ID_Generique",%s) '''
         + ('AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE ' if active else '')
-        + 'ORDER BY g."ID_Generique"', [categories])
+        + 'ORDER BY g."ID_Generique"', [categories, entity])
     return sorted([{**row, "code": normalize_code(row["code"])} for row in rows], key=lambda row: (row["code"],row["id"]))
 
 

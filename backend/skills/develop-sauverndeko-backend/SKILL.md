@@ -32,6 +32,8 @@ Utiliser la connexion Django unique ; pas de Prisma ni de deuxième pool dans le
 
 ## Invariants des services
 
+La création groupée de références réutilise les mêmes contrôles que la saisie individuelle, avec identités de ligne stables, erreurs ciblées et contrôle des doublons normalisés également dans PostgreSQL. Un en-tête parent s'applique à toutes les lignes. Une transaction et une preuve de rejeu couvrent le lot complet : si une ligne échoue, annuler les autres écritures et leurs audits, sans effacer le brouillon client. Ne pas rendre une sauvegarde partielle implicite après un collage Excel. Les anciennes références en doublon restent conservées ; une garde sur les nouvelles identités ne constitue pas un nettoyage des données.
+
 - Priorité aux vues PostgreSQL communes ; droits, filtres, comptages et agrégats côté serveur avant pagination.
 - Contrôler utilisateur actif, rôle, organisation, objet et FK sur chaque chemin. Is_staff ne donne pas un périmètre global. Les objets sans règle locale démontrée sont refusés aux gestionnaires locaux.
 - Les migrations 09/13 installent une Entité propriétaire durable sur Article/Commande et T_Client. Le contexte global X-Entite-ID est validé par tenancy ; il ne change pas l’auteur réel. Les objets sont partagés dans leur entreprise selon les droits, et les dossiers personnels restent privés. Les anciens ID_ClientFk ne sont pas convertis par égalité numérique ; les nouvelles références utilisent ID_TiersFk.

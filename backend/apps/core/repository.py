@@ -271,6 +271,12 @@ def listing(obj, actor, params=None):
         + " LIMIT %s OFFSET %s",
         [*values, take, skip],
     )
+    reference_meta = {}
+    if obj['schema']=='referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique','V_CategorieGenerique','V_Generique'}:
+        from .reference_batches import management_rights
+        can_manage = management_rights(actor)
+        reference_meta = {'canCreateCommon': actor.global_admin and can_manage,
+                          'canCreateEntity': can_manage, 'canManageOwn': can_manage}
     return clean(rows), {
         "columns": columns,
         "count": len(rows),
@@ -280,6 +286,7 @@ def listing(obj, actor, params=None):
         "skip": skip,
         "sortBy": sort,
         "sortDir": direction,
+        **reference_meta,
     }
 
 
@@ -325,6 +332,11 @@ def payload(obj, body, actor, creating=False):
                     "Propriétaire non autorisé.", "PRIVILEGE_ESCALATION", 403
                 )
             # React transmet l’éditeur connecté : conserver le créateur existant.
+            continue
+        if obj['schema'] == 'referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique'} and key == 'IdEntiteFk':
+            # Déjà contrôlé par prepare_body ; ne pas traiter cette propriété
+            # métier comme un changement de privilège utilisateur.
+            result[key] = coerce(columns[key], value)
             continue
         if (
             key
@@ -438,6 +450,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
             body = {key: value for key, value in body.items()
                     if key not in {"UpdatedAt", "UpdatedByUserFk", "CreatedAt"}}
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if obj['schema'] == 'referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique'}:
+        from .reference_batches import prepare_body
+        body = prepare_body(obj, body, old, actor)
     if name == 'T_Fk_Correspondance' and ((old or {}).get('IdChampReferentielFk') is not None
             or isinstance(body, dict) and body.get('IdChampReferentielFk') is not None):
         raise APIError('Utilisez Référencement des champs pour modifier cette association.',
@@ -522,6 +537,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
         if operation != "delete"
         else {}
     )
+    if obj['schema'] == 'referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique'} and operation != 'delete':
+        from .reference_batches import validate_mutation
+        validate_mutation(obj, data, old, actor)
     if name in {"T_Article", "T_Commande", "T_Reglements"} and operation != "delete":
         from apps.logistique.services import validate_header
 

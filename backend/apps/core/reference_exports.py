@@ -41,6 +41,8 @@ LABELS = {
     "VisibleUsers": "Visible dans Utilisateurs",
     "VisibleVoie": "Visible dans Voies",
     "VisibleAll": "Visible partout",
+    "IdEntiteFk": "Identifiant entreprise",
+    "NomEntite": "Entreprise",
 }
 DEFAULT_FIELDS = {
     "categories": ["NomCategorieGenerique", "ModuleCategorieGenerique", "ValideCategorieGenerique"],
@@ -101,7 +103,10 @@ def reference_workbook(actor, kind, raw, file_format="xlsx"):
     filters = raw.get("filters", {})
     if isinstance(filters, str):
         filters = json.loads(filters)
-    scope = "Référentiel partagé"
+    from .tenancy import read_entity
+    entity = read_entity(actor)
+    scope = ('Références communes et de l’entreprise sélectionnée' if entity else
+             'Toutes les références autorisées' if actor.global_admin else 'Références communes')
     if filters:
         descriptions = [
             LABELS.get(key, key) + " : " + ("Non renseigné" if value is None else "Oui" if value is True else "Non" if value is False else str(value))

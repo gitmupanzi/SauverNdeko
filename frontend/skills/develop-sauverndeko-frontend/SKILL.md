@@ -41,6 +41,8 @@ React présente les données autorisées et pilote les interactions. Les mesures
 
 ## Parcours attendus
 
+Dans tous les modules où des créations similaires s’y prêtent, privilégier une saisie avec panier en reprenant le parcours de Bons de stock. Un seul bouton de création (« Nouveau… » / « Nouvelle… », par exemple « Nouvelle valeur ») ouvre ce panier pour une ou plusieurs lignes ; ne pas ajouter un second bouton « Saisie multiple ». Une seule ligne permet l’ajout individuel. Quand les lignes partagent un parent, utiliser un en-tête et ses détails : par exemple une catégorie et plusieurs valeurs génériques. Modification/suppression des lignes, annulation globale, collage Excel, erreurs par ligne et enregistrement atomique suivent le [contrat de saisie multiple](references/formulaires-crud.md#saisie-multiple-et-en-têtedétails). Conserver la saisie individuelle pour les opérations qui ne se prêtent pas à ce parcours.
+
 - Le code/nom d’un objet et son bouton Consulter ouvrent la même fiche 360 depuis liste, recherche ou détail lié.
 - Une valeur d’indicateur ayant un détail ouvre cette population exacte, ou son registre avec un filtre visible et effaçable. La carte et le lien de détail partagent le même contrat.
 - ConsultationProvider fournit Produit 360 et Bon de stock 360, avec rubriques liées à la demande. Une facture ouvre directement la rubrique Facturation de Bon de stock 360 ; ReglementEditor fournit la consultation et le formulaire commun des paiements. La fiche Tiers 360 utilise le même principe de parent autorisé et de rubriques liées.

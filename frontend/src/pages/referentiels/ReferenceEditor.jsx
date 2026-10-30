@@ -5,6 +5,10 @@ import ConsultationTabs from "../../components/ConsultationTabs";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import { REFERENTIEL_ADMIN_SCHEMA } from "../admin/referentiel";
+import { useAuth } from "../../contexts/AuthContext";
+import { useEntityScope } from "../../contexts/EntityScopeContext";
+import { requestJson } from "../../services/api";
+import { referenceBatchRow, referenceBatchPayload } from "./referenceBatch";
 import "./ReferenceEditor.css";
 
 const CONFIG_KEYS = {
@@ -39,8 +43,11 @@ const VISIBILITY_GROUPS = [
 const initialValues = fields => Object.fromEntries(fields.map(field => [field.name, field.initialValue ?? (field.type === "checkbox" ? false : "")]));
 
 /** Formulaire commun du référentiel : création, modification et consultation. */
-export default function ReferenceEditor({ kind = "values", recordId = null, mode = "create", categories = [], initialCategoryId = "", onClose, onSaved, canWrite = false }) {
+export default function ReferenceEditor({ kind = "values", recordId = null, mode = "create", categories = [], initialCategoryId = "", initialScope = "global", onClose, onSaved, canWrite = false }) {
+  const { user } = useAuth(), entity = useEntityScope();
   const prefix = useId();
+  const [scope, setScope] = useState(user?.Is_Admin === true ? initialScope : "entity");
+  const pendingCreation = useRef(null);
   const creationCategoryId = useRef(String(initialCategoryId || ""));
   const config = REFERENTIEL_ADMIN_SCHEMA.crudConfigs[CONFIG_KEYS[kind]];
   const fields = config?.allFields || config?.fields || [];
@@ -93,6 +100,7 @@ export default function ReferenceEditor({ kind = "values", recordId = null, mode
     if (disabled) return;
     setValues(current => ({ ...current, [name]: value }));
     setErrors(current => ({ ...current, [name]: "" }));
+    pendingCreation.current = null;
   }
   function focusIssue(issues) {
     const key = Object.keys(issues)[0];
@@ -110,27 +118,38 @@ export default function ReferenceEditor({ kind = "values", recordId = null, mode
       const selected = categories.find(category => String(category.ID_CategorieGenerique) === String(values.ID_CategorieGeneriqueFk));
       const originalCategory = !creating ? String(record?.ID_CategorieGeneriqueFk ?? "") : "";
       if (selected?.ValideCategorieGenerique === false && String(values.ID_CategorieGeneriqueFk) !== originalCategory) issues.ID_CategorieGeneriqueFk = "Choisissez une catégorie active.";
+      const owner = creating ? scope === "entity" ? entity.entityId : null : record?.IdEntiteFk;
+      if (selected?.IdEntiteFk != null && String(selected.IdEntiteFk) !== String(owner ?? "")) issues.ID_CategorieGeneriqueFk = "Cette catégorie appartient à une autre portée.";
     }
+    if (creating && scope === "entity" && !entity.entityId) issues.IdEntiteFk = "Choisissez une entreprise dans l’en-tête du module.";
     return issues;
   }
   async function submit() {
-    if (!config || disabled || !initial || saving.current || (!creating && !dirty)) return;
-    const issues = validation(); setErrors(issues); setError("");
+    if (!config || readOnly || busy || !initial || saving.current || (!creating && !dirty)) return;
+    // Une réponse incertaine se vérifie avec le corps initial, même si le catalogue a changé.
+    const issues = creating && pendingCreation.current ? {} : validation(); setErrors(issues); setError("");
     if (Object.keys(issues).length) { focusIssue(issues); return; }
     const token = request.current;
     saving.current = true; setBusy(true);
     const completePayload = config.buildPayload(values, creating ? "create" : "edit");
     const payload = creating ? completePayload : Object.fromEntries(Object.entries(completePayload).filter(([name]) => values[name] !== initial[name]));
-    const response = creating ? await config.createRecord(payload) : await config.updateRecord(recordId, payload);
+    if (creating && !pendingCreation.current) {
+      const { ID_CategorieGeneriqueFk, ...detail } = payload;
+      pendingCreation.current = referenceBatchPayload(kind, [referenceBatchRow(kind, detail)], { categoryId: ID_CategorieGeneriqueFk, scope, scopeValue: entity.entityId });
+    }
+    const response = creating ? await requestJson("/api/referentiel/saisie-multiple/" + (kind === "categories" ? "categories" : "valeurs"), { requiresAuth: true, method: "POST", body: JSON.stringify(pendingCreation.current) }) : await config.updateRecord(recordId, payload);
     if (!alive.current || token !== request.current) return;
     saving.current = false; setBusy(false);
     if (!response?.success) {
       if (creating && (!response?.status || response.status >= 500)) {
         setUncertain(true);
-        setError("La réponse de l’enregistrement est incertaine. Vérifiez la liste avant de créer à nouveau cette fiche.");
+        setError("La référence peut déjà être enregistrée. Réessayez pour vérifier le même enregistrement.");
         return;
       }
-      const details = response?.error?.details;
+      setUncertain(false);
+      const sourceDetails = response?.error?.details;
+      const details = creating ? { ...(sourceDetails?.rows?.[pendingCreation.current?.rows?.[0]?.clientRowId] || {}), ...(sourceDetails?.header?.categoryId ? { ID_CategorieGeneriqueFk: sourceDetails.header.categoryId } : {}), ...(sourceDetails?.header?.scopeValue ? { IdEntiteFk: sourceDetails.header.scopeValue } : {}) } : sourceDetails;
+      pendingCreation.current = null;
       const serverIssues = details && typeof details === "object" && !Array.isArray(details)
         ? Object.fromEntries(Object.entries(details).filter(([name]) => fields.some(field => field.name === name)).map(([name, message]) => [name, Array.isArray(message) ? message.join(" ") : String(message)])) : {};
       setErrors(serverIssues);
@@ -139,7 +158,7 @@ export default function ReferenceEditor({ kind = "values", recordId = null, mode
       return;
     }
     setInitial({ ...values });
-    onSaved?.(response.data, { kind, mode: creating ? "create" : "edit" });
+    onSaved?.(creating ? response.data?.records?.[0] : response.data, { kind, mode: creating ? "create" : "edit" });
   }
   function requestReload() { if (dirty) setConfirmReload(true); else setReload(value => value + 1); }
   function checkbox(field) {
@@ -154,7 +173,8 @@ export default function ReferenceEditor({ kind = "values", recordId = null, mode
     let options = [];
     if (field.type === "select") {
       const originalCategory = !creating ? String(record?.ID_CategorieGeneriqueFk ?? "") : "";
-      options = categories.map(category => ({ value: String(category.ID_CategorieGenerique), label: (category.NomCategorieGenerique || "Catégorie sans libellé") + (category.ValideCategorieGenerique === false ? " · Inactive" : ""), disabled: category.ValideCategorieGenerique === false && String(category.ID_CategorieGenerique) !== originalCategory }));
+      const owner = creating ? scope === "entity" ? entity.entityId : null : record?.IdEntiteFk;
+      options = categories.map(category => ({ value: String(category.ID_CategorieGenerique), label: (category.NomCategorieGenerique || "Catégorie sans libellé") + (category.ValideCategorieGenerique === false ? " · Inactive" : ""), disabled: (category.ValideCategorieGenerique === false || category.IdEntiteFk != null && String(category.IdEntiteFk) !== String(owner ?? "")) && String(category.ID_CategorieGenerique) !== originalCategory }));
       if (values[name] && !options.some(option => option.value === String(values[name]))) options.push({ value: String(values[name]), label: record?.NomCategorieGenerique || "Catégorie actuelle" });
     }
     return <div key={name} className={"record-field" + (field.type === "textarea" || name.startsWith("Nom") ? " is-wide" : "")}>
@@ -173,9 +193,10 @@ export default function ReferenceEditor({ kind = "values", recordId = null, mode
   const tabs = [{ key: "identification", label: "Identification", icon: "tag" }, ...(kind === "values" ? [{ key: "visibility", label: "Visibilité", icon: "eye" }] : [])];
   const displayName = record?.NomGenerique || record?.NomCategorieGenerique || "";
   const activeValue = values[kind === "categories" ? "ValideCategorieGenerique" : "ValideGenerique"];
-  return <RecordEditorFrame title={title} subtitle={displayName || (kind === "categories" ? "Organisation du référentiel" : "Libellé et usages")} icon={kind === "categories" ? "folder" : "tag"} defaultWidth={800} onClose={onClose} onSubmit={submit} loading={loading} busy={busy} dirty={!readOnly && dirty} readOnly={readOnly} canSubmit={Boolean(config) && Boolean(initial) && !uncertain && (creating || dirty)} error={error} onReload={!uncertain && error ? requestReload : null} className="reference-editor" storageKey="sauverndeko.references.editor.width">
+  return <RecordEditorFrame title={title} subtitle={displayName || (kind === "categories" ? "Organisation du référentiel" : "Libellé et usages")} icon={kind === "categories" ? "folder" : "tag"} defaultWidth={800} onClose={onClose} onSubmit={submit} loading={loading} busy={busy} dirty={!readOnly && dirty} readOnly={readOnly} canSubmit={Boolean(config) && Boolean(initial) && (creating || dirty)} submitLabel={uncertain ? "Vérifier l’enregistrement" : "Enregistrer"} error={error} onReload={!uncertain && error ? requestReload : null} className="reference-editor" storageKey="sauverndeko.references.editor.width">
     {confirmReload ? <div className="record-editor-error" role="alert"><span>Recharger la fiche et abandonner les modifications ?</span><div className="reference-editor-inline-actions"><ActionButton onClick={() => setConfirmReload(false)}>Continuer</ActionButton><ActionButton icon="refresh" onClick={() => setReload(value => value + 1)}>Recharger</ActionButton></div></div> : null}
     {!loading && initial ? <>
+      {creating ? <section className="record-editor-section"><div className="record-field"><label htmlFor={prefix + "IdEntiteFk"}>Portée</label><SearchSelect id={prefix + "IdEntiteFk"} label="Portée du référentiel" value={scope} options={[...(user?.Is_Admin === true ? [{ value: "global", label: "Commun à toutes les entreprises" }] : []), { value: "entity", label: entity.entities?.find(item => String(item.id) === String(entity.entityId))?.label || "Entreprise sélectionnée", disabled: !entity.entityId }]} disabled={disabled} onChange={next => { setScope(next); pendingCreation.current = null; setErrors({}); }}/>{errors.IdEntiteFk ? <small role="alert" className="record-field-error">{errors.IdEntiteFk}</small> : null}</div></section> : null}
       <div className="reference-editor-context"><span className="reference-editor-context-icon"><AppIcon name={kind === "categories" ? "folder" : "tag"}/></span><div><strong>{values.NomGenerique || values.NomCategorieGenerique || (kind === "categories" ? "Nouvelle catégorie" : "Nouvelle valeur")}</strong><small>{kind === "categories" ? "Catégorie du référentiel" : categories.find(category => String(category.ID_CategorieGenerique) === values.ID_CategorieGeneriqueFk)?.NomCategorieGenerique || "Valeur du référentiel"}</small></div><span className={"erp-status is-" + (activeValue ? "success" : "neutral")}>{activeValue == null ? "Non renseigné" : activeValue ? "Actif" : "Inactif"}</span></div>
       <ConsultationTabs tabs={tabs} value={active} onChange={setActive} label="Rubriques du référentiel" idPrefix={prefix}/>
       {active === "identification" ? <section className="record-editor-section reference-editor-section" role="tabpanel" id={prefix + "-panel-identification"} aria-labelledby={prefix + "-tab-identification"}><h3><AppIcon name="tag"/>Identification</h3><div className="record-editor-grid">{identityFields.map(renderField)}</div></section>

@@ -87,30 +87,33 @@ def state(row,actor,*,creation=False):
             'reason':reason,'overpaid':remaining<0,'maximumAmount':old_amount if remaining<0 and not creation else max(Decimal('0'),remaining+old_amount)}
 
 
-def modes(selected=None):
-    return db.query('''SELECT g."ID_Generique" AS id,g."NomGenerique" AS label,
-      (g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) AS active
-      FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
-      WHERE g."ID_CategorieGeneriqueFk"=36 AND ((g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) OR g."ID_Generique"=%s)
-      ORDER BY g."NomGenerique",g."ID_Generique"''',[selected])
+def modes(actor,selected=None,*,entity=None,table='T_Reglements',column='ID_ModeReglementFk',lock=False):
+    from apps.core.field_references import reference_options,document_reference_actor
+    scoped=document_reference_actor(actor,entity)
+    rows=reference_options(scoped,'logistique',table,column,current=selected)
+    if lock and rows:
+        db.query('SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN '
+            'referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" '
+            'WHERE g."ID_Generique"=ANY(%s::integer[]) FOR SHARE OF g,c',[[row['id'] for row in rows]])
+    return [{**row,'active':row['active'] and not row['disabled']} for row in rows]
 
 
-def record_data(row):
-    return clean({**row['record'],'facture':row.get('facture'),'references':{'reglementModes':modes(row['raw'].get('ID_ModeReglementFk'))}})
+def record_data(row,actor):
+    return clean({**row['record'],'facture':row.get('facture'),'references':{'reglementModes':modes(actor,row['raw'].get('ID_ModeReglementFk'),entity=(row.get('parent') or {}).get('IdEntiteFk'))}})
 
 
 def get_payment(actor,payment_id):
     require_module(actor,'logistique')
     row=snapshot(actor,payment_id);meta=state(row,actor)
     meta['createdByUserId']=int(row['creator']) if str(row.get('creator') or '').isdigit() else None
-    return record_data(row),meta
+    return record_data(row,actor),meta
 
 
 def preparation(actor,command_id):
     require_module(actor,'logistique');row=parent_snapshot(actor,command_id);parent=row['parent']
     now=datetime.now(ZoneInfo(settings.TIME_ZONE)).replace(tzinfo=None).isoformat(timespec='seconds')
     data={'facture':row['facture'],'defaults':{'CodeFactureFk':parent.get('CodeFacture'),'ID_DeviseFk':parent.get('ID_DeviseFk'),
-      'ID_ClientFk':parent.get('ID_ClientFk'),'ID_TiersFk':parent.get('ID_TiersFk'),'DateReglement':now,'MontantRegle':''},'references':{'reglementModes':modes()}}
+      'ID_ClientFk':parent.get('ID_ClientFk'),'ID_TiersFk':parent.get('ID_TiersFk'),'DateReglement':now,'MontantRegle':''},'references':{'reglementModes':modes(actor,entity=parent.get('IdEntiteFk'))}}
     return clean(data),state(row,actor,creation=True)
 
 
@@ -157,7 +160,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
                 raise APIError('Cette demande a déjà été enregistrée avec d’autres informations. Rouvrez la fiche.','PAYMENT_REPLAY_CONFLICT',409)
             get_record(model('T_Commande'),actor,{'ID_Commande':positive(saved.get('ID_Commande'))},lock=True)
             if operation=='delete':return {'ID_Reglement':saved['ID_Reglement'],'deleted':True,'replayed':True}
-            return {**record_data(snapshot(actor,positive(saved.get('ID_Reglement')))),'replayed':True}
+            return {**record_data(snapshot(actor,positive(saved.get('ID_Reglement'))),actor),'replayed':True}
         old=get_record(model('T_Reglements'),actor,{'ID_Reglement':payment_id}) if payment_id is not None else None
         code=old.get('CodeFactureFk') if old else provided.get('CodeFactureFk')
         if not isinstance(code,str) or not code.strip():fail('CodeFactureFk','Choisissez une facture émise.')
@@ -190,10 +193,9 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
             mode=effective.get('ID_ModeReglementFk')
             if mode is None:fail('ID_ModeReglementFk','Choisissez un mode de règlement.')
             if old is None or mode!=old.get('ID_ModeReglementFk'):
-                valid=db.one('''SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-                  ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ID_Generique"=%s AND g."ID_CategorieGeneriqueFk"=36
-                  AND g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE FOR SHARE OF g,c''',[mode])
-                if not valid:fail('ID_ModeReglementFk','Ce mode n’est plus disponible. Actualisez la liste.')
+                available=modes(actor,entity=parent.get('IdEntiteFk'),lock=True)
+                if not any(item['id']==mode and item['active'] for item in available):
+                    fail('ID_ModeReglementFk','Ce mode n’est plus disponible. Actualisez la liste.')
             # Même parent verrouillé pour chaque règlement : aucun double encaissement concurrent du solde.
             sums=db.one('SELECT COALESCE(SUM("MontantRegle"),0) AS total FROM logistique."T_Reglements" WHERE "CodeFactureFk"=%s AND (%s::integer IS NULL OR "ID_Reglement"<>%s)',[code,payment_id,payment_id])
             others=Decimal(str(sums['total']));invoice_amount=Decimal(str(current['facture'].get('MontantNetARegler',current['facture']['MontantFacture'])));new_total=others+amount
@@ -211,7 +213,7 @@ def mutate_payment(actor,body=None,keys=None,operation='create'):
         # La preuve PAYMENT_* conserve uniquement le rejeu transactionnel de la demande.
         audit(model('T_Reglements'),'PAYMENT_'+operation.upper(),new={'ID_Reglement':row['ID_Reglement'],'ID_Commande':parent['ID_Commande'],
           'requestId':request_id,'payloadHash':fingerprint,'IdEntiteFk':actor.organisation},actor=actor)
-        return {'ID_Reglement':row['ID_Reglement'],'deleted':True,'replayed':False} if operation=='delete' else {**record_data(snapshot(actor,row['ID_Reglement'])),'replayed':False}
+        return {'ID_Reglement':row['ID_Reglement'],'deleted':True,'replayed':False} if operation=='delete' else {**record_data(snapshot(actor,row['ID_Reglement']),actor),'replayed':False}
 
 
 class PaymentPreparationView(APIView):
@@ -259,7 +261,7 @@ def batch_data(body):
 def batch_result(actor,identifiers,*,replayed):
     rows=[]
     for index,identifier in enumerate(identifiers):
-        try:rows.append(record_data(snapshot(actor,positive(identifier))))
+        try:rows.append(record_data(snapshot(actor,positive(identifier)),actor))
         except APIError as error:batch_error(error,index)
     return {'reglements':rows,'replayed':replayed}
 

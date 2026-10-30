@@ -60,7 +60,13 @@ def require_module(actor,key,action="read"):
         values=access_snapshot(actor)["modules"].values()
         permission="canExport" if action=="export" else "canRead"
         if action=="manage":
-            if not actor.global_admin:raise APIError("Modification du référentiel partagé réservée à la plateforme.","PLATFORM_ADMIN_REQUIRED",403)
+            if not actor.global_admin:
+                from .tenancy import read_entity
+                if not actor.admin or read_entity(actor) is None or not any(item['canManage'] for item in values):
+                    raise APIError("Votre rôle ne permet pas de gérer les références de cette entreprise.","MODULE_ACTION_FORBIDDEN",403)
+                # La mutation vérifie ensuite la propriété de chaque ligne.
+                # Les catalogues partagés et les correspondances physiques
+                # conservent leur contrôle global dédié.
         elif not any(item[permission] for item in values):raise APIError("Aucune application ne permet cet accès.","MODULE_ROLE_FORBIDDEN",403)
         return
     item=access_snapshot(actor)["modules"].get(key)

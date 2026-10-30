@@ -490,7 +490,9 @@ class FieldReferencesAPI(unittest.TestCase):
 
     def test_26_shared_fields_use_global_options_and_refuse_entity_writes(self):
         shared=[f for f in self.fields if not f['SupportsEntityScope']]
-        self.assertEqual(len(shared),23)
+        # La précision des unités est maintenant rattachée à leur propriétaire
+        # durable : les références purement partagées restent au nombre de22.
+        self.assertEqual(len(shared),22)
         field=next(f for f in shared if f['CanConfigure'] and f['TableName']=='T_Niveau_2')
         path=BASE+'/'+str(field['ID_ChampReferentiel'])
         self.response(self.put(path=path)[0])

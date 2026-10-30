@@ -60,6 +60,8 @@ export function notifyReferencesMutation(path, method, payload) {
   if (/^\/api\/(?:referentiel\/generiques|models\/T_Generique)(?:\/\d+)?\/?$/.test(pathname)) publishReferencesRefresh("T_Generique");
   else if (/^\/api\/(?:referentiel\/categories-generiques|models\/T_CategorieGenerique)(?:\/\d+)?\/?$/.test(pathname)) publishReferencesRefresh("T_CategorieGenerique");
   else if (/^\/api\/referentiel\/champs-references\/\d+(?:\/retablir)?\/?$/.test(pathname)) publishReferencesRefresh("T_ChampReferentiel");
+  else if (/^\/api\/referentiel\/saisie-multiple\/categories\/?$/.test(pathname)) publishReferencesRefresh("T_CategorieGenerique");
+  else if (/^\/api\/referentiel\/saisie-multiple\/valeurs\/?$/.test(pathname)) publishReferencesRefresh("T_Generique");
 }
 
 if (import.meta.hot) import.meta.hot.dispose(() => {

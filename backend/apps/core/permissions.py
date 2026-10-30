@@ -17,6 +17,10 @@ def scope_for(obj, actor, alias="v"):
     from .tenancy import read_entity
     schema,name=obj['schema'],obj['name'];a=alias;org=read_entity(actor)
     if actor.global_admin and org is None:return 'TRUE',[]
+    if schema == 'referentiel' and name in {'T_CategorieGenerique','T_Generique','V_CategorieGenerique','V_Generique'}:
+        # Les anciennes lignes NULL restent communes. Aucune préférence de
+        # contexte ne donne accès aux nomenclatures privées d'une autre société.
+        return f'({a}."IdEntiteFk" IS NULL OR {a}."IdEntiteFk"=%s)', [org]
     if schema in {'geolocalisation','referentiel'}:return 'TRUE',[]
     if not org:raise APIError('Organisation requise.','ORGANISATION_REQUIRED',403)
     columns={x['column_name'] for x in obj['columns']}
@@ -42,7 +46,8 @@ def scope_for(obj, actor, alias="v"):
 
 def check_global_write(obj, actor):
     if not actor.global_admin and (
-        obj["schema"] in {"geolocalisation", "referentiel"}
+        (obj["schema"] in {"geolocalisation", "referentiel"}
+         and not (obj['schema']=='referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique'}))
         or obj["name"] in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}
     ):
         raise APIError(

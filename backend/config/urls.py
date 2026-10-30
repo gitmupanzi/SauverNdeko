@@ -1,4 +1,6 @@
 from apps.core.table_preferences import TablePreferencesView
+from apps.core.reference_batches import ReferenceBatchView
+from apps.core.reference_tables import ReferenceTablesView, ReferenceTablesExcelView, ReferenceTablesCSVView
 from apps.core.field_references import (FieldReferencesView, FieldReferenceRestoreView,
     FieldReferenceOptionsView, FieldReferenceHistoryView, FieldReferenceExportView)
 from apps.core.personnel import PersonnelReferencesView
@@ -60,6 +62,11 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/?$", ReferenceBatchView.as_view()),
+    re_path(r"^api/referentiel/tableaux/export\.xlsx/?$", ReferenceTablesExcelView.as_view()),
+    re_path(r"^api/referentiel/tableaux/export\.csv/?$", ReferenceTablesCSVView.as_view()),
+    re_path(r"^api/referentiel/tableaux/(?P<interface_key>[a-z]+[.][a-z-]+)/?$", ReferenceTablesView.as_view()),
+    re_path(r"^api/referentiel/tableaux/?$", ReferenceTablesView.as_view()),
     re_path(r"^api/referentiel/champs-references/valeurs/?$", FieldReferenceOptionsView.as_view()),
     re_path(r"^api/referentiel/champs-references/export\.(?P<file_format>xlsx|csv)/?$", FieldReferenceExportView.as_view()),
     re_path(r"^api/referentiel/champs-references/(?P<pk>[0-9]+)/retablir/?$", FieldReferenceRestoreView.as_view()),

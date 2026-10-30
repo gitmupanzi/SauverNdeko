@@ -190,17 +190,36 @@ def reference_context(actor, schema, table, column, *, counts=False):
     return _context(actor, _field(schema=schema, table=table, column=column), scope, value, entity, counts=counts)
 
 
+def document_reference_actor(actor, entity):
+    """Résoudre les choix dans l'entreprise durable d'un document déjà autorisé.
+
+    La consultation globale d'un administrateur ne transforme pas les listes
+    privées du document en listes communes ou en listes d'une autre entreprise.
+    Le compte d'origine et ses droits restent inchangés.
+    """
+    if entity is None:
+        return actor
+    entity = positive(entity, 'Entreprise du document')
+    if actor is None or not actor.global_admin and entity != read_entity(actor):
+        raise APIError('Ce document appartient à une autre entreprise.', 'FORBIDDEN_SCOPE', 403)
+    scoped = copy.copy(actor)
+    scoped._context_entity = entity
+    return scoped
+
+
 def reference_options(actor, schema, table, column, current=None, visibility=None):
     """Abréviation prioritaire ; une ancienne valeur reste visible mais non sélectionnable."""
     field = _field(schema=schema, table=table, column=column)
     scope, value, entity = _scope({}, actor, automatic=True)
     context = _context(actor, field, scope, value, entity)
+    choice_entity = entity if field['SupportsEntityScope'] else None
     if visibility is not None and (not isinstance(visibility, dict) or set(visibility)-VISIBILITY
                                    or any(type(v) is not bool for v in visibility.values())):
         raise APIError('Règle de visibilité non autorisée.', 'REFERENCE_VISIBILITY_INVALID', 400)
     clauses = ['g."ID_CategorieGeneriqueFk"=ANY(%s::integer[])',
-               'g."ValideGenerique" IS TRUE', 'c."ValideCategorieGenerique" IS TRUE']
-    params = [context['categoryIds']]
+               'g."ValideGenerique" IS TRUE', 'c."ValideCategorieGenerique" IS TRUE',
+               'referentiel.fn_reference_visible(g."ID_Generique",%s)']
+    params = [context['categoryIds'], choice_entity]
     for key, expected in (visibility or {}).items():
         clauses.append('g.'+db.ident(key)+' IS NOT DISTINCT FROM %s')
         params.append(expected)
@@ -217,7 +236,8 @@ def reference_options(actor, schema, table, column, current=None, visibility=Non
     missing = [key for key in retained if not any(row['id'] == key for row in result)]
     if missing:
         result.extend({**row, 'disabled': True, 'incompatible': row['categoryId'] not in context['categoryIds']}
-                      for row in db.query(projection+' WHERE g."ID_Generique"=ANY(%s::integer[]) ORDER BY g."ID_Generique"', [missing]))
+                      for row in db.query(projection+' WHERE g."ID_Generique"=ANY(%s::integer[]) '
+                          'AND referentiel.fn_reference_visible(g."ID_Generique",%s) ORDER BY g."ID_Generique"', [missing, choice_entity]))
     if schema == 'logistique' and (table, column) in {('T_Commande', 'ID_TypeCmdFk'), ('T_Mouvement', 'ID_TypeMvtFk')} and result:
         kinds = {row['id']: row for row in db.query('SELECT id,logistique.fn_nature_bon(id) AS kind,'
             'logistique.fn_effet_type_bon(id) AS effect FROM unnest(%s::integer[]) AS x(id)', [[row['id'] for row in result]])}
@@ -230,7 +250,9 @@ def _detail(actor, identifier, raw):
     scope, value, entity = _scope(raw, actor)
     result = _context(actor, _field(identifier), scope, value, entity, counts=True)
     result['categories'] = db.query('SELECT "ID_CategorieGenerique" AS id,"NomCategorieGenerique" AS label '
-        'FROM referentiel."T_CategorieGenerique" WHERE "ValideCategorieGenerique" IS TRUE ORDER BY lower("NomCategorieGenerique"),"ID_CategorieGenerique"')
+        'FROM referentiel."T_CategorieGenerique" WHERE "ValideCategorieGenerique" IS TRUE '
+        'AND referentiel.fn_categorie_visible("ID_CategorieGenerique",%s) '
+        'ORDER BY lower("NomCategorieGenerique"),"ID_CategorieGenerique"', [entity if result['SupportsEntityScope'] else None])
     return result
 
 
@@ -370,8 +392,10 @@ def save(actor, identifier, body, *, restore=False):
         if previous['_version'] != version:
             raise APIError('Le référencement a changé. Rechargez-le avant d’enregistrer.', 'REFERENCE_VERSION_CONFLICT', 409)
         if categories and not db.one('SELECT "ID_CategorieGenerique" FROM referentiel."T_CategorieGenerique" '
-                'WHERE "ID_CategorieGenerique"=%s AND "ValideCategorieGenerique" IS TRUE FOR SHARE', categories):
-            raise APIError({'categoryIds': 'Choisissez une catégorie active.'}, 'REFERENCE_CATEGORY_INACTIVE', 400)
+                'WHERE "ID_CategorieGenerique"=%s AND "ValideCategorieGenerique" IS TRUE '
+                'AND referentiel.fn_categorie_visible("ID_CategorieGenerique",%s) FOR SHARE',
+                [*categories, entity if field['SupportsEntityScope'] else None]):
+            raise APIError({'categoryIds': 'Choisissez une catégorie active de cette portée.'}, 'REFERENCE_CATEGORY_INACTIVE', 400)
         set_admin_actor(actor)
         db.query('DELETE FROM systeme."T_Fk_Correspondance" WHERE "IdChampReferentielFk"=%s '
                  'AND "SettingScope"=%s AND "ScopeValue" IS NOT DISTINCT FROM %s', [identifier, scope, scope_value])

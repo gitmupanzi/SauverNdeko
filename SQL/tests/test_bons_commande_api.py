@@ -51,7 +51,10 @@ class BonsCommandeAPI(unittest.TestCase):
         for key, label in [(34, 'Unités'), (40, 'Catégorie produit'), (42, 'Devise'), (46, 'Type produit'), (64, 'Type de commande')]:
             c.execute('INSERT INTO referentiel."T_CategorieGenerique" ("ID_CategorieGenerique","NomCategorieGenerique","ValideCategorieGenerique") OVERRIDING SYSTEM VALUE VALUES (%s,%s,true) ON CONFLICT DO NOTHING', [key, label])
         def reference(category, label, code):
-            existing = c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=%s AND "AbrGenerique"=%s AND "ValideGenerique" IS TRUE LIMIT 1', [category, code]).fetchone()
+            # Une reprise historique peut conserver « Entrée » comme code.
+            # Réutiliser la valeur commune par code ou libellé, sans créer de
+            # doublon ni modifier la nomenclature déjà présente dans le clone.
+            existing = c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=%s AND "IdEntiteFk" IS NULL AND (referentiel.fn_normaliser_libelle("AbrGenerique")=referentiel.fn_normaliser_libelle(%s) OR referentiel.fn_normaliser_libelle("NomGenerique")=referentiel.fn_normaliser_libelle(%s)) AND "ValideGenerique" IS TRUE ORDER BY "ID_Generique" LIMIT 1', [category, code, label]).fetchone()
             return existing['id'] if existing else c.execute('INSERT INTO referentiel."T_Generique" ("ID_CategorieGeneriqueFk","NomGenerique","AbrGenerique","ValideGenerique") VALUES (%s,%s,%s,true) RETURNING "ID_Generique" id', [category, label, code]).fetchone()['id']
         cls.currency = reference(42, 'USD', 'USD')
         cls.unit = reference(34, 'Pièce fictive CMD', 'test-cmd-pcs')
