@@ -11,6 +11,7 @@ import AppIcon from "../../components/AppIcon";
 import {tiersRequest,tiersRecord,tiersRows,tiersChanged,TIERS_CHANGED,natureLabel} from "../../services/tiers";
 import {SimpleTable,formatDate} from "./logistiqueShared";
 import TiersEditor from "./TiersEditor";
+import LogisticsBatchComposer from "./LogisticsBatchComposer";
 import Tiers360 from "./Tiers360";
 import "./Tiers.css";
 const EMPTY={typeClientId:"",type:"",archived:"false"};
@@ -46,5 +47,5 @@ export default function Tiers({refreshKey,onDataChanged}){
         <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>setGrid(current=>({...current,take,skip:0}))} filtersOpen={filtersOpen} filterControlsId={prefix+"-filters"} toggleFilters={()=>setFiltersOpen(x=>!x)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(x=>x==="compact"?"airy":"compact")} columnsOpen={columnsOpen} columnsButtonRef={columnsRef} toggleColumns={()=>setColumnsOpen(x=>!x)} loading={loading} placeholder="Rechercher un nom, un e-mail ou un téléphone…"/>
         {filtersOpen?<form id={prefix+"-filters"} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">{[["type","Nature",[{value:"",label:"Toutes les natures"},{value:"personne",label:"Personnes"},{value:"entreprise",label:"Entreprises"}]],["archived","État",[{value:"false",label:"Actifs"},{value:"true",label:"Archivés"},{value:"all",label:"Tous les tiers"}]]].map(([key,label,options])=><label key={key}><span>{label}</span><SearchSelect id={prefix+key} label={label} value={draft[key]} options={options} onChange={value=>setDraft(current=>({...current,[key]:value}))}/></label>)}</div><div className="erp-register-filters-footer"><ActionButton variant="primary" type="submit" disabled={loading}>Appliquer les filtres</ActionButton></div></form>:null}
       </>}/>
-    </div></RegisterSurface>{editor?<TiersEditor tiersId={editor.id} onClose={()=>setEditor(null)} onSaved={updated}/>:null}{consult!=null?<Tiers360 tiersId={consult} onClose={()=>setConsult(null)} onChanged={()=>{setRevision(x=>x+1);onDataChanged?.();}}/>:null}{archiving!=null?<ArchiveTiers tiersId={archiving} onClose={()=>setArchiving(null)} onSaved={updated}/>:null}</div>;
+    </div></RegisterSurface>{editor?(editor.id==null?<LogisticsBatchComposer kind="tiers" onClose={()=>setEditor(null)} onSaved={updated}/>:<TiersEditor tiersId={editor.id} onClose={()=>setEditor(null)} onSaved={updated}/>):null}{consult!=null?<Tiers360 tiersId={consult} onClose={()=>setConsult(null)} onChanged={()=>{setRevision(x=>x+1);onDataChanged?.();}}/>:null}{archiving!=null?<ArchiveTiers tiersId={archiving} onClose={()=>setArchiving(null)} onSaved={updated}/>:null}</div>;
 }

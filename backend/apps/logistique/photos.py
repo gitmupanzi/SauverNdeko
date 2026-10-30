@@ -63,7 +63,7 @@ def request_data(request):
         return body,request.FILES.get("photo")
     return request.data,None
 
-def save_article(actor,body,upload=None,pk=None):
+def save_article(actor,body,upload=None,pk=None,*,_created_paths=None):
     db.ensure_writable()
     if not isinstance(body,dict):raise APIError("Objet JSON attendu.")
     data=dict(body)
@@ -108,6 +108,7 @@ def save_article(actor,body,upload=None,pk=None):
                 relative="Article/"+name+"_"+uuid.uuid4().hex+".jpg"
                 new_path=photo_path(relative);new_path.parent.mkdir(parents=True,exist_ok=True)
                 with new_path.open("xb") as destination:destination.write(encoded)
+                if _created_paths is not None:_created_paths.append(new_path)
                 data["PhotoArticle"]=relative
             elif remove:data["PhotoArticle"]=None
             row=mutate("T_Article",actor,data,{"ID_Article":positive(pk)} if pk else None,"update" if pk else "create",_creation_metadata=metadata)

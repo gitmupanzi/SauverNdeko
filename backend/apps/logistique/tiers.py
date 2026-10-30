@@ -102,37 +102,43 @@ class TiersView(APIView):
     put=patch
     def delete(self,request,pk):return self.write(request,pk,archive=True)
     def write(self,request,pk,archive=False):
-        db.ensure_writable();require_module(request.user,'logistique','manage');entity=require_entity(request.user)
-        request_id=None;fingerprint=None
-        if not pk:
-            try:request_id=str(uuid.UUID(request.data.get('requestId')))
-            except (ValueError,TypeError,AttributeError):raise APIError('Rouvrez le formulaire de création.','TIERS_REQUEST_INVALID',400)
-            fingerprint=hashlib.sha256(json.dumps({key:value for key,value in request.data.items() if key!='requestId'},cls=ExactEncoder,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-        with transaction.atomic():
-            if request_id:
-                db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['tiers:'+str(request.user.pk)+':'+str(entity)+':'+request_id])
-                saved=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log" WHERE "TableName"='logistique.T_Client' AND "Operation"='TIERS_CREATE' AND "NewData"->>'requestId'=%s AND "NewData"->'_actor'->>'IdUser'=%s ORDER BY "IdLog" DESC LIMIT 1''',[request_id,str(request.user.pk)])
-                if saved:
-                    proof=saved['proof']
-                    if proof.get('IdEntiteFk')!=entity or not hmac.compare_digest(str(proof.get('payloadHash','')),fingerprint):raise APIError('Cette demande a déjà été enregistrée avec un autre contenu.','TIERS_REPLAY_CONFLICT',409)
-                    row=record(request.user,proof['ID_Client']);return ok(clean(row),meta={**rights(request.user,row),'replayed':True})
-            old=record(request.user,pk,lock=True) if pk else None
-            if old:
-                assert_document(request.user,old)
-                # La révision porte sur la même fiche brute, indépendante des libellés du référentiel.
-                shown=record(request.user,pk)
-                if not isinstance(request.data.get('_version'),str) or not hmac.compare_digest(revision(shown),request.data['_version']):raise APIError('Ce tiers a changé. Rechargez sa fiche.','TIERS_CONFLICT',409)
-            data=validate(request.user,{'Actif':False} if archive else request.data,old)
-            if old:
-                if data:
-                    cols=list(data);db.one('UPDATE logistique."T_Client" SET '+','.join(db.ident(k)+'=%s' for k in cols)+',"ModifieParUserFk"=%s,"DateModification"=CURRENT_TIMESTAMP WHERE "ID_Client"=%s RETURNING "ID_Client"',[*[data[k] for k in cols],request.user.pk,old['ID_Client']])
-                identifier=old['ID_Client']
-            else:
-                data.update(IdEntiteFk=entity,CreeParUserFk=request.user.pk,ModifieParUserFk=request.user.pk);cols=list(data)
-                identifier=db.one('INSERT INTO logistique."T_Client" ('+','.join(map(db.ident,cols))+') VALUES ('+','.join(['%s']*len(cols))+') RETURNING "ID_Client"',[data[k] for k in cols])['ID_Client']
-            row=record(request.user,identifier);audit(OBJ,'ARCHIVE' if archive else 'UPDATE' if old else 'INSERT',old=old,new=row,actor=request.user)
-            if request_id:audit(OBJ,'TIERS_CREATE',new={'requestId':request_id,'payloadHash':fingerprint,'ID_Client':identifier,'IdEntiteFk':entity},actor=request.user)
-            return ok(clean(row),status=200 if old else 201,meta=rights(request.user,row))
+        row,meta,created=save(request.user,request.data,pk,archive)
+        return ok(row,status=201 if created else 200,meta=meta)
+
+def save(actor,body,pk=None,archive=False):
+    """Ecriture commune aux fiches individuelles et aux paniers transactionnels."""
+    if not isinstance(body,dict):raise APIError("Objet JSON attendu.")
+    db.ensure_writable();require_module(actor,'logistique','manage');entity=require_entity(actor)
+    request_id=None;fingerprint=None
+    if not pk:
+        try:request_id=str(uuid.UUID(body.get('requestId')))
+        except (ValueError,TypeError,AttributeError):raise APIError('Rouvrez le formulaire de création.','TIERS_REQUEST_INVALID',400)
+        fingerprint=hashlib.sha256(json.dumps({key:value for key,value in body.items() if key!='requestId'},cls=ExactEncoder,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    with transaction.atomic():
+        if request_id:
+            db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['tiers:'+str(actor.pk)+':'+str(entity)+':'+request_id])
+            saved=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log" WHERE "TableName"='logistique.T_Client' AND "Operation"='TIERS_CREATE' AND "NewData"->>'requestId'=%s AND "NewData"->'_actor'->>'IdUser'=%s ORDER BY "IdLog" DESC LIMIT 1''',[request_id,str(actor.pk)])
+            if saved:
+                proof=saved['proof']
+                if proof.get('IdEntiteFk')!=entity or not hmac.compare_digest(str(proof.get('payloadHash','')),fingerprint):raise APIError('Cette demande a déjà été enregistrée avec un autre contenu.','TIERS_REPLAY_CONFLICT',409)
+                row=record(actor,proof['ID_Client']);return clean(row),{**rights(actor,row),'replayed':True},False
+        old=record(actor,pk,lock=True) if pk else None
+        if old:
+            assert_document(actor,old)
+            # La révision porte sur la même fiche brute, indépendante des libellés du référentiel.
+            shown=record(actor,pk)
+            if not isinstance(body.get('_version'),str) or not hmac.compare_digest(revision(shown),body['_version']):raise APIError('Ce tiers a changé. Rechargez sa fiche.','TIERS_CONFLICT',409)
+        data=validate(actor,{'Actif':False} if archive else body,old)
+        if old:
+            if data:
+                cols=list(data);db.one('UPDATE logistique."T_Client" SET '+','.join(db.ident(k)+'=%s' for k in cols)+',"ModifieParUserFk"=%s,"DateModification"=CURRENT_TIMESTAMP WHERE "ID_Client"=%s RETURNING "ID_Client"',[*[data[k] for k in cols],actor.pk,old['ID_Client']])
+            identifier=old['ID_Client']
+        else:
+            data.update(IdEntiteFk=entity,CreeParUserFk=actor.pk,ModifieParUserFk=actor.pk);cols=list(data)
+            identifier=db.one('INSERT INTO logistique."T_Client" ('+','.join(map(db.ident,cols))+') VALUES ('+','.join(['%s']*len(cols))+') RETURNING "ID_Client"',[data[k] for k in cols])['ID_Client']
+        row=record(actor,identifier);audit(OBJ,'ARCHIVE' if archive else 'UPDATE' if old else 'INSERT',old=old,new=row,actor=actor)
+        if request_id:audit(OBJ,'TIERS_CREATE',new={'requestId':request_id,'payloadHash':fingerprint,'ID_Client':identifier,'IdEntiteFk':entity},actor=actor)
+        return clean(row),rights(actor,row),old is None
 
 class TiersConsultationView(APIView):
     permission_classes=[IsERPAdmin]

@@ -54,6 +54,11 @@ for cid,label in [(34,'Unités'),(40,'Catégorie produit'),(42,'Devise'),(46,'Ty
     db.query('INSERT INTO referentiel."T_CategorieGenerique"("ID_CategorieGenerique","NomCategorieGenerique","ValideCategorieGenerique") OVERRIDING SYSTEM VALUE VALUES(%s,%s,true) ON CONFLICT DO NOTHING',[cid,label])
     db.query('UPDATE referentiel."T_CategorieGenerique" SET "NomCategorieGenerique"=%s,"ValideCategorieGenerique"=true WHERE "ID_CategorieGenerique"=%s',[label,cid])
 def generic(category,label,abbr):
+    # Les bases de recette récentes contiennent déjà le dictionnaire commun
+    # et refusent désormais les nouvelles identités ambiguës.
+    owner=db.one("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='referentiel' AND table_name='T_Generique' AND column_name='IdEntiteFk') present")['present']
+    present=db.one('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=%s AND lower(btrim("AbrGenerique"))=lower(btrim(%s))'+(' AND "IdEntiteFk" IS NULL' if owner else '')+' ORDER BY "ID_Generique" LIMIT 1',[category,abbr])
+    if present:return present['id']
     return insert('referentiel','T_Generique',{'ID_CategorieGeneriqueFk':category,'NomGenerique':label,'AbrGenerique':abbr,'ValideGenerique':True},'ID_Generique')
 unit=generic(34,'Piece de recette','pcs')
 category=generic(40,'Materiel de recette','MAT')

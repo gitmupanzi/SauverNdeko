@@ -30,6 +30,7 @@ from apps.logistique.order_composer import OrderComposerView, OrderCompositionVi
 from apps.logistique.receipts import ArticleReceiptView
 from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
+from apps.logistique.batch_creation import LogisticsBatchView
 from django.contrib import admin
 from django.urls import re_path
 from apps.accounts.views import (
@@ -62,6 +63,7 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|articles|immobilisations)/?$", LogisticsBatchView.as_view()),
     re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/?$", ReferenceBatchView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.xlsx/?$", ReferenceTablesExcelView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.csv/?$", ReferenceTablesCSVView.as_view()),

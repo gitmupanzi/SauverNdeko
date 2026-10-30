@@ -81,6 +81,11 @@ def style(element, rules, parent=None, pseudo=None):
             for target in targets:
                 if target not in winning or priority >= winning[target][0]:
                     winning[target] = priority, value
+    for index, declaration in enumerate(tinycss2.parse_declaration_list(element.etree_element.get('style', ''), skip_comments=True, skip_whitespace=True)):
+        if declaration.type == 'declaration':
+            priority = (declaration.important, (1000000, 0, 0), sys.maxsize, index)
+            if declaration.lower_name not in winning or priority >= winning[declaration.lower_name][0]:
+                winning[declaration.lower_name] = priority, tinycss2.serialize(declaration.value).strip()
     variables = dict(parent.get('variables', {}) if parent else {})
     variables.update({name: value for name, (_, value) in winning.items() if name.startswith('--')})
     variables = {name: variables_in(value, variables, (name,)) for name, value in variables.items()}
@@ -99,11 +104,13 @@ def fixture(theme):
       <table class="public-table logistics-table admin-table table table-hover"><thead><tr>
       <th class="admin-table-head-cell is-pinned"><button class="admin-header-trigger is-pinned" disabled="disabled"><span class="admin-header-label">Article</span></button><span class="admin-resize-handle" /></th>
       <th class="admin-table-head-cell"><button class="admin-header-trigger"><span class="admin-header-label">Quantité</span></button></th>
-      <th class="admin-table-head-cell"><span class="admin-header-label">Actions</span></th></tr></thead><tbody>'''
+      <th class="admin-table-head-cell"><span class="admin-header-label">Actions</span></th></tr>
+      <tr class="erp-column-filter-row"><th class="is-pinned"><input type="text" /></th><th><input type="number" /></th><th><select><option>Tous</option></select></th></tr></thead><tbody>'''
     for row, state in enumerate(['', '', 'is-selected', 'logistics-row-selected', 'qa-hover', 'qa-hover is-selected'], 1):
         table += f'<tr class="admin-table-row {state}" data-row="{row}"><td class="admin-table-cell is-pinned">Matériel</td><td class="admin-table-cell">10</td><td class="admin-table-cell admin-actions-cell">⋯</td></tr>'
     table += '</tbody></table></div></div>'
-    html = f'<html data-theme="{theme}"><body><main class="logistics-modern logistics-screen-table-card erp-results" data-context="page">{table}</main><dialog class="resizable-drawer" open="open" data-context="portal">{table}</dialog></body></html>'
+    tall_header_table = table.replace('class="public-table-wrap logistics-table-wrap admin-table-wrap"', 'class="public-table-wrap logistics-table-wrap admin-table-wrap" style="--erp-table-heading-height:72px"')
+    html = f'<html data-theme="{theme}"><body><main class="logistics-modern logistics-screen-table-card erp-results" data-context="page">{table}</main><dialog class="resizable-drawer" open="open" data-context="portal">{tall_header_table}</dialog></body></html>'
     return cssselect2.ElementWrapper.from_html_root(ET.fromstring(html))
 
 
@@ -151,6 +158,15 @@ def evaluate(rules, theme):
         check(computed[grip.etree_element]['background-color'] == 'transparent', f'{theme}/{context_name}: no gradient column grip')
         disabled = next(context.query_all('.admin-header-trigger[disabled]'))
         check(computed[disabled.etree_element]['opacity'] == '1', f'{theme}/{context_name}: non-sortable header readable')
+        for header in context.query_all('.erp-column-filter-row th'):
+            values = computed[header.etree_element]
+            check(values['top'] == ('72px' if context_name == 'portal' else '46px'), f'{theme}/{context_name}: filters below actual heading')
+            check(values['position'] == 'sticky', f'{theme}/{context_name}: sticky filter heading')
+            check(colour(values['background-color']) == colour(values['variables']['--erp-raised']), f'{theme}/{context_name}: filter heading surface')
+            for field in header.query_all('input,select'):
+                field_style = computed[field.etree_element]
+                check(colour(field_style['background-color']) == colour(field_style['variables']['--erp-surface']), f'{theme}/{context_name}: themed column filter')
+                check(contrast(colour(field_style['color']), colour(field_style['background-color'])) >= 4.5, f'{theme}/{context_name}: filter text contrast')
         for row in context.query_all('tbody tr'):
             cells = list(row.query_all('td'))
             row_styles = [computed[cell.etree_element] for cell in cells]
@@ -181,7 +197,7 @@ if __name__ == '__main__':
             evaluate(rules, theme)
     report = {'success': True, 'checks': checks, 'coverage': ['Real CSS cascade via tinycss2/cssselect2', 'Light/dark/high contrast',
               'Page and detached dialog without erp-results ancestor', 'Headers, normal/striped/selected/hover rows',
-              'Pinned and action cells; legacy overlays disabled', 'Two stylesheet load orders', 'WCAG 4.5 text contrast'],
+              'Pinned and action cells; legacy overlays disabled', 'Sticky column filters below normal/wrapped heading', 'Two stylesheet load orders', 'WCAG 4.5 text contrast'],
               'limits': ['Colour cascade fixtures; no browser layout or screenshot test', 'Media/container layout not evaluated']}
     (ROOT / '.runtime' / 'table-theme-tests.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report))

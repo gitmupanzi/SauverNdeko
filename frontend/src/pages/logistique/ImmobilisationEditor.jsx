@@ -17,7 +17,7 @@ const TABS=[{key:"identification",label:"Identification",icon:"tag"},{key:"affec
 const LABELS={ID_CategorieFk:"CategorieMateriel",ID_EtatFk:"EtatMateriel",ID_ResponsableFk:"Responsable",ID_ServiceFk:"Service",ID_LocalisationFk:"Localisation",ID_DeviseFk:"DeviseCode"};
 const flatten=value=>Array.isArray(value)?value.map(flatten).join(" "):typeof value==="string"?value:"";
 const tabFor=key=>["ID_ResponsableFk","ID_ServiceFk","ID_LocalisationFk","LocalisationComplement"].includes(key)?"affectation":["PrixUnitaire","ID_DeviseFk","DateEntree","DateAcquisition"].includes(key)?"acquisition":["Observations","motif"].includes(key)?"trace":"identification";
-export default function ImmobilisationEditor({recordId=null,operation="edit",onClose,onSaved}){
+export default function ImmobilisationEditor({recordId=null,operation="edit",onClose,onSaved,draft=null,onDraftSave}){
  const {user}=useAuth(),scope=useEntityScope(),prefix=useId(),creating=recordId==null,actionOnly=["archive","restore"].includes(operation);
  const identity=String(user?.IdUser??"")+":"+scope.scopeKey+":"+String(recordId??"new")+":"+operation,current=useRef(identity),mounted=useRef(true),saving=useRef(false),ticket=useRef(null),referenceRequest=useRef(null);current.current=identity;
  const [values,setValues]=useState(()=>immobilisationValues()),[baseline,setBaseline]=useState(null),[record,setRecord]=useState(null),[meta,setMeta]=useState(null),[references,setReferences]=useState({}),[motif,setMotif]=useState("");
@@ -38,7 +38,7 @@ export default function ImmobilisationEditor({recordId=null,operation="edit",onC
    if(controller.signal.aborted||current.current!==key)return;setLoading(false);setSettled(key);
    if(!refs?.success||!response?.success){setError((refs?.success?response:refs)?.message||"La fiche n’a pas pu être chargée.");return;}
    const row=creating?null:immobilisationRecord(response);if(!creating&&String(row?.ID_Immobilisation)!==String(recordId)){setError("La fiche reçue ne correspond pas au bien choisi. Rechargez-la.");return;}
-   const form=immobilisationValues(row,refs.data);setReferences(refs.data||{});setRecord(row);setMeta(response.meta||{});setValues(form);setBaseline(form);
+   const form=creating&&draft?.values?{...draft.values}:immobilisationValues(row,refs.data);if(creating&&draft?.motif)setMotif(draft.motif);setReferences(refs.data||{});setRecord(row);setMeta(response.meta||{});setValues(form);setBaseline(form);
   });return()=>{controller.abort();referenceRequest.current?.abort();};
  },[identity,reload]);
  function change(key,value){if(disabled||saving.current)return;setValues(previous=>({...previous,[key]:value,...(key==="SuiviIndividuel"&&value||key==="NumeroSerie"&&value.trim()?{Quantite:"1"}:{})}));setErrors(previous=>({...previous,[key]:""}));}
@@ -50,6 +50,7 @@ export default function ImmobilisationEditor({recordId=null,operation="edit",onC
    const issues=actionOnly?(!motif.trim()?{motif:"Précisez le motif de cette action."}:Array.from(motif.trim()).length>1000?{motif:"Limitez le motif à 1000 caractères."}:{}):immobilisationErrors(values,motif);setErrors(issues);setError("");
    const revision=meta?.revision??record?._version;if(!creating&&!revision){setError("Rechargez la fiche avant de l’enregistrer.");return;}
    if(Object.keys(issues).length){setError("Vérifiez les champs indiqués.");focusIssue(issues);return;}
+   if(creating&&onDraftSave){const data=immobilisationPayload(values,{motif,requestId:""});delete data.requestId;onDraftSave({values:{...values},data,motif});return;}
    const payload=actionOnly?{...(operation==="restore"?{Actif:true}:{}),_version:revision,motif:motif.trim(),requestId:""}:immobilisationPayload(values,{record,revision,motif,requestId:""}),fingerprint=JSON.stringify(payload);
    if(snapshot?.fingerprint!==fingerprint){payload.requestId=crypto.randomUUID();snapshot={fingerprint,payload};ticket.current=snapshot;}
   }
@@ -67,8 +68,8 @@ export default function ImmobilisationEditor({recordId=null,operation="edit",onC
  function reference(name,label,required=false){return select(name,label,immobilisationOptions(references[IMMOBILISATION_REFERENCES[name]],{optional:!required,current:values[name],currentLabel:record?.[LABELS[name]]}));}
  function area(name,label,max){return field(name,label,id=><textarea id={id} value={values[name]} maxLength={max} rows={4} disabled={disabled} onChange={event=>change(name,event.target.value)} aria-invalid={Boolean(errors[name])}/>);}
 
- const title=creating?"Nouvelle immobilisation":operation==="archive"?"Archiver l’immobilisation":operation==="restore"?"Réactiver l’immobilisation":"Modifier l’immobilisation";
- return <RecordEditorFrame title={title} subtitle={ready?(record?.NomImmobilisation||"Bien et affectation"):"Bien et affectation"} icon="building" defaultWidth={1000} storageKey="sauverndeko.immobilisation.editor.width" onClose={onClose} onSubmit={submit} loading={loading||!ready} busy={busy} readOnly={ready&&!allowed} dirty={ready&&Boolean(changed||motif.trim()||uncertain)} canSubmit={allowed&&Boolean(baseline)&&(creating||actionOnly||changed||uncertain)} error={ready?error:""} onReload={()=>{if(changed||motif.trim()||uncertain)setConfirmReload(true);else setReload(x=>x+1);}} submitLabel={uncertain?"Vérifier l’enregistrement":operation==="archive"?"Archiver":operation==="restore"?"Réactiver":"Enregistrer"} className="immobilisation-editor">
+ const title=onDraftSave?"Immobilisation du panier":creating?"Nouvelle immobilisation":operation==="archive"?"Archiver l’immobilisation":operation==="restore"?"Réactiver l’immobilisation":"Modifier l’immobilisation";
+ return <RecordEditorFrame title={title} subtitle={ready?(record?.NomImmobilisation||"Bien et affectation"):"Bien et affectation"} icon="building" defaultWidth={1000} storageKey="sauverndeko.immobilisation.editor.width" onClose={onClose} onSubmit={submit} loading={loading||!ready} busy={busy} readOnly={ready&&!allowed} dirty={ready&&Boolean(changed||motif.trim()||uncertain)} canSubmit={allowed&&Boolean(baseline)&&(creating||actionOnly||changed||uncertain)} error={ready?error:""} onReload={()=>{if(changed||motif.trim()||uncertain)setConfirmReload(true);else setReload(x=>x+1);}} submitLabel={onDraftSave?"Valider la ligne":uncertain?"Vérifier l’enregistrement":operation==="archive"?"Archiver":operation==="restore"?"Réactiver":"Enregistrer"} className="immobilisation-editor">
   {ready&&confirmReload?<div className="record-discard" role="alert"><span>Recharger la fiche et abandonner les modifications ?</span><div><ActionButton onClick={()=>setConfirmReload(false)}>Continuer</ActionButton><ActionButton onClick={()=>setReload(x=>x+1)}>Recharger</ActionButton></div></div>:null}
   {ready&&!loading&&baseline?<>
    {referenceError?<div className="record-editor-error" role="alert">{referenceError}<ActionButton icon="refresh" disabled={disabled} onClick={refreshReferences}>Actualiser les listes</ActionButton></div>:null}

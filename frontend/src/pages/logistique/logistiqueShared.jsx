@@ -504,6 +504,7 @@ export function SimpleTable({
   tablePreferences = null,
 }) {
   const tableWrapRef = useRef(null);
+  const tableHeadingRef = useRef(null);
   const settledTableHeight = useRef(0);
   const selectPageRef = useRef(null);
   const localColumnsAnchor=useRef(null);
@@ -514,6 +515,24 @@ export function SimpleTable({
     if(returnFocus) requestAnimationFrame(()=>columnsTrigger.current?.focus({preventScroll:true}));
   }
   const [searchTerm, setSearchTerm] = useState("");
+  useLayoutEffect(() => {
+    if (!filtersVisible) return undefined;
+    const wrap = tableWrapRef.current, heading = tableHeadingRef.current;
+    if (!wrap || !heading) return undefined;
+    const measure = () => {
+      const height = heading.getBoundingClientRect().height;
+      if (height > 0) wrap.style.setProperty("--erp-table-heading-height", `${height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(heading);
+    if (typeof window !== "undefined") window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      if (typeof window !== "undefined") window.removeEventListener("resize", measure);
+      wrap.style.removeProperty("--erp-table-heading-height");
+    };
+  }, [filtersVisible]);
   const [localSortConfig, setSortConfig] = useState({
     column: defaultSortColumn,
     direction: defaultSortColumn ? "asc" : "",
@@ -1118,7 +1137,7 @@ export function SimpleTable({
             ))}
           </colgroup>
           <thead>
-            <tr>
+            <tr ref={tableHeadingRef}>
               {enableSelection ? (
                 <th className="admin-select-column">
                   <input

@@ -21,7 +21,7 @@ function Field({name,label,error,hint,wide=false,children}) {
   return <div className={"record-field"+(wide?" is-wide":"")}><label htmlFor={name}>{label}</label>{children}{error?<small className="record-field-error" id={name+"-error"}>{error}</small>:hint?<small id={name+"-hint"}>{hint}</small>:null}</div>;
 }
 function Section({icon,title,children}) {return <section className="record-editor-section"><h3><AppIcon name={icon}/>{title}</h3><div className="record-editor-grid">{children}</div></section>;}
-export default function ArticleEditor({articleId,onClose,onSaved,references:receivedReferences}) {
+export default function ArticleEditor({articleId,onClose,onSaved,references:receivedReferences,draft=null,onDraftSave}) {
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const {user}=useAuth(),creating=!articleId;
   const {openProductLots}=useConsultations();
@@ -29,12 +29,12 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
   const prefix=useId(),mounted=useRef(true),saving=useRef(false),focusRef=useRef(null);
   const creationRequestId=useRef(null);
   if(!creationRequestId.current)creationRequestId.current=createReceiptRequestId();
-  const createForm=()=>({...articleForm(null),ID_DeviseFk:newCurrencyId(references)});
+  const createForm=()=>draft?.values?{...draft.values}:({...articleForm(null),ID_DeviseFk:newCurrencyId(references)});
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState(createForm);
   const [initial,setInitial]=useState(()=>JSON.stringify(createForm()));
   const [loading,setLoading]=useState(!creating),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({});
-  const [initialLots,setInitialLots]=useState([]),[lotsError,setLotsError]=useState("");
-  const [photo,setPhoto]=useState({file:null,remove:false});
+  const [initialLots,setInitialLots]=useState(()=>draft?.initialLots||[]),[lotsError,setLotsError]=useState("");
+  const [photo,setPhoto]=useState(()=>draft?.photo||{file:null,remove:false});
   const [reload,setReload]=useState(0),[conflict,setConflict]=useState(false);
   const canWrite=user?.permissions?.canWriteData===true;
   const dirty=JSON.stringify(values)!==initial||Boolean(photo.file||photo.remove||initialLots.length);
@@ -93,12 +93,13 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
     const lotError=creating?lotErrors(initialLots,values.QteArticle):"";setLotsError(lotError);setErrors(invalid);setError("");setConflict(false);
     if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
     if(lotError){setError("Vérifiez les lots du stock initial.");focusLots();return;}
-    saving.current=true;setBusy(true);
     const payload=articlePayload(values,record,meta?.revision);
-    if(creating)payload.requestId=creationRequestId.current;
     delete payload.PhotoArticle;
     if(creating&&initialLots.length)payload.LotsInitiaux=initialLots;
     if(photo.remove)payload._removePhoto=true;
+    if(creating&&onDraftSave){onDraftSave({values:{...values},data:payload,initialLots,photo});return;}
+    saving.current=true;setBusy(true);
+    if(creating)payload.requestId=creationRequestId.current;
     const response=creating?await createLogistiqueArticle(payload,photo.file):await updateLogistiqueArticle(articleId,payload,photo.file);
     if(!mounted.current)return;
     saving.current=false;setBusy(false);
@@ -114,7 +115,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
     }
     onSaved(response.data,creating?"created":"updated");
   }
-  return <RecordEditorFrame title={creating?"Nouvel article":"Modifier l’article"} subtitle={record?.NomArticle||"Identité, stock et prix"} icon="box" onClose={onClose} onSubmit={submit} busy={busy} loading={loading} dirty={dirty} canSubmit={canWrite&&(creating||Boolean(record&&meta?.revision))&&(creating||dirty)} error={error} onReload={!creating&&(conflict||(!record&&!loading))?()=>setReload(x=>x+1):null} className="article-editor-dialog" storageKey="sauverndeko.article-editor.width">
+  return <RecordEditorFrame title={onDraftSave?"Article du panier":creating?"Nouvel article":"Modifier l’article"} subtitle={record?.NomArticle||"Identité, stock et prix"} icon="box" onClose={onClose} onSubmit={submit} busy={busy} loading={loading} dirty={dirty} canSubmit={canWrite&&(creating||Boolean(record&&meta?.revision))&&(creating||dirty)} error={error} onReload={!creating&&(conflict||(!record&&!loading))?()=>setReload(x=>x+1):null} submitLabel={onDraftSave?"Valider la ligne":"Enregistrer"} className="article-editor-dialog" storageKey="sauverndeko.article-editor.width">
     {!loading&&(creating||record)?<div className="article-editor">
       <ConsultationTabs tabs={[{key:"article",label:"Article",icon:"tag"},{key:"stock",label:"Stock et prix",icon:"box"},{key:"lots",label:"Lots",icon:"box"},{key:"conservation",label:"Conservation",icon:"calendar"},{key:"informations",label:"Informations",icon:"document"},{key:"tracabilite",label:"Traçabilité",icon:"user"}]} value={active} onChange={setActive} label="Rubriques de l’article" idPrefix={prefix}/>
       <section role="tabpanel" id={prefix+"-panel-article"} aria-labelledby={prefix+"-tab-article"} hidden={active!=="article"} tabIndex={active==="article"?0:-1}>

@@ -9,6 +9,7 @@ import {useEntityScope} from "../../contexts/EntityScopeContext";
 import { currencyOptions } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
 import ArticleEditor from "./ArticleEditor";
+import LogisticsBatchComposer from "./LogisticsBatchComposer";
 import StockReceiptEditor from "./StockReceiptEditor";
 import ArticleActionDrawer from "./ArticleActionDrawer";
 import { useFollowupFolders } from "../../contexts/FollowupFoldersContext";
@@ -108,7 +109,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
-  const [editor,setEditor]=useState(null);
+  const [editor,setEditor]=useState(null),[batchOpen,setBatchOpen]=useState(false);
   const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null);
   const [action,setAction]=useState(null);
   const [valuation,setValuation]=useState(null);
@@ -220,6 +221,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
       <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
         <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
+        <ActionButton icon="list" onClick={()=>setBatchOpen(true)} disabled={!canWrite}>Ajouter plusieurs articles</ActionButton>
       </>} tabs={<RegisterCategoryFilter label="État du stock" value={criteria.stockState} options={[{value:"all",label:"Tous les articles"},{value:"disponible",label:"Disponibles"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Ruptures"}]} onChange={chooseStock}/>}>
         <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
@@ -248,6 +250,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
       {expiryPolicyOpen?<ExpiryPolicyEditor onClose={()=>setExpiryPolicyOpen(false)} onSaved={()=>{onDataChanged?.();refreshFolders?.();}}/>:null}
       {valuation?<StockValuation articleId={valuation.id} defaultCurrencyId={valuation.currency} onClose={()=>setValuation(null)} onSaved={()=>onDataChanged?.()}/>:null}
       {editor?<ArticleEditor key={editor.id||"new"} articleId={editor.id} references={references} onClose={()=>setEditor(null)} onSaved={saved}/>:null}
+      {batchOpen?<LogisticsBatchComposer kind="articles" references={references} onClose={()=>setBatchOpen(false)} onSaved={result=>{setBatchOpen(false);setFeedback({type:"success",message:result.count+" article(s) créé(s)."});refreshFolders();onDataChanged?.();}}/>:null}
       {receipt?<StockReceiptEditor key={receipt} articleId={receipt} references={references} onClose={()=>setReceipt(null)} onSaved={received}/>:null}
       {action?<ArticleActionDrawer key={action.id+action.kind} articleId={action.id} action={action.kind} onClose={()=>setAction(null)} onSaved={saved}/>:null}
     </div>

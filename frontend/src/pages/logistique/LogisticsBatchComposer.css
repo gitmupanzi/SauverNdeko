@@ -1,0 +1,15 @@
+.logistics-batch-composer .logistics-batch-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.logistics-batch-composer .logistics-batch-heading h3 { margin:0; }
+.logistics-batch-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.logistics-batch-cell { min-width:0; }
+.logistics-batch-cell>input { box-sizing:border-box; width:100%; min-width:75px; height:36px; padding:6px 9px; border:1px solid var(--erp-border); border-radius:7px; color:var(--erp-text); background:var(--erp-surface); font:inherit; }
+.logistics-batch-cell>input:focus { outline:2px solid var(--erp-link); outline-offset:1px; }
+.logistics-batch-cell [aria-invalid="true"] { border-color:var(--erp-danger,#d95068); }
+.logistics-batch-cell .record-field-error { display:block; margin-top:5px; white-space:normal; font-size:11px; }
+.logistics-batch-composer .erp-data-grid .logistics-table-wrap { max-height:52vh; }
+.logistics-batch-reason { margin:12px 0 16px; max-width:720px; }
+.logistics-batch-paste { display:grid; gap:10px; margin-bottom:16px; padding:14px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-raised); color:var(--erp-text); }
+.logistics-batch-paste>label:last-of-type { display:flex; align-items:center; gap:8px; }
+.logistics-batch-paste textarea { width:100%; color:var(--erp-text); background:var(--erp-surface); border:1px solid var(--erp-border); border-radius:7px; padding:9px; }
+.logistics-batch-errors { display:grid; gap:7px; margin:14px 0 0; padding-left:22px; color:var(--erp-text); font-size:12px; }
+.logistics-batch-errors button { border:0; padding:0; color:var(--erp-link); background:transparent; text-decoration:underline; font:inherit; font-weight:600; }

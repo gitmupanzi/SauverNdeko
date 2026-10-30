@@ -37,6 +37,8 @@ La première intervention porte sur la cartographie et les skills. Elle ne valid
 
 Dans tous les modules où des créations similaires s’y prêtent, privilégier un panier de lignes. Un seul bouton de création (« Nouveau… » / « Nouvelle… », par exemple « Nouvelle valeur ») ouvre ce formulaire, utilisable aussi avec une seule ligne ; ne pas dédoubler cette action avec un bouton « Saisie multiple ». Le compositeur des Bons de stock sert de référence d’interaction : ajouter, corriger, retirer une ligne, annuler l’ensemble puis enregistrer une seule fois. Lorsque les lignes partagent un parent, employer un en-tête/détails : par exemple une catégorie puis ses valeurs. Le collage Excel alimente ce même brouillon ; les validations et doublons sont indiqués par ligne, sans perdre la saisie. Le serveur enregistre tout le lot et son audit dans une transaction unique ; aucune réussite partielle. Un rejeu après une réponse incertaine conserve la même demande et son contenu. Conserver un formulaire individuel pour les opérations qui ne se prêtent pas à un panier.
 
+Choix explicite du 30 octobre 2026 pour Logistique : Tiers et Immobilisations utilisent un seul bouton de création avec panier. Articles conserve « Nouvel article » et son formulaire complet, avec un bouton distinct « Ajouter plusieurs articles ». Préserver cette exception demandée par le propriétaire.
+
 ## Invariants SauverNdeko
 
 - PostgreSQL reste organisé par schémas métier ; les noms qualifiés existants et leur casse sont des contrats.
