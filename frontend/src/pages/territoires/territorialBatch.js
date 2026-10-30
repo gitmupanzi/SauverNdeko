@@ -1,0 +1,28 @@
+import {territoryFields,territoryValues,TERRITORY_REGISTERS} from "./territorialDefinitions";
+import {territoryErrors,territoryPayload,territoryOptions} from "./territorialForm";
+import {parseExcelTsv} from "../referentiels/referenceBatch";
+
+export const TERRITORY_BATCH_MAX=100;
+export const TERRITORY_BATCH_PARENTS={niveaux0:[],niveaux1:["ID_Niveau_0_Fk"],niveaux2:["ID_Niveau_1_FK"],niveaux3:["ID_Niveau_2_FK"],niveaux4:["ID_Niveau_3_Fk"],niveaux5:["ID_Niveau_3_Fk","ID_Niveau_4_Fk"]};
+export const territoryHasBatch=kind=>Object.hasOwn(TERRITORY_BATCH_PARENTS,kind);
+export const territoryBatchFields=kind=>territoryFields(kind).filter(field=>!TERRITORY_BATCH_PARENTS[kind]?.includes(field.name));
+export const territoryBatchColumns=kind=>{const fields=territoryBatchFields(kind),type=fields.find(field=>field.type==="select"&&/^ID_TypeNiveau_/.test(field.name));return [TERRITORY_REGISTERS[kind].name,"CodeNiveau_"+kind.at(-1),"AbreNiveau_"+kind.at(-1),type?.name||(!fields.some(field=>/^AbreNiveau_/.test(field.name))?"iso":null)].filter(name=>fields.some(field=>field.name===name));};
+export const territoryBatchPasteFields=kind=>[...new Set([...territoryBatchColumns(kind),...territoryBatchFields(kind).filter(field=>field.type==="select"||/^Population|^Obs/.test(field.name)).map(field=>field.name)])];
+export function territoryBatchRow(kind,values={}){const parents=TERRITORY_BATCH_PARENTS[kind]||[];return {rowId:crypto.randomUUID(),pristine:true,values:Object.fromEntries(Object.entries({...territoryValues(kind),...values}).filter(([name])=>!parents.includes(name)))};}
+const duplicate=value=>String(value??"").trim().replace(/\s+/g," ").toLocaleLowerCase("fr");
+const normalize=value=>String(value??"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr").replace(/[^a-z0-9]/g,"");
+export function territoryBatchFromExcel(kind,text,header,support,{hasHeaders=false}={}){
+ const matrix=parseExcelTsv(text),fields=territoryBatchFields(kind);if(!matrix.length)return [];
+ let columns=territoryBatchPasteFields(kind);
+ if(hasHeaders){columns=matrix.shift().map(label=>{const key=normalize(label),field=fields.find(field=>normalize(field.name)===key||normalize(field.label)===key),alias=key==="nom"?TERRITORY_REGISTERS[kind].name:key==="code"?"CodeNiveau_"+kind.at(-1):key==="abreviation"?"AbreNiveau_"+kind.at(-1):["observation","observations"].includes(key)?"ObsNiveau_"+kind.at(-1):null;if(!field&&!fields.some(field=>field.name===alias))throw Error("En-tête non reconnu : « "+label+" ».");return field?.name||alias;});if(new Set(columns).size!==columns.length)throw Error("Un même en-tête apparaît plusieurs fois.");if(!columns.includes(TERRITORY_REGISTERS[kind].name))throw Error("Le collage doit contenir le nom.");}
+ if(matrix.length>TERRITORY_BATCH_MAX)throw Error("Limitez le collage à 100 lignes.");
+ return matrix.map((cells,index)=>{if(cells.length>columns.length)throw Error("La ligne "+(index+(hasHeaders?2:1))+" contient trop de colonnes.");const values={};cells.forEach((value,i)=>{const name=columns[i],field=fields.find(field=>field.name===name),token=String(value).trim();if(field.type==="checkbox")values[name]=["oui","vrai","true","1"].includes(normalize(token))?"true":["non","faux","false","0"].includes(normalize(token))?"false":["null","nonrenseigne"].includes(normalize(token))?"":token;else if(field.type==="select"&&token){const choices=territoryOptions(field,support,header),matches=choices.filter(option=>String(option.value)===token||normalize(option.label)===normalize(token));values[name]=matches.length===1?matches[0].value:token;}else values[name]=value;});return {...territoryBatchRow(kind,values),pristine:false};});
+}
+export function validateTerritoryBatch(kind,rows,header,support){
+ const parentNames=TERRITORY_BATCH_PARENTS[kind]||[],all=territoryFields(kind),headerErrors={},rowErrors={};
+ if(!rows.length)headerErrors.rows="Ajoutez au moins une ligne.";if(rows.length>TERRITORY_BATCH_MAX)headerErrors.rows="Limitez le panier à 100 lignes.";
+ const empty=territoryValues(kind),parentIssues=territoryErrors(kind,{...empty,...header},null,support);parentNames.forEach(name=>{if(parentIssues[name])headerErrors[name]=parentIssues[name];});
+ if(kind==="niveaux5"&&header.ID_Niveau_4_Fk){const choice=territoryOptions(all.find(field=>field.name==="ID_Niveau_4_Fk"),support,header).find(option=>option.value===header.ID_Niveau_4_Fk&&!option.disabled);if(!choice)headerErrors.ID_Niveau_4_Fk="Choisissez une aire de la zone sélectionnée.";}
+ const seen=new Map();rows.forEach(row=>{const issues=territoryErrors(kind,{...header,...row.values},null,support);parentNames.forEach(name=>delete issues[name]);const name=TERRITORY_REGISTERS[kind].name,code="CodeNiveau_"+kind.at(-1),key=JSON.stringify([duplicate(row.values[name]),duplicate(row.values[code])]);if(duplicate(row.values[name])){if(seen.has(key)){issues[name]="Cette fiche apparaît déjà avec le même nom et code dans le panier.";const previous=seen.get(key);rowErrors[previous]={...rowErrors[previous],[name]:issues[name]};}else seen.set(key,row.rowId);}if(Object.keys(issues).length)rowErrors[row.rowId]={...rowErrors[row.rowId],...issues};});return {header:headerErrors,rows:rowErrors};
+}
+export function territoryBatchTicket(kind,rows,header){const parentNames=TERRITORY_BATCH_PARENTS[kind]||[],base=territoryPayload(kind,header,null);return {requestId:crypto.randomUUID(),header:Object.fromEntries(parentNames.map(name=>[name,base[name]??null])),rows:rows.map(row=>({rowId:row.rowId,...Object.fromEntries(Object.entries(territoryPayload(kind,row.values,null)).filter(([name])=>!parentNames.includes(name)))}))};}

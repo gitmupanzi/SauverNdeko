@@ -46,6 +46,13 @@ def source_definition(actor, interface_key):
         from apps.core.admin_portal import source, LABELS
         obj, *_ = source(actor, kind)
         return obj, LABELS, "administration"
+    if module == "territoires":
+        from apps.core.territorial_portal import source, LABELS, INTERFACE_KEYS
+        kind = next((key for key, value in INTERFACE_KEYS.items() if value == interface_key), None)
+        if kind is None:
+            raise APIError("Interface inconnue.", "NOT_FOUND", 404)
+        obj, *_ = source(actor, kind)
+        return obj, LABELS, "territoires"
     raise APIError("Interface inconnue.", "NOT_FOUND", 404)
 
 

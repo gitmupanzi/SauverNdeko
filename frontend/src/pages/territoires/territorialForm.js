@@ -1,0 +1,34 @@
+import {territoryFields} from "./territorialDefinitions";
+import {referenceOptions,retainReference} from "../../utils/referenceOptions";
+
+export const OPTIONAL_BOOLEAN=[{value:"",label:"Non renseigné"},{value:"true",label:"Oui"},{value:"false",label:"Non"}];
+export function territoryOptions(field,support,values={},record={}){
+ const source=support?.options?.[field.optionsSource]||[];
+ const options=referenceOptions(source);
+ const parentName={niveaux1:"ID_Niveau_0_Fk",niveaux2:"ID_Niveau_1_FK",niveaux3:"ID_Niveau_2_FK",niveaux4:"ID_Niveau_3_Fk"}[field.optionsSource];
+ const parent=parentName&&values[parentName];
+ const filtered=parent?options.filter(option=>{const candidate=option.parentId??option.parent??option[parentName];return candidate==null||String(candidate)===String(parent);}):options;
+ return retainReference(filtered,values[field.name],support?.currentLabels?.[field.name]||record?.[field.name+"Label"]||"Valeur actuelle · "+values[field.name]);
+}
+export function territoryErrors(kind,values,baseline,support){
+ const errors={};
+ territoryFields(kind).forEach(field=>{
+  const value=String(values[field.name]??"").trim(),changed=!baseline||values[field.name]!==baseline[field.name];
+  if(!changed)return;
+  if(field.required&&!value){errors[field.name]="Renseignez ce champ.";return;}
+  if(!value)return;
+  if(field.type==="select"&&!territoryOptions(field,support,values).some(item=>item.value===value&&!item.disabled))errors[field.name]="Choisissez une valeur autorisée.";
+  if(field.type==="checkbox"&&!["true","false"].includes(value))errors[field.name]="Choisissez Oui ou Non.";
+  if(field.type==="number"){
+   if(!/^-?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(value))errors[field.name]="Renseignez un nombre valide.";
+   else{const normalized=value.replace(",","."),number=Number(normalized);if(!Number.isFinite(number))errors[field.name]="Ce nombre est trop grand.";else if(/^Population/.test(field.name)&&normalized.includes(".")&&!/^0*$/.test(normalized.split(".")[1]))errors[field.name]="Renseignez une population entière.";else if(field.min!=null&&number<Number(field.min))errors[field.name]="La valeur doit être positive ou nulle.";else if(/^Latitude/.test(field.name)&&Math.abs(number)>90||/^Longitude/.test(field.name)&&Math.abs(number)>180)errors[field.name]="Vérifiez cette coordonnée géographique.";}
+  }
+  if(field.type!=="textarea"&&value.length>1000)errors[field.name]="Utilisez un texte plus court.";
+ });
+ if(kind==="niveaux5"&&!values.ID_Niveau_4_Fk&&!values.ID_Niveau_3_Fk&&(!baseline||values.ID_Niveau_4_Fk!==baseline.ID_Niveau_4_Fk||values.ID_Niveau_3_Fk!==baseline.ID_Niveau_3_Fk))errors.ID_Niveau_3_Fk="Choisissez une zone ou une aire de rattachement.";
+ if(/^niveaux[1-5]$/.test(kind)){const n=kind.at(-1),lat="LatitudeNiveau_"+n,lon="LongitudeNiveau_"+n;if((!baseline||values[lat]!==baseline[lat]||values[lon]!==baseline[lon])&&Boolean(values[lat])!==Boolean(values[lon]))errors[lat]="Renseignez ensemble latitude et longitude.";}
+ return errors;
+}
+export function territoryPayload(kind,values,baseline){
+ const result={};territoryFields(kind).forEach(field=>{if(baseline&&values[field.name]===baseline[field.name])return;const value=String(values[field.name]??"").trim();result[field.name]=value===""?null:field.type==="checkbox"?value==="true":field.type==="select"?Number(value):field.type==="number"?value.replace(",","."):value;});return result;
+}

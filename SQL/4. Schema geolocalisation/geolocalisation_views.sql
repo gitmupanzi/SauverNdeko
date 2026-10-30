@@ -188,14 +188,18 @@ CREATE VIEW geolocalisation."V_Niveau_0" AS
     "NomNiveau_0",
     iso,
     "CodeNiveau_0",
-    "geometryNiveau_0"
+    "geometryNiveau_0",
+    "uidSNIS",
+    ( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_1" child
+          WHERE (child."ID_Niveau_0_Fk" = n0."ID_Niveau_0")) AS "Nb_Niveau_1"
    FROM geolocalisation."T_Niveau_0" n0;
 
 --
 -- Name: VIEW "V_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_0" IS 'Vue de reference du Niveau 0 : nom, code et geometrie.';
+COMMENT ON VIEW geolocalisation."V_Niveau_0" IS 'Référentiel territorial partagé du niveau 0. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
 
 --
 -- Name: COLUMN "V_Niveau_0"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -248,7 +252,12 @@ CREATE VIEW geolocalisation."V_Niveau_1" AS
     n1a."FusionNiveau_1",
     n1a."VisibleNiveau_1",
     n1a."VisibleNiveau_5",
-    n1a."ObsNiveau_1"
+    n1a."ObsNiveau_1",
+    n1a.prov_uid,
+    n1a."uidSNIS",
+    ( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_2" child
+          WHERE (child."ID_Niveau_1_FK" = n1a."ID_Niveau_1")) AS "Nb_Niveau_2"
    FROM ((geolocalisation."T_Niveau_1" n1a
      LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
      LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")));
@@ -257,7 +266,7 @@ CREATE VIEW geolocalisation."V_Niveau_1" AS
 -- Name: VIEW "V_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_1" IS 'Vue de reference du Niveau 1 avec rattachement au Niveau 0 et a l''ancien Niveau 1.';
+COMMENT ON VIEW geolocalisation."V_Niveau_1" IS 'Référentiel territorial partagé du niveau 1. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
 
 --
 -- Name: COLUMN "V_Niveau_1"."ID_Niveau_0_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -469,7 +478,17 @@ CREATE VIEW geolocalisation."V_Niveau_2" AS
     n2."KmDPSANT",
     n2."ID_VoieAccesDPSANTFk",
     COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "Voie_Acces_DPS",
-    n2."SelectNiveau_2"
+    n2."SelectNiveau_2",
+    n1a."ID_Niveau_0_Fk" AS "ID_Niveau_0",
+    n1a."ID_Niveau_1",
+    n1a."FusionNiveau_1",
+    n1a."VisibleNiveau_1",
+    n1a."VisibleNiveau_5",
+    n2.iso,
+    n2."uidSNIS",
+    ( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_3" child
+          WHERE (child."ID_Niveau_2_FK" = n2."ID_Niveau_2")) AS "Nb_Niveau_3"
    FROM (((((((geolocalisation."T_Niveau_2" n2
      LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
      LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
@@ -483,7 +502,7 @@ CREATE VIEW geolocalisation."V_Niveau_2" AS
 -- Name: VIEW "V_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_2" IS 'Vue de reference du Niveau 2 avec contexte hierarchique, type, statut, deploiement et voie d''acces.';
+COMMENT ON VIEW geolocalisation."V_Niveau_2" IS 'Référentiel territorial partagé du niveau 2. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
 
 --
 -- Name: COLUMN "V_Niveau_2"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -678,7 +697,27 @@ CREATE VIEW geolocalisation."V_Niveau_3" AS
     n3."ID_VoieAccesDPSBCZFk",
     COALESCE(g_voie2."AbrGenerique", ' '::character varying) AS "Voie_DPSBCZS",
     n3."SelectNiveau_3",
-    n3."ID_Niveau_2_FK"
+    n3."ID_Niveau_2_FK",
+    n0."ID_Niveau_0",
+    n0."NomNiveau_0",
+    n1a."ID_Niveau_1",
+    n1a."NomNiveau_1",
+    n2."ID_Niveau_2",
+    n2."NomNiveau_2",
+    n1a."FusionNiveau_1",
+    n1a."VisibleNiveau_1",
+    n1a."VisibleNiveau_5",
+    n3.iso,
+    n3."uidSNIS",
+    ( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_4" child
+          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) AS "Nb_Niveau_4",
+    (( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_5" child
+          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) + ( SELECT count(*) AS count
+           FROM (geolocalisation."T_Niveau_4" area
+             JOIN geolocalisation."T_Niveau_5" child ON ((child."ID_Niveau_4_Fk" = area."ID_Niveau_4")))
+          WHERE ((child."ID_Niveau_3_Fk" IS NULL) AND (area."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))) AS "Nb_Niveau_5"
    FROM ((((((((geolocalisation."T_Niveau_3" n3
      LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
      LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
@@ -693,7 +732,7 @@ CREATE VIEW geolocalisation."V_Niveau_3" AS
 -- Name: VIEW "V_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_3" IS 'Vue de reference du Niveau 3 avec type, statut, deploiement, distances et voies d''acces.';
+COMMENT ON VIEW geolocalisation."V_Niveau_3" IS 'Référentiel territorial partagé du niveau 3. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
 
 --
 -- Name: COLUMN "V_Niveau_3"."ID_TypeNiveau_2_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -896,7 +935,16 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
     n4."ID_DispoReseauNiveau_4",
     n4."ID_VoieAccesZsASFk",
     n4."ID_StatutNiveau_4",
-    n4."ID_StatutDeploiementFk"
+    n4."ID_StatutDeploiementFk",
+    n1."FusionNiveau_1",
+    n1."VisibleNiveau_1",
+    n1."VisibleNiveau_5",
+    n4.iso,
+    n4."uidSNIS",
+    ( SELECT count(*) AS count
+           FROM geolocalisation."T_Niveau_5" child
+          WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
+    ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
    FROM (((((((((geolocalisation."T_Niveau_4" n4
      LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
      LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
@@ -913,7 +961,7 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
 -- Name: VIEW "V_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Vue de reference du Niveau 4 avec hierarchie complete, identifiant de ligne, nom brut et indicateurs reseau/statut.';
+COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial partagé du niveau 4. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -1167,7 +1215,17 @@ CREATE VIEW geolocalisation."V_Niveau_5" AS
     n5."ID_StatutDeploiementFk",
     n5."ID_TypeToitFk",
     n5."ObsNiveau_5",
-    n5."SelectNiveau_5"
+    n5."SelectNiveau_5",
+    n4."NomNiveau_4",
+    ( SELECT roof."AbrGenerique"
+           FROM referentiel."T_Generique" roof
+          WHERE (roof."ID_Generique" = n5."ID_TypeToitFk")) AS "Type_Toit",
+    n1."FusionNiveau_1",
+    n1."VisibleNiveau_1",
+    n1."VisibleNiveau_5",
+    n5.iso,
+    n5."uidSNIS",
+    n4."ID_TypeNiveau_4_Fk"
    FROM ((((((((((geolocalisation."T_Niveau_5" n5
      LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n5."ID_Niveau_4_Fk" = n4."ID_Niveau_4")))
      LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk") = n3."ID_Niveau_3")))
@@ -1185,7 +1243,7 @@ CREATE VIEW geolocalisation."V_Niveau_5" AS
 -- Name: VIEW "V_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_5" IS 'Vue de reference du Niveau 5 avec identifiants de ligne, nom brut, reseau, statut et informations de site.';
+COMMENT ON VIEW geolocalisation."V_Niveau_5" IS 'Référentiel territorial partagé du niveau 5. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels. Aucun compteur métier non disponible, budget ou intervention historique n’est inventé.';
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -1923,3 +1981,85 @@ COMMENT ON COLUMN geolocalisation."V_ZS_sans_AS"."ID_Niveau_3" IS 'Identifiant d
 --
 
 COMMENT ON COLUMN geolocalisation."V_ZS_sans_AS"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_0"."uidSNIS" IS 'Identifiant SNIS du pays ou territoire, conservé depuis la table source sans transformation.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_0"."Nb_Niveau_1" IS 'Nombre exact de niveaux 1 rattachés à ce pays, sans exclusion implicite de fusion ou visibilité. Correspond au registre des provinces filtré sur ID_Niveau_0_Fk.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1".prov_uid IS 'Identifiant provincial complémentaire, conservé depuis la table source.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."uidSNIS" IS 'Identifiant SNIS provincial, conservé depuis la table source.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Nb_Niveau_2" IS 'Nombre exact de niveaux 2 rattachés à la province. Correspond au registre des antennes filtré sur ID_Niveau_1_FK.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par la province, utilisable pour filtrer le découpage partagé.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_1" IS 'Identifiant de province parent ; alias de lecture compatible avec les analyses territoriales.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente ; NULL reste inconnu, aucune exclusion automatique.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_1" IS 'Visibilité déclarée du niveau provincial parent, sans restriction implicite des compteurs.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_5" IS 'Visibilité des sites déclarée par la province parente, conservée sans modifier ses sites.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2".iso IS 'Code ISO ou identifiant géographique enregistré pour cette subdivision.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette subdivision.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Nb_Niveau_3" IS 'Nombre exact de zones de santé rattachées à cette subdivision. Correspond au registre des zones filtré sur ID_Niveau_2_FK.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par les jointures de rattachement.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_0" IS 'Nom courant du pays parent, issu de la source unique géographique.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_1" IS 'Identifiant de la province parente de la zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_1" IS 'Nom courant de la province parente de la zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2" IS 'Identifiant de la subdivision parente de la zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_2" IS 'Nom courant de la subdivision parente de la zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."FusionNiveau_1" IS 'Indicateur de fusion provincial, exposé pour les filtres sans exclusion implicite.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente ; aucun territoire n’est masqué par cette vue.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_5" IS 'Visibilité déclarée des sites de la province parente, sans réécriture de données.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3".iso IS 'Code ISO ou identifiant géographique enregistré pour cette zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette zone.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_4" IS 'Nombre exact d’aires rattachées à cette zone. Correspond au registre des aires filtré sur ID_Niveau_3_Fk.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_5" IS 'Nombre exact de sites de cette zone : rattachement direct prioritaire, sinon zone de l’aire. Chaque site compte une fois. Correspond au registre des sites filtré sur ID_Niveau_3 effectif.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans filtre implicite.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente, exposée sans altération.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4".iso IS 'Code ISO ou identifiant géographique enregistré pour cette aire.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette aire.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de sites directement rattachés à cette aire. Les sites rattachés seulement à une zone ne sont pas attribués arbitrairement à une aire.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_4" IS 'Nom courant de l’aire lorsque le site lui est réellement rattaché ; NULL si aucun rattachement à une aire.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Toit" IS 'Abréviation du type de toit selon la valeur générique enregistrée ; ne remplace pas sa clé étrangère.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans exclusion implicite des sites.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente du site.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5".iso IS 'Code ISO ou identifiant géographique enregistré pour ce site.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."uidSNIS" IS 'Identifiant SNIS enregistré pour ce site.';
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeNiveau_4_Fk" IS 'Type de l’aire réellement liée au site ; NULL lorsque le site n’a pas d’aire ou que son type est absent. Permet le détail exact des analyses par type d’aire.';

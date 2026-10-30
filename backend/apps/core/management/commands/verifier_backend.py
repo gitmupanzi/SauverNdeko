@@ -11,6 +11,7 @@ from apps.accounts.authentication import Actor
 from apps.core.views import MODULES
 from apps.core.registry import VIEWS
 from apps.core.admin_portal import SOURCES as ADMIN_REGISTERS
+from apps.core.territorial_portal import SOURCES as TERRITORIAL_REGISTERS, INTERFACE_KEYS as TERRITORIAL_INTERFACES
 from apps.logistique.reads import INDICATORS
 from apps.logistique.followup_folders import AUTOMATIC
 
@@ -74,6 +75,19 @@ class Command(BaseCommand):
             urls.append("/api/systeme/administration/entreprises")
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))
+            urls.append("/api/geolocalisation/territoires/synthese")
+            for kind, (_, name, primary_key, _) in TERRITORIAL_REGISTERS.items():
+                root = "/api/geolocalisation/territoires/"
+                urls.extend([root + "registres/" + kind + "?take=1", root + "references/" + kind,
+                             "/api/tableaux/" + TERRITORIAL_INTERFACES[kind] + "/preferences"])
+                if primary_key != "_rowId":
+                    # Noms fermés du catalogue, jamais des identifiants reçus du navigateur.
+                    with connection.cursor() as territorial_cursor:
+                        territorial_cursor.execute('SELECT "' + primary_key + '" FROM geolocalisation."'
+                            + name.replace("V_", "T_", 1) + '" ORDER BY "' + primary_key + '" LIMIT 1')
+                        territorial_record = territorial_cursor.fetchone()
+                    if territorial_record:
+                        urls.append(root + "registres/" + kind + "/" + str(territorial_record[0]))
             urls.extend(["/api/systeme/personnel/references", "/api/logistique/immobilisations?take=1",
                 "/api/logistique/immobilisations/references", "/api/logistique/registre/immobilisations?take=1",
                 "/api/tableaux/logistique.immobilisations/preferences"])

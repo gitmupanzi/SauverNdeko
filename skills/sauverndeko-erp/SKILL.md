@@ -102,3 +102,7 @@ Les rôles de sécurité ne changent pas de famille. Une configuration n’est p
 ## Biens de l’entreprise et données professionnelles
 
 La tranche Patrimoine sépare les immobilisations des Articles et du stock commercial. Les références, affectations, quantités entières et calculs de valeur appartiennent aux vues et gardes SQL ; aucun retrait de stock, amortissement ou droit d’accès n’en découle automatiquement. Les données RH minimales complètent les comptes existants, restent privées et se gèrent dans l’onglet Utilisateurs fusionné ; la source Profils conserve sa compatibilité. Lire [la règle de patrimoine](references/patrimoine-affectations.md) avant d’étendre ce parcours.
+
+## Organisation territoriale partagée
+
+`/territoires` dispose d’un portail dédié, avec tableau de bord, treize registres, références dynamiques et fiches communes d’ajout/modification/consultation. La géographie conserve sa portée globale ; seul l’administrateur de la plateforme peut la modifier avec les droits requis. Le choix d’une entreprise ne change pas cette propriété. Une structure peut dépendre directement d’une zone sans aire renseignée : ne pas combler les rattachements absents par déduction. Les analyses conservent leur grain réel et leurs clés composites, sans addition de populations ou de nombres d’aires qui se répètent entre types. Lire [le guide du module et les preuves de recette](../../docs/module-organisation-territoriale.md).

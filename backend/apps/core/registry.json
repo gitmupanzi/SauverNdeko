@@ -463,6 +463,30 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_0",
+          "column_name": "iso",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": 10,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_0",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -861,6 +885,18 @@
           "numeric_precision": 9,
           "numeric_scale": 6,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_1",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -1293,6 +1329,30 @@
           "numeric_precision": 10,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_2",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_2",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -1778,6 +1838,30 @@
           "numeric_precision": 10,
           "numeric_scale": 7,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_3",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_3",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -2269,6 +2353,30 @@
           "numeric_precision": 10,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_4",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_4",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -2755,6 +2863,30 @@
           "numeric_precision": 12,
           "numeric_scale": 2,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_5",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_5",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "is_identity": "NO",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null
         }
       ],
       "relations": [
@@ -2849,6 +2981,18 @@
           "from": [],
           "to": [],
           "relation": "EntiteLocalisationN5"
+        },
+        {
+          "name": "T_Generique_T_Niveau_5_ID_TypeNiveau_5_FkToT_Generique",
+          "target": "T_Generique",
+          "many": false,
+          "from": [
+            "ID_TypeNiveau_5_Fk"
+          ],
+          "to": [
+            "ID_Generique"
+          ],
+          "relation": "Fk_TypeNiveau_5_Generique"
         }
       ],
       "fields": [
@@ -10879,6 +11023,18 @@
         {
           "table_schema": "geolocalisation",
           "table_name": "V_Niveau_0",
+          "column_name": "iso",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 10,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_0",
           "column_name": "CodeNiveau_0",
           "data_type": "character varying",
           "is_nullable": "YES",
@@ -10898,6 +11054,30 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_0",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_0",
+          "column_name": "Nb_Niveau_1",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
           "is_identity": "NO"
         }
       ]
@@ -11180,6 +11360,42 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_1",
+          "column_name": "prov_uid",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_1",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_1",
+          "column_name": "Nb_Niveau_2",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
           "is_identity": "NO"
         }
       ]
@@ -11565,6 +11781,102 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "ID_Niveau_0",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "ID_Niveau_1",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "FusionNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "VisibleNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "VisibleNiveau_5",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_2",
+          "column_name": "Nb_Niveau_3",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
         }
       ]
     },
@@ -11893,6 +12205,162 @@
           "column_default": null,
           "character_maximum_length": null,
           "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "ID_Niveau_0",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "NomNiveau_0",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "ID_Niveau_1",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "NomNiveau_1",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "ID_Niveau_2",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "NomNiveau_2",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "FusionNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "VisibleNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "VisibleNiveau_5",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "Nb_Niveau_4",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_3",
+          "column_name": "Nb_Niveau_5",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
           "numeric_scale": 0,
           "is_identity": "NO"
         }
@@ -12320,6 +12788,90 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "FusionNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "VisibleNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "VisibleNiveau_5",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "Nb_Niveau_5",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_4",
+          "column_name": "AvecReseau",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
           "is_identity": "NO"
         }
       ]
@@ -12782,6 +13334,102 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "NomNiveau_4",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "Type_Toit",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "FusionNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "VisibleNiveau_1",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "VisibleNiveau_5",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "iso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "uidSNIS",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "V_Niveau_5",
+          "column_name": "ID_TypeNiveau_4_Fk",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
           "is_identity": "NO"
         }
       ]

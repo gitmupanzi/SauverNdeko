@@ -1,0 +1,43 @@
+.territorial-module .territory-main{min-width:0}
+.territory-dashboard{display:grid;gap:20px}
+.territory-dashboard .erp-register-heading{margin-bottom:0}
+.territory-metric-blocks{display:grid;grid-template-columns:minmax(0,3fr) minmax(350px,2fr);gap:18px;align-items:start}
+.territory-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px}
+.territory-metric-blocks>section:last-child .territory-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.territory-metrics .admin-metric{min-height:72px;padding:12px;gap:10px}
+.territory-metrics .admin-metric strong{font-size:21px}
+.territory-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.territory-bar-chart{display:grid;align-content:start;gap:12px;padding:20px;max-height:410px;overflow:auto;scrollbar-gutter:stable}
+.territory-bar-chart>button{display:grid;grid-template-columns:minmax(120px,1fr) minmax(80px,1fr) 44px;align-items:center;gap:14px;border:0;background:transparent;color:var(--erp-text);text-align:left;padding:8px;border-radius:8px;min-height:42px}
+.territory-bar-chart>button:hover{background:var(--erp-hover)}
+.territory-bar-chart>button:focus-visible{outline:2px solid var(--erp-action);outline-offset:2px}
+.territory-bar-chart>button>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.territory-bar-chart>button>strong{text-align:right;font-variant-numeric:tabular-nums}
+.territory-record-heading{display:flex;align-items:center;gap:14px;margin:0 0 22px}
+.territory-record-heading>div{display:grid;gap:5px;flex:1}
+.territory-record-heading small{color:var(--erp-muted)}
+.territory-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.territory-form-grid .territory-full{grid-column:1/-1}
+.territory-reference>div{display:flex;gap:12px;align-items:center}
+.territory-reference>div>div{flex:1;min-width:0}
+.territory-reference h3{margin:0 0 6px}
+.territory-reference p{margin:0;color:var(--erp-muted);font-size:12px}
+.territory-reference details{border-top:1px solid var(--erp-border);margin-top:16px;padding-top:12px}
+.territory-reference summary{cursor:pointer;color:var(--erp-action);font-size:12px;padding:3px}
+.territory-reference ul{list-style:none;margin:12px 0 0;padding:0;max-height:240px;overflow:auto}
+.territory-reference li{padding:9px 4px;border-bottom:1px solid var(--erp-border);font-size:13px;color:var(--erp-text)}
+.territory-confirm{display:flex;align-items:center;gap:10px;margin-top:22px}
+.territory-confirm input{width:16px;height:16px;accent-color:var(--erp-action)}
+.territory-register-note{margin:16px 0 0;color:var(--erp-muted);font-size:12px;line-height:1.6}
+@media(max-width:1150px){.territory-metric-blocks{grid-template-columns:1fr}.territory-metric-blocks>section:last-child .territory-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.territory-charts{grid-template-columns:1fr}.territory-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.territory-form-grid{grid-template-columns:1fr}.territory-metrics .admin-metric{padding:10px;min-height:66px}.territory-bar-chart{padding:14px}.territory-reference>div{align-items:flex-start;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.territorial-module *{scroll-behavior:auto!important}}
+
+.territory-cell-link{display:inline-flex;align-items:center;border:0;background:transparent;padding:3px 0;color:var(--erp-action);font:inherit;font-weight:600;cursor:pointer;text-align:inherit;font-variant-numeric:tabular-nums}
+.territory-cell-link:hover{text-decoration:underline;text-underline-offset:3px}
+.territory-cell-link:focus-visible{outline:2px solid var(--erp-action);outline-offset:3px;border-radius:3px}
+
+.territory-metric-note{margin:0;padding:0 16px 16px;color:var(--erp-muted);font-size:12px;line-height:1.5}
+
+.territory-cell-link.is-source{display:inline-grid;gap:2px}
+.territory-cell-link.is-source small{font-size:11px;font-weight:400;line-height:1.4}

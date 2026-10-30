@@ -15,7 +15,7 @@ import {requestJson,downloadApiFile} from "../../services/api";
 
 const BASE="/api/referentiel/tableaux";
 export const TABLE_REFERENCE_DEFAULTS=["CleInterface","Libelle","Module","NbColonnes","PreferenceTableau","PreferenceExport","actions"];
-const MODULES={logistique:"Logistique",referentiels:"Référentiels",administration:"Administration"};
+const MODULES={logistique:"Logistique",referentiels:"Référentiels",administration:"Administration",territoires:"Organisation territoriale"};
 export function tableReferenceFilters(criteria){return {...(criteria.module?{Module:criteria.module}:{}),...(criteria.personal?{[criteria.personal==="table"?"PreferenceTableau":"PreferenceExport"]:true}:{})};}
 const badge=value=><span className={"erp-status is-"+(value?"success":"neutral")}>{value?"Personnalisé":"Référence"}</span>;
 

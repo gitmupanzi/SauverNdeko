@@ -1,0 +1,23 @@
+import {useEffect,useState} from "react";
+import {requestJson} from "../../services/api";
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import AppIcon from "../../components/AppIcon";
+import ActionButton from "../../components/ActionButton";
+import {formatDate} from "../logistique/logistiqueShared";
+import {TERRITORY_ROOT} from "./territorialDefinitions";
+
+const count=value=>value==null?"—":new Intl.NumberFormat("fr",{maximumFractionDigits:0}).format(Number(value));
+export const TERRITORY_METRICS=[{label:"Organisation territoriale",items:[["niveaux0","Pays et territoires"],["niveaux1","Provinces et DPS"],["niveaux2","Antennes et subdivisions"],["niveaux3","Zones de santé"],["niveaux4","Aires de santé"],["niveaux5","Sites et structures"]]},{label:"Rattachements",items:[["asSansSite","Aires sans site"],["zsSansAs","Zones sans aire"],["sitesSansAire","Sites sans aire"],["sitesSansZone","Sites sans zone directe"]]}];
+export function territoryMetricTarget(data,key){const target=data?.metricTargets?.[key];return target?.kind?{kind:target.kind,filters:target.filters||{}}:null;}
+export default function TerritoryDashboard({onNavigate,refresh=0}){
+ const scope=useEntityScope(),[data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[retry,setRetry]=useState(0);
+ useEffect(()=>{const controller=new AbortController();setLoading(true);setError("");requestJson(TERRITORY_ROOT+"/synthese",{requiresAuth:true,signal:controller.signal}).then(response=>{if(controller.signal.aborted)return;setLoading(false);if(response?.success)setData(response.data);else{setData(null);setError(response?.message||"La synthèse n’a pas pu être chargée.");}});return()=>controller.abort();},[scope.scopeKey,refresh,retry]);
+ function openMetric(key){const target=territoryMetricTarget(data,key);if(target&&!loading&&!error)onNavigate(target.kind,target.filters);}
+ const charts=[{key:"structuresParProvince",title:"Sites et structures par niveau 1",field:"ID_Niveau_1",name:"NomNiveau_1",label:"Niveau 1 non renseigné"},{key:"sitesParType",title:"Sites et structures par type",field:"ID_TypeNiveau_5_Fk",name:"Type_Niveau_5",label:"Type non renseigné"}];
+ return <div className="territory-dashboard"><header className="erp-register-heading"><div><h1>Tableau de bord</h1><p>Organisation territoriale, sites et couverture des données.</p></div>{data?.generatedAt?<small className="admin-updated"><AppIcon name="clock"/>Situation au {formatDate(data.generatedAt,{withTime:true})}</small>:null}</header>
+  {error?<div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
+  <div className="territory-metric-blocks" aria-busy={loading}>{TERRITORY_METRICS.map(group=><section className="admin-dashboard-panel" key={group.label}><header><h2>{group.label}</h2></header><div className="territory-metrics">{group.items.map(([key,label])=><button key={key} type="button" className="admin-metric" disabled={loading||data?.metrics?.[key]==null||!territoryMetricTarget(data,key)} onClick={()=>openMetric(key)}><span className="admin-metric-icon"><AppIcon name={key.startsWith("niveaux")?"globe":"alert"}/></span><span><small>{label}</small><strong>{count(data?.metrics?.[key])}</strong></span><AppIcon name="chevron-right" size={14}/></button>)}</div>{group.label==="Rattachements"?<p className="territory-metric-note">L’aire est facultative ; la zone peut être héritée de l’aire.</p>:null}</section>)}</div>
+  {loading&&!data?<div className="admin-dashboard-placeholder" role="status">Chargement de la synthèse…</div>:null}
+  {data?<div className="territory-charts">{charts.map(chart=>{const rows=data.charts?.[chart.key]||[],maximum=Math.max(1,...rows.map(row=>Number(row.count)||0));return <section key={chart.key} className="admin-dashboard-panel"><header><h2><AppIcon name="chart"/>{chart.title}</h2></header><div className="territory-bar-chart">{rows.length?rows.map((row,index)=><button type="button" key={row[chart.field]??"none"} disabled={loading||Boolean(error)} onClick={()=>onNavigate("niveaux5",{[chart.field]:row[chart.field]==null?"__null__":String(row[chart.field])})} aria-label={(row[chart.name]||chart.label)+" : "+count(row.count)+" sites et structures"}><span>{row[chart.name]||chart.label}</span><span className="admin-role-track"><span className={"tone-"+index%5} style={{width:Number(row.count)/maximum*100+"%"}}/></span><strong>{count(row.count)}</strong></button>):<p className="admin-empty">Aucune donnée à répartir.</p>}</div></section>;})}</div>:null}
+ </div>;
+}

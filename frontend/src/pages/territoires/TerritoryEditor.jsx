@@ -1,0 +1,64 @@
+import {useEffect,useId,useRef,useState} from "react";
+import {requestJson} from "../../services/api";
+import {useAuth} from "../../contexts/AuthContext";
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import RecordEditorFrame from "../../components/RecordEditorFrame";
+import ConsultationTabs from "../../components/ConsultationTabs";
+import AppIcon from "../../components/AppIcon";
+import ActionButton from "../../components/ActionButton";
+import SearchSelect from "../../components/SearchSelect";
+import useReferencesRefresh from "../../hooks/useReferencesRefresh";
+import {REFERENCE_RETAINED_HINT} from "../../utils/referenceOptions";
+import {TERRITORY_ROOT,TERRITORY_REGISTERS,territoryFields,territoryValues,territorySection} from "./territorialDefinitions";
+import {OPTIONAL_BOOLEAN,territoryOptions,territoryErrors,territoryPayload} from "./territorialForm";
+
+export default function TerritoryEditor({kind,recordId=null,mode="view",canWrite=false,onClose,onSaved,draft=null,draftSupport=null,headerValues={},fixedFields=[],initialErrors={},onDraftSave}){
+ const definition=TERRITORY_REGISTERS[kind],creating=recordId==null,scope=useEntityScope(),{user}=useAuth(),prefix=useId();
+ const identity=scope.scopeKey+":"+String(user?.IdUser)+":"+kind+":"+String(draft?.rowId||recordId),current=useRef(identity),origin=useRef(identity),mounted=useRef(true),saving=useRef(false),ticket=useRef(null);current.current=identity;
+ const [record,setRecord]=useState(null),[values,setValues]=useState(()=>territoryValues(kind)),[baseline,setBaseline]=useState(null),[support,setSupport]=useState(null);
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({}),[editing,setEditing]=useState(creating||mode==="edit"),[active,setActive]=useState("identity"),[retry,setRetry]=useState(0),[uncertain,setUncertain]=useState(false),[reloadConfirm,setReloadConfirm]=useState(false),[referenceError,setReferenceError]=useState("");
+ const [settled,setSettled]=useState("");const changedDraft=Boolean(draft&&origin.current!==identity),ready=settled===(draft?origin.current:identity),allowed=ready&&!changedDraft&&canWrite&&support?.canManage===true,readOnly=!editing||!allowed,dirty=baseline&&JSON.stringify(values)!==JSON.stringify(baseline);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+ useEffect(()=>{
+  if(changedDraft)return;const controller=new AbortController();setRecord(null);setBaseline(null);setSupport(null);setLoading(true);setError("");setErrors({});setReferenceError("");setValues(territoryValues(kind));setActive("identity");setEditing(creating||mode==="edit");setUncertain(false);setReloadConfirm(false);saving.current=false;ticket.current=null;
+  Promise.all([creating?Promise.resolve({success:true,data:null}):requestJson(TERRITORY_ROOT+"/registres/"+kind+"/"+recordId,{requiresAuth:true,signal:controller.signal}),draft?Promise.resolve({success:true,data:draftSupport}):requestJson(TERRITORY_ROOT+"/references/"+kind+(creating?"":"?currentId="+recordId),{requiresAuth:true,signal:controller.signal})]).then(([response,references])=>{
+   if(controller.signal.aborted||current.current!==identity)return;setLoading(false);setSettled(identity);
+   if(!response?.success){setError(response?.message||"La fiche n’a pas pu être chargée.");return;}
+   if(!creating&&String(response.data?.[definition.pk])!==String(recordId)){setError("La fiche reçue ne correspond pas à l’élément choisi.");return;}
+   setRecord(response.data);const next=draft?{...territoryValues(kind),...draft.values,...headerValues}:territoryValues(kind,response.data);setValues(next);setBaseline(next);if(draft){setErrors(initialErrors);const issue=territoryFields(kind).find(field=>initialErrors[field.name]);if(issue)setActive(territorySection(issue));}
+   if(references?.success)setSupport(references.data);else setReferenceError(references?.message||"Les références sont indisponibles. Réessayez avant d’enregistrer.");
+  });return()=>controller.abort();
+ },[identity,retry,mode]);
+ useReferencesRefresh(async()=>{if(draft||!ready||loading||busy)return;const expected=identity,response=await requestJson(TERRITORY_ROOT+"/references/"+kind+(creating?"":"?currentId="+recordId),{requiresAuth:true});if(current.current!==expected||!mounted.current)return;if(response?.success){setSupport(response.data);setReferenceError("");}else{setSupport(null);setReferenceError(response?.message||"Les références ne sont plus disponibles.");}},{enabled:ready&&!draft});
+ function change(name,value){if(readOnly||busy||uncertain||fixedFields.includes(name))return;setValues(previous=>{const next={...previous,[name]:value};if(kind==="niveaux5"&&name==="ID_Niveau_4_Fk"&&value){const area=support?.options?.niveaux4?.find(item=>String(item.id??item.value)===String(value)),parent=area?.parentId??area?.ID_Niveau_3_Fk;if(parent!=null)next.ID_Niveau_3_Fk=String(parent);}return next;});setErrors(previous=>({...previous,[name]:"",...(name==="ID_Niveau_4_Fk"?{ID_Niveau_3_Fk:""}:{})}));}
+ function reload(){if(busy)return;if(dirty||uncertain)setReloadConfirm(true);else setRetry(value=>value+1);}
+ async function submit(){
+  if(!allowed||readOnly||busy||loading||saving.current||referenceError||!baseline||!creating&&!dirty&&!uncertain)return;
+  let snapshot=ticket.current;
+  if(!uncertain){const issues=territoryErrors(kind,values,creating?null:baseline,support);setErrors(issues);setError("");if(Object.keys(issues).length){const field=territoryFields(kind).find(item=>issues[item.name]);setActive(territorySection(field));requestAnimationFrame(()=>document.getElementById(prefix+field.name)?.focus());setError("Vérifiez les champs indiqués.");return;}
+   if(draft){onDraftSave?.({...draft,values:Object.fromEntries(Object.entries(values).filter(([name])=>!fixedFields.includes(name))),pristine:false});return;}
+   if(!creating&&!record?._version){setError("Rechargez la fiche avant de l’enregistrer.");return;}
+   const data=territoryPayload(kind,values,creating?null:baseline),fingerprint=JSON.stringify(data);if(!snapshot||snapshot.fingerprint!==fingerprint){snapshot={fingerprint,body:JSON.stringify({...data,...(!creating?{_version:record._version}:{}),requestId:crypto.randomUUID()})};ticket.current=snapshot;}
+  }
+  if(!snapshot)return;saving.current=true;setBusy(true);setError("");const expected=identity;
+  const response=await requestJson(TERRITORY_ROOT+"/registres/"+kind+(creating?"":"/"+recordId),{requiresAuth:true,method:creating?"POST":"PATCH",body:snapshot.body});
+  if(!mounted.current||current.current!==expected)return;saving.current=false;setBusy(false);
+  if(!response?.success){setUncertain(!response?.status||response.status>=500);const details=response?.error?.details,issues=details&&typeof details==="object"?details:{};setErrors(issues);const field=territoryFields(kind).find(item=>issues[item.name]);if(field){setActive(territorySection(field));requestAnimationFrame(()=>document.getElementById(prefix+field.name)?.focus());}setError(field?"Vérifiez les champs indiqués.":response?.message||"L’enregistrement n’a pas abouti.");return;}
+  if(!response.data||(!creating&&String(response.data[definition.pk])!==String(recordId))){setUncertain(true);setError("La réponse d’enregistrement doit être vérifiée. Réessayez la même demande.");return;}
+  onSaved?.(response.data);
+ }
+ const tabs=[{key:"identity",label:"Identification",icon:"tag"},{key:"monitoring",label:"Suivi",icon:"list"},{key:"geography",label:"Géographie",icon:"globe"}].filter(tab=>territoryFields(kind).some(field=>territorySection(field)===tab.key));
+ const fields=territoryFields(kind).filter(field=>territorySection(field)===active),locked=loading||busy||uncertain||readOnly;
+ return <RecordEditorFrame title={draft?"Détails de la ligne":creating?definition.crud.createLabel:editing?"Modifier · "+definition.title:definition.title} subtitle={ready?(values?.[definition.name]||record?.[definition.name]||"Organisation territoriale"):"Chargement…"} icon="globe" defaultWidth={900} storageKey="sauverndeko.territoires.editor.width" onClose={onClose} onSubmit={submit} readOnly={readOnly} loading={loading||!ready} busy={busy} dirty={Boolean(ready&&(draft||!readOnly)&&(dirty||uncertain))} canSubmit={Boolean(allowed&&!referenceError&&(creating||dirty||uncertain))} error={changedDraft?"Le contexte a changé. Votre brouillon est conservé en consultation.":ready?error:""} onReload={draft?undefined:reload} submitLabel={draft?"Appliquer à la ligne":uncertain?"Vérifier l’enregistrement":"Enregistrer"}>
+  {ready&&reloadConfirm?<div className="record-discard" role="alert"><span>Recharger et abandonner les modifications ?</span><div><ActionButton onClick={()=>setReloadConfirm(false)}>Continuer</ActionButton><ActionButton onClick={()=>setRetry(value=>value+1)}>Recharger</ActionButton></div></div>:null}
+  {ready&&baseline?<><div className="territory-record-heading"><span className="erp-product-avatar"><AppIcon name="globe" size={24}/></span><div><strong>{values?.[definition.name]||record?.[definition.name]||definition.crud.createLabel}</strong><small>{definition.title}</small></div>{!editing&&allowed?<ActionButton icon="edit" onClick={()=>setEditing(true)}>Modifier</ActionButton>:null}</div>
+   <ConsultationTabs tabs={tabs} value={active} onChange={setActive} label="Rubriques de la fiche" idPrefix={prefix}/>
+   {referenceError?<div role="alert" className="admin-error"><span>{referenceError}</span><ActionButton icon="refresh" onClick={reload}>Réessayer</ActionButton></div>:null}
+   <section className="record-editor-section" role="tabpanel" id={prefix+"-panel-"+active} aria-labelledby={prefix+"-tab-"+active}><h3><AppIcon name={tabs.find(tab=>tab.key===active)?.icon}/>{tabs.find(tab=>tab.key===active)?.label}</h3><div className="territory-form-grid">{fields.map(field=>{
+    const choices=field.type==="select"?territoryOptions(field,support,values,record):OPTIONAL_BOOLEAN.filter(option=>!field.required||option.value!==""),value=values[field.name]??"",incompatible=field.type==="select"&&choices.some(option=>option.value===value&&(option.incompatible||option.disabled)),fieldLocked=locked||fixedFields.includes(field.name);
+    const label=field.label.replace("Geometrie","Géométrie").replace("Abreviation","Abréviation").replace("deploiement","de déploiement").replace("Geographie","Géographie").replace("Observation","Observations");
+    return <div key={field.name} className={"record-field"+(field.type==="textarea"?" territory-full":"")}><label htmlFor={prefix+field.name}>{label}{field.required?" *":""}</label>{field.type==="select"||field.type==="checkbox"?<SearchSelect id={prefix+field.name} label={label} value={value} options={field.type==="select"?[{value:"",label:field.required?"Choisir…":"Non renseigné"},...choices]:choices} disabled={fieldLocked||Boolean(referenceError)} invalid={Boolean(errors[field.name])} onChange={next=>change(field.name,next)}/>:field.type==="textarea"?<textarea id={prefix+field.name} rows={/^geometry/.test(field.name)?7:3} value={value} disabled={fieldLocked} onChange={event=>change(field.name,event.target.value)} aria-invalid={Boolean(errors[field.name])}/>:<input id={prefix+field.name} type={field.type==="number"?"text":field.type||"text"} inputMode={field.type==="number"?"decimal":undefined} value={value} disabled={fieldLocked} onChange={event=>change(field.name,event.target.value)} aria-invalid={Boolean(errors[field.name])}/>}{fixedFields.includes(field.name)?<small className="record-editor-note">Commun à toutes les lignes du panier.</small>:null}{incompatible?<small className="record-editor-note">{REFERENCE_RETAINED_HINT}</small>:null}{errors[field.name]?<small className="record-field-error" role="alert">{typeof errors[field.name]==="string"?errors[field.name]:"Vérifiez cette valeur."}</small>:null}</div>;
+   })}</div></section>{uncertain?<p className="record-editor-note" role="status">La réponse reste à confirmer. Réessayez pour vérifier la même demande.</p>:null}
+  </>:null}
+ </RecordEditorFrame>;
+}

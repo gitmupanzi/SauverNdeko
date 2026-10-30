@@ -124,6 +124,8 @@ ThemePicker affiche uniquement l’icône du choix : soleil pour Clair, lune pou
 
 ## Outils et relevés historiques
 
+Pour `/territoires`, suivre [le contrat Organisation territoriale](references/organisation-territoriale.md) : portail dédié, indicateurs liés aux mêmes registres, références physiques centralisées, fiches complètes et conservation des valeurs historiques. Le découpage reste partagé ; ne pas lui appliquer le blocage d’écriture propre à l’entreprise logistique. Les créations des niveaux 0 à 5 utilisent un seul bouton ouvrant une saisie multiple, avec rattachement commun en en-tête, lignes modifiables, collage Excel et transaction de lot. La consultation et la modification conservent la même fiche individuelle et sa vraie clé.
+
 Les anciennes références [frontend-architecture.md](references/frontend-architecture.md), [api-and-ui-contracts.md](references/api-and-ui-contracts.md) et [validation.md](references/validation.md) conservent le relevé antérieur à la conversion Django. Les références précédentes décrivent les conventions actuelles. L’[inspecteur statique](scripts/inspect_frontend.py) peut aider à repérer composants et services ; son inventaire partiel des routes ne valide ni les ModuleGate conditionnels ni les permissions.
 
 ## Documents métier et avoirs

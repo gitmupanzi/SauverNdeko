@@ -959,7 +959,7 @@ CREATE TABLE referentiel."T_InterfaceTableau" (
     CONSTRAINT "T_InterfaceTableau_Colonnes_check" CHECK ((jsonb_typeof("Colonnes") = 'array'::text)),
     CONSTRAINT "T_InterfaceTableau_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT ck_interface_tableau_cle CHECK (("CleInterface" ~ '^[a-z]+[.][a-z-]+$'::text)),
-    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text])))
+    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text])))
 );
 
 --
@@ -1062,7 +1062,7 @@ COMMENT ON CONSTRAINT ck_interface_tableau_cle ON referentiel."T_InterfaceTablea
 -- Name: CONSTRAINT ck_interface_tableau_module ON "T_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules initialement couverts par le mécanisme transverse.';
+COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Applications couvertes par les catalogues persistants de tableaux et exports, dont Organisation territoriale. Les droits sont vérifiés par chaque service source.';
 
 --
 -- Name: seq_preference_tableau_revision; Type: SEQUENCE; Schema: referentiel; Owner: -

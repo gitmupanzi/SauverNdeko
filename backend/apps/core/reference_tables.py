@@ -72,7 +72,7 @@ def selection(actor, raw, *, exporting=False):
         raise APIError('Filtre non autorisé.')
     for key, value in filters.items():
         if key == 'Module':
-            if value not in {'logistique', 'referentiels', 'administration'}:
+            if value not in {'logistique', 'referentiels', 'administration', 'territoires'}:
                 raise APIError('Module de tableau invalide.')
         elif type(value) is not bool:
             raise APIError('Filtre oui/non invalide.')

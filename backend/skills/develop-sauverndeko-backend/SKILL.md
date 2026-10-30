@@ -13,6 +13,7 @@ Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/
 
 - Lire [l’architecture](references/architecture.md) pour les points d’entrée et les responsabilités.
 - Lire [le portail d’administration](references/administration-portail.md) pour la synthèse, les registres, leurs exports, la confidentialité des journaux et les paramètres protégés.
+- Lire [le portail territorial](references/territoires-portail.md) pour les treize vues géographiques, leurs références dynamiques, les gardes hiérarchiques et les indicateurs sans doubles comptes.
 - Lire [messagerie et réinitialisation](references/messagerie-reinitialisation.md) pour l’expéditeur, les secrets SMTP locaux et la récupération sécurisée des comptes.
 - Pour la propriété durable des documents, T_Client et les opérations du compte global, lire les [décisions Entités, tiers et stock](../../../skills/sauverndeko-erp/references/entites-tiers-et-stock.md).
 - Lire [Articles, photos et lots](references/articles-lots-photos.md) pour les écritures avec révision, poids, informations et ventilation des mouvements par lot.

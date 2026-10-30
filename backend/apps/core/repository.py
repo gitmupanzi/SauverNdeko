@@ -444,6 +444,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
         raise APIError('Utilisez le formulaire des immobilisations avec sa révision et son motif.', 'DEDICATED_IMMOBILISATION_REQUIRED', 405)
     if name in READONLY:
         raise APIError("Registre en lecture seule.", "READ_ONLY_REGISTER", 405)
+    if obj['schema']=='geolocalisation':
+        from .territorial_portal import hierarchy_lock
+        hierarchy_lock()
     if name in {"T_Fk_Correspondance", "T_Admin_UI_Setting"}:
         if isinstance(body, dict):
             # Ces valeurs sont produites par PostgreSQL ; le navigateur ne
@@ -545,6 +548,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
             "GLOBAL_ADMIN_REQUIRED",
             403,
         )
+    if obj['schema']=='geolocalisation' and operation != 'delete':
+        from .territorial_portal import MODEL_KINDS,validate_body
+        if name in MODEL_KINDS:body=validate_body(MODEL_KINDS[name],body or {},old)
     data = (
         payload(obj, body or {}, actor, creating=operation == "create")
         if operation != "delete"

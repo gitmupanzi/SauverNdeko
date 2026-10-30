@@ -952,7 +952,7 @@ COMMENT ON COLUMN geolocalisation."T_Niveau_5"."ID_Niveau_3_Fk" IS 'Unité géog
 -- Name: COLUMN "T_Niveau_5"."ID_TypeNiveau_5_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON COLUMN geolocalisation."T_Niveau_5"."ID_TypeNiveau_5_Fk" IS 'Type de l’unité géographique dans le référentiel.';
+COMMENT ON COLUMN geolocalisation."T_Niveau_5"."ID_TypeNiveau_5_Fk" IS 'Type de structure ou site : identifiant de T_Generique. La famille des nouveaux choix est résolue par le référencement physique commun ; les valeurs historiques inchangées sont conservées.';
 
 --
 -- Name: COLUMN "T_Niveau_5"."NomNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -1983,3 +1983,35 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 --
 
 COMMENT ON CONSTRAINT "Fk_ID_VoieAccesZsSiteFk" ON geolocalisation."T_Niveau_5" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "geolocalisation"."T_Niveau_5". Définition : FOREIGN KEY ("ID_VoieAccesZsSiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
+
+--
+-- Name: ix_niveau5_type_reference; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_niveau5_type_reference ON geolocalisation."T_Niveau_5" USING btree ("ID_TypeNiveau_5_Fk");
+
+--
+-- Name: INDEX ix_niveau5_type_reference; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_niveau5_type_reference IS 'Recherche, filtrage et contrôle des sites par valeur du référentiel partagé.';
+
+--
+-- Name: T_Niveau_5 Fk_TypeNiveau_5_Generique; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_Niveau_5"
+    ADD CONSTRAINT "Fk_TypeNiveau_5_Generique" FOREIGN KEY ("ID_TypeNiveau_5_Fk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+--
+-- Name: CONSTRAINT "Fk_TypeNiveau_5_Generique" ON "T_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Fk_TypeNiveau_5_Generique" ON geolocalisation."T_Niveau_5" IS 'Référence physique du type de site vers T_Generique, contrôlée sans réaffectation des sites existants.';
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict rX9g7zWSEPHO8mTXfNug0rKiO3i30Wuw6lrfckd5Ak7WyzTnLYTs9Uby5Cprw4x
