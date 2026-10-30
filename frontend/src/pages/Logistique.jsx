@@ -1,3 +1,4 @@
+import ModuleSidebar from "../components/ModuleSidebar";
 import {referenceLabel} from "../utils/referenceOptions";
 import lazyView, { ScreenPlaceholder } from "../components/LazyView";
 import {TIERS_CHANGED} from "../services/tiers";
@@ -448,30 +449,17 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
     { label: "Finances", keys: ["factures", "reglements"] },
     { label: "Patrimoine", keys: ["immobilisations"] },
   ];
-  return <aside className={"logistics-sidebar-shell" + (collapsed ? " is-collapsed" : "")}>
-    <div className="logistics-sidebar-top">
-      <Link to="/" className="logistics-brand-lockup" aria-label="SauverNdeko — Applications">
-        <img className="logistics-brand-logo" src="/sauverndeko-logo.jpg" alt="" width="34" height="34" />
-        {!collapsed ? <div className="logistics-brand-copy"><strong>SauverNdeko</strong><span>Logistique</span></div> : null}
-      </Link>
-      <button type="button" className="logistics-sidebar-toggle" onClick={onToggle} aria-label={collapsed ? "Afficher le menu logistique" : "Replier le menu logistique"} title={collapsed ? "Déplier" : "Replier"}><AppIcon name="sidebar" /></button>
-    </div>
-    <nav className="logistics-sidebar-nav" aria-label="Menu logistique">
-      {groups.map((group) => <div key={group.label} className="logistics-nav-group" role="group" aria-label={group.label}>
-        {!collapsed ? <span className="logistics-nav-heading">{group.label}</span> : null}
-        {group.keys.map((key) => {
-          const tab = mainTabs.find((item) => item.key === key);
-          if (!tab) return null;
-          const active = key === activeTab || (key === "dashboard" && dashboardActive);
-          return <button key={key} type="button" className={"logistics-sidebar-link" + (active ? " is-active" : "")} onClick={() => onNavigate(key)} title={tab.label || tab.title} aria-label={tab.label || tab.title} aria-current={active ? "page" : undefined}>
-            <span className="logistics-sidebar-icon" aria-hidden="true"><AppIcon name={tab.icon || "apps"} size={18} /></span>
-            {!collapsed ? <span className="logistics-sidebar-label">{tab.label || tab.title}</span> : null}
-          </button>;
-        })}
-      </div>)}
-    </nav>
-    <div className="logistics-app-switcher">{onIdentity?<button type="button" onClick={onIdentity} disabled={!identityAvailable} title={identityAvailable?"Identité de l’entreprise":"Choisissez une entreprise active."} aria-label="Identité de l’entreprise"><span><AppIcon name="document"/></span>{!collapsed?<span>Identité de l’entreprise</span>:null}</button>:null}{user?.permissions?.canAccessAdmin?<Link to="/admin" title="Administration" aria-label="Administration"><span><AppIcon name="shield" /></span>{!collapsed ? <><span>Administration</span><AppIcon name="arrow-up-right" /></> : null}</Link>:null}<Link to="/referentiels" title="Référentiels communs" aria-label="Référentiels"><span><AppIcon name="tag" /></span>{!collapsed ? <><span>Référentiels</span><AppIcon name="arrow-up-right" /></> : null}</Link><Link to="/" title="Toutes les applications" aria-label="Toutes les applications"><span><AppIcon name="apps" /></span>{!collapsed ? <><span>Applications</span><AppIcon name="arrow-up-right" /></> : null}</Link></div>
-  </aside>;
+  const navigation=groups.map(group=>({...group,items:group.keys.map(key=>{
+    const tab=mainTabs.find(item=>item.key===key);
+    return tab?{key,label:tab.label||tab.title,icon:tab.icon||"apps",active:key===activeTab||(key==="dashboard"&&dashboardActive)}:null;
+  }).filter(Boolean)}));
+  const footerItems=[
+    ...(onIdentity?[{key:"identity",label:"Identité de l’entreprise",icon:"document",onClick:onIdentity,disabled:!identityAvailable,title:identityAvailable?"Identité de l’entreprise":"Choisissez une entreprise active."}]:[]),
+    ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
+    {key:"references",label:"Référentiels",icon:"tag",to:"/referentiels"},
+    {key:"applications",label:"Applications",icon:"apps",to:"/"},
+  ];
+  return <ModuleSidebar title="Logistique" collapsed={collapsed} onToggle={onToggle} groups={navigation} activeKey={dashboardActive?"dashboard":activeTab} onNavigate={onNavigate} footerItems={footerItems} storageKey="sauverndeko.logistique.navigation"/>;
 }
 
 function LogistiqueShellHeader({

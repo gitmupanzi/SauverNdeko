@@ -71,6 +71,9 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.append("/api/systeme/administration/synthese")
+            urls.append("/api/systeme/administration/entreprises")
+            urls.extend("/api/systeme/administration/references/" + kind for kind in
+                        ("utilisateurs", "roles", "correspondances", "parametres"))
             urls.extend(["/api/systeme/personnel/references", "/api/logistique/immobilisations?take=1",
                 "/api/logistique/immobilisations/references", "/api/logistique/registre/immobilisations?take=1",
                 "/api/tableaux/logistique.immobilisations/preferences"])
@@ -183,6 +186,32 @@ class Command(BaseCommand):
                     results.append({'url':url,'status':response.status_code,'attendu':expected})
                     if response.status_code!=expected:
                         raise CommandError('Lecture du patrimoine inattendue : '+url)
+                # Même API et mêmes vues dans chaque entreprise : ne pas se
+                # limiter à la vue globale qui masquerait une fuite de portée.
+                with connection.cursor() as entity_cursor:
+                    entity_cursor.execute('SELECT "IdEntite" FROM systeme."T_Entite" '
+                                          'WHERE "ValideEntite" IS NOT FALSE ORDER BY "IdEntite" LIMIT 2')
+                    entities = [item[0] for item in entity_cursor.fetchall()]
+                for entity in entities:
+                    actor._context_entity = entity
+                    for kind in ("utilisateurs", "entites", "licences", "correspondances", "parametres", "roles"):
+                        url = '/api/systeme/administration/registres/' + kind + '?take=2'
+                        response = client.get(url)
+                        results.append({'url': 'entreprise:' + str(entity) + ':' + url,
+                                        'status': response.status_code, 'attendu': 200})
+                        if response.status_code != 200:
+                            raise CommandError('Lecture administration par entreprise refusée : ' + kind)
+                        for row in response.data['data']:
+                            owner = row.get('IdEntiteFk', row.get('IdEntite'))
+                            if owner is not None and owner != entity:
+                                raise CommandError('Une lecture administration contient une autre entreprise : ' + kind)
+                    url = '/api/systeme/administration/synthese'
+                    response = client.get(url)
+                    results.append({'url': 'entreprise:' + str(entity) + ':' + url,
+                                    'status': response.status_code, 'attendu': 200})
+                    if response.status_code != 200 or response.data['data']['scope'] != {'kind': 'entity', 'id': entity}:
+                        raise CommandError('La synthèse administration ne conserve pas son entreprise.')
+                actor._context_entity = None
             # La politique publique de récupération reste contrôlée en anonyme, sans envoi.
             anonymous = APIClient()
             with override_settings(ALLOWED_HOSTS=[*settings.ALLOWED_HOSTS, "testserver"]):

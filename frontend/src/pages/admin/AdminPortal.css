@@ -61,3 +61,28 @@
 @media(max-width:760px) { .admin-portal .admin-main { padding:20px 14px; }.admin-dashboard-grid { grid-template-columns:minmax(0,1fr); }.admin-dashboard .erp-register-heading { align-items:flex-start; gap:10px; }.admin-portal .erp-register-heading h1,.admin-dashboard h1 { font-size:24px; }.admin-detail-grid { grid-template-columns:minmax(0,1fr); }.admin-register-context { flex-wrap:wrap; }.admin-activity { gap:5px; padding-inline:12px; }.admin-activity small { font-size:9px; }.admin-updated { font-size:10px; } }
 @media(max-width:470px) { .admin-metric { padding:12px 10px; gap:8px; border-radius:10px; }.admin-metric-icon { width:30px; height:30px; border-radius:8px; }.admin-metric-icon .app-icon { width:16px; height:16px; }.admin-metric strong { font-size:20px; }.admin-metric small { font-size:10px; }.admin-metric>.app-icon { display:none; }.admin-portal .erp-register-heading .erp-register-actions { width:100%; }.admin-dashboard-panel>header { padding:15px 14px; }.admin-activity small { font-size:8px; }.admin-metrics { gap:8px; } }
 @media(max-width:760px) { .admin-portal .logistics-app-switcher>a>.app-icon:last-child { display:none; } }
+
+.admin-dashboard-blocks { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+.admin-dashboard-blocks .admin-dashboard-panel { margin-bottom:0; }
+.admin-dashboard-blocks .admin-metrics { padding:14px;gap:9px;margin:0;grid-template-columns:repeat(2,minmax(0,1fr)); }
+.admin-dashboard-blocks .admin-metric { padding:12px;gap:9px;box-shadow:none;border-radius:8px;background:var(--erp-raised); }
+.admin-dashboard-blocks .admin-metric strong { font-size:21px; }
+.admin-dashboard-blocks+.admin-dashboard-grid,.admin-dashboard-blocks+.admin-dashboard-placeholder { margin-top:18px; }
+.admin-role-chart { padding:16px 20px;display:grid;gap:12px; }
+.admin-role-chart>button { display:grid;grid-template-columns:minmax(100px,1fr) minmax(80px,2fr) 45px;gap:12px;align-items:center;border:0;background:none;color:var(--erp-text);font-size:12px;text-align:left;padding:7px 0; }
+.admin-role-track { height:11px;border-radius:6px;background:var(--erp-raised);overflow:hidden; }
+.admin-role-track>span { display:block;height:100%;background:var(--erp-action);border-radius:6px; }
+.admin-role-chart strong { text-align:right;font-variant-numeric:tabular-nums; }
+.admin-status-chart { display:flex;gap:24px;align-items:center;padding:24px;flex-wrap:wrap;justify-content:center; }
+.admin-status-donut { display:grid;place-items:center;width:150px;height:150px;border-radius:50%;flex:none; }
+.admin-status-donut>span { display:flex;flex-direction:column;align-items:center;justify-content:center;width:116px;height:116px;border-radius:50%;background:var(--erp-surface); }
+.admin-status-donut strong { font-size:28px; }.admin-status-donut small { color:var(--erp-muted);font-size:12px; }
+.admin-status-legend { display:grid;gap:12px;min-width:150px;flex:1; }
+.admin-status-legend>button { display:flex;align-items:center;gap:8px;border:0;background:none;color:var(--erp-text);padding:7px 0;font-size:12px; }.admin-status-legend strong { margin-left:auto; }
+.admin-user-activity>button { display:flex;flex-direction:column;align-items:center;justify-content:end;gap:7px;flex:1;min-width:0;color:var(--erp-text);border:0;background:none;padding:0;font-size:11px; }
+.admin-user-activity .admin-activity-bars>span { width:30px;max-width:65%; }
+.admin-activity-bars>button { width:16px;max-width:32%;min-height:3px;min-width:8px;border:0;border-radius:4px 4px 0 0;background:var(--erp-action);padding:0; }.admin-activity-bars>.is-login { background:#7895d3; }
+.admin-dashboard button:focus-visible { outline:2px solid var(--erp-action);outline-offset:3px; }
+.entity-locations .admin-table input:not([type=checkbox]) { width:100%;height:36px;box-sizing:border-box;color:var(--erp-text);background:var(--erp-surface);border:1px solid var(--erp-border);border-radius:6px;padding:6px 9px; }
+@media(max-width:900px) { .admin-dashboard-blocks { grid-template-columns:1fr; } }
+@media(prefers-reduced-motion:reduce) { .admin-dashboard * { transition:none!important; } }

@@ -1,3 +1,4 @@
+import ModuleSidebar from "../components/ModuleSidebar";
 import useTablePreferences from "../hooks/useTablePreferences";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -165,11 +166,12 @@ export default function Referentiels() {
   function navigate(next,id="") {const query=new URLSearchParams();query.set("onglet",next==="tables"?"tableaux":next==="fields"?"champs":next==="categories"?"categories":"valeurs");if(id)query.set("categorie",String(id));setParams(query);}
   const browseCategory=id=>navigate("values",id);
   return <div className={"logistics-modern logistics-app references-app"+(collapsed?" is-menu-collapsed":"")}>
-    <aside className={"logistics-sidebar-shell"+(collapsed?" is-collapsed":"")}>
-      <div className="logistics-sidebar-top"><Link to="/" className="logistics-brand-lockup" aria-label="SauverNdeko — Applications"><img className="logistics-brand-logo" src="/sauverndeko-logo.jpg" alt="" width="34" height="34"/>{!collapsed?<div className="logistics-brand-copy"><strong>SauverNdeko</strong><span>Référentiels</span></div>:null}</Link><button type="button" className="logistics-sidebar-toggle" onClick={()=>setCollapsed(value=>!value)} aria-label={collapsed?"Afficher le menu Référentiels":"Replier le menu Référentiels"} title={collapsed?"Déplier":"Replier"}><AppIcon name="sidebar"/></button></div>
-      <nav className="logistics-sidebar-nav" aria-label="Menu Référentiels"><div className="logistics-nav-group">{!collapsed?<span className="logistics-nav-heading">Nomenclatures</span>:null}{Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{}),tables:{title:"Tableaux et exports",icon:"table"}}).map(([key,definition])=><button key={key} type="button" className={"logistics-sidebar-link"+(kind===key?" is-active":"")} aria-current={kind===key?"page":undefined} aria-label={definition.title} title={definition.title} onClick={()=>navigate(key)}><span className="logistics-sidebar-icon"><AppIcon name={definition.icon} size={18}/></span>{!collapsed?<span className="logistics-sidebar-label">{definition.title}</span>:null}</button>)}</div></nav>
-      <div className="logistics-app-switcher">{user?.moduleAccess?.modules?.logistique?.canRead?<Link to="/logistique" aria-label="Logistique" title="Logistique"><span><AppIcon name="box"/></span>{!collapsed?<><span>Logistique</span><AppIcon name="arrow-up-right"/></>:null}</Link>:null}{user?.permissions?.canAccessAdmin?<Link to="/admin" aria-label="Administration" title="Administration"><span><AppIcon name="shield"/></span>{!collapsed?<><span>Administration</span><AppIcon name="arrow-up-right"/></>:null}</Link>:null}<Link to="/" aria-label="Toutes les applications" title="Applications"><span><AppIcon name="apps"/></span>{!collapsed?<><span>Applications</span><AppIcon name="arrow-up-right"/></>:null}</Link></div>
-    </aside>
+    <ModuleSidebar title="Référentiels" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={kind} onNavigate={navigate} storageKey="sauverndeko.references.navigation" groups={[{label:"Nomenclatures",items:Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{}),tables:{title:"Tableaux et exports",icon:"table"}}).map(([key,definition])=>({key,label:definition.title,icon:definition.icon}))}]} footerItems={[
+      ...(user?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
+      ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
+      {key:"applications",label:"Applications",icon:"apps",to:"/"},
+    ]}/>
+
     <ModuleHeader title="Référentiels"/>
     <main className="references-main">{kind==="tables"?<TableReferenceRegister/>:kind==="fields"?<FieldReferencesRegister categories={categories}/>:<ReferenceRegister key={entity.scopeKey+":"+kind+":"+category} kind={kind} categories={categories} initialCategory={category} onBrowseCategory={browseCategory} refresh={refresh} onChanged={()=>setRefresh(value=>value+1)} categoryError={categoryError}/>}</main>
   </div>;

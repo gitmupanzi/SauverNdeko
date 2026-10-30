@@ -27,7 +27,11 @@ def scope_for(obj, actor, alias="v"):
     if name in {'T_Entite','V_Entite','V_Entite_Localisation_Detail','V_IdentiteDocumentaire'} and 'IdEntite' in columns:return f'{a}."IdEntite"=%s',[org]
     for field in ('IdEntiteFk','ID_EntiteFk'):
         if field in columns:return f'{a}."{field}"=%s',[org]
-    if schema=='systeme' and {'SettingScope','ScopeValue'}.issubset(columns):return f'{a}."SettingScope"=%s AND {a}."ScopeValue"=%s',['entity',str(org)]
+    if schema=='systeme' and {'SettingScope','ScopeValue'}.issubset(columns):
+        # Les paramètres utilisent « entite », les correspondances « entity ».
+        # Les réglages communs sont consultables sans exposer ceux d'un tiers.
+        setting_scope='entite' if name in {'T_Admin_UI_Setting','V_Admin_UI_Setting'} else 'entity'
+        return f'(({a}."SettingScope"=\'global\' AND {a}."ScopeValue" IS NULL) OR ({a}."SettingScope"=%s AND {a}."ScopeValue"=%s))',[setting_scope,str(org)]
     if name=='V_User_profil':return f'{a}."IdEntite"=%s',[org]
     if schema=='logistique':
         art=next((x for x in ('ID_ArticleFk','ID_Article') if x in columns),None)

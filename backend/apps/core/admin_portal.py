@@ -38,7 +38,7 @@ SOURCES = {
     "parametres": ("systeme", "V_Admin_UI_Setting", "IdAdminUISetting", "SettingGroup", "UpdatedAt"),
     "audit-parametres": ("systeme", "V_Admin_UI_Setting_Audit", "IdLog", "ChangedAt", "ChangedAt"),
 }
-GLOBAL_ONLY = {"audit", "correspondances", "connexions", "parametres", "audit-parametres"}
+GLOBAL_ONLY = {"audit", "connexions", "audit-parametres"}
 TITLES = {
     "utilisateurs": "Utilisateurs", "profils": "Profils utilisateurs", "entites": "Entreprises",
     "roles": "Rôles", "audit": "Journaux d’audit", "correspondances": "Correspondances des références",
@@ -200,9 +200,9 @@ def selection(actor, kind, raw, *, action="read", pk=None):
     return obj, where, values, order, sort, direction
 
 
-def capabilities(actor):
+def capabilities(actor, kind=None):
     rights = access_snapshot(actor)["modules"]["administration"]
-    return {"canManage": actor.global_admin and not settings.DB_READ_ONLY,
+    return {"canManage": (actor.global_admin or kind in {"utilisateurs", "profils", "entites"}) and rights["canManage"] and not settings.DB_READ_ONLY,
             "canExport": rights["canExport"], "platformAdmin": actor.global_admin}
 
 
@@ -219,7 +219,7 @@ class AdminRegisterView(APIView):
             row = db.one("SELECT " + projection + " FROM " + sql_source + " WHERE " + where, values)
             if row is None:
                 raise APIError("Enregistrement introuvable dans votre périmètre.", "NOT_FOUND", 404)
-            return ok(clean(row), meta=capabilities(request.user))
+            return ok(clean(row), meta=capabilities(request.user, kind))
         take, skip = page(raw)
         scope, scope_values = scope_for(obj, scope_actor(request.user, kind))
         if kind == "roles":
@@ -232,7 +232,7 @@ class AdminRegisterView(APIView):
         count = db.one("SELECT count(*) AS n FROM " + sql_source + " WHERE " + where, values)["n"]
         rows = db.query("SELECT " + projection + " FROM " + sql_source + " WHERE " + where + " ORDER BY " + order + " LIMIT %s OFFSET %s", [*values, take, skip])
         return ok(clean(rows), meta={"columns": fields, "count": len(rows), "filteredCount": count, "totalCount": total,
-            "take": take, "skip": skip, "sortBy": sort, "sortDir": direction, **capabilities(request.user)})
+            "take": take, "skip": skip, "sortBy": sort, "sortDir": direction, **capabilities(request.user, kind)})
 
 
 def admin_workbook(actor, kind, raw, file_format="xlsx"):
@@ -306,7 +306,8 @@ class AdminOverviewView(APIView):
             metrics = {}
             unavailable = []
             for key, kind, filters in [
-                ("users", "utilisateurs", {}), ("entities", "entites", {}),
+                ("users", "utilisateurs", {}), ("activeUsers", "utilisateurs", {"ValideUser": True}),
+                ("inactiveUsers", "utilisateurs", {"ValideUser": False}), ("roles", "roles", {}), ("entities", "entites", {}),
                 ("activeLicences", "licences", {"statut_licence": "Active"}),
                 ("expiredLicences", "licences", {"ExpireeLicence": True}),
                 ("auditEvents", "audit", {}), ("fkMappings", "correspondances", {"ValideFkCorrespondance": True}),
@@ -332,11 +333,24 @@ class AdminOverviewView(APIView):
                 login_days = {row["day"].isoformat(): row["n"] for row in db.query('SELECT ("DateLogin" AT TIME ZONE %s)::date AS day,count(*) AS n FROM systeme."V_Login_history" WHERE "DateLogin">=%s AND "TypeLogin"=%s GROUP BY 1', [str(zone), start, "Connexion"])}
                 audit_days = {row["day"].isoformat(): row["n"] for row in db.query('SELECT "ChangedAt"::date AS day,count(*) AS n FROM systeme."V_Audit_log" WHERE "ChangedAt">=%s GROUP BY 1', [start.replace(tzinfo=None)])}
                 activity = [{"date": (now.date() - timedelta(days=i)).isoformat(), "logins": login_days.get((now.date() - timedelta(days=i)).isoformat(), 0), "audit": audit_days.get((now.date() - timedelta(days=i)).isoformat(), 0)} for i in range(6, -1, -1)]
+            user_source,user_where,user_args,*_=selection(actor,"utilisateurs",{})
+            start_day=now.date()-timedelta(days=6)
+            created_days={row['day'].isoformat():row['n'] for row in db.query('SELECT v."DatecreationUser"::date AS day,count(*) AS n FROM '+source_sql(user_source)+' WHERE '+user_where+' AND v."DatecreationUser">=%s GROUP BY 1',[*user_args,datetime.combine(start_day,time.min)])}
+            user_activity=[{'date':(now.date()-timedelta(days=i)).isoformat(),'users':created_days.get((now.date()-timedelta(days=i)).isoformat(),0)} for i in range(6,-1,-1)]
             obj, where, values, *_ = selection(actor, "licences", {"filters": {"statut_licence": "Active"}})
             expiring = clean(db.query("SELECT v.* FROM " + db.qualified(obj["schema"], obj["name"]) + ' v WHERE ' + where + ' AND v."DateFin"<%s ORDER BY v."DateFin",v."IdLicence" LIMIT 5', [*values, (now + timedelta(days=30)).replace(tzinfo=None)]))
         return ok({"generatedAt": now.isoformat(), "scope": {"kind": "global" if read_entity(actor) is None else "entity", "id": read_entity(actor)},
             "metrics": metrics, "unavailable": unavailable, "roleDistribution": roles, "activity": activity,
-            "recentAudit": recent, "expiringLicences": expiring, **capabilities(actor)})
+            "recentAudit": recent, "expiringLicences": expiring, "userActivity":user_activity,
+            "userStatusDistribution":[{"key":"active","label":"Actifs","count":metrics['activeUsers'],"filters":{"ValideUser":True}},{"key":"inactive","label":"Inactifs","count":metrics['inactiveUsers'],"filters":{"ValideUser":False}}],
+            "metricTargets":{
+                "users":{"kind":"utilisateurs","filters":{}},"activeUsers":{"kind":"utilisateurs","filters":{"ValideUser":True}},
+                "inactiveUsers":{"kind":"utilisateurs","filters":{"ValideUser":False}},"roles":{"kind":"roles","filters":{}},
+                "entities":{"kind":"entites","filters":{}},"activeLicences":{"kind":"licences","filters":{"statut_licence":"Active"}},
+                "expiredLicences":{"kind":"licences","filters":{"ExpireeLicence":True}},"auditEvents":{"kind":"audit","filters":{}},
+                "fkMappings":{"kind":"correspondances","filters":{"ValideFkCorrespondance":True}},"settings":{"kind":"parametres","filters":{"ValideSetting":True}},
+                "loginsToday":{"kind":"connexions","filters":{"TypeLogin":"Connexion"},"dateFrom":now.date().isoformat(),"dateTo":now.date().isoformat()}},
+            **capabilities(actor)})
 
 
 class AdminCSVView(ExcelDownloadView):

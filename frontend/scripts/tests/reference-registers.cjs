@@ -28,7 +28,7 @@ async function bundle(entry) {
     [/LazyView$/, 'lazy', `export default function lazyView(loader){function Lazy(){return null;}Lazy.source=loader.toString();return Lazy;}`],
     [/logistiqueShared$/, 'table', `export function SimpleTable(){return null;}export const formatDate=x=>x;export const exportRowsToCsv=()=>{};`],
     [/\/services\/api$/, 'api', `export const requestJson=(...args)=>globalThis.__request(...args),fetchViewData=(...args)=>globalThis.__fetchView(...args),fetchCompleteReferenceRows=async()=>({success:true,data:[]}),downloadApiFile=(...args)=>globalThis.__download(...args),fetchAdminModelItem=()=>{},createAdminModelRecord=()=>{},updateAdminModelRecord=()=>{},deleteAdminModelRecord=()=>{};`],
-    ...Object.entries({ModuleHeader:'Header',RegisterSurface:'Surface',RegisterSettingsButton:'SettingsButton',DataTableToolbar:'Toolbar',RowActionsMenu:'Actions',SearchSelect:'Select',RecordEditorFrame:'Frame',TableSettings:'TableSettings',ActionButton:'Button',AppIcon:'Icon'}).map(([moduleName, name]) => [new RegExp('/'+moduleName+'$'), moduleName, `export default function ${name}(){return null;}`]),
+    ...Object.entries({ModuleSidebar:'Sidebar',ModuleHeader:'Header',RegisterSurface:'Surface',RegisterSettingsButton:'SettingsButton',DataTableToolbar:'Toolbar',RowActionsMenu:'Actions',SearchSelect:'Select',RecordEditorFrame:'Frame',TableSettings:'TableSettings',ActionButton:'Button',AppIcon:'Icon'}).map(([moduleName, name]) => [new RegExp('/'+moduleName+'$'), moduleName, `export default function ${name}(){return null;}`]),
   ];
   const plugin = {name:'proof',setup(build){for(const [filter, namespace, source] of mocks){build.onResolve({filter},()=>({path:namespace,namespace}));build.onLoad({filter:/.*/,namespace},()=>({contents:source,loader:'jsx',resolveDir:front}));}}};
   const result = await esbuild.build({stdin:{contents:entry,resolveDir:front,loader:'jsx'},bundle:true,write:false,platform:'node',format:'cjs',external:['react/jsx-runtime'],jsx:'automatic',loader:{'.css':'empty'},define:{'import.meta.env':'{}'},plugins:[plugin],logLevel:'error'});
@@ -47,12 +47,13 @@ globalThis.__request=async(...args)=>{requests.push(args);return{success:true,da
 (async()=>{
   const main=await bundle("export {default,ReferenceRegister} from './src/pages/Referentiels';");
   let h=new Hooks(),tree=h.render(main.default);await h.flush();tree=h.render(main.default);
-  let nav=nodes(tree).filter(n=>n.type==='button'&&n.props['aria-label']&&n.props.className?.includes('logistics-sidebar-link'));
-  eq(nav.map(n=>n.props['aria-label']),['Valeurs de référence','Catégories','Référencement des champs','Tableaux et exports']);
+  // Le shell transmet les mêmes clés au composant commun ; ses interactions sont vérifiées séparément.
+  let sidebar=mark(tree,'Sidebar'),nav=sidebar.props.groups.flatMap(group=>group.items);
+  eq(nav.map(item=>item.label),['Valeurs de référence','Catégories','Référencement des champs','Tableaux et exports']);
   for(const [label,url,component] of [['Catégories','categories',null],['Référencement des champs','champs','FieldReferencesRegister'],['Tableaux et exports','tableaux','TableReferenceRegister'],['Valeurs de référence','valeurs',null]]){
-    nav.find(n=>n.props['aria-label']===label).props.onClick();eq(globalThis.__params.get('onglet'),url);tree=h.render(main.default);if(component)ok(lazy(tree,component));else eq(mark(tree,'ReferenceRegister').props.kind,url==='categories'?'categories':'values');
+    sidebar.props.onNavigate(nav.find(item=>item.label===label).key);eq(globalThis.__params.get('onglet'),url);tree=h.render(main.default);if(component)ok(lazy(tree,component));else eq(mark(tree,'ReferenceRegister').props.kind,url==='categories'?'categories':'values');
   }
-  globalThis.__user={...administrator,Is_Admin:false};tree=h.render(main.default);eq(nodes(tree).filter(n=>n.type==='button'&&n.props.className?.includes('logistics-sidebar-link')).length,3);h.unmount();globalThis.__user=administrator;
+  globalThis.__user={...administrator,Is_Admin:false};tree=h.render(main.default);eq(mark(tree,'Sidebar').props.groups.flatMap(group=>group.items).length,3);h.unmount();globalThis.__user=administrator;
 
   const registerProps={kind:'values',categories:[{ID_CategorieGenerique:42,NomCategorieGenerique:'Devise',ModuleCategorieGenerique:'M_COMP'}],initialCategory:'',onBrowseCategory(){},refresh:0,onChanged(){}};
   views=[];h=new Hooks();tree=h.render(main.ReferenceRegister,registerProps);ok(button(mark(tree,'Surface').props.actions,'Nouvelle valeur').props.disabled);await h.flush();tree=h.render(main.ReferenceRegister,registerProps);eq(button(mark(tree,'Surface').props.actions,'Nouvelle valeur').props.disabled,false);eq(button(mark(tree,'Surface').props.actions,'Saisie multiple'),undefined);

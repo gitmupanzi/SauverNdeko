@@ -3,7 +3,7 @@ import UserAvatar from "../../components/UserAvatar";
 import { formatDate } from "../logistique/logistiqueShared";
 
 export const ADMIN_ROOT = "/api/systeme/administration";
-export const adminTabKey = key => key === "profils" ? "utilisateurs" : key;
+export const adminTabKey = key => key === "profils" ? "utilisateurs" : key === "localisations" ? "entites" : key;
 const text = (key, label, width = 180) => ({ key, label, width });
 const date = (key, label = "Date et heure") => ({ key, label, width: 180, render: row => formatDate(row[key], { withTime: true }) });
 const flag = (key, label = "État") => ({ key, label, width: 110, render: row => row[key] == null ? "—" : <span className={"erp-status is-" + (row[key] ? "success" : "neutral")}>{row[key] ? "Actif" : "Inactif"}</span> });
@@ -33,7 +33,7 @@ export const ADMIN_REGISTERS = {
     visible: ["NomEntite", "EmailEntite", "PhoneEntite", "ValideEntite", "actions"], sort: ["NomEntite", "asc"], filters: [state("ValideEntite")],
   },
   roles: {
-    title: "Rôles", description: "Les profils d’accès partagés.", icon: "shield", pk: "ID_Generique", name: "NomGenerique", editor: "roles", create: "Nouveau rôle", active: "ValideGenerique", platform: true,
+    title: "Rôles", description: "Les profils d’accès partagés.", icon: "shield", pk: "ID_Generique", name: "NomGenerique", editor: "roles", create: "Nouveau rôle", active: "ValideGenerique", platformWrite: true,
     columns: [identity("NomGenerique", "Rôle", "shield"), text("AbrGenerique", "Code", 160), text("ObsGenerique", "Description", 360), flag("ValideGenerique"), text("ID_Generique", "Identifiant", 110)],
     visible: ["NomGenerique", "AbrGenerique", "ObsGenerique", "ValideGenerique", "actions"], sort: ["NomGenerique", "asc"], filters: [state("ValideGenerique")],
   },
@@ -48,12 +48,12 @@ export const ADMIN_REGISTERS = {
     visible: ["NomEntite", "AdresseDetaillee", "NomNiveau_3", "NomNiveau_4", "actions"], sort: ["NomEntite", "asc"], filters: [filter("IdEntite", "Entreprise", "entities")],
   },
   correspondances: {
-    title: "Correspondances FK", description: "Références utilisées par les champs de l’application.", icon: "movements", pk: "IdFkCorrespondance", name: "FieldLabel", editor: "fk", create: "Nouvelle correspondance", active: "ValideFkCorrespondance", dateKey: "UpdatedAt", platform: true,
+    title: "Correspondances FK", description: "Références utilisées par les champs de l’application.", icon: "movements", pk: "IdFkCorrespondance", name: "FieldLabel", editor: "fk", create: "Nouvelle correspondance", active: "ValideFkCorrespondance", dateKey: "UpdatedAt", platformWrite: true,
     columns: [identity("FieldLabel", "Champ", "movements"), text("ModuleName", "Module", 140), text("SourceKey", "Source", 180), text("NomCategorieGenerique", "Catégorie", 210), text("MappingValue", "Valeur", 170), badge("SettingScope", "Portée", 120), flag("ValideFkCorrespondance"), date("UpdatedAt", "Mis à jour le"), text("SchemaName", "Schéma", 130), text("ViewName", "Vue", 220), text("FieldName", "Nom du champ", 180), text("MappingType", "Type de correspondance", 200), text("ScopeValue", "Cible", 130), text("UpdatedByName", "Modifié par"), text("IdFkCorrespondance", "Identifiant", 110)],
     visible: ["FieldLabel", "ModuleName", "NomCategorieGenerique", "MappingValue", "SettingScope", "ValideFkCorrespondance", "actions"], sort: ["ModuleName", "asc"], filters: [state("ValideFkCorrespondance"), { key: "SettingScope", label: "Portée", options: [{ value: "global", label: "Plateforme" }, { value: "entity", label: "Entreprise" }, { value: "country", label: "Pays" }] }, filter("TargetCategoryIdFk", "Catégorie", "categories")],
   },
   parametres: {
-    title: "Paramètres UI", description: "Réglages partagés de l’application.", icon: "settings", pk: "IdAdminUISetting", name: "SettingLabel", editor: "settings", create: "Nouveau paramètre", active: "ValideSetting", dateKey: "UpdatedAt", platform: true,
+    title: "Paramètres UI", description: "Réglages partagés de l’application.", icon: "settings", pk: "IdAdminUISetting", name: "SettingLabel", editor: "settings", create: "Nouveau paramètre", active: "ValideSetting", dateKey: "UpdatedAt", platformWrite: true,
     columns: [identity("SettingLabel", "Paramètre", "settings"), text("SettingKey", "Clé", 230), text("SettingGroup", "Groupe", 160), badge("SettingScope", "Portée", 120), text("SettingValue", "Valeur", 260), flag("ValideSetting"), date("UpdatedAt", "Mis à jour le"), text("UpdatedByName", "Modifié par"), text("ScopeValue", "Cible", 140), text("SettingType", "Format", 140), yes("IsEditable", "Modifiable"), yes("IsSystem", "Système"), text("IdAdminUISetting", "Identifiant", 110)],
     visible: ["SettingLabel", "SettingGroup", "SettingScope", "SettingValue", "ValideSetting", "actions"], sort: ["SettingGroup", "asc"], filters: [state("ValideSetting"), { key: "SettingScope", label: "Portée", options: [{ value: "global", label: "Plateforme" }, { value: "entite", label: "Entreprise" }, { value: "user", label: "Utilisateur" }, { value: "module", label: "Module" }] }],
   },
@@ -76,8 +76,8 @@ export const ADMIN_REGISTERS = {
 
 export const ADMIN_NAVIGATION = [
   { label: "Pilotage", items: [{ key: "tableau-de-bord", label: "Tableau de bord", icon: "dashboard" }] },
-  { label: "Accès", items: [{ key: "utilisateurs", label: "Utilisateurs", icon: "user" }, { key: "roles", label: "Rôles", icon: "shield", platform: true }, { key: "permissions", label: "Permissions", icon: "lock", platform: true }] },
-  { label: "Organisation", items: [{ key: "entites", label: "Entreprises", icon: "apps" }, { key: "localisations", label: "Localisations", icon: "globe" }, { key: "licences", label: "Licences", icon: "shield" }] },
-  { label: "Paramétrage", items: [{ key: "correspondances", label: "Correspondances FK", icon: "movements", platform: true }, { key: "parametres", label: "Paramètres UI", icon: "settings", platform: true }, { key: "messagerie", label: "Messagerie", icon: "mail", platform: true }] },
+  { label: "Accès", items: [{ key: "utilisateurs", label: "Utilisateurs", icon: "user" }, { key: "roles", label: "Rôles", icon: "shield" }, { key: "permissions", label: "Permissions", icon: "lock", platform: true }] },
+  { label: "Organisation", items: [{ key: "entites", label: "Entreprises", icon: "apps" }, { key: "licences", label: "Licences", icon: "shield" }] },
+  { label: "Paramétrage", items: [{ key: "correspondances", label: "Correspondances FK", icon: "movements" }, { key: "parametres", label: "Paramètres UI", icon: "settings" }, { key: "messagerie", label: "Messagerie", icon: "mail", platform: true }] },
   { label: "Traçabilité", items: [{ key: "audit", label: "Journaux d’audit", icon: "document", platform: true }, { key: "connexions", label: "Connexions", icon: "clock", platform: true }] },
 ];

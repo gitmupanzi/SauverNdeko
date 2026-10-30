@@ -56,9 +56,12 @@ class AdminPortalTests(unittest.TestCase):
                       "exportable":True} for c in obj["columns"]], 1, True)
         self.catalogue_patch=patch("apps.core.table_preferences.catalogue",side_effect=fake_catalogue)
         self.catalogue_patch.start()
+        self.reference_patch=patch("apps.core.field_references.reference_context",return_value={"categoryIds":[39]})
+        self.reference_patch.start()
 
     def tearDown(self):
         self.catalogue_patch.stop()
+        self.reference_patch.stop()
         self.override.disable()
 
     def url(self, kind, suffix=""):
@@ -79,8 +82,8 @@ class AdminPortalTests(unittest.TestCase):
         with self.assertRaises(APIError): portal.selection(self.actor, "roles", {"filters": {"ID_CategorieGeneriqueFk": 42}})
         obj, where, params, order, *_ = portal.selection(self.actor, "roles", {"q": "test"})
         self.assertEqual(obj["name"], "V_Generique")
-        self.assertIn('v."ID_CategorieGeneriqueFk"=%s', where)
-        self.assertIn(39, params)
+        self.assertIn('v."ID_CategorieGeneriqueFk"=ANY(%s::integer[])', where)
+        self.assertIn([39], params)
         self.assertNotIn("test", where)
         self.assertIn('v."ID_Generique" ASC', order)
 
@@ -175,7 +178,7 @@ class AdminPortalTests(unittest.TestCase):
             response.close()
         self.assertEqual(response["X-Export-Row-Count"], "2")
         self.assertEqual(response["Content-Type"], portal.XLSX_MEDIA_TYPE)
-        self.assertIn(39, cursor.executed[1])
+        self.assertIn([39], cursor.executed[1])
         self.assertNotIn("OFFSET", cursor.executed[0])
         ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
         sheet = ET.fromstring(zipfile.ZipFile(io.BytesIO(data)).read("xl/worksheets/sheet1.xml"))
@@ -227,7 +230,7 @@ class AdminPortalTests(unittest.TestCase):
             received = {**body, "UpdatedAt": "2000-01-01T00:00:00Z", "CreatedAt": "2000-01-01T00:00:00Z", "UpdatedByUserFk": 99}
             with patch("apps.core.repository.db.ensure_writable"), patch("apps.core.repository.get_record", return_value=old), \
                  patch("apps.core.repository.db.one", return_value={**old, **body}) as update, \
-                 patch("apps.core.repository.db.query") as context, patch("apps.core.repository.audit") as audit:
+                 patch("apps.core.repository.db.query") as context, patch("apps.core.repository.audit") as audit, patch("apps.core.reference_integration.validate_changed"):
                 _mutate.__wrapped__(name, self.actor, received, {identity: 17}, "update")
             context.assert_called_once_with("SELECT set_config('systeme.actor_user_id',%s,true)", [str(self.actor.pk)])
             self.assertNotIn('"UpdatedAt"=', update.call_args[0][0])

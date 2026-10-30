@@ -1,3 +1,4 @@
+import ModuleSidebar from "./components/ModuleSidebar";
 import lazyView from "./components/LazyView";
 import ModuleHeader from "./components/ModuleHeader";
 import ModuleGate from "./components/ModuleGate";
@@ -111,76 +112,28 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
 }
 
 function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onLogout }) {
-  const canAccessAdmin = Boolean(user?.permissions?.canAccessAdmin);
-  const items = [
-    { label: "Applications", path: "/", icon: "bi-grid-3x3-gap" },
-    { label: "Produits", path: "/produits", icon: "bi-capsule" },
-    { label: "Pharmacies", path: "/pharmacies", icon: "bi-geo-alt" },
-    { label: "Experts", path: "/experts", icon: "bi-people" },
-    { label: "Maladies", path: "/maladies", icon: "bi-virus2" },
-    { label: "Discussions", path: "/discussions", icon: "bi-chat-dots" },
-    ...(isAuthenticated ? [{ label: "Profil", path: "/profil", icon: "bi-person-circle" }] : []),
-    ...(canAccessAdmin ? [{ label: "Logistique", path: "/logistique", icon: "bi-box-seam" }] : []),
-    ...(canAccessAdmin ? [{ label: "Administration", path: "/admin", icon: "bi-shield-lock" }] : []),
-  ].filter(item => mayOpen(user,item.path));
-
-  return (
-    <aside className={`sidebar-drawer ${isOpen ? "is-open" : ""}`} aria-hidden={!isOpen}>
-      <div className="drawer-banner">
-        <span>Menu</span>
-        <button className="icon-button drawer-menu-button" type="button" onClick={onClose}>
-          <i className="bi bi-x-lg" aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="drawer-account-card">
-        <span className="drawer-account-kicker">{isAuthenticated ? "Session active" : "Mode public"}</span>
-        <strong>
-          {isAuthenticated
-            ? `${user?.PrenomUser || ""} ${user?.NomUser || ""}`.trim() || "Utilisateur"
-            : "Connectez-vous pour acceder a votre espace"}
-        </strong>
-        <p>
-          {isAuthenticated
-            ? user?.EmailUser || "Compte utilisateur"
-            : "Les discussions et le profil deviennent disponibles apres authentification."}
-        </p>
-      </div>
-
-      <nav className="drawer-nav">
-        {items.map((item) => (
-          <button
-            key={item.path}
-            className="drawer-row"
-            type="button"
-            onClick={() => onNavigate(item.path)}
-          >
-            <span className="drawer-row-icon">
-              <i className={`bi ${item.icon}`} aria-hidden="true" />
-            </span>
-            <span className="drawer-row-label">{item.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <div className="drawer-auth-actions">
-        {isAuthenticated ? (
-          <button className="secondary-action" type="button" onClick={onLogout}>
-            Se deconnecter
-          </button>
-        ) : (
-          <>
-            <button className="primary-action" type="button" onClick={() => onNavigate("/login")}>
-              Se connecter
-            </button>
-            <button className="secondary-action" type="button" onClick={() => onNavigate("/register")}>
-              Creer un compte
-            </button>
-          </>
-        )}
-      </div>
-    </aside>
-  );
+  const {pathname}=useLocation(),canAccessAdmin=Boolean(user?.permissions?.canAccessAdmin);
+  const catalogue=[
+    {key:"/produits",label:"Produits",icon:"bi-capsule"},
+    {key:"/pharmacies",label:"Pharmacies",icon:"globe"},
+    {key:"/experts",label:"Experts",icon:"user"},
+    {key:"/maladies",label:"Informations santé",icon:"bi-heart-pulse"},
+    {key:"/discussions",label:"Discussions",icon:"bi-chat-dots"},
+  ].filter(item=>mayOpen(user,item.key));
+  const modules=[
+    {key:"/logistique",label:"Logistique",icon:"box"},
+    {key:"/territoires",label:"Organisation territoriale",icon:"globe"},
+    {key:"/referentiels",label:"Référentiels",icon:"tag"},
+    ...(canAccessAdmin?[{key:"/admin",label:"Administration",icon:"shield"}]:[]),
+  ].filter(item=>mayOpen(user,item.key));
+  return <ModuleSidebar title="Applications" overlay open={isOpen} onClose={onClose} activeKey={pathname} onNavigate={onNavigate} storageKey="sauverndeko.catalogue.navigation" groups={[
+    {label:"Votre espace",items:[{key:"/",label:"Applications",icon:"apps"}]},
+    {label:"Catalogue",items:catalogue},
+    {label:"Gestion",items:modules},
+  ]} footerItems={isAuthenticated?[
+    {key:"/profil",label:"Mon profil",icon:"user",onClick:()=>onNavigate("/profil")},
+    {key:"logout",label:"Se déconnecter",icon:"logout",onClick:onLogout},
+  ]:[{key:"/login",label:"Se connecter",icon:"lock",onClick:()=>onNavigate("/login")}]}/>;
 }
 
 function BottomNav({ currentPath, onHome, onDiscussions, onSearch }) {

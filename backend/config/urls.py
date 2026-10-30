@@ -1,3 +1,4 @@
+from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
 from apps.core.table_preferences import TablePreferencesView
 from apps.core.reference_batches import ReferenceBatchView
 from apps.core.reference_tables import ReferenceTablesView, ReferenceTablesExcelView, ReferenceTablesCSVView
@@ -63,6 +64,9 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/systeme/administration/entreprises/?$", AdminEntitiesView.as_view()),
+    re_path(r"^api/systeme/administration/references/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminReferencesView.as_view()),
+    re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminBatchView.as_view()),
     re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|articles|immobilisations)/?$", LogisticsBatchView.as_view()),
     re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/?$", ReferenceBatchView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.xlsx/?$", ReferenceTablesExcelView.as_view()),

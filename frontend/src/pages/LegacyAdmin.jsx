@@ -1,3 +1,4 @@
+import ModuleSidebar from "../components/ModuleSidebar";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import {fetchTerritorialReferences} from "../services/fieldReferences";
 import {REFERENCE_RETAINED_HINT,referenceLabel,referenceOptions,retainReference} from "../utils/referenceOptions";
@@ -1459,7 +1460,7 @@ function AdminViewButton({ view, isActive, onSelect }) {
   );
 }
 
-export default function Admin({ schemaOnly = "", moduleTitle = "Administration" }) {
+export default function Admin({ schemaOnly = "", moduleTitle = "Administration", navigationCollapsed=false, onToggleNavigation }) {
   const entityReferenceScope=useEntityScope();
   const { user: currentUser } = useAuth();
   const [mailSettingsOpen,setMailSettingsOpen]=useState(false);
@@ -3755,121 +3756,14 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration" 
       ) : null}
 
       <section className="admin-workspace">
-        <aside className="admin-sidebar-card">
-          <div className="admin-module-brand">
-            <strong>SauverNdeko</strong>
-            <span>{moduleTitle}</span>
-          </div>
-
-          {loadingViews ? (
-            <div className="table-empty-state">Chargement des vues...</div>
-          ) : schemaGroups.length > 0 ? (
-            <div className="admin-view-list">
-              <label className="admin-form-field admin-sidebar-select">
-                <span>Vue active</span>
-                <CategoricalSelect aria-label="Vue active" value={selectedViewKey} onChange={(event) => setSelectedViewKey(event.target.value)}>
-                  {schemaGroups.map((group) => (
-                    <optgroup key={group.schema} label={group.title}>
-                      {[...group.crudViews, ...group.readOnlyViews].map((view) => {
-                        const viewKey = normalizeViewKey(view.schema, view.name);
-
-                        return (
-                          <option key={viewKey} value={viewKey}>
-                            {view.title}
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  ))}
-                </CategoricalSelect>
-              </label>
-
-              {schemaGroups.map((group) => (
-                <section key={group.schema} className="admin-schema-group">
-                  <div className="admin-schema-group-head">
-                    <div className="admin-schema-group-title">
-                      <strong>{group.title}</strong>
-                      <span>{group.crudViews.length + group.readOnlyViews.length}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="admin-schema-toggle"
-                      onClick={() => handleToggleSchema(group.schema)}
-                      aria-expanded={!collapsedSchemas[group.schema]}
-                    >
-                      {collapsedSchemas[group.schema] ? "Derouler" : "Rouler"}
-                    </button>
-                  </div>
-
-                  {!collapsedSchemas[group.schema] ? (
-                    <>
-                      {group.crudViews.length > 0 ? (
-                        <div className="admin-view-group">
-                          <div className="admin-view-group-head">
-                            <strong>Vues avec CRUD</strong>
-                            <span>{group.crudViews.length}</span>
-                          </div>
-
-                          {group.crudViews.map((view) => {
-                            const viewKey = normalizeViewKey(view.schema, view.name);
-
-                            return (
-                              <button
-                                key={viewKey}
-                                type="button"
-                                className={`admin-module-nav-item ${selectedViewKey === viewKey ? "is-active" : ""}`}
-                                onClick={() => setSelectedViewKey(viewKey)}
-                              >
-                                <span className="admin-module-nav-icon">
-                                  <i className={`bi ${view.icon || "bi-circle"}`} aria-hidden="true" />
-                                </span>
-                                <span>{view.title}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-
-                      {group.readOnlyViews.length > 0 ? (
-                        <div className="admin-view-group">
-                          <div className="admin-view-group-head">
-                            <strong>Vues en lecture seule</strong>
-                            <span>{group.readOnlyViews.length}</span>
-                          </div>
-
-                          {group.readOnlyViews.map((view) => {
-                            const viewKey = normalizeViewKey(view.schema, view.name);
-
-                            return (
-                              <button
-                                key={viewKey}
-                                type="button"
-                                className={`admin-module-nav-item ${selectedViewKey === viewKey ? "is-active" : ""}`}
-                                onClick={() => setSelectedViewKey(viewKey)}
-                              >
-                                <span className="admin-module-nav-icon">
-                                  <i className={`bi ${view.icon || "bi-circle"}`} aria-hidden="true" />
-                                </span>
-                                <span>{view.title}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </>
-                  ) : null}
-                </section>
-              ))}
-
-              <div className="admin-module-sidebar-footer">
-                <strong>Admin</strong>
-                <span>Administrateur</span>
-              </div>
-            </div>
-          ) : (
-            <div className="table-empty-state">Aucune vue d'administration cible n'est disponible.</div>
-          )}
-        </aside>
+        <ModuleSidebar title={moduleTitle} collapsed={navigationCollapsed} onToggle={onToggleNavigation} activeKey={selectedViewKey} onNavigate={setSelectedViewKey} storageKey="sauverndeko.territoires.navigation" groups={schemaGroups.flatMap(group=>[
+          {key:group.schema+".references",label:schemaGroups.length>1?group.title+" · Références":"Références",items:group.crudViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"globe"}))},
+          {key:group.schema+".analyses",label:schemaGroups.length>1?group.title+" · Analyses":"Analyses",items:group.readOnlyViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"chart"}))},
+        ])} footerItems={[
+          ...(currentUser?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
+          ...(currentUser?.permissions?.canAccessAdmin?[{key:"administration",label:"Administration",icon:"shield",to:"/admin"}]:[]),
+          {key:"applications",label:"Applications",icon:"apps",to:"/"},
+        ]}>{loadingViews?<p role="status">Chargement du menu…</p>:!schemaGroups.length?<p>Aucune rubrique disponible.</p>:null}</ModuleSidebar>
 
         <div className="admin-main-column">
           <section className="page-hero-card admin-hero-card">

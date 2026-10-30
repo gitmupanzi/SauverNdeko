@@ -1,3 +1,4 @@
+import {entityLocationValues,entityLocationErrors,entityLocationPayload} from "./entityLocations";
 export const ENTITY_PROFILE_FIELDS=[
   {name:"NomEntite",label:"Nom de l’entreprise",type:"text",max:200,required:true},
   {name:"EmailEntite",label:"Adresse e-mail",type:"email",max:255},
@@ -13,6 +14,7 @@ const string=value=>value==null?"":String(value);
 export function entityProfileValues(record=null){
   return {...Object.fromEntries(ENTITY_PROFILE_FIELDS.map(({name})=>[name,string(record?.[name])])),
     MentionDocumentaireEntite:string(record?.MentionDocumentaireEntite),
+    Localisations:(record?.Localisations||[]).map(entityLocationValues),
     IdentifiantsLegauxEntite:(record?.IdentifiantsLegauxEntite||[]).map(row=>({libelle:string(row.libelle),valeur:string(row.valeur)})),
     AfficherEnteteDocument:record?.AfficherEnteteDocument??true,AfficherPiedDocument:record?.AfficherPiedDocument??true,
     IdTypeEntiteFk:string(record?.IdTypeEntiteFk),ValideEntite:record?record.ValideEntite??null:true};
@@ -36,13 +38,15 @@ export function entityProfileErrors(values,motif,{manageStructure=false}={}){
   if(manageStructure&&values.ValideEntite!=null&&typeof values.ValideEntite!=="boolean")errors.ValideEntite="Choisissez un état valide.";
   if(!string(motif).trim())errors.motif="Précisez le motif de cette mise à jour.";
   else if(Array.from(motif.trim()).length>1000)errors.motif="Limitez le motif à 1000 caractères.";
+  Object.assign(errors,entityLocationErrors(values.Localisations||[]));
   return errors;
 }
-export function entityProfilePayload(values,{record=null,motif,requestId,logo={file:null,remove:false},manageStructure=false}={}){
+export function entityProfilePayload(values,{record=null,motif,requestId,logo={file:null,remove:false},manageStructure=false,manageLocations=false}={}){
   const payload={...Object.fromEntries(ENTITY_PROFILE_FIELDS.map(({name})=>[name,string(values[name]).trim()||null])),
     MentionDocumentaireEntite:string(values.MentionDocumentaireEntite).trim()||null,
     IdentifiantsLegauxEntite:values.IdentifiantsLegauxEntite.map(row=>({libelle:row.libelle.trim(),valeur:row.valeur.trim()})),
     AfficherEnteteDocument:values.AfficherEnteteDocument,AfficherPiedDocument:values.AfficherPiedDocument,
+    ...(manageLocations?{Localisations:entityLocationPayload(values.Localisations||[])}:{}),
     logoAction:logo.file?"replace":logo.remove?"remove":"keep",motif:motif.trim(),requestId};
   if(record){payload.IdEntite=record.IdEntite;payload._version=record._version;}
   if(manageStructure){if(!record||string(record.IdTypeEntiteFk)!==values.IdTypeEntiteFk)payload.IdTypeEntiteFk=values.IdTypeEntiteFk?Number(values.IdTypeEntiteFk):null;if(!record||record.ValideEntite!==values.ValideEntite)payload.ValideEntite=values.ValideEntite;}

@@ -45,7 +45,7 @@ export default function EntityProfileEditor({context="active",recordId=null,mode
   function change(name,value){if(disabled||readOnly||saving.current)return;setValues(previous=>({...previous,[name]:value}));setErrors(previous=>({...previous,[name]:""}));setFeedback("");}
   function changeLogo(value){if(disabled||readOnly||saving.current)return;setLogo(value);setErrors(previous=>({...previous,logo:"",logoAction:""}));setFeedback("");}
   function begin(){if(!allowed||busy)return;setEditing(true);setErrors({});setError("");setFeedback("");setMotif("");ticket.current=null;}
-  function focusIssue(issues){const name=Object.keys(issues)[0];if(name!=="motif")setActive(name==="IdentifiantsLegauxEntite"?"legal":["MentionDocumentaireEntite","AfficherEnteteDocument","AfficherPiedDocument","logo","logoAction"].includes(name)?"documents":"identity");requestAnimationFrame(()=>document.getElementById(prefix+name)?.focus());}
+  function focusIssue(issues){const name=Object.keys(issues)[0];if(name!=="motif")setActive(name.startsWith("Localisations")?"localisation":name==="IdentifiantsLegauxEntite"?"legal":["MentionDocumentaireEntite","AfficherEnteteDocument","AfficherPiedDocument","logo","logoAction"].includes(name)?"documents":"identity");requestAnimationFrame(()=>document.getElementById(prefix+name)?.focus());}
   function reload(){if(busy)return;if(editing&&(changed||motif.trim()||uncertain))setConfirmReload(true);else setRevision(value=>value+1);}
   async function submit(){
     if(!allowed||!editing||loading||saving.current||!baseline||!creating&&!changed&&!uncertain)return;
@@ -54,7 +54,7 @@ export default function EntityProfileEditor({context="active",recordId=null,mode
       const issues=entityProfileErrors(values,motif,{manageStructure});setErrors(issues);setError("");
       if(!creating&&!record?._version){setError("Rechargez l’entreprise avant de l’enregistrer.");return;}
       if(Object.keys(issues).length){setError("Vérifiez les informations indiquées.");focusIssue(issues);return;}
-      const payload=entityProfilePayload(values,{record:creating?null:record,motif,requestId:"",logo,manageStructure}),fingerprint=JSON.stringify(payload);
+      const payload=entityProfilePayload(values,{record:creating?null:record,motif,requestId:"",logo,manageStructure,manageLocations:context==="admin"&&Array.isArray(record?.Localisations)}),fingerprint=JSON.stringify(payload);
       if(!snapshot||snapshot.fingerprint!==fingerprint||snapshot.file!==logo.file){payload.requestId=crypto.randomUUID();snapshot={fingerprint,file:logo.file,body:entityProfileBody(payload,logo.file)};ticket.current=snapshot;}
     }
     if(!snapshot)return;
@@ -69,9 +69,9 @@ export default function EntityProfileEditor({context="active",recordId=null,mode
     }
     const expected=context==="admin"?recordId:scope.entityId;
     if(!creating&&expected&&String(expected)!==String(result.data.IdEntite)){setUncertain(true);setError("La réponse reçue ne correspond pas à cette entreprise. Vérifiez l’enregistrement ou rechargez la fiche.");return;}
-    const next=entityProfileValues(result.data);setRecord(result.data);setValues(next);setBaseline(next);setLogo(emptyLogo());setMotif("");setEditing(false);setUncertain(false);ticket.current=null;setFeedback("Profil de l’entreprise enregistré.");onSaved?.(result.data,{type:"entities",mode:creating?"create":"edit"});
+    const next=entityProfileValues(result.data);setRecord(result.data);setValues(next);setBaseline(next);setLogo(emptyLogo());setMotif("");setEditing(false);setUncertain(false);ticket.current=null;setFeedback("Profil de l’entreprise enregistré.");if(context==="admin")scope.retry?.();onSaved?.(result.data,{type:"entities",mode:creating?"create":"edit"});
   }
-  const tabs=[{key:"identity",label:"Coordonnées",icon:"apps"},{key:"legal",label:"Identifiants légaux",icon:"list"},{key:"documents",label:"Documents",icon:"document"}].map(tab=>({...tab,disabled:busy}));
+  const tabs=[{key:"identity",label:"Coordonnées",icon:"apps"},...(context==="admin"&&Array.isArray(record?.Localisations)?[{key:"localisation",label:"Localisation",icon:"globe"}]:[]),{key:"legal",label:"Identifiants légaux",icon:"list"},{key:"documents",label:"Documents",icon:"document"}].map(tab=>({...tab,disabled:busy}));
   return <RecordEditorFrame title={creating?"Nouvelle entreprise":editing&&allowed?"Modifier l’entreprise":"Identité de l’entreprise"} subtitle={settled?(record?.NomEntite||values.NomEntite||"Profil de l’entreprise"):"Profil de l’entreprise"} icon="apps" defaultWidth={900} storageKey="sauverndeko.entity-profile.width" className="entity-profile-editor" onClose={onClose} onSubmit={submit} busy={busy} loading={loading||!settled} readOnly={readOnly} dirty={settled&&!readOnly&&(changed||Boolean(motif.trim())||uncertain)} canSubmit={allowed&&(creating||changed||uncertain)&&!loading} submitLabel={uncertain?"Vérifier l’enregistrement":"Enregistrer"} error={settled?error:""} onReload={reload}>
     {settled&&confirmReload?<div className="record-discard" role="alert"><span>Recharger la fiche et abandonner les modifications ?</span><div><ActionButton onClick={()=>setConfirmReload(false)}>Continuer la saisie</ActionButton><ActionButton onClick={()=>setRevision(value=>value+1)}>Recharger</ActionButton></div></div>:null}
     {settled&&!loading&&baseline?<div className="entity-document-identity">

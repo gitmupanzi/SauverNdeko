@@ -82,6 +82,16 @@ Le défaut Bien individuel impose une quantité de 1 ; Lot homogène est un choi
 
 ## Présentation
 
+### Administration par entreprise
+
+Administration utilise le contexte d’entreprise partagé, sans dépendre d’une licence Logistique. La sélection d’une entreprise recharge les registres, références et synthèses ; annuler les anciennes requêtes et retirer immédiatement les données du contexte précédent. Les droits de gestion viennent du module Administration et des capacités serveur, jamais de `scope.canWrite` propre à Logistique. Les licences restent consultables dans l’entreprise autorisée ; leur création, modification et désactivation sont réservées à la plateforme. Les rôles de sécurité communs restent gérés par la plateforme et ne sont pas dupliqués par entreprise. Un gestionnaire local ne peut ni créer un compte privilégié ni modifier les privilèges d’un autre compte.
+
+Les boutons Nouvel utilisateur, Nouveau rôle, Nouvelle correspondance et Nouveau paramètre ouvrent un panier pour une ou plusieurs lignes : champs compacts, détails dans le formulaire existant en mode brouillon, collage Excel, suppression/annulation et validation par ligne. Ne jamais écrire une fiche depuis l’éditeur de brouillon ; le serveur enregistre le lot complet atomiquement. Une réponse incertaine conserve UUID et corps exacts pour vérification. Les mots de passe initiaux restent masqués et uniquement en mémoire ; aucune persistance navigateur, URL, journal ou export.
+
+La fiche entreprise contient le sous-onglet Localisation, pour une ou plusieurs adresses et coordonnées. Réutiliser les références territoriales et conserver les identifiants/révisions des lieux existants. Profil, logo et localisations sont enregistrés dans la même demande ; un lieu déjà utilisé ne peut pas être retiré arbitrairement. L’ancienne URL Localisations redirige vers Entreprises, sans écran de gestion parallèle.
+
+Les indicateurs et graphiques d’administration utilisent les agrégats serveur du contexte courant. Les destinations des indicateurs viennent de `metricTargets` ; clics des répartitions et des journées appliquent la population correspondante au registre. Conserver les valeurs nulles comme filtres SQL explicites pour Sans rôle et les états d’indisponibilité ; ne pas fabriquer zéro ou calculer un effectif exhaustif depuis une page de liste.
+
 ### Référencement des champs
 
 Dans Référentiels → Référencement des champs, choisir la portée puis le champ physique ; Modifier et Rétablir conservent le même parcours de fiche. L’onglet porte les correspondances au grain schéma/table/colonne physique. Son registre reprend les sept colonnes Schéma, Table, Colonne, ID catégorie, Libellé catégorie, ID catégorie par défaut et Actions, avec les composants ERP communs et les préférences `referentiels.champs`. Il ne crée ni ne supprime librement des champs SQL. Modifier et Rétablir ouvrent le même formulaire, avec motif, révision opaque et UUID rejoué à l’identique si la réponse est incertaine. Un champ marqué `SupportsEntityScope=false` affiche sa portée Plateforme partagée et interdit Modifier/Rétablir dans le contexte Entreprise. La portée Plateforme ou Entreprise sélectionnée est explicite ; seul l’administrateur de plateforme peut modifier ce paramétrage, sous contrôle serveur.

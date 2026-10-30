@@ -349,6 +349,7 @@ def payload(obj, body, actor, creating=False):
                 "ID_UserFk",
             }
             and not actor.global_admin
+            and not (obj.get('_validated_user_access') and obj['name'] == 'T_Utilisateurs')
         ):
             raise APIError(
                 "Modification de propriété ou de privilège interdite.",
@@ -449,7 +450,19 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
             # peut ni antidater une modification ni choisir son auteur.
             body = {key: value for key, value in body.items()
                     if key not in {"UpdatedAt", "UpdatedByUserFk", "CreatedAt"}}
+    location_owners=None
+    if name == 'T_Entite_Localisation':
+        from .entity_locations import lock_legacy_owners
+        location_owners=lock_legacy_owners(obj,actor,body,keys)
     old = get_record(obj, actor, keys, lock=True) if keys else None
+    if old and location_owners is not None and old['IdEntiteFk'] not in location_owners:
+        raise APIError('La localisation a changé d’entreprise. Rechargez la fiche.','ENTITY_LOCATION_CONFLICT',409)
+    if name == 'T_Licence' and not actor.global_admin:
+        raise APIError('Les licences sont gérées par la plateforme.', 'PLATFORM_ADMIN_REQUIRED', 403)
+    if name == 'T_Utilisateurs':
+        from .admin_operations import user_change
+        body = user_change(actor, body, old, operation)
+        obj = {**obj, '_validated_user_access': True}
     if obj['schema'] == 'referentiel' and obj['name'] in {'T_CategorieGenerique','T_Generique'}:
         from .reference_batches import prepare_body
         body = prepare_body(obj, body, old, actor)

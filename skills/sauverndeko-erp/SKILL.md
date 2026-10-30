@@ -39,6 +39,16 @@ Dans tous les modules où des créations similaires s’y prêtent, privilégier
 
 Choix explicite du 30 octobre 2026 pour Logistique : Tiers et Immobilisations utilisent un seul bouton de création avec panier. Articles conserve « Nouvel article » et son formulaire complet, avec un bouton distinct « Ajouter plusieurs articles ». Préserver cette exception demandée par le propriétaire.
 
+Dans Administration, Utilisateurs, Rôles, Correspondances FK et Paramètres utilisent chacun un seul bouton de création ouvrant un panier de 1 à 100 lignes. La fiche complète sert aussi à corriger une ligne du brouillon, sans écriture individuelle avant la validation du panier. Les mots de passe initiaux restent uniquement en mémoire et ne sont jamais conservés dans les préférences navigateur, réponses ou audits.
+
+### Administration par entreprise et navigation commune
+
+Le contexte Administration se charge indépendamment de la licence Logistique. Un gestionnaire d’entreprise ne peut gérer que les comptes ordinaires de son entreprise ; les rôles de sécurité, licences et réglages structurants se gèrent par la plateforme. Les rôles restent partagés, sans copie par entreprise. Les compteurs, graphiques, listes et exports conservent le même périmètre serveur. Lire le [contrat d’administration](../../backend/skills/develop-sauverndeko-backend/references/administration-portail.md) et le [bilan du 30 octobre](../../docs/administration-entreprises-20261030.md).
+
+Les localisations appartiennent à la fiche Entreprise, dans son sous-onglet Localisation. Ne pas recréer un onglet de navigation parallèle ni les transmettre via le profil documentaire de Logistique. Sauvegarder ensemble la fiche, son logo et ses points en contrôlant les révisions et les affectations existantes.
+
+Réutiliser `ModuleSidebar` pour les barres latérales : groupes repliables, état actif, rail compact, menu mobile, navigation au clavier et couleurs de thème. Les préférences de repli restent visuelles ; elles n’accordent aucun droit. Les [preuves de navigation](../../docs/verification-navigation-20261030.md) distinguent les tests techniques d’une recette réelle au navigateur.
+
 ## Invariants SauverNdeko
 
 - PostgreSQL reste organisé par schémas métier ; les noms qualifiés existants et leur casse sont des contrats.

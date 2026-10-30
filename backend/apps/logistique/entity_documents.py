@@ -33,7 +33,7 @@ OPERATION = 'ENTITY_DOCUMENT_PROFILE'
 MAX_LOGO_BYTES = 2 * 1024 * 1024
 
 
-def current_identity(entity_id, include_logo=False):
+def current_identity(entity_id, include_logo=False, *, include_locations=False):
     """Lecture interne APRÈS contrôle du document/entreprise par le demandeur.
 
     Le binaire ne doit jamais rejoindre un profil JSON, export ou journal.
@@ -41,9 +41,14 @@ def current_identity(entity_id, include_logo=False):
     """
     entity_id = positive(entity_id, 'Entreprise')
     projection = ',e."LogoEntite"' if include_logo else ''
+    locations_join=''
+    if include_locations:
+        from apps.core.entity_locations import snapshot_projection
+        projection+=',points."CollectionRevision",points."Localisations"'
+        locations_join=' LEFT JOIN LATERAL (SELECT '+snapshot_projection()+' FROM systeme."T_Entite_Localisation" l WHERE l."IdEntiteFk"=e."IdEntite") points ON TRUE '
     row = db.one('SELECT v.*,e."IdTypeEntiteFk",e."ValideEntite"' + projection + '''
         FROM systeme."V_IdentiteDocumentaire" v JOIN systeme."T_Entite" e ON e."IdEntite"=v."IdEntite"
-        WHERE v."IdEntite"=%s''', [entity_id])
+        '''+locations_join+''' WHERE v."IdEntite"=%s''', [entity_id])
     if not row:
         raise APIError('Entreprise introuvable.', 'NOT_FOUND', 404)
     if include_logo:
@@ -80,15 +85,21 @@ def target(actor, entity=None, *, administration=False, writing=False, creating=
 
 def profile(actor, entity=None, *, administration=False):
     entity = target(actor, entity, administration=administration)
-    row = current_identity(entity)
+    # Une lecture SQL unique fournit le parent, les points et leur révision.
+    # Aucun verrou d'écriture n'est nécessaire, même en transaction read-only.
+    row = current_identity(entity,include_locations=True)
+    from apps.core.entity_locations import profile_revision
+    row['_version']=profile_revision(entity,row['_version'],row.pop('CollectionRevision'))
     row['documentsExistants'] = db.one('SELECT count(*) AS n FROM logistique."T_DocumentIdentite" WHERE "IdEntiteFk"=%s', [entity])['n']
     rights = access_snapshot(actor)['modules']['administration' if administration else 'logistique']
     row['canConfigure'] = actor.admin and not settings.DB_READ_ONLY and rights['canManage']
     row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY
     row['logoUrl'] = f'/api/systeme/entites/{entity}/logo' if row.get('HasLogo') else None
     if administration:
-        row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'), actor=actor)}
+        from apps.core.entity_locations import geographical_references
+        row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'), actor=actor), **geographical_references()}
     if not administration:
+        row.pop('Localisations',None)
         for key in ADMIN_FIELDS:
             row.pop(key, None)
     return clean(row)
@@ -258,7 +269,7 @@ def admin_values(body, actor, old, entity):
 def save(actor, body, upload=None, *, entity=None, administration=False, creating=False):
     entity = target(actor, entity, administration=administration, writing=True, creating=creating)
     db.ensure_writable()
-    allowed = FIELDS | {'logoAction', 'motif', 'requestId'} | (ADMIN_FIELDS if administration else set())
+    allowed = FIELDS | {'logoAction', 'motif', 'requestId'} | (ADMIN_FIELDS | {'Localisations'} if administration else set())
     required = (FIELDS - OPTIONAL_FIELDS) | {'motif', 'requestId'}
     if not creating:
         allowed |= {'IdEntite', '_version'}
@@ -281,7 +292,7 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
     encoded = normalize_logo(upload) if upload is not None else None
     digest = hashlib.sha256(encoded).hexdigest() if encoded is not None else None
     operation = OPERATION + ('_CREATE' if creating else '')
-    fingerprint = hashlib.sha256(json.dumps({'entity': entity, 'values': data, 'admin': {key: body[key] for key in sorted(ADMIN_FIELDS) if key in body}, 'motif': reason, 'logoAction': action, 'logoSha256': digest}, sort_keys=True, ensure_ascii=False, separators=(',', ':'), cls=ExactEncoder).encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps({'entity': entity, 'values': data, 'admin': {key: body[key] for key in sorted(ADMIN_FIELDS) if key in body}, 'motif': reason, 'logoAction': action, 'logoSha256': digest, **({'Localisations': body['Localisations']} if 'Localisations' in body else {})}, sort_keys=True, ensure_ascii=False, separators=(',', ':'), cls=ExactEncoder).encode()).hexdigest()
     with transaction.atomic():
         db.query('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))', [operation + ':' + str(actor.pk) + ':' + request_id])
         previous = db.one('SELECT "NewData" FROM systeme."T_Audit_Log" WHERE "Operation"=%s AND "NewData" @> %s ORDER BY "IdLog" DESC LIMIT 1', [operation, Jsonb({'requestId': request_id, '_actor': {'IdUser': actor.pk}})])
@@ -292,7 +303,8 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
         old = None if creating else db.one('SELECT "IdEntite","IdTypeEntiteFk","ValideEntite",xmin::text AS "_version",'
             + ','.join(db.ident(key) for key in sorted(FIELDS | (LOGO_FIELDS - {'LogoEntite'})))
             + ' FROM systeme."T_Entite" WHERE "IdEntite"=%s FOR UPDATE', [entity])
-        if not creating and (not old or old['_version'] != body['_version']):
+        from apps.core.entity_locations import profile_revision
+        if not creating and (not old or profile_revision(entity,old['_version']) != body['_version']):
             raise APIError('Le profil a changé. Rechargez la fiche avant de confirmer.', 'VERSION_CONFLICT', 409)
         if old and old['ValideEntite'] is False and (not administration or not actor.global_admin):
             raise APIError('Les écritures de cette entreprise sont désactivées.', 'ENTITY_INACTIVE', 409)
@@ -324,6 +336,11 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
                 key = 'PhoneEntite' if 'PhoneEntite' in constraint else 'EmailEntite'
                 raise APIError({key: 'Cette coordonnée est déjà utilisée. Vérifiez la valeur de cette entreprise.'}, 'ENTITY_PROFILE_VALIDATION', 400) from error
             raise
+        if 'Localisations' in body:
+            from apps.core.entity_locations import save_locations
+            location_actor=copy(actor)
+            location_actor._context_entity=entity
+            save_locations(location_actor,entity,body['Localisations'])
         updated = current_identity(entity)
         audit_actor = copy(actor)
         audit_actor._context_entity = entity
@@ -360,6 +377,9 @@ class EntityIdentityDefaultsView(APIView):
             AfficherPiedDocument=True, ValideEntite=True, HasLogo=False,
             canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
             canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
+        from apps.core.entity_locations import geographical_references
+        data['Localisations']=[]
+        data['references'].update(geographical_references())
         return ok(data)
 
 

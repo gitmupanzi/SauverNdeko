@@ -2,6 +2,16 @@
 
 Le propriétaire retient [TailAdmin React](https://react-demo.tailadmin.com/) comme référence de modernité, le 25 octobre 2026. S’en inspirer pour la cohérence, la lisibilité et les interactions ; conserver les contenus métier et la marque SauverNdeko dans la pile React JSX/Vite/Bootstrap existante.
 
+## Navigation commune — 30 octobre 2026
+
+`ModuleSidebar` mutualise les menus d’Administration, Logistique, Référentiels, Organisation territoriale et du catalogue. La référence [TailAdmin Form Elements](https://demo.tailadmin.com/form-elements) guide les groupes repliables, les chevrons, les icônes fines et la rubrique active ; conserver la marque et les couleurs bleu ardoise des thèmes SauverNdeko, sans recopier les données ou badges de démonstration.
+
+Les groupes vides disparaissent et les entrées sont filtrées par les droits réellement reçus. La navigation transmet la clé stable de rubrique ou la route, jamais un index. Le repli d’un groupe ne navigue pas, ne filtre pas et ne touche aucune donnée métier. Lors d’une navigation vers une rubrique repliée, son groupe s’ouvre. Le groupe de la rubrique courante garde un repère même s’il est ensuite replié manuellement. Les états locaux de repli sont des préférences visuelles uniquement.
+
+Sur ordinateur, conserver le panneau permanent, le rail compact et le pied de raccourcis selon les permissions. Sur mobile, le rail conserve les icônes et le bouton de menu ouvre la navigation complète, avec masque extérieur, fermeture par Échap, confinement du focus, retour au déclencheur et fermeture au passage vers une largeur d’ordinateur. Ne pas désactiver les libellés accessibles quand les textes sont masqués. Les transitions respectent la préférence de réduction des animations. Une modification visuelle ne peut pas élargir les autorisations serveur ni perdre le brouillon d’un formulaire protégé par son module.
+
+Les anciens tableaux territoriaux gardent leurs contrats de vues et d’identifiants ; seul leur menu emploie le composant commun. Une compilation, des tests de handlers et des contrôles de cascade CSS ne constituent pas une recette visuelle du navigateur.
+
 ## Références ciblées
 
 - [Tableaux de données](https://react-demo.tailadmin.com/data-tables) : en-têtes sobres, séparateurs fins, recherche, pagination et actions alignées.
