@@ -13,8 +13,11 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / '.runtime' / 'css-qa-deps'))
-import tinycss2
-import cssselect2
+try:
+    import tinycss2
+    import cssselect2
+except ModuleNotFoundError as failure:
+    raise SystemExit('Prepare the isolated CSS proof dependencies: python -m pip install --target .runtime/css-qa-deps tinycss2 cssselect2 (from the repository root).') from failure
 
 FRONT = ROOT / 'frontend'
 FILES = ['node_modules/bootstrap/dist/css/bootstrap.min.css', 'src/styles.css',
@@ -94,7 +97,7 @@ def style(element, rules, parent=None, pseudo=None):
 def fixture(theme):
     table = '''<div class="logistics-advanced-table erp-data-grid"><div class="public-table-wrap logistics-table-wrap admin-table-wrap">
       <table class="public-table logistics-table admin-table table table-hover"><thead><tr>
-      <th class="admin-table-head-cell is-pinned"><button class="admin-header-trigger" disabled="disabled"><span class="admin-header-label">Article</span></button></th>
+      <th class="admin-table-head-cell is-pinned"><button class="admin-header-trigger is-pinned" disabled="disabled"><span class="admin-header-label">Article</span></button><span class="admin-resize-handle" /></th>
       <th class="admin-table-head-cell"><button class="admin-header-trigger"><span class="admin-header-label">Quantité</span></button></th>
       <th class="admin-table-head-cell"><span class="admin-header-label">Actions</span></th></tr></thead><tbody>'''
     for row, state in enumerate(['', '', 'is-selected', 'logistics-row-selected', 'qa-hover', 'qa-hover is-selected'], 1):
@@ -143,6 +146,9 @@ def evaluate(rules, theme):
             background = computed[header.etree_element]['background-color']
             check(colour(background) == colour(values['variables']['--erp-raised']), f'{theme}/{context_name}: header surface')
             check(contrast(colour(values['color']), colour(background)) >= 4.5, f'{theme}/{context_name}: header contrast')
+            check(style(label, rules, values, 'before')['display'] == 'none', f'{theme}/{context_name}: no legacy pinned-column marker')
+        grip = next(context.query_all('.admin-resize-handle'))
+        check(computed[grip.etree_element]['background-color'] == 'transparent', f'{theme}/{context_name}: no gradient column grip')
         disabled = next(context.query_all('.admin-header-trigger[disabled]'))
         check(computed[disabled.etree_element]['opacity'] == '1', f'{theme}/{context_name}: non-sortable header readable')
         for row in context.query_all('tbody tr'):
@@ -150,6 +156,13 @@ def evaluate(rules, theme):
             row_styles = [computed[cell.etree_element] for cell in cells]
             backgrounds = [colour(value['background-color']) for value in row_styles]
             check(all(background == backgrounds[0] for background in backgrounds), f'{theme}/{context_name}: pinned/action cells match row')
+            variables = row_styles[0]['variables']
+            classes = row.classes
+            expected = (variables['--erp-active'] if classes & {'is-selected', 'logistics-row-selected'} else
+                        variables['--erp-hover'] if 'qa-hover' in classes else
+                        f"color-mix(in srgb,{variables['--erp-surface']} 70%,{variables['--erp-raised']})" if int(row.etree_element.attrib['data-row']) % 2 == 0 else
+                        variables['--erp-surface'])
+            check(colour(expected) == backgrounds[0], f'{theme}/{context_name}: precise row state surface')
             for cell, values, background in zip(cells, row_styles, backgrounds):
                 check(contrast(colour(values['color']), background) >= 4.5, f'{theme}/{context_name}: body text contrast')
                 check('var(--erp-border' not in values.get('border-bottom', ''), 'Border token resolved')

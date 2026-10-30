@@ -33,7 +33,7 @@ Les 17 exports SQL canoniques sont actualisés. Deux restaurations de structure 
 | Interface de saisie | 119 contrôles réussis | Code réel, hooks/SSR et doubles API/auth ; classe de tableau moderne vérifiée dans le tiroir sans barre d’outils ; pas de navigateur |
 | Registres et bouton unique | 57 contrôles réussis | Quatre onglets, filtres, clés d’actions, réglages et export ; pas de navigateur |
 | Régression frontend du référencement | 111 contrôles réussis | Code réel avec doubles API/auth ; pas de navigateur |
-| Présentation et thèmes des tableaux partagés | 780 contrôles réussis | Cascade CSS réelle, deux ordres de feuilles, pages/tiroirs, clair/sombre/contraste ; contraste des textes au moins 4,5 ; pas de navigateur |
+| Présentation et thèmes des tableaux partagés | 900 contrôles réussis | Cascade CSS réelle, deux ordres de feuilles, pages/tiroirs, surfaces normales/alternées/sélectionnées/survolées, clair/sombre/contraste ; contraste des textes au moins 4,5 ; pas de navigateur |
 | Compilation frontend finale | Réussie, 346 modules | Build Vite de la version au bouton unique |
 | Vérification Django | Réussie | `manage.py check` |
 | Diagnostic de la base source | 245 GET réussis | Transaction en lecture seule, aucune donnée de test créée dans SauverNdeko |
