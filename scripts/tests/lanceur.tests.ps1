@@ -4,6 +4,7 @@ Set-StrictMode -Version Latest
 $ProjectRoot=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $ServiceScript=Join-Path $ProjectRoot 'scripts\sauverndeko-service.ps1'
 $Launcher=Join-Path $ProjectRoot 'scripts\sauverndeko-local.ps1'
+. (Join-Path $ProjectRoot 'scripts\sauverndeko-process.ps1')
 $BackendRoot=Join-Path $ProjectRoot '.runtime\configuration-fictive-absente'
 $Tokens=$null;$ErrorsFound=$null
 $Ast=[System.Management.Automation.Language.Parser]::ParseFile($Launcher,[ref]$Tokens,[ref]$ErrorsFound)
@@ -33,9 +34,9 @@ try {
  try {Frontend-Port | Out-Null} catch {$Rejected=$_.Exception.Message -like '*5174*'}
  if (-not $Rejected) {throw 'Port frontend occupe non refuse.'}
  $Created=[DateTime]::UtcNow
- $FixtureProcess=[pscustomobject]@{CommandLine=('powershell -File "'+$ServiceScript+'" -Instance instance-fictive');CreationDate=$Created}
+ $FixtureProcess=[pscustomobject]@{CommandLine=('powershell -File "'+$ServiceScript+'" -Service backend -ProjectRoot "'+$ProjectRoot+'" -Instance instance-fictive');CreationDate=$Created}
  function Process-Info([int]$ProcessId) {return $FixtureProcess}
- $Record=[pscustomobject]@{pid=123;instance='instance-fictive';created=$Created.ToUniversalTime().ToString('o')}
+ $Record=[pscustomobject]@{name='backend';pid=123;instance='instance-fictive';created=$Created.ToUniversalTime().ToString('o')}
  if (-not (Expected-Process $Record)) {throw 'Processus connu non reconnu.'}
  $Record.instance='autre-instance'
  if (Expected-Process $Record) {throw 'Processus etranger reconnu comme proprietaire.'}
@@ -68,7 +69,7 @@ try {
   return $null
  }
  $Record=[pscustomobject]@{name='backend';pid=123;instance='instance-fictive';created=$Created.ToUniversalTime().ToString('o');port=5000}
- $KnownCommand='powershell -File "'+$ServiceScript+'" -Instance instance-fictive'
+ $KnownCommand='powershell -File "'+$ServiceScript+'" -Service backend -ProjectRoot "'+$ProjectRoot+'" -Instance instance-fictive'
  $script:FixtureProcesses[123]=[pscustomobject]@{CommandLine=$KnownCommand;CreationDate=$Created}
  Assert-Control ((Get-ServiceRecordStatus $Record) -eq 'owned') 'Le service dont l''identite est prouvee doit etre owned.'
  Assert-Control (Expected-Process $Record) 'Le wrapper doit conserver son contrat booleen owned.'
@@ -126,7 +127,7 @@ try {
  Assert-Control (($script:FixtureState | ConvertTo-Json -Depth 8 -Compress) -eq $OriginalState) 'Les metadonnees originales doivent rester integralement disponibles.'
 
  # Meme si l'autre service est arretable, l'ensemble doit etre controle avant DML.
- $script:FixtureProcesses[456]=[pscustomobject]@{CommandLine=('powershell -File "'+$ServiceScript+'" -Instance frontend-fictive');CreationDate=$Created}
+ $script:FixtureProcesses[456]=[pscustomobject]@{CommandLine=('powershell -File "'+$ServiceScript+'" -Service frontend -ProjectRoot "'+$ProjectRoot+'" -Instance frontend-fictive');CreationDate=$Created}
  $Rejected=$false
  try {Stop-Project} catch {$Rejected=$true}
  Assert-Control ($Rejected -and $script:StoppedIds.Count -eq 0 -and $script:SavedStates.Count -eq 0) 'Un service connu ne doit pas etre arrete lorsque son pair est inaccessible.'

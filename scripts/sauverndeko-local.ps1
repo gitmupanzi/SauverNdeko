@@ -14,6 +14,7 @@ $RuntimeRoot=Join-Path $ProjectRoot '.runtime'
 $StatePath=Join-Path $RuntimeRoot 'services.json'
 $RequiredFrontendPort=5174
 $ServiceScript=Join-Path $PSScriptRoot 'sauverndeko-service.ps1'
+. (Join-Path $PSScriptRoot 'sauverndeko-process.ps1')
 $PythonExecutable=Join-Path $BackendRoot '.venv\Scripts\python.exe'
 $ManagePath=Join-Path $BackendRoot 'manage.py'
 $VitePath=Join-Path $FrontendRoot 'node_modules\vite\bin\vite.js'
@@ -29,7 +30,7 @@ function Save-State($State) {
  $State | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $StatePath -Encoding UTF8
 }
 function Process-Info([int]$ProcessId) {
- return Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
+ return Get-SauverNdekoProcessInfo $ProcessId
 }
 function Get-ServiceRecordStatus($Record) {
  if ($null -eq $Record) { return 'absent' }
@@ -42,10 +43,11 @@ function Get-ServiceRecordStatus($Record) {
   }
   if ($null -eq $Info.CreationDate -or [string]::IsNullOrWhiteSpace([string]$Record.created)) { return 'inaccessible' }
   $Created=([datetime]$Record.created).ToUniversalTime()
-  if ($Info.CreationDate.ToUniversalTime().Ticks -ne $Created.Ticks) { return 'foreign' }
+  $ObservedCreated=([datetime]$Info.CreationDate).ToUniversalTime()
+  if (-not (Test-SauverNdekoCreationDate $ObservedCreated $Created)) { return 'foreign' }
   $Command=[string]$Info.CommandLine
   if ([string]::IsNullOrWhiteSpace($Command) -or [string]::IsNullOrWhiteSpace([string]$Record.instance)) { return 'inaccessible' }
-  if ($Command.IndexOf($ServiceScript,[StringComparison]::OrdinalIgnoreCase) -ge 0 -and $Command.Contains([string]$Record.instance)) { return 'owned' }
+  if (Test-SauverNdekoServiceCommand $Command $Record $ServiceScript $ProjectRoot) { return 'owned' }
   return 'foreign'
  } catch { return 'inaccessible' }
 }
@@ -66,16 +68,39 @@ function Stop-ServiceRecord($Record) {
  function Stop-Children([int]$ParentProcessId) {
   $Children=@(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentProcessId" -ErrorAction SilentlyContinue)
   foreach ($Child in $Children) {
+   $Current=Process-Info ([int]$Child.ProcessId)
+   # Les vrais hotes console Windows accompagnent le wrapper et se ferment
+   # avec lui. Ils ne sont pas nos services, meme si Windows les declare enfants.
+   # Seule une preuve native executable+argv+date permet de les laisser intacts.
+   if (Test-SauverNdekoConsoleHelper $Current $Child) {continue}
    Stop-Children ([int]$Child.ProcessId)
    # Verifier la date avant l'arret pour ne pas prendre un PID recycle.
    $Current=Process-Info ([int]$Child.ProcessId)
-   if ($null -ne $Current -and $null -ne $Current.CreationDate -and $Current.CreationDate -eq $Child.CreationDate) { Stop-Process -Id ([int]$Child.ProcessId) -Force -ErrorAction Stop }
+   if ($null -ne $Current -and $null -ne $Current.CreationDate -and (Test-SauverNdekoCreationDate $Current.CreationDate $Child.CreationDate)) { Stop-SauverNdekoVerifiedProcess ([int]$Child.ProcessId) $Current }
   }
  }
  Stop-Children ([int]$Record.pid)
  $Status=Get-ServiceRecordStatus $Record
  if ($Status -eq 'inaccessible') { throw ('Identite du service '+$Record.name+' devenue inaccessible ; informations de suivi conservees.') }
- if ($Status -eq 'owned') { Stop-Process -Id ([int]$Record.pid) -Force -ErrorAction Stop }
+ if ($Status -eq 'owned') {
+  $Verified=$false
+  for ($Attempt=0;$Attempt -lt 2;$Attempt++) {
+   $Current=Process-Info ([int]$Record.pid)
+   if ($null -ne $Current -and (Test-SauverNdekoCreationDate $Current.CreationDate $Record.created) -and (Test-SauverNdekoServiceCommand ([string]$Current.CommandLine) $Record $ServiceScript $ProjectRoot)) {$Verified=$true;break}
+   # L'arret du dernier enfant peut terminer naturellement son wrapper entre
+   # ces deux lectures. Seule une nouvelle classification decide du resultat.
+   $Status=Get-ServiceRecordStatus $Record
+   if ($Status -in @('absent','foreign')) {Step ($Record.name+' deja termine ou remplace ; aucun arret force.');return}
+   if ($Status -eq 'inaccessible') {throw ('Identite du wrapper '+$Record.name+' inaccessible ; suivi conserve.')}
+  }
+  if (-not $Verified) {throw 'Identite du wrapper non confirmee ; arret refuse et suivi conserve.'}
+  try {Stop-SauverNdekoVerifiedProcess ([int]$Record.pid) $Current}
+  catch {
+   $Status=Get-ServiceRecordStatus $Record
+   if ($Status -in @('absent','foreign')) {Step ($Record.name+' deja termine ou remplace ; aucun arret force.');return}
+   throw
+  }
+ }
  $Status=Get-ServiceRecordStatus $Record
  if ($Status -in @('owned','inaccessible')) { throw ('Arret du service '+$Record.name+' non confirme ; informations de suivi conservees.') }
  Step ($Record.name+' arrete.')

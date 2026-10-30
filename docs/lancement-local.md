@@ -52,7 +52,9 @@ Utiliser l’adresse affichée par adresse-reseau.bat : le port frontend reste 5
 .\arreter.bat
 ~~~
 
-L’arrêt vérifie le chemin du script, l’identifiant de l’instance et la date de création de chaque processus suivi. Une ancienne instance lancée dans une autre session Windows peut nécessiter sa fermeture depuis cette session.
+L’arrêt vérifie les arguments exacts du script, du projet, du service, l’identifiant de l’instance et la date de création de chaque processus suivi. Si CIM masque sa ligne de commande, le lanceur tente une lecture native Windows autorisée, sans élévation. Les vrais hôtes de console Windows sont laissés à leur processus parent ; ils ne sont pas arrêtés comme des serveurs applicatifs. Une ancienne instance lancée dans une autre session Windows peut nécessiter sa fermeture depuis cette session.
+
+Après un refus d’accès de `Stop-Process`, une terminaison Windows avec les seuls droits de lecture et d’arrêt peut être tentée. Elle revérifie la création, la commande et l’exécutable sur le même handle avant l’arrêt. Aucun privilège n’est ajouté. Si le wrapper s’est déjà fermé après ses enfants, l’arrêt est confirmé sans faux message d’identité différente. Une identité réellement inaccessible reste bloquante et son suivi est conservé.
 
 Si Windows masque l’identité d’un processus au lanceur, celui-ci conserve les informations de suivi et refuse l’arrêt ou le redémarrage avant de toucher aux services. Relancer avec les mêmes droits que lors du démarrage, ou fermer les services depuis leur session d’origine. Un démarrage simple réutilise les deux services qui répondent déjà dans le même mode. Un processus dont l’arrêt n’est pas confirmé reste suivi : un échec ne vide pas le fichier d’état.
 
