@@ -11,6 +11,6 @@ export default function ModuleHeader({ title, onRequestLogout }) {
     <Link to="/" className="module-apps-link" aria-label="Toutes les applications" title="Applications"><AppIcon name="apps" /></Link>
     <Link to="/" className="workspace-brand" aria-label="SauverNdeko — applications"><img src="/sauverndeko-logo.jpg" alt="" width="36" height="36" /><span>SauverNdeko</span></Link>
     <span className="module-header-title">{title}</span>{user?.permissions?.canWriteData === false ? <span className="module-read-only" title="Les modifications sont momentanément indisponibles.">Consultation</span> : null}
-    {["Logistique","Référentiels","Administration"].includes(title)?<EntityScopePicker/>:null}<AccountControls onRequestLogout={onRequestLogout} />
+    {["Logistique","Référentiels","Administration","Support"].includes(title)?<EntityScopePicker/>:null}<AccountControls onRequestLogout={onRequestLogout} />
   </header>;
 }

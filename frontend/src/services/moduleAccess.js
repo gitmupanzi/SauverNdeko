@@ -1,4 +1,4 @@
-const PATH_MODULES = {"/catalogue":"catalogue","/produits":"produits","/pharmacies":"structures","/experts":"professionnels","/maladies":"sante","/discussions":"discussions","/logistique":"logistique","/territoires":"territoires","/admin":"administration"};
+const PATH_MODULES = {"/catalogue":"catalogue","/produits":"produits","/pharmacies":"structures","/experts":"professionnels","/maladies":"sante","/discussions":"discussions","/logistique":"logistique","/territoires":"territoires","/support":"support","/admin":"administration"};
 export function moduleForPath(pathname) { return PATH_MODULES[pathname.replace(/\/$/,"")]; }
 export function moduleRights(user, key) { return user?.moduleAccess?.modules?.[key] || {canRead:false,canManage:false,canExport:false}; }
 export function mayOpen(user, pathname) {

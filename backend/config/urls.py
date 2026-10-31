@@ -1,4 +1,7 @@
 from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
+from apps.support.portal import (SupportContextView, SupportEntitiesView, SupportDashboardView,
+    SupportKanbanView, SupportTicketsView, SupportActionsView, SupportCommentsView,
+    SupportDocumentsView, SupportDocumentDownloadView, SupportExcelView, SupportCSVView)
 from apps.core.territorial_portal import TerritorialOverviewView,TerritorialRegisterView,TerritorialReferencesView,TerritorialExcelView,TerritorialCSVView
 from apps.core.territorial_batches import TerritorialBatchView
 from apps.core.table_preferences import TablePreferencesView
@@ -66,6 +69,18 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/support/contexte/?$", SupportContextView.as_view()),
+    re_path(r"^api/support/entreprises/?$", SupportEntitiesView.as_view()),
+    re_path(r"^api/support/tableau-de-bord/?$", SupportDashboardView.as_view()),
+    re_path(r"^api/support/kanban/?$", SupportKanbanView.as_view()),
+    re_path(r"^api/support/tickets/export\.xlsx$", SupportExcelView.as_view()),
+    re_path(r"^api/support/tickets/export\.csv$", SupportCSVView.as_view()),
+    re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/actions/?$", SupportActionsView.as_view()),
+    re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/commentaires/?$", SupportCommentsView.as_view()),
+    re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/documents/(?P<piece_id>[0-9]+)/download/?$", SupportDocumentDownloadView.as_view()),
+    re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/documents/?$", SupportDocumentsView.as_view()),
+    re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/?$", SupportTicketsView.as_view()),
+    re_path(r"^api/support/tickets/?$", SupportTicketsView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/panier/?$",TerritorialBatchView.as_view()),
     re_path(r"^api/geolocalisation/territoires/synthese/?$",TerritorialOverviewView.as_view()),
     re_path(r"^api/geolocalisation/territoires/references/(?P<kind>[a-z0-9-]+)/?$",TerritorialReferencesView.as_view()),

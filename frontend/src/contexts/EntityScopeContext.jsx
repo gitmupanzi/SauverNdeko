@@ -15,9 +15,9 @@ export function EntityScopeProvider({children}) {
   useLayoutEffect(()=>{configureEntityScope({userId:userKey,entityId,globalAdmin});},[userKey,entityId,globalAdmin]);
   useEffect(()=>{
     let active=true;setEntities([]);setError("");
-    if(!isAuthenticated||!(moduleRights(user,"logistique").canRead||moduleRights(user,"administration").canRead)){setLoading(false);return()=>{active=false;};}
+    if(!isAuthenticated||!(moduleRights(user,"logistique").canRead||moduleRights(user,"administration").canRead||moduleRights(user,"support").canRead)){setLoading(false);return()=>{active=false;};}
     setLoading(true);
-    requestJson(moduleRights(user,"administration").canRead?"/api/systeme/administration/entreprises":"/api/logistique/entreprises",{requiresAuth:true}).then(response=>{
+    requestJson(moduleRights(user,"administration").canRead?"/api/systeme/administration/entreprises":moduleRights(user,"logistique").canRead?"/api/logistique/entreprises":"/api/support/entreprises",{requiresAuth:true}).then(response=>{
       if(!active)return;setLoading(false);
       if(!response?.success){setError(response?.message||"Les entreprises ne sont pas disponibles.");return;}
       setEntities(Array.isArray(response.data)?response.data:[]);

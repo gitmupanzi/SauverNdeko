@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -284,6 +284,65 @@ $$;
 COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Identité de présentation courante et métadonnées du logo, sans octets binaires. Source des PDF à la demande du propriétaire ; les instantanés financiers et identités antérieurs restent immuables et ne sont pas réécrits.';
 
 --
+-- Name: fn_support_circuit(integer); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_circuit(p_entite integer) RETURNS jsonb
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE r systeme."T_Admin_UI_Setting";
+BEGIN
+ SELECT * INTO r FROM systeme."T_Admin_UI_Setting" WHERE "SettingKey"='support.workflow' AND "ValideSetting" AND (("SettingScope"='entite' AND "ScopeValue"=p_entite::text) OR ("SettingScope"='global' AND "ScopeValue" IS NULL)) ORDER BY CASE WHEN "SettingScope"='entite' THEN 0 ELSE 1 END LIMIT 1;
+ IF NOT FOUND OR r."SettingType"<>'json' OR jsonb_typeof(r."SettingValueJson") IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Circuit de traitement Support indisponible.' USING ERRCODE='23514';END IF;
+ RETURN r."SettingValueJson"||jsonb_build_object('settingId',r."IdAdminUISetting",'settingUpdatedAt',r."UpdatedAt");
+END $$;
+
+--
+-- Name: FUNCTION fn_support_circuit(p_entite integer); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_circuit(p_entite integer) IS 'Résout le circuit Support dans les paramètres système existants, entreprise puis global ; ne crée aucune configuration parallèle et capture sa version lors de la création.';
+
+--
+-- Name: fn_support_circuit_defaut(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_circuit_defaut() RETURNS jsonb
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE states jsonb;verification jsonb;family integer;
+BEGIN
+ SELECT "ID_CategorieDefautFk" INTO family FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"='support' AND "TableName"='T_Support' AND "ColumnName"='ID_StatutFk';
+ SELECT jsonb_object_agg(replace("AbrGenerique",'support.status.',''),"ID_Generique") INTO states FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=family AND "IdEntiteFk" IS NULL AND "ValideGenerique" AND "AbrGenerique" IN('support.status.new','support.status.active','support.status.pending','support.status.resolved','support.status.closed');
+ SELECT "ID_CategorieDefautFk" INTO family FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"='support' AND "TableName"='T_ResolutionSupport' AND "ColumnName"='ID_ResultatVerificationFk';
+ SELECT jsonb_object_agg(CASE "AbrGenerique" WHEN 'support.verify.ok' THEN 'accepted' ELSE 'rejected' END,"ID_Generique") INTO verification FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=family AND "IdEntiteFk" IS NULL AND "ValideGenerique" AND "AbrGenerique" IN('support.verify.ok','support.verify.ko');
+ IF NOT (coalesce(states,'{}') ?& ARRAY['new','active','pending','resolved','closed']) OR NOT (coalesce(verification,'{}') ?& ARRAY['accepted','rejected']) THEN RAISE EXCEPTION 'Dictionnaire de circuit Support incomplet.' USING ERRCODE='23514';END IF;
+ RETURN jsonb_build_object('version',1,'states',states,'verification',verification,'transitions','[{"from":"new","to":"active","action":"start"},{"from":"active","to":"pending","action":"pause"},{"from":"pending","to":"active","action":"resume"},{"from":"active","to":"resolved","action":"resolve"},{"from":"pending","to":"resolved","action":"resolve"},{"from":"resolved","to":"closed","action":"close"},{"from":"resolved","to":"active","action":"reopen"},{"from":"closed","to":"active","action":"reopen"}]'::jsonb);
+END $$;
+
+--
+-- Name: FUNCTION fn_support_circuit_defaut(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_circuit_defaut() IS 'Circuit initial fermé d’installation : résout les identifiants du dictionnaire commun par codes sémantiques et familles du catalogue ; ne transporte aucune surcharge, auteur ou valeur de configuration client.';
+
+--
+-- Name: fn_support_object_size(jsonb); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_object_size(p_value jsonb) RETURNS integer
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $$SELECT count(*)::integer FROM jsonb_object_keys(p_value)$$;
+
+--
+-- Name: FUNCTION fn_support_object_size(p_value jsonb); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_object_size(p_value jsonb) IS 'Nombre de propriétés d’un objet JSON du circuit, sans extension ni identifiant métier codé en dur.';
+
+--
 -- Name: format_phone_number(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -542,6 +601,45 @@ END $$;
 --
 
 COMMENT ON FUNCTION systeme.tr_localisation_patrimoine_proprietaire() IS 'Empêche de déplacer une localisation vers une autre entreprise lorsqu’un bien actif ou archivé y reste lié. Ne crée aucun état d’archivage fictif pour les localisations.';
+
+--
+-- Name: tr_support_circuit_valider(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_support_circuit_valider() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE v jsonb:=NEW."SettingValueJson";r record;entity_id integer;cnt integer;
+BEGIN
+ IF NEW."SettingKey"<>'support.workflow' THEN RETURN NEW;END IF;
+ IF NEW."SettingScope" NOT IN('global','entite') OR NEW."SettingType"<>'json' OR jsonb_typeof(v) IS DISTINCT FROM 'object' OR coalesce(v->>'version','') !~ '^[1-9][0-9]{0,8}$' OR jsonb_typeof(v->'states') IS DISTINCT FROM 'object' OR jsonb_typeof(v->'verification') IS DISTINCT FROM 'object' OR jsonb_typeof(v->'transitions') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Structure du circuit Support invalide.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entite' THEN
+  IF coalesce(NEW."ScopeValue",'') !~ '^[1-9][0-9]{0,8}$' OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"::text=NEW."ScopeValue") THEN RAISE EXCEPTION 'Entreprise du circuit inconnue.' USING ERRCODE='23514';END IF;
+  entity_id:=NEW."ScopeValue"::integer;
+ END IF;
+ SELECT count(DISTINCT value) INTO cnt FROM jsonb_each_text(v->'states');
+ IF cnt<>5 OR NOT (v->'states' ?& ARRAY['new','active','pending','resolved','closed']) OR systeme.fn_support_object_size(v->'states')<>5 THEN RAISE EXCEPTION 'Les cinq états distincts du circuit sont requis.' USING ERRCODE='23514';END IF;
+ FOR r IN SELECT * FROM jsonb_each_text(v->'states') LOOP
+  IF r.value !~ '^[1-9][0-9]{0,8}$' OR NOT referentiel.fn_valider_reference_champ('support','T_Support','ID_StatutFk',r.value::integer,entity_id) THEN RAISE EXCEPTION 'Statut de circuit hors référentiel actif.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ IF NOT (v->'verification' ?& ARRAY['accepted','rejected']) OR v->'verification'->>'accepted'=v->'verification'->>'rejected' THEN RAISE EXCEPTION 'Résultats de vérification distincts requis.' USING ERRCODE='23514';END IF;
+ FOR r IN SELECT * FROM jsonb_each_text(v->'verification') LOOP
+  IF r.value !~ '^[1-9][0-9]{0,8}$' OR NOT referentiel.fn_valider_reference_champ('support','T_ResolutionSupport','ID_ResultatVerificationFk',r.value::integer,entity_id) THEN RAISE EXCEPTION 'Vérification hors référentiel actif.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ FOR r IN SELECT value edge FROM jsonb_array_elements(v->'transitions') LOOP
+  IF jsonb_typeof(r.edge) IS DISTINCT FROM 'object' OR NOT (v->'states' ? (r.edge->>'from')) OR NOT (v->'states' ? (r.edge->>'to')) OR r.edge->>'from'=r.edge->>'to' OR NOT EXISTS(
+   SELECT FROM (VALUES('new','active','start'),('active','pending','pause'),('pending','active','resume'),('active','resolved','resolve'),('pending','resolved','resolve'),('resolved','closed','close'),('resolved','active','reopen'),('closed','active','reopen')) allowed(src,dst,action)
+   WHERE allowed.src=r.edge->>'from' AND allowed.dst=r.edge->>'to' AND allowed.action=r.edge->>'action') THEN RAISE EXCEPTION 'Transition du circuit invalide ou action incompatible.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ RETURN NEW;
+END $_$;
+
+--
+-- Name: FUNCTION tr_support_circuit_valider(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_support_circuit_valider() IS 'Contrôle les états et transitions du circuit dans T_Admin_UI_Setting contre le référencement physique courant ; les libellés restent exclusivement dans T_Generique.';
 
 --
 -- Name: tr_utilisateur_affectation_verifier(); Type: FUNCTION; Schema: systeme; Owner: -
@@ -2882,6 +2980,18 @@ CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRo
 COMMENT ON INDEX systeme.idx_utilisateur_role IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRoleFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
 
 --
+-- Name: ix_support_audit_rejeu; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_support_audit_rejeu ON systeme."T_Audit_Log" USING btree ("TableName", (("NewData" ->> 'requestId'::text)), ((("NewData" -> '_actor'::text) ->> 'IdUser'::text)), "IdEntiteFk") WHERE (("TableName" ~~ 'support.%'::text) AND (("NewData" ->> 'requestId'::text) IS NOT NULL));
+
+--
+-- Name: INDEX ix_support_audit_rejeu; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.ix_support_audit_rejeu IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+--
 -- Name: uq_audit_immobilisation_request; Type: INDEX; Schema: systeme; Owner: -
 --
 
@@ -3054,6 +3164,30 @@ CREATE TRIGGER role_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_RoleM
 --
 
 COMMENT ON TRIGGER role_module_integrite ON systeme."T_RoleModule" IS 'Périmètre entité/rôle/module immuable ; les restrictions ne constituent pas un rôle administrateur.';
+
+--
+-- Name: T_Admin_UI_Setting support_circuit_valider; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER support_circuit_valider BEFORE INSERT OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.tr_support_circuit_valider();
+
+--
+-- Name: TRIGGER support_circuit_valider ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER support_circuit_valider ON systeme."T_Admin_UI_Setting" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+--
+-- Name: T_Utilisateurs support_user_proprietaire; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER support_user_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+--
+-- Name: TRIGGER support_user_proprietaire ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER support_user_proprietaire ON systeme."T_Utilisateurs" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
 
 --
 -- Name: T_Admin_UI_Setting tr_admin_ui_setting_audit; Type: TRIGGER; Schema: systeme; Owner: -

@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -596,15 +596,15 @@ BEGIN
  ELSIF kind='facture' THEN SELECT "IdEntiteFk" INTO result FROM logistique."T_Facture" WHERE "ID_CommandeFk"=object_id;
  ELSIF kind='reglement' THEN SELECT c."IdEntiteFk" INTO result FROM logistique."T_Reglements" p JOIN logistique."T_Commande" c ON c."CodeFacture"=p."CodeFactureFk" WHERE p."ID_Reglement"=object_id;
  ELSIF kind='avoir' AND to_regclass('logistique."T_Avoir"') IS NOT NULL THEN EXECUTE 'SELECT "IdEntiteFk" FROM logistique."T_Avoir" WHERE "ID_Avoir"=$1' INTO result USING object_id;
- END IF;
- RETURN result;
+ ELSIF kind='support' THEN SELECT "IdEntiteFk" INTO result FROM support."T_Support" WHERE "ID_Support"=object_id;
+ END IF;RETURN result;
 END $_$;
 
 --
 -- Name: FUNCTION fn_entite_document(kind text, object_id bigint); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout uniquement les types de documents autorisés et leur entreprise propriétaire durable.';
+COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout les propriétaires des documents autorisés, y compris Support ; stockage binaire privé existant réutilisé avec liaison FK contrôlée.';
 
 --
 -- Name: fn_identite_commande_deja_utilisee(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -6076,7 +6076,7 @@ CREATE TABLE logistique."T_PieceJustificative" (
     CONSTRAINT "T_PieceJustificative_NomFichier_check" CHECK ((length(btrim(("NomFichier")::text)) > 0)),
     CONSTRAINT "T_PieceJustificative_Sha256_check" CHECK (("Sha256" ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT "T_PieceJustificative_TailleOctets_check" CHECK ((("TailleOctets" > 0) AND ("TailleOctets" <= 8388608))),
-    CONSTRAINT "T_PieceJustificative_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text]))),
+    CONSTRAINT "T_PieceJustificative_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text, 'support'::text]))),
     CONSTRAINT "T_PieceJustificative_check" CHECK ((octet_length("Contenu") = "TailleOctets")),
     CONSTRAINT ck_piece_sha256_contenu CHECK (("Sha256" = encode(sha256("Contenu"), 'hex'::text)))
 );
@@ -6085,7 +6085,7 @@ CREATE TABLE logistique."T_PieceJustificative" (
 -- Name: TABLE "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_PieceJustificative" IS 'Justificatifs privés de documents logistiques, téléchargés après contrôle du parent et conservés après archivage.';
+COMMENT ON TABLE logistique."T_PieceJustificative" IS 'Stockage privé des justificatifs métier, partagé avec Support via une liaison FK dédiée ; téléchargement après contrôle du parent, entreprise et visibilité, contenu conservé après archivage.';
 
 --
 -- Name: COLUMN "T_PieceJustificative"."ID_Piece"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6097,7 +6097,7 @@ COMMENT ON COLUMN logistique."T_PieceJustificative"."ID_Piece" IS 'Champ documen
 -- Name: COLUMN "T_PieceJustificative"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_PieceJustificative"."TypeObjet" IS 'Champ documentaire TypeObjet du justificatif ou de son identité historique.';
+COMMENT ON COLUMN logistique."T_PieceJustificative"."TypeObjet" IS 'Type métier fermé du parent, dont support ; le dossier Support possède en plus une liaison réelle à clés étrangères.';
 
 --
 -- Name: COLUMN "T_PieceJustificative"."ID_Objet"; Type: COMMENT; Schema: logistique; Owner: -
@@ -6158,6 +6158,12 @@ COMMENT ON COLUMN logistique."T_PieceJustificative"."Archive" IS 'Pièce retiré
 --
 
 COMMENT ON COLUMN logistique."T_PieceJustificative"."CreeLe" IS 'Champ documentaire CreeLe du justificatif ou de son identité historique.';
+
+--
+-- Name: CONSTRAINT "T_PieceJustificative_TypeObjet_check" ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_PieceJustificative_TypeObjet_check" ON logistique."T_PieceJustificative" IS 'Types explicitement autorisés dans le stockage privé commun, dont support ; le parent et la liaison métier sont contrôlés séparément.';
 
 --
 -- Name: CONSTRAINT ck_piece_sha256_contenu ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
@@ -9032,6 +9038,66 @@ CREATE TRIGGER retour_bon_integrite BEFORE INSERT OR DELETE OR UPDATE ON logisti
 --
 
 COMMENT ON TRIGGER retour_bon_integrite ON logistique."T_RetourBon" IS 'Validation unique du lien après insertion des lignes et de leur ventilation, puis liaison immuable.';
+
+--
+-- Name: T_Article support_article_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_article_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+--
+-- Name: TRIGGER support_article_proprietaire ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_article_proprietaire ON logistique."T_Article" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+--
+-- Name: T_Commande support_bon_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_bon_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+--
+-- Name: TRIGGER support_bon_proprietaire ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_bon_proprietaire ON logistique."T_Commande" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+--
+-- Name: T_Client support_client_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_client_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Client" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+--
+-- Name: TRIGGER support_client_proprietaire ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_client_proprietaire ON logistique."T_Client" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+--
+-- Name: T_Immobilisation support_materiel_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_materiel_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+--
+-- Name: TRIGGER support_materiel_proprietaire ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_materiel_proprietaire ON logistique."T_Immobilisation" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+--
+-- Name: T_PieceJustificative support_piece_liaison; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER support_piece_liaison AFTER INSERT OR UPDATE ON logistique."T_PieceJustificative" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION support.tr_piece_liaison_complete();
+
+--
+-- Name: TRIGGER support_piece_liaison ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_piece_liaison ON logistique."T_PieceJustificative" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
 
 --
 -- Name: T_Article tr_00_devise_article; Type: TRIGGER; Schema: logistique; Owner: -

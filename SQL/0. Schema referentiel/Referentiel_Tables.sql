@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 30/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -101,6 +101,8 @@ BEGIN
  IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
  owner_id:=coalesce(nullif(p_ligne->>'IdEntiteFk','')::integer,nullif(p_ligne->>'ID_EntiteFk','')::integer);
  IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
+ IF p_schema='support' AND p_table='T_ResolutionSupport' THEN
+  SELECT "IdEntiteFk" INTO owner_id FROM support."T_Support" WHERE "ID_Support"=nullif(p_ligne->>'ID_SupportFk','')::bigint;RETURN owner_id;END IF;
  IF p_schema='logistique' THEN
   CASE p_table
    WHEN 'T_Mouvement' THEN
@@ -120,7 +122,7 @@ END $$;
 -- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Propriétaire stable de la vraie ligne : FK directe, PK Entité, parent logistique ou unité de précision à propriétaire immuable. Les tables partagées sans propriétaire restent globales ; aucune déduction depuis l’utilisateur ou la session.';
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Résout le propriétaire durable de la vraie ligne, y compris la résolution Support via son parent ; aucune entreprise déduite du compte actuel.';
 
 --
 -- Name: fn_guard_sens_stock(); Type: FUNCTION; Schema: referentiel; Owner: -
@@ -959,7 +961,7 @@ CREATE TABLE referentiel."T_InterfaceTableau" (
     CONSTRAINT "T_InterfaceTableau_Colonnes_check" CHECK ((jsonb_typeof("Colonnes") = 'array'::text)),
     CONSTRAINT "T_InterfaceTableau_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT ck_interface_tableau_cle CHECK (("CleInterface" ~ '^[a-z]+[.][a-z-]+$'::text)),
-    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text])))
+    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text])))
 );
 
 --
@@ -1062,7 +1064,7 @@ COMMENT ON CONSTRAINT ck_interface_tableau_cle ON referentiel."T_InterfaceTablea
 -- Name: CONSTRAINT ck_interface_tableau_module ON "T_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Applications couvertes par les catalogues persistants de tableaux et exports, dont Organisation territoriale. Les droits sont vérifiés par chaque service source.';
+COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules possédant un catalogue de tableau et export, incluant Support sans accorder un accès ou une licence.';
 
 --
 -- Name: seq_preference_tableau_revision; Type: SEQUENCE; Schema: referentiel; Owner: -

@@ -76,6 +76,18 @@ class Command(BaseCommand):
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))
             urls.append("/api/geolocalisation/territoires/synthese")
+            with connection.cursor() as support_cursor:
+                support_cursor.execute('SELECT to_regclass(%s)', ['support."T_Support"'])
+                support_installed=bool(support_cursor.fetchone()[0])
+            if support_installed:
+                urls.extend(['/api/support/contexte','/api/support/entreprises',
+                    '/api/support/tableau-de-bord','/api/support/kanban',
+                    '/api/support/tickets?take=1','/api/tableaux/support.tickets/preferences',
+                    '/api/referentiel/champs-references/valeurs?schema=support&table=T_Support&column=ID_TypeSupportFk'])
+                with connection.cursor() as support_cursor:
+                    support_cursor.execute('SELECT "ID_Support" FROM support."T_Support" ORDER BY "ID_Support" LIMIT 1')
+                    support_record=support_cursor.fetchone()
+                if support_record:urls.append('/api/support/tickets/'+str(support_record[0]))
             for kind, (_, name, primary_key, _) in TERRITORIAL_REGISTERS.items():
                 root = "/api/geolocalisation/territoires/"
                 urls.extend([root + "registres/" + kind + "?take=1", root + "references/" + kind,

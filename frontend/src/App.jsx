@@ -30,6 +30,7 @@ const Admin=lazyView(()=>import("./pages/Admin"),{label:"Ouverture de l’admini
 const Logistique=lazyView(()=>import("./pages/Logistique"),{label:"Ouverture de la logistique…"});
 const Referentiels=lazyView(()=>import("./pages/Referentiels"),{label:"Ouverture de la page…"});
 const OrganisationTerritoriale=lazyView(()=>import("./pages/OrganisationTerritoriale"),{label:"Ouverture de la page…"});
+const Support=lazyView(()=>import("./pages/support/SupportPortal"),{label:"Ouverture du support…"});
 
 function SearchResultGroup({ title, items, onSelect }) {
   return (
@@ -123,6 +124,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
   const modules=[
     {key:"/logistique",label:"Logistique",icon:"box"},
     {key:"/territoires",label:"Organisation territoriale",icon:"globe"},
+    {key:"/support",label:"Support",icon:"bi-headset"},
     {key:"/referentiels",label:"Référentiels",icon:"tag"},
     ...(canAccessAdmin?[{key:"/admin",label:"Administration",icon:"shield"}]:[]),
   ].filter(item=>mayOpen(user,item.key));
@@ -420,5 +422,6 @@ export default function App() {
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
+  if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;
   return <ModuleGate><ApplicationShell key={scopeKey} /></ModuleGate>;
 }

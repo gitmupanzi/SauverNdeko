@@ -53,6 +53,10 @@ def source_definition(actor, interface_key):
             raise APIError("Interface inconnue.", "NOT_FOUND", 404)
         obj, *_ = source(actor, kind)
         return obj, LABELS, "territoires"
+    if module == "support" and kind == "tickets":
+        from apps.support.portal import table_source, LABELS
+        require_module(actor, "support")
+        return table_source(actor), LABELS, "support"
     raise APIError("Interface inconnue.", "NOT_FOUND", 404)
 
 

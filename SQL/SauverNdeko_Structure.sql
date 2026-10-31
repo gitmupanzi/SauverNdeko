@@ -1,11 +1,11 @@
--- Structure canonique SauverNdeko vérifiée le 30/10/2026 ; AUCUNE donnée.
+-- Structure canonique SauverNdeko vérifiée le 31/10/2026 ; AUCUNE donnée.
 -- Installation sur base vide uniquement, avec psql -X -v ON_ERROR_STOP=1 -f.
 -- Une base existante reçoit uniquement les migrations versionnées, pas ce fichier.
 --
 -- PostgreSQL database dump
 --
 
-\restrict 57A9A21uxlaL4l34HzLzTQhXGlBR90RYiECmy8qBJ4IUb8JDF7yuytAxGoFQKK4
+\restrict okRytbHkjZzgPkXCQZwdtpJAg4Fm1ylEhVukuErpxrp9rM3m3lJgoAlnMRB39y1
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -125,6 +125,20 @@ CREATE SCHEMA referentiel;
 --
 
 COMMENT ON SCHEMA referentiel IS 'Catégories et valeurs génériques utilisées pour les nomenclatures, statuts, types, unités et listes de référence.';
+
+
+--
+-- Name: support; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA support;
+
+
+--
+-- Name: SCHEMA support; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA support IS 'Dossiers d’assistance, incidents et réclamations propres aux entreprises ; les référentiels et configurations restent dans leurs schémas communs.';
 
 
 --
@@ -827,8 +841,8 @@ BEGIN
  ELSIF kind='facture' THEN SELECT "IdEntiteFk" INTO result FROM logistique."T_Facture" WHERE "ID_CommandeFk"=object_id;
  ELSIF kind='reglement' THEN SELECT c."IdEntiteFk" INTO result FROM logistique."T_Reglements" p JOIN logistique."T_Commande" c ON c."CodeFacture"=p."CodeFactureFk" WHERE p."ID_Reglement"=object_id;
  ELSIF kind='avoir' AND to_regclass('logistique."T_Avoir"') IS NOT NULL THEN EXECUTE 'SELECT "IdEntiteFk" FROM logistique."T_Avoir" WHERE "ID_Avoir"=$1' INTO result USING object_id;
- END IF;
- RETURN result;
+ ELSIF kind='support' THEN SELECT "IdEntiteFk" INTO result FROM support."T_Support" WHERE "ID_Support"=object_id;
+ END IF;RETURN result;
 END $_$;
 
 
@@ -836,7 +850,7 @@ END $_$;
 -- Name: FUNCTION fn_entite_document(kind text, object_id bigint); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout uniquement les types de documents autorisés et leur entreprise propriétaire durable.';
+COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout les propriétaires des documents autorisés, y compris Support ; stockage binaire privé existant réutilisé avec liaison FK contrôlée.';
 
 
 --
@@ -4011,6 +4025,8 @@ BEGIN
  IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
  owner_id:=coalesce(nullif(p_ligne->>'IdEntiteFk','')::integer,nullif(p_ligne->>'ID_EntiteFk','')::integer);
  IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
+ IF p_schema='support' AND p_table='T_ResolutionSupport' THEN
+  SELECT "IdEntiteFk" INTO owner_id FROM support."T_Support" WHERE "ID_Support"=nullif(p_ligne->>'ID_SupportFk','')::bigint;RETURN owner_id;END IF;
  IF p_schema='logistique' THEN
   CASE p_table
    WHEN 'T_Mouvement' THEN
@@ -4031,7 +4047,7 @@ END $$;
 -- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Propriétaire stable de la vraie ligne : FK directe, PK Entité, parent logistique ou unité de précision à propriétaire immuable. Les tables partagées sans propriétaire restent globales ; aucune déduction depuis l’utilisateur ou la session.';
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Résout le propriétaire durable de la vraie ligne, y compris la résolution Support via son parent ; aucune entreprise déduite du compte actuel.';
 
 
 --
@@ -4413,6 +4429,234 @@ COMMENT ON FUNCTION referentiel.tr_valider_champ_referentiel() IS 'Garde de tout
 
 
 --
+-- Name: fn_etat_support(jsonb, integer); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.fn_etat_support(p_circuit jsonb, p_statut integer) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$SELECT key FROM jsonb_each_text(p_circuit->'states') WHERE value=p_statut::text LIMIT 1$$;
+
+
+--
+-- Name: FUNCTION fn_etat_support(p_circuit jsonb, p_statut integer); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.fn_etat_support(p_circuit jsonb, p_statut integer) IS 'Rôle sémantique d’un statut dans la copie exacte du circuit du dossier ; aucun libellé ni ID de catégorie dupliqué.';
+
+
+--
+-- Name: tr_enfant_support_verifier(); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.tr_enfant_support_verifier() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE actor integer:=systeme.fn_admin_actor_user_id();parent support."T_Support";state text;piece logistique."T_PieceJustificative";entity_id integer;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Les échanges, résolutions et preuves du dossier sont conservés.' USING ERRCODE='23514';END IF;
+ SELECT * INTO parent FROM support."T_Support" WHERE "ID_Support"=NEW."ID_SupportFk" FOR UPDATE;
+ IF NOT FOUND OR parent."Archive" THEN RAISE EXCEPTION 'Dossier inexistant ou archivé.' USING ERRCODE='23514';END IF;
+ state:=support.fn_etat_support(parent."CircuitSnapshot",parent."ID_StatutFk");
+ IF actor IS NULL OR NOT EXISTS(SELECT FROM systeme."T_Utilisateurs" WHERE "IdUser"=actor AND ("Is_Admin" OR "IdEntiteFk"=parent."IdEntiteFk")) THEN RAISE EXCEPTION 'Auteur hors entreprise du dossier.' USING ERRCODE='23514';END IF;
+ IF TG_TABLE_NAME='T_CommentaireSupport' THEN
+  IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Les commentaires sont conservés sans réécriture.' USING ERRCODE='23514';END IF;
+  IF state='closed' THEN RAISE EXCEPTION 'Rouvrez le dossier avant de commenter.' USING ERRCODE='23514';END IF;
+  NEW."ID_AuteurFk":=actor;NEW."DateCreation":=clock_timestamp();NEW."DateModification":=NEW."DateCreation";
+ ELSIF TG_TABLE_NAME='T_ResolutionSupport' THEN
+  IF TG_OP='INSERT' THEN
+   IF state NOT IN('active','pending') OR parent."ID_ResponsableFk" IS NULL THEN RAISE EXCEPTION 'Le dossier doit être pris en charge avant proposition de solution.' USING ERRCODE='23514';END IF;
+   IF NEW."ID_ResultatVerificationFk" IS NOT NULL OR NEW."ID_VerifieParFk" IS NOT NULL OR NEW."DateVerification" IS NOT NULL THEN RAISE EXCEPTION 'La vérification intervient après la proposition.' USING ERRCODE='23514';END IF;
+   NEW."ID_ProposeParFk":=actor;NEW."DateProposition":=clock_timestamp();
+  ELSE
+   IF ROW(NEW."ID_ResolutionSupport",NEW."ID_SupportFk",NEW."CauseIdentifiee",NEW."SolutionAppliquee",NEW."ID_ProposeParFk",NEW."DateProposition") IS DISTINCT FROM ROW(OLD."ID_ResolutionSupport",OLD."ID_SupportFk",OLD."CauseIdentifiee",OLD."SolutionAppliquee",OLD."ID_ProposeParFk",OLD."DateProposition") OR OLD."ID_ResultatVerificationFk" IS NOT NULL THEN RAISE EXCEPTION 'La tentative et sa vérification sont immuables ; créez une nouvelle tentative.' USING ERRCODE='23514';END IF;
+   IF state<>'resolved' OR NEW."ID_ResolutionSupport" IS DISTINCT FROM (SELECT max("ID_ResolutionSupport") FROM support."T_ResolutionSupport" WHERE "ID_SupportFk"=parent."ID_Support") THEN RAISE EXCEPTION 'Seule la dernière résolution en attente peut être vérifiée.' USING ERRCODE='23514';END IF;
+   IF actor=NEW."ID_ProposeParFk" THEN RAISE EXCEPTION 'La vérification doit être faite par une autre personne habilitée.' USING ERRCODE='23514';END IF;
+   IF NEW."ID_ResultatVerificationFk" NOT IN((parent."CircuitSnapshot"->'verification'->>'accepted')::integer,(parent."CircuitSnapshot"->'verification'->>'rejected')::integer) OR NEW."ID_ResultatVerificationFk" IS NULL THEN RAISE EXCEPTION 'Résultat absent du circuit du dossier.' USING ERRCODE='23514';END IF;
+   IF nullif(btrim(NEW."CommentaireVerification"),'') IS NULL THEN RAISE EXCEPTION 'Commentaire de vérification obligatoire.' USING ERRCODE='23514';END IF;
+   NEW."ID_VerifieParFk":=actor;NEW."DateVerification":=clock_timestamp();
+  END IF;
+ ELSE
+  IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Le rattachement documentaire est immuable.' USING ERRCODE='23514';END IF;
+  IF state='closed' THEN RAISE EXCEPTION 'Rouvrez le dossier avant ajout de preuve.' USING ERRCODE='23514';END IF;
+  SELECT * INTO piece FROM logistique."T_PieceJustificative" WHERE "ID_Piece"=NEW."ID_PieceFk";
+  IF piece."TypeObjet" IS DISTINCT FROM 'support' OR piece."ID_Objet" IS DISTINCT FROM NEW."ID_SupportFk" OR piece."IdEntiteFk" IS DISTINCT FROM parent."IdEntiteFk" THEN RAISE EXCEPTION 'Preuve liée à un autre dossier ou une autre entreprise.' USING ERRCODE='23514';END IF;
+  IF NEW."ID_CommentaireSupportFk" IS NOT NULL AND NOT EXISTS(SELECT FROM support."T_CommentaireSupport" WHERE "ID_CommentaireSupport"=NEW."ID_CommentaireSupportFk" AND "ID_SupportFk"=parent."ID_Support" AND ("Visibilite"='public' OR NEW."Visibilite"='interne')) THEN RAISE EXCEPTION 'Commentaire de preuve incompatible avec le dossier ou sa visibilité.' USING ERRCODE='23514';END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_enfant_support_verifier(); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.tr_enfant_support_verifier() IS 'Verrouille le parent puis valide les échanges, les tentatives successives et les liaisons documentaires ; aucune confusion entre identifiant de tiers et compte, aucune preuve interentreprise, vérification par un auteur distinct.';
+
+
+--
+-- Name: tr_lien_proprietaire_conserver(); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.tr_lien_proprietaire_conserver() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE old_id bigint;col text;
+BEGIN
+ IF NEW."IdEntiteFk" IS NOT DISTINCT FROM OLD."IdEntiteFk" THEN RETURN NEW;END IF;
+ CASE TG_TABLE_NAME
+ WHEN 'T_Client' THEN old_id:=OLD."ID_Client";col:='ID_DemandeurFk';
+ WHEN 'T_Immobilisation' THEN old_id:=OLD."ID_Immobilisation";col:='ID_ImmobilisationFk';
+ WHEN 'T_Commande' THEN old_id:=OLD."ID_Commande";col:='ID_CommandeFk';
+ WHEN 'T_Article' THEN old_id:=OLD."ID_Article";col:='ID_ArticleFk';
+ WHEN 'T_Utilisateurs' THEN
+  IF EXISTS(SELECT FROM support."T_Support" WHERE "ID_ResponsableFk"=OLD."IdUser") THEN RAISE EXCEPTION 'Utilisateur affecté à un dossier Support ; entreprise conservée.' USING ERRCODE='23514';END IF;RETURN NEW;
+ ELSE RAISE EXCEPTION 'Lien métier non pris en charge.';
+ END CASE;
+ IF EXISTS(SELECT FROM support."T_Support" s WHERE (to_jsonb(s)->>col)::bigint=old_id) THEN RAISE EXCEPTION 'Objet lié à un dossier Support ; entreprise conservée.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_lien_proprietaire_conserver(); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.tr_lien_proprietaire_conserver() IS 'Empêche le déplacement interentreprise d’un tiers, article, bon, matériel ou affectataire déjà lié à un dossier, actif ou archivé ; complète les contrôles lors du rattachement.';
+
+
+--
+-- Name: tr_piece_liaison_complete(); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.tr_piece_liaison_complete() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF NEW."TypeObjet"='support' AND EXISTS(SELECT FROM logistique."T_PieceJustificative" WHERE "ID_Piece"=NEW."ID_Piece") AND NOT EXISTS(SELECT FROM support."T_PieceSupport" WHERE "ID_PieceFk"=NEW."ID_Piece" AND "ID_SupportFk"=NEW."ID_Objet") THEN RAISE EXCEPTION 'Une preuve Support exige sa liaison métier dans la même transaction.' USING ERRCODE='23514';END IF;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_piece_liaison_complete(); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.tr_piece_liaison_complete() IS 'Contrainte différée : un fichier Support du stockage commun possède sa liaison FK de dossier avant commit ; aucune preuve orpheline publiée.';
+
+
+--
+-- Name: tr_support_audit(); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.tr_support_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE before_data jsonb;after_data jsonb:=to_jsonb(NEW);ctx jsonb;parent_id bigint;entity_id integer;actor integer:=systeme.fn_admin_actor_user_id();
+BEGIN
+ IF TG_OP='UPDATE' THEN before_data:=to_jsonb(OLD);END IF;
+ BEGIN ctx:=coalesce(nullif(current_setting('support.mutation',true),'')::jsonb,'{}'::jsonb);EXCEPTION WHEN invalid_text_representation THEN RAISE EXCEPTION 'Contexte d’audit invalide.' USING ERRCODE='23514';END;
+ IF ctx<>'{}'::jsonb AND (coalesce(ctx->>'requestId','') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OR coalesce(ctx->>'payloadHash','') !~ '^[a-f0-9]{64}$' OR length(coalesce(ctx->>'motif',''))>2000) THEN RAISE EXCEPTION 'Preuve de requête invalide.' USING ERRCODE='23514';END IF;
+ IF TG_TABLE_NAME='T_Support' THEN parent_id:=NEW."ID_Support";entity_id:=NEW."IdEntiteFk";
+ ELSE parent_id:=NEW."ID_SupportFk";SELECT "IdEntiteFk" INTO entity_id FROM support."T_Support" WHERE "ID_Support"=parent_id;END IF;
+ after_data:=systeme.fn_audit_sans_secrets(after_data)||jsonb_build_object('_actor',jsonb_build_object('IdUser',actor),'ID_SupportFk',parent_id,'requestId',ctx->>'requestId','payloadHash',ctx->>'payloadHash','operation',coalesce(ctx->>'operation',lower(TG_OP)),'_motif',ctx->>'motif');
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk") VALUES('support.'||TG_TABLE_NAME,coalesce(ctx->>'operation',TG_OP),systeme.fn_audit_sans_secrets(before_data),after_data,CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Kinshasa',entity_id);
+ RETURN NULL;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_support_audit(); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.tr_support_audit() IS 'Réutilise le journal système pour une image par écriture métier, acteur, entreprise, motif et preuve UUID/hash, dans la même transaction ; aucun contenu binaire n’est dupliqué.';
+
+
+--
+-- Name: tr_support_verifier(); Type: FUNCTION; Schema: support; Owner: -
+--
+
+CREATE FUNCTION support.tr_support_verifier() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE actor integer:=systeme.fn_admin_actor_user_id();actor_entity integer;actor_global boolean;old_state text;new_state text;cfg jsonb;ctx jsonb;reason text;f record;latest support."T_ResolutionSupport";target_entity integer;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Archivez le dossier pour conserver son historique.' USING ERRCODE='23514';END IF;
+ IF actor IS NULL THEN RAISE EXCEPTION 'Auteur actif requis.' USING ERRCODE='23514';END IF;
+ SELECT "IdEntiteFk","Is_Admin" INTO actor_entity,actor_global FROM systeme."T_Utilisateurs" WHERE "IdUser"=actor;
+ IF NOT actor_global AND actor_entity IS DISTINCT FROM NEW."IdEntiteFk" THEN RAISE EXCEPTION 'Dossier hors entreprise de l’auteur.' USING ERRCODE='23514';END IF;
+ IF NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=NEW."IdEntiteFk" AND "ValideEntite") THEN RAISE EXCEPTION 'Entreprise active requise.' USING ERRCODE='23514';END IF;
+ BEGIN ctx:=coalesce(nullif(current_setting('support.mutation',true),'')::jsonb,'{}'::jsonb);EXCEPTION WHEN invalid_text_representation THEN RAISE EXCEPTION 'Contexte de traitement invalide.' USING ERRCODE='23514';END;
+ reason:=nullif(btrim(ctx->>'motif'),'');
+ IF TG_OP='INSERT' THEN
+  NEW."NumeroSupport":='SUP-'||NEW."ID_Support"::text;NEW."ID_CreateurFk":=actor;NEW."CircuitSnapshot":=systeme.fn_support_circuit(NEW."IdEntiteFk");
+  NEW."ID_StatutFk":=(NEW."CircuitSnapshot"->'states'->>'new')::integer;NEW."VersionEnregistrement":=1;
+  NEW."DateCreation":=clock_timestamp();NEW."DateResolution":=NULL;NEW."DateCloture":=NULL;NEW."Archive":=false;
+  -- Vérifier la configuration au moment de son utilisation, même si modifiée avant installation du garde.
+  FOR f IN SELECT * FROM jsonb_each_text(NEW."CircuitSnapshot"->'states') LOOP
+   IF f.value !~ '^[1-9][0-9]{0,8}$' OR NOT referentiel.fn_valider_reference_champ('support','T_Support','ID_StatutFk',f.value::integer,NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Le circuit ne correspond plus aux statuts configurés.' USING ERRCODE='23514';END IF;
+  END LOOP;
+ ELSE
+  IF ROW(NEW."ID_Support",NEW."IdEntiteFk",NEW."NumeroSupport",NEW."ID_CreateurFk",NEW."DateCreation",NEW."CircuitSnapshot") IS DISTINCT FROM ROW(OLD."ID_Support",OLD."IdEntiteFk",OLD."NumeroSupport",OLD."ID_CreateurFk",OLD."DateCreation",OLD."CircuitSnapshot") THEN RAISE EXCEPTION 'Identité, propriétaire et circuit initial du dossier immuables.' USING ERRCODE='23514';END IF;
+  IF NEW."VersionEnregistrement"<>OLD."VersionEnregistrement" THEN RAISE EXCEPTION 'La révision est attribuée par la base.' USING ERRCODE='23514';END IF;
+  NEW."VersionEnregistrement":=OLD."VersionEnregistrement"+1;
+  old_state:=support.fn_etat_support(OLD."CircuitSnapshot",OLD."ID_StatutFk");
+  IF OLD."Archive" AND NEW."Archive" THEN RAISE EXCEPTION 'Restaurez le dossier avant modification.' USING ERRCODE='23514';END IF;
+  IF NOT OLD."Archive" AND NEW."Archive" AND old_state<>'closed' THEN RAISE EXCEPTION 'Seul un dossier clôturé peut être archivé.' USING ERRCODE='23514';END IF;
+  IF OLD."Archive" IS DISTINCT FROM NEW."Archive" AND reason IS NULL THEN RAISE EXCEPTION 'Motif d’archivage ou de restauration obligatoire.' USING ERRCODE='23514';END IF;
+  IF OLD."Archive" IS DISTINCT FROM NEW."Archive" AND (to_jsonb(NEW)-ARRAY['Archive','VersionEnregistrement','DateModification']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['Archive','VersionEnregistrement','DateModification']) THEN RAISE EXCEPTION 'Archivage et modification se font séparément.' USING ERRCODE='23514';END IF;
+ END IF;
+ NEW."DateModification":=clock_timestamp();
+ new_state:=support.fn_etat_support(NEW."CircuitSnapshot",NEW."ID_StatutFk");
+ IF new_state IS NULL THEN RAISE EXCEPTION 'Statut absent du circuit du dossier.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND NEW."ID_StatutFk" IS DISTINCT FROM OLD."ID_StatutFk" THEN
+  IF NOT EXISTS(SELECT FROM jsonb_array_elements(NEW."CircuitSnapshot"->'transitions') e WHERE e->>'from'=old_state AND e->>'to'=new_state) THEN RAISE EXCEPTION 'Transition non autorisée par le circuit du dossier.' USING ERRCODE='23514';END IF;
+  IF (new_state='pending' OR (old_state IN('resolved','closed') AND new_state='active')) AND reason IS NULL THEN RAISE EXCEPTION 'Un motif est obligatoire pour la mise en attente ou la réouverture.' USING ERRCODE='23514';END IF;
+  IF new_state IN('active','pending','resolved') AND NEW."ID_ResponsableFk" IS NULL THEN RAISE EXCEPTION 'Responsable requis avant prise en charge.' USING ERRCODE='23514';END IF;
+  SELECT * INTO latest FROM support."T_ResolutionSupport" WHERE "ID_SupportFk"=NEW."ID_Support" ORDER BY "ID_ResolutionSupport" DESC LIMIT 1;
+  IF new_state='resolved' THEN
+   IF latest."ID_ResolutionSupport" IS NULL OR latest."ID_ResultatVerificationFk" IS NOT NULL OR latest."DateProposition"<OLD."DateModification" THEN RAISE EXCEPTION 'Nouvelle solution documentée requise avant résolution.' USING ERRCODE='23514';END IF;
+   NEW."DateResolution":=clock_timestamp();NEW."DateCloture":=NULL;
+  ELSIF new_state='closed' THEN
+   IF old_state<>'resolved' OR latest."ID_ResultatVerificationFk" IS DISTINCT FROM (NEW."CircuitSnapshot"->'verification'->>'accepted')::integer OR latest."ID_VerifieParFk" IS NULL OR latest."ID_VerifieParFk"=latest."ID_ProposeParFk" THEN RAISE EXCEPTION 'Résolution vérifiée conforme par un autre responsable requise avant clôture.' USING ERRCODE='23514';END IF;
+   NEW."DateCloture":=clock_timestamp();
+  ELSIF old_state IN('resolved','closed') THEN NEW."DateCloture":=NULL;NEW."DateResolution":=NULL;
+  END IF;
+ ELSIF TG_OP='UPDATE' THEN NEW."DateResolution":=OLD."DateResolution";NEW."DateCloture":=OLD."DateCloture";
+ END IF;
+ IF TG_OP='UPDATE' AND old_state='closed' AND new_state='closed' AND NEW."Archive"=OLD."Archive" THEN RAISE EXCEPTION 'Rouvrez le dossier avant modification.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_ResponsableFk" IS NOT NULL THEN PERFORM 1 FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."ID_ResponsableFk" FOR SHARE;END IF;
+ IF NEW."ID_DemandeurFk" IS NOT NULL THEN PERFORM 1 FROM logistique."T_Client" WHERE "ID_Client"=NEW."ID_DemandeurFk" FOR SHARE;END IF;
+ IF NEW."ID_ImmobilisationFk" IS NOT NULL THEN PERFORM 1 FROM logistique."T_Immobilisation" WHERE "ID_Immobilisation"=NEW."ID_ImmobilisationFk" FOR SHARE;END IF;
+ IF NEW."ID_CommandeFk" IS NOT NULL THEN PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_CommandeFk" FOR SHARE;END IF;
+ IF NEW."ID_ArticleFk" IS NOT NULL THEN PERFORM 1 FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk" FOR SHARE;END IF;
+ IF NEW."ID_ResponsableFk" IS NOT NULL AND (TG_OP='INSERT' OR NEW."ID_ResponsableFk" IS DISTINCT FROM OLD."ID_ResponsableFk") AND NOT EXISTS(SELECT FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."ID_ResponsableFk" AND "ValideUser" AND ("IdEntiteFk"=NEW."IdEntiteFk" OR "Is_Admin")) THEN RAISE EXCEPTION 'Responsable actif hors entreprise.' USING ERRCODE='23514';END IF;
+ IF new_state IN('active','pending','resolved') AND NEW."ID_ResponsableFk" IS NULL THEN RAISE EXCEPTION 'Responsable requis pendant le traitement.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_DemandeurFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Client" WHERE "ID_Client"=NEW."ID_DemandeurFk" AND "IdEntiteFk"=NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Demandeur hors entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_ImmobilisationFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Immobilisation" WHERE "ID_Immobilisation"=NEW."ID_ImmobilisationFk" AND "IdEntiteFk"=NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Matériel hors entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_CommandeFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_CommandeFk" AND "IdEntiteFk"=NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Bon hors entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."ID_ArticleFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Article" WHERE "ID_Article"=NEW."ID_ArticleFk" AND "IdEntiteFk"=NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Article hors entreprise.' USING ERRCODE='23514';END IF;
+ FOR f IN SELECT * FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"='support' AND "TableName"='T_Support' AND "ColumnName"<>'ID_StatutFk' LOOP
+  IF TG_OP='UPDATE' AND to_jsonb(NEW)->f."ColumnName" IS NOT DISTINCT FROM to_jsonb(OLD)->f."ColumnName" THEN CONTINUE;END IF;
+  IF to_jsonb(NEW)->>f."ColumnName" IS NOT NULL THEN PERFORM 1 FROM referentiel."T_Generique" WHERE "ID_Generique"=(to_jsonb(NEW)->>f."ColumnName")::integer FOR SHARE;END IF;
+  IF NOT referentiel.fn_valider_reference_champ('support','T_Support',f."ColumnName",(to_jsonb(NEW)->>f."ColumnName")::integer,NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Référence inactive ou incompatible : %.',f."ColumnName" USING ERRCODE='23514';END IF;
+ END LOOP;
+ RETURN NEW;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_support_verifier(); Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON FUNCTION support.tr_support_verifier() IS 'Socle métier SQL : propriété et identité immuables, copie initiale du circuit, références dynamiques, cohérence d’entreprise, responsable obligatoire, motif, solution puis vérification distincte avant clôture ; révision et dates exclusivement attribuées par la base.';
+
+
+--
 -- Name: audit_log_function(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -4707,6 +4951,71 @@ COMMENT ON FUNCTION systeme.fn_identite_documentaire(p_entite integer) IS 'Ident
 
 
 --
+-- Name: fn_support_circuit(integer); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_circuit(p_entite integer) RETURNS jsonb
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE r systeme."T_Admin_UI_Setting";
+BEGIN
+ SELECT * INTO r FROM systeme."T_Admin_UI_Setting" WHERE "SettingKey"='support.workflow' AND "ValideSetting" AND (("SettingScope"='entite' AND "ScopeValue"=p_entite::text) OR ("SettingScope"='global' AND "ScopeValue" IS NULL)) ORDER BY CASE WHEN "SettingScope"='entite' THEN 0 ELSE 1 END LIMIT 1;
+ IF NOT FOUND OR r."SettingType"<>'json' OR jsonb_typeof(r."SettingValueJson") IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Circuit de traitement Support indisponible.' USING ERRCODE='23514';END IF;
+ RETURN r."SettingValueJson"||jsonb_build_object('settingId',r."IdAdminUISetting",'settingUpdatedAt',r."UpdatedAt");
+END $$;
+
+
+--
+-- Name: FUNCTION fn_support_circuit(p_entite integer); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_circuit(p_entite integer) IS 'Résout le circuit Support dans les paramètres système existants, entreprise puis global ; ne crée aucune configuration parallèle et capture sa version lors de la création.';
+
+
+--
+-- Name: fn_support_circuit_defaut(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_circuit_defaut() RETURNS jsonb
+    LANGUAGE plpgsql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE states jsonb;verification jsonb;family integer;
+BEGIN
+ SELECT "ID_CategorieDefautFk" INTO family FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"='support' AND "TableName"='T_Support' AND "ColumnName"='ID_StatutFk';
+ SELECT jsonb_object_agg(replace("AbrGenerique",'support.status.',''),"ID_Generique") INTO states FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=family AND "IdEntiteFk" IS NULL AND "ValideGenerique" AND "AbrGenerique" IN('support.status.new','support.status.active','support.status.pending','support.status.resolved','support.status.closed');
+ SELECT "ID_CategorieDefautFk" INTO family FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"='support' AND "TableName"='T_ResolutionSupport' AND "ColumnName"='ID_ResultatVerificationFk';
+ SELECT jsonb_object_agg(CASE "AbrGenerique" WHEN 'support.verify.ok' THEN 'accepted' ELSE 'rejected' END,"ID_Generique") INTO verification FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=family AND "IdEntiteFk" IS NULL AND "ValideGenerique" AND "AbrGenerique" IN('support.verify.ok','support.verify.ko');
+ IF NOT (coalesce(states,'{}') ?& ARRAY['new','active','pending','resolved','closed']) OR NOT (coalesce(verification,'{}') ?& ARRAY['accepted','rejected']) THEN RAISE EXCEPTION 'Dictionnaire de circuit Support incomplet.' USING ERRCODE='23514';END IF;
+ RETURN jsonb_build_object('version',1,'states',states,'verification',verification,'transitions','[{"from":"new","to":"active","action":"start"},{"from":"active","to":"pending","action":"pause"},{"from":"pending","to":"active","action":"resume"},{"from":"active","to":"resolved","action":"resolve"},{"from":"pending","to":"resolved","action":"resolve"},{"from":"resolved","to":"closed","action":"close"},{"from":"resolved","to":"active","action":"reopen"},{"from":"closed","to":"active","action":"reopen"}]'::jsonb);
+END $$;
+
+
+--
+-- Name: FUNCTION fn_support_circuit_defaut(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_circuit_defaut() IS 'Circuit initial fermé d’installation : résout les identifiants du dictionnaire commun par codes sémantiques et familles du catalogue ; ne transporte aucune surcharge, auteur ou valeur de configuration client.';
+
+
+--
+-- Name: fn_support_object_size(jsonb); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.fn_support_object_size(p_value jsonb) RETURNS integer
+    LANGUAGE sql IMMUTABLE STRICT
+    AS $$SELECT count(*)::integer FROM jsonb_object_keys(p_value)$$;
+
+
+--
+-- Name: FUNCTION fn_support_object_size(p_value jsonb); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.fn_support_object_size(p_value jsonb) IS 'Nombre de propriétés d’un objet JSON du circuit, sans extension ni identifiant métier codé en dur.';
+
+
+--
 -- Name: format_phone_number(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -4980,6 +5289,47 @@ END $$;
 --
 
 COMMENT ON FUNCTION systeme.tr_localisation_patrimoine_proprietaire() IS 'Empêche de déplacer une localisation vers une autre entreprise lorsqu’un bien actif ou archivé y reste lié. Ne crée aucun état d’archivage fictif pour les localisations.';
+
+
+--
+-- Name: tr_support_circuit_valider(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_support_circuit_valider() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE v jsonb:=NEW."SettingValueJson";r record;entity_id integer;cnt integer;
+BEGIN
+ IF NEW."SettingKey"<>'support.workflow' THEN RETURN NEW;END IF;
+ IF NEW."SettingScope" NOT IN('global','entite') OR NEW."SettingType"<>'json' OR jsonb_typeof(v) IS DISTINCT FROM 'object' OR coalesce(v->>'version','') !~ '^[1-9][0-9]{0,8}$' OR jsonb_typeof(v->'states') IS DISTINCT FROM 'object' OR jsonb_typeof(v->'verification') IS DISTINCT FROM 'object' OR jsonb_typeof(v->'transitions') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'Structure du circuit Support invalide.' USING ERRCODE='23514';END IF;
+ IF NEW."SettingScope"='entite' THEN
+  IF coalesce(NEW."ScopeValue",'') !~ '^[1-9][0-9]{0,8}$' OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"::text=NEW."ScopeValue") THEN RAISE EXCEPTION 'Entreprise du circuit inconnue.' USING ERRCODE='23514';END IF;
+  entity_id:=NEW."ScopeValue"::integer;
+ END IF;
+ SELECT count(DISTINCT value) INTO cnt FROM jsonb_each_text(v->'states');
+ IF cnt<>5 OR NOT (v->'states' ?& ARRAY['new','active','pending','resolved','closed']) OR systeme.fn_support_object_size(v->'states')<>5 THEN RAISE EXCEPTION 'Les cinq états distincts du circuit sont requis.' USING ERRCODE='23514';END IF;
+ FOR r IN SELECT * FROM jsonb_each_text(v->'states') LOOP
+  IF r.value !~ '^[1-9][0-9]{0,8}$' OR NOT referentiel.fn_valider_reference_champ('support','T_Support','ID_StatutFk',r.value::integer,entity_id) THEN RAISE EXCEPTION 'Statut de circuit hors référentiel actif.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ IF NOT (v->'verification' ?& ARRAY['accepted','rejected']) OR v->'verification'->>'accepted'=v->'verification'->>'rejected' THEN RAISE EXCEPTION 'Résultats de vérification distincts requis.' USING ERRCODE='23514';END IF;
+ FOR r IN SELECT * FROM jsonb_each_text(v->'verification') LOOP
+  IF r.value !~ '^[1-9][0-9]{0,8}$' OR NOT referentiel.fn_valider_reference_champ('support','T_ResolutionSupport','ID_ResultatVerificationFk',r.value::integer,entity_id) THEN RAISE EXCEPTION 'Vérification hors référentiel actif.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ FOR r IN SELECT value edge FROM jsonb_array_elements(v->'transitions') LOOP
+  IF jsonb_typeof(r.edge) IS DISTINCT FROM 'object' OR NOT (v->'states' ? (r.edge->>'from')) OR NOT (v->'states' ? (r.edge->>'to')) OR r.edge->>'from'=r.edge->>'to' OR NOT EXISTS(
+   SELECT FROM (VALUES('new','active','start'),('active','pending','pause'),('pending','active','resume'),('active','resolved','resolve'),('pending','resolved','resolve'),('resolved','closed','close'),('resolved','active','reopen'),('closed','active','reopen')) allowed(src,dst,action)
+   WHERE allowed.src=r.edge->>'from' AND allowed.dst=r.edge->>'to' AND allowed.action=r.edge->>'action') THEN RAISE EXCEPTION 'Transition du circuit invalide ou action incompatible.' USING ERRCODE='23514';END IF;
+ END LOOP;
+ RETURN NEW;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_support_circuit_valider(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_support_circuit_valider() IS 'Contrôle les états et transitions du circuit dans T_Admin_UI_Setting contre le référencement physique courant ; les libellés restent exclusivement dans T_Generique.';
 
 
 --
@@ -8593,6 +8943,20 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_0"."geometryNiveau_0" IS 'Géométri
 
 
 --
+-- Name: COLUMN "V_Niveau_0"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_0"."uidSNIS" IS 'Identifiant SNIS du pays ou territoire, conservé depuis la table source sans transformation.';
+
+
+--
+-- Name: COLUMN "V_Niveau_0"."Nb_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_0"."Nb_Niveau_1" IS 'Nombre exact de niveaux 1 rattachés à ce pays, sans exclusion implicite de fusion ou visibilité. Correspond au registre des provinces filtré sur ID_Niveau_0_Fk.';
+
+
+--
 -- Name: V_Niveau_1; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
@@ -8796,6 +9160,27 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."VisibleNiveau_5" IS 'Indicateur 
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."ObsNiveau_1" IS 'Observations sur l’unité géographique de niveau 1. Expression projetée : n1a."ObsNiveau_1".';
+
+
+--
+-- Name: COLUMN "V_Niveau_1".prov_uid; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1".prov_uid IS 'Identifiant provincial complémentaire, conservé depuis la table source.';
+
+
+--
+-- Name: COLUMN "V_Niveau_1"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."uidSNIS" IS 'Identifiant SNIS provincial, conservé depuis la table source.';
+
+
+--
+-- Name: COLUMN "V_Niveau_1"."Nb_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Nb_Niveau_2" IS 'Nombre exact de niveaux 2 rattachés à la province. Correspond au registre des antennes filtré sur ID_Niveau_1_FK.';
 
 
 --
@@ -9094,6 +9479,62 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."SelectNiveau_2" IS 'Indicateur d
 
 
 --
+-- Name: COLUMN "V_Niveau_2"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par la province, utilisable pour filtrer le découpage partagé.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_1" IS 'Identifiant de province parent ; alias de lecture compatible avec les analyses territoriales.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente ; NULL reste inconnu, aucune exclusion automatique.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_1" IS 'Visibilité déclarée du niveau provincial parent, sans restriction implicite des compteurs.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_5" IS 'Visibilité des sites déclarée par la province parente, conservée sans modifier ses sites.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2".iso IS 'Code ISO ou identifiant géographique enregistré pour cette subdivision.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette subdivision.';
+
+
+--
+-- Name: COLUMN "V_Niveau_2"."Nb_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Nb_Niveau_3" IS 'Nombre exact de zones de santé rattachées à cette subdivision. Correspond au registre des zones filtré sur ID_Niveau_2_FK.';
+
+
+--
 -- Name: V_Niveau_3; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
@@ -9350,6 +9791,97 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."SelectNiveau_3" IS 'Indicateur d
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2_FK" IS 'Unité géographique de rattachement de niveau 2. Expression projetée : n3."ID_Niveau_2_FK".';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par les jointures de rattachement.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_0" IS 'Nom courant du pays parent, issu de la source unique géographique.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_1" IS 'Identifiant de la province parente de la zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_1" IS 'Nom courant de la province parente de la zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2" IS 'Identifiant de la subdivision parente de la zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_2" IS 'Nom courant de la subdivision parente de la zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."FusionNiveau_1" IS 'Indicateur de fusion provincial, exposé pour les filtres sans exclusion implicite.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente ; aucun territoire n’est masqué par cette vue.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_5" IS 'Visibilité déclarée des sites de la province parente, sans réécriture de données.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3".iso IS 'Code ISO ou identifiant géographique enregistré pour cette zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette zone.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."Nb_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_4" IS 'Nombre exact d’aires rattachées à cette zone. Correspond au registre des aires filtré sur ID_Niveau_3_Fk.';
+
+
+--
+-- Name: COLUMN "V_Niveau_3"."Nb_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_5" IS 'Nombre exact de sites de cette zone : rattachement direct prioritaire, sinon zone de l’aire. Chaque site compte une fois. Correspond au registre des sites filtré sur ID_Niveau_3 effectif.';
 
 
 --
@@ -9664,6 +10196,55 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_StatutNiveau_4" IS 'Statut de
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_StatutDeploiementFk" IS 'Statut de déploiement enregistré pour l’unité géographique. Expression projetée : n4."ID_StatutDeploiementFk".';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans filtre implicite.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente, exposée sans altération.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4".iso IS 'Code ISO ou identifiant géographique enregistré pour cette aire.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette aire.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."Nb_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de sites directement rattachés à cette aire. Les sites rattachés seulement à une zone ne sont pas attribués arbitrairement à une aire.';
+
+
+--
+-- Name: COLUMN "V_Niveau_4"."AvecReseau"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
 
 
 --
@@ -10004,6 +10585,62 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ObsNiveau_5" IS 'Observations su
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."SelectNiveau_5" IS 'Indicateur de sélection enregistré pour l’unité géographique de niveau 5. Expression projetée : n5."SelectNiveau_5".';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."NomNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_4" IS 'Nom courant de l’aire lorsque le site lui est réellement rattaché ; NULL si aucun rattachement à une aire.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."Type_Toit"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Toit" IS 'Abréviation du type de toit selon la valeur générique enregistrée ; ne remplace pas sa clé étrangère.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans exclusion implicite des sites.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente du site.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5".iso IS 'Code ISO ou identifiant géographique enregistré pour ce site.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."uidSNIS" IS 'Identifiant SNIS enregistré pour ce site.';
+
+
+--
+-- Name: COLUMN "V_Niveau_5"."ID_TypeNiveau_4_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeNiveau_4_Fk" IS 'Type de l’aire réellement liée au site ; NULL lorsque le site n’a pas d’aire ou que son type est absent. Permet le détail exact des analyses par type d’aire.';
 
 
 --
@@ -13804,7 +14441,7 @@ CREATE TABLE logistique."T_PieceJustificative" (
     CONSTRAINT "T_PieceJustificative_NomFichier_check" CHECK ((length(btrim(("NomFichier")::text)) > 0)),
     CONSTRAINT "T_PieceJustificative_Sha256_check" CHECK (("Sha256" ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT "T_PieceJustificative_TailleOctets_check" CHECK ((("TailleOctets" > 0) AND ("TailleOctets" <= 8388608))),
-    CONSTRAINT "T_PieceJustificative_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text]))),
+    CONSTRAINT "T_PieceJustificative_TypeObjet_check" CHECK (("TypeObjet" = ANY (ARRAY['bon'::text, 'facture'::text, 'reglement'::text, 'avoir'::text, 'support'::text]))),
     CONSTRAINT "T_PieceJustificative_check" CHECK ((octet_length("Contenu") = "TailleOctets")),
     CONSTRAINT ck_piece_sha256_contenu CHECK (("Sha256" = encode(sha256("Contenu"), 'hex'::text)))
 );
@@ -13814,7 +14451,7 @@ CREATE TABLE logistique."T_PieceJustificative" (
 -- Name: TABLE "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_PieceJustificative" IS 'Justificatifs privés de documents logistiques, téléchargés après contrôle du parent et conservés après archivage.';
+COMMENT ON TABLE logistique."T_PieceJustificative" IS 'Stockage privé des justificatifs métier, partagé avec Support via une liaison FK dédiée ; téléchargement après contrôle du parent, entreprise et visibilité, contenu conservé après archivage.';
 
 
 --
@@ -13828,7 +14465,7 @@ COMMENT ON COLUMN logistique."T_PieceJustificative"."ID_Piece" IS 'Champ documen
 -- Name: COLUMN "T_PieceJustificative"."TypeObjet"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_PieceJustificative"."TypeObjet" IS 'Champ documentaire TypeObjet du justificatif ou de son identité historique.';
+COMMENT ON COLUMN logistique."T_PieceJustificative"."TypeObjet" IS 'Type métier fermé du parent, dont support ; le dossier Support possède en plus une liaison réelle à clés étrangères.';
 
 
 --
@@ -13899,6 +14536,13 @@ COMMENT ON COLUMN logistique."T_PieceJustificative"."Archive" IS 'Pièce retiré
 --
 
 COMMENT ON COLUMN logistique."T_PieceJustificative"."CreeLe" IS 'Champ documentaire CreeLe du justificatif ou de son identité historique.';
+
+
+--
+-- Name: CONSTRAINT "T_PieceJustificative_TypeObjet_check" ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_PieceJustificative_TypeObjet_check" ON logistique."T_PieceJustificative" IS 'Types explicitement autorisés dans le stockage privé commun, dont support ; le parent et la liaison métier sont contrôlés séparément.';
 
 
 --
@@ -26549,7 +27193,7 @@ CREATE TABLE referentiel."T_InterfaceTableau" (
     CONSTRAINT "T_InterfaceTableau_Colonnes_check" CHECK ((jsonb_typeof("Colonnes") = 'array'::text)),
     CONSTRAINT "T_InterfaceTableau_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT ck_interface_tableau_cle CHECK (("CleInterface" ~ '^[a-z]+[.][a-z-]+$'::text)),
-    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text])))
+    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text])))
 );
 
 
@@ -26669,7 +27313,7 @@ COMMENT ON CONSTRAINT ck_interface_tableau_cle ON referentiel."T_InterfaceTablea
 -- Name: CONSTRAINT ck_interface_tableau_module ON "T_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Applications couvertes par les catalogues persistants de tableaux et exports, dont Organisation territoriale. Les droits sont vérifiés par chaque service source.';
+COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules possédant un catalogue de tableau et export, incluant Support sans accorder un accès ou une licence.';
 
 
 --
@@ -27413,6 +28057,1249 @@ COMMENT ON COLUMN referentiel."V_ReferencementChamp"._version IS 'Projection de 
 --
 
 COMMENT ON COLUMN referentiel."V_ReferencementChamp"."ReferenceHeriteeParent" IS 'Projection de référencement : ReferenceHeriteeParent. Les identités techniques et catégories restent issues du même catalogue et du même résolveur.';
+
+
+--
+-- Name: T_CommentaireSupport; Type: TABLE; Schema: support; Owner: -
+--
+
+CREATE TABLE support."T_CommentaireSupport" (
+    "ID_CommentaireSupport" bigint NOT NULL,
+    "ID_SupportFk" bigint NOT NULL,
+    "ID_AuteurFk" integer NOT NULL,
+    "Contenu" text NOT NULL,
+    "Visibilite" text DEFAULT 'public'::text NOT NULL,
+    "DateCreation" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "DateModification" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT "T_CommentaireSupport_Contenu_check" CHECK (((length(btrim("Contenu")) >= 1) AND (length(btrim("Contenu")) <= 20000))),
+    CONSTRAINT "T_CommentaireSupport_Visibilite_check" CHECK (("Visibilite" = ANY (ARRAY['public'::text, 'interne'::text])))
+);
+
+
+--
+-- Name: TABLE "T_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TABLE support."T_CommentaireSupport" IS 'Échanges immuables du dossier, publics pour ses lecteurs autorisés ou internes aux gestionnaires ; aucune publication Internet.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."ID_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."ID_CommentaireSupport" IS 'Donnée Support ID_CommentaireSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."ID_AuteurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."ID_AuteurFk" IS 'Donnée Support ID_AuteurFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."Contenu"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."Contenu" IS 'Donnée Support Contenu : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."Visibilite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."Visibilite" IS 'public : lecteurs autorisés du dossier ; interne : gestionnaires habilités uniquement, jamais un partage Internet.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."DateCreation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."DateCreation" IS 'Donnée Support DateCreation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_CommentaireSupport"."DateModification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_CommentaireSupport"."DateModification" IS 'Donnée Support DateModification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: T_CommentaireSupport_ID_CommentaireSupport_seq; Type: SEQUENCE; Schema: support; Owner: -
+--
+
+ALTER TABLE support."T_CommentaireSupport" ALTER COLUMN "ID_CommentaireSupport" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME support."T_CommentaireSupport_ID_CommentaireSupport_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_PieceSupport; Type: TABLE; Schema: support; Owner: -
+--
+
+CREATE TABLE support."T_PieceSupport" (
+    "ID_PieceFk" bigint NOT NULL,
+    "ID_SupportFk" bigint NOT NULL,
+    "ID_CommentaireSupportFk" bigint,
+    "Visibilite" text DEFAULT 'public'::text NOT NULL,
+    CONSTRAINT "T_PieceSupport_Visibilite_check" CHECK (("Visibilite" = ANY (ARRAY['public'::text, 'interne'::text])))
+);
+
+
+--
+-- Name: TABLE "T_PieceSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TABLE support."T_PieceSupport" IS 'Liaison à clés étrangères du dossier vers le stockage privé T_PieceJustificative existant, sans duplication des octets ; commentaire facultatif du même dossier.';
+
+
+--
+-- Name: COLUMN "T_PieceSupport"."ID_PieceFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_PieceSupport"."ID_PieceFk" IS 'Vraie FK vers le stockage binaire privé existant logistique.T_PieceJustificative ; aucun octet dupliqué.';
+
+
+--
+-- Name: COLUMN "T_PieceSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_PieceSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_PieceSupport"."ID_CommentaireSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_PieceSupport"."ID_CommentaireSupportFk" IS 'Commentaire facultatif appartenant au même dossier ; une preuve interne ne devient pas publique.';
+
+
+--
+-- Name: COLUMN "T_PieceSupport"."Visibilite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_PieceSupport"."Visibilite" IS 'public : lecteurs autorisés du dossier ; interne : gestionnaires habilités uniquement, jamais un partage Internet.';
+
+
+--
+-- Name: T_ResolutionSupport; Type: TABLE; Schema: support; Owner: -
+--
+
+CREATE TABLE support."T_ResolutionSupport" (
+    "ID_ResolutionSupport" bigint NOT NULL,
+    "ID_SupportFk" bigint NOT NULL,
+    "CauseIdentifiee" text NOT NULL,
+    "SolutionAppliquee" text NOT NULL,
+    "ID_ProposeParFk" integer NOT NULL,
+    "DateProposition" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "ID_ResultatVerificationFk" integer,
+    "ID_VerifieParFk" integer,
+    "DateVerification" timestamp with time zone,
+    "CommentaireVerification" text,
+    CONSTRAINT "T_ResolutionSupport_CauseIdentifiee_check" CHECK (((length(btrim("CauseIdentifiee")) >= 1) AND (length(btrim("CauseIdentifiee")) <= 10000))),
+    CONSTRAINT "T_ResolutionSupport_CommentaireVerification_check" CHECK ((("CommentaireVerification" IS NULL) OR (length("CommentaireVerification") <= 10000))),
+    CONSTRAINT "T_ResolutionSupport_SolutionAppliquee_check" CHECK (((length(btrim("SolutionAppliquee")) >= 1) AND (length(btrim("SolutionAppliquee")) <= 20000))),
+    CONSTRAINT ck_support_verificateur_distinct CHECK (("ID_VerifieParFk" IS DISTINCT FROM "ID_ProposeParFk")),
+    CONSTRAINT ck_support_verification_complete CHECK (((("ID_ResultatVerificationFk" IS NULL) AND ("ID_VerifieParFk" IS NULL) AND ("DateVerification" IS NULL)) OR (("ID_ResultatVerificationFk" IS NOT NULL) AND ("ID_VerifieParFk" IS NOT NULL) AND ("DateVerification" IS NOT NULL))))
+);
+
+
+--
+-- Name: TABLE "T_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TABLE support."T_ResolutionSupport" IS 'Tentatives successives de résolution, solution documentée et vérification contradictoire immuable ; une proposition n’est pas une clôture.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."ID_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."ID_ResolutionSupport" IS 'Donnée Support ID_ResolutionSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."CauseIdentifiee"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."CauseIdentifiee" IS 'Donnée Support CauseIdentifiee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."SolutionAppliquee"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."SolutionAppliquee" IS 'Donnée Support SolutionAppliquee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."ID_ProposeParFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."ID_ProposeParFk" IS 'Auteur réel de cette tentative de résolution ; les tentatives antérieures restent conservées.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."DateProposition"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."DateProposition" IS 'Donnée Support DateProposition : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."ID_ResultatVerificationFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."ID_ResultatVerificationFk" IS 'Résultat dans T_Generique, parmi ceux capturés dans le circuit ; NULL tant que la solution n’est pas vérifiée.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."ID_VerifieParFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."ID_VerifieParFk" IS 'Personne habilitée ayant vérifié la dernière solution, obligatoirement différente de son auteur.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."DateVerification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."DateVerification" IS 'Donnée Support DateVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_ResolutionSupport"."CommentaireVerification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_ResolutionSupport"."CommentaireVerification" IS 'Donnée Support CommentaireVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: T_ResolutionSupport_ID_ResolutionSupport_seq; Type: SEQUENCE; Schema: support; Owner: -
+--
+
+ALTER TABLE support."T_ResolutionSupport" ALTER COLUMN "ID_ResolutionSupport" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME support."T_ResolutionSupport_ID_ResolutionSupport_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: T_Support; Type: TABLE; Schema: support; Owner: -
+--
+
+CREATE TABLE support."T_Support" (
+    "ID_Support" bigint NOT NULL,
+    "IdEntiteFk" integer NOT NULL,
+    "NumeroSupport" character varying(40) NOT NULL,
+    "Objet" character varying(200) NOT NULL,
+    "Description" text NOT NULL,
+    "ID_DemandeurFk" bigint,
+    "ID_CreateurFk" integer NOT NULL,
+    "ID_ResponsableFk" integer,
+    "ID_ServiceConcerneFk" integer,
+    "ID_TypeSupportFk" integer NOT NULL,
+    "ID_CategorieSupportFk" integer,
+    "ID_PrioriteFk" integer NOT NULL,
+    "ID_StatutFk" integer NOT NULL,
+    "ID_CanalOrigineFk" integer NOT NULL,
+    "ID_ImmobilisationFk" integer,
+    "ID_CommandeFk" integer,
+    "ID_ArticleFk" integer,
+    "DateCreation" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "DateModification" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "DateEcheance" timestamp with time zone,
+    "DateResolution" timestamp with time zone,
+    "DateCloture" timestamp with time zone,
+    "VersionEnregistrement" bigint DEFAULT 1 NOT NULL,
+    "Archive" boolean DEFAULT false NOT NULL,
+    "CircuitSnapshot" jsonb NOT NULL,
+    CONSTRAINT "T_Support_CircuitSnapshot_check" CHECK ((jsonb_typeof("CircuitSnapshot") = 'object'::text)),
+    CONSTRAINT "T_Support_DateEcheance_check" CHECK ((("DateEcheance" IS NULL) OR isfinite("DateEcheance"))),
+    CONSTRAINT "T_Support_Description_check" CHECK (((length(btrim("Description")) >= 1) AND (length(btrim("Description")) <= 20000))),
+    CONSTRAINT "T_Support_Objet_check" CHECK (((length(btrim(("Objet")::text)) >= 1) AND (length(btrim(("Objet")::text)) <= 200))),
+    CONSTRAINT "T_Support_VersionEnregistrement_check" CHECK (("VersionEnregistrement" > 0))
+);
+
+
+--
+-- Name: TABLE "T_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TABLE support."T_Support" IS 'Dossier d’assistance ou de réclamation appartenant durablement à une entreprise. Le numéro, l’auteur et le circuit initial sont immuables ; la résolution est distincte de sa vérification et de la clôture.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_Support" IS 'Donnée Support ID_Support : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "T_Support"."NumeroSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."NumeroSupport" IS 'Numéro court SUP-identifiant attribué par PostgreSQL ; unique dans son entreprise et non modifiable.';
+
+
+--
+-- Name: COLUMN "T_Support"."Objet"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."Objet" IS 'Donnée Support Objet : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."Description"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."Description" IS 'Donnée Support Description : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_DemandeurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_DemandeurFk" IS 'Tiers de T_Client dans la même entreprise ; peut ne pas disposer de compte connecté.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_CreateurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_CreateurFk" IS 'Compte actif ayant réellement créé le dossier ; identité attribuée depuis le contexte transactionnel validé.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_ResponsableFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_ResponsableFk" IS 'Compte actif affectataire de la même entreprise ou administrateur de plateforme ; requis pour traiter le dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_ServiceConcerneFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_ServiceConcerneFk" IS 'Donnée Support ID_ServiceConcerneFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_TypeSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_TypeSupportFk" IS 'Donnée Support ID_TypeSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_CategorieSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_CategorieSupportFk" IS 'Donnée Support ID_CategorieSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_PrioriteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_PrioriteFk" IS 'Donnée Support ID_PrioriteFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_StatutFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_StatutFk" IS 'ID_Generique de l’état courant dans le circuit initial du dossier, distinct de son libellé modifiable.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_CanalOrigineFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_CanalOrigineFk" IS 'Donnée Support ID_CanalOrigineFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_ImmobilisationFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_ImmobilisationFk" IS 'Matériel facultatif lié par FK réelle, propriétaire vérifié ; aucune opération de stock.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_CommandeFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_CommandeFk" IS 'Bon facultatif lié par FK réelle et limité à la même entreprise.';
+
+
+--
+-- Name: COLUMN "T_Support"."ID_ArticleFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."ID_ArticleFk" IS 'Article facultatif lié par FK réelle et limité à la même entreprise.';
+
+
+--
+-- Name: COLUMN "T_Support"."DateCreation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."DateCreation" IS 'Donnée Support DateCreation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."DateModification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."DateModification" IS 'Donnée Support DateModification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."DateEcheance"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."DateEcheance" IS 'Donnée Support DateEcheance : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "T_Support"."DateResolution"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."DateResolution" IS 'Instant effectif de passage à Résolu ; remise à NULL après réouverture, valeur antérieure conservée dans l’audit.';
+
+
+--
+-- Name: COLUMN "T_Support"."DateCloture"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."DateCloture" IS 'Instant de clôture après vérification conforme de la dernière solution ; NULL pendant un traitement rouvert.';
+
+
+--
+-- Name: COLUMN "T_Support"."VersionEnregistrement"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."VersionEnregistrement" IS 'Révision positive augmentée atomiquement à chaque écriture ; le service compare la version reçue sous verrou avant modification.';
+
+
+--
+-- Name: COLUMN "T_Support"."Archive"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."Archive" IS 'Retrait du parcours actif sans suppression du dossier, de ses échanges, résolutions et preuves.';
+
+
+--
+-- Name: COLUMN "T_Support"."CircuitSnapshot"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."T_Support"."CircuitSnapshot" IS 'Copie immuable du circuit système et de sa version à la création, avec les ID_Generique des états et résultats ; une modification de configuration ne migre aucun dossier.';
+
+
+--
+-- Name: T_Support_ID_Support_seq; Type: SEQUENCE; Schema: support; Owner: -
+--
+
+ALTER TABLE support."T_Support" ALTER COLUMN "ID_Support" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME support."T_Support_ID_Support_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: V_CommentaireSupport; Type: VIEW; Schema: support; Owner: -
+--
+
+CREATE VIEW support."V_CommentaireSupport" AS
+ SELECT x."ID_CommentaireSupport",
+    x."ID_SupportFk",
+    x."ID_AuteurFk",
+    x."Contenu",
+    x."Visibilite",
+    x."DateCreation",
+    x."DateModification",
+    s."IdEntiteFk",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Auteur"
+   FROM ((support."T_CommentaireSupport" x
+     JOIN support."T_Support" s ON ((s."ID_Support" = x."ID_SupportFk")))
+     JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = x."ID_AuteurFk")));
+
+
+--
+-- Name: VIEW "V_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON VIEW support."V_CommentaireSupport" IS 'Échanges du dossier avec auteur et propriétaire, sans octets documentaires ; le filtre de visibilité interne reste obligatoire avant réponse API.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."ID_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."ID_CommentaireSupport" IS 'Donnée Support ID_CommentaireSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."ID_AuteurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."ID_AuteurFk" IS 'Donnée Support ID_AuteurFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."Contenu"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."Contenu" IS 'Donnée Support Contenu : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."Visibilite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."Visibilite" IS 'public : lecteurs autorisés du dossier ; interne : gestionnaires habilités uniquement, jamais un partage Internet.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."DateCreation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."DateCreation" IS 'Donnée Support DateCreation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."DateModification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."DateModification" IS 'Donnée Support DateModification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "V_CommentaireSupport"."Auteur"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_CommentaireSupport"."Auteur" IS 'Donnée Support Auteur : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: V_PieceSupport; Type: VIEW; Schema: support; Owner: -
+--
+
+CREATE VIEW support."V_PieceSupport" AS
+ SELECT x."ID_PieceFk",
+    x."ID_SupportFk",
+    x."ID_CommentaireSupportFk",
+    x."Visibilite",
+    s."IdEntiteFk",
+    p."ID_UserFk",
+    p."NomFichier",
+    p."MimeType",
+    p."TailleOctets",
+    p."Sha256",
+    p."Archive",
+    p."CreeLe"
+   FROM ((support."T_PieceSupport" x
+     JOIN support."T_Support" s ON ((s."ID_Support" = x."ID_SupportFk")))
+     JOIN logistique."T_PieceJustificative" p ON ((p."ID_Piece" = x."ID_PieceFk")));
+
+
+--
+-- Name: VIEW "V_PieceSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON VIEW support."V_PieceSupport" IS 'Métadonnées de preuves liées par vraie FK, sans contenu binaire ; téléchargement autorisé via le parent et le niveau de visibilité.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."ID_PieceFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."ID_PieceFk" IS 'Vraie FK vers le stockage binaire privé existant logistique.T_PieceJustificative ; aucun octet dupliqué.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."ID_CommentaireSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."ID_CommentaireSupportFk" IS 'Commentaire facultatif appartenant au même dossier ; une preuve interne ne devient pas publique.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."Visibilite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."Visibilite" IS 'public : lecteurs autorisés du dossier ; interne : gestionnaires habilités uniquement, jamais un partage Internet.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."ID_UserFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."ID_UserFk" IS 'Donnée Support ID_UserFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."NomFichier"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."NomFichier" IS 'Donnée Support NomFichier : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."MimeType"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."MimeType" IS 'Donnée Support MimeType : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."TailleOctets"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."TailleOctets" IS 'Donnée Support TailleOctets : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."Sha256"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."Sha256" IS 'Donnée Support Sha256 : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."Archive"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."Archive" IS 'Retrait du parcours actif sans suppression du dossier, de ses échanges, résolutions et preuves.';
+
+
+--
+-- Name: COLUMN "V_PieceSupport"."CreeLe"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_PieceSupport"."CreeLe" IS 'Donnée Support CreeLe : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: V_ResolutionSupport; Type: VIEW; Schema: support; Owner: -
+--
+
+CREATE VIEW support."V_ResolutionSupport" AS
+ SELECT x."ID_ResolutionSupport",
+    x."ID_SupportFk",
+    x."CauseIdentifiee",
+    x."SolutionAppliquee",
+    x."ID_ProposeParFk",
+    x."DateProposition",
+    x."ID_ResultatVerificationFk",
+    x."ID_VerifieParFk",
+    x."DateVerification",
+    x."CommentaireVerification",
+    s."IdEntiteFk",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "ProposePar",
+    NULLIF(concat_ws(' '::text, v."PrenomUser", v."NomUser"), ''::text) AS "VerifiePar",
+    g."NomGenerique" AS "ResultatVerification"
+   FROM ((((support."T_ResolutionSupport" x
+     JOIN support."T_Support" s ON ((s."ID_Support" = x."ID_SupportFk")))
+     JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = x."ID_ProposeParFk")))
+     LEFT JOIN systeme."T_Utilisateurs" v ON ((v."IdUser" = x."ID_VerifieParFk")))
+     LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = x."ID_ResultatVerificationFk")));
+
+
+--
+-- Name: VIEW "V_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON VIEW support."V_ResolutionSupport" IS 'Toutes les tentatives successives et leurs vérifications, distinctes du statut courant du dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ID_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResolutionSupport" IS 'Donnée Support ID_ResolutionSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."CauseIdentifiee"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."CauseIdentifiee" IS 'Donnée Support CauseIdentifiee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."SolutionAppliquee"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."SolutionAppliquee" IS 'Donnée Support SolutionAppliquee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ID_ProposeParFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ProposeParFk" IS 'Auteur réel de cette tentative de résolution ; les tentatives antérieures restent conservées.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."DateProposition"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."DateProposition" IS 'Donnée Support DateProposition : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ID_ResultatVerificationFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResultatVerificationFk" IS 'Résultat dans T_Generique, parmi ceux capturés dans le circuit ; NULL tant que la solution n’est pas vérifiée.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ID_VerifieParFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ID_VerifieParFk" IS 'Personne habilitée ayant vérifié la dernière solution, obligatoirement différente de son auteur.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."DateVerification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."DateVerification" IS 'Donnée Support DateVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."CommentaireVerification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."CommentaireVerification" IS 'Donnée Support CommentaireVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ProposePar"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ProposePar" IS 'Donnée Support ProposePar : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."VerifiePar"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."VerifiePar" IS 'Donnée Support VerifiePar : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_ResolutionSupport"."ResultatVerification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_ResolutionSupport"."ResultatVerification" IS 'Donnée Support ResultatVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: V_Support; Type: VIEW; Schema: support; Owner: -
+--
+
+CREATE VIEW support."V_Support" AS
+ SELECT s."ID_Support",
+    s."IdEntiteFk",
+    s."NumeroSupport",
+    s."Objet",
+    s."Description",
+    s."ID_DemandeurFk",
+    s."ID_CreateurFk",
+    s."ID_ResponsableFk",
+    s."ID_ServiceConcerneFk",
+    s."ID_TypeSupportFk",
+    s."ID_CategorieSupportFk",
+    s."ID_PrioriteFk",
+    s."ID_StatutFk",
+    s."ID_CanalOrigineFk",
+    s."ID_ImmobilisationFk",
+    s."ID_CommandeFk",
+    s."ID_ArticleFk",
+    s."DateCreation",
+    s."DateModification",
+    s."DateEcheance",
+    s."DateResolution",
+    s."DateCloture",
+    s."VersionEnregistrement",
+    s."Archive",
+    s."CircuitSnapshot",
+    e."NomEntite",
+    e."NomEntite" AS "Entreprise",
+    d."Nom" AS "Demandeur",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Createur",
+    NULLIF(concat_ws(' '::text, r."PrenomUser", r."NomUser"), ''::text) AS "Responsable",
+    typ."NomGenerique" AS "TypeSupport",
+    cat."NomGenerique" AS "CategorieSupport",
+    pri."NomGenerique" AS "Priorite",
+    sta."NomGenerique" AS "Statut",
+    can."NomGenerique" AS "CanalOrigine",
+    ser."NomGenerique" AS "ServiceConcerne",
+    support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") AS "StatutCode",
+    ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text]))) AS "Ouvert",
+    ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text])) AND (s."DateEcheance" < clock_timestamp())) AS "EnRetard",
+    i."CodeImmobilisation",
+    i."NomImmobilisation",
+    c."CodeCmd",
+    a."NomArticle",
+    i."NomImmobilisation" AS "Immobilisation",
+    c."CodeCmd" AS "BonStock",
+    a."NomArticle" AS "Article",
+    ( SELECT count(*) AS count
+           FROM support."T_CommentaireSupport" x
+          WHERE (x."ID_SupportFk" = s."ID_Support")) AS "NbCommentaires",
+    ( SELECT count(*) AS count
+           FROM support."T_ResolutionSupport" x
+          WHERE (x."ID_SupportFk" = s."ID_Support")) AS "NbResolutions",
+    ( SELECT count(*) AS count
+           FROM (support."T_PieceSupport" x
+             JOIN logistique."T_PieceJustificative" p ON ((p."ID_Piece" = x."ID_PieceFk")))
+          WHERE ((x."ID_SupportFk" = s."ID_Support") AND (NOT p."Archive"))) AS "NbDocuments"
+   FROM (((((((((((((support."T_Support" s
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = s."IdEntiteFk")))
+     LEFT JOIN logistique."T_Client" d ON ((d."ID_Client" = s."ID_DemandeurFk")))
+     JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = s."ID_CreateurFk")))
+     LEFT JOIN systeme."T_Utilisateurs" r ON ((r."IdUser" = s."ID_ResponsableFk")))
+     JOIN referentiel."T_Generique" typ ON ((typ."ID_Generique" = s."ID_TypeSupportFk")))
+     LEFT JOIN referentiel."T_Generique" cat ON ((cat."ID_Generique" = s."ID_CategorieSupportFk")))
+     JOIN referentiel."T_Generique" pri ON ((pri."ID_Generique" = s."ID_PrioriteFk")))
+     JOIN referentiel."T_Generique" sta ON ((sta."ID_Generique" = s."ID_StatutFk")))
+     JOIN referentiel."T_Generique" can ON ((can."ID_Generique" = s."ID_CanalOrigineFk")))
+     LEFT JOIN referentiel."T_Generique" ser ON ((ser."ID_Generique" = s."ID_ServiceConcerneFk")))
+     LEFT JOIN logistique."T_Immobilisation" i ON ((i."ID_Immobilisation" = s."ID_ImmobilisationFk")))
+     LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = s."ID_CommandeFk")))
+     LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = s."ID_ArticleFk")));
+
+
+--
+-- Name: VIEW "V_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON VIEW support."V_Support" IS 'Une ligne par dossier avec labels de référence courants, rôles du circuit capturé, entreprise durable et indicateurs exacts ; le service applique le périmètre utilisateur et la visibilité des échanges.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_Support" IS 'Donnée Support ID_Support : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
+
+
+--
+-- Name: COLUMN "V_Support"."NumeroSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NumeroSupport" IS 'Numéro court SUP-identifiant attribué par PostgreSQL ; unique dans son entreprise et non modifiable.';
+
+
+--
+-- Name: COLUMN "V_Support"."Objet"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Objet" IS 'Donnée Support Objet : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Description"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Description" IS 'Donnée Support Description : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_DemandeurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_DemandeurFk" IS 'Tiers de T_Client dans la même entreprise ; peut ne pas disposer de compte connecté.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_CreateurFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_CreateurFk" IS 'Compte actif ayant réellement créé le dossier ; identité attribuée depuis le contexte transactionnel validé.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_ResponsableFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_ResponsableFk" IS 'Compte actif affectataire de la même entreprise ou administrateur de plateforme ; requis pour traiter le dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_ServiceConcerneFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_ServiceConcerneFk" IS 'Donnée Support ID_ServiceConcerneFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_TypeSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_TypeSupportFk" IS 'Donnée Support ID_TypeSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_CategorieSupportFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_CategorieSupportFk" IS 'Donnée Support ID_CategorieSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_PrioriteFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_PrioriteFk" IS 'Donnée Support ID_PrioriteFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_StatutFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_StatutFk" IS 'ID_Generique de l’état courant dans le circuit initial du dossier, distinct de son libellé modifiable.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_CanalOrigineFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_CanalOrigineFk" IS 'Donnée Support ID_CanalOrigineFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_ImmobilisationFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_ImmobilisationFk" IS 'Matériel facultatif lié par FK réelle, propriétaire vérifié ; aucune opération de stock.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_CommandeFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_CommandeFk" IS 'Bon facultatif lié par FK réelle et limité à la même entreprise.';
+
+
+--
+-- Name: COLUMN "V_Support"."ID_ArticleFk"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ID_ArticleFk" IS 'Article facultatif lié par FK réelle et limité à la même entreprise.';
+
+
+--
+-- Name: COLUMN "V_Support"."DateCreation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."DateCreation" IS 'Donnée Support DateCreation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."DateModification"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."DateModification" IS 'Donnée Support DateModification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."DateEcheance"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."DateEcheance" IS 'Donnée Support DateEcheance : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."DateResolution"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."DateResolution" IS 'Instant effectif de passage à Résolu ; remise à NULL après réouverture, valeur antérieure conservée dans l’audit.';
+
+
+--
+-- Name: COLUMN "V_Support"."DateCloture"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."DateCloture" IS 'Instant de clôture après vérification conforme de la dernière solution ; NULL pendant un traitement rouvert.';
+
+
+--
+-- Name: COLUMN "V_Support"."VersionEnregistrement"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."VersionEnregistrement" IS 'Révision positive augmentée atomiquement à chaque écriture ; le service compare la version reçue sous verrou avant modification.';
+
+
+--
+-- Name: COLUMN "V_Support"."Archive"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Archive" IS 'Retrait du parcours actif sans suppression du dossier, de ses échanges, résolutions et preuves.';
+
+
+--
+-- Name: COLUMN "V_Support"."CircuitSnapshot"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."CircuitSnapshot" IS 'Copie immuable du circuit système et de sa version à la création, avec les ID_Generique des états et résultats ; une modification de configuration ne migre aucun dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NomEntite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NomEntite" IS 'Donnée Support NomEntite : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Entreprise"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Entreprise" IS 'Donnée Support Entreprise : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Demandeur"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Demandeur" IS 'Donnée Support Demandeur : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Createur"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Createur" IS 'Donnée Support Createur : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Responsable"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Responsable" IS 'Donnée Support Responsable : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."TypeSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."TypeSupport" IS 'Donnée Support TypeSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."CategorieSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."CategorieSupport" IS 'Donnée Support CategorieSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Priorite"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Priorite" IS 'Donnée Support Priorite : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Statut"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Statut" IS 'Donnée Support Statut : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."CanalOrigine"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."CanalOrigine" IS 'Donnée Support CanalOrigine : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."ServiceConcerne"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Donnée Support ServiceConcerne : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."StatutCode"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."StatutCode" IS 'Rôle du statut dans le circuit capturé : new, active, pending, resolved ou closed ; les libellés proviennent du référentiel.';
+
+
+--
+-- Name: COLUMN "V_Support"."Ouvert"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Ouvert" IS 'Dossier non archivé non résolu et non clôturé ; inclut les états Nouveau, En cours et En attente.';
+
+
+--
+-- Name: COLUMN "V_Support"."EnRetard"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."EnRetard" IS 'Dossier non archivé toujours ouvert avec échéance passée ; critère partagé par indicateur et liste.';
+
+
+--
+-- Name: COLUMN "V_Support"."CodeImmobilisation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."CodeImmobilisation" IS 'Donnée Support CodeImmobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NomImmobilisation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NomImmobilisation" IS 'Donnée Support NomImmobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."CodeCmd"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."CodeCmd" IS 'Donnée Support CodeCmd : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NomArticle"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NomArticle" IS 'Donnée Support NomArticle : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Immobilisation"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Immobilisation" IS 'Donnée Support Immobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."BonStock"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."BonStock" IS 'Donnée Support BonStock : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."Article"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."Article" IS 'Donnée Support Article : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NbCommentaires"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NbCommentaires" IS 'Donnée Support NbCommentaires : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NbResolutions"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NbResolutions" IS 'Donnée Support NbResolutions : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+
+
+--
+-- Name: COLUMN "V_Support"."NbDocuments"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON COLUMN support."V_Support"."NbDocuments" IS 'Donnée Support NbDocuments : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
 
 --
@@ -31773,6 +33660,46 @@ COMMENT ON CONSTRAINT uq_preference_tableau_portee ON referentiel."T_PreferenceT
 
 
 --
+-- Name: T_CommentaireSupport T_CommentaireSupport_pkey; Type: CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_CommentaireSupport"
+    ADD CONSTRAINT "T_CommentaireSupport_pkey" PRIMARY KEY ("ID_CommentaireSupport");
+
+
+--
+-- Name: T_PieceSupport T_PieceSupport_pkey; Type: CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_PieceSupport"
+    ADD CONSTRAINT "T_PieceSupport_pkey" PRIMARY KEY ("ID_PieceFk");
+
+
+--
+-- Name: T_ResolutionSupport T_ResolutionSupport_pkey; Type: CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_ResolutionSupport"
+    ADD CONSTRAINT "T_ResolutionSupport_pkey" PRIMARY KEY ("ID_ResolutionSupport");
+
+
+--
+-- Name: T_Support T_Support_pkey; Type: CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_pkey" PRIMARY KEY ("ID_Support");
+
+
+--
+-- Name: T_Support uq_support_numero_entite; Type: CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT uq_support_numero_entite UNIQUE ("IdEntiteFk", "NumeroSupport");
+
+
+--
 -- Name: T_Admin_UI_Setting Pk_Admin_UI_Setting; Type: CONSTRAINT; Schema: systeme; Owner: -
 --
 
@@ -32783,6 +34710,20 @@ CREATE INDEX idx_n5_id_voieaccessite_fk_ref ON geolocalisation."T_Niveau_5" USIN
 --
 
 COMMENT ON INDEX geolocalisation.idx_n5_id_voieaccessite_fk_ref IS 'Index d’accès sur "geolocalisation"."T_Niveau_5". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_n5_id_voieaccessite_fk_ref ON geolocalisation."T_Niveau_5" USING btree ("ID_VoieAccesZsSiteFk").';
+
+
+--
+-- Name: ix_niveau5_type_reference; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_niveau5_type_reference ON geolocalisation."T_Niveau_5" USING btree ("ID_TypeNiveau_5_Fk");
+
+
+--
+-- Name: INDEX ix_niveau5_type_reference; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_niveau5_type_reference IS 'Recherche, filtrage et contrôle des sites par valeur du référentiel partagé.';
 
 
 --
@@ -34214,6 +36155,125 @@ COMMENT ON INDEX referentiel.uq_preference_tableau_portee IS 'Accès indexé à 
 
 
 --
+-- Name: INDEX "T_CommentaireSupport_pkey"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support."T_CommentaireSupport_pkey" IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: INDEX "T_PieceSupport_pkey"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support."T_PieceSupport_pkey" IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: INDEX "T_ResolutionSupport_pkey"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support."T_ResolutionSupport_pkey" IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: INDEX "T_Support_pkey"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support."T_Support_pkey" IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_commentaire_parent; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_commentaire_parent ON support."T_CommentaireSupport" USING btree ("ID_SupportFk", "ID_CommentaireSupport");
+
+
+--
+-- Name: INDEX ix_support_commentaire_parent; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_commentaire_parent IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_echeance; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_echeance ON support."T_Support" USING btree ("IdEntiteFk", "DateEcheance") WHERE (NOT "Archive");
+
+
+--
+-- Name: INDEX ix_support_echeance; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_echeance IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_entite_statut; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_entite_statut ON support."T_Support" USING btree ("IdEntiteFk", "Archive", "ID_StatutFk", "DateCreation" DESC);
+
+
+--
+-- Name: INDEX ix_support_entite_statut; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_entite_statut IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_piece_parent; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_piece_parent ON support."T_PieceSupport" USING btree ("ID_SupportFk");
+
+
+--
+-- Name: INDEX ix_support_piece_parent; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_piece_parent IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_resolution_parent; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_resolution_parent ON support."T_ResolutionSupport" USING btree ("ID_SupportFk", "ID_ResolutionSupport" DESC);
+
+
+--
+-- Name: INDEX ix_support_resolution_parent; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_resolution_parent IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: ix_support_responsable; Type: INDEX; Schema: support; Owner: -
+--
+
+CREATE INDEX ix_support_responsable ON support."T_Support" USING btree ("IdEntiteFk", "ID_ResponsableFk");
+
+
+--
+-- Name: INDEX ix_support_responsable; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.ix_support_responsable IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
+-- Name: INDEX uq_support_numero_entite; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON INDEX support.uq_support_numero_entite IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
+
+
+--
 -- Name: Idx_Admin_UI_Setting_Group; Type: INDEX; Schema: systeme; Owner: -
 --
 
@@ -34659,6 +36719,20 @@ CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRo
 --
 
 COMMENT ON INDEX systeme.idx_utilisateur_role IS 'Index d’accès sur "systeme"."T_Utilisateurs". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_utilisateur_role ON systeme."T_Utilisateurs" USING btree ("IdRoleFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
+
+
+--
+-- Name: ix_support_audit_rejeu; Type: INDEX; Schema: systeme; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_support_audit_rejeu ON systeme."T_Audit_Log" USING btree ("TableName", (("NewData" ->> 'requestId'::text)), ((("NewData" -> '_actor'::text) ->> 'IdUser'::text)), "IdEntiteFk") WHERE (("TableName" ~~ 'support.%'::text) AND (("NewData" ->> 'requestId'::text) IS NOT NULL));
+
+
+--
+-- Name: INDEX ix_support_audit_rejeu; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON INDEX systeme.ix_support_audit_rejeu IS 'Index du Support pour intégrité, recherche par parent/entreprise et preuve de requête ; aucune permission n’en découle.';
 
 
 --
@@ -36175,6 +38249,76 @@ COMMENT ON TRIGGER retour_bon_integrite ON logistique."T_RetourBon" IS 'Validati
 
 
 --
+-- Name: T_Article support_article_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_article_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+
+--
+-- Name: TRIGGER support_article_proprietaire ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_article_proprietaire ON logistique."T_Article" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Commande support_bon_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_bon_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Commande" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+
+--
+-- Name: TRIGGER support_bon_proprietaire ON "T_Commande"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_bon_proprietaire ON logistique."T_Commande" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Client support_client_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_client_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Client" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+
+--
+-- Name: TRIGGER support_client_proprietaire ON "T_Client"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_client_proprietaire ON logistique."T_Client" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Immobilisation support_materiel_proprietaire; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER support_materiel_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON logistique."T_Immobilisation" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+
+--
+-- Name: TRIGGER support_materiel_proprietaire ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_materiel_proprietaire ON logistique."T_Immobilisation" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_PieceJustificative support_piece_liaison; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER support_piece_liaison AFTER INSERT OR UPDATE ON logistique."T_PieceJustificative" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION support.tr_piece_liaison_complete();
+
+
+--
+-- Name: TRIGGER support_piece_liaison ON "T_PieceJustificative"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER support_piece_liaison ON logistique."T_PieceJustificative" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
 -- Name: T_Article tr_00_devise_article; Type: TRIGGER; Schema: logistique; Owner: -
 --
 
@@ -36737,6 +38881,118 @@ COMMENT ON TRIGGER tr_preference_tableau_verifier ON referentiel."T_PreferenceTa
 
 
 --
+-- Name: T_CommentaireSupport a_commentaire_verifier; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER a_commentaire_verifier BEFORE INSERT OR DELETE OR UPDATE ON support."T_CommentaireSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_enfant_support_verifier();
+
+
+--
+-- Name: TRIGGER a_commentaire_verifier ON "T_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER a_commentaire_verifier ON support."T_CommentaireSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_PieceSupport a_piece_support_verifier; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER a_piece_support_verifier BEFORE INSERT OR DELETE OR UPDATE ON support."T_PieceSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_enfant_support_verifier();
+
+
+--
+-- Name: TRIGGER a_piece_support_verifier ON "T_PieceSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER a_piece_support_verifier ON support."T_PieceSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_ResolutionSupport a_resolution_verifier; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER a_resolution_verifier BEFORE INSERT OR DELETE OR UPDATE ON support."T_ResolutionSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_enfant_support_verifier();
+
+
+--
+-- Name: TRIGGER a_resolution_verifier ON "T_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER a_resolution_verifier ON support."T_ResolutionSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Support a_support_verifier; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER a_support_verifier BEFORE INSERT OR DELETE OR UPDATE ON support."T_Support" FOR EACH ROW EXECUTE FUNCTION support.tr_support_verifier();
+
+
+--
+-- Name: TRIGGER a_support_verifier ON "T_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER a_support_verifier ON support."T_Support" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_CommentaireSupport z_commentaire_audit; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER z_commentaire_audit AFTER INSERT OR UPDATE ON support."T_CommentaireSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_support_audit();
+
+
+--
+-- Name: TRIGGER z_commentaire_audit ON "T_CommentaireSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER z_commentaire_audit ON support."T_CommentaireSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_PieceSupport z_piece_support_audit; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER z_piece_support_audit AFTER INSERT OR UPDATE ON support."T_PieceSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_support_audit();
+
+
+--
+-- Name: TRIGGER z_piece_support_audit ON "T_PieceSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER z_piece_support_audit ON support."T_PieceSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_ResolutionSupport z_resolution_audit; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER z_resolution_audit AFTER INSERT OR UPDATE ON support."T_ResolutionSupport" FOR EACH ROW EXECUTE FUNCTION support.tr_support_audit();
+
+
+--
+-- Name: TRIGGER z_resolution_audit ON "T_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER z_resolution_audit ON support."T_ResolutionSupport" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Support z_support_audit; Type: TRIGGER; Schema: support; Owner: -
+--
+
+CREATE TRIGGER z_support_audit AFTER INSERT OR UPDATE ON support."T_Support" FOR EACH ROW EXECUTE FUNCTION support.tr_support_audit();
+
+
+--
+-- Name: TRIGGER z_support_audit ON "T_Support"; Type: COMMENT; Schema: support; Owner: -
+--
+
+COMMENT ON TRIGGER z_support_audit ON support."T_Support" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
 -- Name: T_Fk_Correspondance a_correspondance_champ_integrite; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
@@ -36888,6 +39144,34 @@ CREATE TRIGGER role_module_integrite BEFORE INSERT OR UPDATE ON systeme."T_RoleM
 --
 
 COMMENT ON TRIGGER role_module_integrite ON systeme."T_RoleModule" IS 'Périmètre entité/rôle/module immuable ; les restrictions ne constituent pas un rôle administrateur.';
+
+
+--
+-- Name: T_Admin_UI_Setting support_circuit_valider; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER support_circuit_valider BEFORE INSERT OR UPDATE ON systeme."T_Admin_UI_Setting" FOR EACH ROW EXECUTE FUNCTION systeme.tr_support_circuit_valider();
+
+
+--
+-- Name: TRIGGER support_circuit_valider ON "T_Admin_UI_Setting"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER support_circuit_valider ON systeme."T_Admin_UI_Setting" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
+
+
+--
+-- Name: T_Utilisateurs support_user_proprietaire; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER support_user_proprietaire BEFORE UPDATE OF "IdEntiteFk" ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION support.tr_lien_proprietaire_conserver();
+
+
+--
+-- Name: TRIGGER support_user_proprietaire ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER support_user_proprietaire ON systeme."T_Utilisateurs" IS 'Garde ou audit transactionnel du Support : identité, circuit, références, entreprise et conservation des preuves vérifiés par la fonction liée.';
 
 
 --
@@ -37668,6 +39952,21 @@ ALTER TABLE ONLY geolocalisation."T_Niveau_5"
 --
 
 COMMENT ON CONSTRAINT "Fk_ID_VoieAccesZsSiteFk" ON geolocalisation."T_Niveau_5" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "geolocalisation"."T_Niveau_5". Définition : FOREIGN KEY ("ID_VoieAccesZsSiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
+
+
+--
+-- Name: T_Niveau_5 Fk_TypeNiveau_5_Generique; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_Niveau_5"
+    ADD CONSTRAINT "Fk_TypeNiveau_5_Generique" FOREIGN KEY ("ID_TypeNiveau_5_Fk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+
+--
+-- Name: CONSTRAINT "Fk_TypeNiveau_5_Generique" ON "T_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "Fk_TypeNiveau_5_Generique" ON geolocalisation."T_Niveau_5" IS 'Référence physique du type de site vers T_Generique, contrôlée sans réaffectation des sites existants.';
 
 
 --
@@ -39335,6 +41634,182 @@ COMMENT ON CONSTRAINT "T_PreferenceTableau_IdUserFk_fkey" ON referentiel."T_Pref
 
 
 --
+-- Name: T_CommentaireSupport T_CommentaireSupport_ID_AuteurFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_CommentaireSupport"
+    ADD CONSTRAINT "T_CommentaireSupport_ID_AuteurFk_fkey" FOREIGN KEY ("ID_AuteurFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_CommentaireSupport T_CommentaireSupport_ID_SupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_CommentaireSupport"
+    ADD CONSTRAINT "T_CommentaireSupport_ID_SupportFk_fkey" FOREIGN KEY ("ID_SupportFk") REFERENCES support."T_Support"("ID_Support") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_PieceSupport T_PieceSupport_ID_CommentaireSupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_PieceSupport"
+    ADD CONSTRAINT "T_PieceSupport_ID_CommentaireSupportFk_fkey" FOREIGN KEY ("ID_CommentaireSupportFk") REFERENCES support."T_CommentaireSupport"("ID_CommentaireSupport") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_PieceSupport T_PieceSupport_ID_PieceFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_PieceSupport"
+    ADD CONSTRAINT "T_PieceSupport_ID_PieceFk_fkey" FOREIGN KEY ("ID_PieceFk") REFERENCES logistique."T_PieceJustificative"("ID_Piece") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_PieceSupport T_PieceSupport_ID_SupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_PieceSupport"
+    ADD CONSTRAINT "T_PieceSupport_ID_SupportFk_fkey" FOREIGN KEY ("ID_SupportFk") REFERENCES support."T_Support"("ID_Support") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ResolutionSupport T_ResolutionSupport_ID_ProposeParFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_ResolutionSupport"
+    ADD CONSTRAINT "T_ResolutionSupport_ID_ProposeParFk_fkey" FOREIGN KEY ("ID_ProposeParFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ResolutionSupport T_ResolutionSupport_ID_ResultatVerificationFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_ResolutionSupport"
+    ADD CONSTRAINT "T_ResolutionSupport_ID_ResultatVerificationFk_fkey" FOREIGN KEY ("ID_ResultatVerificationFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ResolutionSupport T_ResolutionSupport_ID_SupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_ResolutionSupport"
+    ADD CONSTRAINT "T_ResolutionSupport_ID_SupportFk_fkey" FOREIGN KEY ("ID_SupportFk") REFERENCES support."T_Support"("ID_Support") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_ResolutionSupport T_ResolutionSupport_ID_VerifieParFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_ResolutionSupport"
+    ADD CONSTRAINT "T_ResolutionSupport_ID_VerifieParFk_fkey" FOREIGN KEY ("ID_VerifieParFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_ArticleFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_ArticleFk_fkey" FOREIGN KEY ("ID_ArticleFk") REFERENCES logistique."T_Article"("ID_Article") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_CanalOrigineFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_CanalOrigineFk_fkey" FOREIGN KEY ("ID_CanalOrigineFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_CategorieSupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_CategorieSupportFk_fkey" FOREIGN KEY ("ID_CategorieSupportFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_CommandeFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_CommandeFk_fkey" FOREIGN KEY ("ID_CommandeFk") REFERENCES logistique."T_Commande"("ID_Commande") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_CreateurFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_CreateurFk_fkey" FOREIGN KEY ("ID_CreateurFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_DemandeurFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_DemandeurFk_fkey" FOREIGN KEY ("ID_DemandeurFk") REFERENCES logistique."T_Client"("ID_Client") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_ImmobilisationFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_ImmobilisationFk_fkey" FOREIGN KEY ("ID_ImmobilisationFk") REFERENCES logistique."T_Immobilisation"("ID_Immobilisation") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_PrioriteFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_PrioriteFk_fkey" FOREIGN KEY ("ID_PrioriteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_ResponsableFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_ResponsableFk_fkey" FOREIGN KEY ("ID_ResponsableFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_ServiceConcerneFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_ServiceConcerneFk_fkey" FOREIGN KEY ("ID_ServiceConcerneFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_StatutFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_StatutFk_fkey" FOREIGN KEY ("ID_StatutFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_ID_TypeSupportFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_ID_TypeSupportFk_fkey" FOREIGN KEY ("ID_TypeSupportFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Support T_Support_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: support; Owner: -
+--
+
+ALTER TABLE ONLY support."T_Support"
+    ADD CONSTRAINT "T_Support_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
 -- Name: T_Admin_UI_Setting Fk_Admin_UI_Setting_User; Type: FK CONSTRAINT; Schema: systeme; Owner: -
 --
 
@@ -39687,114 +42162,7 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON systeme."T_Utilisate
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 57A9A21uxlaL4l34HzLzTQhXGlBR90RYiECmy8qBJ4IUb8JDF7yuytAxGoFQKK4
+\unrestrict okRytbHkjZzgPkXCQZwdtpJAg4Fm1ylEhVukuErpxrp9rM3m3lJgoAlnMRB39y1
 
 COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
-
---
--- Name: ix_niveau5_type_reference; Type: INDEX; Schema: geolocalisation; Owner: -
---
-
-CREATE INDEX ix_niveau5_type_reference ON geolocalisation."T_Niveau_5" USING btree ("ID_TypeNiveau_5_Fk");
-
---
--- Name: INDEX ix_niveau5_type_reference; Type: COMMENT; Schema: geolocalisation; Owner: -
---
-
-COMMENT ON INDEX geolocalisation.ix_niveau5_type_reference IS 'Recherche, filtrage et contrôle des sites par valeur du référentiel partagé.';
-
---
--- Name: T_Niveau_5 Fk_TypeNiveau_5_Generique; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
---
-
-ALTER TABLE ONLY geolocalisation."T_Niveau_5"
-    ADD CONSTRAINT "Fk_TypeNiveau_5_Generique" FOREIGN KEY ("ID_TypeNiveau_5_Fk") REFERENCES referentiel."T_Generique"("ID_Generique");
-
---
--- Name: CONSTRAINT "Fk_TypeNiveau_5_Generique" ON "T_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
---
-
-COMMENT ON CONSTRAINT "Fk_TypeNiveau_5_Generique" ON geolocalisation."T_Niveau_5" IS 'Référence physique du type de site vers T_Generique, contrôlée sans réaffectation des sites existants.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_0"."uidSNIS" IS 'Identifiant SNIS du pays ou territoire, conservé depuis la table source sans transformation.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_0"."Nb_Niveau_1" IS 'Nombre exact de niveaux 1 rattachés à ce pays, sans exclusion implicite de fusion ou visibilité. Correspond au registre des provinces filtré sur ID_Niveau_0_Fk.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_1".prov_uid IS 'Identifiant provincial complémentaire, conservé depuis la table source.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_1"."uidSNIS" IS 'Identifiant SNIS provincial, conservé depuis la table source.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Nb_Niveau_2" IS 'Nombre exact de niveaux 2 rattachés à la province. Correspond au registre des antennes filtré sur ID_Niveau_1_FK.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par la province, utilisable pour filtrer le découpage partagé.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_1" IS 'Identifiant de province parent ; alias de lecture compatible avec les analyses territoriales.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente ; NULL reste inconnu, aucune exclusion automatique.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_1" IS 'Visibilité déclarée du niveau provincial parent, sans restriction implicite des compteurs.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_5" IS 'Visibilité des sites déclarée par la province parente, conservée sans modifier ses sites.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2".iso IS 'Code ISO ou identifiant géographique enregistré pour cette subdivision.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette subdivision.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Nb_Niveau_3" IS 'Nombre exact de zones de santé rattachées à cette subdivision. Correspond au registre des zones filtré sur ID_Niveau_2_FK.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par les jointures de rattachement.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_0" IS 'Nom courant du pays parent, issu de la source unique géographique.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_1" IS 'Identifiant de la province parente de la zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_1" IS 'Nom courant de la province parente de la zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2" IS 'Identifiant de la subdivision parente de la zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_2" IS 'Nom courant de la subdivision parente de la zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."FusionNiveau_1" IS 'Indicateur de fusion provincial, exposé pour les filtres sans exclusion implicite.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente ; aucun territoire n’est masqué par cette vue.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_5" IS 'Visibilité déclarée des sites de la province parente, sans réécriture de données.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3".iso IS 'Code ISO ou identifiant géographique enregistré pour cette zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette zone.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_4" IS 'Nombre exact d’aires rattachées à cette zone. Correspond au registre des aires filtré sur ID_Niveau_3_Fk.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_5" IS 'Nombre exact de sites de cette zone : rattachement direct prioritaire, sinon zone de l’aire. Chaque site compte une fois. Correspond au registre des sites filtré sur ID_Niveau_3 effectif.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans filtre implicite.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente, exposée sans altération.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4".iso IS 'Code ISO ou identifiant géographique enregistré pour cette aire.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette aire.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de sites directement rattachés à cette aire. Les sites rattachés seulement à une zone ne sont pas attribués arbitrairement à une aire.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_4" IS 'Nom courant de l’aire lorsque le site lui est réellement rattaché ; NULL si aucun rattachement à une aire.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Toit" IS 'Abréviation du type de toit selon la valeur générique enregistrée ; ne remplace pas sa clé étrangère.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans exclusion implicite des sites.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente du site.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5".iso IS 'Code ISO ou identifiant géographique enregistré pour ce site.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."uidSNIS" IS 'Identifiant SNIS enregistré pour ce site.';
-
-COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeNiveau_4_Fk" IS 'Type de l’aire réellement liée au site ; NULL lorsque le site n’a pas d’aire ou que son type est absent. Permet le détail exact des analyses par type d’aire.';

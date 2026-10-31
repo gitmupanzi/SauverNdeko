@@ -16,6 +16,11 @@ def scope_for(obj, actor, alias="v"):
     """Périmètre collaboratif de l'entreprise, indépendant de l'affectation de l'auteur."""
     from .tenancy import read_entity
     schema,name=obj['schema'],obj['name'];a=alias;org=read_entity(actor)
+    if schema=='systeme' and name in {'T_Audit_Log','V_Audit_log'} and not actor.global_admin:
+        # Le journal commun peut contenir des notes Support internes et des
+        # images de plusieurs domaines. Son accès ne découle jamais du seul
+        # périmètre entreprise ; les modules exposent leur historique filtré.
+        raise APIError('Le journal système est réservé à l’administration de la plateforme.','GLOBAL_ADMIN_REQUIRED',403)
     if actor.global_admin and org is None:return 'TRUE',[]
     if schema == 'referentiel' and name in {'T_CategorieGenerique','T_Generique','V_CategorieGenerique','V_Generique'}:
         # Les anciennes lignes NULL restent communes. Aucune préférence de

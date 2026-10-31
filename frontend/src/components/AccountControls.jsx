@@ -7,6 +7,7 @@ import ThemePicker from "./ThemePicker";
 import DrawerDialog from "./DrawerDialog";
 import HeaderPopover from "./HeaderPopover";
 import Notifications from "./Notifications";
+import { moduleRights } from "../services/moduleAccess";
 import "./AccountControls.css";
 
 export default function AccountControls({ onRequestLogout, onLogout }) {
@@ -30,7 +31,7 @@ export default function AccountControls({ onRequestLogout, onLogout }) {
     </button>
     {open?<HeaderPopover anchor={anchor} role="menu" label="Menu du compte" onClose={close}>
       <div className="account-menu-identity"><strong>{name}</strong><span>{user?.EmailUser||'Adresse e-mail non renseignée'}</span>{user?.entite?.NomEntite?<small>{user.entite.NomEntite}</small>:null}</div>
-      <div className="account-menu-links"><Link role="menuitem" to="/profil" onClick={()=>close()}><AppIcon name="user"/><span>Mon profil</span></Link><Link role="menuitem" to="/profil?modifier=1" onClick={()=>close()}><AppIcon name="edit"/><span>Modifier le profil</span></Link><button role="menuitem" type="button" onClick={()=>show('preferences')}><AppIcon name="settings"/><span>Paramètres du compte</span></button><button role="menuitem" type="button" onClick={()=>show('help')}><AppIcon name="help"/><span>Assistance</span></button></div>
+      <div className="account-menu-links"><Link role="menuitem" to="/profil" onClick={()=>close()}><AppIcon name="user"/><span>Mon profil</span></Link><Link role="menuitem" to="/profil?modifier=1" onClick={()=>close()}><AppIcon name="edit"/><span>Modifier le profil</span></Link><button role="menuitem" type="button" onClick={()=>show('preferences')}><AppIcon name="settings"/><span>Paramètres du compte</span></button>{moduleRights(user,"support").canRead?<Link role="menuitem" to="/support" onClick={()=>close()}><AppIcon name="help"/><span>Support</span></Link>:<button role="menuitem" type="button" onClick={()=>show('help')}><AppIcon name="help"/><span>Assistance</span></button>}</div>
       <div className="account-language"><AppIcon name="globe"/><span>Langue</span><strong>Français</strong></div>
       <div className="account-menu-footer"><button role="menuitem" type="button" onClick={requestLeave} disabled={leaving}><AppIcon name="logout"/><span>{leaving?'Déconnexion…':'Se déconnecter'}</span></button></div>
     </HeaderPopover>:null}

@@ -14,7 +14,7 @@ from apps.core import db
 
 READY, CONFIG, BLOCKED, UNVERIFIED = 'pret', 'a_configurer', 'bloquant', 'non_verifie'
 STATES = {READY:'Prêt', CONFIG:'À configurer', BLOCKED:'Bloquant', UNVERIFIED:'Non vérifié'}
-SCHEMAS = ['logistique','referentiel','systeme','geolocalisation','professionnel','analytics','communication','public']
+SCHEMAS = ['logistique','referentiel','systeme','geolocalisation','professionnel','analytics','communication','support','public']
 VIEWS = [('logistique',n) for n in ('V_Article','V_Commande','V_CommandeDetail','V_AuditStock','V_LotDisponibilite','V_RegistreLots','V_RegistreMouvementLot','V_ValorisationStock','V_ArticlePeremption','V_SuiviReglements','V_Reglements')]
 VIEWS += [('systeme','V_LicenceModule'),('systeme','V_EntiteModuleActif')]
 
