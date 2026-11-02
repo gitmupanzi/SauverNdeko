@@ -8678,6 +8678,12 @@ CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON logistique."T_Valor
 COMMENT ON TRIGGER aa_reference_champ ON logistique."T_ValorisationOuverture" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
 
 --
+-- Name: T_Reglements aa_reglement_caisse_protege; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reglement_caisse_protege BEFORE DELETE OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION operations.tr_reglement_caisse_protege();
+
+--
 -- Name: T_Reglements aa_reglement_tracabilite; Type: TRIGGER; Schema: logistique; Owner: -
 --
 

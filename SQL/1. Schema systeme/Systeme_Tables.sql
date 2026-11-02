@@ -603,6 +603,35 @@ END $$;
 COMMENT ON FUNCTION systeme.tr_localisation_patrimoine_proprietaire() IS 'Empêche de déplacer une localisation vers une autre entreprise lorsqu’un bien actif ou archivé y reste lié. Ne crée aucun état d’archivage fictif pour les localisations.';
 
 --
+-- Name: tr_module_classification(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_module_classification() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ PERFORM pg_advisory_xact_lock(hashtextextended('sauverndeko.catalogue.classification',0));
+ IF NEW."ModuleParentCode" IS NOT NULL AND NOT EXISTS(
+  SELECT FROM systeme."T_ModuleApplication" WHERE "CodeModule"=NEW."ModuleParentCode" AND "TypeApplication"='MODULE'
+ ) THEN
+  RAISE EXCEPTION 'Une fonctionnalité doit être rattachée à un module du catalogue.' USING ERRCODE='23514';
+ END IF;
+ IF NEW."TypeApplication"='FONCTIONNALITE' AND EXISTS(
+  SELECT FROM systeme."T_ModuleApplication" WHERE "ModuleParentCode"=NEW."CodeModule" AND "CodeModule"<>NEW."CodeModule"
+ ) THEN
+  RAISE EXCEPTION 'Ce module possède des fonctionnalités ; modifiez leurs rattachements avant sa classification.' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_module_classification(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_module_classification() IS 'Contrôle la nature du parent de présentation et empêche de reclasser en fonctionnalité un module possédant des enfants ; aucun effet sur les autorisations ou licences.';
+
+--
 -- Name: tr_support_circuit_valider(); Type: FUNCTION; Schema: systeme; Owner: -
 --
 
@@ -2221,8 +2250,14 @@ CREATE TABLE systeme."T_ModuleApplication" (
     "CodeIncluant" character varying(32),
     "Actif" boolean DEFAULT true NOT NULL,
     "Ordre" integer DEFAULT 0 NOT NULL,
+    "TypeApplication" character varying(20) DEFAULT 'MODULE'::character varying NOT NULL,
+    "Commercialisable" boolean DEFAULT false NOT NULL,
+    "ModuleParentCode" character varying(32),
     CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
-    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text))
+    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
+    CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
+    CONSTRAINT ck_module_parent CHECK (((("ModuleParentCode")::text IS DISTINCT FROM ("CodeModule")::text) AND ((("TypeApplication")::text <> 'MODULE'::text) OR ("ModuleParentCode" IS NULL)))),
+    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY ((ARRAY['MODULE'::character varying, 'FONCTIONNALITE'::character varying])::text[])))
 );
 
 --
@@ -2266,6 +2301,42 @@ COMMENT ON COLUMN systeme."T_ModuleApplication"."Actif" IS 'Disponibilité du mo
 --
 
 COMMENT ON COLUMN systeme."T_ModuleApplication"."Ordre" IS 'Ordre de présentation du catalogue.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."TypeApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."TypeApplication" IS 'Nature de présentation : MODULE commercial ou FONCTIONNALITE complémentaire/commune. Ne remplace pas les règles d’accès existantes.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Commercialisable"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Commercialisable" IS 'Le module peut être présenté comme offre commerciale ; ne donne aucun droit, ne crée ni licence ni abonnement.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."ModuleParentCode"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."ModuleParentCode" IS 'Module de présentation de la fonctionnalité ; NULL pour une fonction commune. Distinct de CodeIncluant qui conserve les inclusions de droits historiques.';
+
+--
+-- Name: CONSTRAINT ck_module_commercial ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_commercial ON systeme."T_ModuleApplication" IS 'Une fonctionnalité n’est pas proposée comme module commercial autonome.';
+
+--
+-- Name: CONSTRAINT ck_module_parent ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_parent ON systeme."T_ModuleApplication" IS 'Une fonctionnalité peut dépendre d’un module ; un module est racine et ne peut se référencer lui-même.';
+
+--
+-- Name: CONSTRAINT ck_module_type_application ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_type_application ON systeme."T_ModuleApplication" IS 'Deux natures explicites de présentation, sans dépendance aux libellés affichés.';
 
 --
 -- Name: T_RoleModule; Type: TABLE; Schema: systeme; Owner: -
@@ -3270,6 +3341,18 @@ CREATE TRIGGER tr_fk_correspondance_audit AFTER INSERT OR DELETE OR UPDATE ON sy
 COMMENT ON TRIGGER tr_fk_correspondance_audit ON systeme."T_Fk_Correspondance" IS 'Audit SQL unique des correspondances, compatible avec les remplacements transactionnels du réglage historique.';
 
 --
+-- Name: T_ModuleApplication tr_module_classification; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_module_classification BEFORE INSERT OR UPDATE ON systeme."T_ModuleApplication" FOR EACH ROW EXECUTE FUNCTION systeme.tr_module_classification();
+
+--
+-- Name: TRIGGER tr_module_classification ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_module_classification ON systeme."T_ModuleApplication" IS 'Valide la hiérarchie de présentation MODULE/FONCTIONNALITE lors de la saisie du catalogue.';
+
+--
 -- Name: T_Login trigger_audit_T_Login; Type: TRIGGER; Schema: systeme; Owner: -
 --
 
@@ -3691,3 +3774,16 @@ ALTER TABLE ONLY systeme."T_Utilisateurs"
 --
 
 COMMENT ON CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : FOREIGN KEY ("ID_ServiceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT. Ne donne aucun droit de sécurité.';
+
+--
+-- Name: T_ModuleApplication fk_module_parent; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT fk_module_parent FOREIGN KEY ("ModuleParentCode") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT fk_module_parent ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_module_parent ON systeme."T_ModuleApplication" IS 'Le module parent existe et ne disparaît pas tant que des fonctionnalités le référencent.';

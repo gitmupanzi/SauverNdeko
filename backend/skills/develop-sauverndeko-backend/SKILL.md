@@ -5,6 +5,8 @@ description: Maintenir le backend Django et Django REST Framework de SauverNdeko
 
 # Backend SauverNdeko
 
+Pour le schéma `operations`, suivre le [module Caisse](../../../docs/module-caisse.md). Les services passent par le journal et les fonctions PostgreSQL ; aucun CRUD générique ne modifie un solde ou une écriture validée. L’encaissement facultatif d’un règlement Logistique reste dans sa transaction, avec une liaison unique, une demande rejouable et les contrôles d’entreprise, devise, licence et rôle.
+
 Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention.
 
 ## Architecture active

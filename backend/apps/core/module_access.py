@@ -11,6 +11,7 @@ WORKSPACE_MODULES = (
     {"key": "sante", "label": "Informations santé", "description": "Consulter les informations par maladie.", "path": "/maladies", "icon": "heart-pulse", "tone": "rose"},
     {"key": "discussions", "label": "Discussions", "description": "Retrouver vos échanges et messages.", "path": "/discussions", "icon": "chat-dots", "tone": "sky"},
     {"key": "logistique", "label": "Logistique", "description": "Articles, stock, bons et factures.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
+    {"key": "caisse", "label": "Caisse", "description": "Caisses, encaissements, décaissements et clôtures.", "path": "/caisse", "icon": "wallet2", "tone": "teal", "admin": True},
     {"key": "territoires", "label": "Organisation territoriale", "description": "Découpage administratif et pyramide sanitaire.", "path": "/territoires", "icon": "diagram-3", "tone": "teal", "admin": True},
     {"key": "support", "label": "Support", "description": "Incidents, assistance et réclamations.", "path": "/support", "icon": "headset", "tone": "sky"},
     {"key": "parametres", "label": "Paramètres", "description": "Entreprise, documents et fiscalité.", "path": "/parametres", "icon": "gear", "tone": "teal"},
@@ -20,16 +21,26 @@ WORKSPACE_MODULES = (
 MODULE_BY_KEY={item["key"]:item for item in WORKSPACE_MODULES}
 BASE_MODULES={"discussions","territoires","administration","parametres","guide"}
 INCLUSIONS={"catalogue":{"produits","structures","professionnels","sante"}}
-OBJECT_MODULES={"logistique":"logistique","support":"support","professionnel":"professionnels","geolocalisation":"territoires","communication":"discussions","analytics":"administration","systeme":"administration"}
+OBJECT_MODULES={"operations":"caisse","logistique":"logistique","support":"support","professionnel":"professionnels","geolocalisation":"territoires","communication":"discussions","analytics":"administration","systeme":"administration"}
 
 def storage_ready():
     names=['systeme."'+name+'"' for name in ("T_ModuleApplication","T_LicenceModule","T_RoleModule","V_LicenceModule","V_EntiteModuleActif","V_RoleModule")]
     return db.one("SELECT bool_and(to_regclass(x) IS NOT NULL) AS ready FROM unnest(%s::text[]) AS t(x)",[names])["ready"]
 
+
+def application_metadata():
+    """Classification commerciale persistante ; aucun changement d’habilitation."""
+    rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode"
+        FROM systeme."T_ModuleApplication" WHERE "CodeModule"=ANY(%s::text[])''',[list(MODULE_BY_KEY)])
+    if len(rows)!=len(MODULE_BY_KEY):
+        raise APIError('Le catalogue des applications est incomplet.','MODULE_CONFIGURATION_UNAVAILABLE',503)
+    return {row['CodeModule']:{'type':row['TypeApplication'],'commercialisable':row['Commercialisable'],
+                             'parentModule':row['ModuleParentCode']} for row in rows}
+
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
     read=not item.get("admin") or actor.admin
-    manage=key=="discussions" or (key in {"logistique","administration","support","parametres"} and actor.admin) or (key=="territoires" and actor.global_admin)
+    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres"} and actor.admin) or (key=="territoires" and actor.global_admin)
     return {"canRead":read,"canManage":manage and read,"canExport":read}
 
 def access_snapshot(actor):
@@ -108,6 +119,7 @@ def enforce_request(actor,request,view):
     elif path.rstrip('/') in {'/api/systeme/admin-ui-settings','/api/admin-ui-settings'} and action=='read':key='referentiels'
     elif path.startswith('/api/geolocalisation/'):key='territoires'
     elif path.startswith('/api/support/'):key='support'
+    elif path.startswith('/api/caisse/'):key='caisse'
     elif path.startswith('/api/parametres/'):key='parametres'
     elif path.startswith('/api/guide/'):
         # Le guide ne possède que des lectures : DRF refuse les autres méthodes.

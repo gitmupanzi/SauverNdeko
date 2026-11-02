@@ -10,6 +10,35 @@ from apps.core.maintenance import pg_tool,pg_environment,digest_file
 SCHEMAS=['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','support','systeme']
 
 
+def application_catalogue_seed():
+    """Charger les modules parents avant leurs fonctionnalités et inclusions.
+
+    L'ordre physique des tuples PostgreSQL peut changer à chaque modification.
+    Ne pas compter sur cet ordre pour satisfaire une garde BEFORE INSERT.
+    """
+    records=[row['payload'] for row in db.query(
+        'SELECT to_jsonb(m) payload FROM systeme."T_ModuleApplication" m')]
+    pending={row['CodeModule']:row for row in records}
+    inserted=set()
+    ordered=[]
+    while pending:
+        ready=[row for row in pending.values() if {
+            parent for parent in (row.get('CodeIncluant'),row.get('ModuleParentCode'))
+            if parent is not None}.issubset(inserted)]
+        if not ready:
+            raise CommandError('Le catalogue des applications contient un parent absent ou un cycle. Export refusé.')
+        for row in sorted(ready,key=lambda item:(item.get('Ordre',0),item['CodeModule'])):
+            ordered.append(row)
+            inserted.add(row['CodeModule'])
+            del pending[row['CodeModule']]
+    commands=['-- Catalogue commun : parents avant fonctionnalités, sans suspendre la garde.\n',
+              'DO $$ BEGIN IF EXISTS(SELECT FROM systeme."T_ModuleApplication") THEN RAISE EXCEPTION \'Catalogue des applications non vide : chargement initial refusé\';END IF;END $$;\n']
+    for row in ordered:
+        literal="'"+json.dumps(row,ensure_ascii=False,separators=(',',':')).replace("'","''")+"'::jsonb"
+        commands.append('INSERT INTO systeme."T_ModuleApplication" SELECT * FROM jsonb_populate_record(NULL::systeme."T_ModuleApplication",'+literal+');\n')
+    return ''.join(commands),len(ordered)
+
+
 def common_dictionary_seed():
     """Exporter les identifiants communs, sans copier les données d'entreprise.
 
@@ -63,8 +92,10 @@ class Command(BaseCommand):
                 with structure.open('ab') as output:output.write(('\n'+''.join(row['command']+'\n' for row in comments)).encode('utf8'))
             scoped=bool(db.one("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='referentiel' AND table_name='T_Generique' AND column_name='IdEntiteFk') active")['active'])
             dictionary_tables=[] if scoped else ['--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"']
-            result=subprocess.run([*base,'--data-only',*dictionary_tables,'--table=referentiel."T_InterfaceTableau"','--table=systeme."T_ModuleApplication"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
+            result=subprocess.run([*base,'--data-only',*dictionary_tables,'--table=referentiel."T_InterfaceTableau"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)
             if result.returncode:raise CommandError('Export dictionnaire refusé.')
+            application_seed,application_count=application_catalogue_seed()
+            with refs.open('ab') as output:output.write(('\n'+application_seed).encode('utf8'))
             common_counts={}
             if scoped:
                 seed,common_counts=common_dictionary_seed()
@@ -100,6 +131,7 @@ class Command(BaseCommand):
             instructions.write_text("# Installation vierge SauverNdeko\n\nCe paquet ne contient aucun compte, entreprise, bien, stock, document client ou préférence personnelle. Seuls les catégories, valeurs et précisions d’unités communes sont incluses ; les références privées des entreprises sont exclues. Les correspondances sont une initialisation fermée du code ; aucune configuration privée de la base source n’est copiée.\n\nUtiliser une base vide PostgreSQL18 et créer l’extension pg_trgm dans public. Vérifier les SHA-256 du manifeste. Appliquer avec psql -X -v ON_ERROR_STOP=1 --single-transaction pour les deux premiers fichiers, dans cet ordre :\n\n1. structure.sql\n2. references.sql\n3. correspondances.sql (porte sa propre transaction)\n\nLe chargement des références communes conserve les doublons historiques sans fusionner leurs identifiants. Deux gardes d’identité sont suspendues uniquement dans cette transaction initiale et réactivées avant sa validation ; le chargement refuse un dictionnaire non vide. Le troisième fichier initialise les correspondances globales, notamment celles du patrimoine. Ne pas le rejouer sur une configuration cliente personnalisée sans examen. Configurer ensuite le backend vers la nouvelle base, appliquer les migrations natives Django dans public et créer le premier administrateur avec la commande dédiée. Les profils, logos, licences et données de l’entreprise de destination sont à renseigner après installation. La liste migrationsInCode inventorie les fichiers livrés ; elle ne prouve pas à elle seule leur installation sur une base existante.\n",encoding='utf8')
             migrations=sorted((project/'SQL/migrations').glob('*.sql'))
             manifest={'format':2,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs),'correspondances.sql':digest_file(mappings),'LIRE-MOI.md':digest_file(instructions)},'installationOrder':['structure.sql','references.sql','correspondances.sql'],'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','referentiel.T_InterfaceTableau','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'mappingSeed':'closed-code-defaults','constraintTriggerCommentsSupplemented':len(comments),'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
+            manifest['applicationCatalogueSeed']={'rows':application_count,'order':'parents-before-children','identityGuardsEnabled':True}
             if support_present:
                 with instructions.open('a',encoding='utf8') as output:output.write('\n4. support.sql, après correspondances.sql : initialise uniquement le circuit Support standard à partir du dictionnaire chargé. Aucune configuration personnalisée ni aucun dossier de la source n’est copié. Ce fichier porte sa transaction.\n')
                 manifest['format']=3

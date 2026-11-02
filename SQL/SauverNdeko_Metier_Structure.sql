@@ -5,7 +5,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict TDhcVzWtkSoYEBllJuFUTUMh4huSYk7JzKs10mXNgIWNXgC0oIg6QwUtI41lU2H
+\restrict VJVJqsETLITfJhesoOFAt9a0npGZZxDSJgUYBUPHy81stbegP7p9pp79EeoOluL
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -3557,105 +3557,14 @@ COMMENT ON FUNCTION operations.archive_paiements() IS 'Après INSERT/UPDATE sur 
 --
 
 CREATE FUNCTION operations.fn_audit_caisse(p_id_entite integer DEFAULT NULL::integer, p_id_devise integer DEFAULT NULL::integer, p_date_max timestamp without time zone DEFAULT NULL::timestamp without time zone) RETURNS TABLE("IdEntite" integer, "NomEntite" character varying, "IdDevise" integer, "NomDevise" character varying, "SoldeCaisse" numeric, "SoldeTheorique" numeric, "Ecart" numeric, "NbPaiements" integer, "MontantEntree" numeric, "MontantSortie" numeric)
-    LANGUAGE plpgsql
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
     AS $$
-BEGIN
-    RETURN QUERY
-    WITH paiements_union AS (
-        -- Unification paiements actifs + archivés, avec filtre sur date si fourni
-        SELECT
-            p."IdDeviseFk"       AS IdDevise,
-            p."IdEntiteFk"       AS IdEntite,
-            p."IdTypeMouvementFk",
-            p."MontantPaiement",
-            p."IdStatutPaiementFk",
-            p."DatePaiement"
-        FROM operations."T_Paiement" p
-
-        UNION ALL
-
-        SELECT
-            pa."IdDeviseFk"      AS IdDevise,
-            pa."IdEntiteFk"      AS IdEntite,
-            pa."IdTypeMouvementFk",
-            pa."MontantPaiement",
-            pa."IdStatutPaiementFk",
-            pa."DatePaiement"
-        FROM operations."T_Paiement_Archive" pa
-    ),
-    flux AS (
-        SELECT
-            u.IdDevise,
-            u.IdEntite,
-            COUNT(*) FILTER (
-                WHERE u."IdStatutPaiementFk" = 21
-                  AND u."IdTypeMouvementFk" IN (80, 81)
-                  AND u."IdDevise" IN (36, 37)
-            )                          AS nb_paiements,
-            SUM(
-                CASE
-                    WHEN u."IdStatutPaiementFk" = 21
-                     AND u."IdTypeMouvementFk" = 81
-                     AND u."IdDevise" IN (36, 37)
-                        AND (p_date_max IS NULL OR u."DatePaiement" <= p_date_max)
-                        THEN u."MontantPaiement"
-                    ELSE 0
-                END
-            )                          AS montant_entree,
-            SUM(
-                CASE
-                    WHEN u."IdStatutPaiementFk" = 21
-                     AND u."IdTypeMouvementFk" = 80
-                     AND u."IdDevise" IN (36, 37)
-                        AND (p_date_max IS NULL OR u."DatePaiement" <= p_date_max)
-                        THEN u."MontantPaiement"
-                    ELSE 0
-                END
-            )                          AS montant_sortie
-        FROM paiements_union u
-        WHERE (p_id_entite IS NULL OR u.IdEntite = p_id_entite)
-          AND (p_id_devise IS NULL OR u.IdDevise = p_id_devise)
-        GROUP BY
-            u.IdDevise,
-            u.IdEntite
-    )
-    SELECT
-        ent."IdEntite"                    AS "IdEntite",
-        ent."NomEntite"                   AS "NomEntite",
-        dev."ID_Generique"                AS "IdDevise",
-        dev."NomGenerique"                AS "NomDevise",
-
-        COALESCE(c."MontantCaisse", 0)::numeric                        AS "SoldeCaisse",
-
-        COALESCE(
-            (COALESCE(f.montant_entree, 0) - COALESCE(f.montant_sortie, 0)),
-            0
-        )::numeric                                                     AS "SoldeTheorique",
-
-        COALESCE(c."MontantCaisse", 0)::numeric
-          - COALESCE(
-                (COALESCE(f.montant_entree, 0) - COALESCE(f.montant_sortie, 0)),
-                0
-            )::numeric                                                 AS "Ecart",
-
-        COALESCE(f.nb_paiements, 0)::integer                           AS "NbPaiements",
-        COALESCE(f.montant_entree, 0)::numeric                         AS "MontantEntree",
-        COALESCE(f.montant_sortie, 0)::numeric                         AS "MontantSortie"
-
-    FROM operations."T_Caisse" c
-    LEFT JOIN flux f
-           ON f.IdDevise = c."IdDeviseFk"
-          AND f.IdEntite = c."IdEntiteFk"
-    LEFT JOIN referentiel."T_Generique" dev
-           ON dev."ID_Generique" = c."IdDeviseFk"
-    LEFT JOIN systeme."T_Entite" ent
-           ON ent."IdEntite" = c."IdEntiteFk"
-    WHERE (p_id_entite IS NULL OR c."IdEntiteFk" = p_id_entite)
-      AND (p_id_devise IS NULL OR c."IdDeviseFk" = p_id_devise)
-    ORDER BY
-        ent."NomEntite",
-        dev."NomGenerique";
-END;
+ SELECT c."IdEntiteFk",c."NomEntite"::varchar,c."IdDeviseFk",c."DeviseLibelle"::varchar,sum(c."MontantCaisse"),coalesce(sum(x.balance),0),CASE WHEN p_date_max IS NULL THEN sum(c."MontantCaisse")-coalesce(sum(x.balance),0) ELSE NULL END,coalesce(sum(x.n),0)::integer,coalesce(sum(x.entree),0),coalesce(sum(x.sortie),0)
+ FROM operations."V_Caisse" c
+ LEFT JOIN LATERAL(SELECT coalesce(sum("SensMouvement"*"MontantPaiement"),0) balance,sum("MontantPaiement") FILTER(WHERE "SensMouvement"=1) entree,sum("MontantPaiement") FILTER(WHERE "SensMouvement"=-1) sortie,count(*) n FROM operations."T_Paiement" WHERE "IdCaisseFk"=c."IdCaisse" AND "EtatEcriture"='POSTED' AND (p_date_max IS NULL OR "DatePaiement"<=p_date_max AT TIME ZONE 'Africa/Kinshasa')) x ON true
+ WHERE (p_id_entite IS NULL OR c."IdEntiteFk"=p_id_entite) AND (p_id_devise IS NULL OR c."IdDeviseFk"=p_id_devise)
+ GROUP BY c."IdEntiteFk",c."NomEntite",c."IdDeviseFk",c."DeviseLibelle"
 $$;
 
 
@@ -3663,7 +3572,7 @@ $$;
 -- Name: FUNCTION fn_audit_caisse(p_id_entite integer, p_id_devise integer, p_date_max timestamp without time zone); Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON FUNCTION operations.fn_audit_caisse(p_id_entite integer, p_id_devise integer, p_date_max timestamp without time zone) IS 'Lecture de rapprochement par caisse entité/devise entre solde courant et flux de T_Paiement UNION ALL T_Paiement_Archive. La définition utilise les identifiants fixes statut 21, entrée 81, sortie 80 et devises 36/37 ; p_date_max borne les sommes, pas le compteur. Ne reconstitue pas le solde courant à une date passée et ne partage pas exactement les critères de gestion_caisse_on_paiement.';
+COMMENT ON FUNCTION operations.fn_audit_caisse(p_id_entite integer, p_id_devise integer, p_date_max timestamp without time zone) IS 'Rapprochement du journal moderne par caisse/entreprise/devise ; Ecart reste inconnu pour une borne historique puisque SoldeCaisse est courant.';
 
 
 --
@@ -3671,67 +3580,10 @@ COMMENT ON FUNCTION operations.fn_audit_caisse(p_id_entite integer, p_id_devise 
 --
 
 CREATE FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer DEFAULT NULL::integer, p_id_devise integer DEFAULT NULL::integer, p_date_min timestamp without time zone DEFAULT NULL::timestamp without time zone, p_date_max timestamp without time zone DEFAULT NULL::timestamp without time zone) RETURNS TABLE("DateJour" timestamp without time zone, "IdEntite" integer, "NomEntite" character varying, "IdDevise" integer, "NomDevise" character varying, "MontantEntree" numeric, "MontantSortie" numeric, "NetJour" numeric)
-    LANGUAGE plpgsql
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
     AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        DATE_TRUNC('day', p."DatePaiement") AS "DateJour",
-        p."IdEntiteFk"                      AS "IdEntite",
-        ent."NomEntite"                     AS "NomEntite",
-        p."IdDeviseFk"                      AS "IdDevise",
-        dev."NomGenerique"                  AS "NomDevise",
-
-        SUM(
-            CASE
-                WHEN p."IdStatutPaiementFk" = 21
-                 AND p."IdTypeMouvementFk" = 81
-                    THEN p."MontantPaiement"
-                ELSE 0
-            END
-        )::numeric                          AS "MontantEntree",
-
-        SUM(
-            CASE
-                WHEN p."IdStatutPaiementFk" = 21
-                 AND p."IdTypeMouvementFk" = 80
-                    THEN p."MontantPaiement"
-                ELSE 0
-            END
-        )::numeric                          AS "MontantSortie",
-
-        SUM(
-            CASE
-                WHEN p."IdStatutPaiementFk" = 21
-                 AND p."IdTypeMouvementFk" = 81
-                    THEN p."MontantPaiement"
-                WHEN p."IdStatutPaiementFk" = 21
-                 AND p."IdTypeMouvementFk" = 80
-                    THEN -p."MontantPaiement"
-                ELSE 0
-            END
-        )::numeric                          AS "NetJour"
-
-    FROM operations."T_Paiement" p
-    LEFT JOIN referentiel."T_Generique" dev
-           ON dev."ID_Generique" = p."IdDeviseFk"
-    LEFT JOIN systeme."T_Entite" ent
-           ON ent."IdEntite" = p."IdEntiteFk"
-    WHERE (p_id_entite IS NULL OR p."IdEntiteFk" = p_id_entite)
-      AND (p_id_devise IS NULL OR p."IdDeviseFk" = p_id_devise)
-      AND (p_date_min IS NULL OR p."DatePaiement" >= p_date_min)
-      AND (p_date_max IS NULL OR p."DatePaiement" <= p_date_max)
-    GROUP BY
-        DATE_TRUNC('day', p."DatePaiement"),
-        p."IdEntiteFk",
-        ent."NomEntite",
-        p."IdDeviseFk",
-        dev."NomGenerique"
-    ORDER BY
-        "DateJour",
-        "NomEntite",
-        "NomDevise";
-END;
+ SELECT date_trunc('day',p."DatePaiement" AT TIME ZONE 'Africa/Kinshasa'),p."IdEntiteFk",e."NomEntite",p."IdDeviseFk",g."NomGenerique",coalesce(sum(p."MontantPaiement") FILTER(WHERE p."SensMouvement"=1),0),coalesce(sum(p."MontantPaiement") FILTER(WHERE p."SensMouvement"=-1),0),sum(p."SensMouvement"*p."MontantPaiement") FROM operations."T_Paiement" p JOIN systeme."T_Entite" e ON e."IdEntite"=p."IdEntiteFk" JOIN referentiel."T_Generique" g ON g."ID_Generique"=p."IdDeviseFk" WHERE p."EtatEcriture"='POSTED' AND (p_id_entite IS NULL OR p."IdEntiteFk"=p_id_entite) AND (p_id_devise IS NULL OR p."IdDeviseFk"=p_id_devise) AND (p_date_min IS NULL OR p."DatePaiement">=p_date_min AT TIME ZONE 'Africa/Kinshasa') AND (p_date_max IS NULL OR p."DatePaiement"<=p_date_max AT TIME ZONE 'Africa/Kinshasa') GROUP BY 1,2,3,4,5
 $$;
 
 
@@ -3739,7 +3591,133 @@ $$;
 -- Name: FUNCTION fn_audit_flux_caisse(p_id_entite integer, p_id_devise integer, p_date_min timestamp without time zone, p_date_max timestamp without time zone); Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer, p_id_devise integer, p_date_min timestamp without time zone, p_date_max timestamp without time zone) IS 'Lecture des flux journaliers par entité/devise, avec bornes inclusives optionnelles ; lit seulement T_Paiement, sans archives. Les contributions utilisent le statut 21 et les mouvements 81/80 ; net = entrées moins sorties.';
+COMMENT ON FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer, p_id_devise integer, p_date_min timestamp without time zone, p_date_max timestamp without time zone) IS 'Flux du journal validé, bornes cohérentes et mêmes règles que le solde ; aucune dépendance aux anciens identifiants fixes.';
+
+
+--
+-- Name: fn_caisse_actor(integer, integer); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.fn_caisse_actor(p_actor integer, p_entite integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT EXISTS(SELECT FROM systeme."T_Utilisateurs" u WHERE u."IdUser"=p_actor AND u."ValideUser" AND (u."Is_Admin" OR u."IdEntiteFk"=p_entite))
+$$;
+
+
+--
+-- Name: FUNCTION fn_caisse_actor(p_actor integer, p_entite integer); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.fn_caisse_actor(p_actor integer, p_entite integer) IS 'Vérification du rattachement et de l’activité d’un auteur ; ce contrôle de cohérence ne remplace pas les permissions du service.';
+
+
+--
+-- Name: fn_caisse_cloturer(integer, integer, timestamp with time zone, numeric, text, uuid, text, bigint); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.fn_caisse_cloturer(p_caisse integer, p_actor integer, p_date timestamp with time zone, p_compte numeric, p_motif text, p_request uuid, p_hash text, p_revision bigint) RETURNS bigint
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE cash operations."T_Caisse";r operations."T_ClotureCaisse";result bigint;BEGIN
+ SELECT * INTO STRICT cash FROM operations."T_Caisse" WHERE "IdCaisse"=p_caisse FOR UPDATE;
+ IF p_request IS NULL OR p_hash IS NULL OR p_hash!~'^[a-f0-9]{64}$' OR NOT operations.fn_caisse_actor(p_actor,cash."IdEntiteFk") THEN RAISE EXCEPTION 'Acteur et demande valide requis.' USING ERRCODE='23514';END IF;
+ SELECT * INTO r FROM operations."T_ClotureCaisse" WHERE "CreationRequestId"=p_request;
+ IF FOUND THEN
+  IF r."CreationPayloadHash"=p_hash AND r."IdUserFk"=p_actor AND r."IdCaisseFk"=p_caisse THEN RETURN r."ID_ClotureCaisse";END IF;
+  RAISE EXCEPTION 'La demande de clôture a déjà un autre contenu.' USING ERRCODE='23514';
+ END IF;
+ IF cash."Revision" IS DISTINCT FROM p_revision THEN RAISE EXCEPTION 'Le solde de caisse a changé.' USING ERRCODE='40001';END IF;
+ INSERT INTO operations."T_ClotureCaisse"("IdCaisseFk","IdEntiteFk","IdDeviseFk","ClotureLe","SoldeTheorique","MontantCompte","Motif","IdUserFk","CreationRequestId","CreationPayloadHash") VALUES(p_caisse,cash."IdEntiteFk",cash."IdDeviseFk",p_date,cash."MontantCaisse",p_compte,p_motif,p_actor,p_request,p_hash) RETURNING "ID_ClotureCaisse" INTO result;
+ UPDATE operations."T_Caisse" SET "ModifieLe"=clock_timestamp() WHERE "IdCaisse"=p_caisse;
+ RETURN result;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_caisse_cloturer(p_caisse integer, p_actor integer, p_date timestamp with time zone, p_compte numeric, p_motif text, p_request uuid, p_hash text, p_revision bigint); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.fn_caisse_cloturer(p_caisse integer, p_actor integer, p_date timestamp with time zone, p_compte numeric, p_motif text, p_request uuid, p_hash text, p_revision bigint) IS 'Constate un comptage immuable avec révision de caisse et rejeu sûr ; un écart exige un motif et ne génère aucune correction automatique.';
+
+
+--
+-- Name: fn_caisse_contrepasser(integer, integer, text, uuid, text, bigint); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.fn_caisse_contrepasser(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint) RETURNS integer
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE r operations."T_Paiement";existing operations."T_Paiement";result integer;BEGIN
+ SELECT * INTO STRICT r FROM operations."T_Paiement" WHERE "IdPaiement"=p_id FOR UPDATE;
+ IF p_request IS NULL OR p_hash IS NULL OR p_hash!~'^[a-f0-9]{64}$' OR NOT operations.fn_caisse_actor(p_actor,r."IdEntiteFk") OR length(btrim(coalesce(p_motif,'')))=0 THEN RAISE EXCEPTION 'Acteur, motif et demande valide requis.' USING ERRCODE='23514';END IF;
+ SELECT * INTO existing FROM operations."T_Paiement" WHERE "IdPaiementOrigineFk"=p_id;
+ IF FOUND THEN
+  IF existing."CreationRequestId"=p_request AND existing."CreationPayloadHash"=p_hash AND existing."IdUserFk"=p_actor THEN RETURN existing."IdPaiement";END IF;
+  RAISE EXCEPTION 'Écriture déjà contre-passée.' USING ERRCODE='23514';
+ END IF;
+ IF r."EtatEcriture"<>'POSTED' OR r."Revision" IS DISTINCT FROM p_revision OR r."IdReglementFk" IS NOT NULL OR r."IdPaiementOrigineFk" IS NOT NULL THEN RAISE EXCEPTION 'Cette écriture ne peut pas être contre-passée directement.' USING ERRCODE='23514';END IF;
+ INSERT INTO operations."T_Paiement"("IdUserFk","IdTypePaiementFk","MontantPaiement","DatePaiement","ObsPaiement","IdDeviseFk","IdEntiteFk","IdCaisseFk","SensMouvement","EtatEcriture","LibellePaiement","ReferenceExterne","IdTiersFk","IdPaiementOrigineFk","CreationRequestId","CreationPayloadHash","IdValidateurFk","ValidationRequestId","ValidationPayloadHash")
+ VALUES(p_actor,NULL,r."MontantPaiement",clock_timestamp(),p_motif,r."IdDeviseFk",r."IdEntiteFk",r."IdCaisseFk",-r."SensMouvement",'POSTED','Contrepassation de '||r."CodePaiement",r."ReferenceExterne",r."IdTiersFk",p_id,p_request,p_hash,p_actor,p_request,p_hash) RETURNING "IdPaiement" INTO result;
+ RETURN result;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_caisse_contrepasser(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.fn_caisse_contrepasser(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint) IS 'Crée une seule écriture opposée au montant original avec motif ; une compensation ou un règlement lié ne se contre-passe pas par ce circuit.';
+
+
+--
+-- Name: fn_caisse_sens_type(integer); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.fn_caisse_sens_type(p_type integer) RETURNS smallint
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT CASE translate(lower(btrim(g."AbrGenerique")),'éèêàâîïôùûç','eeeaaiiouuc') WHEN 'entree' THEN 1 WHEN 'sortie' THEN -1 ELSE NULL END::smallint FROM referentiel."T_Generique" g WHERE g."ID_Generique"=p_type
+$$;
+
+
+--
+-- Name: FUNCTION fn_caisse_sens_type(p_type integer); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.fn_caisse_sens_type(p_type integer) IS 'Résout le sens explicite Entrée/Sortie d’une valeur du référentiel ; le journal conserve son propre signe et ne recalcule pas les validations historiques.';
+
+
+--
+-- Name: fn_caisse_valider(integer, integer, text, uuid, text, bigint); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.fn_caisse_valider(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint) RETURNS integer
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE r operations."T_Paiement";BEGIN
+ SELECT * INTO STRICT r FROM operations."T_Paiement" WHERE "IdPaiement"=p_id FOR UPDATE;
+ IF p_request IS NULL OR p_hash IS NULL OR p_hash!~'^[a-f0-9]{64}$' OR NOT operations.fn_caisse_actor(p_actor,r."IdEntiteFk") OR length(btrim(coalesce(p_motif,'')))=0 THEN RAISE EXCEPTION 'Acteur, motif et demande valide requis.' USING ERRCODE='23514';END IF;
+ IF r."EtatEcriture"='POSTED' THEN
+  IF r."ValidationRequestId"=p_request AND r."ValidationPayloadHash"=p_hash AND r."IdValidateurFk"=p_actor THEN RETURN p_id;END IF;
+  RAISE EXCEPTION 'Écriture déjà validée.' USING ERRCODE='23514';
+ END IF;
+ IF r."Revision" IS DISTINCT FROM p_revision THEN RAISE EXCEPTION 'La révision de l’écriture a changé.' USING ERRCODE='40001';END IF;
+ UPDATE operations."T_Paiement" SET "EtatEcriture"='POSTED',"IdValidateurFk"=p_actor,"ValidationRequestId"=p_request,"ValidationPayloadHash"=p_hash,"ObsPaiement"=concat_ws(E'\n',nullif("ObsPaiement",''),'Validation : '||p_motif) WHERE "IdPaiement"=p_id;
+ RETURN p_id;
+END $_$;
+
+
+--
+-- Name: FUNCTION fn_caisse_valider(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.fn_caisse_valider(p_id integer, p_actor integer, p_motif text, p_request uuid, p_hash text, p_revision bigint) IS 'Valide une seule fois un brouillon avec contrôle de révision et preuve de rejeu UUID/empreinte/acteur ; la garde SQL produit l’effet de caisse.';
 
 
 --
@@ -3748,182 +3726,20 @@ COMMENT ON FUNCTION operations.fn_audit_flux_caisse(p_id_entite integer, p_id_de
 
 CREATE FUNCTION operations.gestion_caisse_on_paiement() RETURNS trigger
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
     AS $$
-DECLARE
-    -- Deltas à appliquer sur la caisse
-    v_delta_old NUMERIC := 0;
-    v_delta_new NUMERIC := 0;
-
-    -- Variables de travail
-    v_sign       INTEGER;
-    v_is_paid    BOOLEAN;
-    v_is_devise  BOOLEAN;
 BEGIN
-    --------------------------------------------------------------------
-    -- 1) TRAITEMENT DE L'ANCIEN ENREGISTREMENT (OLD) → DELETE / UPDATE
-    --------------------------------------------------------------------
-    IF TG_OP IN ('UPDATE', 'DELETE') THEN
-        v_delta_old := 0;
-        v_sign      := 0;
-        v_is_paid   := FALSE;
-        v_is_devise := FALSE;
-
-        -- a) Statut paiement = 'Payé(e)' dans catégorie 'Statut paiement' ?
-        IF OLD."IdStatutPaiementFk" IS NOT NULL THEN
-            SELECT
-                ( lower(cg."NomCategorieGenerique") = 'statut paiement'
-                  AND trim(g."NomGenerique") = 'Payé(e)' )
-            INTO v_is_paid
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = OLD."IdStatutPaiementFk";
-        END IF;
-
-        -- b) Devise appartenant à la catégorie 'Devise' ?
-        IF OLD."IdDeviseFk" IS NOT NULL THEN
-            SELECT
-                ( referentiel.fn_reference_champ_connue('operations','T_Paiement','IdDeviseFk',g."ID_Generique") )
-            INTO v_is_devise
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = OLD."IdDeviseFk";
-        END IF;
-
-        -- c) Type mouvement paiement : 'Entrée' / 'Sortie' ?
-        IF OLD."IdTypeMouvementFk" IS NOT NULL THEN
-            SELECT
-                CASE
-                    WHEN lower(cg."NomCategorieGenerique") = 'type mouvement paiement'
-                         AND g."NomGenerique" ILIKE 'entr%' THEN  1   -- Entrée
-                    WHEN lower(cg."NomCategorieGenerique") = 'type mouvement paiement'
-                         AND g."NomGenerique" ILIKE 'sort%' THEN -1   -- Sortie
-                    ELSE 0
-                END
-            INTO v_sign
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = OLD."IdTypeMouvementFk";
-        END IF;
-
-        -- d) Calcul de l'effet OLD sur la caisse (qu'on doit annuler)
-        IF OLD."ValidePaiement" IS TRUE
-           AND v_is_paid
-           AND v_is_devise
-           AND v_sign <> 0
-           AND OLD."IdEntiteFk" IS NOT NULL
-        THEN
-            -- Pour un DELETE ou la "sortie" de l'ancien état :
-            -- delta_old = - (signe * MontantPaiement)
-            v_delta_old := - v_sign * OLD."MontantPaiement";
-
-            -- Appliquer delta_old à la caisse correspondante
-            INSERT INTO operations."T_Caisse" AS c (
-                "IdEntiteFk", "IdDeviseFk", "MontantCaisse"
-            )
-            VALUES (
-                OLD."IdEntiteFk",
-                OLD."IdDeviseFk",
-                v_delta_old
-            )
-            ON CONFLICT ("IdEntiteFk", "IdDeviseFk")
-            DO UPDATE
-            SET "MontantCaisse" = c."MontantCaisse" + EXCLUDED."MontantCaisse";
-        END IF;
-    END IF;
-
-    --------------------------------------------------------------------
-    -- 2) TRAITEMENT DU NOUVEL ENREGISTREMENT (NEW) → INSERT / UPDATE
-    --------------------------------------------------------------------
-    IF TG_OP IN ('INSERT', 'UPDATE') THEN
-        v_delta_new := 0;
-        v_sign      := 0;
-        v_is_paid   := FALSE;
-        v_is_devise := FALSE;
-
-        -- a) Statut paiement = 'Payé(e)' ?
-        IF NEW."IdStatutPaiementFk" IS NOT NULL THEN
-            SELECT
-                ( lower(cg."NomCategorieGenerique") = 'statut paiement'
-                  AND trim(g."NomGenerique") = 'Payé(e)' )
-            INTO v_is_paid
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = NEW."IdStatutPaiementFk";
-        END IF;
-
-        -- b) Devise appartenant à la catégorie 'Devise' ?
-        IF NEW."IdDeviseFk" IS NOT NULL THEN
-            SELECT
-                ( referentiel.fn_reference_champ_connue('operations','T_Paiement','IdDeviseFk',g."ID_Generique") )
-            INTO v_is_devise
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = NEW."IdDeviseFk";
-        END IF;
-
-        -- c) Type mouvement : 'Entrée' / 'Sortie' ?
-        IF NEW."IdTypeMouvementFk" IS NOT NULL THEN
-            SELECT
-                CASE
-                    WHEN lower(cg."NomCategorieGenerique") = 'type mouvement paiement'
-                         AND g."NomGenerique" ILIKE 'entr%' THEN  1
-                    WHEN lower(cg."NomCategorieGenerique") = 'type mouvement paiement'
-                         AND g."NomGenerique" ILIKE 'sort%' THEN -1
-                    ELSE 0
-                END
-            INTO v_sign
-            FROM referentiel."T_Generique" g
-            JOIN referentiel."T_CategorieGenerique" cg
-              ON cg."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk"
-            WHERE g."ID_Generique" = NEW."IdTypeMouvementFk";
-        END IF;
-
-        -- d) Calcul de l'effet NEW sur la caisse
-        IF NEW."ValidePaiement" IS TRUE
-           AND v_is_paid
-           AND v_is_devise
-           AND v_sign <> 0
-           AND NEW."IdEntiteFk" IS NOT NULL
-        THEN
-            -- Pour un INSERT ou la "nouvelle" version en UPDATE :
-            -- delta_new = signe * MontantPaiement
-            v_delta_new := v_sign * NEW."MontantPaiement";
-
-            -- Appliquer delta_new à la caisse correspondante
-            INSERT INTO operations."T_Caisse" AS c (
-                "IdEntiteFk", "IdDeviseFk", "MontantCaisse"
-            )
-            VALUES (
-                NEW."IdEntiteFk",
-                NEW."IdDeviseFk",
-                v_delta_new
-            )
-            ON CONFLICT ("IdEntiteFk", "IdDeviseFk")
-            DO UPDATE
-            SET "MontantCaisse" = c."MontantCaisse" + EXCLUDED."MontantCaisse";
-        END IF;
-    END IF;
-
-    -- 3) Retour standard pour un trigger AFTER ROW
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    ELSE
-        RETURN NEW;
-    END IF;
-END;
-$$;
+ IF NEW."EtatEcriture"='POSTED' AND (TG_OP='INSERT' OR OLD."EtatEcriture"='DRAFT') THEN
+  UPDATE operations."T_Caisse" SET "MontantCaisse"="MontantCaisse"+NEW."SensMouvement"*NEW."MontantPaiement" WHERE "IdCaisse"=NEW."IdCaisseFk";
+ END IF;RETURN NEW;
+END $$;
 
 
 --
 -- Name: FUNCTION gestion_caisse_on_paiement(); Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Gestion de caisse existante conservée ; contrôle de devise délégué au catalogue de la vraie FK, sans modifier les règles de statut, de sens ou les écritures antérieures.';
+COMMENT ON FUNCTION operations.gestion_caisse_on_paiement() IS 'Seul effet de caisse : ajout du montant signé à la première validation d’une écriture ; aucune réévaluation par identifiant de statut ou de devise.';
 
 
 --
@@ -4053,6 +3869,197 @@ $$;
 --
 
 COMMENT ON FUNCTION operations.prevent_delete_caisse_if_dependent() IS 'Avant DELETE de caisse, bloque la suppression s’il existe un paiement actif ou archivé pour le même couple entité/devise.';
+
+
+--
+-- Name: tr_caisse_audit(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_caisse_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE before_row jsonb;after_row jsonb;entity_id integer;actor integer:=systeme.fn_admin_actor_user_id();
+ request_id text:=nullif(current_setting('operations.request_id',true),'');
+ payload_hash text:=nullif(current_setting('operations.payload_hash',true),'');extra jsonb;
+BEGIN
+ extra:=jsonb_build_object('_actor',jsonb_build_object('IdUser',actor));
+ IF request_id IS NOT NULL AND payload_hash IS NOT NULL AND payload_hash~'^[a-f0-9]{64}$' THEN
+  PERFORM request_id::uuid;extra:=extra||jsonb_build_object('_requestId',request_id,'_payloadHash',payload_hash);
+ END IF;
+ IF TG_OP IN('DELETE','UPDATE') THEN before_row:=systeme.fn_audit_sans_secrets(to_jsonb(OLD))||extra;END IF;
+ IF TG_OP IN('INSERT','UPDATE') THEN after_row:=systeme.fn_audit_sans_secrets(to_jsonb(NEW))||extra;END IF;
+ entity_id:=coalesce((after_row->>'IdEntiteFk')::integer,(before_row->>'IdEntiteFk')::integer);
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk") VALUES(TG_TABLE_SCHEMA||'.'||TG_TABLE_NAME,TG_OP,before_row,after_row,current_timestamp,entity_id);
+ RETURN NULL;
+END $_$;
+
+
+--
+-- Name: FUNCTION tr_caisse_audit(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_caisse_audit() IS 'Un seul événement SQL par changement de caisse/journal/clôture ; images nettoyées, auteur et preuve transactionnelle de demande pour rejouer les mises à jour sans duplication. Les GUC sont des métadonnées et ne donnent aucun droit.';
+
+
+--
+-- Name: tr_caisse_integrite(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_caisse_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Une caisse est archivée, jamais supprimée.' USING ERRCODE='23514';END IF;
+ IF NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=NEW."IdEntiteFk" AND "ValideEntite") THEN RAISE EXCEPTION 'Entreprise de caisse inactive ou absente.' USING ERRCODE='23514';END IF;
+ IF (TG_OP='INSERT' OR NEW."IdResponsableFk" IS DISTINCT FROM OLD."IdResponsableFk") AND NEW."IdResponsableFk" IS NOT NULL AND NOT operations.fn_caisse_actor(NEW."IdResponsableFk",NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Responsable hors entreprise ou inactif.' USING ERRCODE='23514';END IF;
+ IF TG_OP='INSERT' THEN
+  IF coalesce(NEW."MontantCaisse",0)<>0 THEN RAISE EXCEPTION 'Le solde d’ouverture passe par une entrée validée, jamais par la fiche caisse.' USING ERRCODE='23514';END IF;
+  NEW."CodeCaisse":='CAI-'||NEW."IdCaisse";NEW."MontantCaisse":=0;NEW."CreeLe":=clock_timestamp();NEW."Revision":=1;
+ ELSE
+  IF NEW."IdEntiteFk"<>OLD."IdEntiteFk" OR NEW."IdDeviseFk"<>OLD."IdDeviseFk" OR NEW."CodeCaisse"<>OLD."CodeCaisse" OR NEW."IdCaisse"<>OLD."IdCaisse" OR NEW."CreationRequestId" IS DISTINCT FROM OLD."CreationRequestId" OR NEW."CreationPayloadHash" IS DISTINCT FROM OLD."CreationPayloadHash" THEN RAISE EXCEPTION 'Identité, entreprise et devise de caisse sont conservées.' USING ERRCODE='23514';END IF;
+  IF NOT NEW."Actif" AND OLD."Actif" AND EXISTS(SELECT FROM operations."T_Paiement" WHERE "IdCaisseFk"=OLD."IdCaisse" AND "EtatEcriture"='DRAFT' AND "ValidePaiement") THEN RAISE EXCEPTION 'Traitez les brouillons avant d’archiver la caisse.' USING ERRCODE='23514';END IF;
+  IF NOT NEW."Actif" AND OLD."Actif" AND OLD."MontantCaisse"<>0 THEN RAISE EXCEPTION 'Le solde de caisse doit être nul avant archivage.' USING ERRCODE='23514';END IF;
+  NEW."CreeLe":=OLD."CreeLe";NEW."Revision":=OLD."Revision"+1;
+ END IF;
+ NEW."ModifieLe":=clock_timestamp();RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_caisse_integrite(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_caisse_integrite() IS 'Conserve le code automatique, l’entreprise, la devise et l’identité de création ; contrôle le responsable et l’archivage sans brouillon actif.';
+
+
+--
+-- Name: tr_caisse_solde_rapproche(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_caisse_solde_rapproche() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE theoretical numeric;currentbalance numeric;BEGIN
+ SELECT coalesce(sum("SensMouvement"*"MontantPaiement") FILTER(WHERE "EtatEcriture"='POSTED'),0) INTO theoretical FROM operations."T_Paiement" WHERE "IdCaisseFk"=NEW."IdCaisse";
+ SELECT "MontantCaisse" INTO currentbalance FROM operations."T_Caisse" WHERE "IdCaisse"=NEW."IdCaisse";
+ IF currentbalance IS DISTINCT FROM theoretical THEN RAISE EXCEPTION 'Le solde doit correspondre au journal validé de la caisse.' USING ERRCODE='23514';END IF;RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_caisse_solde_rapproche(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_caisse_solde_rapproche() IS 'Contrainte différée : le solde physique stocké doit égaler la somme du journal validé à la fin de la transaction, y compris après SQL direct.';
+
+
+--
+-- Name: tr_cloture_integrite(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_cloture_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE cash operations."T_Caisse";latest timestamptz;BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'La clôture est immuable.' USING ERRCODE='23514';END IF;
+ SELECT * INTO STRICT cash FROM operations."T_Caisse" WHERE "IdCaisse"=NEW."IdCaisseFk" FOR UPDATE;
+ IF NOT cash."Actif" OR NOT operations.fn_caisse_actor(NEW."IdUserFk",cash."IdEntiteFk") OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=cash."IdEntiteFk" AND "ValideEntite") THEN RAISE EXCEPTION 'Caisse, entreprise actives et auteur de l’entreprise requis.' USING ERRCODE='23514';END IF;
+ SELECT greatest((SELECT max("ClotureLe") FROM operations."T_ClotureCaisse" WHERE "IdCaisseFk"=NEW."IdCaisseFk"),(SELECT max("DatePaiement") FROM operations."T_Paiement" WHERE "IdCaisseFk"=NEW."IdCaisseFk" AND "EtatEcriture"='POSTED')) INTO latest;
+ IF NEW."ClotureLe" IS NULL OR NOT isfinite(NEW."ClotureLe") OR NEW."ClotureLe">clock_timestamp()+interval '5 seconds' OR (latest IS NOT NULL AND NEW."ClotureLe"<=latest) THEN RAISE EXCEPTION 'La clôture doit suivre les écritures et clôtures précédentes, sans date future.' USING ERRCODE='23514';END IF;
+ IF EXISTS(SELECT FROM operations."T_Paiement" WHERE "IdCaisseFk"=NEW."IdCaisseFk" AND "EtatEcriture"='DRAFT' AND "ValidePaiement" AND "DatePaiement"<=NEW."ClotureLe") THEN RAISE EXCEPTION 'Traitez ou archivez les brouillons avant de clôturer.' USING ERRCODE='23514';END IF;
+ NEW."IdEntiteFk":=cash."IdEntiteFk";NEW."IdDeviseFk":=cash."IdDeviseFk";NEW."SoldeTheorique":=cash."MontantCaisse";NEW."CreeLe":=clock_timestamp();RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_cloture_integrite(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_cloture_integrite() IS 'Capture le solde courant et le contexte au verrouillage, refuse un comptage antidaté/futur, des brouillons antérieurs et toute modification ultérieure.';
+
+
+--
+-- Name: tr_paiement_integrite(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_paiement_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE cash operations."T_Caisse";origin operations."T_Paiement";reg record;direction smallint;lastclose timestamptz;BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Une écriture de caisse ne se supprime pas ; archivez le brouillon ou contre-passez la validation.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND OLD."EtatEcriture"='POSTED' THEN RAISE EXCEPTION 'Une écriture validée est immuable ; utilisez une contrepassation.' USING ERRCODE='23514';END IF;
+ SELECT * INTO STRICT cash FROM operations."T_Caisse" WHERE "IdCaisse"=NEW."IdCaisseFk" FOR UPDATE;
+ IF NOT cash."Actif" OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=cash."IdEntiteFk" AND "ValideEntite") THEN RAISE EXCEPTION 'Cette caisse ou entreprise est inactive.' USING ERRCODE='23514';END IF;
+ NEW."IdEntiteFk":=cash."IdEntiteFk";NEW."IdDeviseFk":=cash."IdDeviseFk";
+ IF NOT operations.fn_caisse_actor(NEW."IdUserFk",NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Auteur hors entreprise ou inactif.' USING ERRCODE='23514';END IF;
+ IF NEW."IdPayeurFk" IS NOT NULL AND NOT operations.fn_caisse_actor(NEW."IdPayeurFk",NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Payeur hors entreprise ou inactif.' USING ERRCODE='23514';END IF;
+ IF NEW."IdTiersFk" IS NOT NULL AND NOT EXISTS(SELECT FROM logistique."T_Client" WHERE "ID_Client"=NEW."IdTiersFk" AND "IdEntiteFk"=NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Tiers hors entreprise.' USING ERRCODE='23514';END IF;
+ IF NEW."DatePaiement" IS NULL OR NOT isfinite(NEW."DatePaiement") OR NEW."DatePaiement">clock_timestamp()+interval '5 seconds' THEN RAISE EXCEPTION 'La date de caisse doit être renseignée, finie et non future.' USING ERRCODE='23514';END IF;
+ IF TG_OP='INSERT' THEN
+  NEW."CodePaiement":='MVT-'||NEW."IdPaiement";NEW."CreeLe":=clock_timestamp();NEW."Revision":=1;
+ ELSE
+  IF (NEW."IdPaiement",NEW."IdCaisseFk",NEW."IdUserFk",NEW."CreationRequestId",NEW."CreationPayloadHash",NEW."IdPaiementOrigineFk",NEW."IdReglementFk") IS DISTINCT FROM (OLD."IdPaiement",OLD."IdCaisseFk",OLD."IdUserFk",OLD."CreationRequestId",OLD."CreationPayloadHash",OLD."IdPaiementOrigineFk",OLD."IdReglementFk") THEN RAISE EXCEPTION 'Identité et rattachements de l’écriture sont conservés.' USING ERRCODE='23514';END IF;
+  IF NOT OLD."ValidePaiement" THEN RAISE EXCEPTION 'Le brouillon archivé est conservé.' USING ERRCODE='23514';END IF;
+  NEW."CodePaiement":=OLD."CodePaiement";NEW."CreeLe":=OLD."CreeLe";NEW."Revision":=OLD."Revision"+1;
+ END IF;
+ NEW."ModifieLe":=clock_timestamp();
+ IF NEW."IdTypeMouvementFk" IS NOT NULL THEN
+  direction:=operations.fn_caisse_sens_type(NEW."IdTypeMouvementFk");
+  IF direction IS NULL OR direction<>NEW."SensMouvement" THEN RAISE EXCEPTION 'Le sens du type de mouvement ne correspond pas à l’écriture.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF NEW."IdPaiementOrigineFk" IS NOT NULL THEN
+  SELECT * INTO STRICT origin FROM operations."T_Paiement" WHERE "IdPaiement"=NEW."IdPaiementOrigineFk" FOR UPDATE;
+  IF origin."EtatEcriture"<>'POSTED' OR origin."IdReglementFk" IS NOT NULL OR origin."IdPaiementOrigineFk" IS NOT NULL OR origin."IdCaisseFk"<>NEW."IdCaisseFk" OR NEW."SensMouvement"<>-origin."SensMouvement" OR NEW."MontantPaiement"<>origin."MontantPaiement" OR NEW."EtatEcriture"<>'POSTED' OR length(btrim(coalesce(NEW."ObsPaiement",'')))=0 THEN RAISE EXCEPTION 'La compensation exige l’écriture d’origine, le même montant, le sens inverse et un motif ; un règlement lié suit son circuit financier.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF NEW."IdReglementFk" IS NOT NULL THEN
+  SELECT r."MontantRegle",r."ID_DeviseFk",f."IdEntiteFk" INTO STRICT reg FROM logistique."T_Reglements" r JOIN logistique."T_Facture" f ON f."CodeFacture"=r."CodeFactureFk" WHERE r."ID_Reglement"=NEW."IdReglementFk" FOR UPDATE OF r;
+  IF NEW."EtatEcriture"<>'POSTED' OR NEW."SensMouvement"<>1 OR NEW."MontantPaiement"<>reg."MontantRegle" OR NEW."IdDeviseFk"<>reg."ID_DeviseFk" OR NEW."IdEntiteFk"<>reg."IdEntiteFk" THEN RAISE EXCEPTION 'Règlement et entrée de caisse doivent avoir la même entreprise, devise et montant.' USING ERRCODE='23514';END IF;
+ END IF;
+ IF NEW."EtatEcriture"='POSTED' THEN
+  IF NOT NEW."ValidePaiement" OR NOT operations.fn_caisse_actor(NEW."IdValidateurFk",NEW."IdEntiteFk") THEN RAISE EXCEPTION 'Validation et validateur autorisé dans l’entreprise requis.' USING ERRCODE='23514';END IF;
+  SELECT max("ClotureLe") INTO lastclose FROM operations."T_ClotureCaisse" WHERE "IdCaisseFk"=NEW."IdCaisseFk";
+  IF lastclose IS NOT NULL AND NEW."DatePaiement"<=lastclose THEN RAISE EXCEPTION 'Une clôture interdit cette écriture antidatée.' USING ERRCODE='23514';END IF;
+  IF cash."MontantCaisse"+NEW."SensMouvement"*NEW."MontantPaiement"<0 THEN RAISE EXCEPTION 'Solde de caisse insuffisant.' USING ERRCODE='23514';END IF;
+  NEW."ValideLe":=clock_timestamp();
+  SELECT coalesce(nullif(btrim("AbrGenerique"),''),"NomGenerique") INTO STRICT NEW."DeviseCodeSnapshot" FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."IdDeviseFk";
+ ELSE
+  NEW."ValideLe":=NULL;NEW."IdValidateurFk":=NULL;NEW."DeviseCodeSnapshot":=NULL;NEW."ValidationRequestId":=NULL;NEW."ValidationPayloadHash":=NULL;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_paiement_integrite(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_paiement_integrite() IS 'Verrouille la caisse, dérive propriétaire/devise, contrôle acteurs/tiers/règlement, clôtures, disponibilité et compensation ; une validation ne peut plus être modifiée.';
+
+
+--
+-- Name: tr_reglement_caisse_protege(); Type: FUNCTION; Schema: operations; Owner: -
+--
+
+CREATE FUNCTION operations.tr_reglement_caisse_protege() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF EXISTS(SELECT FROM operations."T_Paiement" WHERE "IdReglementFk"=OLD."ID_Reglement") THEN RAISE EXCEPTION 'Ce règlement est lié au journal de caisse ; une correction financière dédiée est nécessaire.' USING ERRCODE='23514';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_reglement_caisse_protege(); Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON FUNCTION operations.tr_reglement_caisse_protege() IS 'Empêche la modification ou suppression d’un règlement déjà relié au journal de caisse ; une correction requiert un circuit financier explicite.';
 
 
 --
@@ -5417,6 +5424,37 @@ END $$;
 --
 
 COMMENT ON FUNCTION systeme.tr_localisation_patrimoine_proprietaire() IS 'Empêche de déplacer une localisation vers une autre entreprise lorsqu’un bien actif ou archivé y reste lié. Ne crée aucun état d’archivage fictif pour les localisations.';
+
+
+--
+-- Name: tr_module_classification(); Type: FUNCTION; Schema: systeme; Owner: -
+--
+
+CREATE FUNCTION systeme.tr_module_classification() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ PERFORM pg_advisory_xact_lock(hashtextextended('sauverndeko.catalogue.classification',0));
+ IF NEW."ModuleParentCode" IS NOT NULL AND NOT EXISTS(
+  SELECT FROM systeme."T_ModuleApplication" WHERE "CodeModule"=NEW."ModuleParentCode" AND "TypeApplication"='MODULE'
+ ) THEN
+  RAISE EXCEPTION 'Une fonctionnalité doit être rattachée à un module du catalogue.' USING ERRCODE='23514';
+ END IF;
+ IF NEW."TypeApplication"='FONCTIONNALITE' AND EXISTS(
+  SELECT FROM systeme."T_ModuleApplication" WHERE "ModuleParentCode"=NEW."CodeModule" AND "CodeModule"<>NEW."CodeModule"
+ ) THEN
+  RAISE EXCEPTION 'Ce module possède des fonctionnalités ; modifiez leurs rattachements avant sa classification.' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_module_classification(); Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON FUNCTION systeme.tr_module_classification() IS 'Contrôle la nature du parent de présentation et empêche de reclasser en fonctionnalité un module possédant des enfants ; aucun effet sur les autorisations ou licences.';
 
 
 --
@@ -25215,8 +25253,22 @@ COMMENT ON COLUMN logistique."V_ValorisationStock"."Version" IS 'Version : valeu
 CREATE TABLE operations."T_Caisse" (
     "IdCaisse" integer CONSTRAINT "T_Caisse_IdCaisse_not_null" NOT NULL,
     "IdDeviseFk" integer CONSTRAINT "T_Caisse_IdDeviseFk_not_null" NOT NULL,
-    "MontantCaisse" numeric(10,2) DEFAULT 0,
-    "IdEntiteFk" integer
+    "MontantCaisse" numeric DEFAULT 0 CONSTRAINT "T_Caisse_MontantCaisse_not_null" NOT NULL,
+    "IdEntiteFk" integer CONSTRAINT "T_Caisse_IdEntiteFk_not_null" NOT NULL,
+    "CodeCaisse" text CONSTRAINT "T_Caisse_CodeCaisse_not_null" NOT NULL,
+    "NomCaisse" text CONSTRAINT "T_Caisse_NomCaisse_not_null" NOT NULL,
+    "IdTypeCaisseFk" integer,
+    "IdResponsableFk" integer,
+    "Actif" boolean DEFAULT true CONSTRAINT "T_Caisse_Actif_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Caisse_CreeLe_not_null" NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Caisse_ModifieLe_not_null" NOT NULL,
+    "Revision" bigint DEFAULT 1 CONSTRAINT "T_Caisse_Revision_not_null" NOT NULL,
+    "CreationRequestId" uuid,
+    "CreationPayloadHash" text,
+    CONSTRAINT ck_caisse_creation CHECK (((("CreationRequestId" IS NULL) = ("CreationPayloadHash" IS NULL)) AND (("CreationPayloadHash" IS NULL) OR ("CreationPayloadHash" ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT ck_caisse_nom CHECK (((length(btrim("NomCaisse")) >= 1) AND (length(btrim("NomCaisse")) <= 200))),
+    CONSTRAINT ck_caisse_revision CHECK (("Revision" > 0)),
+    CONSTRAINT ck_caisse_solde CHECK ((("MontantCaisse" >= (0)::numeric) AND ("MontantCaisse" <= 9999999999999999.99) AND ("MontantCaisse" = round("MontantCaisse", 2))))
 );
 
 
@@ -25224,7 +25276,7 @@ CREATE TABLE operations."T_Caisse" (
 -- Name: TABLE "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON TABLE operations."T_Caisse" IS 'Solde courant de caisse par entité et devise ; unicité du couple IdEntiteFk/IdDeviseFk. Mis à jour par les effets des paiements éligibles dans la fonction de gestion de caisse.';
+COMMENT ON TABLE operations."T_Caisse" IS 'Caisse mono-devise appartenant durablement à une entreprise ; le solde est exclusivement rapproché du journal validé. Plusieurs caisses distinctes peuvent utiliser la même devise.';
 
 
 --
@@ -25245,14 +25297,84 @@ COMMENT ON COLUMN operations."T_Caisse"."IdDeviseFk" IS 'Devise de l’opératio
 -- Name: COLUMN "T_Caisse"."MontantCaisse"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Caisse"."MontantCaisse" IS 'Solde courant enregistré de cette caisse, dans sa devise ; à rapprocher du solde théorique des paiements.';
+COMMENT ON COLUMN operations."T_Caisse"."MontantCaisse" IS 'Solde exact au centime issu exclusivement des écritures POSTED ; contrôlé contre leur somme en fin de transaction. Ouverture initiale à zéro.';
 
 
 --
 -- Name: COLUMN "T_Caisse"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Caisse"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
+COMMENT ON COLUMN operations."T_Caisse"."IdEntiteFk" IS 'Entreprise propriétaire durable, obligatoire et immuable ; sa suppression ne peut effacer cette caisse.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."CodeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."CodeCaisse" IS 'Code d’inventaire de caisse automatique CAI-ID, immuable et distinct du libellé.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."NomCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."NomCaisse" IS 'Nom lisible de la caisse dans son entreprise.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."IdTypeCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."IdTypeCaisseFk" IS 'Type de caisse choisi dans la catégorie configurable du référentiel.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."IdResponsableFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."IdResponsableFk" IS 'Compte responsable de la caisse ; aucune permission ne découle de cette affectation.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."Actif"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."Actif" IS 'Caisse utilisable pour les nouvelles écritures ; les caisses archivées restent consultables.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."CreeLe" IS 'Instant technique de création ; conservé pour la traçabilité.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."ModifieLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."ModifieLe" IS 'Instant technique de dernière modification autorisée.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."Revision"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."Revision" IS 'Version SQL monotone pour le contrôle des modifications simultanées.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."CreationRequestId" IS 'Identifiant de demande initiale pour rejouer sans duplication.';
+
+
+--
+-- Name: COLUMN "T_Caisse"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Caisse"."CreationPayloadHash" IS 'Empreinte SHA-256 du contenu initial ; vérifiée lors du rejeu.';
 
 
 --
@@ -25267,6 +25389,90 @@ COMMENT ON CONSTRAINT "T_Caisse_IdCaisse_not_null" ON operations."T_Caisse" IS '
 --
 
 COMMENT ON CONSTRAINT "T_Caisse_IdDeviseFk_not_null" ON operations."T_Caisse" IS 'Non-nullité : exige une valeur renseignée dans "operations"."T_Caisse". Définition : NOT NULL "IdDeviseFk".';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_MontantCaisse_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_MontantCaisse_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_MontantCaisse_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_IdEntiteFk_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_IdEntiteFk_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_IdEntiteFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_CodeCaisse_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_CodeCaisse_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_CodeCaisse_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_NomCaisse_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_NomCaisse_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_NomCaisse_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_Actif_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_Actif_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_Actif_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_CreeLe_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_CreeLe_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_CreeLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_ModifieLe_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_ModifieLe_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_ModifieLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_Revision_not_null" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_Revision_not_null" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_Revision_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_caisse_creation ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_caisse_creation ON operations."T_Caisse" IS 'Intégrité de caisse : ck_caisse_creation ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_caisse_nom ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_caisse_nom ON operations."T_Caisse" IS 'Intégrité de caisse : ck_caisse_nom ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_caisse_revision ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_caisse_revision ON operations."T_Caisse" IS 'Intégrité de caisse : ck_caisse_revision ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_caisse_solde ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_caisse_solde ON operations."T_Caisse" IS 'Intégrité de caisse : ck_caisse_solde ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -25291,6 +25497,240 @@ COMMENT ON SEQUENCE operations."T_Caisse_IdCaisse_seq" IS 'Séquence de généra
 
 
 --
+-- Name: T_ClotureCaisse; Type: TABLE; Schema: operations; Owner: -
+--
+
+CREATE TABLE operations."T_ClotureCaisse" (
+    "ID_ClotureCaisse" bigint CONSTRAINT "T_ClotureCaisse_ID_ClotureCaisse_not_null" NOT NULL,
+    "IdCaisseFk" integer CONSTRAINT "T_ClotureCaisse_IdCaisseFk_not_null" NOT NULL,
+    "IdEntiteFk" integer CONSTRAINT "T_ClotureCaisse_IdEntiteFk_not_null" NOT NULL,
+    "IdDeviseFk" integer CONSTRAINT "T_ClotureCaisse_IdDeviseFk_not_null" NOT NULL,
+    "ClotureLe" timestamp with time zone CONSTRAINT "T_ClotureCaisse_ClotureLe_not_null" NOT NULL,
+    "SoldeTheorique" numeric CONSTRAINT "T_ClotureCaisse_SoldeTheorique_not_null" NOT NULL,
+    "MontantCompte" numeric CONSTRAINT "T_ClotureCaisse_MontantCompte_not_null" NOT NULL,
+    "Ecart" numeric GENERATED ALWAYS AS (("MontantCompte" - "SoldeTheorique")) STORED,
+    "Motif" text,
+    "IdUserFk" integer CONSTRAINT "T_ClotureCaisse_IdUserFk_not_null" NOT NULL,
+    "CreationRequestId" uuid CONSTRAINT "T_ClotureCaisse_CreationRequestId_not_null" NOT NULL,
+    "CreationPayloadHash" text CONSTRAINT "T_ClotureCaisse_CreationPayloadHash_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_ClotureCaisse_CreeLe_not_null" NOT NULL,
+    CONSTRAINT ck_cloture_centimes CHECK ((("MontantCompte" >= (0)::numeric) AND ("MontantCompte" <= 9999999999999999.99) AND ("MontantCompte" = round("MontantCompte", 2)))),
+    CONSTRAINT ck_cloture_hash CHECK (("CreationPayloadHash" ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT ck_cloture_motif CHECK ((("MontantCompte" = "SoldeTheorique") OR (COALESCE(length(btrim("Motif")), 0) > 0)))
+);
+
+
+--
+-- Name: TABLE "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TABLE operations."T_ClotureCaisse" IS 'Constat physique immuable du montant compté face au solde théorique au verrouillage ; ne génère ni correction automatique ni mouvement de caisse.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."ID_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."ID_ClotureCaisse" IS 'Identifiant de constat de clôture, non réutilisable.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."IdCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."IdCaisseFk" IS 'Caisse comptée et verrouillée lors de la clôture.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."IdEntiteFk" IS 'Entreprise copiée de la caisse, jamais déduite du compte courant.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."IdDeviseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."IdDeviseFk" IS 'Devise copiée de la caisse ; aucune conversion implicite.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."ClotureLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."ClotureLe" IS 'Date et heure limite du constat ; bloque la validation d’écritures antérieures ou égales.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."SoldeTheorique"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."SoldeTheorique" IS 'Solde du journal capturé au verrouillage de la caisse.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."MontantCompte"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."MontantCompte" IS 'Montant réellement compté, positif ou nul et exact au centime.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."Ecart"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."Ecart" IS 'Différence générée : montant compté moins solde théorique.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."Motif"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."Motif" IS 'Justification obligatoire lorsque le comptage diffère du théorique.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."IdUserFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."IdUserFk" IS 'Auteur du constat physique de caisse.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."CreationRequestId" IS 'Identifiant de demande initiale pour rejouer sans duplication.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."CreationPayloadHash" IS 'Empreinte SHA-256 du contenu initial ; vérifiée lors du rejeu.';
+
+
+--
+-- Name: COLUMN "T_ClotureCaisse"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_ClotureCaisse"."CreeLe" IS 'Instant technique de création ; conservé pour la traçabilité.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_ID_ClotureCaisse_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_ID_ClotureCaisse_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_ID_ClotureCaisse_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdCaisseFk_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdCaisseFk_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdCaisseFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdEntiteFk_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdEntiteFk_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdEntiteFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdDeviseFk_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdDeviseFk_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdDeviseFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_ClotureLe_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_ClotureLe_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_ClotureLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_SoldeTheorique_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_SoldeTheorique_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_SoldeTheorique_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_MontantCompte_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_MontantCompte_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_MontantCompte_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdUserFk_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdUserFk_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdUserFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_CreationRequestId_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_CreationRequestId_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_CreationRequestId_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_CreationPayloadHash_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_CreationPayloadHash_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_CreationPayloadHash_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_CreeLe_not_null" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_CreeLe_not_null" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_CreeLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_cloture_centimes ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_cloture_centimes ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : ck_cloture_centimes ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_cloture_hash ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_cloture_hash ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : ck_cloture_hash ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_cloture_motif ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_cloture_motif ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : ck_cloture_motif ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse_ID_ClotureCaisse_seq; Type: SEQUENCE; Schema: operations; Owner: -
+--
+
+ALTER TABLE operations."T_ClotureCaisse" ALTER COLUMN "ID_ClotureCaisse" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME operations."T_ClotureCaisse_ID_ClotureCaisse_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: T_Paiement; Type: TABLE; Schema: operations; Owner: -
 --
 
@@ -25298,8 +25738,8 @@ CREATE TABLE operations."T_Paiement" (
     "IdPaiement" integer CONSTRAINT "T_Paiement_IdPaiement_not_null" NOT NULL,
     "CodePaiement" character varying(25),
     "IdUserFk" integer CONSTRAINT "T_Paiement_IdUserFk_not_null" NOT NULL,
-    "IdTypePaiementFk" integer CONSTRAINT "T_Paiement_IdTypePaiementFk_not_null" NOT NULL,
-    "MontantPaiement" numeric(10,2) CONSTRAINT "T_Paiement_MontantPaiement_not_null" NOT NULL,
+    "IdTypePaiementFk" integer,
+    "MontantPaiement" numeric CONSTRAINT "T_Paiement_MontantPaiement_not_null" NOT NULL,
     "IdStatutPaiementFk" integer,
     "DatePaiement" timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     "ObsPaiement" text,
@@ -25308,7 +25748,33 @@ CREATE TABLE operations."T_Paiement" (
     "IdPayeurFk" integer,
     "IdTypeMouvementFk" integer,
     "IdEntiteFk" integer CONSTRAINT "T_Paiement_IdEntiteFk_not_null" NOT NULL,
-    CONSTRAINT chk_montant_paiement CHECK (("MontantPaiement" > (0)::numeric))
+    "IdCaisseFk" integer CONSTRAINT "T_Paiement_IdCaisseFk_not_null" NOT NULL,
+    "SensMouvement" smallint CONSTRAINT "T_Paiement_SensMouvement_not_null" NOT NULL,
+    "EtatEcriture" text DEFAULT 'DRAFT'::text CONSTRAINT "T_Paiement_EtatEcriture_not_null" NOT NULL,
+    "LibellePaiement" text CONSTRAINT "T_Paiement_LibellePaiement_not_null" NOT NULL,
+    "ReferenceExterne" text,
+    "IdTiersFk" bigint,
+    "IdReglementFk" integer,
+    "IdPaiementOrigineFk" integer,
+    "CreationRequestId" uuid,
+    "CreationPayloadHash" text,
+    "ValidationRequestId" uuid,
+    "ValidationPayloadHash" text,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Paiement_CreeLe_not_null" NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Paiement_ModifieLe_not_null" NOT NULL,
+    "ValideLe" timestamp with time zone,
+    "IdValidateurFk" integer,
+    "Revision" bigint DEFAULT 1 CONSTRAINT "T_Paiement_Revision_not_null" NOT NULL,
+    "DeviseCodeSnapshot" text,
+    CONSTRAINT chk_montant_paiement CHECK (("MontantPaiement" > (0)::numeric)),
+    CONSTRAINT ck_paiement_centimes CHECK ((("MontantPaiement" = round("MontantPaiement", 2)) AND ("MontantPaiement" <= 9999999999999999.99))),
+    CONSTRAINT ck_paiement_creation CHECK (((("CreationRequestId" IS NULL) = ("CreationPayloadHash" IS NULL)) AND (("CreationPayloadHash" IS NULL) OR ("CreationPayloadHash" ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT ck_paiement_etat CHECK (("EtatEcriture" = ANY (ARRAY['DRAFT'::text, 'POSTED'::text]))),
+    CONSTRAINT ck_paiement_libelle CHECK (((length(btrim("LibellePaiement")) >= 1) AND (length(btrim("LibellePaiement")) <= 500))),
+    CONSTRAINT ck_paiement_rejeu_validation CHECK (((("ValidationRequestId" IS NULL) = ("ValidationPayloadHash" IS NULL)) AND (("ValidationPayloadHash" IS NULL) OR ("ValidationPayloadHash" ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT ck_paiement_revision CHECK (("Revision" > 0)),
+    CONSTRAINT ck_paiement_sens CHECK (("SensMouvement" = ANY (ARRAY['-1'::integer, 1]))),
+    CONSTRAINT ck_paiement_validation CHECK (((("EtatEcriture" = 'POSTED'::text) = (("ValideLe" IS NOT NULL) AND ("IdValidateurFk" IS NOT NULL) AND ("DeviseCodeSnapshot" IS NOT NULL))) AND (("EtatEcriture" <> 'POSTED'::text) OR "ValidePaiement")))
 );
 
 
@@ -25316,7 +25782,7 @@ CREATE TABLE operations."T_Paiement" (
 -- Name: TABLE "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON TABLE operations."T_Paiement" IS 'Paiements actifs avec montant, devise, statut, sens de mouvement, utilisateur et entité. Les triggers gèrent caisse, audit, notification et déplacement des paiements de plus de deux ans vers les archives.';
+COMMENT ON TABLE operations."T_Paiement" IS 'Journal de caisse : brouillons archivables, validations immuables et contrepassations uniques. Les règlements de facture liés sont prouvés sans seconde création financière.';
 
 
 --
@@ -25344,28 +25810,28 @@ COMMENT ON COLUMN operations."T_Paiement"."IdUserFk" IS 'Utilisateur rattaché �
 -- Name: COLUMN "T_Paiement"."IdTypePaiementFk"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."IdTypePaiementFk" IS 'Type métier du paiement dans le référentiel. Relation imposée : FOREIGN KEY ("IdTypePaiementFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE.';
+COMMENT ON COLUMN operations."T_Paiement"."IdTypePaiementFk" IS 'Motif catégoriel facultatif, configuré dans T_ChampReferentiel ; ne détermine ni signe ni état de validation.';
 
 
 --
 -- Name: COLUMN "T_Paiement"."MontantPaiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."MontantPaiement" IS 'Montant du paiement dans IdDeviseFk ; strictement positif sur T_Paiement.';
+COMMENT ON COLUMN operations."T_Paiement"."MontantPaiement" IS 'Montant positif exact au centime, sans arrondi implicite PostgreSQL ; le sens financier est stocké séparément.';
 
 
 --
 -- Name: COLUMN "T_Paiement"."IdStatutPaiementFk"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."IdStatutPaiementFk" IS 'Statut de paiement dans le référentiel ; les règles de caisse et d’audit déterminent les statuts retenus.';
+COMMENT ON COLUMN operations."T_Paiement"."IdStatutPaiementFk" IS 'Ancienne classification conservée et référencée ; EtatEcriture reste la seule autorité du journal moderne.';
 
 
 --
 -- Name: COLUMN "T_Paiement"."DatePaiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."DatePaiement" IS 'Date et heure du paiement ; sert aux regroupements de flux et à l’archivage.';
+COMMENT ON COLUMN operations."T_Paiement"."DatePaiement" IS 'Date métier complète de l’opération, finie et non future ; une clôture bloque les validations antérieures ou égales.';
 
 
 --
@@ -25379,7 +25845,7 @@ COMMENT ON COLUMN operations."T_Paiement"."ObsPaiement" IS 'Observations enregis
 -- Name: COLUMN "T_Paiement"."ValidePaiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."ValidePaiement" IS 'Indique si le paiement est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
+COMMENT ON COLUMN operations."T_Paiement"."ValidePaiement" IS 'Brouillon actif ou archivé ; une écriture POSTED reste toujours active et immuable.';
 
 
 --
@@ -25400,14 +25866,140 @@ COMMENT ON COLUMN operations."T_Paiement"."IdPayeurFk" IS 'Payeur enregistré po
 -- Name: COLUMN "T_Paiement"."IdTypeMouvementFk"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."IdTypeMouvementFk" IS 'Sens/type du mouvement de paiement dans le référentiel ; distinct du type de mouvement de stock.';
+COMMENT ON COLUMN operations."T_Paiement"."IdTypeMouvementFk" IS 'Référence historique facultative Entrée/Sortie ; si renseignée elle doit correspondre au signe explicite de l’écriture.';
 
 
 --
 -- Name: COLUMN "T_Paiement"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON COLUMN operations."T_Paiement"."IdEntiteFk" IS 'Entité de rattachement de l’enregistrement. Relation imposée : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE.';
+COMMENT ON COLUMN operations."T_Paiement"."IdEntiteFk" IS 'Entreprise copiée de la caisse ; indépendante d’un éventuel changement ultérieur du compte créateur.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."IdCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."IdCaisseFk" IS 'Caisse propriétaire du flux ; détermine immuablement entreprise et devise.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."SensMouvement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."SensMouvement" IS 'Signe financier capturé : +1 entrée, -1 sortie ; indépendant du libellé courant du référentiel.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."EtatEcriture"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."EtatEcriture" IS 'DRAFT sans effet de solde ou POSTED irréversible ; une correction crée une contrepassation.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."LibellePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."LibellePaiement" IS 'Objet lisible de l’encaissement ou du décaissement.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."ReferenceExterne"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."ReferenceExterne" IS 'Référence facultative du justificatif ou de l’opération externe ; ne constitue pas une clé financière.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."IdTiersFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."IdTiersFk" IS 'Tiers facultatif de la même entreprise, sans déduction depuis un texte saisi.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."IdReglementFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."IdReglementFk" IS 'Règlement logistique d’origine unique, de même montant/devise/entreprise ; aucune deuxième dette ou recette créée.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."IdPaiementOrigineFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."IdPaiementOrigineFk" IS 'Écriture validée compensée, au plus une fois et pour le même montant opposé.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."CreationRequestId" IS 'Identifiant de demande initiale pour rejouer sans duplication.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."CreationPayloadHash" IS 'Empreinte SHA-256 du contenu initial ; vérifiée lors du rejeu.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."ValidationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."ValidationRequestId" IS 'Identifiant de demande de validation, distinct de l’identité métier.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."ValidationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."ValidationPayloadHash" IS 'Empreinte SHA-256 de la demande de validation pour un rejeu exact.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."CreeLe" IS 'Instant technique de création ; conservé pour la traçabilité.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."ModifieLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."ModifieLe" IS 'Instant technique de dernière modification autorisée.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."ValideLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."ValideLe" IS 'Instant technique de première validation, distinct de la date métier.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."IdValidateurFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."IdValidateurFk" IS 'Compte ayant validé le flux ; contrôle de rattachement conservé.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."Revision"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."Revision" IS 'Version SQL monotone pour le contrôle des modifications simultanées.';
+
+
+--
+-- Name: COLUMN "T_Paiement"."DeviseCodeSnapshot"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."T_Paiement"."DeviseCodeSnapshot" IS 'Code de devise capturé à la validation pour les réimpressions historiques.';
 
 
 --
@@ -25422,13 +26014,6 @@ COMMENT ON CONSTRAINT "T_Paiement_IdPaiement_not_null" ON operations."T_Paiement
 --
 
 COMMENT ON CONSTRAINT "T_Paiement_IdUserFk_not_null" ON operations."T_Paiement" IS 'Non-nullité : exige une valeur renseignée dans "operations"."T_Paiement". Définition : NOT NULL "IdUserFk".';
-
-
---
--- Name: CONSTRAINT "T_Paiement_IdTypePaiementFk_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Paiement_IdTypePaiementFk_not_null" ON operations."T_Paiement" IS 'Non-nullité : exige une valeur renseignée dans "operations"."T_Paiement". Définition : NOT NULL "IdTypePaiementFk".';
 
 
 --
@@ -25460,10 +26045,115 @@ COMMENT ON CONSTRAINT "T_Paiement_IdEntiteFk_not_null" ON operations."T_Paiement
 
 
 --
+-- Name: CONSTRAINT "T_Paiement_IdCaisseFk_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdCaisseFk_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdCaisseFk_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_SensMouvement_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_SensMouvement_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_SensMouvement_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_EtatEcriture_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_EtatEcriture_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_EtatEcriture_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_LibellePaiement_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_LibellePaiement_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_LibellePaiement_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_CreeLe_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_CreeLe_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_CreeLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_ModifieLe_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_ModifieLe_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_ModifieLe_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_Revision_not_null" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_Revision_not_null" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_Revision_not_null ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
 -- Name: CONSTRAINT chk_montant_paiement ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
 COMMENT ON CONSTRAINT chk_montant_paiement ON operations."T_Paiement" IS 'Contrôle de cohérence des valeurs autorisées dans "operations"."T_Paiement". Définition : CHECK ("MontantPaiement" > 0::numeric).';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_centimes ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_centimes ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_centimes ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_creation ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_creation ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_creation ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_etat ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_etat ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_etat ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_libelle ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_libelle ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_libelle ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_rejeu_validation ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_rejeu_validation ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_rejeu_validation ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_revision ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_revision ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_revision ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_sens ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_sens ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_sens ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: CONSTRAINT ck_paiement_validation ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_paiement_validation ON operations."T_Paiement" IS 'Intégrité de caisse : ck_paiement_validation ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -25648,6 +26338,907 @@ ALTER TABLE operations."T_Paiement" ALTER COLUMN "IdPaiement" ADD GENERATED ALWA
 --
 
 COMMENT ON SEQUENCE operations."T_Paiement_IdPaiement_seq" IS 'Séquence de génération de "operations"."T_Paiement"."IdPaiement". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
+
+
+--
+-- Name: V_Caisse; Type: VIEW; Schema: operations; Owner: -
+--
+
+CREATE VIEW operations."V_Caisse" AS
+ SELECT c."IdCaisse",
+    c."IdDeviseFk",
+    c."MontantCaisse",
+    c."IdEntiteFk",
+    c."CodeCaisse",
+    c."NomCaisse",
+    c."IdTypeCaisseFk",
+    c."IdResponsableFk",
+    c."Actif",
+    c."CreeLe",
+    c."ModifieLe",
+    c."Revision",
+    c."CreationRequestId",
+    c."CreationPayloadHash",
+    e."NomEntite",
+    COALESCE(NULLIF((g."AbrGenerique")::text, ''::text), (g."NomGenerique")::text) AS "DeviseCode",
+    (g."NomGenerique")::text AS "DeviseLibelle",
+    (t."NomGenerique")::text AS "TypeCaisse",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Responsable",
+    COALESCE(p.balance, (0)::numeric) AS "SoldeTheorique",
+    (c."MontantCaisse" - COALESCE(p.balance, (0)::numeric)) AS "EcartsRapprochement",
+    COALESCE(p.n, (0)::bigint) AS "NombreEcritures",
+    COALESCE(p.d, (0)::bigint) AS "NbBrouillons",
+    cl.lastdate AS "DerniereClotureLe"
+   FROM ((((((operations."T_Caisse" c
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = c."IdEntiteFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = c."IdDeviseFk")))
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = c."IdTypeCaisseFk")))
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = c."IdResponsableFk")))
+     LEFT JOIN LATERAL ( SELECT sum((("T_Paiement"."SensMouvement")::numeric * "T_Paiement"."MontantPaiement")) FILTER (WHERE ("T_Paiement"."EtatEcriture" = 'POSTED'::text)) AS balance,
+            count(*) FILTER (WHERE ("T_Paiement"."EtatEcriture" = 'POSTED'::text)) AS n,
+            count(*) FILTER (WHERE (("T_Paiement"."EtatEcriture" = 'DRAFT'::text) AND "T_Paiement"."ValidePaiement")) AS d
+           FROM operations."T_Paiement"
+          WHERE ("T_Paiement"."IdCaisseFk" = c."IdCaisse")) p ON (true))
+     LEFT JOIN LATERAL ( SELECT max("T_ClotureCaisse"."ClotureLe") AS lastdate
+           FROM operations."T_ClotureCaisse"
+          WHERE ("T_ClotureCaisse"."IdCaisseFk" = c."IdCaisse")) cl ON (true));
+
+
+--
+-- Name: VIEW "V_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON VIEW operations."V_Caisse" IS 'Registre des caisses par entreprise et devise, avec rapprochement du journal, brouillons et dernière clôture. Aucun total multidevise.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."IdCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."IdCaisse" IS 'Projection de lecture : IdCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."IdDeviseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."IdDeviseFk" IS 'Projection de lecture : IdDeviseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."MontantCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."MontantCaisse" IS 'Projection de lecture : MontantCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."IdEntiteFk" IS 'Projection de lecture : IdEntiteFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."CodeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."CodeCaisse" IS 'Projection de lecture : CodeCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."NomCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."NomCaisse" IS 'Projection de lecture : NomCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."IdTypeCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."IdTypeCaisseFk" IS 'Projection de lecture : IdTypeCaisseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."IdResponsableFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."IdResponsableFk" IS 'Projection de lecture : IdResponsableFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."Actif"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."Actif" IS 'Projection de lecture : Actif ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."CreeLe" IS 'Projection de lecture : CreeLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."ModifieLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."ModifieLe" IS 'Projection de lecture : ModifieLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."Revision"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."Revision" IS 'Projection de lecture : Revision ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."CreationRequestId" IS 'Projection de lecture : CreationRequestId ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."CreationPayloadHash" IS 'Projection de lecture : CreationPayloadHash ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."NomEntite"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."NomEntite" IS 'Projection de lecture : NomEntite ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."DeviseCode"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."DeviseCode" IS 'Projection de lecture : DeviseCode ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."DeviseLibelle"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."DeviseLibelle" IS 'Projection de lecture : DeviseLibelle ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."TypeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."TypeCaisse" IS 'Projection de lecture : TypeCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."Responsable"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."Responsable" IS 'Projection de lecture : Responsable ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."SoldeTheorique"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."SoldeTheorique" IS 'Projection de lecture : SoldeTheorique ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."EcartsRapprochement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."EcartsRapprochement" IS 'Projection de lecture : EcartsRapprochement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."NombreEcritures"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."NombreEcritures" IS 'Projection de lecture : NombreEcritures ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."NbBrouillons"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."NbBrouillons" IS 'Projection de lecture : NbBrouillons ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_Caisse"."DerniereClotureLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_Caisse"."DerniereClotureLe" IS 'Projection de lecture : DerniereClotureLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: V_ClotureCaisse; Type: VIEW; Schema: operations; Owner: -
+--
+
+CREATE VIEW operations."V_ClotureCaisse" AS
+ SELECT cl."ID_ClotureCaisse",
+    cl."IdCaisseFk",
+    cl."IdEntiteFk",
+    cl."IdDeviseFk",
+    cl."ClotureLe",
+    cl."SoldeTheorique",
+    cl."MontantCompte",
+    cl."Ecart",
+    cl."Motif",
+    cl."IdUserFk",
+    cl."CreationRequestId",
+    cl."CreationPayloadHash",
+    cl."CreeLe",
+    c."CodeCaisse",
+    c."NomCaisse",
+    e."NomEntite",
+    COALESCE(NULLIF((g."AbrGenerique")::text, ''::text), (g."NomGenerique")::text) AS "DeviseCode",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Auteur"
+   FROM ((((operations."T_ClotureCaisse" cl
+     JOIN operations."T_Caisse" c ON ((c."IdCaisse" = cl."IdCaisseFk")))
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = cl."IdEntiteFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = cl."IdDeviseFk")))
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = cl."IdUserFk")));
+
+
+--
+-- Name: VIEW "V_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON VIEW operations."V_ClotureCaisse" IS 'Registre de clôture physique de caisse avec propriétaire, devise et auteur, sans modification du journal.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."ID_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."ID_ClotureCaisse" IS 'Projection de lecture : ID_ClotureCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."IdCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."IdCaisseFk" IS 'Projection de lecture : IdCaisseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."IdEntiteFk" IS 'Projection de lecture : IdEntiteFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."IdDeviseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."IdDeviseFk" IS 'Projection de lecture : IdDeviseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."ClotureLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."ClotureLe" IS 'Projection de lecture : ClotureLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."SoldeTheorique"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."SoldeTheorique" IS 'Projection de lecture : SoldeTheorique ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."MontantCompte"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."MontantCompte" IS 'Projection de lecture : MontantCompte ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."Ecart"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."Ecart" IS 'Projection de lecture : Ecart ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."Motif"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."Motif" IS 'Projection de lecture : Motif ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."IdUserFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."IdUserFk" IS 'Projection de lecture : IdUserFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."CreationRequestId" IS 'Projection de lecture : CreationRequestId ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."CreationPayloadHash" IS 'Projection de lecture : CreationPayloadHash ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."CreeLe" IS 'Projection de lecture : CreeLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."CodeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."CodeCaisse" IS 'Projection de lecture : CodeCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."NomCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."NomCaisse" IS 'Projection de lecture : NomCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."NomEntite"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."NomEntite" IS 'Projection de lecture : NomEntite ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."DeviseCode"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."DeviseCode" IS 'Projection de lecture : DeviseCode ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_ClotureCaisse"."Auteur"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_ClotureCaisse"."Auteur" IS 'Projection de lecture : Auteur ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: V_FluxCaisseJournalier; Type: VIEW; Schema: operations; Owner: -
+--
+
+CREATE VIEW operations."V_FluxCaisseJournalier" AS
+ SELECT ((p."DatePaiement" AT TIME ZONE 'Africa/Kinshasa'::text))::date AS "DateJour",
+    p."IdEntiteFk",
+    p."IdCaisseFk",
+    p."IdDeviseFk",
+    c."NomCaisse",
+    c."CodeCaisse",
+    e."NomEntite",
+    COALESCE(NULLIF((g."AbrGenerique")::text, ''::text), (g."NomGenerique")::text) AS "DeviseCode",
+    COALESCE(sum(p."MontantPaiement") FILTER (WHERE (p."SensMouvement" = 1)), (0)::numeric) AS "MontantEntree",
+    COALESCE(sum(p."MontantPaiement") FILTER (WHERE (p."SensMouvement" = '-1'::integer)), (0)::numeric) AS "MontantSortie",
+    sum(((p."SensMouvement")::numeric * p."MontantPaiement")) AS "NetJour",
+    count(*) AS "NbEcritures"
+   FROM (((operations."T_Paiement" p
+     JOIN operations."T_Caisse" c ON ((c."IdCaisse" = p."IdCaisseFk")))
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = p."IdEntiteFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = p."IdDeviseFk")))
+  WHERE (p."EtatEcriture" = 'POSTED'::text)
+  GROUP BY (((p."DatePaiement" AT TIME ZONE 'Africa/Kinshasa'::text))::date), p."IdEntiteFk", p."IdCaisseFk", p."IdDeviseFk", c."NomCaisse", c."CodeCaisse", e."NomEntite", COALESCE(NULLIF((g."AbrGenerique")::text, ''::text), (g."NomGenerique")::text);
+
+
+--
+-- Name: VIEW "V_FluxCaisseJournalier"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON VIEW operations."V_FluxCaisseJournalier" IS 'Flux validés journaliers à Kinshasa par caisse, entreprise et devise ; entrées, sorties et compensations restent dans le même journal.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."DateJour"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."DateJour" IS 'Projection de lecture : DateJour ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."IdEntiteFk" IS 'Projection de lecture : IdEntiteFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."IdCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."IdCaisseFk" IS 'Projection de lecture : IdCaisseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."IdDeviseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."IdDeviseFk" IS 'Projection de lecture : IdDeviseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."NomCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."NomCaisse" IS 'Projection de lecture : NomCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."CodeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."CodeCaisse" IS 'Projection de lecture : CodeCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."NomEntite"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."NomEntite" IS 'Projection de lecture : NomEntite ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."DeviseCode"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."DeviseCode" IS 'Projection de lecture : DeviseCode ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."MontantEntree"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."MontantEntree" IS 'Projection de lecture : MontantEntree ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."MontantSortie"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."MontantSortie" IS 'Projection de lecture : MontantSortie ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."NetJour"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."NetJour" IS 'Projection de lecture : NetJour ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_FluxCaisseJournalier"."NbEcritures"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_FluxCaisseJournalier"."NbEcritures" IS 'Projection de lecture : NbEcritures ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: V_JournalCaisse; Type: VIEW; Schema: operations; Owner: -
+--
+
+CREATE VIEW operations."V_JournalCaisse" AS
+ SELECT p."IdPaiement",
+    p."CodePaiement",
+    p."IdUserFk",
+    p."IdTypePaiementFk",
+    p."MontantPaiement",
+    p."IdStatutPaiementFk",
+    p."DatePaiement",
+    p."ObsPaiement",
+    p."ValidePaiement",
+    p."IdDeviseFk",
+    p."IdPayeurFk",
+    p."IdTypeMouvementFk",
+    p."IdEntiteFk",
+    p."IdCaisseFk",
+    p."SensMouvement",
+    p."EtatEcriture",
+    p."LibellePaiement",
+    p."ReferenceExterne",
+    p."IdTiersFk",
+    p."IdReglementFk",
+    p."IdPaiementOrigineFk",
+    p."CreationRequestId",
+    p."CreationPayloadHash",
+    p."ValidationRequestId",
+    p."ValidationPayloadHash",
+    p."CreeLe",
+    p."ModifieLe",
+    p."ValideLe",
+    p."IdValidateurFk",
+    p."Revision",
+    p."DeviseCodeSnapshot",
+    c."CodeCaisse",
+    c."NomCaisse",
+    e."NomEntite",
+    COALESCE(p."DeviseCodeSnapshot", NULLIF((g."AbrGenerique")::text, ''::text), (g."NomGenerique")::text) AS "DeviseCode",
+    (g."NomGenerique")::text AS "DeviseLibelle",
+    (t."NomGenerique")::text AS "TypePaiement",
+    tiers."Nom" AS "NomTiers",
+    concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Auteur",
+    concat_ws(' '::text, v."PrenomUser", v."NomUser") AS "Validateur",
+    r."CodeFactureFk",
+    o."CodePaiement" AS "CodePaiementOrigine",
+    cp."IdPaiement" AS "IdCompensateurFk",
+    cp."CodePaiement" AS "CodeCompensateur",
+        CASE
+            WHEN (p."EtatEcriture" = 'POSTED'::text) THEN ((p."SensMouvement")::numeric * p."MontantPaiement")
+            ELSE (0)::numeric
+        END AS "MontantSigne",
+        CASE
+            WHEN (p."EtatEcriture" = 'POSTED'::text) THEN sum(
+            CASE
+                WHEN (p."EtatEcriture" = 'POSTED'::text) THEN ((p."SensMouvement")::numeric * p."MontantPaiement")
+                ELSE (0)::numeric
+            END) OVER (PARTITION BY p."IdCaisseFk" ORDER BY p."ValideLe", p."IdPaiement" ROWS UNBOUNDED PRECEDING)
+            ELSE NULL::numeric
+        END AS "SoldeApres"
+   FROM ((((((((((operations."T_Paiement" p
+     JOIN operations."T_Caisse" c ON ((c."IdCaisse" = p."IdCaisseFk")))
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = p."IdEntiteFk")))
+     JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = p."IdDeviseFk")))
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = p."IdTypePaiementFk")))
+     LEFT JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = p."IdUserFk")))
+     LEFT JOIN systeme."T_Utilisateurs" v ON ((v."IdUser" = p."IdValidateurFk")))
+     LEFT JOIN logistique."T_Client" tiers ON ((tiers."ID_Client" = p."IdTiersFk")))
+     LEFT JOIN logistique."T_Reglements" r ON ((r."ID_Reglement" = p."IdReglementFk")))
+     LEFT JOIN operations."T_Paiement" o ON ((o."IdPaiement" = p."IdPaiementOrigineFk")))
+     LEFT JOIN operations."T_Paiement" cp ON ((cp."IdPaiementOrigineFk" = p."IdPaiement")));
+
+
+--
+-- Name: VIEW "V_JournalCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON VIEW operations."V_JournalCaisse" IS 'Journal enrichi et solde après validation dans l’ordre technique ValideLe/IdPaiement ; les brouillons n’affectent aucun solde.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdPaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdPaiement" IS 'Projection de lecture : IdPaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CodePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CodePaiement" IS 'Projection de lecture : CodePaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdUserFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdUserFk" IS 'Projection de lecture : IdUserFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdTypePaiementFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdTypePaiementFk" IS 'Projection de lecture : IdTypePaiementFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."MontantPaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."MontantPaiement" IS 'Projection de lecture : MontantPaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdStatutPaiementFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdStatutPaiementFk" IS 'Projection de lecture : IdStatutPaiementFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."DatePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."DatePaiement" IS 'Projection de lecture : DatePaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ObsPaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ObsPaiement" IS 'Projection de lecture : ObsPaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ValidePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ValidePaiement" IS 'Projection de lecture : ValidePaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdDeviseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdDeviseFk" IS 'Projection de lecture : IdDeviseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdPayeurFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdPayeurFk" IS 'Projection de lecture : IdPayeurFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdTypeMouvementFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdTypeMouvementFk" IS 'Projection de lecture : IdTypeMouvementFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdEntiteFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdEntiteFk" IS 'Projection de lecture : IdEntiteFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdCaisseFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdCaisseFk" IS 'Projection de lecture : IdCaisseFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."SensMouvement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."SensMouvement" IS 'Projection de lecture : SensMouvement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."EtatEcriture"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."EtatEcriture" IS 'Projection de lecture : EtatEcriture ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."LibellePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."LibellePaiement" IS 'Projection de lecture : LibellePaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ReferenceExterne"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ReferenceExterne" IS 'Projection de lecture : ReferenceExterne ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdTiersFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdTiersFk" IS 'Projection de lecture : IdTiersFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdReglementFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdReglementFk" IS 'Projection de lecture : IdReglementFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdPaiementOrigineFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdPaiementOrigineFk" IS 'Projection de lecture : IdPaiementOrigineFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CreationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CreationRequestId" IS 'Projection de lecture : CreationRequestId ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CreationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CreationPayloadHash" IS 'Projection de lecture : CreationPayloadHash ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ValidationRequestId"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ValidationRequestId" IS 'Projection de lecture : ValidationRequestId ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ValidationPayloadHash"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ValidationPayloadHash" IS 'Projection de lecture : ValidationPayloadHash ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CreeLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CreeLe" IS 'Projection de lecture : CreeLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ModifieLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ModifieLe" IS 'Projection de lecture : ModifieLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."ValideLe"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."ValideLe" IS 'Projection de lecture : ValideLe ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdValidateurFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdValidateurFk" IS 'Projection de lecture : IdValidateurFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."Revision"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."Revision" IS 'Projection de lecture : Revision ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."DeviseCodeSnapshot"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."DeviseCodeSnapshot" IS 'Projection de lecture : DeviseCodeSnapshot ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CodeCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CodeCaisse" IS 'Projection de lecture : CodeCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."NomCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."NomCaisse" IS 'Projection de lecture : NomCaisse ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."NomEntite"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."NomEntite" IS 'Projection de lecture : NomEntite ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."DeviseCode"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."DeviseCode" IS 'Projection de lecture : DeviseCode ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."DeviseLibelle"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."DeviseLibelle" IS 'Projection de lecture : DeviseLibelle ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."TypePaiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."TypePaiement" IS 'Projection de lecture : TypePaiement ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."NomTiers"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."NomTiers" IS 'Projection de lecture : NomTiers ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."Auteur"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."Auteur" IS 'Projection de lecture : Auteur ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."Validateur"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."Validateur" IS 'Projection de lecture : Validateur ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CodeFactureFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CodeFactureFk" IS 'Projection de lecture : CodeFactureFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CodePaiementOrigine"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CodePaiementOrigine" IS 'Projection de lecture : CodePaiementOrigine ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."IdCompensateurFk"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."IdCompensateurFk" IS 'Projection de lecture : IdCompensateurFk ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."CodeCompensateur"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."CodeCompensateur" IS 'Projection de lecture : CodeCompensateur ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."MontantSigne"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."MontantSigne" IS 'Projection de lecture : MontantSigne ; périmètre entreprise et devise du registre de caisse.';
+
+
+--
+-- Name: COLUMN "V_JournalCaisse"."SoldeApres"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON COLUMN operations."V_JournalCaisse"."SoldeApres" IS 'Projection de lecture : SoldeApres ; périmètre entreprise et devise du registre de caisse.';
 
 
 --
@@ -26806,7 +28397,7 @@ CREATE TABLE referentiel."T_InterfaceTableau" (
     CONSTRAINT "T_InterfaceTableau_Colonnes_check" CHECK ((jsonb_typeof("Colonnes") = 'array'::text)),
     CONSTRAINT "T_InterfaceTableau_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT ck_interface_tableau_cle CHECK (("CleInterface" ~ '^[a-z]+[.][a-z-]+$'::text)),
-    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text])))
+    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text, 'caisse'::text])))
 );
 
 
@@ -26926,7 +28517,7 @@ COMMENT ON CONSTRAINT ck_interface_tableau_cle ON referentiel."T_InterfaceTablea
 -- Name: CONSTRAINT ck_interface_tableau_module ON "T_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules possédant un catalogue de tableau et export, incluant Support sans accorder un accès ou une licence.';
+COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules autorisés pour les tableaux et exports : Logistique, Référentiels, Administration, Territoires, Support et Caisse. La liste ne définit aucun droit ni abonnement.';
 
 
 --
@@ -29947,8 +31538,14 @@ CREATE TABLE systeme."T_ModuleApplication" (
     "CodeIncluant" character varying(32),
     "Actif" boolean DEFAULT true NOT NULL,
     "Ordre" integer DEFAULT 0 NOT NULL,
+    "TypeApplication" character varying(20) DEFAULT 'MODULE'::character varying NOT NULL,
+    "Commercialisable" boolean DEFAULT false NOT NULL,
+    "ModuleParentCode" character varying(32),
     CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
-    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text))
+    CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
+    CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
+    CONSTRAINT ck_module_parent CHECK (((("ModuleParentCode")::text IS DISTINCT FROM ("CodeModule")::text) AND ((("TypeApplication")::text <> 'MODULE'::text) OR ("ModuleParentCode" IS NULL)))),
+    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY ((ARRAY['MODULE'::character varying, 'FONCTIONNALITE'::character varying])::text[])))
 );
 
 
@@ -29999,6 +31596,48 @@ COMMENT ON COLUMN systeme."T_ModuleApplication"."Actif" IS 'Disponibilité du mo
 --
 
 COMMENT ON COLUMN systeme."T_ModuleApplication"."Ordre" IS 'Ordre de présentation du catalogue.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."TypeApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."TypeApplication" IS 'Nature de présentation : MODULE commercial ou FONCTIONNALITE complémentaire/commune. Ne remplace pas les règles d’accès existantes.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."Commercialisable"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."Commercialisable" IS 'Le module peut être présenté comme offre commerciale ; ne donne aucun droit, ne crée ni licence ni abonnement.';
+
+
+--
+-- Name: COLUMN "T_ModuleApplication"."ModuleParentCode"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."ModuleParentCode" IS 'Module de présentation de la fonctionnalité ; NULL pour une fonction commune. Distinct de CodeIncluant qui conserve les inclusions de droits historiques.';
+
+
+--
+-- Name: CONSTRAINT ck_module_commercial ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_commercial ON systeme."T_ModuleApplication" IS 'Une fonctionnalité n’est pas proposée comme module commercial autonome.';
+
+
+--
+-- Name: CONSTRAINT ck_module_parent ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_parent ON systeme."T_ModuleApplication" IS 'Une fonctionnalité peut dépendre d’un module ; un module est racine et ne peut se référencer lui-même.';
+
+
+--
+-- Name: CONSTRAINT ck_module_type_application ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_module_type_application ON systeme."T_ModuleApplication" IS 'Deux natures explicites de présentation, sans dépendance aux libellés affichés.';
 
 
 --
@@ -32833,6 +34472,21 @@ COMMENT ON CONSTRAINT "Pk_IdPaiement" ON operations."T_Paiement" IS 'Clé primai
 
 
 --
+-- Name: T_Caisse T_Caisse_CreationRequestId_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Caisse"
+    ADD CONSTRAINT "T_Caisse_CreationRequestId_key" UNIQUE ("CreationRequestId");
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_CreationRequestId_key" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_CreationRequestId_key" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_CreationRequestId_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
 -- Name: T_Caisse T_Caisse_pkey; Type: CONSTRAINT; Schema: operations; Owner: -
 --
 
@@ -32845,6 +34499,36 @@ ALTER TABLE ONLY operations."T_Caisse"
 --
 
 COMMENT ON CONSTRAINT "T_Caisse_pkey" ON operations."T_Caisse" IS 'Clé primaire : identifie de manière unique chaque ligne dans "operations"."T_Caisse". Définition : PRIMARY KEY ("IdCaisse").';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_CreationRequestId_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_CreationRequestId_key" UNIQUE ("CreationRequestId");
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_CreationRequestId_key" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_CreationRequestId_key" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_CreationRequestId_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_pkey; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_pkey" PRIMARY KEY ("ID_ClotureCaisse");
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_pkey" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_pkey" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_pkey ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -32863,18 +34547,93 @@ COMMENT ON CONSTRAINT "T_Paiement_Archive_pkey" ON operations."T_Paiement_Archiv
 
 
 --
--- Name: T_Caisse UQ_Entite_Devise; Type: CONSTRAINT; Schema: operations; Owner: -
+-- Name: T_Paiement T_Paiement_CreationRequestId_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_CreationRequestId_key" UNIQUE ("CreationRequestId");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_CreationRequestId_key" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_CreationRequestId_key" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_CreationRequestId_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdPaiementOrigineFk_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdPaiementOrigineFk_key" UNIQUE ("IdPaiementOrigineFk");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdPaiementOrigineFk_key" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdPaiementOrigineFk_key" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdPaiementOrigineFk_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdReglementFk_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdReglementFk_key" UNIQUE ("IdReglementFk");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdReglementFk_key" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdReglementFk_key" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdReglementFk_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_ValidationRequestId_key; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_ValidationRequestId_key" UNIQUE ("ValidationRequestId");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_ValidationRequestId_key" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_ValidationRequestId_key" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_ValidationRequestId_key ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Caisse uq_caisse_code; Type: CONSTRAINT; Schema: operations; Owner: -
 --
 
 ALTER TABLE ONLY operations."T_Caisse"
-    ADD CONSTRAINT "UQ_Entite_Devise" UNIQUE ("IdEntiteFk", "IdDeviseFk");
+    ADD CONSTRAINT uq_caisse_code UNIQUE ("CodeCaisse");
 
 
 --
--- Name: CONSTRAINT "UQ_Entite_Devise" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+-- Name: CONSTRAINT uq_caisse_code ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON CONSTRAINT "UQ_Entite_Devise" ON operations."T_Caisse" IS 'Unicité : empêche les doublons sur la combinaison indiquée dans "operations"."T_Caisse". Définition : UNIQUE ("IdEntiteFk", "IdDeviseFk").';
+COMMENT ON CONSTRAINT uq_caisse_code ON operations."T_Caisse" IS 'Intégrité de caisse : uq_caisse_code ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement uq_paiement_code; Type: CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT uq_paiement_code UNIQUE ("CodePaiement");
+
+
+--
+-- Name: CONSTRAINT uq_paiement_code ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_paiement_code ON operations."T_Paiement" IS 'Intégrité de caisse : uq_paiement_code ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -34845,13 +36604,6 @@ COMMENT ON INDEX operations."T_Paiement_Archive_pkey" IS 'Index support de la cl
 
 
 --
--- Name: INDEX "UQ_Entite_Devise"; Type: COMMENT; Schema: operations; Owner: -
---
-
-COMMENT ON INDEX operations."UQ_Entite_Devise" IS 'Index d’unicité sur "operations"."T_Caisse". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE UNIQUE INDEX "UQ_Entite_Devise" ON operations."T_Caisse" USING btree ("IdEntiteFk", "IdDeviseFk").';
-
-
---
 -- Name: idx_fk_paiement_user; Type: INDEX; Schema: operations; Owner: -
 --
 
@@ -34961,6 +36713,48 @@ CREATE INDEX idx_paiement_statut ON operations."T_Paiement" USING btree ("IdStat
 --
 
 COMMENT ON INDEX operations.idx_paiement_statut IS 'Index d’accès sur "operations"."T_Paiement". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_paiement_statut ON operations."T_Paiement" USING btree ("IdStatutPaiementFk") WITH (fillfactor=''100'', deduplicate_items=''true'').';
+
+
+--
+-- Name: ix_cloture_caisse_date; Type: INDEX; Schema: operations; Owner: -
+--
+
+CREATE INDEX ix_cloture_caisse_date ON operations."T_ClotureCaisse" USING btree ("IdCaisseFk", "ClotureLe" DESC);
+
+
+--
+-- Name: INDEX ix_cloture_caisse_date; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON INDEX operations.ix_cloture_caisse_date IS 'Recherche de la dernière clôture et garde contre les écritures antidatées.';
+
+
+--
+-- Name: ix_paiement_caisse_etat_date; Type: INDEX; Schema: operations; Owner: -
+--
+
+CREATE INDEX ix_paiement_caisse_etat_date ON operations."T_Paiement" USING btree ("IdCaisseFk", "EtatEcriture", "DatePaiement", "IdPaiement");
+
+
+--
+-- Name: INDEX ix_paiement_caisse_etat_date; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON INDEX operations.ix_paiement_caisse_etat_date IS 'Parcours et rapprochement du journal de chaque caisse par état et date métier.';
+
+
+--
+-- Name: ix_paiement_entite_date; Type: INDEX; Schema: operations; Owner: -
+--
+
+CREATE INDEX ix_paiement_entite_date ON operations."T_Paiement" USING btree ("IdEntiteFk", "DatePaiement" DESC);
+
+
+--
+-- Name: INDEX ix_paiement_entite_date; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON INDEX operations.ix_paiement_entite_date IS 'Filtrage du journal par entreprise et période sans mélange de propriétaires.';
 
 
 --
@@ -36589,6 +38383,13 @@ COMMENT ON TRIGGER aa_reference_champ ON logistique."T_ValorisationOuverture" IS
 
 
 --
+-- Name: T_Reglements aa_reglement_caisse_protege; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER aa_reglement_caisse_protege BEFORE DELETE OR UPDATE ON logistique."T_Reglements" FOR EACH ROW EXECUTE FUNCTION operations.tr_reglement_caisse_protege();
+
+
+--
 -- Name: T_Reglements aa_reglement_tracabilite; Type: TRIGGER; Schema: logistique; Owner: -
 --
 
@@ -37737,6 +39538,34 @@ COMMENT ON TRIGGER zz_reglement_audit ON logistique."T_Reglements" IS 'Historiqu
 
 
 --
+-- Name: T_ClotureCaisse aa_cloture_integrite; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER aa_cloture_integrite BEFORE INSERT OR DELETE OR UPDATE ON operations."T_ClotureCaisse" FOR EACH ROW EXECUTE FUNCTION operations.tr_cloture_integrite();
+
+
+--
+-- Name: TRIGGER aa_cloture_integrite ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER aa_cloture_integrite ON operations."T_ClotureCaisse" IS 'Garde du journal de caisse : aa_cloture_integrite ; validation SQL, historique et rapprochement du solde.';
+
+
+--
+-- Name: T_Paiement aa_owners_paiement; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER aa_owners_paiement BEFORE INSERT OR DELETE OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION operations.tr_paiement_integrite();
+
+
+--
+-- Name: TRIGGER aa_owners_paiement ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER aa_owners_paiement ON operations."T_Paiement" IS 'Garde du journal de caisse : aa_owners_paiement ; validation SQL, historique et rapprochement du solde.';
+
+
+--
 -- Name: T_Caisse aa_reference_champ; Type: TRIGGER; Schema: operations; Owner: -
 --
 
@@ -37765,6 +39594,34 @@ COMMENT ON TRIGGER aa_reference_champ ON operations."T_Paiement" IS 'Valide les 
 
 
 --
+-- Name: T_Caisse ab_caisse_integrite; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER ab_caisse_integrite BEFORE INSERT OR DELETE OR UPDATE ON operations."T_Caisse" FOR EACH ROW EXECUTE FUNCTION operations.tr_caisse_integrite();
+
+
+--
+-- Name: TRIGGER ab_caisse_integrite ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER ab_caisse_integrite ON operations."T_Caisse" IS 'Garde du journal de caisse : ab_caisse_integrite ; validation SQL, historique et rapprochement du solde.';
+
+
+--
+-- Name: T_Caisse ck_caisse_journal; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER ck_caisse_journal AFTER INSERT OR UPDATE ON operations."T_Caisse" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION operations.tr_caisse_solde_rapproche();
+
+
+--
+-- Name: TRIGGER ck_caisse_journal ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER ck_caisse_journal ON operations."T_Caisse" IS 'Garde du journal de caisse : ck_caisse_journal ; validation SQL, historique et rapprochement du solde.';
+
+
+--
 -- Name: T_Paiement trigger_archive_paiements; Type: TRIGGER; Schema: operations; Owner: -
 --
 
@@ -37781,45 +39638,59 @@ COMMENT ON TRIGGER trigger_archive_paiements ON operations."T_Paiement" IS 'AFTE
 
 
 --
+-- Name: T_Caisse trigger_audit_T_Caisse; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER "trigger_audit_T_Caisse" AFTER INSERT OR UPDATE ON operations."T_Caisse" FOR EACH ROW EXECUTE FUNCTION operations.tr_caisse_audit();
+
+
+--
+-- Name: TRIGGER "trigger_audit_T_Caisse" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER "trigger_audit_T_Caisse" ON operations."T_Caisse" IS 'Garde du journal de caisse : trigger_audit_T_Caisse ; validation SQL, historique et rapprochement du solde.';
+
+
+--
+-- Name: T_ClotureCaisse trigger_audit_T_ClotureCaisse; Type: TRIGGER; Schema: operations; Owner: -
+--
+
+CREATE TRIGGER "trigger_audit_T_ClotureCaisse" AFTER INSERT ON operations."T_ClotureCaisse" FOR EACH ROW EXECUTE FUNCTION operations.tr_caisse_audit();
+
+
+--
+-- Name: TRIGGER "trigger_audit_T_ClotureCaisse" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON TRIGGER "trigger_audit_T_ClotureCaisse" ON operations."T_ClotureCaisse" IS 'Garde du journal de caisse : trigger_audit_T_ClotureCaisse ; validation SQL, historique et rapprochement du solde.';
+
+
+--
 -- Name: T_Paiement trigger_audit_T_Paiement; Type: TRIGGER; Schema: operations; Owner: -
 --
 
-CREATE TRIGGER "trigger_audit_T_Paiement" AFTER INSERT OR DELETE OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION systeme.audit_log_function();
+CREATE TRIGGER "trigger_audit_T_Paiement" AFTER INSERT OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION operations.tr_caisse_audit();
 
 
 --
 -- Name: TRIGGER "trigger_audit_T_Paiement" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON TRIGGER "trigger_audit_T_Paiement" ON operations."T_Paiement" IS 'AFTER INSERT OR DELETE OR UPDATE sur "operations"."T_Paiement", pour chaque ligne. Appelle "systeme"."audit_log_function" : Fonction de trigger AFTER enregistrant INSERT/UPDATE/DELETE dans T_Audit_Log avec TG_TABLE_NAME, états OLD/NEW complets et instant de modification. Tente de reprendre IdEntiteFk si la colonne est présente ; ne déduit pas l’auteur utilisateur.';
+COMMENT ON TRIGGER "trigger_audit_T_Paiement" ON operations."T_Paiement" IS 'Garde du journal de caisse : trigger_audit_T_Paiement ; validation SQL, historique et rapprochement du solde.';
 
 
 --
 -- Name: T_Paiement trigger_gestion_caisse_on_paiement; Type: TRIGGER; Schema: operations; Owner: -
 --
 
-CREATE TRIGGER trigger_gestion_caisse_on_paiement AFTER INSERT OR DELETE OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION operations.gestion_caisse_on_paiement();
+CREATE TRIGGER trigger_gestion_caisse_on_paiement AFTER INSERT OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION operations.gestion_caisse_on_paiement();
 
 
 --
 -- Name: TRIGGER trigger_gestion_caisse_on_paiement ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON TRIGGER trigger_gestion_caisse_on_paiement ON operations."T_Paiement" IS 'AFTER INSERT OR DELETE OR UPDATE sur "operations"."T_Paiement", pour chaque ligne. Appelle "operations"."gestion_caisse_on_paiement" : Après mutation d’un paiement, annule l’effet OLD et applique NEW dans la caisse entité/devise par UPSERT. Éligibilité : ValidePaiement vrai, statut Payé(e), catégorie devise, type de mouvement paiement Entrée/Sortie et entité renseignée. Les libellés de référentiel sont utilisés, contrairement aux codes fixes des fonctions d’audit.';
-
-
---
--- Name: T_Paiement trigger_notification_payment_success; Type: TRIGGER; Schema: operations; Owner: -
---
-
-CREATE TRIGGER trigger_notification_payment_success AFTER INSERT OR UPDATE ON operations."T_Paiement" FOR EACH ROW EXECUTE FUNCTION operations.notification_payment_success();
-
-
---
--- Name: TRIGGER trigger_notification_payment_success ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
---
-
-COMMENT ON TRIGGER trigger_notification_payment_success ON operations."T_Paiement" IS 'AFTER INSERT OR UPDATE sur "operations"."T_Paiement", pour chaque ligne. Appelle "operations"."notification_payment_success" : Après INSERT/UPDATE du paiement, ajoute une communication à son utilisateur si le libellé de statut n’est pas En attente. Ne vérifie pas une transition vers payé ni l’absence d’une notification précédente ; le nom de la fonction ne certifie pas un paiement réussi.';
+COMMENT ON TRIGGER trigger_gestion_caisse_on_paiement ON operations."T_Paiement" IS 'Garde du journal de caisse : trigger_gestion_caisse_on_paiement ; validation SQL, historique et rapprochement du solde.';
 
 
 --
@@ -38352,6 +40223,20 @@ CREATE TRIGGER tr_fk_correspondance_audit AFTER INSERT OR DELETE OR UPDATE ON sy
 --
 
 COMMENT ON TRIGGER tr_fk_correspondance_audit ON systeme."T_Fk_Correspondance" IS 'Audit SQL unique des correspondances, compatible avec les remplacements transactionnels du réglage historique.';
+
+
+--
+-- Name: T_ModuleApplication tr_module_classification; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER tr_module_classification BEFORE INSERT OR UPDATE ON systeme."T_ModuleApplication" FOR EACH ROW EXECUTE FUNCTION systeme.tr_module_classification();
+
+
+--
+-- Name: TRIGGER tr_module_classification ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER tr_module_classification ON systeme."T_ModuleApplication" IS 'Valide la hiérarchie de présentation MODULE/FONCTIONNALITE lors de la saisie du catalogue.';
 
 
 --
@@ -40313,14 +42198,14 @@ COMMENT ON CONSTRAINT "Fk_IdDevise" ON operations."T_Paiement" IS 'Clé étrang�
 --
 
 ALTER TABLE ONLY operations."T_Caisse"
-    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL;
+    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
 
 
 --
 -- Name: CONSTRAINT "Fk_IdEntite" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON CONSTRAINT "Fk_IdEntite" ON operations."T_Caisse" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "operations"."T_Caisse". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE SET NULL.';
+COMMENT ON CONSTRAINT "Fk_IdEntite" ON operations."T_Caisse" IS 'Intégrité de caisse : Fk_IdEntite ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -40328,14 +42213,14 @@ COMMENT ON CONSTRAINT "Fk_IdEntite" ON operations."T_Caisse" IS 'Clé étrangèr
 --
 
 ALTER TABLE ONLY operations."T_Paiement"
-    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT "Fk_IdEntite" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
 
 
 --
 -- Name: CONSTRAINT "Fk_IdEntite" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
 --
 
-COMMENT ON CONSTRAINT "Fk_IdEntite" ON operations."T_Paiement" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "operations"."T_Paiement". Définition : FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON UPDATE CASCADE ON DELETE CASCADE.';
+COMMENT ON CONSTRAINT "Fk_IdEntite" ON operations."T_Paiement" IS 'Intégrité de caisse : Fk_IdEntite ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -40396,6 +42281,201 @@ ALTER TABLE ONLY operations."T_Paiement"
 --
 
 COMMENT ON CONSTRAINT "Fk_IdUserFk" ON operations."T_Paiement" IS 'Clé étrangère : impose le rattachement et les actions référentielles dans "operations"."T_Paiement". Définition : FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE CASCADE.';
+
+
+--
+-- Name: T_Caisse T_Caisse_IdResponsableFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Caisse"
+    ADD CONSTRAINT "T_Caisse_IdResponsableFk_fkey" FOREIGN KEY ("IdResponsableFk") REFERENCES systeme."T_Utilisateurs"("IdUser");
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_IdResponsableFk_fkey" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_IdResponsableFk_fkey" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_IdResponsableFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Caisse T_Caisse_IdTypeCaisseFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Caisse"
+    ADD CONSTRAINT "T_Caisse_IdTypeCaisseFk_fkey" FOREIGN KEY ("IdTypeCaisseFk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+
+--
+-- Name: CONSTRAINT "T_Caisse_IdTypeCaisseFk_fkey" ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Caisse_IdTypeCaisseFk_fkey" ON operations."T_Caisse" IS 'Intégrité de caisse : T_Caisse_IdTypeCaisseFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_IdCaisseFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_IdCaisseFk_fkey" FOREIGN KEY ("IdCaisseFk") REFERENCES operations."T_Caisse"("IdCaisse") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdCaisseFk_fkey" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdCaisseFk_fkey" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdCaisseFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_IdDeviseFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_IdDeviseFk_fkey" FOREIGN KEY ("IdDeviseFk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdDeviseFk_fkey" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdDeviseFk_fkey" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdDeviseFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdEntiteFk_fkey" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdEntiteFk_fkey" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdEntiteFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_ClotureCaisse T_ClotureCaisse_IdUserFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_ClotureCaisse"
+    ADD CONSTRAINT "T_ClotureCaisse_IdUserFk_fkey" FOREIGN KEY ("IdUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser");
+
+
+--
+-- Name: CONSTRAINT "T_ClotureCaisse_IdUserFk_fkey" ON "T_ClotureCaisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ClotureCaisse_IdUserFk_fkey" ON operations."T_ClotureCaisse" IS 'Intégrité de caisse : T_ClotureCaisse_IdUserFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdCaisseFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdCaisseFk_fkey" FOREIGN KEY ("IdCaisseFk") REFERENCES operations."T_Caisse"("IdCaisse");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdCaisseFk_fkey" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdCaisseFk_fkey" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdCaisseFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdPaiementOrigineFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdPaiementOrigineFk_fkey" FOREIGN KEY ("IdPaiementOrigineFk") REFERENCES operations."T_Paiement"("IdPaiement") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdPaiementOrigineFk_fkey" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdPaiementOrigineFk_fkey" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdPaiementOrigineFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdReglementFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdReglementFk_fkey" FOREIGN KEY ("IdReglementFk") REFERENCES logistique."T_Reglements"("ID_Reglement") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdReglementFk_fkey" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdReglementFk_fkey" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdReglementFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdTiersFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdTiersFk_fkey" FOREIGN KEY ("IdTiersFk") REFERENCES logistique."T_Client"("ID_Client");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdTiersFk_fkey" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdTiersFk_fkey" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdTiersFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement T_Paiement_IdValidateurFk_fkey; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT "T_Paiement_IdValidateurFk_fkey" FOREIGN KEY ("IdValidateurFk") REFERENCES systeme."T_Utilisateurs"("IdUser");
+
+
+--
+-- Name: CONSTRAINT "T_Paiement_IdValidateurFk_fkey" ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Paiement_IdValidateurFk_fkey" ON operations."T_Paiement" IS 'Intégrité de caisse : T_Paiement_IdValidateurFk_fkey ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement fk_paiement_statut; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT fk_paiement_statut FOREIGN KEY ("IdStatutPaiementFk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+
+--
+-- Name: CONSTRAINT fk_paiement_statut ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_paiement_statut ON operations."T_Paiement" IS 'Intégrité de caisse : fk_paiement_statut ; montants exacts, historique conservé et rattachements prouvés.';
+
+
+--
+-- Name: T_Paiement fk_paiement_type_mouvement; Type: FK CONSTRAINT; Schema: operations; Owner: -
+--
+
+ALTER TABLE ONLY operations."T_Paiement"
+    ADD CONSTRAINT fk_paiement_type_mouvement FOREIGN KEY ("IdTypeMouvementFk") REFERENCES referentiel."T_Generique"("ID_Generique");
+
+
+--
+-- Name: CONSTRAINT fk_paiement_type_mouvement ON "T_Paiement"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_paiement_type_mouvement ON operations."T_Paiement" IS 'Intégrité de caisse : fk_paiement_type_mouvement ; montants exacts, historique conservé et rattachements prouvés.';
 
 
 --
@@ -41134,10 +43214,26 @@ COMMENT ON CONSTRAINT "T_Utilisateurs_ID_ServiceFk_fkey" ON systeme."T_Utilisate
 
 
 --
+-- Name: T_ModuleApplication fk_module_parent; Type: FK CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_ModuleApplication"
+    ADD CONSTRAINT fk_module_parent FOREIGN KEY ("ModuleParentCode") REFERENCES systeme."T_ModuleApplication"("CodeModule") ON DELETE RESTRICT;
+
+
+--
+-- Name: CONSTRAINT fk_module_parent ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT fk_module_parent ON systeme."T_ModuleApplication" IS 'Le module parent existe et ne disparaît pas tant que des fonctionnalités le référencent.';
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict TDhcVzWtkSoYEBllJuFUTUMh4huSYk7JzKs10mXNgIWNXgC0oIg6QwUtI41lU2H
+\unrestrict VJVJqsETLITfJhesoOFAt9a0npGZZxDSJgUYBUPHy81stbegP7p9pp79EeoOluL
 
 COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+COMMENT ON CONSTRAINT "ck_caisse_journal" ON "operations"."T_Caisse" IS 'Intégrité de caisse : ck_caisse_journal ; montants exacts, historique conservé et rattachements prouvés.';

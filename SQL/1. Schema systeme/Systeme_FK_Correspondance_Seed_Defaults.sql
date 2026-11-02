@@ -156,6 +156,26 @@ BEGIN
  END LOOP;
 END $immobilisations$;
 
+-- Le module Caisse utilise le catalogue physique commun et ses catégories
+-- prouvées. L'ancien schéma non migré ne reçoit aucune correspondance fictive.
+DO $caisse$
+DECLARE item record;
+BEGIN
+ IF NOT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='operations' AND table_name='T_Caisse' AND column_name='CodeCaisse') THEN RETURN;END IF;
+ FOR item IN SELECT * FROM referentiel."T_ChampReferentiel"
+  WHERE "SchemaName"='operations' AND "TableName" IN('T_Caisse','T_Paiement')
+    AND "ID_CategorieDefautFk" IS NOT NULL LOOP
+  INSERT INTO systeme."T_Fk_Correspondance"(
+   "ModuleName","SchemaName","ViewName","SourceKey","FieldName","FieldLabel","MappingType",
+   "ReferenceSchemaName","ReferenceObjectName","ReferenceFieldName","TargetCategoryIdFk","MappingValue",
+   "IsDefaultMapping","ValideFkCorrespondance","SettingScope","ScopeValue","DisplayOrder","ObsFkCorrespondance","IdChampReferentielFk")
+  VALUES(item."ModuleName",'operations',NULL,
+   'champ.'||item."ID_ChampReferentiel",item."ColumnName",item."ChampLabel",'generic_category',
+   'referentiel','T_Generique','ID_Generique',item."ID_CategorieDefautFk",item."ID_CategorieDefautFk"::text,
+   true,true,'global',NULL,0,'Défaut Caisse issu du catalogue physique, sans affectation client.',item."ID_ChampReferentiel");
+ END LOOP;
+END $caisse$;
+
 DO $$
 DECLARE
     v_count integer;

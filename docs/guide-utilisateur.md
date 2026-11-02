@@ -19,7 +19,7 @@ Les tutoriels n’utilisent aucun enregistrement client pour leurs exemples. Les
 
 ## Contenu livré
 
-Le catalogue contient **57 tutoriels dans 12 guides** :
+Le catalogue contient **65 tutoriels dans 13 guides** :
 
 | Guide | Tutoriels | Principaux sujets |
 |---|---:|---|
@@ -30,6 +30,7 @@ Le catalogue contient **57 tutoriels dans 12 guides** :
 | Informations santé | 3 | Consultation, abréviations, signalement |
 | Discussions | 3 | Conversation, message, destinataire |
 | Logistique | 14 | Tableau de bord, tiers, articles, BE, BS, CMD, lots, retours, factures, TVA, règlements, avoirs, inventaires, dossiers, immobilisations et exports |
+| Caisse | 8 | Solde par devise, ouverture, brouillon, validation, contrepassation, clôture, règlement de facture et exports |
 | Organisation territoriale | 5 | Hiérarchie, paniers, rattachements, analyses et contrôles |
 | Support | 4 | Dossiers, traitement, vérification, pièces et suivi |
 | Paramètres | 4 | Identité, TVA, PDF et localisations |

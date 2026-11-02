@@ -439,6 +439,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
     if body is not None and not isinstance(body, dict):
         raise APIError("Objet JSON attendu.")
     obj = model(name)
+    if obj['schema'] == 'operations':
+        raise APIError('Utilisez le module Caisse pour conserver le journal et ses contrôles.', 'DEDICATED_SERVICE_REQUIRED', 405)
     check_global_write(obj, actor)
     if name == 'T_Immobilisation':
         raise APIError('Utilisez le formulaire des immobilisations avec sa révision et son motif.', 'DEDICATED_IMMOBILISATION_REQUIRED', 405)

@@ -1,4 +1,8 @@
 from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
+from apps.caisse.views import (ContextView as CashContextView, EntitiesView as CashEntitiesView,
+    ReferencesView as CashReferencesView, SynthesisView as CashSynthesisView, RegisterView as CashRegisterView,
+    CashAccountsView, EntriesView as CashEntriesView, EntryActionView as CashEntryActionView,
+    ClosuresView as CashClosuresView, ClosurePreparationView, RegisterExportView as CashExportView)
 from apps.core.entity_settings import (EntitySettingsContextView, EntitySettingsChoicesView,
     EntitySettingsProfileView, EntitySettingsLogoView)
 from apps.core.user_guide import GuideContextView, GuideArticleView, GuideEntitiesView
@@ -72,6 +76,17 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/caisse/contexte/?$", CashContextView.as_view()),
+    re_path(r"^api/caisse/entreprises/?$", CashEntitiesView.as_view()),
+    re_path(r"^api/caisse/references/?$", CashReferencesView.as_view()),
+    re_path(r"^api/caisse/synthese/?$", CashSynthesisView.as_view()),
+    re_path(r"^api/caisse/registres/(?P<kind>caisses|ecritures|clotures)(?:/export)?\.(?P<file_format>xlsx|csv)/?$", CashExportView.as_view()),
+    re_path(r"^api/caisse/registres/(?P<kind>caisses|ecritures|clotures)/?$", CashRegisterView.as_view()),
+    re_path(r"^api/caisse/clotures/preparation/?$", ClosurePreparationView.as_view()),
+    re_path(r"^api/caisse/caisses(?:/(?P<pk>[0-9]+))?/?$", CashAccountsView.as_view()),
+    re_path(r"^api/caisse/ecritures/(?P<pk>[0-9]+)/(?P<action>valider|contrepasser)/?$", CashEntryActionView.as_view()),
+    re_path(r"^api/caisse/ecritures(?:/(?P<pk>[0-9]+))?/?$", CashEntriesView.as_view()),
+    re_path(r"^api/caisse/clotures(?:/(?P<pk>[0-9]+))?/?$", CashClosuresView.as_view()),
     re_path(r"^api/parametres/contexte/?$", EntitySettingsContextView.as_view()),
     re_path(r"^api/guide/contexte/?$", GuideContextView.as_view()),
     re_path(r"^api/guide/entreprises/?$", GuideEntitiesView.as_view()),

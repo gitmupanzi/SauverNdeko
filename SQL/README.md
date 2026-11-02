@@ -1,6 +1,12 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 30 octobre 2026, jusqu’aux migrations `20261030_01` et `20261030_02`, après le socle `20261028_09`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont alignées sur la base locale au 2 novembre 2026, jusqu’à `20261102_05_commentaire_catalogue_caisse.sql`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+
+## Caisse et classification des applications — 2 novembre 2026
+
+Les migrations `20261102_03`, `20261102_04` et `20261102_05` mettent en place le journal de caisse, ses clôtures et le catalogue distinguant modules métier et fonctionnalités associées. Les soldes restent dérivés des écritures validées ; une correction financière conserve l’original et son compensateur. Aucune entreprise ne reçoit automatiquement un abonnement ni une encaisse.
+
+Voir le [contrat PostgreSQL](documentation/Caisse_20261102.md), le [guide Caisse](../docs/module-caisse.md) et la [classification commerciale](../docs/modules-et-fonctionnalites.md). Les extraits `2. Schema operations/Operations_Tables.sql` et `Operations_View.sql` documentent les tables, routines et quatre vues. Pour une nouvelle installation, utiliser le paquet fermé : ses applications sont chargées dans l’ordre de leurs parents, avec les gardes actives et sans données clientes.
 
 ## Choisir le fichier adapté
 

@@ -57,6 +57,13 @@ def source_definition(actor, interface_key):
         from apps.support.portal import table_source, LABELS
         require_module(actor, "support")
         return table_source(actor), LABELS, "support"
+    if module == "caisse":
+        from apps.caisse.services import columns, descriptor
+        from apps.caisse.views import LABELS
+        require_module(actor, 'caisse')
+        view_name, _, primary_key, _ = descriptor(kind)
+        return {'schema':'operations', 'name':view_name, 'primaryKey':[primary_key],
+                'columns':list(columns(kind).values())}, LABELS, 'caisse'
     raise APIError("Interface inconnue.", "NOT_FOUND", 404)
 
 

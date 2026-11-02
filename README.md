@@ -10,6 +10,8 @@ Le backend actif est désormais Django + Django REST Framework, connecté au Pos
 
 Documentation de travail :
 
+- [Module Caisse](docs/module-caisse.md) : journal par entreprise et devise, validation, contrepassation, clôtures et encaissements facultatifs des règlements Logistique.
+- [Modules métier et fonctionnalités associées](docs/modules-et-fonctionnalites.md) : classification commerciale, présentation de l’accueil et conservation des accès existants.
 - [Guide utilisateur intégré](docs/guide-utilisateur.md), disponible dans l’application à `/guide`, avec parcours et exemples selon les modules autorisés.
 - [Cartographie et écarts constatés](skills/sauverndeko-erp/references/cartographie.md).
 - [Inventaire des modèles, routes et objets SQL](skills/sauverndeko-erp/references/inventaire-technique.md).

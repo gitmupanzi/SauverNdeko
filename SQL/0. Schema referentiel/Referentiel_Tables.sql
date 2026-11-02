@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -961,7 +961,7 @@ CREATE TABLE referentiel."T_InterfaceTableau" (
     CONSTRAINT "T_InterfaceTableau_Colonnes_check" CHECK ((jsonb_typeof("Colonnes") = 'array'::text)),
     CONSTRAINT "T_InterfaceTableau_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT ck_interface_tableau_cle CHECK (("CleInterface" ~ '^[a-z]+[.][a-z-]+$'::text)),
-    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text])))
+    CONSTRAINT ck_interface_tableau_module CHECK (("Module" = ANY (ARRAY['logistique'::text, 'referentiels'::text, 'administration'::text, 'territoires'::text, 'support'::text, 'caisse'::text])))
 );
 
 --
@@ -1064,7 +1064,7 @@ COMMENT ON CONSTRAINT ck_interface_tableau_cle ON referentiel."T_InterfaceTablea
 -- Name: CONSTRAINT ck_interface_tableau_module ON "T_InterfaceTableau"; Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules possédant un catalogue de tableau et export, incluant Support sans accorder un accès ou une licence.';
+COMMENT ON CONSTRAINT ck_interface_tableau_module ON referentiel."T_InterfaceTableau" IS 'Modules autorisés pour les tableaux et exports : Logistique, Référentiels, Administration, Territoires, Support et Caisse. La liste ne définit aucun droit ni abonnement.';
 
 --
 -- Name: seq_preference_tableau_revision; Type: SEQUENCE; Schema: referentiel; Owner: -

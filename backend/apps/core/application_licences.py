@@ -28,6 +28,8 @@ def catalogue_rows():
     ready()
     rows=db.query('SELECT * FROM systeme."T_ModuleApplication" WHERE "CodeModule"=ANY(%s::text[]) ORDER BY "Ordre","CodeModule"',[list(MODULE_BY_KEY)])
     if len(rows)!=len(MODULE_BY_KEY):raise APIError("Catalogue incomplet.","MODULE_CONFIGURATION_UNAVAILABLE",503)
+    for row in rows:
+        row.update({'type':row['TypeApplication'],'commercialisable':row['Commercialisable'],'parentModule':row['ModuleParentCode']})
     return rows
 
 def license_configuration(actor,entity_id):
@@ -58,6 +60,8 @@ def save_license_modules(actor,licence_id,body):
         if not licence:raise APIError("Licence introuvable.","NOT_FOUND",404)
         current={row["CodeModule"]:row for row in db.query('SELECT * FROM systeme."V_LicenceModule" WHERE "IdLicenceFk"=%s',[licence["IdLicence"]])}
         validate_versions(body,codes,current)
+        # Configuration d’accès, distincte de la présentation commerciale :
+        # la classification ne désactive ni n’octroie aucune licence implicite.
         changed=[]
         for code in codes:
             active=code in enabled;old=current.get(code)

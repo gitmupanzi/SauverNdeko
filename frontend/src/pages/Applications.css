@@ -11,6 +11,11 @@
 .applications-search input {height:44px;border:0;background:transparent;outline:0;color:var(--erp-text);font-size:13px;width:100%;}
 .applications-search:focus-within {outline:2px solid var(--erp-link);outline-offset:2px;}
 .application-catalogue {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
+.application-catalogue-groups {display:grid;gap:32px;}
+.application-catalogue-group>header {display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0 0 16px;}
+.application-catalogue-group>header h2 {font-size:18px;font-weight:650;color:var(--erp-text);margin:0;}
+.application-catalogue-group>header>span {font-size:12px;color:var(--erp-muted);}
+.application-group-note {margin:0 0 18px;color:var(--erp-muted);font-size:12px;line-height:1.6;}
 .application-card.workspace-app {display:block;text-align:left;padding:22px;border-radius:12px;}
 .application-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .application-card .workspace-app-icon{width:48px;height:48px;font-size:24px;border-radius:12px;}
@@ -35,6 +40,12 @@
 .application-license-meta{display:flex;align-items:center;gap:36px;margin:0 24px 24px;padding:16px 20px;background:var(--erp-raised);border-radius:9px;}
 .application-license-meta>span:not(.application-badge){display:grid;gap:5px;}.application-license-meta small{color:var(--erp-muted);font-size:11px;}.application-license-meta strong{font-size:13px;font-weight:600;}
 .application-module-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0 24px 24px;}
+.application-licence-groups>section>header {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:12px;padding:0 24px 16px;}
+.application-licence-groups h3 {margin:0;color:var(--erp-text);font-size:15px;font-weight:650;}
+.application-licence-groups>section>header>span {font-size:12px;color:var(--erp-muted);}
+.application-licence-groups>section+section {padding-top:22px;border-top:1px solid var(--erp-border);}
+.application-licence-groups .application-group-note {margin:0 24px 16px;font-size:12px;}
+.application-rights-table .application-rights-group th {padding:12px 20px;color:var(--erp-muted);background:var(--erp-raised);font-size:12px;font-weight:650;}
 .application-module-row{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--erp-border);border-radius:9px;min-width:0;cursor:pointer;}
 .application-module-row.is-checked{background:color-mix(in srgb,var(--erp-mint) 65%,var(--erp-surface));}
 .application-module-row>span{display:grid;gap:4px;}.application-module-row strong{font-size:13px;font-weight:600;}.application-module-row small{font-size:11px;color:var(--erp-muted);}

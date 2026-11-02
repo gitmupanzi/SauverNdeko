@@ -28,6 +28,7 @@ const Profile=lazyView(()=>import("./pages/Profile"),{label:"Ouverture du profil
 const WorkspaceHome=lazyView(()=>import("./pages/WorkspaceHome"),{label:"Ouverture de vos applications…"});
 const Admin=lazyView(()=>import("./pages/Admin"),{label:"Ouverture de l’administration…"});
 const Logistique=lazyView(()=>import("./pages/Logistique"),{label:"Ouverture de la logistique…"});
+const Caisse=lazyView(()=>import("./pages/Caisse"),{label:"Ouverture de la caisse…"});
 const Referentiels=lazyView(()=>import("./pages/Referentiels"),{label:"Ouverture de la page…"});
 const OrganisationTerritoriale=lazyView(()=>import("./pages/OrganisationTerritoriale"),{label:"Ouverture de la page…"});
 const Support=lazyView(()=>import("./pages/support/SupportPortal"),{label:"Ouverture du support…"});
@@ -125,6 +126,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
   ].filter(item=>mayOpen(user,item.key));
   const modules=[
     {key:"/logistique",label:"Logistique",icon:"box"},
+    {key:"/caisse",label:"Caisse",icon:"wallet"},
     {key:"/territoires",label:"Organisation territoriale",icon:"globe"},
     {key:"/support",label:"Support",icon:"bi-headset"},
     {key:"/parametres",label:"Paramètres",icon:"settings"},
@@ -424,6 +426,7 @@ export default function App() {
   if (location.pathname === "/abonnements") return <AdminRoute><ApplicationLicences key={scopeKey} /></AdminRoute>;
   if (location.pathname === "/admin") return <ModuleGate><AdminRoute><Admin key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
+  if (location.pathname === "/caisse") return <ModuleGate><Caisse key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;

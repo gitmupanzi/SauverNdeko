@@ -76,6 +76,13 @@ class Command(BaseCommand):
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))
             urls.append("/api/geolocalisation/territoires/synthese")
+            with connection.cursor() as cash_cursor:
+                cash_cursor.execute('SELECT to_regclass(%s)', ['operations."V_Caisse"'])
+                cash_installed = bool(cash_cursor.fetchone()[0])
+            if cash_installed:
+                urls.extend(['/api/caisse/contexte','/api/caisse/entreprises','/api/caisse/references',
+                    '/api/caisse/synthese','/api/caisse/registres/caisses?take=1',
+                    '/api/caisse/registres/ecritures?take=1','/api/caisse/registres/clotures?take=1'])
             with connection.cursor() as settings_cursor:
                 settings_cursor.execute("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='systeme' AND table_name='T_Entite' AND column_name='TauxTVAEntite')")
                 entity_settings_installed=bool(settings_cursor.fetchone()[0])
