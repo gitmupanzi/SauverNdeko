@@ -9,7 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { requestJson } from "../services/api";
 import "./WorkspaceHome.css";
 
-const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/territoires", "/support", "/admin"]);
+const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/territoires", "/support", "/parametres", "/guide", "/admin"]);
 
 export default function WorkspaceHome() {
   const { user } = useAuth();

@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -607,6 +607,36 @@ END $_$;
 COMMENT ON FUNCTION logistique.fn_entite_document(kind text, object_id bigint) IS 'Résout les propriétaires des documents autorisés, y compris Support ; stockage binaire privé existant réutilisé avec liaison FK contrôlée.';
 
 --
+-- Name: fn_facturation_tva(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_facturation_tva(p_commande integer) RETURNS TABLE("TauxTVA" numeric, "MontantHT" numeric, "MontantTVA" numeric, "MontantTTC" numeric)
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ WITH returned AS (
+  SELECT d."ID_ArticleFk",sum(d."QteCmdDetail") quantite
+  FROM logistique."T_RetourBon" r JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=r."ID_CommandeRetourFk"
+  WHERE r."ID_CommandeOrigineFk"=p_commande GROUP BY d."ID_ArticleFk"
+ ), base AS (
+  SELECT round((d."QteCmdDetail"-coalesce(r.quantite,0))*d."PUCmdDetail",2) ht
+  FROM logistique."T_CommandeDetail" d LEFT JOIN returned r ON r."ID_ArticleFk"=d."ID_ArticleFk"
+  WHERE d."ID_CmdFk"=p_commande AND d."QteCmdDetail">coalesce(r.quantite,0)
+ )
+ SELECT e."TauxTVAEntite",coalesce(sum(b.ht),0)::numeric(12,2),
+  coalesce(sum(round(b.ht*e."TauxTVAEntite"/100,2)),0)::numeric(12,2),
+  (coalesce(sum(b.ht),0)+coalesce(sum(round(b.ht*e."TauxTVAEntite"/100,2)),0))::numeric(12,2)
+ FROM logistique."T_Commande" c JOIN systeme."T_Entite" e ON e."IdEntite"=c."IdEntiteFk"
+ LEFT JOIN base b ON true WHERE c."ID_Commande"=p_commande GROUP BY e."TauxTVAEntite";
+$$;
+
+--
+-- Name: FUNCTION fn_facturation_tva(p_commande integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_facturation_tva(p_commande integer) IS 'Prévisualisation des nouvelles factures : base nette HT des lignes du bon, taux courant de son propriétaire durable, taxe arrondie par ligne puis sommes ; ne modifie aucun stock ni document émis.';
+
+--
 -- Name: fn_identite_commande_deja_utilisee(integer); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -665,6 +695,35 @@ END $_$;
 COMMENT ON FUNCTION logistique.fn_identites_audit(p_document jsonb) IS 'Identites historiques indexables, y compris C_/cmd-/BE-/BS-/F_/fac- et zeros initiaux; les identites supprimees restent reservees.';
 
 --
+-- Name: fn_lignes_avoir_attente(integer); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.fn_lignes_avoir_attente(p_commande integer) RETURNS TABLE("ID_ArticleFk" integer, "NomArticle" text, "Unite" text, "Quantite" numeric, "PUAvoir" numeric, "MontantLigne" numeric, "MontantTVA" numeric, "MontantTTC" numeric)
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ WITH source AS (
+  SELECT l.*,greatest(coalesce(r.qty,0)-l."QteRetourAvantFacture"-coalesce(c.qty,0),0) pending,
+    coalesce(c.qty,0) credited,coalesce(c.ht,0) credited_ht,coalesce(c.tva,0) credited_tva
+  FROM logistique."T_Facture" f JOIN logistique."T_FactureLigne" l ON l."ID_FactureFk"=f."ID_Facture"
+  LEFT JOIN LATERAL(SELECT sum(d."QteCmdDetail") qty FROM logistique."T_RetourBon" b JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=b."ID_CommandeRetourFk" WHERE b."ID_CommandeOrigineFk"=p_commande AND d."ID_ArticleFk"=l."ID_ArticleFk") r ON true
+  LEFT JOIN LATERAL(SELECT sum(al."Quantite") qty,sum(al."MontantLigne") ht,sum(al."MontantTVA") tva FROM logistique."T_Avoir" a JOIN logistique."T_AvoirLigne" al ON al."ID_AvoirFk"=a."ID_Avoir" WHERE a."ID_CommandeFk"=p_commande AND al."ID_ArticleFk"=l."ID_ArticleFk") c ON true
+  WHERE f."ID_CommandeFk"=p_commande
+ ), amounts AS (
+  SELECT s.*,CASE WHEN credited+pending="QteFacturee" THEN "MontantLigne" ELSE round((credited+pending)*"PUFacture",2) END-credited_ht ht,
+   round("MontantTVA"*(credited+pending)/"QteFacturee",2)-credited_tva tva FROM source s WHERE pending>0
+ )
+ SELECT "ID_ArticleFk","NomArticle","Unite",pending,"PUFacture",ht::numeric(12,2),tva::numeric(12,2),(ht+tva)::numeric(12,2)
+ FROM amounts ORDER BY "ID_ArticleFk";
+$$;
+
+--
+-- Name: FUNCTION fn_lignes_avoir_attente(p_commande integer); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.fn_lignes_avoir_attente(p_commande integer) IS 'Projection unique des retours facturés non crédités : quantité, base HT et TVA calculées sur le reliquat de l’instantané d’origine, avec arrondis cumulés sans surremboursement.';
+
+--
 -- Name: fn_materialiser_stock_initial(integer, integer); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -717,18 +776,14 @@ CREATE FUNCTION logistique.fn_montant_avoir_attente(command_id integer) RETURNS 
     LANGUAGE sql STABLE
     SET search_path TO 'pg_catalog'
     AS $$
- SELECT COALESCE(sum(round(greatest(COALESCE(r.qty,0)-l."QteRetourAvantFacture"-COALESCE(c.qty,0),0)*l."PUFacture",2)),0)::numeric(12,2)
- FROM logistique."T_Facture" f JOIN logistique."T_FactureLigne" l ON l."ID_FactureFk"=f."ID_Facture"
- LEFT JOIN LATERAL(SELECT sum(d."QteCmdDetail") AS qty FROM logistique."T_RetourBon" b JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=b."ID_CommandeRetourFk" WHERE b."ID_CommandeOrigineFk"=command_id AND d."ID_ArticleFk"=l."ID_ArticleFk") r ON true
- LEFT JOIN LATERAL(SELECT sum(al."Quantite") AS qty FROM logistique."T_Avoir" a JOIN logistique."T_AvoirLigne" al ON al."ID_AvoirFk"=a."ID_Avoir" WHERE a."ID_CommandeFk"=command_id AND al."ID_ArticleFk"=l."ID_ArticleFk") c ON true
- WHERE f."ID_CommandeFk"=command_id
+ SELECT coalesce(sum("MontantTTC"),0)::numeric(12,2) FROM logistique.fn_lignes_avoir_attente(command_id);
 $$;
 
 --
 -- Name: FUNCTION fn_montant_avoir_attente(command_id integer); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS 'Montant exact des retours après facture qui ne sont pas encore couverts par un avoir émis.';
+COMMENT ON FUNCTION logistique.fn_montant_avoir_attente(command_id integer) IS 'Montant TTC exact des retours postérieurs à facture non couverts par des avoirs, incluant leur TVA historique et les reliquats d’arrondi.';
 
 --
 -- Name: fn_nature_bon(integer); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1379,6 +1434,7 @@ BEGIN
  IF NOT FOUND OR NEW."ID_CommandeFk"<>f."ID_CommandeFk" OR NEW."IdEntiteFk"<>f."IdEntiteFk" OR NEW."ID_DeviseFk"<>f."ID_DeviseFk" OR NEW."DeviseCode"<>f."DeviseCode" THEN RAISE EXCEPTION 'Avoir incompatible avec sa facture.' USING ERRCODE='23514'; END IF;
  PERFORM 1 FROM logistique."T_Commande" WHERE "ID_Commande"=f."ID_CommandeFk" FOR UPDATE;
  IF NEW."DateAvoir"<f."DateFacture" THEN RAISE EXCEPTION 'La date d’avoir précède la facture.' USING ERRCODE='23514'; END IF;
+ NEW."TauxTVA"=f."TauxTVA";
  NEW."CodeAvoir"='avr-'||NEW."ID_Avoir"::text;
  RETURN NEW;
 END $$;
@@ -1387,7 +1443,7 @@ END $$;
 -- Name: FUNCTION tr_avoir_immuable(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_avoir_immuable() IS 'Valide entreprise, devise et facture, attribue avr-ID et conserve l’avoir émis.';
+COMMENT ON FUNCTION logistique.tr_avoir_immuable() IS 'Conserve les avoirs émis, verrouille leur bon original et reprend sa facture, sa devise et son taux historique de TVA, sans utiliser le paramétrage courant.';
 
 --
 -- Name: tr_avoir_ligne_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1397,7 +1453,7 @@ CREATE FUNCTION logistique.tr_avoir_ligne_immuable() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog'
     AS $$
-DECLARE a logistique."T_Avoir"; f logistique."T_FactureLigne"; available numeric; credited numeric;
+DECLARE a logistique."T_Avoir"; f logistique."T_FactureLigne"; available numeric; credited numeric; credited_ht numeric; credited_tva numeric;
 BEGIN
  IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Les lignes d’avoir sont conservées.' USING ERRCODE='23514'; END IF;
  SELECT * INTO a FROM logistique."T_Avoir" WHERE "ID_Avoir"=NEW."ID_AvoirFk";
@@ -1408,6 +1464,13 @@ BEGIN
  SELECT COALESCE(sum(d."QteCmdDetail"),0)-f."QteRetourAvantFacture" INTO available FROM logistique."T_RetourBon" r JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=r."ID_CommandeRetourFk" WHERE r."ID_CommandeOrigineFk"=a."ID_CommandeFk" AND d."ID_ArticleFk"=NEW."ID_ArticleFk";
  SELECT COALESCE(sum(l."Quantite"),0) INTO credited FROM logistique."T_AvoirLigne" l JOIN logistique."T_Avoir" n ON n."ID_Avoir"=l."ID_AvoirFk" WHERE n."ID_FactureFk"=a."ID_FactureFk" AND l."ID_ArticleFk"=NEW."ID_ArticleFk";
  IF NEW."Quantite"+credited>available OR NEW."Quantite"+credited>f."QteFacturee" THEN RAISE EXCEPTION 'Quantité retournée déjà créditée ou insuffisante.' USING ERRCODE='23514'; END IF;
+ SELECT coalesce(sum(l."MontantLigne"),0),coalesce(sum(l."MontantTVA"),0) INTO credited_ht,credited_tva
+ FROM logistique."T_AvoirLigne" l JOIN logistique."T_Avoir" n ON n."ID_Avoir"=l."ID_AvoirFk"
+ WHERE n."ID_FactureFk"=a."ID_FactureFk" AND l."ID_ArticleFk"=NEW."ID_ArticleFk";
+ NEW."MontantLigne"=CASE WHEN credited+NEW."Quantite"=f."QteFacturee" THEN f."MontantLigne"
+   ELSE round((credited+NEW."Quantite")*f."PUFacture",2) END-credited_ht;
+ NEW."MontantTVA"=round(f."MontantTVA"*(credited+NEW."Quantite")/f."QteFacturee",2)-credited_tva;
+ IF NEW."MontantLigne"<0 OR NEW."MontantTVA"<0 THEN RAISE EXCEPTION 'Les montants déjà crédités doivent être vérifiés.' USING ERRCODE='23514';END IF;
  RETURN NEW;
 END $$;
 
@@ -1415,7 +1478,7 @@ END $$;
 -- Name: FUNCTION tr_avoir_ligne_immuable(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_avoir_ligne_immuable() IS 'Empêche la double créditation des retours après facturation et conserve le prix facturé.';
+COMMENT ON FUNCTION logistique.tr_avoir_ligne_immuable() IS 'Contrôle les quantités réellement retournées et non déjà créditées ; calcule le HT et la TVA par différence des arrondis cumulés, pour restituer exactement le reliquat de chaque ligne facturée.';
 
 --
 -- Name: tr_avoir_total(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -1425,12 +1488,13 @@ CREATE FUNCTION logistique.tr_avoir_total() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog'
     AS $$
-DECLARE key_id bigint; total numeric; expected numeric;
+DECLARE key_id bigint; a logistique."T_Avoir"; ht numeric; tva numeric; ttc numeric;
 BEGIN
- key_id=COALESCE((to_jsonb(NEW)->>'ID_Avoir')::bigint,(to_jsonb(NEW)->>'ID_AvoirFk')::bigint);
- SELECT "MontantTTC" INTO expected FROM logistique."T_Avoir" WHERE "ID_Avoir"=key_id;
- SELECT sum("MontantLigne") INTO total FROM logistique."T_AvoirLigne" WHERE "ID_AvoirFk"=key_id;
- IF total IS NULL OR total<>expected THEN RAISE EXCEPTION 'Le montant de l’avoir doit correspondre à ses lignes.' USING ERRCODE='23514'; END IF;
+ key_id=coalesce((to_jsonb(NEW)->>'ID_Avoir')::bigint,(to_jsonb(NEW)->>'ID_AvoirFk')::bigint);
+ SELECT * INTO a FROM logistique."T_Avoir" WHERE "ID_Avoir"=key_id;
+ SELECT sum("MontantLigne"),sum("MontantTVA"),sum("MontantTTC") INTO ht,tva,ttc FROM logistique."T_AvoirLigne" WHERE "ID_AvoirFk"=key_id;
+ IF ht IS DISTINCT FROM a."MontantHT" OR tva IS DISTINCT FROM a."MontantTVA" OR ttc IS DISTINCT FROM a."MontantTTC" THEN
+  RAISE EXCEPTION 'Le montant HT, la TVA et le TTC de l’avoir doivent correspondre à ses lignes.' USING ERRCODE='23514';END IF;
  RETURN NULL;
 END $$;
 
@@ -1438,7 +1502,7 @@ END $$;
 -- Name: FUNCTION tr_avoir_total(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_avoir_total() IS 'Vérifie au commit que les lignes couvrent exactement le montant émis.';
+COMMENT ON FUNCTION logistique.tr_avoir_total() IS 'Contrôle différé des sommes HT, TVA historique et TTC des lignes d’avoir, sans effet supplémentaire sur le stock.';
 
 --
 -- Name: tr_bon_code_historique_immuable(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -2074,6 +2138,52 @@ END $$;
 COMMENT ON FUNCTION logistique.tr_immobilisation_verifier() IS 'Impose identité/code/propriétaire immuables, références nouvelles actives, responsable affectable et localisation de la même entreprise, auteur prouvé et horodatages SQL. Conservation par archivage ; aucun effet de stock.';
 
 --
+-- Name: tr_initialiser_tva_facture(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_initialiser_tva_facture() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE totals record; owner_id integer;
+BEGIN
+ SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=NEW."ID_CommandeFk" FOR UPDATE;
+ PERFORM 1 FROM systeme."T_Entite" WHERE "IdEntite"=owner_id FOR SHARE;
+ SELECT * INTO totals FROM logistique.fn_facturation_tva(NEW."ID_CommandeFk");
+ IF NOT FOUND OR totals."MontantHT"<=0 THEN RAISE EXCEPTION 'Aucune base hors taxes positive à facturer.' USING ERRCODE='23514';END IF;
+ NEW."TauxTVA"=totals."TauxTVA"; NEW."MontantHT"=totals."MontantHT";
+ NEW."MontantTVA"=totals."MontantTVA"; NEW."MontantTTC"=totals."MontantTTC";
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_initialiser_tva_facture(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_initialiser_tva_facture() IS 'Capture atomiquement le taux de l’entreprise et les montants HT/TVA/TTC de la nouvelle facture ; conserve les anciens documents et ne touche jamais aux totaux physiques du bon.';
+
+--
+-- Name: tr_initialiser_tva_facture_ligne(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_initialiser_tva_facture_ligne() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE taux numeric;
+BEGIN
+ SELECT "TauxTVA" INTO taux FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_FactureFk";
+ NEW."MontantTVA"=round(NEW."MontantLigne"*taux/100,2);
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_initialiser_tva_facture_ligne(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_initialiser_tva_facture_ligne() IS 'Calcule une seule fois la TVA arrondie de ligne selon le taux immuable de la facture ; le TTC est une colonne calculée.';
+
+--
 -- Name: tr_lock_commande_cloturee(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -2699,43 +2809,74 @@ CREATE FUNCTION logistique.tr_verifier_snapshot_facture() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog'
     AS $$
+
 DECLARE invoice logistique."T_Facture"; parent logistique."T_Commande"; total numeric;
+
 BEGIN
+
  IF TG_TABLE_NAME='T_FactureLigne' THEN
+
   SELECT * INTO invoice FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_FactureFk";
+
  ELSE SELECT * INTO invoice FROM logistique."T_Facture" WHERE "ID_Facture"=NEW."ID_Facture"; END IF;
+
  SELECT * INTO parent FROM logistique."T_Commande" WHERE "ID_Commande"=invoice."ID_CommandeFk";
+
  IF parent."CodeFacture" IS DISTINCT FROM invoice."CodeFacture" OR parent."DateFacture" IS DISTINCT FROM invoice."DateFacture"
+
  OR parent."DateEcheancePaiement" IS DISTINCT FROM invoice."DateEcheancePaiement"
+
  OR parent."ID_ModePaiementFk" IS DISTINCT FROM invoice."ID_ModePaiementFk"
+
  OR parent."ID_ConditionPaiementFk" IS DISTINCT FROM invoice."ID_ConditionPaiementFk" THEN
+
    RAISE EXCEPTION 'Le miroir de facture du bon doit rester cohérent.' USING ERRCODE='23514'; END IF;
+
  IF TG_OP='INSERT' THEN
+
   SELECT sum("MontantLigne") INTO total FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=invoice."ID_Facture";
-  IF total IS DISTINCT FROM invoice."MontantTTC" THEN RAISE EXCEPTION 'Total de facture différent de ses lignes.' USING ERRCODE='23514'; END IF;
+
+  IF total IS DISTINCT FROM invoice."MontantHT" OR (SELECT sum("MontantTVA") FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=invoice."ID_Facture") IS DISTINCT FROM invoice."MontantTVA" OR invoice."MontantTTC" IS DISTINCT FROM invoice."MontantHT"+invoice."MontantTVA" THEN RAISE EXCEPTION 'Total de facture différent de ses lignes.' USING ERRCODE='23514'; END IF;
+
   IF EXISTS(
+
    WITH returned AS (SELECT d."ID_ArticleFk",sum(d."QteCmdDetail") AS n FROM logistique."T_RetourBon" r
+
      JOIN logistique."T_CommandeDetail" d ON d."ID_CmdFk"=r."ID_CommandeRetourFk"
+
      WHERE r."ID_CommandeOrigineFk"=invoice."ID_CommandeFk" GROUP BY d."ID_ArticleFk")
+
    SELECT 1 FROM (SELECT * FROM logistique."T_CommandeDetail" WHERE "ID_CmdFk"=invoice."ID_CommandeFk") d
+
    LEFT JOIN returned r ON r."ID_ArticleFk"=d."ID_ArticleFk"
+
    FULL JOIN (SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=invoice."ID_Facture") l ON l."ID_ArticleFk"=d."ID_ArticleFk"
+
    WHERE (d."ID_CmdFk"=invoice."ID_CommandeFk" OR l."ID_FactureFk"=invoice."ID_Facture")
+
     AND ((COALESCE(d."QteCmdDetail",0)-COALESCE(r.n,0)>0 AND
+
           (l."ID_FactureLigne" IS NULL OR l."ID_CmdFk"<>invoice."ID_CommandeFk"
+
            OR l."QteSortie" IS DISTINCT FROM d."QteCmdDetail" OR l."PUFacture" IS DISTINCT FROM d."PUCmdDetail"
+
            OR l."QteRetourAvantFacture" IS DISTINCT FROM COALESCE(r.n,0)))
+
          OR (COALESCE(d."QteCmdDetail",0)-COALESCE(r.n,0)<=0 AND l."ID_FactureLigne" IS NOT NULL))) THEN
+
    RAISE EXCEPTION 'Les lignes facturées doivent correspondre aux quantités nettes du bon.' USING ERRCODE='23514'; END IF;
+
  END IF;
+
  RETURN NULL;
+
 END $$;
 
 --
 -- Name: FUNCTION tr_verifier_snapshot_facture(); Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON FUNCTION logistique.tr_verifier_snapshot_facture() IS 'Contrôle différé du miroir, du total et des quantités nettes avant émission ; aucun mouvement de stock.';
+COMMENT ON FUNCTION logistique.tr_verifier_snapshot_facture() IS 'Contrôle différé du miroir documentaire, des lignes nettes de retours et des sommes exactes HT/TVA/TTC ; n’assimile pas la taxe à un second mouvement de stock.';
 
 --
 -- Name: tracer_source_cout(); Type: FUNCTION; Schema: logistique; Owner: -
@@ -3283,16 +3424,21 @@ CREATE TABLE logistique."T_Avoir" (
     "PayloadHash" text NOT NULL,
     "TransactionCreation" bigint DEFAULT txid_current() NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "TauxTVA" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Avoir_TauxTVA_not_null" NOT NULL,
+    "MontantTVA" numeric(12,2) DEFAULT 0 CONSTRAINT "T_Avoir_MontantTVA_not_null" NOT NULL,
+    "MontantHT" numeric(12,2) GENERATED ALWAYS AS (("MontantTTC" - "MontantTVA")) STORED,
     CONSTRAINT "T_Avoir_MontantTTC_check" CHECK (("MontantTTC" > (0)::numeric)),
     CONSTRAINT "T_Avoir_Motif_check" CHECK (((length(btrim("Motif")) >= 3) AND (length(btrim("Motif")) <= 2000))),
-    CONSTRAINT "T_Avoir_PayloadHash_check" CHECK (("PayloadHash" ~ '^[a-f0-9]{64}$'::text))
+    CONSTRAINT "T_Avoir_PayloadHash_check" CHECK (("PayloadHash" ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT ck_avoir_taux_tva CHECK ((("TauxTVA" >= (0)::numeric) AND ("TauxTVA" <= (100)::numeric))),
+    CONSTRAINT ck_avoir_tva CHECK ((("MontantTVA" >= (0)::numeric) AND ("MontantTTC" >= "MontantTVA")))
 );
 
 --
 -- Name: TABLE "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_Avoir" IS 'Avoir immuable correspondant aux retours postérieurs à une facture émise ; sans effet de stock supplémentaire.';
+COMMENT ON TABLE logistique."T_Avoir" IS 'Avoir immuable lié aux retours postérieurs à facture : HT et TVA de l’instantané original, TTC imputable ou remboursable, sans effet de stock supplémentaire.';
 
 --
 -- Name: COLUMN "T_Avoir"."ID_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3383,6 +3529,48 @@ COMMENT ON COLUMN logistique."T_Avoir"."TransactionCreation" IS 'Transaction aut
 --
 
 COMMENT ON COLUMN logistique."T_Avoir"."CreeLe" IS 'Horodatage serveur de l’enregistrement.';
+
+--
+-- Name: COLUMN "T_Avoir"."TauxTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."TauxTVA" IS 'Taux figé de la facture d’origine, jamais le taux courant de l’entreprise à la date du retour.';
+
+--
+-- Name: COLUMN "T_Avoir"."MontantTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."MontantTVA" IS 'TVA effectivement créditée selon les quantités retournées et les arrondis cumulés de la facture originale.';
+
+--
+-- Name: COLUMN "T_Avoir"."MontantHT"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Avoir"."MontantHT" IS 'Base HT calculée du montant TTC de l’avoir moins la TVA créditée ; conserve le montant historique lorsque la TVA vaut zéro.';
+
+--
+-- Name: CONSTRAINT "T_Avoir_TauxTVA_not_null" ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Avoir_TauxTVA_not_null" ON logistique."T_Avoir" IS 'Taux de la facture créditée toujours conservé.';
+
+--
+-- Name: CONSTRAINT "T_Avoir_MontantTVA_not_null" ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Avoir_MontantTVA_not_null" ON logistique."T_Avoir" IS 'Taxe créditée explicite, même lorsque nulle.';
+
+--
+-- Name: CONSTRAINT ck_avoir_taux_tva ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_avoir_taux_tva ON logistique."T_Avoir" IS 'Bornes du taux repris de la facture d’origine.';
+
+--
+-- Name: CONSTRAINT ck_avoir_tva ON "T_Avoir"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_avoir_tva ON logistique."T_Avoir" IS 'TVA et base HT d’avoir non négatives ; contrôle différé des sommes exactes de lignes.';
 
 --
 -- Name: T_AvoirAffectation; Type: TABLE; Schema: logistique; Owner: -
@@ -3479,16 +3667,18 @@ CREATE TABLE logistique."T_AvoirLigne" (
     "Quantite" numeric(14,3) NOT NULL,
     "PUAvoir" numeric(12,2) NOT NULL,
     "MontantLigne" numeric(12,2) NOT NULL,
+    "MontantTVA" numeric(12,2) DEFAULT 0 CONSTRAINT "T_AvoirLigne_MontantTVA_not_null" NOT NULL,
+    "MontantTTC" numeric(12,2) GENERATED ALWAYS AS (("MontantLigne" + "MontantTVA")) STORED,
     CONSTRAINT "T_AvoirLigne_PUAvoir_check" CHECK (("PUAvoir" >= (0)::numeric)),
     CONSTRAINT "T_AvoirLigne_Quantite_check" CHECK (("Quantite" > (0)::numeric)),
-    CONSTRAINT "T_AvoirLigne_check" CHECK (("MontantLigne" = round(("Quantite" * "PUAvoir"), 2)))
+    CONSTRAINT ck_avoir_ligne_tva CHECK ((("MontantTVA" >= (0)::numeric) AND ("MontantLigne" >= (0)::numeric)))
 );
 
 --
 -- Name: TABLE "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_AvoirLigne" IS 'Quantités retournées après facturation, au prix de l’instantané original, créditées une seule fois.';
+COMMENT ON TABLE logistique."T_AvoirLigne" IS 'Quantité retournée après facture et montants HT/TVA/TTC crédités par différences cumulées, au prix et à la taxe historiques.';
 
 --
 -- Name: COLUMN "T_AvoirLigne"."ID_AvoirFk"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3530,7 +3720,31 @@ COMMENT ON COLUMN logistique."T_AvoirLigne"."PUAvoir" IS 'Prix unitaire figé de
 -- Name: COLUMN "T_AvoirLigne"."MontantLigne"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_AvoirLigne"."MontantLigne" IS 'Quantité au prix facturé, arrondie à deux décimales.';
+COMMENT ON COLUMN logistique."T_AvoirLigne"."MontantLigne" IS 'Base HT créditée par différence des arrondis cumulés ; la dernière restitution reprend exactement le reliquat de la ligne facturée.';
+
+--
+-- Name: COLUMN "T_AvoirLigne"."MontantTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."MontantTVA" IS 'Fraction de TVA créditée, calculée sur la TVA figée de la ligne et plafonnée au reliquat après les avoirs antérieurs.';
+
+--
+-- Name: COLUMN "T_AvoirLigne"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_AvoirLigne"."MontantTTC" IS 'Total TTC calculé de la ligne d’avoir, base HT plus TVA restituée.';
+
+--
+-- Name: CONSTRAINT "T_AvoirLigne_MontantTVA_not_null" ON "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_AvoirLigne_MontantTVA_not_null" ON logistique."T_AvoirLigne" IS 'La taxe restituée de la ligne est toujours explicite.';
+
+--
+-- Name: CONSTRAINT ck_avoir_ligne_tva ON "T_AvoirLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_avoir_ligne_tva ON logistique."T_AvoirLigne" IS 'Bases et taxes de restitution non négatives, calculées par la garde des lignes à partir de l’instantané et des avoirs antérieurs.';
 
 --
 -- Name: T_Avoir_ID_Avoir_seq; Type: SEQUENCE; Schema: logistique; Owner: -
@@ -4720,19 +4934,22 @@ CREATE TABLE logistique."T_Facture" (
     "TransactionCreation" bigint DEFAULT txid_current() CONSTRAINT "T_Facture_TransactionCreation_not_null" NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Facture_CreeLe_not_null" NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_Facture_ModifieLe_not_null" NOT NULL,
+    "TauxTVA" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Facture_TauxTVA_not_null" NOT NULL,
+    "MontantTVA" numeric(12,2) DEFAULT 0 CONSTRAINT "T_Facture_MontantTVA_not_null" NOT NULL,
     CONSTRAINT "T_Facture_DelaiJours_check" CHECK (("DelaiJours" >= 0)),
     CONSTRAINT "T_Facture_DeviseCode_check" CHECK (("DeviseCode" ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT "T_Facture_MontantHT_check" CHECK (("MontantHT" > (0)::numeric)),
     CONSTRAINT "T_Facture_PayloadHash_check" CHECK (("PayloadHash" ~ '^[0-9a-f]{64}$'::text)),
-    CONSTRAINT "T_Facture_check" CHECK (("MontantTTC" = "MontantHT")),
-    CONSTRAINT ck_facture_echeance CHECK (("DateEcheancePaiement" >= "DateFacture"))
+    CONSTRAINT ck_facture_echeance CHECK (("DateEcheancePaiement" >= "DateFacture")),
+    CONSTRAINT ck_facture_taux_tva CHECK ((("TauxTVA" >= (0)::numeric) AND ("TauxTVA" <= (100)::numeric))),
+    CONSTRAINT ck_facture_tva CHECK ((("MontantTVA" >= (0)::numeric) AND ("MontantTTC" = ("MontantHT" + "MontantTVA"))))
 );
 
 --
 -- Name: TABLE "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_Facture" IS 'Une facture par bon de sortie ; total net figé à l’émission, sans effet de stock ni taxe implicite.';
+COMMENT ON TABLE logistique."T_Facture" IS 'Facture émise immuable : base HT, taux et TVA capturés par entreprise, TTC de règlement et instantanés des lignes ; aucune seconde sortie de stock.';
 
 --
 -- Name: COLUMN "T_Facture"."ID_Facture"; Type: COMMENT; Schema: logistique; Owner: -
@@ -4828,13 +5045,13 @@ COMMENT ON COLUMN logistique."T_Facture"."DeviseLibelle" IS 'Libellé de devise 
 -- Name: COLUMN "T_Facture"."MontantHT"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Facture"."MontantHT" IS 'Somme des lignes nettes facturées ; aucune taxe créée implicitement.';
+COMMENT ON COLUMN logistique."T_Facture"."MontantHT" IS 'Somme des montants HT arrondis des lignes facturées nettes des retours antérieurs à l’émission.';
 
 --
 -- Name: COLUMN "T_Facture"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_Facture"."MontantTTC" IS 'Montant exigible figé, égal au HT en l’absence de taxe explicite.';
+COMMENT ON COLUMN logistique."T_Facture"."MontantTTC" IS 'Montant émis égal au HT plus la TVA figée ; base des soldes et règlements.';
 
 --
 -- Name: COLUMN "T_Facture"."TransactionCreation"; Type: COMMENT; Schema: logistique; Owner: -
@@ -4853,6 +5070,18 @@ COMMENT ON COLUMN logistique."T_Facture"."CreeLe" IS 'Horodatage technique de cr
 --
 
 COMMENT ON COLUMN logistique."T_Facture"."ModifieLe" IS 'Dernière modification autorisée des métadonnées.';
+
+--
+-- Name: COLUMN "T_Facture"."TauxTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."TauxTVA" IS 'Taux de TVA de l’entreprise copié et figé à l’émission ; zéro pour les factures antérieures à ce paramétrage.';
+
+--
+-- Name: COLUMN "T_Facture"."MontantTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Facture"."MontantTVA" IS 'Somme des TVA de lignes arrondies à deux décimales lors de l’émission, immuable ensuite.';
 
 --
 -- Name: CONSTRAINT "T_Facture_ID_Facture_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
@@ -4957,6 +5186,18 @@ COMMENT ON CONSTRAINT "T_Facture_CreeLe_not_null" ON logistique."T_Facture" IS '
 COMMENT ON CONSTRAINT "T_Facture_ModifieLe_not_null" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 
 --
+-- Name: CONSTRAINT "T_Facture_TauxTVA_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_TauxTVA_not_null" ON logistique."T_Facture" IS 'Chaque facture possède son taux historique, y compris zéro pour les documents antérieurs.';
+
+--
+-- Name: CONSTRAINT "T_Facture_MontantTVA_not_null" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Facture_MontantTVA_not_null" ON logistique."T_Facture" IS 'Montant de TVA émis explicite, même lorsqu’il vaut zéro.';
+
+--
 -- Name: CONSTRAINT "T_Facture_DelaiJours_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
@@ -4981,16 +5222,22 @@ COMMENT ON CONSTRAINT "T_Facture_MontantHT_check" ON logistique."T_Facture" IS '
 COMMENT ON CONSTRAINT "T_Facture_PayloadHash_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 
 --
--- Name: CONSTRAINT "T_Facture_check" ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Facture_check" ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
-
---
 -- Name: CONSTRAINT ck_facture_echeance ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
 COMMENT ON CONSTRAINT ck_facture_echeance ON logistique."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+-- Name: CONSTRAINT ck_facture_taux_tva ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_facture_taux_tva ON logistique."T_Facture" IS 'Bornes du taux historique de la facture, en pourcentage.';
+
+--
+-- Name: CONSTRAINT ck_facture_tva ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_facture_tva ON logistique."T_Facture" IS 'Total TTC cohérent avec sa base HT et sa taxe non négative ; le trigger différé vérifie les sommes de lignes.';
 
 --
 -- Name: T_FactureLigne; Type: TABLE; Schema: logistique; Owner: -
@@ -5009,10 +5256,13 @@ CREATE TABLE logistique."T_FactureLigne" (
     "QteFacturee" numeric(14,3) CONSTRAINT "T_FactureLigne_QteFacturee_not_null" NOT NULL,
     "PUFacture" numeric(12,2) CONSTRAINT "T_FactureLigne_PUFacture_not_null" NOT NULL,
     "MontantLigne" numeric(12,2) CONSTRAINT "T_FactureLigne_MontantLigne_not_null" NOT NULL,
+    "MontantTVA" numeric(12,2) DEFAULT 0 CONSTRAINT "T_FactureLigne_MontantTVA_not_null" NOT NULL,
+    "MontantTTC" numeric(12,2) GENERATED ALWAYS AS (("MontantLigne" + "MontantTVA")) STORED,
     CONSTRAINT "T_FactureLigne_PUFacture_check" CHECK (("PUFacture" >= (0)::numeric)),
     CONSTRAINT "T_FactureLigne_QteRetourAvantFacture_check" CHECK (("QteRetourAvantFacture" >= (0)::numeric)),
     CONSTRAINT "T_FactureLigne_QteSortie_check" CHECK (("QteSortie" > (0)::numeric)),
     CONSTRAINT "T_FactureLigne_check" CHECK ((("QteFacturee" > (0)::numeric) AND ("QteFacturee" = ("QteSortie" - "QteRetourAvantFacture")))),
+    CONSTRAINT ck_facture_ligne_tva CHECK (("MontantTVA" >= (0)::numeric)),
     CONSTRAINT facture_ligne_montant_arrondi CHECK (("MontantLigne" = round(("QteFacturee" * "PUFacture"), 2)))
 );
 
@@ -5020,7 +5270,7 @@ CREATE TABLE logistique."T_FactureLigne" (
 -- Name: TABLE "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON TABLE logistique."T_FactureLigne" IS 'Copie financière des lignes nettes au moment de l’émission ; noms, unité, prix et quantités historiques immuables.';
+COMMENT ON TABLE logistique."T_FactureLigne" IS 'Ligne de facture figée : désignation, quantité nette et prix HT, taxe arrondie et total TTC ; source des restitutions financières.';
 
 --
 -- Name: COLUMN "T_FactureLigne"."ID_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
@@ -5092,7 +5342,19 @@ COMMENT ON COLUMN logistique."T_FactureLigne"."PUFacture" IS 'Prix unitaire expl
 -- Name: COLUMN "T_FactureLigne"."MontantLigne"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON COLUMN logistique."T_FactureLigne"."MontantLigne" IS 'Quantité nette facturée multipliée par le prix historique.';
+COMMENT ON COLUMN logistique."T_FactureLigne"."MontantLigne" IS 'Montant HT de la ligne, quantité facturée multipliée par le prix unitaire HT et arrondie à deux décimales.';
+
+--
+-- Name: COLUMN "T_FactureLigne"."MontantTVA"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."MontantTVA" IS 'TVA arrondie de cette ligne au taux figé de sa facture ; conservée pour les restitutions.';
+
+--
+-- Name: COLUMN "T_FactureLigne"."MontantTTC"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_FactureLigne"."MontantTTC" IS 'Somme stockée et calculée du montant HT de ligne et de sa TVA.';
 
 --
 -- Name: CONSTRAINT "T_FactureLigne_ID_FactureLigne_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
@@ -5155,6 +5417,12 @@ COMMENT ON CONSTRAINT "T_FactureLigne_PUFacture_not_null" ON logistique."T_Factu
 COMMENT ON CONSTRAINT "T_FactureLigne_MontantLigne_not_null" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
 
 --
+-- Name: CONSTRAINT "T_FactureLigne_MontantTVA_not_null" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_FactureLigne_MontantTVA_not_null" ON logistique."T_FactureLigne" IS 'Taxe de ligne toujours déterminée par le taux figé.';
+
+--
 -- Name: CONSTRAINT "T_FactureLigne_PUFacture_check" ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
@@ -5177,6 +5445,12 @@ COMMENT ON CONSTRAINT "T_FactureLigne_QteSortie_check" ON logistique."T_FactureL
 --
 
 COMMENT ON CONSTRAINT "T_FactureLigne_check" ON logistique."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+-- Name: CONSTRAINT ck_facture_ligne_tva ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_facture_ligne_tva ON logistique."T_FactureLigne" IS 'La taxe facturée d’une ligne ne peut être négative.';
 
 --
 -- Name: CONSTRAINT facture_ligne_montant_arrondi ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
@@ -8462,6 +8736,30 @@ CREATE TRIGGER aa_retour_mouvement_protection BEFORE INSERT OR DELETE OR UPDATE 
 --
 
 COMMENT ON TRIGGER aa_retour_mouvement_protection ON logistique."T_Mouvement" IS 'Conserve le sens, la quantité et le prix des mouvements source et compensateurs.';
+
+--
+-- Name: T_Facture ab_initialiser_tva_facture; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER ab_initialiser_tva_facture BEFORE INSERT ON logistique."T_Facture" FOR EACH ROW EXECUTE FUNCTION logistique.tr_initialiser_tva_facture();
+
+--
+-- Name: TRIGGER ab_initialiser_tva_facture ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER ab_initialiser_tva_facture ON logistique."T_Facture" IS 'Avant émission, verrouille l’entreprise et calcule le snapshot fiscal depuis les lignes autorisées du bon.';
+
+--
+-- Name: T_FactureLigne ab_initialiser_tva_facture_ligne; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER ab_initialiser_tva_facture_ligne BEFORE INSERT ON logistique."T_FactureLigne" FOR EACH ROW EXECUTE FUNCTION logistique.tr_initialiser_tva_facture_ligne();
+
+--
+-- Name: TRIGGER ab_initialiser_tva_facture_ligne ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER ab_initialiser_tva_facture_ligne ON logistique."T_FactureLigne" IS 'Génère la taxe de ligne avant le contrôle de l’instantané et des totaux différés.';
 
 --
 -- Name: T_AvoirAffectation affectation_avoir_controle; Type: TRIGGER; Schema: logistique; Owner: -

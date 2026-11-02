@@ -76,6 +76,20 @@ class Command(BaseCommand):
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))
             urls.append("/api/geolocalisation/territoires/synthese")
+            with connection.cursor() as settings_cursor:
+                settings_cursor.execute("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='systeme' AND table_name='T_Entite' AND column_name='TauxTVAEntite')")
+                entity_settings_installed=bool(settings_cursor.fetchone()[0])
+            if entity_settings_installed:
+                urls.extend(['/api/parametres/contexte','/api/parametres/entreprises','/api/parametres/profil'])
+            with connection.cursor() as guide_cursor:
+                guide_cursor.execute('SELECT EXISTS(SELECT FROM systeme."T_ModuleApplication" WHERE "CodeModule"=\'guide\')')
+                guide_installed=bool(guide_cursor.fetchone()[0])
+            if guide_installed:
+                from apps.core.user_guide import content
+                _, guide_modules = content()
+                urls.extend(['/api/guide/contexte','/api/guide/entreprises'])
+                urls.extend('/api/guide/articles/'+key+'/'+module['articles'][0]['id']
+                            for key,module in guide_modules.items())
             with connection.cursor() as support_cursor:
                 support_cursor.execute('SELECT to_regclass(%s)', ['support."T_Support"'])
                 support_installed=bool(support_cursor.fetchone()[0])
@@ -170,7 +184,7 @@ class Command(BaseCommand):
                 for url in urls:
                     # Les préparations nécessitent un contexte explicite, même pour le compte global.
                     actor._context_entity = None
-                    required = 'contexte=composition' in url or '/receptions' in url or '/retours' in url or '/peremption/politique' in url or '/entreprise/identite' in url
+                    required = 'contexte=composition' in url or '/receptions' in url or '/retours' in url or '/peremption/politique' in url or '/entreprise/identite' in url or url=='/api/parametres/profil'
                     if required:
                         match = re.search(r'/articles/([0-9]+)/', url)
                         command = re.search(r'/commandes/([0-9]+)/', url)

@@ -72,6 +72,7 @@ def storage_ready():
         AND to_regclass('logistique."T_FactureLigne"') IS NOT NULL
         AND to_regclass('logistique."V_Facture"') IS NOT NULL
         AND to_regclass('logistique."V_FactureLigne"') IS NOT NULL
+        AND to_regprocedure('logistique.fn_facturation_tva(integer)') IS NOT NULL
         AND (SELECT count(*)=9 FROM pg_trigger WHERE NOT tgisinternal AND tgenabled<>'D'
           AND tgname IN ('facture_protection','facture_ligne_protection','facture_snapshot_coherent','facture_ligne_coherente','facture_bon_protection',
                         'facture_detail_protection','facture_mouvement_protection','facture_mouvement_lot_protection','facture_lot_identite')
@@ -212,11 +213,12 @@ def snapshot_invoice(command_id):
     return row,lines
 
 
-def invoice_revision(snapshot,invoice,lines,returned):
+def invoice_revision(snapshot,invoice,lines,returned,taxes=None):
     fields=[column['column_name'] for column in model('T_Commande')['columns']]
     canonical={'bon':{field:snapshot['bon'].get(field) for field in fields},
                'lines':[{key:row.get(key) for key in ('ID_ArticleFk','QteCmdDetail','PUCmdDetail')} for row in snapshot['lignes']],
-               'returns':sorted(returned.items()),'invoice':invoice,'snapshotLines':lines,'owner':snapshot['owner_entity']}
+               'returns':sorted(returned.items()),'invoice':invoice,'snapshotLines':lines,'owner':snapshot['owner_entity'],
+               'taxes':taxes}
     return hashlib.sha256(json.dumps(canonical,cls=ExactEncoder,sort_keys=True,separators=(',',':')).encode('utf8')).hexdigest()
 
 
@@ -265,7 +267,19 @@ def context(actor,command_id):
         lines=candidates
     elif issued:issued={**issued,'legacy':False}
     display_lines=lines if issued else candidates
-    total=issued['MontantTTC'] if issued else net
+    if issued:
+        taxes={field:issued.get(field) for field in ('TauxTVA','MontantHT','MontantTVA','MontantTTC')}
+    elif ready:
+        # Le calcul, l'arrondi par ligne et le taux de l'entreprise sont ceux
+        # que le trigger conservera à l'émission. Aucun recalcul navigateur.
+        taxes=db.one('SELECT * FROM logistique.fn_facturation_tva(%s)',[command_id])
+        if not taxes:raise APIError('La préparation fiscale de la facture est indisponible.','INVOICE_TAX_UNAVAILABLE',503)
+        if taxes['MontantTTC']>MAX_AMOUNT:
+            reason=reason or 'Le montant TTC dépasse la capacité d’une facture.'
+            edit_reason=edit_reason or reason
+    else:
+        taxes={'TauxTVA':None,'MontantHT':net,'MontantTVA':None,'MontantTTC':None}
+    total=taxes['MontantTTC']
     credit=[]
     from .credit_notes import ready as credit_ready,context as credit_context
     credit_state=credit_context(actor,command_id)['data'] if issued and not legacy and credit_ready() else None
@@ -289,11 +303,11 @@ def context(actor,command_id):
         try:defaults['DateEcheancePaiement']=defaults['DateFacture']+timedelta(days=due_condition['delayDays'])
         except OverflowError:pass
     return {'data':{'bonOrigine':parent,'facture':issued,'lignes':display_lines,'references':refs,'defaults':defaults,
-        'totaux':{'MontantBon':parent.get('MontantTTC'),'MontantFacture':total,'MontantHT':total,'MontantTTC':total,'DeviseCode':parent.get('DeviseCode')},
-        'retoursApresEmission':{'required':bool(credit),'MontantAvoir':sum((line['MontantLigne'] for line in credit),Decimal('0')),
+        'totaux':{'MontantBon':parent.get('MontantTTC'),'MontantFacture':total,**taxes,'DeviseCode':parent.get('DeviseCode')},
+        'retoursApresEmission':{'required':bool(credit),'MontantAvoir':sum((line.get('MontantTTC',line['MontantLigne']) for line in credit),Decimal('0')),
                               'DeviseCode':parent.get('DeviseCode'),'lignes':credit}},
         'meta':{'available':ready,'canIssue':not issued and not reason,'canEdit':bool(issued) and not edit_reason,
-                'reason':edit_reason if issued else reason,'revision':invoice_revision(snapshot,issued,display_lines,returned)},
+                'reason':edit_reason if issued else reason,'revision':invoice_revision(snapshot,issued,display_lines,returned,taxes)},
         'snapshot':snapshot,'candidates':candidates}
 
 
@@ -334,9 +348,13 @@ def write_invoice(actor,command_id,body,operation):
             if not invoice or invoice['ID_Facture']!=saved.get('ID_Facture'):
                 raise APIError('La preuve de facturation doit être vérifiée.','INVOICE_REPLAY_CONFLICT',409)
             return clean({'facture':{**invoice,'legacy':False},'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id}),'replayed':True})
+        if operation=='issue':
+            # Une mise à jour du profil ne peut pas changer le taux entre le
+            # contrôle de révision et l'instantané financier PostgreSQL.
+            db.one('SELECT "IdEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s FOR SHARE',[raw['IdEntiteFk']])
         current=context(actor,command_id);meta=current['meta']
         if not hmac.compare_digest(meta['revision'],data['_version']):
-            raise APIError('Le bon, ses retours ou sa facture ont changé. Rechargez la fiche.','INVOICE_CONFLICT',409)
+            raise APIError('Le bon, ses retours, sa facture ou le taux de TVA ont changé. Rechargez la fiche.','INVOICE_CONFLICT',409)
         action='canIssue' if operation=='issue' else 'canEdit'
         if not meta[action]:raise APIError(meta['reason'] or 'Cette opération n’est plus disponible.','INVOICE_LOCKED',409)
         previous=current['data']['facture']
@@ -345,7 +363,7 @@ def write_invoice(actor,command_id,body,operation):
         if operation=='issue':
             # La devise appartient au bon, jamais au prix actuel du catalogue.
             db.one('SELECT logistique.fn_verifier_devise(%s) AS checked',[raw['ID_DeviseFk']])
-            code=generate_invoice_code(command_id);total=current['data']['totaux']['MontantFacture']
+            code=generate_invoice_code(command_id);totals=current['data']['totaux']
             snapshot=current['snapshot']['bon']
             invoice=db.one('''INSERT INTO logistique."T_Facture"
                 ("ID_CommandeFk","CodeFacture","ID_UserFk","IdEntiteFk","RequestId","PayloadHash",
@@ -354,7 +372,7 @@ def write_invoice(actor,command_id,body,operation):
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
                 [command_id,code,actor.pk,actor.organisation,data['requestId'],fingerprint,values['DateFacture'],values['DateEcheancePaiement'],
                  values['ID_ModePaiementFk'],values['ID_ConditionPaiementFk'],values['DelaiJours'],raw['ID_DeviseFk'],
-                 snapshot.get('DeviseCode'),snapshot.get('DeviseLibelle'),total,total])
+                 snapshot.get('DeviseCode'),snapshot.get('DeviseLibelle'),totals['MontantHT'],totals['MontantTTC']])
             for line in current['candidates']:
                 if not line['QteFacturee']:continue
                 db.query('''INSERT INTO logistique."T_FactureLigne"
@@ -375,6 +393,7 @@ def write_invoice(actor,command_id,body,operation):
         audit({'schema':'logistique','name':'T_Facture'},'INVOICE_ISSUE' if operation=='issue' else 'INVOICE_UPDATE',
               old=previous,new={'ID_Facture':invoice['ID_Facture'],'ID_CommandeFk':command_id,'CodeFacture':code,
                  'requestId':data['requestId'],'payloadHash':fingerprint,'IdEntiteFk':actor.organisation,
+                 **{key:invoice.get(key) for key in ('TauxTVA','MontantHT','MontantTVA','MontantTTC')},
                  **{key:values[key] for key in METADATA}},actor=actor)
         issued,_=snapshot_invoice(command_id)
         return clean({'facture':{**issued,'legacy':False},'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id}),'replayed':False})

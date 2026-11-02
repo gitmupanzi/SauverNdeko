@@ -16347,6 +16347,42 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "column_name": "TauxTVAFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 7,
+          "numeric_scale": 4,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "MontantTVAFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
+        },
+        {
+          "column_name": "MontantHTFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_Commande"
         }
       ]
     },
@@ -18648,6 +18684,42 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "TauxTVA",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 7,
+          "numeric_scale": 4,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "MontantTVA",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
+          "is_identity": "NO",
+          "table_schema": "logistique",
+          "table_name": "V_SuiviReglements"
+        },
+        {
+          "column_name": "MontantHTFacture",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 12,
+          "numeric_scale": 2,
           "is_identity": "NO",
           "table_schema": "logistique",
           "table_name": "V_SuiviReglements"

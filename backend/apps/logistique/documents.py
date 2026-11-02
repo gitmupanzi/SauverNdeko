@@ -169,7 +169,8 @@ def document_data(actor,kind,object_id,document_type):
         result.update({'title':'Facture','code':record['CodeFacture'],'date':record['DateFacture'],'dueDate':record.get('DateEcheancePaiement')})
         rows=db.query('SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Facture']])
         result['lines']=[{'name':r['NomArticle'],'reference':r['CodeArticleInterne'],'quantity':r['QteFacturee'],'unit':r['Unite'],'price':r['PUFacture'],'amount':r['MontantLigne']} for r in rows]
-        result['totals']=[('Montant HT',record['MontantHT']),('Montant TTC',record['MontantTTC']),('Avoirs imputés',record.get('AvoirImpute',0)),('Réglé',record.get('TotalRegle')),('Reste à régler',record.get('Reste'))]
+        tax_label='TVA ('+numeric(record['TauxTVA'])+' %)' if record.get('TauxTVA') is not None else 'TVA'
+        result['totals']=[('Montant HT',record['MontantHT']),(tax_label,record.get('MontantTVA')),('Montant TTC',record['MontantTTC']),('Avoirs imputés',record.get('AvoirImpute',0)),('Réglé',record.get('TotalRegle')),('Reste à régler',record.get('Reste'))]
         result['notes'].append('Montants repris de la facture émise.')
     elif kind=='reglement':
         result.update({'title':'Reçu de règlement','code':'reg-'+str(record['ID_Reglement']),'date':record['DateReglement']})
@@ -180,7 +181,8 @@ def document_data(actor,kind,object_id,document_type):
         result.update({'title':'Avoir','code':record['CodeAvoir'],'date':record['DateAvoir']})
         rows=db.query('SELECT * FROM logistique."T_AvoirLigne" WHERE "ID_AvoirFk"=%s ORDER BY "ID_ArticleFk"',[object_id])
         result['lines']=[{'name':r['NomArticle'],'reference':None,'quantity':r['Quantite'],'unit':r.get('Unite'),'price':r['PUAvoir'],'amount':r['MontantLigne']} for r in rows]
-        result['totals']=[('Montant de l’avoir',record['MontantTTC'])]
+        tax_label='TVA ('+numeric(record['TauxTVA'])+' %)' if record.get('TauxTVA') is not None else 'TVA'
+        result['totals']=[('Montant HT',record.get('MontantHT')),(tax_label,record.get('MontantTVA')),('Montant TTC de l’avoir',record['MontantTTC'])]
         result['notes'].append(record['Motif'])
     return result
 
@@ -310,7 +312,8 @@ def render_pdf(data):
     story.extend([meta,Spacer(1,5*mm)])
 
     receipt=data.get('documentType')=='recu' or data.get('title')=='Reçu de règlement'
-    labels=['Désignation','Mode de règlement','Montant'] if receipt else ['Désignation','Quantité','Unité','Prix unitaire','Montant']
+    taxable=data.get('documentType') in {'facture','avoir'}
+    labels=['Désignation','Mode de règlement','Montant'] if receipt else ['Désignation','Quantité','Unité','Prix unitaire HT' if taxable else 'Prix unitaire','Montant HT' if taxable else 'Montant']
     columns=[85*mm,43*mm,37*mm] if receipt else [62*mm,21*mm,16*mm,32*mm,34*mm]
     rows=[[p(label,'head') for label in labels]]
     for row in data.get('lines',[]):

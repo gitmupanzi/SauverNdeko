@@ -8,4 +8,5 @@
 .entity-profile-legal-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:12px;align-items:end}
 .entity-profile-legal-row .record-field>label:not(:first-child){margin-top:10px}
 .entity-profile-legal-row>button{margin-bottom:1px}
+.entity-profile-tax{max-width:420px}.entity-profile-rate{position:relative}.entity-profile-rate input{padding-right:42px;width:100%;font-variant-numeric:tabular-nums}.entity-profile-rate>span{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--erp-muted);pointer-events:none}
 @media(max-width:640px){.entity-profile-logo{align-items:flex-start;gap:12px}.entity-profile-logo-preview{width:72px;height:72px}.entity-profile-legal-row{grid-template-columns:minmax(0,1fr) auto}.entity-profile-legal-row>.record-field:first-child{grid-column:1/-1}}

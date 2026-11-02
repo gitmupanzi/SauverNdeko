@@ -31,6 +31,8 @@ const Logistique=lazyView(()=>import("./pages/Logistique"),{label:"Ouverture de 
 const Referentiels=lazyView(()=>import("./pages/Referentiels"),{label:"Ouverture de la page…"});
 const OrganisationTerritoriale=lazyView(()=>import("./pages/OrganisationTerritoriale"),{label:"Ouverture de la page…"});
 const Support=lazyView(()=>import("./pages/support/SupportPortal"),{label:"Ouverture du support…"});
+const Parametres=lazyView(()=>import("./pages/Parametres"),{label:"Ouverture des paramètres…"});
+const GuideUtilisateur=lazyView(()=>import("./pages/GuideUtilisateur"),{label:"Ouverture du guide utilisateur…"});
 
 function SearchResultGroup({ title, items, onSelect }) {
   return (
@@ -125,6 +127,8 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     {key:"/logistique",label:"Logistique",icon:"box"},
     {key:"/territoires",label:"Organisation territoriale",icon:"globe"},
     {key:"/support",label:"Support",icon:"bi-headset"},
+    {key:"/parametres",label:"Paramètres",icon:"settings"},
+    {key:"/guide",label:"Guide utilisateur",icon:"book"},
     {key:"/referentiels",label:"Référentiels",icon:"tag"},
     ...(canAccessAdmin?[{key:"/admin",label:"Administration",icon:"shield"}]:[]),
   ].filter(item=>mayOpen(user,item.key));
@@ -423,5 +427,7 @@ export default function App() {
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;
+  if (location.pathname === "/parametres") return <ModuleGate><Parametres key={scopeKey} /></ModuleGate>;
+  if (location.pathname === "/guide") return <ModuleGate><GuideUtilisateur key={scopeKey} /></ModuleGate>;
   return <ModuleGate><ApplicationShell key={scopeKey} /></ModuleGate>;
 }

@@ -13,10 +13,12 @@ WORKSPACE_MODULES = (
     {"key": "logistique", "label": "Logistique", "description": "Articles, stock, bons et factures.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
     {"key": "territoires", "label": "Organisation territoriale", "description": "Découpage administratif et pyramide sanitaire.", "path": "/territoires", "icon": "diagram-3", "tone": "teal", "admin": True},
     {"key": "support", "label": "Support", "description": "Incidents, assistance et réclamations.", "path": "/support", "icon": "headset", "tone": "sky"},
+    {"key": "parametres", "label": "Paramètres", "description": "Entreprise, documents et fiscalité.", "path": "/parametres", "icon": "gear", "tone": "teal"},
+    {"key": "guide", "label": "Guide utilisateur", "description": "Parcours, exemples et conseils pour vos applications.", "path": "/guide", "icon": "book", "tone": "sky"},
     {"key": "administration", "label": "Administration", "description": "Utilisateurs, organisations et paramètres.", "path": "/admin", "icon": "sliders", "tone": "slate", "admin": True},
 )
 MODULE_BY_KEY={item["key"]:item for item in WORKSPACE_MODULES}
-BASE_MODULES={"discussions","territoires","administration"}
+BASE_MODULES={"discussions","territoires","administration","parametres","guide"}
 INCLUSIONS={"catalogue":{"produits","structures","professionnels","sante"}}
 OBJECT_MODULES={"logistique":"logistique","support":"support","professionnel":"professionnels","geolocalisation":"territoires","communication":"discussions","analytics":"administration","systeme":"administration"}
 
@@ -27,7 +29,7 @@ def storage_ready():
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
     read=not item.get("admin") or actor.admin
-    manage=key=="discussions" or (key in {"logistique","administration","support"} and actor.admin) or (key=="territoires" and actor.global_admin)
+    manage=key=="discussions" or (key in {"logistique","administration","support","parametres"} and actor.admin) or (key=="territoires" and actor.global_admin)
     return {"canRead":read,"canManage":manage and read,"canExport":read}
 
 def access_snapshot(actor):
@@ -106,6 +108,11 @@ def enforce_request(actor,request,view):
     elif path.rstrip('/') in {'/api/systeme/admin-ui-settings','/api/admin-ui-settings'} and action=='read':key='referentiels'
     elif path.startswith('/api/geolocalisation/'):key='territoires'
     elif path.startswith('/api/support/'):key='support'
+    elif path.startswith('/api/parametres/'):key='parametres'
+    elif path.startswith('/api/guide/'):
+        # Le guide ne possède que des lectures : DRF refuse les autres méthodes.
+        require_module(actor,'guide')
+        return
     elif kwargs.get('schema'):key=module_for_object({'schema':kwargs['schema'],'name':kwargs.get('name')})
     elif kwargs.get('module') or kwargs.get('model_name'):
         obj,_=view.objects(kwargs.get('module'),kwargs.get('model_name'));key=module_for_object(obj)

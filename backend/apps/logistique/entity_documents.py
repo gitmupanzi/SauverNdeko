@@ -6,6 +6,7 @@ import unicodedata
 import uuid
 import warnings
 from copy import copy
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 from PIL import Image, ImageOps, UnidentifiedImageError
 from django.conf import settings
@@ -23,10 +24,10 @@ from apps.core.parsers import ExactJSONParser
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit, clean, positive
 from apps.core.responses import APIError, ExactEncoder, ok
-from apps.core.tenancy import require_entity
+from apps.core.tenancy import read_entity, require_entity
 
-FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument'}
-OPTIONAL_FIELDS = {'PhoneSecondaireEntite'}
+FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument', 'TauxTVAEntite'}
+OPTIONAL_FIELDS = {'PhoneSecondaireEntite', 'TauxTVAEntite'}
 ADMIN_FIELDS = {'IdTypeEntiteFk', 'ValideEntite'}
 LOGO_FIELDS = {'LogoEntite', 'LogoMimeEntite', 'LogoSha256Entite', 'LogoModifieLe'}
 OPERATION = 'ENTITY_DOCUMENT_PROFILE'
@@ -58,14 +59,36 @@ def current_identity(entity_id, include_logo=False, *, include_locations=False):
     return row
 
 
-def target(actor, entity=None, *, administration=False, writing=False, creating=False):
-    require_module(actor, 'administration' if administration else 'logistique', 'manage' if writing else 'read')
-    if not actor.admin:
+def workspace_module(administration=False, workspace=None):
+    if workspace is not None and workspace != 'parametres':
+        raise APIError('Espace de paramétrage invalide.')
+    return workspace or ('administration' if administration else 'logistique')
+
+
+def target(actor, entity=None, *, administration=False, writing=False, creating=False, workspace=None):
+    module = workspace_module(administration, workspace)
+    require_module(actor, module, 'manage' if writing else 'read')
+    if not actor.admin and (writing or workspace != 'parametres'):
         raise APIError('Ce réglage est réservé à l’administrateur de l’entreprise.', 'FORBIDDEN', 403)
     if creating:
+        if workspace == 'parametres':
+            raise APIError('La création d’une entreprise se fait dans Administration.', 'GLOBAL_ADMIN_REQUIRED', 403)
         if not actor.global_admin:
             raise APIError('La création d’une entreprise est réservée à la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
         return None
+    if workspace == 'parametres':
+        # Le contexte d’entreprise provient de tenancy, jamais d’un identifiant
+        # libre envoyé dans le profil. La consultation globale ne cible rien.
+        active = read_entity(actor)
+        if active is None:
+            raise APIError('Choisissez une entreprise pour consulter ses paramètres.', 'ENTITY_REQUIRED', 409)
+        if entity is not None and entity != active:
+            raise APIError('L’entreprise active a changé. Rechargez la fiche.', 'ENTITY_MISMATCH', 403)
+        if writing:
+            return require_entity(actor)
+        if not db.one('SELECT "IdEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s', [active]):
+            raise APIError('Entreprise introuvable.', 'NOT_FOUND', 404)
+        return active
     if not administration:
         active = require_entity(actor)
         if entity is not None and entity != active:
@@ -83,22 +106,27 @@ def target(actor, entity=None, *, administration=False, writing=False, creating=
     return entity
 
 
-def profile(actor, entity=None, *, administration=False):
-    entity = target(actor, entity, administration=administration)
+def profile(actor, entity=None, *, administration=False, workspace=None):
+    entity = target(actor, entity, administration=administration, workspace=workspace)
     # Une lecture SQL unique fournit le parent, les points et leur révision.
     # Aucun verrou d'écriture n'est nécessaire, même en transaction read-only.
     row = current_identity(entity,include_locations=True)
+    # Le profil est aussi consommé par les services/formulaires partagés : le
+    # pourcentage y conserve son contrat JSON décimal exact, sans flottant.
+    row['TauxTVAEntite'] = format(row['TauxTVAEntite'], 'f')
     from apps.core.entity_locations import profile_revision
     row['_version']=profile_revision(entity,row['_version'],row.pop('CollectionRevision'))
     row['documentsExistants'] = db.one('SELECT count(*) AS n FROM logistique."T_DocumentIdentite" WHERE "IdEntiteFk"=%s', [entity])['n']
-    rights = access_snapshot(actor)['modules']['administration' if administration else 'logistique']
-    row['canConfigure'] = actor.admin and not settings.DB_READ_ONLY and rights['canManage']
-    row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY
-    row['logoUrl'] = f'/api/systeme/entites/{entity}/logo' if row.get('HasLogo') else None
-    if administration:
+    rights = access_snapshot(actor)['modules'][workspace_module(administration, workspace)]
+    row['canConfigure'] = bool(actor.admin and not settings.DB_READ_ONLY and rights['canManage']
+        and (workspace != 'parametres' or row['ValideEntite'] is not False))
+    row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY and workspace != 'parametres'
+    row['logoUrl'] = ((f'/api/parametres/entreprises/{entity}/logo' if workspace == 'parametres'
+        else f'/api/systeme/entites/{entity}/logo') if row.get('HasLogo') else None)
+    if administration or workspace == 'parametres':
         from apps.core.entity_locations import geographical_references
         row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'), actor=actor), **geographical_references()}
-    if not administration:
+    if not administration and workspace != 'parametres':
         row.pop('Localisations',None)
         for key in ADMIN_FIELDS:
             row.pop(key, None)
@@ -154,6 +182,17 @@ def values(body):
             errors[key] = 'Choisissez une option activée ou désactivée.'
         else:
             result[key] = body[key]
+    if 'TauxTVAEntite' in body:
+        raw = body['TauxTVAEntite']
+        try:
+            if type(raw) is bool or raw is None or (isinstance(raw, str) and not raw.strip()):
+                raise ValueError()
+            tax = Decimal(str(raw))
+            if not tax.is_finite() or tax < 0 or tax > 100 or tax.as_tuple().exponent < -4:
+                raise ValueError()
+            result['TauxTVAEntite'] = tax
+        except (ValueError, InvalidOperation):
+            errors['TauxTVAEntite'] = 'Renseignez un taux entre 0 et 100 %, avec quatre décimales au maximum.'
     identifiers, parsed_ids, labels = body.get('IdentifiantsLegauxEntite'), [], set()
     if not isinstance(identifiers, list) or len(identifiers) > 10:
         errors['IdentifiantsLegauxEntite'] = 'Ajoutez au maximum dix identifiants.'
@@ -266,10 +305,11 @@ def admin_values(body, actor, old, entity):
     return result
 
 
-def save(actor, body, upload=None, *, entity=None, administration=False, creating=False):
-    entity = target(actor, entity, administration=administration, writing=True, creating=creating)
+def save(actor, body, upload=None, *, entity=None, administration=False, creating=False, workspace=None):
+    entity = target(actor, entity, administration=administration, writing=True, creating=creating, workspace=workspace)
     db.ensure_writable()
-    allowed = FIELDS | {'logoAction', 'motif', 'requestId'} | (ADMIN_FIELDS | {'Localisations'} if administration else set())
+    includes_locations = administration or workspace == 'parametres'
+    allowed = FIELDS | {'logoAction', 'motif', 'requestId'} | (ADMIN_FIELDS | {'Localisations'} if includes_locations else set())
     required = (FIELDS - OPTIONAL_FIELDS) | {'motif', 'requestId'}
     if not creating:
         allowed |= {'IdEntite', '_version'}
@@ -299,7 +339,7 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
         if previous:
             if previous['NewData'].get('fingerprint') != fingerprint:
                 raise APIError('Cette demande a déjà été utilisée avec un autre contenu.', 'REQUEST_CONFLICT', 409)
-            return profile(actor, previous['NewData']['IdEntite'], administration=administration), True
+            return profile(actor, previous['NewData']['IdEntite'], administration=administration, workspace=workspace), True
         old = None if creating else db.one('SELECT "IdEntite","IdTypeEntiteFk","ValideEntite",xmin::text AS "_version",'
             + ','.join(db.ident(key) for key in sorted(FIELDS | (LOGO_FIELDS - {'LogoEntite'})))
             + ' FROM systeme."T_Entite" WHERE "IdEntite"=%s FOR UPDATE', [entity])
@@ -308,6 +348,8 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
             raise APIError('Le profil a changé. Rechargez la fiche avant de confirmer.', 'VERSION_CONFLICT', 409)
         if old and old['ValideEntite'] is False and (not administration or not actor.global_admin):
             raise APIError('Les écritures de cette entreprise sont désactivées.', 'ENTITY_INACTIVE', 409)
+        if workspace == 'parametres' and any(key in body and body[key] != (old or {}).get(key) for key in ADMIN_FIELDS):
+            raise APIError('Le type et l’état de l’entreprise se modifient dans Administration.', 'ENTITY_ADMIN_FIELDS', 403)
         if administration:
             data.update(admin_values(body, actor, old, entity))
         fields, params = [], []
@@ -347,7 +389,7 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
         audit({'schema': 'systeme', 'name': 'T_Entite'}, operation,
             old={key: old.get(key) for key in FIELDS | ADMIN_FIELDS | {'IdEntite', 'LogoMimeEntite', 'LogoSha256Entite', 'LogoModifieLe'}} if old else None,
             new={**{key: updated.get(key) for key in FIELDS | ADMIN_FIELDS | {'IdEntite', 'HasLogo', 'LogoMimeEntite', 'LogoSha256Entite', 'LogoModifieLe'}}, 'motif': reason, 'requestId': request_id, 'fingerprint': fingerprint}, actor=audit_actor)
-        return profile(actor, entity, administration=administration), False
+        return profile(actor, entity, administration=administration, workspace=workspace), False
 
 
 class EntityDocumentIdentityView(APIView):
@@ -374,7 +416,7 @@ class EntityIdentityDefaultsView(APIView):
             raise APIError('Aucun critère attendu pour les valeurs initiales.')
         data = {key: None for key in FIELDS | ADMIN_FIELDS}
         data.update(IdentifiantsLegauxEntite=[], AfficherEnteteDocument=True,
-            AfficherPiedDocument=True, ValideEntite=True, HasLogo=False,
+            AfficherPiedDocument=True, TauxTVAEntite='0', ValideEntite=True, HasLogo=False,
             canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
             canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
         from apps.core.entity_locations import geographical_references
@@ -397,16 +439,21 @@ class EntityLogoView(APIView):
             raise APIError('Votre rôle ne permet pas cet accès.', 'MODULE_ROLE_FORBIDDEN', 403)
         if not actor.global_admin and entity != actor.row.get('IdEntiteFk'):
             raise APIError('Logo indisponible dans votre périmètre.', 'NOT_FOUND', 404)
-        row = current_identity(entity, include_logo=True)
-        blob = row.get('LogoEntite')
-        if blob is None:
-            raise APIError('Aucun logo enregistré.', 'NOT_FOUND', 404)
-        if row.get('LogoMimeEntite') != 'image/png' or hashlib.sha256(blob).hexdigest() != row.get('LogoSha256Entite'):
-            raise APIError('Le logo enregistré doit être vérifié.', 'ENTITY_LOGO_INTEGRITY', 409)
-        response = HttpResponse(blob, content_type='image/png')
-        response['Content-Disposition'] = 'inline; filename="logo.png"'
-        response['Cache-Control'] = 'no-store, private'
-        response['X-Content-Type-Options'] = 'nosniff'
-        response['Content-Security-Policy'] = "default-src 'none'; sandbox"
-        response['ETag'] = '"' + row['LogoSha256Entite'] + '"'
-        return response
+        return logo_response(entity)
+
+
+def logo_response(entity):
+    """Binaire partagé, seulement APRÈS autorisation du parent par l'appelant."""
+    row = current_identity(entity, include_logo=True)
+    blob = row.get('LogoEntite')
+    if blob is None:
+        raise APIError('Aucun logo enregistré.', 'NOT_FOUND', 404)
+    if row.get('LogoMimeEntite') != 'image/png' or hashlib.sha256(blob).hexdigest() != row.get('LogoSha256Entite'):
+        raise APIError('Le logo enregistré doit être vérifié.', 'ENTITY_LOGO_INTEGRITY', 409)
+    response = HttpResponse(blob, content_type='image/png')
+    response['Content-Disposition'] = 'inline; filename="logo.png"'
+    response['Cache-Control'] = 'no-store, private'
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    response['ETag'] = '"' + row['LogoSha256Entite'] + '"'
+    return response

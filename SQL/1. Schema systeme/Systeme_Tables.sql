@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -758,13 +758,15 @@ CREATE TABLE systeme."T_Entite" (
     "LogoSha256Entite" character varying(64),
     "LogoModifieLe" timestamp with time zone,
     "PhoneSecondaireEntite" character varying(20),
+    "TauxTVAEntite" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Entite_TauxTVAEntite_not_null" NOT NULL,
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
     CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR (((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152)) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
     CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))),
     CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR (((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20)) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR (((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255)) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text))))
+    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR (((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255)) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
+    CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
 );
 
 --
@@ -894,6 +896,12 @@ COMMENT ON COLUMN systeme."T_Entite"."LogoModifieLe" IS 'Horodatage serveur de l
 COMMENT ON COLUMN systeme."T_Entite"."PhoneSecondaireEntite" IS 'Deuxième numéro de téléphone facultatif courant de l’entreprise ; 1 à 20 caractères sans espaces extérieurs ni contrôles. NULL signifie non renseigné.';
 
 --
+-- Name: COLUMN "T_Entite"."TauxTVAEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."TauxTVAEntite" IS 'Taux de TVA en pourcentage proposé aux nouvelles factures de cette entreprise, de 0 à 100 avec quatre décimales maximum ; défaut 0, sans réécriture des factures émises.';
+
+--
 -- Name: CONSTRAINT "T_Entite_IdEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
@@ -922,6 +930,12 @@ COMMENT ON CONSTRAINT "T_Entite_AfficherEnteteDocument_not_null" ON systeme."T_E
 --
 
 COMMENT ON CONSTRAINT "T_Entite_AfficherPiedDocument_not_null" ON systeme."T_Entite" IS 'Option documentaire obligatoire ; true par défaut, false explicite pour masquer cette zone.';
+
+--
+-- Name: CONSTRAINT "T_Entite_TauxTVAEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Entite_TauxTVAEntite_not_null" ON systeme."T_Entite" IS 'Le défaut fiscal explicite de l’entreprise existe toujours ; zéro ne signifie pas un régime légal déduit.';
 
 --
 -- Name: CONSTRAINT ck_entite_identifiants_legaux ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -958,6 +972,12 @@ COMMENT ON CONSTRAINT ck_entite_phone_secondaire ON systeme."T_Entite" IS 'Tél�
 --
 
 COMMENT ON CONSTRAINT ck_entite_site_web ON systeme."T_Entite" IS 'URL de présentation facultative limitée à HTTP/HTTPS et255 caractères ; refus des espaces, contrôles et identifiants dans l’autorité.';
+
+--
+-- Name: CONSTRAINT ck_entite_taux_tva ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_taux_tva ON systeme."T_Entite" IS 'Le taux paramétrable de l’entreprise reste compris entre 0 et 100 pour cent ; aucune valeur réglementaire n’est déduite.';
 
 --
 -- Name: T_Utilisateurs; Type: TABLE; Schema: systeme; Owner: -

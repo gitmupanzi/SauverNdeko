@@ -63,17 +63,20 @@ def context(actor,command_id):
     invoice=db.one('SELECT * FROM logistique."T_Facture" WHERE "ID_CommandeFk"=%s',[command_id])
     if not ready():raise APIError('Le service des avoirs est indisponible.','CREDIT_UNAVAILABLE',503)
     notes=db.query('SELECT * FROM logistique."V_Avoir" WHERE "ID_CommandeFk"=%s ORDER BY "ID_Avoir" DESC',[command_id])
-    returned=returned_quantities(command_id);pending=[]
+    returned=returned_quantities(command_id)
     invoice_lines=db.query('SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=%s ORDER BY "ID_ArticleFk"',[invoice['ID_Facture']]) if invoice else []
-    credited={r['ID_ArticleFk']:r['quantity'] for r in db.query('''SELECT l."ID_ArticleFk",sum(l."Quantite") AS quantity FROM logistique."T_AvoirLigne" l JOIN logistique."T_Avoir" a ON a."ID_Avoir"=l."ID_AvoirFk" WHERE a."ID_CommandeFk"=%s GROUP BY l."ID_ArticleFk"''',[command_id])}
-    for line in invoice_lines:
-        quantity=max(Decimal(str(returned.get(line['ID_ArticleFk'],0)))-line['QteRetourAvantFacture']-credited.get(line['ID_ArticleFk'],Decimal('0')),Decimal('0'))
-        if quantity:pending.append({'ID_ArticleFk':line['ID_ArticleFk'],'NomArticle':line['NomArticle'],'Unite':line['Unite'],'Quantite':quantity,'PUAvoir':line['PUFacture'],'MontantLigne':(quantity*line['PUFacture']).quantize(CENT,rounding=ROUND_HALF_UP)})
-    total=sum((r['MontantLigne'] for r in pending),Decimal('0'))
+    # Les arrondis cumulés et la taxe historique sont résolus en PostgreSQL,
+    # afin que des retours successifs restituent exactement la facture émise.
+    pending=db.query('SELECT * FROM logistique.fn_lignes_avoir_attente(%s)',[command_id]) if invoice else []
+    net=sum((r['MontantLigne'] for r in pending),Decimal('0'))
+    tax=sum((r['MontantTVA'] for r in pending),Decimal('0'))
+    total=sum((r['MontantTTC'] for r in pending),Decimal('0'))
     manage=bool(actor.admin) and not settings.DB_READ_ONLY
     try:require_module(actor,'logistique','manage');assert_document(actor,parent)
     except APIError:manage=False
-    data={'bon':parent,'facture':invoice,'lignesEnAttente':pending,'MontantEnAttente':total,'avoirs':[note_details(n) for n in notes],'references':{'modesPaiement':modes(actor,entity=parent.get('IdEntiteFk'),table='T_Remboursement',column='ID_ModePaiementFk')}}
+    data={'bon':parent,'facture':invoice,'lignesEnAttente':pending,'MontantEnAttente':total,
+          'MontantHTEnAttente':net,'MontantTVAEnAttente':tax,'TauxTVA':invoice.get('TauxTVA') if invoice else None,
+          'avoirs':[note_details(n) for n in notes],'references':{'modesPaiement':modes(actor,entity=parent.get('IdEntiteFk'),table='T_Remboursement',column='ID_ModePaiementFk')}}
     revision=digest({'invoice':invoice,'lines':invoice_lines,'returned':sorted(returned.items()),'notes':data['avoirs'],'owner':parent.get('IdEntiteFk')})
     return {'data':data,'meta':{'revision':revision,'canIssue':manage and bool(invoice) and total>0,'canManage':manage,'reason':None if invoice else 'Émettez d’abord la facture du bon.'}}
 
@@ -98,9 +101,9 @@ def issue(actor,command_id,body):
         if not current['meta']['canIssue']:fail('avoir',current['meta']['reason'] or 'Aucun retour facturé ne reste à créditer.','CREDIT_LOCKED',409)
         invoice=current['data']['facture']
         if date<invoice['DateFacture']:fail('DateAvoir','La date de l’avoir ne peut pas précéder la facture.')
-        note=db.one('''INSERT INTO logistique."T_Avoir"("ID_FactureFk","ID_CommandeFk","IdEntiteFk","ID_UserFk","CodeAvoir","DateAvoir","Motif","ID_DeviseFk","DeviseCode","MontantTTC","RequestId","PayloadHash") VALUES(%s,%s,%s,%s,'',%s,%s,%s,%s,%s,%s,%s) RETURNING *''',[invoice['ID_Facture'],command_id,parent['IdEntiteFk'],actor.pk,date,reason.strip(),invoice['ID_DeviseFk'],invoice['DeviseCode'],current['data']['MontantEnAttente'],rid,fingerprint])
+        note=db.one('''INSERT INTO logistique."T_Avoir"("ID_FactureFk","ID_CommandeFk","IdEntiteFk","ID_UserFk","CodeAvoir","DateAvoir","Motif","ID_DeviseFk","DeviseCode","MontantTTC","MontantTVA","RequestId","PayloadHash") VALUES(%s,%s,%s,%s,'',%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',[invoice['ID_Facture'],command_id,parent['IdEntiteFk'],actor.pk,date,reason.strip(),invoice['ID_DeviseFk'],invoice['DeviseCode'],current['data']['MontantEnAttente'],current['data']['MontantTVAEnAttente'],rid,fingerprint])
         for line in current['data']['lignesEnAttente']:
-            db.query('''INSERT INTO logistique."T_AvoirLigne"("ID_AvoirFk","ID_ArticleFk","NomArticle","Unite","Quantite","PUAvoir","MontantLigne") VALUES(%s,%s,%s,%s,%s,%s,%s)''',[note['ID_Avoir'],line['ID_ArticleFk'],line['NomArticle'],line['Unite'],line['Quantite'],line['PUAvoir'],line['MontantLigne']])
+            db.query('''INSERT INTO logistique."T_AvoirLigne"("ID_AvoirFk","ID_ArticleFk","NomArticle","Unite","Quantite","PUAvoir","MontantLigne","MontantTVA") VALUES(%s,%s,%s,%s,%s,%s,%s,%s)''',[note['ID_Avoir'],line['ID_ArticleFk'],line['NomArticle'],line['Unite'],line['Quantite'],line['PUAvoir'],line['MontantLigne'],line['MontantTVA']])
         balance=db.one('SELECT "Reste" FROM logistique."V_SuiviReglements" WHERE "ID_Commande"=%s',[command_id])
         allocation=min(note['MontantTTC'],max(balance['Reste'],Decimal('0')))
         if allocation>0:

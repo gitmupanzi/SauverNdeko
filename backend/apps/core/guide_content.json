@@ -1,0 +1,2112 @@
+{
+  "version": "2026-11-02",
+  "modules": [
+    {
+      "key": "catalogue",
+      "label": "Catalogue",
+      "path": "/catalogue",
+      "icon": "apps",
+      "description": "S’orienter parmi les produits, les structures et les professionnels.",
+      "articles": [
+        {
+          "id": "decouvrir-catalogue",
+          "title": "Découvrir le catalogue",
+          "summary": "Repérez les rubriques utiles avant de rechercher une offre.",
+          "steps": [
+            {
+              "title": "Ouvrir le catalogue",
+              "text": "Depuis Vos applications, ouvrez Catalogue. Les rubriques disponibles dépendent de votre licence et de vos droits."
+            },
+            {
+              "title": "Parcourir les informations",
+              "text": "Consultez les annonces et les cartes de produits, de structures ou de professionnels. Les coordonnées présentées sont celles rendues publiques dans la plateforme."
+            },
+            {
+              "title": "Choisir une rubrique",
+              "text": "Utilisez le menu Applications pour rejoindre la rubrique à laquelle votre compte a accès."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une équipe cherche du matériel de bureau et un point de retrait. Elle repère d’abord le produit, puis consulte les coordonnées d’une structure."
+          },
+          "notes": [
+            "Le catalogue n’est pas le registre interne des stocks de votre entreprise."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Catalogue",
+              "path": "/catalogue"
+            }
+          ]
+        },
+        {
+          "id": "rechercher-catalogue",
+          "title": "Rechercher un produit ou un interlocuteur",
+          "summary": "Utilisez la recherche commune pour trouver un nom ou une référence.",
+          "steps": [
+            {
+              "title": "Ouvrir la recherche",
+              "text": "Cliquez sur l’icône de recherche dans l’en-tête du catalogue."
+            },
+            {
+              "title": "Saisir un critère",
+              "text": "Écrivez au moins deux caractères : un nom de produit, une référence, une structure ou un professionnel."
+            },
+            {
+              "title": "Examiner le résultat",
+              "text": "Ouvrez un résultat de la rubrique autorisée. Vérifiez le nom et les informations affichées avant de poursuivre."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Pour retrouver une référence fictive « BUREAU-A », saisissez « BUREAU ». Plusieurs produits peuvent porter un nom proche : comparez aussi la référence."
+          },
+          "notes": [
+            "Une absence de résultat peut venir du critère recherché, de la disponibilité des données ou des droits du compte."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Catalogue",
+              "path": "/catalogue"
+            }
+          ]
+        },
+        {
+          "id": "comprendre-catalogue",
+          "title": "Comprendre les informations affichées",
+          "summary": "Distinguez l’orientation publique des opérations commerciales internes.",
+          "steps": [
+            {
+              "title": "Lire le statut",
+              "text": "Vérifiez les indications de disponibilité présentées sur chaque carte."
+            },
+            {
+              "title": "Vérifier les coordonnées",
+              "text": "Consultez l’adresse et les moyens de contact publics de la structure ou du professionnel."
+            },
+            {
+              "title": "Confirmer le besoin",
+              "text": "Demandez confirmation à l’interlocuteur autorisé avant de vous déplacer ou de convenir d’une prestation."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une carte indique qu’un produit est disponible. Le demandeur fait confirmer le modèle et les modalités avant le déplacement."
+          },
+          "notes": [
+            "Consulter une carte ne réserve pas un produit et ne crée ni bon de stock ni facture."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Catalogue",
+              "path": "/catalogue"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "produits",
+      "label": "Produits",
+      "path": "/produits",
+      "icon": "bi-capsule",
+      "description": "Consulter les produits, leurs références et leur disponibilité affichée.",
+      "articles": [
+        {
+          "id": "lire-fiche-produit",
+          "title": "Lire une fiche produit",
+          "summary": "Comparez les informations utiles sans accéder au stock interne.",
+          "steps": [
+            {
+              "title": "Ouvrir Produits",
+              "text": "Depuis Vos applications, ouvrez Produits pour afficher les cartes et la vue tabulaire."
+            },
+            {
+              "title": "Identifier le produit",
+              "text": "Comparez le nom, la photo lorsqu’elle existe et la référence."
+            },
+            {
+              "title": "Lire le prix et l’observation",
+              "text": "Consultez le prix de vente affiché, la disponibilité et l’observation courte."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Deux articles portent le nom fictif « Lampe ». Les références « LAMPE-A » et « LAMPE-B » permettent de les distinguer."
+          },
+          "notes": [
+            "Le prix d’achat et le stock exact ne sont pas exposés dans cette vue."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Produits",
+              "path": "/produits"
+            }
+          ]
+        },
+        {
+          "id": "retrouver-reference-produit",
+          "title": "Retrouver une référence produit",
+          "summary": "Rejoignez le bon produit depuis la recherche commune.",
+          "steps": [
+            {
+              "title": "Lancer une recherche",
+              "text": "Utilisez la recherche de l’en-tête et saisissez une partie du nom ou de la référence."
+            },
+            {
+              "title": "Choisir un résultat Produit",
+              "text": "Ouvrez le résultat correspondant. Le produit concerné est repris dans la zone de présentation."
+            },
+            {
+              "title": "Comparer les informations",
+              "text": "Vérifiez la référence et l’observation au lieu de vous fier uniquement à l’image."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une demande mentionne « LAMPE-B ». La recherche de cette référence évite de choisir l’autre variante."
+          },
+          "notes": [
+            "Une photo absente est remplacée par une illustration ; elle ne certifie pas le modèle."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Produits",
+              "path": "/produits"
+            }
+          ]
+        },
+        {
+          "id": "disponibilite-produit",
+          "title": "Vérifier une disponibilité",
+          "summary": "Préparez une demande précise à transmettre à une structure.",
+          "steps": [
+            {
+              "title": "Relever la référence",
+              "text": "Notez le nom et la référence du produit recherché."
+            },
+            {
+              "title": "Lire la disponibilité",
+              "text": "Consultez l’indication fournie dans la carte ou le tableau."
+            },
+            {
+              "title": "Confirmer auprès de la structure",
+              "text": "Si votre compte dispose de Structures et Discussions, contactez la structure concernée depuis sa carte."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le demandeur relève « LAMPE-B » et demande si deux unités sont disponibles avant de convenir d’un retrait."
+          },
+          "notes": [
+            "Aucune réservation ni commande de vente n’est créée depuis la carte produit."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Produits",
+              "path": "/produits"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "structures",
+      "label": "Structures",
+      "path": "/pharmacies",
+      "icon": "bi-hospital",
+      "description": "Identifier un établissement et utiliser ses coordonnées publiques.",
+      "articles": [
+        {
+          "id": "consulter-structure",
+          "title": "Consulter une structure",
+          "summary": "Retrouvez les informations utiles d’un établissement.",
+          "steps": [
+            {
+              "title": "Ouvrir Structures",
+              "text": "Ouvrez la rubrique depuis Vos applications. L’écran présente les cartes des pharmacies et autres structures répertoriées."
+            },
+            {
+              "title": "Lire les coordonnées",
+              "text": "Vérifiez le nom, le type, l’adresse, le téléphone public et les horaires lorsqu’ils sont renseignés."
+            },
+            {
+              "title": "Comparer le statut",
+              "text": "Consultez l’indication de disponibilité avant de préparer votre déplacement."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une structure fictive « Point Exemple » est située à une adresse précise. L’utilisateur vérifie aussi les horaires au lieu de se fier au seul nom."
+          },
+          "notes": [
+            "Une information non renseignée ne signifie pas que le service n’existe pas."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Structures",
+              "path": "/pharmacies"
+            }
+          ]
+        },
+        {
+          "id": "contacter-structure",
+          "title": "Contacter une structure",
+          "summary": "Ouvrez un échange depuis la bonne carte.",
+          "steps": [
+            {
+              "title": "Identifier l’établissement",
+              "text": "Contrôlez le nom et l’adresse de la carte sélectionnée."
+            },
+            {
+              "title": "Cliquer Contacter la structure",
+              "text": "Le bouton ouvre Discussions avec l’établissement choisi, si les droits du compte le permettent."
+            },
+            {
+              "title": "Formuler la demande",
+              "text": "Indiquez le produit ou le service recherché, sa référence et la question à confirmer."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "« Bonjour, pouvez-vous confirmer la disponibilité de la référence LAMPE-B et vos horaires de retrait ? »"
+          },
+          "notes": [
+            "Les échanges nécessitent l’accès à Discussions. Une demande n’est pas un engagement de livraison."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Structures",
+              "path": "/pharmacies"
+            }
+          ]
+        },
+        {
+          "id": "comparer-structures",
+          "title": "Comparer les structures",
+          "summary": "Utilisez la liste pour distinguer des établissements au nom proche.",
+          "steps": [
+            {
+              "title": "Consulter les cartes",
+              "text": "Repérez les structures pertinentes pour votre besoin."
+            },
+            {
+              "title": "Lire la vue tabulaire",
+              "text": "Comparez le nom, l’adresse, le type et le statut dans la liste publique des structures."
+            },
+            {
+              "title": "Choisir le bon interlocuteur",
+              "text": "Utilisez les coordonnées de la structure vérifiée pour poursuivre votre démarche."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Deux structures fictives se nomment « Centre Exemple ». Le quartier et le téléphone public permettent de distinguer les établissements."
+          },
+          "notes": [
+            "La fiche visible ne donne pas accès aux données internes de l’entreprise."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Structures",
+              "path": "/pharmacies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "professionnels",
+      "label": "Professionnels",
+      "path": "/experts",
+      "icon": "bi-people",
+      "description": "Consulter les profils publics et préparer une prise de contact.",
+      "articles": [
+        {
+          "id": "consulter-professionnel",
+          "title": "Consulter un professionnel",
+          "summary": "Vérifiez l’identité et la spécialité d’un profil.",
+          "steps": [
+            {
+              "title": "Ouvrir Professionnels",
+              "text": "Affichez le répertoire depuis Vos applications."
+            },
+            {
+              "title": "Lire le profil",
+              "text": "Consultez le nom, le type de professionnel, la spécialité et la structure associée."
+            },
+            {
+              "title": "Vérifier les informations disponibles",
+              "text": "L’expérience et la disponibilité sont affichées lorsqu’elles sont renseignées. Une valeur à confirmer reste à vérifier."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Pour une demande fictive de maintenance, l’utilisateur vérifie la spécialité et la structure associée avant de contacter un profil."
+          },
+          "notes": [
+            "Un profil public ne constitue pas une vérification automatique de qualification."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Professionnels",
+              "path": "/experts"
+            }
+          ]
+        },
+        {
+          "id": "contacter-professionnel",
+          "title": "Contacter un professionnel",
+          "summary": "Démarrez un échange avec le profil sélectionné.",
+          "steps": [
+            {
+              "title": "Vérifier le destinataire",
+              "text": "Relisez le nom complet et la spécialité de la carte."
+            },
+            {
+              "title": "Cliquer Contacter",
+              "text": "Ouvrez Discussions avec le professionnel choisi, si le module est autorisé."
+            },
+            {
+              "title": "Décrire le besoin",
+              "text": "Envoyez une demande courte qui précise le service attendu et les éléments nécessaires à une réponse."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "« Bonjour, proposez-vous un entretien de matériel dans le quartier Exemple ? Quels renseignements vous faut-il ? »"
+          },
+          "notes": [
+            "La prise de contact ne confirme pas un rendez-vous ni une prestation."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Professionnels",
+              "path": "/experts"
+            }
+          ]
+        },
+        {
+          "id": "comparer-profils",
+          "title": "Comparer les profils",
+          "summary": "Appuyez votre choix sur les champs renseignés.",
+          "steps": [
+            {
+              "title": "Parcourir les profils",
+              "text": "Repérez les spécialités pertinentes dans les cartes."
+            },
+            {
+              "title": "Lire le répertoire public",
+              "text": "Utilisez la vue tabulaire pour comparer identité, spécialité, expérience et structure."
+            },
+            {
+              "title": "Faire confirmer les détails",
+              "text": "Demandez confirmation des disponibilités et modalités dans un échange autorisé."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Deux profils fictifs ont une spécialité proche. La structure et l’expérience renseignée aident à préparer les questions à leur poser."
+          },
+          "notes": [
+            "Les données privées des comptes et leurs permissions ne figurent pas dans ce répertoire."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Professionnels",
+              "path": "/experts"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "sante",
+      "label": "Informations santé",
+      "path": "/maladies",
+      "icon": "bi-heart-pulse",
+      "description": "Lire les informations et abréviations du répertoire santé.",
+      "articles": [
+        {
+          "id": "consulter-information-sante",
+          "title": "Consulter une information santé",
+          "summary": "Retrouvez les entrées disponibles et leur description.",
+          "steps": [
+            {
+              "title": "Ouvrir Informations santé",
+              "text": "Accédez au module depuis Vos applications."
+            },
+            {
+              "title": "Lire les cartes",
+              "text": "Consultez le nom, l’abréviation et la description de l’entrée."
+            },
+            {
+              "title": "Comparer la catégorie",
+              "text": "Vérifiez la catégorie affichée pour comprendre le classement de l’information."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une entrée fictive « Information Exemple » porte l’abréviation « IE ». Le lecteur ouvre le module pour retrouver sa description."
+          },
+          "notes": [
+            "Ce répertoire fournit une information d’orientation ; il ne pose pas de diagnostic individuel."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Informations santé",
+              "path": "/maladies"
+            }
+          ]
+        },
+        {
+          "id": "lire-abreviation-sante",
+          "title": "Comprendre une abréviation",
+          "summary": "Reliez le code affiché à son libellé complet.",
+          "steps": [
+            {
+              "title": "Repérer l’abréviation",
+              "text": "Relevez le code rencontré dans une liste ou un document."
+            },
+            {
+              "title": "Consulter la vue tabulaire",
+              "text": "Comparez les colonnes Nom de la maladie, Abréviation, Description et Catégorie."
+            },
+            {
+              "title": "Vérifier le libellé",
+              "text": "Retenez le nom complet plutôt qu’une interprétation déduite du code seul."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le code fictif « IE » peut sembler ambigu. Le libellé complet du répertoire permet de le replacer dans son contexte."
+          },
+          "notes": [
+            "Une description absente reste une information manquante, pas une absence de risque."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Informations santé",
+              "path": "/maladies"
+            }
+          ]
+        },
+        {
+          "id": "signaler-information-sante",
+          "title": "Faire préciser une information",
+          "summary": "Préparez un signalement utile lorsqu’un libellé manque de clarté.",
+          "steps": [
+            {
+              "title": "Relever l’entrée",
+              "text": "Notez le libellé, l’abréviation et la catégorie concernés."
+            },
+            {
+              "title": "Décrire le point à préciser",
+              "text": "Indiquez ce qui manque ou paraît incohérent, sans modifier vous-même le sens du libellé."
+            },
+            {
+              "title": "Transmettre au responsable",
+              "text": "Adressez la demande à votre administrateur ou utilisez Support si ce module vous est accordé."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le lecteur signale que l’abréviation fictive « IE » n’a pas de description, en citant le libellé exact."
+          },
+          "notes": [
+            "La modification des nomenclatures relève des personnes habilitées."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Informations santé",
+              "path": "/maladies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "discussions",
+      "label": "Discussions",
+      "path": "/discussions",
+      "icon": "bi-chat-dots",
+      "description": "Ouvrir et poursuivre des conversations avec les interlocuteurs autorisés.",
+      "articles": [
+        {
+          "id": "retrouver-discussion",
+          "title": "Retrouver une conversation",
+          "summary": "Reprenez un échange existant avec le bon destinataire.",
+          "steps": [
+            {
+              "title": "Ouvrir Discussions",
+              "text": "Accédez au module depuis Vos applications."
+            },
+            {
+              "title": "Choisir une conversation",
+              "text": "Sélectionnez le nom dans la liste et vérifiez le destinataire présenté."
+            },
+            {
+              "title": "Lire les messages",
+              "text": "Consultez l’historique et les heures affichées avant d’ajouter une réponse."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Après une demande fictive de disponibilité, l’utilisateur revient dans la même conversation pour lire la réponse."
+          },
+          "notes": [
+            "Le compte connecté détermine les conversations autorisées."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Discussions",
+              "path": "/discussions"
+            }
+          ]
+        },
+        {
+          "id": "envoyer-message",
+          "title": "Envoyer un message",
+          "summary": "Rédigez une demande précise et vérifiez son envoi.",
+          "steps": [
+            {
+              "title": "Vérifier l’échange",
+              "text": "Contrôlez le nom du destinataire dans la conversation ouverte."
+            },
+            {
+              "title": "Rédiger le message",
+              "text": "Utilisez le champ de saisie pour indiquer clairement le besoin et les références utiles."
+            },
+            {
+              "title": "Cliquer Envoyer",
+              "text": "Attendez la fin de l’envoi et vérifiez que le message apparaît dans le fil. En cas d’erreur, lisez le message affiché avant de réessayer."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "« Bonjour, je confirme ma demande pour la référence fictive LAMPE-B. Pouvez-vous préciser le lieu de retrait ? »"
+          },
+          "notes": [
+            "Évitez de transmettre des mots de passe ou des informations personnelles inutiles."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Discussions",
+              "path": "/discussions"
+            }
+          ]
+        },
+        {
+          "id": "commencer-conversation",
+          "title": "Commencer une conversation",
+          "summary": "Passez par la carte d’un interlocuteur autorisé.",
+          "steps": [
+            {
+              "title": "Ouvrir la carte concernée",
+              "text": "Dans Structures ou Professionnels, identifiez l’interlocuteur auquel votre compte a accès."
+            },
+            {
+              "title": "Cliquer Contacter",
+              "text": "La plateforme ouvre la conversation correspondant à cette carte."
+            },
+            {
+              "title": "Contrôler le destinataire",
+              "text": "Relisez son identité avant d’envoyer votre premier message."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’utilisateur sélectionne la carte fictive « Point Exemple », puis Contacter la structure. Il vérifie ce nom dans Discussions."
+          },
+          "notes": [
+            "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Discussions",
+              "path": "/discussions"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "logistique",
+      "label": "Logistique",
+      "path": "/logistique",
+      "icon": "box",
+      "description": "Gérer les tiers, les articles, les opérations de stock, la facturation et le patrimoine.",
+      "articles": [
+        {
+          "id": "tableau-de-bord",
+          "title": "Piloter le stock depuis le tableau de bord",
+          "summary": "Passez d’un indicateur à ses lignes sans perdre votre contexte.",
+          "steps": [
+            {
+              "title": "Choisir l’entreprise",
+              "text": "L’administrateur de plateforme sélectionne une entreprise dans l’en-tête avant de modifier des données. Les comptes locaux restent dans leur entreprise."
+            },
+            {
+              "title": "Définir le périmètre",
+              "text": "Renseignez la recherche, la période et la devise, puis cliquez Rechercher. Le stock décrit la situation actuelle ; les dates filtrent les opérations correspondantes."
+            },
+            {
+              "title": "Ouvrir un indicateur",
+              "text": "Cliquez sur un compteur dans Articles, Bons de stock, Factures ou Alertes. Sa liste apparaît sous les blocs."
+            },
+            {
+              "title": "Revenir à la synthèse",
+              "text": "Utilisez Revenir à l’indicateur. Dans les registres, le nom ou Consulter ouvre la fiche 360 du seul enregistrement choisi."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le responsable clique Stock faible, consulte les articles concernés, puis revient à l’indicateur pour examiner les ruptures."
+          },
+          "notes": [
+            "Les devises différentes ne sont pas additionnées. Un indicateur à zéro peut ouvrir une liste vide."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir le tableau de bord",
+              "path": "/logistique?onglet=dashboard"
+            }
+          ]
+        },
+        {
+          "id": "clients-fournisseurs",
+          "title": "Créer des clients et fournisseurs",
+          "summary": "Préparez une ou plusieurs fiches de tiers dans le même panier.",
+          "steps": [
+            {
+              "title": "Ouvrir Clients et fournisseurs",
+              "text": "Cliquez Nouveau tiers et vérifiez l’entreprise active."
+            },
+            {
+              "title": "Préparer les fiches",
+              "text": "Ajoutez les lignes, choisissez le type de client et renseignez nom, coordonnées et informations utiles. Utilisez les détails de ligne pour les autres champs."
+            },
+            {
+              "title": "Contrôler le panier",
+              "text": "Corrigez ou retirez les lignes inutiles. Le collage Excel proposé alimente le brouillon ; vérifiez les colonnes avant l’enregistrement."
+            },
+            {
+              "title": "Enregistrer l’ensemble",
+              "text": "Validez le panier. Une erreur conserve la saisie et annule l’ensemble de la demande ; corrigez les lignes signalées."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive prépare « Fournisseur Exemple » et « Client Exemple » dans le même panier. Ces fiches seront proposées dans Tiers référencé des bons autorisés."
+          },
+          "notes": [
+            "Le tiers appartient à l’entreprise. Il n’a pas besoin d’un compte de connexion pour être client ou fournisseur."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Clients et fournisseurs",
+              "path": "/logistique?onglet=tiers"
+            }
+          ]
+        },
+        {
+          "id": "creer-article",
+          "title": "Créer et consulter un article",
+          "summary": "Définissez l’identité, l’unité et les prix avant les opérations de stock.",
+          "steps": [
+            {
+              "title": "Cliquer Nouvel article",
+              "text": "Dans Articles, ouvrez le formulaire et complétez les sous-onglets. Ajout et modification partagent la même fiche."
+            },
+            {
+              "title": "Identifier l’article",
+              "text": "Renseignez nom, catégorie, type et référence. Ajoutez une photo depuis un fichier ou une capture si nécessaire."
+            },
+            {
+              "title": "Définir stock et prix",
+              "text": "Choisissez l’unité et la devise, vérifiez le seuil minimum et les prix. Le stock initial positif produit un bon d’entrée interne et un seul mouvement ; zéro n’en crée pas."
+            },
+            {
+              "title": "Enregistrer puis consulter",
+              "text": "Contrôlez le résultat dans Produit 360. Pour plusieurs fiches simples, utilisez Ajouter plusieurs articles et vérifiez chaque ligne du panier."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un article fictif « Lampe de bureau » est créé en pièces, avec seuil 5 et stock initial 0. Une livraison sera enregistrée séparément lors de sa réception."
+          },
+          "notes": [
+            "Après les premiers mouvements, les entrées et sorties se saisissent dans les bons, pas en remplaçant le stock courant.",
+            "Une unité peut autoriser des décimales selon son paramétrage ; une pièce entière ne devient pas une quantité fractionnaire."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Articles",
+              "path": "/logistique?onglet=articles"
+            }
+          ]
+        },
+        {
+          "id": "receptionner-stock",
+          "title": "Réceptionner une livraison avec un BE",
+          "summary": "Constater l’entrée réelle avec le prix d’achat et les lots reçus.",
+          "steps": [
+            {
+              "title": "Ouvrir la réception",
+              "text": "Dans Articles, utilisez ⋯ puis Réceptionner du stock, ou créez un bon de type Entrée dans Bons de stock."
+            },
+            {
+              "title": "Renseigner la livraison",
+              "text": "Vérifiez date et heure, fournisseur ou tiers, référence de livraison, quantité et unité."
+            },
+            {
+              "title": "Contrôler prix et lots",
+              "text": "Saisissez le prix d’achat unitaire dans la devise du bon. Renseignez les numéros de lots, leurs quantités et leurs dates lorsqu’ils sont suivis."
+            },
+            {
+              "title": "Enregistrer la réception",
+              "text": "Vérifiez le code BE automatique, l’augmentation du stock et le mouvement correspondant. Ne ressaisissez pas manuellement le même mouvement."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le stock fictif est de 10 pièces. Une livraison réelle de 5 pièces est enregistrée : le stock passe à 15 et l’entrée apparaît dans les mouvements."
+          },
+          "notes": [
+            "Le prix catalogue est une proposition, à vérifier sur la livraison. La valorisation CUMP reste distincte du prix catalogue.",
+            "Un coût d’ouverture inconnu se confirme dans Valorisation CUMP sur justificatif, avec un motif ; il ne vaut pas automatiquement zéro."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Bons de stock",
+              "path": "/logistique?onglet=commandes"
+            }
+          ]
+        },
+        {
+          "id": "preparer-commande",
+          "title": "Préparer un bon de commande CMD",
+          "summary": "Commander des articles sans modifier les quantités physiques.",
+          "steps": [
+            {
+              "title": "Créer un nouveau bon",
+              "text": "Choisissez Bon de commande dans Type de bon, puis complétez tiers, date, devise et références."
+            },
+            {
+              "title": "Ouvrir Articles",
+              "text": "Recherchez les produits dans Catalogue des articles et ajoutez la sélection au bon."
+            },
+            {
+              "title": "Compléter les lignes",
+              "text": "Saisissez les quantités commandées et les prix convenus. Contrôlez les montants du panier avant de valider."
+            },
+            {
+              "title": "Enregistrer le CMD",
+              "text": "Le numéro est attribué automatiquement. À la livraison réelle, enregistrez un BE ou un BS distinct selon l’opération."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une commande fictive porte sur 20 lampes alors que le stock actuel est de 6. Le CMD peut décrire cette demande sans retirer les 6 lampes ni réserver les 20."
+          },
+          "notes": [
+            "Un CMD ne crée ni mouvement, ni lot, ni réservation de stock, ni facture.",
+            "Le rapprochement automatique de réceptions partielles n’est pas fourni par ce parcours."
+          ],
+          "links": [
+            {
+              "label": "Préparer un bon",
+              "path": "/logistique?onglet=commandes"
+            }
+          ]
+        },
+        {
+          "id": "sortir-stock",
+          "title": "Enregistrer une sortie avec un BS",
+          "summary": "Préparez les articles disponibles et constatez leur sortie effective.",
+          "steps": [
+            {
+              "title": "Choisir Sortie",
+              "text": "Dans Nouveau bon, renseignez le tiers, la destination, la date et la devise."
+            },
+            {
+              "title": "Sélectionner les articles",
+              "text": "Dans Articles, recherchez le catalogue puis ajoutez un ou plusieurs produits. Les articles du bon apparaissent sous le catalogue."
+            },
+            {
+              "title": "Vérifier chaque ligne",
+              "text": "Contrôlez quantité, prix unitaire et montant. Dans ⋯, complétez les observations et les lots réellement sortis."
+            },
+            {
+              "title": "Enregistrer le bon",
+              "text": "Validez l’ensemble puis vérifiez le numéro BS, les lignes et le stock. La base enregistre les mouvements correspondants une seule fois."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un stock fictif de 15 lampes fait l’objet d’une sortie effective de 3 pièces. Le stock devient 12 ; la simple préparation du panier n’avait rien retiré."
+          },
+          "notes": [
+            "Un stock insuffisant ou des lots incomplets doivent être corrigés avant confirmation.",
+            "Les bons correcteurs d’inventaire sont internes : ils ne servent pas à facturer une vente."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Bons de stock",
+              "path": "/logistique?onglet=commandes"
+            }
+          ]
+        },
+        {
+          "id": "suivre-lots",
+          "title": "Suivre les lots et leur péremption",
+          "summary": "Consultez les quantités restantes et choisissez les lots de l’opération réelle.",
+          "steps": [
+            {
+              "title": "Ouvrir Lots de stock",
+              "text": "Recherchez l’article ou le numéro du lot, puis utilisez les filtres de stock et de conservation disponibles."
+            },
+            {
+              "title": "Consulter Lot 360",
+              "text": "Ouvrez le lot pour vérifier son article, ses dates, sa quantité restante et son journal."
+            },
+            {
+              "title": "Préparer une sortie",
+              "text": "Dans les lots d’une ligne de bon, la proposition par péremption aide à choisir les lots expirant en premier. Vérifiez les lots réellement prélevés."
+            },
+            {
+              "title": "Traiter un blocage",
+              "text": "Respectez la politique de péremption de l’entreprise. Une dérogation, lorsqu’elle est autorisée, demande le motif prévu."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le lot fictif A expire avant le lot B. Si A est utilisable, il est proposé en priorité ; le préparateur confirme le prélèvement réellement effectué."
+          },
+          "notes": [
+            "Le stock sans lot et le stock ventilé en lots ne sont pas interchangeables.",
+            "Un lot épuisé ou archivé reste consultable dans l’historique."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Lots de stock",
+              "path": "/logistique?onglet=lots"
+            }
+          ]
+        },
+        {
+          "id": "restituer-articles",
+          "title": "Restituer tout ou partie d’une sortie",
+          "summary": "Réintégrez seulement les quantités effectivement retournées.",
+          "steps": [
+            {
+              "title": "Ouvrir le bon d’origine",
+              "text": "Dans Bons de stock, consultez le BS concerné puis Restituer des articles."
+            },
+            {
+              "title": "Sélectionner les retours",
+              "text": "Indiquez pour chaque article la quantité réellement remise et les informations demandées sur les lots."
+            },
+            {
+              "title": "Contrôler les limites",
+              "text": "La quantité est limitée au reliquat sorti non encore restitué. Renseignez un motif clair."
+            },
+            {
+              "title": "Enregistrer puis vérifier",
+              "text": "Contrôlez le bon d’entrée de retour et les mouvements. La sortie d’origine et son historique restent conservés."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Trois lampes fictives étaient sorties ; deux reviennent. La restitution de 2 rétablit ces unités en stock et conserve une sortie nette de 1."
+          },
+          "notes": [
+            "Avant facturation, les retours réduisent les quantités à facturer. Après émission, ils conduisent à un avoir ; la facture émise n’est pas réécrite."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Bons de stock",
+              "path": "/logistique?onglet=commandes"
+            }
+          ]
+        },
+        {
+          "id": "emettre-facture",
+          "title": "Créer une facture avec HT, TVA et TTC",
+          "summary": "Émettez la facture du bon commercial et conservez son instantané.",
+          "steps": [
+            {
+              "title": "Ouvrir le bon commercial",
+              "text": "Consultez le bon éligible et cliquez Créer la facture. Vérifiez d’abord les lignes et les restitutions déjà enregistrées."
+            },
+            {
+              "title": "Compléter la facturation",
+              "text": "Renseignez date, condition de paiement, mode et échéance. Le taux de TVA courant de l’entreprise est proposé par le serveur."
+            },
+            {
+              "title": "Contrôler les montants",
+              "text": "Relisez la base HT, la TVA et le total TTC avant de confirmer. Le numéro de facture est attribué automatiquement."
+            },
+            {
+              "title": "Consulter le document",
+              "text": "Retrouvez la facture dans Factures ou dans la fiche du bon. Les PDF et exports reprennent ses montants enregistrés."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Pour une base fictive de 100 USD et un taux saisi de 16 %, la TVA est de 16 USD et le TTC de 116 USD. Le taux de 16 % illustre le calcul et n’est pas un défaut réglementaire."
+          },
+          "notes": [
+            "Le défaut de l’entreprise est 0 %. Il ne détermine pas une exonération fiscale.",
+            "Une modification du taux entreprise ne change pas les factures déjà émises. Si le taux change pendant la préparation, rechargez la fiche avant de valider."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Factures",
+              "path": "/logistique?onglet=factures"
+            }
+          ]
+        },
+        {
+          "id": "reglements-et-avoirs",
+          "title": "Enregistrer un règlement et traiter un avoir",
+          "summary": "Suivez le solde TTC et les conséquences financières d’un retour.",
+          "steps": [
+            {
+              "title": "Choisir la facture",
+              "text": "Dans Factures ou Règlements, ouvrez l’action de règlement de la bonne facture."
+            },
+            {
+              "title": "Enregistrer le paiement réel",
+              "text": "Renseignez date, montant, devise, mode et référence utiles. Vérifiez le reste à régler avant confirmation."
+            },
+            {
+              "title": "Traiter un retour après facture",
+              "text": "Établissez l’avoir proposé pour le retour. Son taux de TVA provient de la facture d’origine, même si le taux entreprise a changé."
+            },
+            {
+              "title": "Imputer ou rembourser",
+              "text": "Utilisez l’action autorisée pour imputer l’avoir sur une dette éligible ou enregistrer un remboursement réellement effectué. Vérifiez ensuite le solde et le reçu."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une facture fictive de 116 USD reçoit un règlement de 50 USD : le solde est 66 USD. Un avoir ultérieur suit son propre traitement et conserve la taxe de la facture d’origine."
+          },
+          "notes": [
+            "Enregistrer un règlement ou un remboursement ne réalise pas un virement bancaire.",
+            "Ne rattachez pas un paiement au seul nom du client : vérifiez toujours la facture."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Règlements",
+              "path": "/logistique?onglet=reglements"
+            }
+          ]
+        },
+        {
+          "id": "inventaire-physique",
+          "title": "Compter puis valider un inventaire",
+          "summary": "Justifiez les écarts avant de créer les corrections de stock.",
+          "steps": [
+            {
+              "title": "Créer le comptage",
+              "text": "Dans Inventaires, cliquez Nouvel inventaire, renseignez date et motif puis sélectionnez les articles dans le catalogue de Comptage."
+            },
+            {
+              "title": "Saisir les quantités comptées",
+              "text": "Comparez le compté au théorique. Justifiez chaque écart et utilisez ⋯ pour ventiler les lots réellement concernés."
+            },
+            {
+              "title": "Valider après contrôle",
+              "text": "Dans Validation, confirmez les quantités et justifications. Un mouvement intervenu depuis le comptage peut imposer une reprise de la ligne."
+            },
+            {
+              "title": "Corriger une validation",
+              "text": "Si vous êtes habilité, utilisez ⋯ puis Annuler la validation avec un motif. Les mouvements compensateurs conservent l’historique d’origine."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le stock théorique fictif est de 10 pièces, le comptage de 9. L’écart de −1 est justifié puis validé ; une correction traçable est produite."
+          },
+          "notes": [
+            "Une ligne sans écart ne crée pas de mouvement.",
+            "Un inventaire validé ne se supprime pas pour effacer ses écritures. La compensation exige les droits et contrôles prévus."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Inventaires",
+              "path": "/logistique?onglet=inventaires"
+            }
+          ]
+        },
+        {
+          "id": "dossiers-de-suivi",
+          "title": "Classer les éléments dans des dossiers de suivi",
+          "summary": "Retrouvez les articles, bons et factures qui demandent une action.",
+          "steps": [
+            {
+              "title": "Ouvrir Dossiers de suivi",
+              "text": "Choisissez le type de données et recherchez le dossier utile."
+            },
+            {
+              "title": "Consulter un dossier automatique",
+              "text": "Ouvrez par exemple Produits en rupture ou Bons non facturés. La liste suit le critère du dossier."
+            },
+            {
+              "title": "Créer un classement personnalisé",
+              "text": "Si vous êtes habilité, cliquez Nouveau dossier, choisissez type de données, catégorie, mode d’alimentation et couleur."
+            },
+            {
+              "title": "Classer depuis une fiche",
+              "text": "Dans la fiche 360 autorisée, utilisez Classer pour ajouter l’enregistrement à un dossier compatible."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un dossier fictif « À vérifier cette semaine » regroupe manuellement quelques bons. Le dossier automatique « Bons non facturés » suit quant à lui son propre critère."
+          },
+          "notes": [
+            "Un dossier est un classement : il ne modifie ni le stock ni le montant d’une facture.",
+            "Les dossiers personnels restent privés selon leur portée."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Dossiers de suivi",
+              "path": "/logistique?onglet=dossiers"
+            }
+          ]
+        },
+        {
+          "id": "immobilisations",
+          "title": "Enregistrer et affecter les immobilisations",
+          "summary": "Suivez les biens de l’entreprise séparément des articles commerciaux.",
+          "steps": [
+            {
+              "title": "Ouvrir Patrimoine → Immobilisations",
+              "text": "Cliquez Nouvelle immobilisation et préparez une ou plusieurs lignes."
+            },
+            {
+              "title": "Décrire les biens",
+              "text": "Renseignez désignation, catégorie, référence, caractéristiques et état. Le code d’inventaire est attribué automatiquement."
+            },
+            {
+              "title": "Affecter explicitement",
+              "text": "Choisissez le responsable, le service et la localisation de l’entreprise. Un bien sans affectataire reste visible."
+            },
+            {
+              "title": "Contrôler acquisition et historique",
+              "text": "Saisissez quantité, prix et devise, ou laissez le prix inconnu si nécessaire. Consultez la fiche et l’historique après validation."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un ordinateur fictif suivi individuellement a une quantité de 1. Un lot de 5 chaises n’est regroupé que si caractéristiques, état et affectation sont identiques."
+          },
+          "notes": [
+            "Un changement de service du compte utilisateur ne change pas automatiquement le service du bien.",
+            "L’archivage conserve l’historique. Aucun mouvement de stock commercial ni amortissement comptable n’est créé."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Immobilisations",
+              "path": "/logistique?onglet=immobilisations"
+            }
+          ]
+        },
+        {
+          "id": "tableaux-exports-documents",
+          "title": "Personnaliser les tableaux et exporter les documents",
+          "summary": "Choisissez votre périmètre puis le bon format.",
+          "steps": [
+            {
+              "title": "Définir la liste",
+              "text": "Recherchez et filtrez les lignes ; contrôlez aussi l’entreprise et la devise. Utilisez la pagination pour parcourir les résultats."
+            },
+            {
+              "title": "Ouvrir Réglages",
+              "text": "Ajustez les colonnes du tableau et les colonnes d’export dans leurs réglages respectifs. Le choix d’affichage ne change pas les données métier."
+            },
+            {
+              "title": "Exporter la liste",
+              "text": "Utilisez Excel ou CSV. Vérifiez si l’export porte sur la sélection ou sur tous les résultats filtrés autorisés."
+            },
+            {
+              "title": "Exporter un document métier",
+              "text": "Dans ⋯ ou la fiche 360, choisissez le PDF disponible : BE, BS, commande, facture ou reçu selon l’enregistrement. Ajoutez les justificatifs privés utiles."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une liste fictive de 80 bons filtrés occupe plusieurs pages. L’export complet porte sur les 80 lignes autorisées, tandis qu’un export de sélection ne reprend que les lignes choisies."
+          },
+          "notes": [
+            "Le nom, le logo et les options d’en-tête/pied viennent de la fiche entreprise. Régénérer un PDF utilise sa présentation courante ; un fichier déjà téléchargé reste inchangé.",
+            "Après une réponse réseau incertaine, utilisez Vérifier l’enregistrement sans changer la demande. En cas de conflit, rechargez la fiche."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Bons de stock",
+              "path": "/logistique?onglet=commandes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "territoires",
+      "label": "Organisation territoriale",
+      "path": "/territoires",
+      "icon": "globe",
+      "description": "Parcourir le découpage territorial, la pyramide sanitaire et leurs analyses.",
+      "articles": [
+        {
+          "id": "explorer-territoires",
+          "title": "Explorer le découpage territorial",
+          "summary": "Descendez des pays jusqu’aux structures avec les compteurs.",
+          "steps": [
+            {
+              "title": "Ouvrir le tableau de bord",
+              "text": "Consultez les indicateurs des six niveaux et les répartitions par province ou type de site."
+            },
+            {
+              "title": "Cliquer sur un indicateur",
+              "text": "Ouvrez son registre filtré, puis recherchez le nom ou le code souhaité."
+            },
+            {
+              "title": "Descendre dans les rattachements",
+              "text": "Cliquez sur le nombre de provinces, subdivisions, zones, aires ou sites pour consulter la liste correspondante."
+            },
+            {
+              "title": "Consulter la fiche",
+              "text": "Le nom et Consulter ouvrent la fiche du niveau choisi. Les noms de parents ouvrent leur propre fiche."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "À partir d’un pays fictif, l’utilisateur ouvre ses provinces, choisit une province, puis descend vers les zones et les sites rattachés."
+          },
+          "notes": [
+            "Un compteur à zéro peut ouvrir une liste vide. Les chiffres décrivent les rattachements enregistrés, pas une certification d’exhaustivité."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Organisation territoriale",
+              "path": "/territoires"
+            }
+          ]
+        },
+        {
+          "id": "creer-territoires",
+          "title": "Créer plusieurs fiches territoriales",
+          "summary": "Utilisez un parent commun et un panier de lignes.",
+          "steps": [
+            {
+              "title": "Choisir le registre",
+              "text": "Ouvrez Pays et territoires, Provinces et DPS, Antennes et subdivisions, Zones de santé, Aires de santé ou Structures et sites."
+            },
+            {
+              "title": "Préparer le rattachement",
+              "text": "Cliquez sur le bouton de création et choisissez le parent commun demandé dans l’en-tête."
+            },
+            {
+              "title": "Remplir le panier",
+              "text": "Ajoutez ou collez les lignes Excel. Le menu ⋯ puis Détails de la ligne ouvre tous les champs de la fiche avant sauvegarde."
+            },
+            {
+              "title": "Enregistrer l’ensemble",
+              "text": "Corrigez les erreurs par ligne, puis validez le lot. Aucune ligne du lot n’est conservée si une autre échoue."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Deux aires fictives « Aire Exemple A » et « Aire Exemple B » sont préparées sous la même zone, puis enregistrées ensemble."
+          },
+          "notes": [
+            "La modification du découpage commun est réservée à la plateforme habilitée. Choisir une entreprise ne donne pas ce droit.",
+            "L’ancien découpage provincial conserve son ajout individuel."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Aires de santé",
+              "path": "/territoires?onglet=niveaux4"
+            }
+          ]
+        },
+        {
+          "id": "rattacher-site",
+          "title": "Renseigner correctement une structure ou un site",
+          "summary": "Conservez les rattachements connus sans créer de parent fictif.",
+          "steps": [
+            {
+              "title": "Ouvrir Structures et sites",
+              "text": "Consultez une fiche ou préparez une nouvelle ligne si vous êtes habilité."
+            },
+            {
+              "title": "Renseigner la hiérarchie réelle",
+              "text": "Choisissez les parents connus dans les listes. Une structure peut dépendre directement d’une zone sans aire renseignée."
+            },
+            {
+              "title": "Compléter les données géographiques",
+              "text": "Renseignez les coordonnées et informations utiles lorsque vous disposez d’une source fiable."
+            },
+            {
+              "title": "Vérifier la cohérence",
+              "text": "Si une aire est renseignée, contrôlez sa cohérence avec la zone. Enregistrez après correction des éventuels messages."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un site fictif est connu dans une zone, mais son aire n’est pas encore confirmée. L’utilisateur conserve le rattachement direct à la zone sans inventer une aire."
+          },
+          "notes": [
+            "Une information inconnue reste non renseignée. Une coordonnée ou un parent ne se déduit pas d’un simple nom proche."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Structures et sites",
+              "path": "/territoires?onglet=niveaux5"
+            }
+          ]
+        },
+        {
+          "id": "lire-analyses-territoriales",
+          "title": "Lire les analyses sans compter deux fois",
+          "summary": "Ouvrez les lignes sources des regroupements.",
+          "steps": [
+            {
+              "title": "Choisir une analyse",
+              "text": "Consultez Répartition territoriale, Structures par zone, Population des sites ou Réseau des aires."
+            },
+            {
+              "title": "Lire le regroupement",
+              "text": "Repérez la zone et les types d’aire ou de site utilisés pour former la ligne."
+            },
+            {
+              "title": "Ouvrir un compteur",
+              "text": "Cliquez sur une quantité ou une population cliquable pour examiner les lignes sources avec les filtres du groupe."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "La même zone fictive apparaît pour plusieurs types de site. L’utilisateur examine chaque groupe sans additionner les nombres d’aires répétés sur ces lignes."
+          },
+          "notes": [
+            "Les populations peuvent se recouper selon le regroupement. Une population n’est pas un nombre de lignes ni un taux de couverture.",
+            "Les analyses sont en consultation ; leurs lignes ne sont pas des fiches à modifier."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Organisation territoriale",
+              "path": "/territoires"
+            }
+          ]
+        },
+        {
+          "id": "controler-territoires",
+          "title": "Traiter les contrôles et exporter une liste",
+          "summary": "Examinez les rattachements manquants dans leur contexte.",
+          "steps": [
+            {
+              "title": "Ouvrir un contrôle",
+              "text": "Consultez Aires sans site ou Zones sans aire et appliquez les filtres utiles."
+            },
+            {
+              "title": "Examiner la fiche",
+              "text": "Ouvrez la fiche concernée et vérifiez le rattachement réel avant toute correction autorisée."
+            },
+            {
+              "title": "Préparer l’export",
+              "text": "Dans Réglages, choisissez les colonnes d’export, puis téléchargez Excel ou CSV des résultats filtrés ou de la sélection."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une aire fictive apparaît sans site. L’utilisateur examine ses données et recherche les sites de la zone avant de demander une correction."
+          },
+          "notes": [
+            "Un site sans zone directe peut être rattaché à une zone par son aire ; les situations ne se confondent pas.",
+            "Changer d’entreprise ne change pas la propriété commune du découpage territorial."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Organisation territoriale",
+              "path": "/territoires"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "support",
+      "label": "Support",
+      "path": "/support",
+      "icon": "bi-headset",
+      "description": "Créer et suivre les incidents, demandes d’assistance et réclamations.",
+      "articles": [
+        {
+          "id": "creer-dossier-support",
+          "title": "Créer un dossier Support",
+          "summary": "Donnez le contexte nécessaire pour traiter la demande.",
+          "steps": [
+            {
+              "title": "Ouvrir Tickets",
+              "text": "Vérifiez l’entreprise puis cliquez Nouveau dossier."
+            },
+            {
+              "title": "Décrire la demande",
+              "text": "Renseignez l’objet, le type et une description précise du problème ou du besoin."
+            },
+            {
+              "title": "Compléter le contexte",
+              "text": "Ajoutez si nécessaire demandeur, responsable, service, échéance et objets liés autorisés : article, bon ou immobilisation."
+            },
+            {
+              "title": "Enregistrer le dossier",
+              "text": "Le numéro SUP est attribué automatiquement. Vérifiez la fiche créée et complétez les documents utiles."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un dossier fictif « Imprimante indisponible » précise le message affiché, le lieu et le matériel concerné, au lieu d’indiquer seulement « ne fonctionne pas »."
+          },
+          "notes": [
+            "Le demandeur peut être un tiers sans compte de connexion. Les objets liés doivent appartenir à l’entreprise du dossier."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir les tickets",
+              "path": "/support?onglet=tickets"
+            }
+          ]
+        },
+        {
+          "id": "traiter-dossier-support",
+          "title": "Traiter puis faire vérifier une demande",
+          "summary": "Suivez le circuit et conservez les tentatives de résolution.",
+          "steps": [
+            {
+              "title": "Affecter puis prendre en charge",
+              "text": "Choisissez le responsable avant de lancer la prise en charge autorisée."
+            },
+            {
+              "title": "Documenter l’attente",
+              "text": "Si le traitement est suspendu, mettez le dossier en attente avec un motif ; reprenez-le lorsque le blocage est levé."
+            },
+            {
+              "title": "Résoudre",
+              "text": "Décrivez la cause identifiée et la solution réellement appliquée."
+            },
+            {
+              "title": "Vérifier puis clôturer",
+              "text": "Une autre personne habilitée vérifie la solution. Clôturez après un résultat conforme ; une solution refusée doit être reprise."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une panne fictive est résolue par remplacement d’un câble. Une seconde personne confirme le fonctionnement avant la clôture."
+          },
+          "notes": [
+            "Les actions proposées dépendent du circuit du dossier, de son état et des droits.",
+            "Une réouverture exige un motif et conserve les anciennes solutions."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Support",
+              "path": "/support"
+            }
+          ]
+        },
+        {
+          "id": "documents-support",
+          "title": "Échanger et joindre des justificatifs",
+          "summary": "Distinguez les échanges visibles du dossier et les notes internes.",
+          "steps": [
+            {
+              "title": "Ouvrir la fiche",
+              "text": "Utilisez Échanges pour préciser les informations et suivre les réponses."
+            },
+            {
+              "title": "Choisir la visibilité",
+              "text": "Public signifie visible des personnes autorisées à consulter le dossier. Les notes internes sont réservées aux gestionnaires habilités."
+            },
+            {
+              "title": "Ajouter une pièce",
+              "text": "Joignez un PDF ou une image PNG, JPEG ou WebP dans la limite de 8 Mo. Vérifiez sa pertinence et sa visibilité."
+            },
+            {
+              "title": "Consulter l’historique",
+              "text": "Retrouvez les événements et tentatives de résolution sans supprimer les éléments antérieurs."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une capture fictive du message d’erreur accompagne un échange du dossier. Une note d’organisation interne est publiée avec la visibilité interne."
+          },
+          "notes": [
+            "Public ne rend pas la pièce ou la conversation accessible sur Internet.",
+            "Ne joignez pas de mot de passe ou de document personnel inutile."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Support",
+              "path": "/support"
+            }
+          ]
+        },
+        {
+          "id": "suivre-support",
+          "title": "Retrouver les dossiers à traiter",
+          "summary": "Combinez les indicateurs, la liste et le Kanban.",
+          "steps": [
+            {
+              "title": "Consulter le tableau de bord",
+              "text": "Ouvrez un indicateur pour retrouver les dossiers correspondants."
+            },
+            {
+              "title": "Affiner dans Tickets",
+              "text": "Utilisez recherche, filtres, tri et pagination, ou la vue Kanban pour lire la répartition dans le circuit."
+            },
+            {
+              "title": "Ouvrir une carte",
+              "text": "Consultez la fiche depuis le numéro ou la carte. Une colonne Kanban permet aussi d’ouvrir sa liste complète."
+            },
+            {
+              "title": "Poursuivre sans doublon",
+              "text": "Après une réponse réseau incertaine, utilisez Vérifier l’enregistrement. En cas de modification concurrente, rechargez la fiche."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le responsable fictif ouvre les demandes en attente, filtre son service puis reprend un dossier dont le blocage est levé."
+          },
+          "notes": [
+            "Un archivage concerne un dossier clôturé ; restaurer une archive ne rouvre pas automatiquement son traitement."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Support",
+              "path": "/support"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "parametres",
+      "label": "Paramètres",
+      "path": "/parametres",
+      "icon": "settings",
+      "description": "Maintenir l’identité, la fiscalité, les documents et les lieux de l’entreprise.",
+      "articles": [
+        {
+          "id": "modifier-entreprise",
+          "title": "Mettre à jour les coordonnées de l’entreprise",
+          "summary": "Utilisez la fiche commune à l’administration et aux documents.",
+          "steps": [
+            {
+              "title": "Choisir l’entreprise",
+              "text": "Dans Paramètres, consultez l’entreprise autorisée. Le compte global en sélectionne une dans l’en-tête avant toute modification."
+            },
+            {
+              "title": "Cliquer Modifier",
+              "text": "Ouvrez les coordonnées et corrigez le nom, l’adresse, les téléphones, l’e-mail ou le site web."
+            },
+            {
+              "title": "Compléter les identifiants légaux",
+              "text": "Ajoutez les identifiants réels utiles avec leurs libellés, puis le motif de modification."
+            },
+            {
+              "title": "Enregistrer",
+              "text": "Vérifiez le résultat. La même fiche alimente les autres interfaces et les nouveaux documents générés."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive « Bureau Exemple » change de téléphone. Une seule mise à jour suffit pour les prochains PDF générés."
+          },
+          "notes": [
+            "Les comptes sans droit de gestion consultent la fiche sans pouvoir la modifier.",
+            "La création d’une entreprise, son type et son état se gèrent dans Administration."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Entreprise",
+              "path": "/parametres?onglet=entreprise"
+            }
+          ]
+        },
+        {
+          "id": "definir-tva",
+          "title": "Définir le taux de TVA de l’entreprise",
+          "summary": "Préparez le calcul des nouvelles factures.",
+          "steps": [
+            {
+              "title": "Ouvrir Fiscalité",
+              "text": "Dans Paramètres, choisissez Fiscalité puis Modifier."
+            },
+            {
+              "title": "Saisir le taux",
+              "text": "Renseignez un pourcentage de 0 à 100, avec quatre décimales au maximum. La virgule est acceptée."
+            },
+            {
+              "title": "Enregistrer avec un motif",
+              "text": "Contrôlez le taux avant validation. Il est repris pour l’émission des nouvelles factures."
+            },
+            {
+              "title": "Vérifier une préparation ouverte",
+              "text": "Si le taux change pendant qu’une facture est préparée, rechargez ses données avant confirmation."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un taux fictif de 16 % sur une base de 100 USD produit 16 USD de TVA et 116 USD TTC. À 0 %, la TVA est nulle."
+          },
+          "notes": [
+            "Le défaut est 0 %. Ce paramètre n’établit pas automatiquement le régime fiscal applicable.",
+            "Les factures déjà émises et leurs avoirs conservent leur taux historique. Le taux est commun à l’entreprise, pas différent par article."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Fiscalité",
+              "path": "/parametres?onglet=fiscalite"
+            }
+          ]
+        },
+        {
+          "id": "personnaliser-pdf",
+          "title": "Personnaliser l’identité des PDF",
+          "summary": "Choisissez le logo et les options communes d’en-tête et de pied.",
+          "steps": [
+            {
+              "title": "Ouvrir Documents",
+              "text": "Dans Paramètres, choisissez Documents puis Modifier."
+            },
+            {
+              "title": "Compléter l’identité documentaire",
+              "text": "Chargez le logo et les informations ou mentions utiles, sans inventer les identifiants absents."
+            },
+            {
+              "title": "Choisir les affichages",
+              "text": "L’en-tête et le pied de page sont activés par défaut. Chacun peut être désactivé indépendamment."
+            },
+            {
+              "title": "Générer un document de contrôle",
+              "text": "Après enregistrement, régénérez un PDF autorisé pour vérifier l’identité actuelle de l’entreprise."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive choisit un logo et retire le pied de page. Le prochain PDF conserve son nom dans le document même sans en-tête."
+          },
+          "notes": [
+            "Un PDF déjà téléchargé ou archivé reste inchangé. Une régénération utilise la présentation courante, sans réécrire les montants historiques."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Documents",
+              "path": "/parametres?onglet=documents"
+            }
+          ]
+        },
+        {
+          "id": "gerer-localisations",
+          "title": "Gérer les lieux de l’entreprise",
+          "summary": "Renseignez des points utilisables pour les affectations.",
+          "steps": [
+            {
+              "title": "Ouvrir Localisation",
+              "text": "Choisissez Localisation puis Modifier dans la fiche entreprise."
+            },
+            {
+              "title": "Ajouter ou corriger les points",
+              "text": "Renseignez le nom du lieu, l’adresse et les références territoriales ou coordonnées connues."
+            },
+            {
+              "title": "Vérifier avant enregistrement",
+              "text": "Contrôlez les rattachements et le motif de modification. Les points sont sauvegardés avec la fiche."
+            },
+            {
+              "title": "Conserver les lieux utilisés",
+              "text": "Un point déjà lié à une affectation ne peut pas être supprimé sans respecter les contrôles prévus."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive distingue « Bureau principal » et « Dépôt ». Un équipement peut ensuite être affecté au lieu exact."
+          },
+          "notes": [
+            "Les lieux appartiennent à l’entreprise. Ils ne créent pas un découpage territorial privé."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Localisation",
+              "path": "/parametres?onglet=localisation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "administration",
+      "label": "Administration",
+      "path": "/admin",
+      "icon": "shield",
+      "description": "Gérer les comptes, les entreprises, les accès et les réglages autorisés.",
+      "articles": [
+        {
+          "id": "piloter-administration",
+          "title": "Lire le tableau de bord d’administration",
+          "summary": "Ouvrez les listes correspondant aux indicateurs.",
+          "steps": [
+            {
+              "title": "Vérifier le contexte",
+              "text": "Le compte de plateforme choisit une entreprise pour examiner ses données ; le compte local reste dans son périmètre autorisé."
+            },
+            {
+              "title": "Lire les indicateurs",
+              "text": "Consultez les comptes actifs et inactifs, les rôles, les entreprises et les licences disponibles selon vos droits."
+            },
+            {
+              "title": "Ouvrir un détail",
+              "text": "Cliquez sur un indicateur ou une barre de graphique pour rejoindre le registre avec le filtre correspondant."
+            },
+            {
+              "title": "Affiner la liste",
+              "text": "Utilisez recherche, filtres et pagination. Les exports reprennent le même périmètre autorisé."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le gestionnaire fictif clique sur Utilisateurs inactifs pour identifier les comptes de son entreprise à examiner."
+          },
+          "notes": [
+            "Les activités de plateforme, lorsqu’elles sont visibles, restent identifiées comme telles même avec une entreprise sélectionnée."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Administration",
+              "path": "/admin"
+            }
+          ]
+        },
+        {
+          "id": "creer-utilisateurs",
+          "title": "Créer un ou plusieurs utilisateurs",
+          "summary": "Préparez les comptes dans un panier puis enregistrez l’ensemble.",
+          "steps": [
+            {
+              "title": "Ouvrir Utilisateurs",
+              "text": "Cliquez Nouvel utilisateur dans l’entreprise choisie."
+            },
+            {
+              "title": "Ajouter les comptes",
+              "text": "Renseignez identité, e-mail, rôle et autres champs requis. Utilisez les détails de ligne pour compléter la fiche."
+            },
+            {
+              "title": "Vérifier le panier",
+              "text": "Ajoutez, corrigez ou retirez les lignes et contrôlez les informations reprises depuis Excel. Les données professionnelles utiles se trouvent dans la même fiche."
+            },
+            {
+              "title": "Enregistrer l’ensemble",
+              "text": "Une erreur conserve le brouillon et annule le lot. Après succès, consultez le compte pour vérifier son entreprise, son état et ses accès."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive prépare deux comptes ordinaires pour ses agents. Elle vérifie les deux adresses avant d’enregistrer le panier."
+          },
+          "notes": [
+            "Un gestionnaire local gère seulement les comptes ordinaires autorisés de son entreprise. Il ne peut pas déléguer des privilèges de plateforme.",
+            "Les mots de passe initiaux sont sensibles : ne les insérez pas dans les observations, justificatifs ou messages Support."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Utilisateurs",
+              "path": "/admin?onglet=utilisateurs"
+            }
+          ]
+        },
+        {
+          "id": "modifier-utilisateur",
+          "title": "Modifier ou désactiver un compte",
+          "summary": "Ouvrez la bonne fiche et contrôlez les effets du changement.",
+          "steps": [
+            {
+              "title": "Identifier le compte",
+              "text": "Recherchez le nom ou l’e-mail, puis utilisez Consulter ou ⋯ → Modifier sur la ligne concernée."
+            },
+            {
+              "title": "Contrôler les informations",
+              "text": "Vérifiez entreprise, rôle, état et coordonnées avant de corriger les champs autorisés. Complétez matricule, fonction ou service si nécessaire."
+            },
+            {
+              "title": "Enregistrer avec un motif",
+              "text": "Si une autre personne a modifié la fiche, rechargez les données avant de poursuivre."
+            },
+            {
+              "title": "Désactiver si nécessaire",
+              "text": "Utilisez l’action autorisée plutôt que de réutiliser le compte d’un ancien agent pour une autre personne."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un agent fictif change de numéro de téléphone. Le gestionnaire corrige ce champ sur son compte, sans modifier son rôle par erreur."
+          },
+          "notes": [
+            "Un changement de service du compte ne déplace pas automatiquement les immobilisations déjà affectées.",
+            "Les protections empêchent notamment la disparition du dernier administrateur actif."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Utilisateurs",
+              "path": "/admin?onglet=utilisateurs"
+            }
+          ]
+        },
+        {
+          "id": "roles-et-permissions",
+          "title": "Comprendre les rôles et permissions",
+          "summary": "Distinguez l’accès au module des actions qu’il autorise.",
+          "steps": [
+            {
+              "title": "Consulter les rôles",
+              "text": "Ouvrez Rôles pour lire les rôles partagés disponibles."
+            },
+            {
+              "title": "Examiner les permissions",
+              "text": "Utilisez Voir les permissions ou l’onglet Permissions pour vérifier les capacités associées."
+            },
+            {
+              "title": "Créer un rôle si habilité",
+              "text": "L’administration de plateforme peut ouvrir Nouveau rôle, préparer une ou plusieurs lignes puis enregistrer le panier."
+            },
+            {
+              "title": "Contrôler l’usage",
+              "text": "Vérifiez les comptes concernés et les capacités de consultation, gestion et export avant de modifier un droit."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un rôle fictif « Consultation stock » peut permettre la lecture sans création de bons. Une licence Logistique active ne suffit pas à donner le droit de gérer."
+          },
+          "notes": [
+            "Les rôles de sécurité sont partagés et gérés par la plateforme ; ils ne sont pas dupliqués par entreprise.",
+            "Un droit de module ne permet pas d’accéder aux données d’une autre entreprise."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Rôles",
+              "path": "/admin?onglet=roles"
+            }
+          ]
+        },
+        {
+          "id": "entreprises-et-licences",
+          "title": "Gérer les entreprises et leurs licences",
+          "summary": "Vérifiez l’entreprise bénéficiaire, la durée et les applications incluses.",
+          "steps": [
+            {
+              "title": "Consulter Entreprises",
+              "text": "Ouvrez la fiche de l’entreprise pour vérifier son nom, ses coordonnées et ses informations utiles."
+            },
+            {
+              "title": "Compléter les lieux si habilité",
+              "text": "Le sous-onglet Localisation appartient à la fiche entreprise ; il n’existe pas de registre de navigation séparé à alimenter."
+            },
+            {
+              "title": "Ouvrir Licences",
+              "text": "Consultez la licence de l’entreprise, ses dates et son état. La création et la modification sont réservées à la plateforme."
+            },
+            {
+              "title": "Vérifier les applications",
+              "text": "Contrôlez les modules inclus et les droits du rôle : ces deux conditions déterminent ce qu’un utilisateur peut ouvrir."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "L’entreprise fictive dispose de Logistique mais pas de Support. Ses utilisateurs ne doivent pas voir Support comme application autorisée, même si les deux modules existent sur la plateforme."
+          },
+          "notes": [
+            "Une licence est attribuée à une entreprise, pas à un utilisateur isolé.",
+            "Le Guide utilisateur reprend les modules autorisés ; il ne prolonge ni n’active une licence."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Licences",
+              "path": "/admin?onglet=licences"
+            }
+          ]
+        },
+        {
+          "id": "reglages-administration",
+          "title": "Maintenir les correspondances et paramètres",
+          "summary": "Modifiez les réglages structurants avec leur portée explicite.",
+          "steps": [
+            {
+              "title": "Choisir le registre",
+              "text": "Ouvrez Correspondances FK ou Paramètres UI selon le réglage recherché."
+            },
+            {
+              "title": "Examiner le réglage existant",
+              "text": "Vérifiez son objet, sa clé, sa portée et les champs autorisés. Certains paramètres restent protégés."
+            },
+            {
+              "title": "Préparer un panier si habilité",
+              "text": "Nouvelle correspondance ou Nouveau paramètre ouvre une saisie d’une ou plusieurs lignes, avec détails et collage Excel."
+            },
+            {
+              "title": "Enregistrer puis contrôler",
+              "text": "Après validation, vérifiez les listes ou écrans concernés. Une modification concurrente demande un rechargement."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un réglage fictif est recherché par sa clé exacte. L’administrateur contrôle d’abord s’il est commun ou propre à une entreprise, puis corrige la bonne ligne."
+          },
+          "notes": [
+            "Les correspondances physiques des champs se consultent aussi dans Référentiels. Ne créez pas une deuxième règle pour contourner un accès refusé.",
+            "Un paramètre protégé ou non modifiable conserve sa protection dans un panier."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Paramètres UI",
+              "path": "/admin?onglet=parametres"
+            }
+          ]
+        },
+        {
+          "id": "audit-et-messagerie",
+          "title": "Consulter l’audit et vérifier la messagerie",
+          "summary": "Retrouvez une opération sans exposer les secrets de connexion.",
+          "steps": [
+            {
+              "title": "Consulter les journaux autorisés",
+              "text": "La plateforme peut examiner Journaux d’audit et Connexions pour retrouver un événement avec sa date, son auteur et son contexte."
+            },
+            {
+              "title": "Rechercher la bonne période",
+              "text": "Filtrez les événements utiles et ouvrez la ligne concernée pour son détail."
+            },
+            {
+              "title": "Examiner Messagerie si habilité",
+              "text": "Vérifiez l’adresse d’envoi et les réglages autorisés de récupération des comptes."
+            },
+            {
+              "title": "Tester séparément le transport",
+              "text": "Tester la connexion contrôle le transport sans envoyer d’e-mail. La réception d’un véritable message doit être vérifiée séparément."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Après un changement fictif de coordonnées entreprise, l’administrateur retrouve l’événement d’audit. Pour un problème de récupération d’accès, il vérifie ensuite la messagerie."
+          },
+          "notes": [
+            "L’historique des connexions n’est pas une liste de sessions actuellement actives.",
+            "Les secrets de messagerie restent privés et ne doivent pas être copiés dans un ticket ou un export."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Administration",
+              "path": "/admin"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "referentiels",
+      "label": "Référentiels",
+      "path": "/referentiels",
+      "icon": "tag",
+      "description": "Maintenir les catégories, leurs valeurs et les réglages de listes partagés.",
+      "articles": [
+        {
+          "id": "creer-categories",
+          "title": "Créer des catégories dans un panier",
+          "summary": "Regroupez les valeurs par un usage clair.",
+          "steps": [
+            {
+              "title": "Ouvrir Catégories",
+              "text": "Cliquez Nouvelle catégorie. Une seule ligne suffit pour une création individuelle."
+            },
+            {
+              "title": "Préparer les lignes",
+              "text": "Choisissez la portée autorisée puis renseignez chaque catégorie, les modules associés et son état."
+            },
+            {
+              "title": "Contrôler les doublons",
+              "text": "Ajoutez ou retirez les lignes, ou collez les cellules Excel selon les colonnes proposées. Vérifiez les libellés et codes signalés."
+            },
+            {
+              "title": "Enregistrer l’ensemble",
+              "text": "Une transaction enregistre le lot. En cas d’erreur, corrigez le panier conservé ; aucune ligne de cette demande n’a été enregistrée partiellement."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une entreprise fictive prépare les catégories « Familles internes » et « Priorités internes » dans une seule saisie, avec la portée entreprise autorisée."
+          },
+          "notes": [
+            "Les données historiques communes ne sont pas réattribuées automatiquement à une entreprise."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Catégories",
+              "path": "/referentiels?onglet=categories"
+            }
+          ]
+        },
+        {
+          "id": "creer-valeurs",
+          "title": "Ajouter plusieurs valeurs à une catégorie",
+          "summary": "Utilisez un en-tête commun puis les lignes de détail.",
+          "steps": [
+            {
+              "title": "Ouvrir Nouvelle valeur",
+              "text": "Depuis Valeurs de référence, cliquez Nouvelle valeur."
+            },
+            {
+              "title": "Choisir la catégorie",
+              "text": "Sélectionnez la famille dans l’en-tête avant de préparer les lignes."
+            },
+            {
+              "title": "Saisir les valeurs",
+              "text": "Renseignez les libellés, abréviations ou codes, l’état et les options proposées. Le collage Excel ajoute des lignes au même brouillon."
+            },
+            {
+              "title": "Vérifier puis enregistrer",
+              "text": "Corrigez les erreurs de ligne et doublons avant la validation unique du panier."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Pour la catégorie fictive « Priorités internes », l’utilisateur prépare « Haute » avec le code « H » et « Normale » avec le code « N »."
+          },
+          "notes": [
+            "Le champ métier enregistre l’identifiant de la valeur, pas le texte libre de son libellé.",
+            "Un seul bouton Nouvelle valeur permet aussi bien une ligne que plusieurs lignes."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Valeurs de référence",
+              "path": "/referentiels?onglet=valeurs"
+            }
+          ]
+        },
+        {
+          "id": "portee-references",
+          "title": "Choisir entre commun et entreprise",
+          "summary": "Comprenez où une référence sera proposée.",
+          "steps": [
+            {
+              "title": "Lire la portée",
+              "text": "Dans le registre, distinguez les références communes de celles de l’entreprise sélectionnée."
+            },
+            {
+              "title": "Choisir la portée autorisée",
+              "text": "Lors de la création, vérifiez à qui la catégorie ou la valeur doit être destinée."
+            },
+            {
+              "title": "Respecter le parent",
+              "text": "Une catégorie commune peut recevoir une valeur privée autorisée. Une catégorie privée ne reçoit que des valeurs de sa propre entreprise."
+            },
+            {
+              "title": "Modifier la bonne ligne",
+              "text": "Le gestionnaire local ne modifie que les références propres à son entreprise, selon ses droits."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une unité commune reste utilisable par les entreprises autorisées. Une valeur fictive « Code interne A » propre à une entreprise n’apparaît pas chez l’autre."
+          },
+          "notes": [
+            "La propriété d’une référence créée reste conservée. Les doublons historiques ne sont pas fusionnés automatiquement."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Référentiels",
+              "path": "/referentiels"
+            }
+          ]
+        },
+        {
+          "id": "referencer-champ",
+          "title": "Associer un champ à sa catégorie",
+          "summary": "Changez les choix proposés sans réécrire les anciennes données.",
+          "steps": [
+            {
+              "title": "Ouvrir Référencement des champs",
+              "text": "Ce réglage est réservé à l’administration de plateforme."
+            },
+            {
+              "title": "Identifier le champ",
+              "text": "Contrôlez schéma, table et colonne, puis l’ID et le libellé de la catégorie courante et du défaut."
+            },
+            {
+              "title": "Modifier l’association",
+              "text": "Sélectionnez la catégorie autorisée au scope prévu et enregistrez. Les formulaires concernés reprennent cette configuration."
+            },
+            {
+              "title": "Rétablir si nécessaire",
+              "text": "Utilisez Rétablir la valeur par défaut. Vérifiez ensuite la liste dans le formulaire concerné."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un champ fictif de classement est associé à une autre catégorie autorisée. Une valeur déjà enregistrée reste conservée même si elle ne fait plus partie des choix actuels."
+          },
+          "notes": [
+            "Une ancienne valeur devenue incompatible est signalée. Une nouvelle sélection doit respecter la catégorie active.",
+            "Les réglages Références de Logistique affichent également l’ID et le libellé de la famille utilisée."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Référencement des champs",
+              "path": "/referentiels?onglet=champs"
+            }
+          ]
+        },
+        {
+          "id": "regler-tableaux",
+          "title": "Régler les tableaux et exports",
+          "summary": "Personnalisez vos colonnes sans changer le catalogue commun.",
+          "steps": [
+            {
+              "title": "Ouvrir Tableaux et exports",
+              "text": "Retrouvez le tableau concerné dans la liste des interfaces accessibles."
+            },
+            {
+              "title": "Consulter les colonnes",
+              "text": "Vérifiez le catalogue commun et les colonnes affichables ou exportables."
+            },
+            {
+              "title": "Ouvrir Mes réglages",
+              "text": "Choisissez séparément les colonnes et l’ordre du tableau puis ceux de l’export."
+            },
+            {
+              "title": "Rétablir la référence",
+              "text": "Supprimez la personnalisation concernée si vous souhaitez reprendre le catalogue commun."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Un utilisateur fictif masque une colonne dans son tableau mais la conserve dans l’export Excel. Les réglages d’un collègue restent inchangés."
+          },
+          "notes": [
+            "Les préférences sont personnelles et liées à l’espace de travail ; elles n’accordent aucun droit supplémentaire.",
+            "Après une réponse incertaine lors d’une saisie, utilisez Vérifier l’enregistrement dans le formulaire conservé."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Tableaux et exports",
+              "path": "/referentiels?onglet=tableaux"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

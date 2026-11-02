@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 31/10/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -1206,29 +1206,47 @@ COMMENT ON COLUMN systeme."V_Fk_Correspondance_Detail"."ObsFkCorrespondance" IS 
 --
 
 CREATE VIEW systeme."V_IdentiteDocumentaire" AS
- SELECT "IdEntite",
-    "NomEntite",
-    "AdresseEntite",
-    "EmailEntite",
-    "PhoneEntite",
-    "IdentifiantsLegauxEntite",
-    "MentionDocumentaireEntite",
-    (xmin)::text AS _version,
-    "SiteWebEntite",
-    "AfficherEnteteDocument",
-    "AfficherPiedDocument",
-    ("LogoEntite" IS NOT NULL) AS "HasLogo",
-    "LogoMimeEntite",
-    "LogoSha256Entite",
-    "LogoModifieLe",
-    "PhoneSecondaireEntite"
-   FROM systeme."T_Entite";
+ SELECT v."IdEntite",
+    v."NomEntite",
+    v."AdresseEntite",
+    v."EmailEntite",
+    v."PhoneEntite",
+    v."IdentifiantsLegauxEntite",
+    v."MentionDocumentaireEntite",
+    v._version,
+    v."SiteWebEntite",
+    v."AfficherEnteteDocument",
+    v."AfficherPiedDocument",
+    v."HasLogo",
+    v."LogoMimeEntite",
+    v."LogoSha256Entite",
+    v."LogoModifieLe",
+    v."PhoneSecondaireEntite",
+    e."TauxTVAEntite"
+   FROM (( SELECT "T_Entite"."IdEntite",
+            "T_Entite"."NomEntite",
+            "T_Entite"."AdresseEntite",
+            "T_Entite"."EmailEntite",
+            "T_Entite"."PhoneEntite",
+            "T_Entite"."IdentifiantsLegauxEntite",
+            "T_Entite"."MentionDocumentaireEntite",
+            ("T_Entite".xmin)::text AS _version,
+            "T_Entite"."SiteWebEntite",
+            "T_Entite"."AfficherEnteteDocument",
+            "T_Entite"."AfficherPiedDocument",
+            ("T_Entite"."LogoEntite" IS NOT NULL) AS "HasLogo",
+            "T_Entite"."LogoMimeEntite",
+            "T_Entite"."LogoSha256Entite",
+            "T_Entite"."LogoModifieLe",
+            "T_Entite"."PhoneSecondaireEntite"
+           FROM systeme."T_Entite") v
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = v."IdEntite")));
 
 --
 -- Name: VIEW "V_IdentiteDocumentaire"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Profil de présentation courant et révision de l’entreprise : identité, coordonnées, identifiants déclaratifs, site, options PDF et métadonnées du logo. Aucun octet binaire ; le service impose le parent et les droits de son entreprise.';
+COMMENT ON VIEW systeme."V_IdentiteDocumentaire" IS 'Identité documentaire courante et taux de TVA paramétrable de l’entreprise ; sans contenu binaire du logo ni information de compte.';
 
 --
 -- Name: COLUMN "V_IdentiteDocumentaire"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1325,6 +1343,12 @@ COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."LogoModifieLe" IS 'Date de d
 --
 
 COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."PhoneSecondaireEntite" IS 'Téléphone secondaire courant facultatif de l’entreprise ; seconde coordonnée distincte du téléphone principal.';
+
+--
+-- Name: COLUMN "V_IdentiteDocumentaire"."TauxTVAEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_IdentiteDocumentaire"."TauxTVAEntite" IS 'Taux de TVA courant des nouvelles factures de cette entreprise, en pourcentage.';
 
 --
 -- Name: V_Licence_active; Type: VIEW; Schema: systeme; Owner: -

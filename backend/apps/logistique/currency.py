@@ -7,6 +7,7 @@ from apps.core.responses import APIError
 MONETARY_KEYS = {"montantBons", "montantTotalFacture", "montantTotalRegle", "montantRestant"}
 AMOUNT_FIELDS = {
     "PrixUnitaire", "ValeurAcquisition",
+    "MontantTVA", "MontantHTFacture", "MontantTVAFacture",
     "PUArticle", "PVArticle", "ValeurStockAchat", "MargeUnitaire", "MontantHT", "MontantTTC",
     "MontantRegleFacture", "MontantResteFacture", "TotalRegleReel", "ResteReel", "PUCmdDetail",
     "MontantLigne", "PUMvt", "MontantMvt", "MontantMvtSigned", "ValeurConsoMensuelle", "MontantRegle", "TotalRegle", "Reste",

@@ -12,6 +12,8 @@ LABELS = {"QteMvt":"Quantité du mouvement","MontantMvtSigned":"Valeur signée",
 # Les exports d’une ligne utilisent les clés numériques exactes, dans le périmètre autorisé.
 LABELS.update({"ID_Article":"Article","ID_Commande":"Bon de stock","ID_CmdFk":"Bon de stock","ID_ArticleFk":"Article","ID_Mvt":"Mouvement"})
 LABELS.update({'AncienCodeCmd':'Ancien code du bon','RenumeroteLe':'Renuméroté le'})
+LABELS.update({'TauxTVA':'TVA (%)','MontantTVA':'Montant TVA','MontantHTFacture':'Montant HT de la facture',
+               'TauxTVAFacture':'TVA de la facture (%)','MontantTVAFacture':'TVA de la facture'})
 LABELS.update({"EtatPeremptionLot":"Conservation du lot","MotifDerogationPeremption":"Motif de dérogation","DateDerogationPeremption":"Date de dérogation","StockPerime":"Stock périmé","StockProchePeremption":"Stock proche de péremption","StockSansDatePeremption":"Stock sans date de péremption","DateProchainePeremption":"Prochaine péremption","LotsPerimes":"Lots périmés","LotsProchesPeremption":"Lots proches de péremption","SeuilAlerteJours":"Délai d’alerte en jours"})
 LABELS.update({"ID_LotArticle":"Lot","ID_LotArticleFk":"Lot","ID_MvtFk":"Mouvement","NumeroLot":"N° de lot","StockLot":"Stock du lot","QuantiteEntree":"Entrées cumulées","QuantiteSortie":"Sorties cumulées","DatePeremptionLot":"Date de péremption","Actif":"Lot actif","CreeLe":"Créé le","NomEntite":"Entreprise","EtatStockLot":"État du stock","Quantite":"Quantité","QuantiteSignee":"Quantité signée","SensMouvement":"Sens"})
 NUMERIC = {"smallint","integer","bigint","numeric","decimal","real","double precision"}

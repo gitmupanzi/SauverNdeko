@@ -1,4 +1,5 @@
 import AppIcon from "./AppIcon";
+import InvoiceTaxSummary from "./InvoiceTaxSummary";
 import { formatCurrency, formatDate, formatNumber } from "../pages/logistique/logistiqueShared";
 import {isStockOrder,previousStockCode} from "../utils/stockDocumentTypes";
 import "./OrderOverview.css";
@@ -9,7 +10,7 @@ export const ORDER_SECTION_FIELDS={
   lots:["NomArticle","NumeroLot","Quantite","QuantiteSignee","DateMvt","DatePeremptionLot"],
   lignes:["NomArticle","RefArticle","QteCmdDetail","AbrUnite","PUCmdDetail","MontantLigne"],
   mouvements:["DateMvt","NomArticle","NomTypeMvt","QteMvtSigned","PUMvt","MontantMvt","OrigineMouvement"],
-  facture:["CodeFacture","DateFacture","DateEcheancePaiement","MontantFacture","TotalRegle","Reste","EtatReglement"],
+  facture:["CodeFacture","DateFacture","DateEcheancePaiement","MontantHTFacture","TauxTVA","MontantTVA","MontantFacture","TotalRegle","Reste","EtatReglement"],
   reglements:["DateReglement","MontantRegle","CodeFactureFk"],
 };
 export function orderConsultationTabs(sections=[],{returns=false,stockOrder=false}={}){
@@ -68,7 +69,7 @@ export function OrderInvoiceMetrics({record,onSection}){
 }
 export function OrderBillingHeading({record}){
   if(!hasOrderInvoice(record))return <section className="commande360-empty"><span><AppIcon name="document" size={22}/></span><h4>Aucune facture associée</h4><p>Ce bon n’est pas facturé.</p></section>;
-  return <div className="commande360-billing-heading"><span className="commande360-billing-icon"><AppIcon name="document" size={21}/></span><div><p>Facture</p><h4>{record.CodeFacture}</h4></div><OrderStatus value={record.EtatPaiement}/>{record.EstPaiementEnRetard===true?<span className="erp-status is-danger">En retard</span>:null}</div>;
+  return <><div className="commande360-billing-heading"><span className="commande360-billing-icon"><AppIcon name="document" size={21}/></span><div><p>Facture</p><h4>{record.CodeFacture}</h4></div><OrderStatus value={record.EtatPaiement}/>{record.EstPaiementEnRetard===true?<span className="erp-status is-danger">En retard</span>:null}</div><InvoiceTaxSummary record={{TauxTVA:record.TauxTVAFacture,MontantHT:record.MontantHTFacture,MontantTVA:record.MontantTVAFacture,MontantTTC:record.MontantFacture}} currency={record.DeviseCode}/></>;
 }
 export function OrderControl({record,onSection}){
   const order=isStockOrder(record);

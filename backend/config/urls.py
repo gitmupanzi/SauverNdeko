@@ -1,4 +1,7 @@
 from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
+from apps.core.entity_settings import (EntitySettingsContextView, EntitySettingsChoicesView,
+    EntitySettingsProfileView, EntitySettingsLogoView)
+from apps.core.user_guide import GuideContextView, GuideArticleView, GuideEntitiesView
 from apps.support.portal import (SupportContextView, SupportEntitiesView, SupportDashboardView,
     SupportKanbanView, SupportTicketsView, SupportActionsView, SupportCommentsView,
     SupportDocumentsView, SupportDocumentDownloadView, SupportExcelView, SupportCSVView)
@@ -69,6 +72,13 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/parametres/contexte/?$", EntitySettingsContextView.as_view()),
+    re_path(r"^api/guide/contexte/?$", GuideContextView.as_view()),
+    re_path(r"^api/guide/entreprises/?$", GuideEntitiesView.as_view()),
+    re_path(r"^api/guide/articles/(?P<module_key>[a-z][a-z0-9-]*)/(?P<article_id>[a-z][a-z0-9-]*)/?$", GuideArticleView.as_view()),
+    re_path(r"^api/parametres/entreprises/?$", EntitySettingsChoicesView.as_view()),
+    re_path(r"^api/parametres/profil/?$", EntitySettingsProfileView.as_view()),
+    re_path(r"^api/parametres/entreprises/(?P<pk>[0-9]+)/logo/?$", EntitySettingsLogoView.as_view()),
     re_path(r"^api/support/contexte/?$", SupportContextView.as_view()),
     re_path(r"^api/support/entreprises/?$", SupportEntitiesView.as_view()),
     re_path(r"^api/support/tableau-de-bord/?$", SupportDashboardView.as_view()),

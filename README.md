@@ -10,6 +10,7 @@ Le backend actif est désormais Django + Django REST Framework, connecté au Pos
 
 Documentation de travail :
 
+- [Guide utilisateur intégré](docs/guide-utilisateur.md), disponible dans l’application à `/guide`, avec parcours et exemples selon les modules autorisés.
 - [Cartographie et écarts constatés](skills/sauverndeko-erp/references/cartographie.md).
 - [Inventaire des modèles, routes et objets SQL](skills/sauverndeko-erp/references/inventaire-technique.md).
 - [Trajectoire ERP et critères des prochains lots](skills/sauverndeko-erp/references/trajectoire-erp.md).

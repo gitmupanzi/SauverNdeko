@@ -11,6 +11,7 @@ import {formatCurrency,formatNumber,SimpleTable} from "./logistiqueShared";
 import {createReceiptRequestId} from "./receiptForm";
 import {invoiceDeadline,invoiceErrors,invoiceForm,invoicePayload} from "./invoiceForm";
 import BusinessDocuments from "../../components/BusinessDocuments";
+import InvoiceTaxSummary from "../../components/InvoiceTaxSummary";
 import "./InvoiceEditor.css";
 
 function Field({id,label,error,hint,children}) {return <div className="record-field"><label htmlFor={id}>{label}</label>{children}{error?<small id={id+"-error"} className="record-field-error">{error}</small>:hint?<small id={id+"-hint"}>{hint}</small>:null}</div>;}
@@ -19,7 +20,7 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
   const contextKey=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??""),initialContext=useRef(contextKey);
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState({DateFacture:"",ID_ModePaiementFk:"",ID_ConditionPaiementFk:"",DateEcheancePaiement:""}),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[issues,setIssues]=useState({}),[revision,setRevision]=useState(0),[uncertain,setUncertain]=useState(false),[closeWarning,setCloseWarning]=useState(false),[reloadWarning,setReloadWarning]=useState(false);
   const canWrite=user?.permissions?.canWriteData===true&&contextKey===initialContext.current,existing=Boolean(record?.facture),editable=canWrite&&meta?.available===true&&(existing?meta?.canEdit===true:meta?.canIssue===true),disabled=loading||busy||uncertain||!editable;
-  const dirty=baseline.current!=null&&JSON.stringify(values)!==JSON.stringify(baseline.current),refs=record?.references||{},condition=(refs.conditionsPaiement||[]).find(row=>String(row.id)===values.ID_ConditionPaiementFk),automatic=invoiceDeadline(values.DateFacture,condition),code=record?.totaux?.DeviseCode||record?.facture?.DeviseCode||record?.bonOrigine?.DeviseCode;
+  const dirty=baseline.current!=null&&JSON.stringify(values)!==JSON.stringify(baseline.current),refs=record?.references||{},condition=(refs.conditionsPaiement||[]).find(row=>String(row.id)===values.ID_ConditionPaiementFk),automatic=invoiceDeadline(values.DateFacture,condition),code=(existing?record?.facture?.DeviseCode:record?.totaux?.DeviseCode)||record?.bonOrigine?.DeviseCode;
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{if(contextKey!==initialContext.current)onClose();},[contextKey,onClose]);
   useEffect(()=>{
@@ -73,10 +74,12 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
     {key:"QteSortie",label:"Sortie",width:120,align:"right",render:row=>formatNumber(row.QteSortie)+(row.Unite?" "+row.Unite:"")},
     {key:"QteRetourAvantFacture",label:"Restituée",width:120,align:"right",render:row=>formatNumber(row.QteRetourAvantFacture)},
     {key:"QteFacturee",label:"Facturée",width:120,align:"right",render:row=>formatNumber(row.QteFacturee)},
-    {key:"PUFacture",label:"Prix unitaire",width:150,align:"right",render:row=>formatCurrency(row.PUFacture,row.DeviseCode||code)},
-    {key:"MontantLigne",label:"Montant",width:160,align:"right",render:row=>formatCurrency(row.MontantLigne,row.DeviseCode||code)},
+    {key:"PUFacture",label:"Prix unitaire HT",width:150,align:"right",render:row=>formatCurrency(row.PUFacture,row.DeviseCode||code)},
+    {key:"MontantLigneHT",label:"Montant HT",width:160,align:"right",render:row=>formatCurrency(row.MontantLigneHT??row.MontantLigne,row.DeviseCode||code)},
+    {key:"MontantTVA",label:"TVA",width:140,align:"right",render:row=>formatCurrency(row.MontantTVA,row.DeviseCode||code)},
+    {key:"MontantTTC",label:"Montant TTC",width:160,align:"right",render:row=>formatCurrency(row.MontantTTC,row.DeviseCode||code)},
   ],[code]);
-  const total=record?.totaux?.MontantFacture??record?.facture?.MontantFacture??record?.totaux?.MontantTTC;
+  const total=existing?record?.facture?.MontantTTC??record?.facture?.MontantFacture:record?.totaux?.MontantTTC??record?.totaux?.MontantFacture;
   return <RecordEditorFrame title={existing?"Facture · "+record.facture.CodeFacture:"Créer la facture"} subtitle={record?.bonOrigine?.CodeCmd||"Facturation du bon de sortie"} icon="document" defaultWidth={980} storageKey="sauverndeko.invoice-editor.width" className="invoice-editor-dialog" onClose={requestClose} onSubmit={submit} loading={loading} busy={busy} dirty={!uncertain&&dirty} canSubmit={editable&&(!existing||dirty||uncertain)} submitLabel={uncertain?"Réessayer":existing?"Enregistrer les modifications":"Créer la facture"} error={error} onReload={!loading&&!uncertain&&(!record||Boolean(error))?reload:null}>
     {closeWarning?<div className="record-editor-error" role="alert"><span>La facture a peut-être été enregistrée. Réessayez pour vérifier avant de fermer.</span><div className="invoice-inline-actions"><ActionButton disabled={!editable||busy} onClick={submit}>Réessayer</ActionButton><ActionButton onClick={onClose}>Fermer la fenêtre</ActionButton></div></div>:null}
     {reloadWarning?<div className="record-editor-error" role="alert"><span>Recharger la facture et abandonner la saisie ?</span><div className="invoice-inline-actions"><ActionButton onClick={()=>setReloadWarning(false)}>Continuer</ActionButton><ActionButton icon="refresh" onClick={()=>setRevision(value=>value+1)}>Recharger</ActionButton></div></div>:null}
@@ -88,7 +91,8 @@ export default function InvoiceEditor({commandeId,onClose,onSaved}) {
         {selector("ID_ConditionPaiementFk","Condition de paiement *",refs.conditionsPaiement)}
         {dateField("DateEcheancePaiement","Échéance de paiement *",{readOnly:automatic!==null,hint:automatic!==null?"Calculée selon le délai de la condition de paiement.":"Renseignez l’échéance convenue."})}
       </div></section>
-      <section className="record-editor-section"><h3><AppIcon name="box"/>Articles facturés</h3><p className="record-editor-note">Quantités restantes après les restitutions enregistrées avant l’émission.</p><div className="erp-results" data-density="compact"><SimpleTable rows={record.lignes||[]} columns={columns} defaultPinnedColumns={[]} showControls={false} toolbar={<></>} emptyMessage="Aucun article à facturer."/></div></section>
+      <InvoiceTaxSummary record={existing?record.facture:record.totaux} currency={code}/>
+      <section className="record-editor-section"><h3><AppIcon name="box"/>Articles facturés</h3><p className="record-editor-note">Quantités restantes après les restitutions enregistrées avant l’émission. Les prix unitaires sont hors taxes.</p><div className="erp-results" data-density="compact"><SimpleTable rows={record.lignes||[]} columns={columns} defaultPinnedColumns={[]} showControls={false} toolbar={<></>} emptyMessage="Aucun article à facturer."/></div></section>
       {existing?<BusinessDocuments kind="facture" objectId={commandeId} types={["facture"]}/>:null}
       {record.retoursApresEmission?.required?<section className="record-editor-section invoice-credit-note"><h3><AppIcon name="alert"/>Avoir à établir</h3><p>Des articles ont été restitués après l’émission. La facture reste inchangée.</p>{record.retoursApresEmission.MontantAvoir!=null?<strong>{formatCurrency(record.retoursApresEmission.MontantAvoir,record.retoursApresEmission.DeviseCode)}</strong>:null}</section>:null}
     </div>:null}

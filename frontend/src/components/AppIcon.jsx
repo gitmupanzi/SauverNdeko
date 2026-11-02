@@ -1,5 +1,6 @@
 import "./AppIcon.css";
 const paths = {
+  book:"M12 5C8 2 4 3 2 4v16c3-2 7-2 10 0 3-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15M5 8h3m-3 4h3m8-4h3m-3 4h3",
   building:"M4 21V3h12v18M16 9h4v12M2 21h20M8 7h4M8 11h4M8 15h4M8 21v-3h4v3",
   mail:"M3 5h18v14H3V5Zm0 0 9 8 9-8",
   lock:"M6 10V7a6 6 0 0 1 12 0v3M4 10h16v11H4V10Zm8 4v3",
@@ -55,7 +56,7 @@ const paths = {
   logout:"M9 4H4v16h5m5-12 4 4-4 4m-7-4h14",
   print:"M6 8V3h12v5M6 17H3V9h18v8h-3M6 14h12v7H6v-7Zm12-3h.01"
 };
-const aliases={ 'bi-search':'search','bi-arrow-counterclockwise':'reset','bi-arrow-clockwise':'refresh','bi-arrow-repeat':'refresh','bi-box':'box','bi-box-seam':'box','bi-receipt':'receipt','bi-list-ul':'list','bi-list-check':'list','bi-arrow-left-right':'movements','bi-wallet2':'wallet','bi-speedometer2':'dashboard','bi-grid':'apps','bi-grid-3x3-gap':'apps','bi-layout-sidebar':'sidebar','bi-layout-sidebar-inset':'sidebar','bi-file-earmark':'document','bi-file-earmark-text':'document','bi-hourglass-split':'clock','bi-box-arrow-in-down':'stock-in','bi-box-arrow-up':'stock-out','bi-cash-stack':'cash','bi-check2-circle':'check-circle','bi-exclamation-triangle':'alert','bi-exclamation-circle':'alert','bi-calendar-event':'calendar','bi-calendar-x':'calendar-x','bi-bell':'bell','bi-tag':'tag','bi-bar-chart':'chart','bi-percent':'percent' };
+const aliases={ 'bi-book':'book', 'bi-search':'search','bi-arrow-counterclockwise':'reset','bi-arrow-clockwise':'refresh','bi-arrow-repeat':'refresh','bi-box':'box','bi-box-seam':'box','bi-receipt':'receipt','bi-list-ul':'list','bi-list-check':'list','bi-arrow-left-right':'movements','bi-wallet2':'wallet','bi-speedometer2':'dashboard','bi-grid':'apps','bi-grid-3x3-gap':'apps','bi-layout-sidebar':'sidebar','bi-layout-sidebar-inset':'sidebar','bi-file-earmark':'document','bi-file-earmark-text':'document','bi-hourglass-split':'clock','bi-box-arrow-in-down':'stock-in','bi-box-arrow-up':'stock-out','bi-cash-stack':'cash','bi-check2-circle':'check-circle','bi-exclamation-triangle':'alert','bi-exclamation-circle':'alert','bi-calendar-event':'calendar','bi-calendar-x':'calendar-x','bi-bell':'bell','bi-tag':'tag','bi-bar-chart':'chart','bi-percent':'percent' };
 export default function AppIcon({name,size=16,className=""}) {
   const key=aliases[name] || name;
   if(!paths[key]) return null;

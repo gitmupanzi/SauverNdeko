@@ -11,9 +11,17 @@ export const LEGAL_ID_LABELS=["RCCM","ID national","N° d’impôt"];
 export const ENTITY_LOGO_TYPES=new Set(["image/png","image/jpeg","image/webp"]);
 export const ENTITY_LOGO_MAX=2*1024*1024;
 const string=value=>value==null?"":String(value);
+export function entityTaxRate(value){
+  const rate=string(value).trim().replace(",",".");
+  if(!/^\d{1,3}(?:\.\d{1,4})?$/.test(rate))return null;
+  const [whole,fraction=""]=rate.split("."),units=BigInt(whole)*10000n+BigInt(fraction.padEnd(4,"0"));
+  if(units>1000000n)return null;
+  return String(BigInt(whole))+(fraction?"."+fraction:"");
+}
 export function entityProfileValues(record=null){
   return {...Object.fromEntries(ENTITY_PROFILE_FIELDS.map(({name})=>[name,string(record?.[name])])),
     MentionDocumentaireEntite:string(record?.MentionDocumentaireEntite),
+    TauxTVAEntite:string(record?.TauxTVAEntite??"0"),
     Localisations:(record?.Localisations||[]).map(entityLocationValues),
     IdentifiantsLegauxEntite:(record?.IdentifiantsLegauxEntite||[]).map(row=>({libelle:string(row.libelle),valeur:string(row.valeur)})),
     AfficherEnteteDocument:record?.AfficherEnteteDocument??true,AfficherPiedDocument:record?.AfficherPiedDocument??true,
@@ -30,6 +38,7 @@ export function entityProfileErrors(values,motif,{manageStructure=false}={}){
   if(values.EmailEntite&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.EmailEntite.trim()))errors.EmailEntite="Renseignez une adresse e-mail valide.";
   if(values.SiteWebEntite?.trim()){try{const url=new URL(values.SiteWebEntite.trim());if(!["http:","https:"].includes(url.protocol)||!url.hostname||url.username||url.password)throw new Error();}catch{errors.SiteWebEntite="Utilisez une adresse http:// ou https:// sans identifiants.";}}
   if(Array.from(string(values.MentionDocumentaireEntite)).length>1000)errors.MentionDocumentaireEntite="Limitez la mention à 1000 caractères.";
+  if(entityTaxRate(values.TauxTVAEntite)==null)errors.TauxTVAEntite="Renseignez un taux de 0 à 100 %, avec quatre décimales maximum.";
   const rows=values.IdentifiantsLegauxEntite,seen=new Set();
   if(!Array.isArray(rows)||rows.length>10)errors.IdentifiantsLegauxEntite="Ajoutez au maximum dix identifiants.";
   else for(const row of rows){const label=string(row.libelle).trim(),value=string(row.valeur).trim(),key=label.toLocaleLowerCase("fr");if(!label||!value||Array.from(label).length>60||Array.from(value).length>180){errors.IdentifiantsLegauxEntite="Renseignez chaque libellé (60 caractères maximum) et sa référence (180 maximum).";break;}if(seen.has(key)){errors.IdentifiantsLegauxEntite="Chaque libellé d’identifiant doit être unique.";break;}seen.add(key);}
@@ -46,6 +55,7 @@ export function entityProfilePayload(values,{record=null,motif,requestId,logo={f
     MentionDocumentaireEntite:string(values.MentionDocumentaireEntite).trim()||null,
     IdentifiantsLegauxEntite:values.IdentifiantsLegauxEntite.map(row=>({libelle:row.libelle.trim(),valeur:row.valeur.trim()})),
     AfficherEnteteDocument:values.AfficherEnteteDocument,AfficherPiedDocument:values.AfficherPiedDocument,
+    ...(!record||Object.hasOwn(record,"TauxTVAEntite")?{TauxTVAEntite:entityTaxRate(values.TauxTVAEntite)}:{}),
     ...(manageLocations?{Localisations:entityLocationPayload(values.Localisations||[])}:{}),
     logoAction:logo.file?"replace":logo.remove?"remove":"keep",motif:motif.trim(),requestId};
   if(record){payload.IdEntite=record.IdEntite;payload._version=record._version;}

@@ -5,6 +5,8 @@ description: Faire évoluer les interfaces React de SauverNdeko vers des parcour
 
 # Frontend SauverNdeko
 
+Le module Guide utilisateur réutilise la navigation, les thèmes et le contexte d’entreprise communs. Ses parcours et exemples proviennent de l’API autorisée, sans manuel complet embarqué côté navigateur. Une recherche ne porte que sur les articles autorisés. Lors d’un changement d’entreprise ou de droits, retirer immédiatement l’ancien contenu et ignorer les réponses périmées. Utiliser des URL stables par module/article et des liens vers les écrans existants ; ne pas inventer de bouton métier ou de démonstration qui écrit des données.
+
 Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention.
 
 ## Références
@@ -134,6 +136,10 @@ Les anciennes références [frontend-architecture.md](references/frontend-archit
 Réutiliser BusinessDocuments pour PDF et justificatifs privés ; conserver les états de chargement, reprise du téléchargement échoué et protection des réponses obsolètes après changement d’entreprise. Utiliser le formulaire CreditNotes partagé pour émission, imputation et remboursement ; la consultation reste en lecture avec un bouton Fermer. Une réponse incertaine conserve le même identifiant et le même contenu pour vérification. Afficher les montants exacts fournis par le serveur et distinguer encaissements, avoirs imputés, remboursements et solde disponible. Aucun transfert bancaire n’est exécuté par l’enregistrement d’un remboursement.
 
 ## Paramétrage documentaire et livraison
+
+Le module socle `/parametres` présente les paramètres de l’entreprise autorisée, indépendamment de la licence Logistique. Réutiliser le profil et `EntityProfileEditor` communs, avec la rubrique Fiscalité. Le champ `TauxTVAEntite` reste une chaîne décimale exacte de 0 à 100, avec quatre décimales au maximum et une virgule de saisie acceptée. Son défaut 0 vient du serveur. Les droits et l’entreprise proviennent de l’API ; Toutes les entreprises demande une sélection avant modification. La création, le type et l’état d’entreprise restent dans Administration.
+
+Les factures présentent les prix HT et les composantes HT, TVA et TTC reçues de PostgreSQL. `InvoiceTaxSummary` partage cette présentation entre préparation, consultation et avoir. Une facture émise utilise son instantané et sa devise ; ne pas lui appliquer le taux courant, même si le contexte de préparation contient d’autres valeurs. Le changement du taux pendant une préparation exige un rechargement, avec saisie conservée. Lire [le guide Paramètres](../../../docs/parametres-entreprise-tva.md).
 
 Administration → Entreprises et EntityDocumentIdentity réutilisent EntityProfileEditor : mêmes rubriques Coordonnées, Identifiants légaux et Documents, mêmes validations et protection des modifications non enregistrées. Les types d’entreprise viennent des références de l’API, sans catégorie numérique figée. Seule l’administration de plateforme peut créer une entreprise ou modifier son type et son état ; l’identité documentaire respecte les droits de l’entreprise choisie. Réutiliser la révision figée et le même UUID/contenu lors d’une réponse incertaine ; rafraîchir le sélecteur d’entreprise après sauvegarde, sans recharger la page.
 
