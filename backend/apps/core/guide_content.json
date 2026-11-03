@@ -112,7 +112,7 @@
       "label": "Produits",
       "path": "/produits",
       "icon": "bi-capsule",
-      "description": "Consulter les produits, leurs références et leur disponibilité affichée.",
+      "description": "Rechercher les offres publiées et contacter les entreprises concernées.",
       "articles": [
         {
           "id": "lire-fiche-produit",
@@ -121,15 +121,15 @@
           "steps": [
             {
               "title": "Ouvrir Produits",
-              "text": "Depuis Vos applications, ouvrez Produits pour afficher les cartes et la vue tabulaire."
+            "text": "Depuis Vos applications, ouvrez Produits. Choisissez les cartes ou le tableau : les deux affichages présentent les mêmes offres et les mêmes critères."
             },
             {
               "title": "Identifier le produit",
-              "text": "Comparez le nom, la photo lorsqu’elle existe et la référence."
+            "text": "Comparez le nom, la photo lorsqu’elle existe, la référence et l’entreprise. Cliquez sur le nom ou sur Consulter pour ouvrir la fiche de l’offre."
             },
             {
-              "title": "Lire le prix et l’observation",
-              "text": "Consultez le prix de vente affiché, la disponibilité et l’observation courte."
+            "title": "Vérifier le prix et son unité",
+            "text": "Lisez le prix de vente avec sa devise et son unité, la catégorie et le type renseignés. Une valeur absente reste indiquée comme telle."
             }
           ],
           "example": {
@@ -137,7 +137,8 @@
             "text": "Deux articles portent le nom fictif « Lampe ». Les références « LAMPE-A » et « LAMPE-B » permettent de les distinguer."
           },
           "notes": [
-            "Le prix d’achat et le stock exact ne sont pas exposés dans cette vue."
+          "Le prix d’achat, les notes de gestion et le stock exact ne sont pas exposés dans cet annuaire.",
+          "Un même nom dans deux entreprises ne garantit pas un produit équivalent. Comparez les références, unités et devises."
           ],
           "links": [
             {
@@ -149,19 +150,19 @@
         {
           "id": "retrouver-reference-produit",
           "title": "Retrouver une référence produit",
-          "summary": "Rejoignez le bon produit depuis la recherche commune.",
+        "summary": "Recherchez dans toutes les offres publiées et affinez la liste.",
           "steps": [
             {
               "title": "Lancer une recherche",
-              "text": "Utilisez la recherche de l’en-tête et saisissez une partie du nom ou de la référence."
+            "text": "Dans Produits, saisissez une partie du nom, de la référence ou de l’entreprise, puis cliquez sur Rechercher. La recherche porte sur toutes les offres autorisées, y compris au-delà de la page affichée."
             },
             {
-              "title": "Choisir un résultat Produit",
-              "text": "Ouvrez le résultat correspondant. Le produit concerné est repris dans la zone de présentation."
+            "title": "Affiner les résultats",
+            "text": "Ouvrez Filtrer pour choisir une catégorie, un type, une entreprise, une devise ou une disponibilité déclarée. Appliquez les critères, puis utilisez la pagination ou changez le nombre de lignes."
             },
             {
               "title": "Comparer les informations",
-              "text": "Vérifiez la référence et l’observation au lieu de vous fier uniquement à l’image."
+            "text": "Ouvrez la fiche de l’offre recherchée. En la fermant, retrouvez vos critères et votre page. Réinitialiser retire les critères appliqués."
             }
           ],
           "example": {
@@ -189,11 +190,11 @@
             },
             {
               "title": "Lire la disponibilité",
-              "text": "Consultez l’indication fournie dans la carte ou le tableau."
+            "text": "Stock déclaré indique qu’une quantité positive est enregistrée ; Stock nul déclaré indique qu’aucune quantité positive n’est enregistrée. Ces informations ne constituent ni une réservation ni une garantie de disponibilité."
             },
             {
               "title": "Confirmer auprès de la structure",
-              "text": "Si votre compte dispose de Structures et Discussions, contactez la structure concernée depuis sa carte."
+            "text": "Dans la fiche, consultez les coordonnées et les adresses déclarées de l’entreprise. Si Discussions est autorisé pour votre compte, Contacter l’entreprise ouvre cette messagerie. Saisissez et envoyez ensuite votre demande."
             }
           ],
           "example": {
@@ -201,7 +202,8 @@
             "text": "Le demandeur relève « LAMPE-B » et demande si deux unités sont disponibles avant de convenir d’un retrait."
           },
           "notes": [
-            "Aucune réservation ni commande de vente n’est créée depuis la carte produit."
+          "Aucune réservation, commande de vente ou message n’est créé par la simple consultation de l’offre.",
+          "Les coordonnées et lieux affichés sont ceux déclarés par l’entreprise ; ils ne prouvent ni sa proximité ni une qualification pharmaceutique."
           ],
           "links": [
             {

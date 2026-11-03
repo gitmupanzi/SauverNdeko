@@ -7,9 +7,9 @@ import { loginPathFor } from "../services/authNavigation";
 import "./PublicCatalogue.css";
 
 const SERVICES = [
-  { key: "produits", path: "/produits", icon: "box", image: "/illustration-produits.svg", imageWidth: 1074, imageHeight: 739, label: "Produits", title: "Consulter les produits référencés", text: "Parcourez le catalogue et consultez les informations des fiches disponibles.", action: "Consulter les produits", evolving: true },
+  { key: "produits", path: "/produits", icon: "box", image: "/illustration-produits.svg", imageWidth: 1074, imageHeight: 739, label: "Produits", title: "Consulter les produits référencés", text: "Parcourez le catalogue et consultez les informations des fiches disponibles.", action: "Consulter les produits" },
   { key: "professionnels", path: "/experts", icon: "user", image: "/illustration-experts.svg", imageWidth: 1086.13, imageHeight: 782.67, label: "Professionnels", title: "Trouver des compétences", text: "Recherchez par domaine ou besoin, consultez un profil publié et prenez contact par messagerie.", action: "Trouver un professionnel" },
-  { key: "structures", path: "/pharmacies", icon: "building", image: "/illustration-pharmacies.svg", imageWidth: 1046, imageHeight: 729.87, label: "Structures", title: "Repérer une structure", text: "Consultez les établissements référencés et les coordonnées qu’ils ont renseignées.", action: "Consulter les structures", evolving: true },
+  { key: "structures", path: "/pharmacies", icon: "building", image: "/illustration-pharmacies.svg", imageWidth: 1046, imageHeight: 729.87, label: "Structures", title: "Repérer une structure", text: "Consultez les établissements référencés et les coordonnées qu’ils ont renseignées.", action: "Consulter les structures" },
 ];
 
 export function catalogueDestination(path, authenticated) {
@@ -73,11 +73,11 @@ export default function PublicCatalogue() {
       <section className="catalogue-services catalogue-container" id="services" aria-labelledby="catalogue-services-title">
         <div className="catalogue-section-heading"><div><span className="catalogue-overline">La plateforme</span><h2 id="catalogue-services-title">L’information utile, au même endroit.</h2></div><p>Choisissez votre point de départ.</p></div>
         <div className="catalogue-service-grid">{SERVICES.map(service => <article className="catalogue-service-card" key={service.key}>
-          <div className="catalogue-service-top"><span className="catalogue-service-icon"><AppIcon name={service.icon} size={25} /></span><span className="catalogue-service-label">{service.label}</span>{service.evolving ? <span className="catalogue-status">En amélioration</span> : null}</div>
+          <div className="catalogue-service-top"><span className="catalogue-service-icon"><AppIcon name={service.icon} size={25} /></span><span className="catalogue-service-label">{service.label}</span></div>
           <div className="catalogue-service-media" aria-hidden="true"><img src={service.image} alt="" width={service.imageWidth} height={service.imageHeight} loading="lazy" decoding="async" /></div>
           <h3>{service.title}</h3><p>{service.text}</p><Link className="catalogue-text-link" to={destination(service.path)}>{service.action}<AppIcon name="chevron-right" /></Link>
         </article>)}</div>
-        <p className="catalogue-section-note">Les annuaires Produits et Structures sont en cours d’amélioration. Les informations disponibles dépendent des organisations participantes.</p>
+        <p className="catalogue-section-note">Les informations publiées dépendent des organisations participantes.</p>
       </section>
 
       <section className="catalogue-container" id="entreprises" aria-labelledby="catalogue-business-title">

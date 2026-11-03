@@ -71,6 +71,7 @@ from apps.core.ui_settings import UISettingsView
 from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.catalogue.views import PublicView
+from apps.catalogue.products import ProductReferencesView, ProductOffersView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
 from apps.communication.notifications import NotificationsView, NotificationReadView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
@@ -80,6 +81,8 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/produits/references/?$", ProductReferencesView.as_view()),
+    re_path(r"^api/produits/offres(?:/(?P<pk>[0-9]+))?/?$", ProductOffersView.as_view()),
     re_path(r"^api/professionnels/contexte/?$", ProfessionalContextView.as_view()),
     re_path(r"^api/professionnels/entreprises/?$", ProfessionalEntitiesView.as_view()),
     re_path(r"^api/professionnels/references/?$", ProfessionalReferencesView.as_view()),

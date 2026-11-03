@@ -87,7 +87,7 @@ function buildLocationRecipient(type, id, state) {
       type: "structure",
       id,
       name: state.targetName,
-      structureType: "Structure de sante",
+      structureType: "Entreprise",
       publicAddress: null,
       publicPhone: null,
     };

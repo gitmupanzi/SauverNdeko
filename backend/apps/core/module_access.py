@@ -109,6 +109,8 @@ def enforce_request(actor,request,view):
             if target:require_module(actor,target)
             return
         key={'stats':'catalogue','articles':'produits','pharmacies':'structures','experts':'professionnels','maladies':'sante'}.get(kind)
+    elif path.startswith('/api/produits/'):
+        key='produits'
     elif path.startswith('/api/discussions'):
         key='discussions'
         if path.rstrip('/').endswith('/start'):

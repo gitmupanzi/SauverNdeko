@@ -67,6 +67,16 @@ La première page `/catalogue` est une **vitrine sans lecture de données métie
 
 La racine `/` conserve l’entrée ERP par connexion. Les recherches métier, profils, discussions et API historiques `/api/public/*` restent soumis à la session et aux licences. Le terme « public » désigne ici la projection partageable de l’annuaire ; cette évolution n’ouvre pas l’ensemble de ces API aux visiteurs anonymes. L’accès anonyme à de vraies offres nécessitera une décision et un contrat dédiés.
 
+### Annuaire Produits du 3 novembre 2026
+
+Le parcours `/produits` présente une seule population d’offres publiées, en cartes ou en tableau. La recherche serveur porte sur les désignations, références, entreprises, adresses, catégories et types ; filtres, compteur et page partagent la même population. Les catégories, types et devises sont les valeurs centrales déjà enregistrées, sans réaffectation des articles lors d’un changement de configuration. Les filtres ne proposent pas de valeurs privées sans offre publiée.
+
+La fiche Offre de produit affiche uniquement les informations partageables : photo autorisée, désignation, référence, catégorie, type, prix de vente, devise, unité, disponibilité déclarée et coordonnées professionnelles. Les lieux proviennent des localisations d’entreprise existantes, en libellés et adresses ; une absence reste explicite. Aucun GPS d’utilisateur, classement par distance ou stock sur un site particulier n’est déduit. Le Produit 360 privé de Logistique reste séparé.
+
+Le contact rejoint le parcours Discussions existant avec l’entreprise destinataire, lorsque les droits le permettent. La lecture d’une offre ne crée ni message, ni commande, ni réservation, ni événement scientifique. Un clic explicite sur Contacter ouvre la conversation ; l’envoi du texte reste une action du demandeur. Deux articles locaux de même nom ne sont pas automatiquement regroupés comme un produit commun. Les tris portent sur le nom ou l’entreprise, sans comparaison monétaire implicite entre devises ou unités.
+
+Ce parcours améliore la mise en relation prévue par la thèse. Il ne remplace pas les étapes de normalisation produit, demande structurée, qualification des établissements, collecte autorisée et évaluation prédictive ci-dessous.
+
 ## Données fiables avant prévision
 
 La série scientifique devra distinguer **recherche, demande explicite, commande, sortie, vente, retour et dispensation**. Une recherche de produit peut concerner un proche, une disponibilité ou une information : son texte ne constitue pas un diagnostic. Une discussion peut contenir des informations sensibles et ne doit pas alimenter automatiquement l’analytics.

@@ -6789,18 +6789,24 @@ CREATE VIEW logistique."V_OffreArticle" AS
     e."IdEntite",
     e."NomEntite",
     e."AdresseEntite",
-    e."PhoneEntite"
-   FROM (((logistique."T_Article" a
+    e."PhoneEntite",
+    a."ID_CategorieArticleFk",
+    COALESCE(NULLIF((c."AbrGenerique")::text, ''::text), (c."NomGenerique")::text) AS "CategorieArticle",
+    a."ID_TypeArticleFk",
+    COALESCE(NULLIF((t."AbrGenerique")::text, ''::text), (t."NomGenerique")::text) AS "TypeArticle"
+   FROM (((((logistique."T_Article" a
      JOIN systeme."T_Entite" e ON ((e."IdEntite" = a."IdEntiteFk")))
      LEFT JOIN referentiel."T_Generique" d ON ((d."ID_Generique" = a."ID_DeviseFk")))
      LEFT JOIN referentiel."T_Generique" u ON ((u."ID_Generique" = a."ID_UniteFk")))
+     LEFT JOIN referentiel."T_Generique" c ON ((c."ID_Generique" = a."ID_CategorieArticleFk")))
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = a."ID_TypeArticleFk")))
   WHERE ((a."VisibleCatalogue" IS TRUE) AND (a."ValideArticle" IS TRUE) AND (e."ValideEntite" IS TRUE));
 
 --
 -- Name: VIEW "V_OffreArticle"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON VIEW logistique."V_OffreArticle" IS 'Projection minimale des seuls articles publiés et actifs de propriétaires actifs, au grain article local. Le choix par défaut du propriétaire ne filtre jamais les décisions individuelles existantes. Exclut coût d’achat, quantités exactes, notes, informations internes et compte auteur. Stock déclaré n’atteste ni disponibilité vendable, péremption vérifiée ni heure de confirmation. Les API conservent authentification, permissions et licences ; aucune collecte de recherche n’est activée.';
+COMMENT ON VIEW logistique."V_OffreArticle" IS 'Offres locales volontairement publiées d’articles actifs et d’entreprises actives. Grain article local ; catégories et types proviennent des valeurs centrales déjà enregistrées, sans réécriture des anciennes FK. Exclut coût d’achat, quantités exactes, notes et auteur. Stock déclaré ne garantit ni disponibilité vendable ni fraîcheur. Les API conservent authentification, licences et permissions ; aucun classement implicite entre devises ou unités ni collecte de recherche.';
 
 --
 -- Name: COLUMN "V_OffreArticle"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
@@ -8568,3 +8574,83 @@ COMMENT ON COLUMN logistique."V_ValorisationStock"."ID_MvtArrete" IS 'ID_MvtArre
 --
 
 COMMENT ON COLUMN logistique."V_ValorisationStock"."Version" IS 'Version : valeur exacte issue du calcul CUMP, avec contexte entreprise et devise ; NULL = coût non prouvé.';
+--
+-- Name: COLUMN "V_OffreArticle"."ID_CategorieArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."ID_CategorieArticleFk" IS 'Valeur centrale de catégorie déjà enregistrée sur l’article, destinée au filtre exact de l’annuaire ; aucune famille codée en dur.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."CategorieArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."CategorieArticle" IS 'Abréviation courante de la catégorie centrale enregistrée, ou son nom si l’abréviation est absente. Ne normalise pas les produits entre entreprises.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."ID_TypeArticleFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."ID_TypeArticleFk" IS 'Valeur centrale de type déjà enregistrée sur l’article, destinée au filtre exact de l’annuaire ; aucune famille codée en dur.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."TypeArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."TypeArticle" IS 'Abréviation courante du type central enregistré, ou son nom si l’abréviation est absente. Ne constitue pas une qualification thérapeutique vérifiée.';
+
+--
+-- Name: V_OffreArticleLocalisation; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_OffreArticleLocalisation" AS
+ SELECT o."ID_Article",
+    COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) AS label,
+    NULLIF(l."AdresseDetaillee", ''::text) AS address,
+    NULLIF((l."NomNiveau_3")::text, ''::text) AS zone,
+    NULLIF((l."NomNiveau_4")::text, ''::text) AS area,
+    NULLIF((l."NomNiveau_5")::text, ''::text) AS site
+   FROM (logistique."V_OffreArticle" o
+     JOIN systeme."V_Entite_Localisation_Detail" l ON ((l."IdEntite" = o."IdEntite")))
+  WHERE ((l."IdEntiteLocalisation" IS NOT NULL) AND (COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) IS NOT NULL));
+
+--
+-- Name: VIEW "V_OffreArticleLocalisation"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_OffreArticleLocalisation" IS 'Localisations professionnelles déclarées de l’entreprise d’une offre actuellement publiée. Grain article/localisation existante ; une offre sans localisation ne produit aucune ligne. Liste fermée de libellés et adresse, sans latitude, longitude, identifiant de point, auteur ou historique. Aucune distance, présence physique du stock sur ce site ou correspondance territoriale internationale n’est déduite.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation"."ID_Article" IS 'Offre publiée dont l’entreprise porte la localisation. Le retrait de publication retire immédiatement cette projection.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation".label; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".label IS 'Libellé déclaré le plus précis : niveau 5, sinon 4, sinon 3, sinon adresse détaillée. Aucune localisation automatique.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation".address; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".address IS 'Adresse détaillée volontairement enregistrée sur ce point professionnel, sans coordonnée personnelle de l’auteur.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation".zone; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".zone IS 'Nom du niveau 3 explicitement rattaché au point ; aucune parenté non renseignée n’est inventée.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation".area; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".area IS 'Nom du niveau 4 explicitement rattaché au point ; aucune parenté non renseignée n’est inventée.';
+
+--
+-- Name: COLUMN "V_OffreArticleLocalisation".site; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".site IS 'Nom du niveau 5 explicitement rattaché au point, sans garantie de disponibilité de l’article sur ce site.';

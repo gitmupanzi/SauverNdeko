@@ -24,7 +24,7 @@ Le catalogue contient **65 tutoriels dans 13 guides** :
 | Guide | Tutoriels | Principaux sujets |
 |---|---:|---|
 | Catalogue | 3 | Orientation, recherche, disponibilité affichée |
-| Produits | 3 | Référence, fiche publique, disponibilité |
+| Produits | 3 | Recherche exhaustive, filtres, cartes/tableau, fiche d’offre, disponibilité déclarée et contact |
 | Structures | 3 | Coordonnées, comparaison, contact |
 | Professionnels | 3 | Profil public, spécialité, contact |
 | Informations santé | 3 | Consultation, abréviations, signalement |
@@ -38,6 +38,8 @@ Le catalogue contient **65 tutoriels dans 13 guides** :
 | Référentiels | 5 | Catégories, valeurs, portée, référencement des champs, tableaux et exports |
 
 Le catalogue public est décrit comme un outil de consultation et d’orientation. Les tutoriels n’y annoncent pas de réservation, de paiement ou de création de stock. Dans Logistique, les BE/BS constatent une opération physique ; les CMD ne réservent ni ne modifient le stock. Les factures et avoirs conservent leurs montants et taux historiques.
+
+Dans **Produits**, la recherche et les filtres s’appliquent à toutes les offres publiées, avec pagination. Cartes et tableau proposent les mêmes résultats. Un clic ouvre la fiche de l’offre et conserve la recherche au retour. Le prix est accompagné de sa devise et de son unité ; le stock est déclaré, à confirmer auprès de l’entreprise. Le lien **Contacter l’entreprise**, lorsqu’il est autorisé, rejoint Discussions sans envoyer de message. Les notes internes, le stock exact et le prix d’achat restent dans Logistique. La consultation ne publie pas les anciens articles : leur entreprise garde le choix de visibilité.
 
 ## Maintenir les tutoriels
 

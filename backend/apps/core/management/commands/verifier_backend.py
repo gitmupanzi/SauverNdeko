@@ -72,6 +72,17 @@ class Command(BaseCommand):
                 "/api/geolocalisation/hierarchie",
             ]
             urls.append("/api/systeme/administration/synthese")
+            with connection.cursor() as products_cursor:
+                products_cursor.execute('SELECT to_regclass(%s)', ['logistique."V_OffreArticleLocalisation"'])
+                products_installed = bool(products_cursor.fetchone()[0])
+            if products_installed:
+                urls.extend(['/api/produits/references','/api/produits/offres?take=1',
+                             '/api/produits/offres?q=diagnostic&take=1'])
+                with connection.cursor() as products_cursor:
+                    products_cursor.execute('SELECT "ID_Article" FROM logistique."V_OffreArticle" ORDER BY "ID_Article" LIMIT 1')
+                    product_offer = products_cursor.fetchone()
+                if product_offer:
+                    urls.append('/api/produits/offres/'+str(product_offer[0]))
             urls.append("/api/systeme/administration/entreprises")
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))
