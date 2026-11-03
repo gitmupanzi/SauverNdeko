@@ -21,7 +21,7 @@ const ApplicationLicences=lazyView(()=>import("./pages/ApplicationLicences"),{la
 const Discussions=lazyView(()=>import("./pages/Discussions"),{label:"Ouverture de la page…"});
 const Diseases=lazyView(()=>import("./pages/Diseases"),{label:"Ouverture de la page…"});
 const Experts=lazyView(()=>import("./pages/Experts"),{label:"Ouverture de la page…"});
-const Home=lazyView(()=>import("./pages/Home"),{label:"Ouverture de la page…"});
+const PublicCatalogue=lazyView(()=>import("./pages/PublicCatalogue"),{label:"Ouverture de la présentation…"});
 const Pharmacies=lazyView(()=>import("./pages/Pharmacies"),{label:"Ouverture de la page…"});
 const Products=lazyView(()=>import("./pages/Products"),{label:"Ouverture de la page…"});
 const Profile=lazyView(()=>import("./pages/Profile"),{label:"Ouverture du profil…"});
@@ -330,21 +330,6 @@ function ApplicationShell() {
 
         <main className="mobile-content" ref={contentRef}>
           <Routes>
-            <Route
-              path="/catalogue"
-              element={
-                <Home
-                  health={health}
-                  stats={catalogue.stats}
-                  products={catalogue.articles}
-                  pharmacies={catalogue.pharmacies}
-                  experts={catalogue.experts}
-                  onOpenSearch={toggleSearchOverlay}
-                  onNavigate={goTo}
-                  onContact={openDiscussion}
-                />
-              }
-            />
             <Route path="/produits" element={<Products products={catalogue.articles} onNavigate={goTo} />} />
             <Route
               path="/pharmacies"
@@ -413,6 +398,7 @@ export default function App() {
   const { loading, isAuthenticated, user } = useAuth();
   const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.IdRoleFk, user?.permissions?.canAccessAdmin, accessSignature(user)].join(":");
 
+  if (location.pathname === "/catalogue") return <PublicCatalogue />;
   if (isPasswordResetRoute) return <PasswordReset />;
   if (isLoginRoute) return <Login />;
   if (isRegisterRoute) return <Navigate to="/login" replace />;

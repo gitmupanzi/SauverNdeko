@@ -6,16 +6,16 @@ export default function StatsCards({ stats, health }) {
         <span>Produits visibles</span>
       </article>
       <article>
-        <strong>{stats.pharmaciesCount}</strong>
-        <span>Pharmacies et dépôts</span>
+        <strong>{stats.structuresCount ?? "—"}</strong>
+        <span>Structures répertoriées</span>
       </article>
       <article>
         <strong>{stats.expertsCount}</strong>
-        <span>Experts disponibles</span>
+        <span>Profils publiés</span>
       </article>
       <article>
-        <strong>{health.loading ? "Chargement…" : health.ok ? "À jour" : "Indisponible"}</strong>
-        <span>{health.ok ? "Catalogue actualisé" : "Réessayez dans un instant"}</span>
+        <strong>{health.loading ? "Chargement…" : health.ok ? "Accessible" : "Indisponible"}</strong>
+        <span>{health.ok ? "Service de consultation" : "Réessayez dans un instant"}</span>
       </article>
     </div>
   );

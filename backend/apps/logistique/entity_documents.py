@@ -26,8 +26,8 @@ from apps.core.repository import audit, clean, positive
 from apps.core.responses import APIError, ExactEncoder, ok
 from apps.core.tenancy import read_entity, require_entity
 
-FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument', 'TauxTVAEntite'}
-OPTIONAL_FIELDS = {'PhoneSecondaireEntite', 'TauxTVAEntite'}
+FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut'}
+OPTIONAL_FIELDS = {'PhoneSecondaireEntite', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut'}
 ADMIN_FIELDS = {'IdTypeEntiteFk', 'ValideEntite'}
 LOGO_FIELDS = {'LogoEntite', 'LogoMimeEntite', 'LogoSha256Entite', 'LogoModifieLe'}
 OPERATION = 'ENTITY_DOCUMENT_PROFILE'
@@ -47,7 +47,7 @@ def current_identity(entity_id, include_logo=False, *, include_locations=False):
         from apps.core.entity_locations import snapshot_projection
         projection+=',points."CollectionRevision",points."Localisations"'
         locations_join=' LEFT JOIN LATERAL (SELECT '+snapshot_projection()+' FROM systeme."T_Entite_Localisation" l WHERE l."IdEntiteFk"=e."IdEntite") points ON TRUE '
-    row = db.one('SELECT v.*,e."IdTypeEntiteFk",e."ValideEntite"' + projection + '''
+    row = db.one('SELECT v.*,e."IdTypeEntiteFk",e."ValideEntite",e."PartageArticlesPublicParDefaut"' + projection + '''
         FROM systeme."V_IdentiteDocumentaire" v JOIN systeme."T_Entite" e ON e."IdEntite"=v."IdEntite"
         '''+locations_join+''' WHERE v."IdEntite"=%s''', [entity_id])
     if not row:
@@ -182,6 +182,11 @@ def values(body):
             errors[key] = 'Choisissez une option activée ou désactivée.'
         else:
             result[key] = body[key]
+    if 'PartageArticlesPublicParDefaut' in body:
+        if type(body['PartageArticlesPublicParDefaut']) is not bool:
+            errors['PartageArticlesPublicParDefaut'] = 'Choisissez une option activée ou désactivée.'
+        else:
+            result['PartageArticlesPublicParDefaut'] = body['PartageArticlesPublicParDefaut']
     if 'TauxTVAEntite' in body:
         raw = body['TauxTVAEntite']
         try:
@@ -416,7 +421,7 @@ class EntityIdentityDefaultsView(APIView):
             raise APIError('Aucun critère attendu pour les valeurs initiales.')
         data = {key: None for key in FIELDS | ADMIN_FIELDS}
         data.update(IdentifiantsLegauxEntite=[], AfficherEnteteDocument=True,
-            AfficherPiedDocument=True, TauxTVAEntite='0', ValideEntite=True, HasLogo=False,
+            AfficherPiedDocument=True, TauxTVAEntite='0', PartageArticlesPublicParDefaut=True, ValideEntite=True, HasLogo=False,
             canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
             canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
         from apps.core.entity_locations import geographical_references

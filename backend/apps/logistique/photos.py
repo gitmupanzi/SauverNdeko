@@ -14,11 +14,12 @@ from django.conf import settings
 from django.http import FileResponse
 from django.db import transaction
 from rest_framework.views import APIView
+from rest_framework.renderers import BaseRenderer
 from apps.core import db
 from apps.core.permissions import IsERPAdmin, HasModuleAccess
 from apps.core.registry import model
 from apps.core.repository import get_record, mutate, positive, check_global_write, clean
-from apps.core.responses import APIError, ExactEncoder
+from apps.core.responses import APIError, ExactEncoder, ExactJSONRenderer
 from .article_rules import check_revision
 
 MAX_BYTES=8*1024*1024
@@ -120,17 +121,28 @@ def save_article(actor,body,upload=None,pk=None,*,_created_paths=None):
         if new_path is not None:new_path.unlink(missing_ok=True)
         raise
 
+class ArticlePhotoRenderer(BaseRenderer):
+    media_type = 'image/jpeg'
+    format = 'jpg'
+    charset = None
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return ExactJSONRenderer().render(data, renderer_context=renderer_context)
+
+
 class ArticlePhotoView(APIView):
+    renderer_classes = [ExactJSONRenderer, ArticlePhotoRenderer]
     permission_classes=[IsERPAdmin]
     def get(self,request,pk):
         record=get_record(model("T_Article"),request.user,{"ID_Article":positive(pk)})
         return image_response(record.get("PhotoArticle"))
 
 class PublicArticlePhotoView(APIView):
+    renderer_classes = [ExactJSONRenderer, ArticlePhotoRenderer]
     permission_classes=[HasModuleAccess]
     def get(self,request,pk,kind=None):
-        # Même projection active que le catalogue authentifié ; aucun accès aux fichiers arbitraires.
-        record=db.one('SELECT "PhotoArticle" FROM logistique."V_Article" WHERE "ID_Article"=%s AND "ValideArticle" IS TRUE',[positive(pk)])
+        # Même projection volontairement publiée que l’annuaire authentifié, y compris après retrait.
+        record=db.one('SELECT "PhotoArticle" FROM logistique."V_OffreArticle" WHERE "ID_Article"=%s',[positive(pk)])
         if not record:raise APIError("Photo indisponible.","NOT_FOUND",404)
         return image_response(record["PhotoArticle"])
 

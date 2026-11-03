@@ -444,6 +444,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
     if obj['schema'] == 'professionnel':
         raise APIError('Utilisez le module Professionnels pour préserver les références, les affiliations et la publication des profils.', 'DEDICATED_PROFESSIONAL_REQUIRED', 405)
     check_global_write(obj, actor)
+    if name == 'T_Entite' and isinstance(body, dict) and 'PartageArticlesPublicParDefaut' in body:
+        raise APIError('Ce réglage utilise la fiche Entreprise et sa révision.', 'DEDICATED_ENTITY_PROFILE_REQUIRED', 405)
     if name == 'T_Immobilisation':
         raise APIError('Utilisez le formulaire des immobilisations avec sa révision et son motif.', 'DEDICATED_IMMOBILISATION_REQUIRED', 405)
     if name in READONLY:
@@ -589,6 +591,8 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
                 and col["is_identity"] != "YES"
                 and key not in data
                 and key not in obj["primaryKey"]
+                # La valeur est héritée du propriétaire par le trigger INSERT.
+                and not (name == "T_Article" and key == "VisibleCatalogue")
             ):
                 raise APIError("Champ obligatoire : " + key)
         fields = list(data)

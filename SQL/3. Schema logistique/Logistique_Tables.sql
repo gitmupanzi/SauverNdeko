@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 03/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -2593,6 +2593,31 @@ END $$;
 COMMENT ON FUNCTION logistique.tr_proteger_unite_precision_stock() IS 'Conserve la catégorie et l’identité d’une unité référencée par une politique ou un article, sans bloquer la modification de son libellé.';
 
 --
+-- Name: tr_publication_article_defaut(); Type: FUNCTION; Schema: logistique; Owner: -
+--
+
+CREATE FUNCTION logistique.tr_publication_article_defaut() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF NEW."VisibleCatalogue" IS NULL THEN
+  SELECT e."PartageArticlesPublicParDefaut" INTO NEW."VisibleCatalogue"
+  FROM systeme."T_Entite" e WHERE e."IdEntite"=NEW."IdEntiteFk";
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'Entreprise propriétaire introuvable pour le choix de publication.' USING ERRCODE='23503';
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_publication_article_defaut(); Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON FUNCTION logistique.tr_publication_article_defaut() IS 'Détermine uniquement le choix de publication omis lors d’un INSERT après la garde de propriété. Conserve tout booléen explicite, ne touche aucun stock, lot, mouvement, prix ou enregistrement existant.';
+
+--
 -- Name: tr_quantite_unite(); Type: FUNCTION; Schema: logistique; Owner: -
 --
 
@@ -3150,6 +3175,7 @@ CREATE TABLE logistique."T_Article" (
     "IdEntiteFk" integer,
     "CreationRequestId" uuid,
     "CreationPayloadHash" character varying(64),
+    "VisibleCatalogue" boolean NOT NULL,
     CONSTRAINT article_creation_demande_coherente CHECK (((("CreationRequestId" IS NULL) AND ("CreationPayloadHash" IS NULL)) OR (("CreationRequestId" IS NOT NULL) AND ("CreationPayloadHash" IS NOT NULL) AND ("ID_UserFK" IS NOT NULL) AND (("CreationPayloadHash")::text ~ '^[a-f0-9]{64}$'::text)))),
     CONSTRAINT article_poids_coherent CHECK (((("PoidsUnitaire" IS NULL) = ("ID_UnitePoidsFk" IS NULL)) AND (("PoidsUnitaire" IS NULL) OR ("PoidsUnitaire" >= (0)::numeric)))),
     CONSTRAINT chk_article_qte_non_negative CHECK ((("QteArticle" IS NULL) OR ("QteArticle" >= (0)::numeric))),
@@ -3324,6 +3350,12 @@ COMMENT ON COLUMN logistique."T_Article"."CreationRequestId" IS 'UUID de creatio
 --
 
 COMMENT ON COLUMN logistique."T_Article"."CreationPayloadHash" IS 'SHA256 du contenu de creation incluant lots et photo normalisee; permet de refuser la reutilisation du meme UUID avec un autre contenu.';
+
+--
+-- Name: COLUMN "T_Article"."VisibleCatalogue"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."T_Article"."VisibleCatalogue" IS 'Publication volontaire dans le catalogue partagé autorisé. Faux pour les articles antérieurs à 20261103_01. À la création, une valeur omise hérite du choix de l’entreprise ; un choix explicite le remplace. L’activité du propriétaire et de l’article reste obligatoire. Ce drapeau n’atteste ni disponibilité vendable ni fraîcheur du stock.';
 
 --
 -- Name: CONSTRAINT "T_Article_ID_Article_not_null" ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
@@ -3944,7 +3976,7 @@ CREATE TABLE logistique."T_CategorieDossierSuivi" (
     "Actif" boolean DEFAULT true NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_CategorieDossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
+    CONSTRAINT "T_CategorieDossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY (ARRAY[('vert'::character varying)::text, ('rouge'::character varying)::text, ('orange'::character varying)::text, ('bleu'::character varying)::text, ('violet'::character varying)::text, ('ardoise'::character varying)::text]))),
     CONSTRAINT "T_CategorieDossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text))
 );
 
@@ -4716,10 +4748,10 @@ CREATE TABLE logistique."T_DossierSuivi" (
     "Version" integer DEFAULT 1 NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_DossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
-    CONSTRAINT "T_DossierSuivi_Mode_check" CHECK ((("Mode")::text = ANY ((ARRAY['manuel'::character varying, 'automatique'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY (ARRAY[('vert'::character varying)::text, ('rouge'::character varying)::text, ('orange'::character varying)::text, ('bleu'::character varying)::text, ('violet'::character varying)::text, ('ardoise'::character varying)::text]))),
+    CONSTRAINT "T_DossierSuivi_Mode_check" CHECK ((("Mode")::text = ANY (ARRAY[('manuel'::character varying)::text, ('automatique'::character varying)::text]))),
     CONSTRAINT "T_DossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
-    CONSTRAINT "T_DossierSuivi_TypeObjet_check" CHECK ((("TypeObjet")::text = ANY ((ARRAY['article'::character varying, 'bon'::character varying, 'facture'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_TypeObjet_check" CHECK ((("TypeObjet")::text = ANY (ARRAY[('article'::character varying)::text, ('bon'::character varying)::text, ('facture'::character varying)::text]))),
     CONSTRAINT "T_DossierSuivi_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT "T_DossierSuivi_check" CHECK (((jsonb_typeof("Regles") = 'object'::text) AND (("Regles" -
 CASE "TypeObjet"
@@ -5514,16 +5546,22 @@ CREATE TABLE logistique."T_Immobilisation" (
     "ModifieLe" timestamp with time zone CONSTRAINT "T_Immobilisation_ModifieLe_not_null" NOT NULL,
     "CreeParUserFk" integer CONSTRAINT "T_Immobilisation_CreeParUserFk_not_null" NOT NULL,
     "ModifieParUserFk" integer CONSTRAINT "T_Immobilisation_ModifieParUserFk_not_null" NOT NULL,
-    CONSTRAINT ck_immobilisation_caracteristiques CHECK ((("Caracteristiques" IS NULL) OR ((char_length("Caracteristiques") <= 4000) AND (replace(replace("Caracteristiques", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_caracteristiques CHECK ((("Caracteristiques" IS NULL) OR ((char_length("Caracteristiques") <= 4000) AND (replace(replace("Caracteristiques", '
+'::text, '
+'::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_immobilisation_dates CHECK ((isfinite("DateEntree") AND (("DateAcquisition" IS NULL) OR isfinite("DateAcquisition")))),
     CONSTRAINT ck_immobilisation_individuelle CHECK ((((NOT "SuiviIndividuel") AND ("NumeroSerie" IS NULL)) OR ("Quantite" = (1)::numeric))),
-    CONSTRAINT ck_immobilisation_localisation_complement CHECK ((("LocalisationComplement" IS NULL) OR (((char_length(("LocalisationComplement")::text) >= 1) AND (char_length(("LocalisationComplement")::text) <= 255)) AND (("LocalisationComplement")::text = btrim(("LocalisationComplement")::text)) AND (("LocalisationComplement")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_immobilisation_nom CHECK ((((char_length(("NomImmobilisation")::text) >= 1) AND (char_length(("NomImmobilisation")::text) <= 200)) AND (("NomImmobilisation")::text = btrim(("NomImmobilisation")::text)) AND (("NomImmobilisation")::text !~ '[[:cntrl:]]'::text))),
-    CONSTRAINT ck_immobilisation_observations CHECK ((("Observations" IS NULL) OR ((char_length("Observations") <= 4000) AND (replace(replace("Observations", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_localisation_complement CHECK ((("LocalisationComplement" IS NULL) OR ((char_length(("LocalisationComplement")::text) >= 1) AND (char_length(("LocalisationComplement")::text) <= 255) AND (("LocalisationComplement")::text = btrim(("LocalisationComplement")::text)) AND (("LocalisationComplement")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_nom CHECK (((char_length(("NomImmobilisation")::text) >= 1) AND (char_length(("NomImmobilisation")::text) <= 200) AND (("NomImmobilisation")::text = btrim(("NomImmobilisation")::text)) AND (("NomImmobilisation")::text !~ '[[:cntrl:]]'::text))),
+    CONSTRAINT ck_immobilisation_observations CHECK ((("Observations" IS NULL) OR ((char_length("Observations") <= 4000) AND (replace(replace("Observations", '
+'::text, '
+'::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_immobilisation_prix CHECK ((("PrixUnitaire" IS NULL) OR (("PrixUnitaire" >= (0)::numeric) AND ("PrixUnitaire" <> 'NaN'::numeric) AND ("ID_DeviseFk" IS NOT NULL)))),
     CONSTRAINT ck_immobilisation_quantite CHECK ((("Quantite" > (0)::numeric) AND ("Quantite" = trunc("Quantite")) AND ("Quantite" <= ('999999999999999999'::bigint)::numeric))),
-    CONSTRAINT ck_immobilisation_reference CHECK ((("Reference" IS NULL) OR (((char_length(("Reference")::text) >= 1) AND (char_length(("Reference")::text) <= 255)) AND (("Reference")::text = btrim(("Reference")::text)) AND (("Reference")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_immobilisation_serie CHECK ((("NumeroSerie" IS NULL) OR (((char_length(("NumeroSerie")::text) >= 1) AND (char_length(("NumeroSerie")::text) <= 255)) AND (("NumeroSerie")::text = btrim(("NumeroSerie")::text)) AND (("NumeroSerie")::text !~ '[[:cntrl:]]'::text))))
+    CONSTRAINT ck_immobilisation_reference CHECK ((("Reference" IS NULL) OR ((char_length(("Reference")::text) >= 1) AND (char_length(("Reference")::text) <= 255) AND (("Reference")::text = btrim(("Reference")::text)) AND (("Reference")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_serie CHECK ((("NumeroSerie" IS NULL) OR ((char_length(("NumeroSerie")::text) >= 1) AND (char_length(("NumeroSerie")::text) <= 255) AND (("NumeroSerie")::text = btrim(("NumeroSerie")::text)) AND (("NumeroSerie")::text !~ '[[:cntrl:]]'::text))))
 );
 
 --
@@ -5764,7 +5802,10 @@ COMMENT ON CONSTRAINT "T_Immobilisation_ModifieParUserFk_not_null" ON logistique
 -- Name: CONSTRAINT ck_immobilisation_caracteristiques ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_immobilisation_caracteristiques ON logistique."T_Immobilisation" IS E'Intégrité durable du patrimoine : CHECK ("Caracteristiques" IS NULL OR char_length("Caracteristiques") <= 4000 AND replace(replace("Caracteristiques", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+COMMENT ON CONSTRAINT ck_immobilisation_caracteristiques ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("Caracteristiques" IS NULL OR char_length("Caracteristiques") <= 4000 AND replace(replace("Caracteristiques", ''
+''::text, ''
+''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
 
 --
 -- Name: CONSTRAINT ck_immobilisation_dates ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
@@ -5794,7 +5835,10 @@ COMMENT ON CONSTRAINT ck_immobilisation_nom ON logistique."T_Immobilisation" IS 
 -- Name: CONSTRAINT ck_immobilisation_observations ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_immobilisation_observations ON logistique."T_Immobilisation" IS E'Intégrité durable du patrimoine : CHECK ("Observations" IS NULL OR char_length("Observations") <= 4000 AND replace(replace("Observations", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
+COMMENT ON CONSTRAINT ck_immobilisation_observations ON logistique."T_Immobilisation" IS 'Intégrité durable du patrimoine : CHECK ("Observations" IS NULL OR char_length("Observations") <= 4000 AND replace(replace("Observations", ''
+''::text, ''
+''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Aucun effet de stock ou comptabilisation automatique.';
 
 --
 -- Name: CONSTRAINT ck_immobilisation_prix ON "T_Immobilisation"; Type: COMMENT; Schema: logistique; Owner: -
@@ -8768,6 +8812,18 @@ CREATE TRIGGER ab_initialiser_tva_facture_ligne BEFORE INSERT ON logistique."T_F
 COMMENT ON TRIGGER ab_initialiser_tva_facture_ligne ON logistique."T_FactureLigne" IS 'Génère la taxe de ligne avant le contrôle de l’instantané et des totaux différés.';
 
 --
+-- Name: T_Article ab_publication_article; Type: TRIGGER; Schema: logistique; Owner: -
+--
+
+CREATE TRIGGER ab_publication_article BEFORE INSERT ON logistique."T_Article" FOR EACH ROW EXECUTE FUNCTION logistique.tr_publication_article_defaut();
+
+--
+-- Name: TRIGGER ab_publication_article ON "T_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON TRIGGER ab_publication_article ON logistique."T_Article" IS 'Héritage du choix de publication après les gardes aa_* de propriété/référence et avant les contrôles de stock. Aucun effet sur une mise à jour du défaut de l’entreprise.';
+
+--
 -- Name: T_AvoirAffectation affectation_avoir_controle; Type: TRIGGER; Schema: logistique; Owner: -
 --
 
@@ -10709,5 +10765,6 @@ ALTER TABLE ONLY logistique."T_Reglements"
 
 COMMENT ON CONSTRAINT reglement_devise_fk ON logistique."T_Reglements" IS 'Conserve la référence monétaire du règlement après son enregistrement.';
 
-COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
-COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+--

@@ -1,3 +1,5 @@
+import {formatCurrency} from "../utils/money";
+
 export function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -71,24 +73,25 @@ export function buildDiscussionPath(targetType, targetId) {
 export function mapArticlePublic(item, index) {
   const price = getFirstDefined(item?.PVArticle, item?.prixVente, item?.price);
   const photo = getFirstDefined(item?.PhotoArticle, item?.photo, item?.image, "/illustration-produits.svg");
-  const availabilityFlag = getFirstDefined(item?.ValideArticle, item?.Disponible, item?.disponible, true);
 
   return {
     id: String(getFirstDefined(item?.ID_Article, item?.IdArticle, item?.id, `article-${index}`)),
     name: getFirstDefined(item?.NomArticle, item?.nom, item?.name, `Produit ${index + 1}`),
     reference: getFirstDefined(item?.RefArticle, item?.reference, item?.Reference, "Reference non renseignee"),
-    price: currencyValue(price),
+    price: price==null?"Prix à confirmer":formatCurrency(price,item?.DeviseCode),
     priceValue: price ?? null,
-    availability: availabilityFlag ? "Disponible" : "Disponibilite a confirmer",
+    currencyCode: item?.DeviseCode || "",
+    availability: getFirstDefined(item?.EtatDisponibilite,"Disponibilité à confirmer"),
     photo,
-    observation:
-      getFirstDefined(item?.ObsArticle, item?.description, item?.observation) ||
-      "Informations produit en cours de consolidation.",
+    company: getFirstDefined(item?.NomEntite, "Entreprise non renseignée"),
+    address: getFirstDefined(item?.AdresseEntite, "Adresse à confirmer"),
+    phone: getFirstDefined(item?.PhoneEntite, "Téléphone à confirmer"),
+    observation: "Disponibilité et prix à confirmer auprès de l’entreprise.",
   };
 }
 
 export function mapPharmacyPublic(item, index) {
-  const type = pickNested(item, [["T_Generique", "NomGenerique"], ["type"], ["TypeStructure"]], "Structure de sante");
+  const type = pickNested(item, [["T_Generique", "NomGenerique"], ["type"], ["TypeStructure"]], "Structure");
   const status = getFirstDefined(item?.StatutPublic, item?.statut, item?.ValideEntite);
 
   return {

@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 03/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -500,269 +500,332 @@ COMMENT ON COLUMN logistique."V_ArticlePeremption"."PrioritePeremption" IS 'Cons
 --
 
 CREATE VIEW logistique."V_Article" AS
- SELECT source."ID_Article",
-    source."DateHeureAuto",
-    source."CodeArticleInterne",
-    source."CodeArticleExterne",
-    source."NomArticle",
-    source."RefArticle",
-    source."PhotoArticle",
-    source."ObsArticle",
-    source."ValideArticle",
-    source."ID_TypeArticleFk",
-    source."AbrTypeArticle",
-    source."TypeArticle",
-    source."ID_CategorieArticleFk",
-    source."AbrCategorieArticle",
-    source."CategorieArticle",
-    source."ID_UniteFk",
-    source."AbrUnite",
-    source."Unite",
-    source."QteArticle",
-    source."QteMinArticle",
-    source."QteACommander",
-    source."EtatStock",
-    source."EstRupture",
-    source."EstAlerteStock",
-    source."PrioriteStock",
-    source."PUArticle",
-    source."PVArticle",
-    source."ValeurStockAchat",
-    source."ValeurStockVente",
-    source."MargeUnitaire",
-    source."TauxMargePct",
-    source."DatePeremptionArticle",
-    source."DatePeremptionAlerteArticle",
-    source."NbreJoursAlerteArticle",
-    p."EtatPeremption",
-    p."JoursAvantPeremption",
-    p."EstPerime",
-    p."EstAlertePeremption",
-    p."PrioritePeremption",
-    source."ID_UserFK",
-    source."IdUser",
-    source."NomComplet",
-    source."EtatArticle",
-    source."PoidsUnitaire",
-    source."ID_UnitePoidsFk",
-    source."UnitePoids",
-    source."NombreLots",
-    source."StockVentileLots",
-    source."StockSansLot",
-    source."InformationArticle",
-    source."ID_DeviseFk",
-    source."DeviseCode",
-    source."DeviseLibelle",
-    source."IdEntiteFk",
-    p."StockPerime",
-    p."StockProchePeremption",
-    p."StockSansDatePeremption",
-    p."DateProchainePeremption",
-    p."LotsPerimes",
-    p."LotsProchesPeremption",
-    p."SeuilAlerteJours"
-   FROM (( SELECT source_1."ID_Article",
-            source_1."DateHeureAuto",
-            source_1."CodeArticleInterne",
-            source_1."CodeArticleExterne",
-            source_1."NomArticle",
-            source_1."RefArticle",
-            source_1."PhotoArticle",
-            source_1."ObsArticle",
-            source_1."ValideArticle",
-            source_1."ID_TypeArticleFk",
-            source_1."AbrTypeArticle",
-            source_1."TypeArticle",
-            source_1."ID_CategorieArticleFk",
-            source_1."AbrCategorieArticle",
-            source_1."CategorieArticle",
-            source_1."ID_UniteFk",
-            source_1."AbrUnite",
-            source_1."Unite",
-            source_1."QteArticle",
-            source_1."QteMinArticle",
-            source_1."QteACommander",
-            source_1."EtatStock",
-            source_1."EstRupture",
-            source_1."EstAlerteStock",
-            source_1."PrioriteStock",
-            source_1."PUArticle",
-            source_1."PVArticle",
-            source_1."ValeurStockAchat",
-            source_1."ValeurStockVente",
-            source_1."MargeUnitaire",
-            source_1."TauxMargePct",
-            source_1."DatePeremptionArticle",
-            source_1."DatePeremptionAlerteArticle",
-            source_1."NbreJoursAlerteArticle",
-            source_1."EtatPeremption",
-            source_1."JoursAvantPeremption",
-            source_1."EstPerime",
-            source_1."EstAlertePeremption",
-            source_1."PrioritePeremption",
-            source_1."ID_UserFK",
-            source_1."IdUser",
-            source_1."NomComplet",
-            source_1."EtatArticle",
-            source_1."PoidsUnitaire",
-            source_1."ID_UnitePoidsFk",
-            source_1."UnitePoids",
-            source_1."NombreLots",
-            source_1."StockVentileLots",
-            source_1."StockSansLot",
-            source_1."InformationArticle",
-            source_1."ID_DeviseFk",
-            source_1."DeviseCode",
-            source_1."DeviseLibelle",
-            r."IdEntiteFk"
-           FROM (( SELECT historique."ID_Article",
-                    historique."DateHeureAuto",
-                    historique."CodeArticleInterne",
-                    historique."CodeArticleExterne",
-                    historique."NomArticle",
-                    historique."RefArticle",
-                    historique."PhotoArticle",
-                    historique."ObsArticle",
-                    historique."ValideArticle",
-                    historique."ID_TypeArticleFk",
-                    historique."AbrTypeArticle",
-                    historique."TypeArticle",
-                    historique."ID_CategorieArticleFk",
-                    historique."AbrCategorieArticle",
-                    historique."CategorieArticle",
-                    historique."ID_UniteFk",
-                    historique."AbrUnite",
-                    historique."Unite",
-                    historique."QteArticle",
-                    historique."QteMinArticle",
-                    historique."QteACommander",
-                    historique."EtatStock",
-                    historique."EstRupture",
-                    historique."EstAlerteStock",
-                    historique."PrioriteStock",
-                    historique."PUArticle",
-                    historique."PVArticle",
-                    historique."ValeurStockAchat",
-                    historique."ValeurStockVente",
-                    historique."MargeUnitaire",
-                    historique."TauxMargePct",
-                    historique."DatePeremptionArticle",
-                    historique."DatePeremptionAlerteArticle",
-                    historique."NbreJoursAlerteArticle",
-                    historique."EtatPeremption",
-                    historique."JoursAvantPeremption",
-                    historique."EstPerime",
-                    historique."EstAlertePeremption",
-                    historique."PrioritePeremption",
-                    historique."ID_UserFK",
-                    historique."IdUser",
-                    historique."NomComplet",
-                    historique."EtatArticle",
-                    historique."PoidsUnitaire",
-                    historique."ID_UnitePoidsFk",
-                    historique."UnitePoids",
-                    historique."NombreLots",
-                    historique."StockVentileLots",
-                    historique."StockSansLot",
-                    historique."InformationArticle",
-                    source_1_1."ID_DeviseFk",
-                    logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
-                    (devise."NomGenerique")::text AS "DeviseLibelle"
-                   FROM ((( SELECT a."ID_Article",
-                            a."DateHeureAuto",
-                            a."CodeArticleInterne",
-                            a."CodeArticleExterne",
-                            a."NomArticle",
-                            a."RefArticle",
-                            a."PhotoArticle",
-                            a."ObsArticle",
-                            a."ValideArticle",
-                            a."ID_TypeArticleFk",
-                            type_article."AbrGenerique" AS "AbrTypeArticle",
-                            type_article."NomGenerique" AS "TypeArticle",
-                            a."ID_CategorieArticleFk",
-                            categorie_article."AbrGenerique" AS "AbrCategorieArticle",
-                            categorie_article."NomGenerique" AS "CategorieArticle",
-                            a."ID_UniteFk",
-                            unite."AbrGenerique" AS "AbrUnite",
-                            unite."NomGenerique" AS "Unite",
-                            (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "QteArticle",
-                            a."QteMinArticle",
-                            (GREATEST((COALESCE(a."QteMinArticle", (0)::numeric) - COALESCE(a."QteArticle", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteACommander",
-                                CASE
-                                    WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 'Rupture'::text
-                                    WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 'Stock faible'::text
-                                    ELSE 'Disponible'::text
-                                END AS "EtatStock",
-                            (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) AS "EstRupture",
-                            ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) AS "EstAlerteStock",
-                                CASE
-                                    WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 1
-                                    WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 2
-                                    ELSE 3
-                                END AS "PrioriteStock",
-                            (COALESCE(a."PUArticle", (0)::numeric))::numeric(12,2) AS "PUArticle",
-                            (COALESCE(a."PVArticle", (0)::numeric))::numeric(12,2) AS "PVArticle",
-                            ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PUArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockAchat",
-                            ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PVArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockVente",
-                            ((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)))::numeric(12,2) AS "MargeUnitaire",
-                                CASE
-                                    WHEN (COALESCE(a."PUArticle", (0)::numeric) = (0)::numeric) THEN NULL::numeric
-                                    ELSE round((((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)) / NULLIF(a."PUArticle", (0)::numeric)) * (100)::numeric), 2)
-                                END AS "TauxMargePct",
-                            a."DatePeremptionArticle",
-                            a."DatePeremptionAlerteArticle",
-                            a."NbreJoursAlerteArticle",
-                                CASE
-                                    WHEN (a."DatePeremptionArticle" IS NULL) THEN 'Non renseignée'::text
-                                    WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 'Périmé'::text
-                                    WHEN ((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) THEN 'Alerte péremption'::text
-                                    WHEN ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))) THEN 'Alerte péremption'::text
-                                    ELSE 'Valide'::text
-                                END AS "EtatPeremption",
-                                CASE
-                                    WHEN (a."DatePeremptionArticle" IS NOT NULL) THEN ((a."DatePeremptionArticle")::date - CURRENT_DATE)
-                                    ELSE NULL::integer
-                                END AS "JoursAvantPeremption",
-                            ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date < CURRENT_DATE)) AS "EstPerime",
-                            ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date >= CURRENT_DATE) AND (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))))) AS "EstAlertePeremption",
-                                CASE
-                                    WHEN (a."DatePeremptionArticle" IS NULL) THEN 4
-                                    WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 1
-                                    WHEN (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")))) THEN 2
-                                    ELSE 3
-                                END AS "PrioritePeremption",
-                            a."ID_UserFK",
-                            u."IdUser",
-                            NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
-                                CASE
-                                    WHEN (COALESCE(a."ValideArticle", true) = false) THEN 'Inactif'::text
-                                    ELSE 'Actif'::text
-                                END AS "EtatArticle",
-                            a."PoidsUnitaire",
-                            a."ID_UnitePoidsFk",
-                            ( SELECT g."AbrGenerique"
-                                   FROM referentiel."T_Generique" g
-                                  WHERE (g."ID_Generique" = a."ID_UnitePoidsFk")) AS "UnitePoids",
-                            ( SELECT (count(*))::integer AS count
-                                   FROM logistique."T_LotArticle" l
-                                  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "NombreLots",
-                            ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
-                                   FROM logistique."V_LotArticleStock" l
-                                  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "StockVentileLots",
-                            (a."QteArticle" - ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
-                                   FROM logistique."V_LotArticleStock" l
-                                  WHERE (l."ID_ArticleFk" = a."ID_Article"))) AS "StockSansLot",
-                            a."InformationArticle"
-                           FROM ((((logistique."T_Article" a
-                             LEFT JOIN referentiel."T_Generique" type_article ON ((a."ID_TypeArticleFk" = type_article."ID_Generique")))
-                             LEFT JOIN referentiel."T_Generique" categorie_article ON ((a."ID_CategorieArticleFk" = categorie_article."ID_Generique")))
-                             LEFT JOIN referentiel."T_Generique" unite ON ((a."ID_UniteFk" = unite."ID_Generique")))
-                             LEFT JOIN systeme."T_Utilisateurs" u ON ((a."ID_UserFK" = u."IdUser")))) historique
-                     LEFT JOIN logistique."T_Article" source_1_1 ON ((source_1_1."ID_Article" = historique."ID_Article")))
-                     LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1
-             LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source_1."ID_Article")))) source
-     JOIN logistique."V_ArticlePeremption" p ON ((p."ID_Article" = source."ID_Article")));
+ SELECT source_publication."ID_Article",
+    source_publication."DateHeureAuto",
+    source_publication."CodeArticleInterne",
+    source_publication."CodeArticleExterne",
+    source_publication."NomArticle",
+    source_publication."RefArticle",
+    source_publication."PhotoArticle",
+    source_publication."ObsArticle",
+    source_publication."ValideArticle",
+    source_publication."ID_TypeArticleFk",
+    source_publication."AbrTypeArticle",
+    source_publication."TypeArticle",
+    source_publication."ID_CategorieArticleFk",
+    source_publication."AbrCategorieArticle",
+    source_publication."CategorieArticle",
+    source_publication."ID_UniteFk",
+    source_publication."AbrUnite",
+    source_publication."Unite",
+    source_publication."QteArticle",
+    source_publication."QteMinArticle",
+    source_publication."QteACommander",
+    source_publication."EtatStock",
+    source_publication."EstRupture",
+    source_publication."EstAlerteStock",
+    source_publication."PrioriteStock",
+    source_publication."PUArticle",
+    source_publication."PVArticle",
+    source_publication."ValeurStockAchat",
+    source_publication."ValeurStockVente",
+    source_publication."MargeUnitaire",
+    source_publication."TauxMargePct",
+    source_publication."DatePeremptionArticle",
+    source_publication."DatePeremptionAlerteArticle",
+    source_publication."NbreJoursAlerteArticle",
+    source_publication."EtatPeremption",
+    source_publication."JoursAvantPeremption",
+    source_publication."EstPerime",
+    source_publication."EstAlertePeremption",
+    source_publication."PrioritePeremption",
+    source_publication."ID_UserFK",
+    source_publication."IdUser",
+    source_publication."NomComplet",
+    source_publication."EtatArticle",
+    source_publication."PoidsUnitaire",
+    source_publication."ID_UnitePoidsFk",
+    source_publication."UnitePoids",
+    source_publication."NombreLots",
+    source_publication."StockVentileLots",
+    source_publication."StockSansLot",
+    source_publication."InformationArticle",
+    source_publication."ID_DeviseFk",
+    source_publication."DeviseCode",
+    source_publication."DeviseLibelle",
+    source_publication."IdEntiteFk",
+    source_publication."StockPerime",
+    source_publication."StockProchePeremption",
+    source_publication."StockSansDatePeremption",
+    source_publication."DateProchainePeremption",
+    source_publication."LotsPerimes",
+    source_publication."LotsProchesPeremption",
+    source_publication."SeuilAlerteJours",
+    article_publication."VisibleCatalogue"
+   FROM (( SELECT source."ID_Article",
+            source."DateHeureAuto",
+            source."CodeArticleInterne",
+            source."CodeArticleExterne",
+            source."NomArticle",
+            source."RefArticle",
+            source."PhotoArticle",
+            source."ObsArticle",
+            source."ValideArticle",
+            source."ID_TypeArticleFk",
+            source."AbrTypeArticle",
+            source."TypeArticle",
+            source."ID_CategorieArticleFk",
+            source."AbrCategorieArticle",
+            source."CategorieArticle",
+            source."ID_UniteFk",
+            source."AbrUnite",
+            source."Unite",
+            source."QteArticle",
+            source."QteMinArticle",
+            source."QteACommander",
+            source."EtatStock",
+            source."EstRupture",
+            source."EstAlerteStock",
+            source."PrioriteStock",
+            source."PUArticle",
+            source."PVArticle",
+            source."ValeurStockAchat",
+            source."ValeurStockVente",
+            source."MargeUnitaire",
+            source."TauxMargePct",
+            source."DatePeremptionArticle",
+            source."DatePeremptionAlerteArticle",
+            source."NbreJoursAlerteArticle",
+            p."EtatPeremption",
+            p."JoursAvantPeremption",
+            p."EstPerime",
+            p."EstAlertePeremption",
+            p."PrioritePeremption",
+            source."ID_UserFK",
+            source."IdUser",
+            source."NomComplet",
+            source."EtatArticle",
+            source."PoidsUnitaire",
+            source."ID_UnitePoidsFk",
+            source."UnitePoids",
+            source."NombreLots",
+            source."StockVentileLots",
+            source."StockSansLot",
+            source."InformationArticle",
+            source."ID_DeviseFk",
+            source."DeviseCode",
+            source."DeviseLibelle",
+            source."IdEntiteFk",
+            p."StockPerime",
+            p."StockProchePeremption",
+            p."StockSansDatePeremption",
+            p."DateProchainePeremption",
+            p."LotsPerimes",
+            p."LotsProchesPeremption",
+            p."SeuilAlerteJours"
+           FROM (( SELECT source_1."ID_Article",
+                    source_1."DateHeureAuto",
+                    source_1."CodeArticleInterne",
+                    source_1."CodeArticleExterne",
+                    source_1."NomArticle",
+                    source_1."RefArticle",
+                    source_1."PhotoArticle",
+                    source_1."ObsArticle",
+                    source_1."ValideArticle",
+                    source_1."ID_TypeArticleFk",
+                    source_1."AbrTypeArticle",
+                    source_1."TypeArticle",
+                    source_1."ID_CategorieArticleFk",
+                    source_1."AbrCategorieArticle",
+                    source_1."CategorieArticle",
+                    source_1."ID_UniteFk",
+                    source_1."AbrUnite",
+                    source_1."Unite",
+                    source_1."QteArticle",
+                    source_1."QteMinArticle",
+                    source_1."QteACommander",
+                    source_1."EtatStock",
+                    source_1."EstRupture",
+                    source_1."EstAlerteStock",
+                    source_1."PrioriteStock",
+                    source_1."PUArticle",
+                    source_1."PVArticle",
+                    source_1."ValeurStockAchat",
+                    source_1."ValeurStockVente",
+                    source_1."MargeUnitaire",
+                    source_1."TauxMargePct",
+                    source_1."DatePeremptionArticle",
+                    source_1."DatePeremptionAlerteArticle",
+                    source_1."NbreJoursAlerteArticle",
+                    source_1."EtatPeremption",
+                    source_1."JoursAvantPeremption",
+                    source_1."EstPerime",
+                    source_1."EstAlertePeremption",
+                    source_1."PrioritePeremption",
+                    source_1."ID_UserFK",
+                    source_1."IdUser",
+                    source_1."NomComplet",
+                    source_1."EtatArticle",
+                    source_1."PoidsUnitaire",
+                    source_1."ID_UnitePoidsFk",
+                    source_1."UnitePoids",
+                    source_1."NombreLots",
+                    source_1."StockVentileLots",
+                    source_1."StockSansLot",
+                    source_1."InformationArticle",
+                    source_1."ID_DeviseFk",
+                    source_1."DeviseCode",
+                    source_1."DeviseLibelle",
+                    r."IdEntiteFk"
+                   FROM (( SELECT historique."ID_Article",
+                            historique."DateHeureAuto",
+                            historique."CodeArticleInterne",
+                            historique."CodeArticleExterne",
+                            historique."NomArticle",
+                            historique."RefArticle",
+                            historique."PhotoArticle",
+                            historique."ObsArticle",
+                            historique."ValideArticle",
+                            historique."ID_TypeArticleFk",
+                            historique."AbrTypeArticle",
+                            historique."TypeArticle",
+                            historique."ID_CategorieArticleFk",
+                            historique."AbrCategorieArticle",
+                            historique."CategorieArticle",
+                            historique."ID_UniteFk",
+                            historique."AbrUnite",
+                            historique."Unite",
+                            historique."QteArticle",
+                            historique."QteMinArticle",
+                            historique."QteACommander",
+                            historique."EtatStock",
+                            historique."EstRupture",
+                            historique."EstAlerteStock",
+                            historique."PrioriteStock",
+                            historique."PUArticle",
+                            historique."PVArticle",
+                            historique."ValeurStockAchat",
+                            historique."ValeurStockVente",
+                            historique."MargeUnitaire",
+                            historique."TauxMargePct",
+                            historique."DatePeremptionArticle",
+                            historique."DatePeremptionAlerteArticle",
+                            historique."NbreJoursAlerteArticle",
+                            historique."EtatPeremption",
+                            historique."JoursAvantPeremption",
+                            historique."EstPerime",
+                            historique."EstAlertePeremption",
+                            historique."PrioritePeremption",
+                            historique."ID_UserFK",
+                            historique."IdUser",
+                            historique."NomComplet",
+                            historique."EtatArticle",
+                            historique."PoidsUnitaire",
+                            historique."ID_UnitePoidsFk",
+                            historique."UnitePoids",
+                            historique."NombreLots",
+                            historique."StockVentileLots",
+                            historique."StockSansLot",
+                            historique."InformationArticle",
+                            source_1_1."ID_DeviseFk",
+                            logistique.fn_code_devise((devise."AbrGenerique")::text) AS "DeviseCode",
+                            (devise."NomGenerique")::text AS "DeviseLibelle"
+                           FROM ((( SELECT a."ID_Article",
+                                    a."DateHeureAuto",
+                                    a."CodeArticleInterne",
+                                    a."CodeArticleExterne",
+                                    a."NomArticle",
+                                    a."RefArticle",
+                                    a."PhotoArticle",
+                                    a."ObsArticle",
+                                    a."ValideArticle",
+                                    a."ID_TypeArticleFk",
+                                    type_article."AbrGenerique" AS "AbrTypeArticle",
+                                    type_article."NomGenerique" AS "TypeArticle",
+                                    a."ID_CategorieArticleFk",
+                                    categorie_article."AbrGenerique" AS "AbrCategorieArticle",
+                                    categorie_article."NomGenerique" AS "CategorieArticle",
+                                    a."ID_UniteFk",
+                                    unite."AbrGenerique" AS "AbrUnite",
+                                    unite."NomGenerique" AS "Unite",
+                                    (COALESCE(a."QteArticle", (0)::numeric))::numeric(14,3) AS "QteArticle",
+                                    a."QteMinArticle",
+                                    (GREATEST((COALESCE(a."QteMinArticle", (0)::numeric) - COALESCE(a."QteArticle", (0)::numeric)), (0)::numeric))::numeric(14,3) AS "QteACommander",
+CASE
+ WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 'Rupture'::text
+ WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 'Stock faible'::text
+ ELSE 'Disponible'::text
+END AS "EtatStock",
+                                    (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) AS "EstRupture",
+                                    ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) AS "EstAlerteStock",
+CASE
+ WHEN (COALESCE(a."QteArticle", (0)::numeric) <= (0)::numeric) THEN 1
+ WHEN ((a."QteMinArticle" IS NOT NULL) AND (COALESCE(a."QteArticle", (0)::numeric) <= (a."QteMinArticle")::numeric)) THEN 2
+ ELSE 3
+END AS "PrioriteStock",
+                                    (COALESCE(a."PUArticle", (0)::numeric))::numeric(12,2) AS "PUArticle",
+                                    (COALESCE(a."PVArticle", (0)::numeric))::numeric(12,2) AS "PVArticle",
+                                    ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PUArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockAchat",
+                                    ((COALESCE(a."QteArticle", (0)::numeric) * COALESCE(a."PVArticle", (0)::numeric)))::numeric(14,2) AS "ValeurStockVente",
+                                    ((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)))::numeric(12,2) AS "MargeUnitaire",
+CASE
+ WHEN (COALESCE(a."PUArticle", (0)::numeric) = (0)::numeric) THEN NULL::numeric
+ ELSE round((((COALESCE(a."PVArticle", (0)::numeric) - COALESCE(a."PUArticle", (0)::numeric)) / NULLIF(a."PUArticle", (0)::numeric)) * (100)::numeric), 2)
+END AS "TauxMargePct",
+                                    a."DatePeremptionArticle",
+                                    a."DatePeremptionAlerteArticle",
+                                    a."NbreJoursAlerteArticle",
+CASE
+ WHEN (a."DatePeremptionArticle" IS NULL) THEN 'Non renseignée'::text
+ WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 'Périmé'::text
+ WHEN ((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) THEN 'Alerte péremption'::text
+ WHEN ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))) THEN 'Alerte péremption'::text
+ ELSE 'Valide'::text
+END AS "EtatPeremption",
+CASE
+ WHEN (a."DatePeremptionArticle" IS NOT NULL) THEN ((a."DatePeremptionArticle")::date - CURRENT_DATE)
+ ELSE NULL::integer
+END AS "JoursAvantPeremption",
+                                    ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date < CURRENT_DATE)) AS "EstPerime",
+                                    ((a."DatePeremptionArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date >= CURRENT_DATE) AND (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle"))))) AS "EstAlertePeremption",
+CASE
+ WHEN (a."DatePeremptionArticle" IS NULL) THEN 4
+ WHEN ((a."DatePeremptionArticle")::date < CURRENT_DATE) THEN 1
+ WHEN (((a."DatePeremptionAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionAlerteArticle")::date <= CURRENT_DATE)) OR ((a."NbreJoursAlerteArticle" IS NOT NULL) AND ((a."DatePeremptionArticle")::date <= (CURRENT_DATE + a."NbreJoursAlerteArticle")))) THEN 2
+ ELSE 3
+END AS "PrioritePeremption",
+                                    a."ID_UserFK",
+                                    u."IdUser",
+                                    NULLIF(TRIM(BOTH FROM concat(COALESCE(u."PrenomUser", ''::character varying), ' ', COALESCE(u."NomUser", ''::character varying))), ''::text) AS "NomComplet",
+CASE
+ WHEN (COALESCE(a."ValideArticle", true) = false) THEN 'Inactif'::text
+ ELSE 'Actif'::text
+END AS "EtatArticle",
+                                    a."PoidsUnitaire",
+                                    a."ID_UnitePoidsFk",
+                                    ( SELECT g."AbrGenerique"
+   FROM referentiel."T_Generique" g
+  WHERE (g."ID_Generique" = a."ID_UnitePoidsFk")) AS "UnitePoids",
+                                    ( SELECT (count(*))::integer AS count
+   FROM logistique."T_LotArticle" l
+  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "NombreLots",
+                                    ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
+   FROM logistique."V_LotArticleStock" l
+  WHERE (l."ID_ArticleFk" = a."ID_Article")) AS "StockVentileLots",
+                                    (a."QteArticle" - ( SELECT COALESCE(sum(l."StockLot"), (0)::numeric) AS "coalesce"
+   FROM logistique."V_LotArticleStock" l
+  WHERE (l."ID_ArticleFk" = a."ID_Article"))) AS "StockSansLot",
+                                    a."InformationArticle"
+                                   FROM ((((logistique."T_Article" a
+                                     LEFT JOIN referentiel."T_Generique" type_article ON ((a."ID_TypeArticleFk" = type_article."ID_Generique")))
+                                     LEFT JOIN referentiel."T_Generique" categorie_article ON ((a."ID_CategorieArticleFk" = categorie_article."ID_Generique")))
+                                     LEFT JOIN referentiel."T_Generique" unite ON ((a."ID_UniteFk" = unite."ID_Generique")))
+                                     LEFT JOIN systeme."T_Utilisateurs" u ON ((a."ID_UserFK" = u."IdUser")))) historique
+                             LEFT JOIN logistique."T_Article" source_1_1 ON ((source_1_1."ID_Article" = historique."ID_Article")))
+                             LEFT JOIN referentiel."T_Generique" devise ON ((devise."ID_Generique" = source_1_1."ID_DeviseFk")))) source_1
+                     LEFT JOIN logistique."T_Article" r ON ((r."ID_Article" = source_1."ID_Article")))) source
+             JOIN logistique."V_ArticlePeremption" p ON ((p."ID_Article" = source."ID_Article")))) source_publication
+     JOIN logistique."T_Article" article_publication ON ((article_publication."ID_Article" = source_publication."ID_Article")));
 
 --
 -- Name: VIEW "V_Article"; Type: COMMENT; Schema: logistique; Owner: -
@@ -1135,6 +1198,12 @@ COMMENT ON COLUMN logistique."V_Article"."LotsProchesPeremption" IS 'Conservatio
 --
 
 COMMENT ON COLUMN logistique."V_Article"."SeuilAlerteJours" IS 'Conservation exhaustive du stock restant par lot et du stock sans lot : SeuilAlerteJours.';
+
+--
+-- Name: COLUMN "V_Article"."VisibleCatalogue"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_Article"."VisibleCatalogue" IS 'Choix de publication du catalogue partagé porté par l’article ; affichable et modifiable selon les droits du propriétaire. Les autres colonnes de gestion conservent leur contrat et leur ordre.';
 
 --
 -- Name: V_AlertStock; Type: VIEW; Schema: logistique; Owner: -
@@ -6698,6 +6767,124 @@ COMMENT ON COLUMN logistique."V_MouvementLot"."ID_DerogationUserFk" IS 'Conserva
 --
 
 COMMENT ON COLUMN logistique."V_MouvementLot"."DateDerogationPeremption" IS 'Conservation du stock : DateDerogationPeremption, calculée dans le périmètre de l’article et de son entreprise.';
+
+--
+-- Name: V_OffreArticle; Type: VIEW; Schema: logistique; Owner: -
+--
+
+CREATE VIEW logistique."V_OffreArticle" AS
+ SELECT a."ID_Article",
+    a."NomArticle",
+    a."RefArticle",
+    a."PVArticle",
+    a."ID_DeviseFk",
+    logistique.fn_code_devise((d."AbrGenerique")::text) AS "DeviseCode",
+    (d."NomGenerique")::text AS "DeviseLibelle",
+    COALESCE(NULLIF((u."AbrGenerique")::text, ''::text), (u."NomGenerique")::text) AS "Unite",
+        CASE
+            WHEN (a."QteArticle" > (0)::numeric) THEN 'Stock déclaré'::text
+            ELSE 'Stock nul déclaré'::text
+        END AS "EtatDisponibilite",
+    a."PhotoArticle",
+    e."IdEntite",
+    e."NomEntite",
+    e."AdresseEntite",
+    e."PhoneEntite"
+   FROM (((logistique."T_Article" a
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = a."IdEntiteFk")))
+     LEFT JOIN referentiel."T_Generique" d ON ((d."ID_Generique" = a."ID_DeviseFk")))
+     LEFT JOIN referentiel."T_Generique" u ON ((u."ID_Generique" = a."ID_UniteFk")))
+  WHERE ((a."VisibleCatalogue" IS TRUE) AND (a."ValideArticle" IS TRUE) AND (e."ValideEntite" IS TRUE));
+
+--
+-- Name: VIEW "V_OffreArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON VIEW logistique."V_OffreArticle" IS 'Projection minimale des seuls articles publiés et actifs de propriétaires actifs, au grain article local. Le choix par défaut du propriétaire ne filtre jamais les décisions individuelles existantes. Exclut coût d’achat, quantités exactes, notes, informations internes et compte auteur. Stock déclaré n’atteste ni disponibilité vendable, péremption vérifiée ni heure de confirmation. Les API conservent authentification, permissions et licences ; aucune collecte de recherche n’est activée.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."ID_Article"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."ID_Article" IS 'Identifiant de l’article local publié, clé du grain de l’offre ; ne constitue pas encore un produit normalisé entre entreprises.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."NomArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."NomArticle" IS 'Désignation courante déclarée par l’entreprise propriétaire.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."RefArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."RefArticle" IS 'Référence externe facultative de l’article publiée avec son choix individuel.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."PVArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."PVArticle" IS 'Prix de vente déclaré, associé à la devise de la même ligne ; aucun coût d’achat n’est exposé.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."ID_DeviseFk"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."ID_DeviseFk" IS 'Identifiant de la devise centrale stockée sur l’article ; aucun taux ni conversion implicite.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."DeviseCode"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."DeviseCode" IS 'Code monétaire normalisé par la fonction logistique existante à partir du référentiel.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."DeviseLibelle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."DeviseLibelle" IS 'Libellé courant de la devise centrale, sans valeur de remplacement inventée.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."Unite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."Unite" IS 'Abréviation courante de l’unité centrale, ou son libellé si l’abréviation est absente.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."EtatDisponibilite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."EtatDisponibilite" IS 'Indication prudente de stock déclaré positif ou nul ; ne garantit ni stock réellement vendable ni qualité/péremption des lots et ne fournit aucune date de fraîcheur fictive.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."PhotoArticle"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."PhotoArticle" IS 'Référence privée de la photo ; le service transforme la valeur en route contrôlée par cette même publication, jamais en chemin de téléchargement public.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."IdEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."IdEntite" IS 'Identifiant durable de l’entreprise propriétaire de l’offre.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."NomEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."NomEntite" IS 'Nom courant de l’entreprise propriétaire publié avec l’offre.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."AdresseEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."AdresseEntite" IS 'Adresse de structure déclarée dans la fiche entreprise ; aucune localisation ne se déduit d’un compte utilisateur.';
+
+--
+-- Name: COLUMN "V_OffreArticle"."PhoneEntite"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON COLUMN logistique."V_OffreArticle"."PhoneEntite" IS 'Téléphone de structure déclaré, distinct des coordonnées personnelles de l’auteur.';
 
 --
 -- Name: V_PieceJustificative; Type: VIEW; Schema: logistique; Owner: -

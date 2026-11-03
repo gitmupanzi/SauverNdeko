@@ -10,9 +10,11 @@ export default function ArticlePhoto({record,publicCatalogue=false,className="",
   const source=record?.PhotoArticle;
   if(!source)return;
   if(/^https?:\/\//i.test(source)){setUrl(source);return;}
-  if(!/^Article\//.test(source)||!record?.ID_Article)return;
+  if(!record?.ID_Article)return;
+  const publicPhoto=publicCatalogue&&new RegExp("^/api/public/articles/"+String(record.ID_Article).replace(/[^0-9]/g,"")+"/photo(?:\\?v=[a-f0-9]{16})?$").test(source);
+  if(!/^Article\//.test(source)&&!publicPhoto)return;
   const controller=new AbortController();
-  fetch(API_BASE_URL+(publicCatalogue?"/api/public":"/api/logistique")+"/articles/"+record.ID_Article+"/photo",{signal:controller.signal,headers:{Authorization:"Bearer "+getAccessToken()}}).then(async response=>{
+  fetch(API_BASE_URL+(publicPhoto?source:(publicCatalogue?"/api/public":"/api/logistique")+"/articles/"+record.ID_Article+"/photo"),{signal:controller.signal,headers:{Authorization:"Bearer "+getAccessToken()}}).then(async response=>{
     if(!response.ok)return;
     const blob=await response.blob();
     if(!active||!blob.type.startsWith("image/"))return;

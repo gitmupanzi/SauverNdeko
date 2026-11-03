@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-02",
+  "version": "2026-11-03",
   "modules": [
     {
       "key": "catalogue",
@@ -10,28 +10,28 @@
       "articles": [
         {
           "id": "decouvrir-catalogue",
-          "title": "Découvrir le catalogue",
-          "summary": "Repérez les rubriques utiles avant de rechercher une offre.",
+          "title": "Découvrir SauverNdeko",
+          "summary": "Repérez les parcours proposés sur la page de présentation.",
           "steps": [
             {
-              "title": "Ouvrir le catalogue",
-              "text": "Depuis Vos applications, ouvrez Catalogue. Les rubriques disponibles dépendent de votre licence et de vos droits."
+              "title": "Ouvrir la présentation",
+              "text": "La page Catalogue présente SauverNdeko, les parcours et les développements en cours. Elle est accessible sans session et ne charge pas les stocks internes."
             },
             {
-              "title": "Parcourir les informations",
-              "text": "Consultez les annonces et les cartes de produits, de structures ou de professionnels. Les coordonnées présentées sont celles rendues publiques dans la plateforme."
+              "title": "Choisir un parcours",
+              "text": "Choisissez Produits, Professionnels ou Structures. Pour consulter les annuaires, connectez-vous ; les droits et licences du compte restent applicables."
             },
             {
-              "title": "Choisir une rubrique",
-              "text": "Utilisez le menu Applications pour rejoindre la rubrique à laquelle votre compte a accès."
+              "title": "Rejoindre son espace",
+              "text": "Se connecter ouvre la connexion. Une fois connecté, Mes applications permet de retrouver les modules autorisés."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Une équipe cherche du matériel de bureau et un point de retrait. Elle repère d’abord le produit, puis consulte les coordonnées d’une structure."
+            "text": "Un visiteur fictif découvre la présentation, choisit Trouver un professionnel et se connecte avant de consulter les profils publiés."
           },
           "notes": [
-            "Le catalogue n’est pas le registre interne des stocks de votre entreprise."
+            "La présentation ne promet ni couverture nationale complète ni modèle prédictif déjà opérationnel."
           ],
           "links": [
             {
@@ -43,19 +43,19 @@
         {
           "id": "rechercher-catalogue",
           "title": "Rechercher un produit ou un interlocuteur",
-          "summary": "Utilisez la recherche commune pour trouver un nom ou une référence.",
+          "summary": "Rejoignez l’annuaire utile, puis recherchez une référence ou un interlocuteur.",
           "steps": [
             {
-              "title": "Ouvrir la recherche",
-              "text": "Cliquez sur l’icône de recherche dans l’en-tête du catalogue."
+              "title": "Choisir la rubrique",
+              "text": "Depuis la présentation, ouvrez Produits, Structures ou Professionnels, puis connectez-vous si nécessaire."
             },
             {
               "title": "Saisir un critère",
-              "text": "Écrivez au moins deux caractères : un nom de produit, une référence, une structure ou un professionnel."
+              "text": "Utilisez la recherche du parcours choisi : nom, référence ou compétence. Pour un professionnel, appliquez les critères proposés."
             },
             {
-              "title": "Examiner le résultat",
-              "text": "Ouvrez un résultat de la rubrique autorisée. Vérifiez le nom et les informations affichées avant de poursuivre."
+              "title": "Examiner les résultats",
+              "text": "Ouvrez la fiche du résultat recherché. Vérifiez les informations et contactez la structure ou le professionnel lorsque la messagerie est autorisée."
             }
           ],
           "example": {
@@ -63,7 +63,7 @@
             "text": "Pour retrouver une référence fictive « BUREAU-A », saisissez « BUREAU ». Plusieurs produits peuvent porter un nom proche : comparez aussi la référence."
           },
           "notes": [
-            "Une absence de résultat peut venir du critère recherché, de la disponibilité des données ou des droits du compte."
+            "La page de présentation ne lance pas de recherche sur des données privées. Les annuaires Produits et Structures sont encore en amélioration."
           ],
           "links": [
             {
@@ -79,7 +79,7 @@
           "steps": [
             {
               "title": "Lire le statut",
-              "text": "Vérifiez les indications de disponibilité présentées sur chaque carte."
+              "text": "Après connexion, distinguez une offre partagée, son stock déclaré et les données internes de l’entreprise. Un article actif n’est pas automatiquement une garantie de disponibilité."
             },
             {
               "title": "Vérifier les coordonnées",
@@ -95,7 +95,8 @@
             "text": "Une carte indique qu’un produit est disponible. Le demandeur fait confirmer le modèle et les modalités avant le déplacement."
           },
           "notes": [
-            "Consulter une carte ne réserve pas un produit et ne crée ni bon de stock ni facture."
+            "Consulter une offre ne réserve pas un produit et ne crée ni bon de stock ni facture.",
+            "Les recherches de produits sont des signaux indirects ; elles ne constituent pas un diagnostic."
           ],
           "links": [
             {
@@ -800,6 +801,10 @@
               "text": "Choisissez l’unité et la devise, vérifiez le seuil minimum et les prix. Le stock initial positif produit un bon d’entrée interne et un seul mouvement ; zéro n’en crée pas."
             },
             {
+              "title": "Choisir la visibilité",
+              "text": "La case Visible dans l’annuaire des produits reprend le défaut de l’entreprise pour une création. Décochez-la pour conserver cet article hors des offres partagées. Une modification conserve le choix enregistré."
+            },
+            {
               "title": "Enregistrer puis consulter",
               "text": "Contrôlez le résultat dans Produit 360. Pour plusieurs fiches simples, utilisez Ajouter plusieurs articles et vérifiez chaque ligne du panier."
             }
@@ -810,7 +815,8 @@
           },
           "notes": [
             "Après les premiers mouvements, les entrées et sorties se saisissent dans les bons, pas en remplaçant le stock courant.",
-            "Une unité peut autoriser des décimales selon son paramétrage ; une pièce entière ne devient pas une quantité fractionnaire."
+            "Une unité peut autoriser des décimales selon son paramétrage ; une pièce entière ne devient pas une quantité fractionnaire.",
+            "Le partage ne publie pas le prix d’achat ni les observations internes. Les articles antérieurs restent à examiner avant publication."
           ],
           "links": [
             {
@@ -1591,6 +1597,10 @@
               "text": "Ajoutez les identifiants réels utiles avec leurs libellés, puis le motif de modification."
             },
             {
+              "title": "Régler le partage des articles",
+              "text": "Choisissez le partage par défaut des nouveaux articles. Chaque article garde sa propre case de visibilité ; modifier le défaut de l’entreprise ne change pas les articles déjà enregistrés."
+            },
+            {
               "title": "Enregistrer",
               "text": "Vérifiez le résultat. La même fiche alimente les autres interfaces et les nouveaux documents générés."
             }
@@ -1903,7 +1913,8 @@
           },
           "notes": [
             "Une licence est attribuée à une entreprise, pas à un utilisateur isolé.",
-            "Le Guide utilisateur reprend les modules autorisés ; il ne prolonge ni n’active une licence."
+            "Le Guide utilisateur reprend les modules autorisés ; il ne prolonge ni n’active une licence.",
+            "La création d’entreprise propose aussi le partage par défaut des nouveaux articles du module Logistique ; ce réglage n’ouvre pas une API anonyme."
           ],
           "links": [
             {

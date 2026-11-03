@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue vérifié le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 03/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -788,11 +788,13 @@ CREATE TABLE systeme."T_Entite" (
     "LogoModifieLe" timestamp with time zone,
     "PhoneSecondaireEntite" character varying(20),
     "TauxTVAEntite" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Entite_TauxTVAEntite_not_null" NOT NULL,
+    "PartageArticlesPublicParDefaut" boolean DEFAULT true NOT NULL,
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
     CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR ((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
-    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))),
+    CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
+'::text, ''::text) !~ '[[:cntrl:]]'::text))),
     CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR ((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR ((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
     CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
@@ -931,6 +933,12 @@ COMMENT ON COLUMN systeme."T_Entite"."PhoneSecondaireEntite" IS 'Deuxième numé
 COMMENT ON COLUMN systeme."T_Entite"."TauxTVAEntite" IS 'Taux de TVA en pourcentage proposé aux nouvelles factures de cette entreprise, de 0 à 100 avec quatre décimales maximum ; défaut 0, sans réécriture des factures émises.';
 
 --
+-- Name: COLUMN "T_Entite"."PartageArticlesPublicParDefaut"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."PartageArticlesPublicParDefaut" IS 'Choix proposé uniquement à la création d’un nouvel article de cette entreprise. Vrai par défaut ; une modification ne republie ni ne retire aucun article existant. Ne donne aucun droit de lecture anonyme.';
+
+--
 -- Name: CONSTRAINT "T_Entite_IdEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
@@ -1037,7 +1045,10 @@ CREATE TABLE systeme."T_Utilisateurs" (
     CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar]))),
     CONSTRAINT ck_user_dates_emploi CHECK (((("DateEmbauche" IS NULL) OR isfinite("DateEmbauche")) AND (("DateFinEmploi" IS NULL) OR isfinite("DateFinEmploi")) AND (("DateEmbauche" IS NULL) OR ("DateFinEmploi" IS NULL) OR ("DateFinEmploi" >= "DateEmbauche")))),
     CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR ((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_user_observation_professionnelle CHECK ((("ObservationProfessionnelle" IS NULL) OR ((char_length("ObservationProfessionnelle") <= 1000) AND (replace(replace("ObservationProfessionnelle", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))))
+    CONSTRAINT ck_user_observation_professionnelle CHECK ((("ObservationProfessionnelle" IS NULL) OR ((char_length("ObservationProfessionnelle") <= 1000) AND (replace(replace("ObservationProfessionnelle", '
+'::text, '
+'::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text))))
 );
 
 --
@@ -1254,7 +1265,10 @@ COMMENT ON CONSTRAINT ck_user_matricule ON systeme."T_Utilisateurs" IS 'Métadon
 -- Name: CONSTRAINT ck_user_observation_professionnelle ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON CONSTRAINT ck_user_observation_professionnelle ON systeme."T_Utilisateurs" IS E'Métadonnée professionnelle facultative contrôlée : CHECK ("ObservationProfessionnelle" IS NULL OR char_length("ObservationProfessionnelle") <= 1000 AND replace(replace("ObservationProfessionnelle", ''\r\n''::text, ''\n''::text), ''\n''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Ne donne aucun droit de sécurité.';
+COMMENT ON CONSTRAINT ck_user_observation_professionnelle ON systeme."T_Utilisateurs" IS 'Métadonnée professionnelle facultative contrôlée : CHECK ("ObservationProfessionnelle" IS NULL OR char_length("ObservationProfessionnelle") <= 1000 AND replace(replace("ObservationProfessionnelle", ''
+''::text, ''
+''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text). Ne donne aucun droit de sécurité.';
 
 --
 -- Name: T_Entite_Localisation; Type: TABLE; Schema: systeme; Owner: -
@@ -2665,7 +2679,10 @@ COMMENT ON CONSTRAINT "Uq_Admin_UI_Setting_Key_Scope" ON systeme."T_Admin_UI_Set
 --
 
 ALTER TABLE systeme."T_Entite"
-    ADD CONSTRAINT ck_entite_adresse_documentaire CHECK ((("AdresseEntite" IS NULL) OR ((char_length("AdresseEntite") <= 1000) AND (replace(replace("AdresseEntite", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))) NOT VALID;
+    ADD CONSTRAINT ck_entite_adresse_documentaire CHECK ((("AdresseEntite" IS NULL) OR ((char_length("AdresseEntite") <= 1000) AND (replace(replace("AdresseEntite", '
+'::text, '
+'::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))) NOT VALID;
 
 --
 -- Name: CONSTRAINT ck_entite_adresse_documentaire ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -3799,3 +3816,7 @@ ALTER TABLE ONLY systeme."T_ModuleApplication"
 --
 
 COMMENT ON CONSTRAINT fk_module_parent ON systeme."T_ModuleApplication" IS 'Le module parent existe et ne disparaît pas tant que des fonctionnalités le référencent.';
+
+
+--
+--

@@ -1,5 +1,7 @@
 # Trajectoire ERP et préparation client
 
+> Pour la vision et les priorités actualisées au 3 novembre 2026, lire la [référence scientifique et produit](../../../docs/vision-et-feuille-de-route-scientifique.md). Les étapes datées ci-dessous restent historiques ; elles ne remplacent pas l’examen du code et de la base actuels.
+
 Cible définie le 24/10/2026. Les lots ci-dessous sont proposés ; ils ne constituent pas des fonctionnalités déjà livrées ni un engagement sur un calendrier. Le secteur du client, ses volumes, rôles, implantations et modules contractuels restent à préciser avant le paramétrage final.
 
 ## Positionnement

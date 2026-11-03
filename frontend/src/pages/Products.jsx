@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import ArticlePhoto from "../components/ArticlePhoto";
 import PublicTable from "../components/PublicTable";
 
 export default function Products({ products, onNavigate }) {
@@ -12,22 +13,24 @@ export default function Products({ products, onNavigate }) {
     { key: "reference", label: "Référence" },
     { key: "price", label: "Prix de vente" },
     { key: "availability", label: "Disponibilité" },
-    { key: "observation", label: "Observation" },
+    { key: "company", label: "Entreprise" },
+    { key: "address", label: "Adresse" },
+    { key: "phone", label: "Téléphone" },
   ];
 
   return (
     <div className="page-shell page-products">
       <section className="page-hero-card">
         <div>
-          <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Catalogue public</span>
+          <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis mb-3">Annuaire des produits</span>
           <h2>Produits et articles</h2>
           <p>
-            Consultez uniquement les informations publiques utiles à l’orientation: nom du produit,
-            référence, prix de vente, disponibilité et observation courte.
+            Consultez les fiches partagées par les entreprises. Contactez-les pour confirmer
+            la disponibilité et le prix.
           </p>
         </div>
         <button className="secondary-action" type="button" onClick={() => onNavigate("/pharmacies")}>
-          Voir les pharmacies
+          Voir les structures
         </button>
       </section>
 
@@ -35,7 +38,7 @@ export default function Products({ products, onNavigate }) {
         <section className="page-highlight-grid">
           <article className="product-focus-card">
             <div className="product-focus-image">
-              <img src={featuredProduct.photo || "/illustration-produits.svg"} alt={featuredProduct.name} />
+              <ArticlePhoto record={{ID_Article:featuredProduct.id,NomArticle:featuredProduct.name,PhotoArticle:featuredProduct.photo}} publicCatalogue alt={featuredProduct.name}/>
             </div>
             <div className="product-focus-meta">
               <strong>{featuredProduct.name}</strong>
@@ -46,9 +49,9 @@ export default function Products({ products, onNavigate }) {
 
           <article className="detail-block">
             <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis">Observation</span>
+              <span className="badge rounded-pill text-bg-primary-subtle text-primary-emphasis">{featuredProduct.company}</span>
             </div>
-            <p>{featuredProduct.observation}</p>
+            <p>{featuredProduct.address} · {featuredProduct.phone}</p><p>{featuredProduct.observation}</p>
           </article>
         </section>
       ) : null}
@@ -62,7 +65,7 @@ export default function Products({ products, onNavigate }) {
       <section className="page-table-section">
         <div className="section-head">
           <h3>Vue tabulaire</h3>
-          <p>Cette vue reste limitée aux champs publics. Aucun prix d’achat ni stock exact n’est exposé.</p>
+          <p>Les informations affichées sont déclarées par les entreprises.</p>
         </div>
         <PublicTable columns={columns} rows={products} emptyMessage="Aucun produit public disponible pour le moment." />
       </section>

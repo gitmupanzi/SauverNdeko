@@ -1,5 +1,7 @@
 # Cartographie de SauverNdeko
 
+> Pour la vision et les priorités actualisées au 3 novembre 2026, lire la [référence scientifique et produit](../../../docs/vision-et-feuille-de-route-scientifique.md). Les étapes datées ci-dessous restent historiques ; elles ne remplacent pas l’examen du code et de la base actuels.
+
 > Relevé historique de l’architecture Express/Prisma avant conversion. Depuis le choix ultérieur du propriétaire le 24/10/2026, le backend actif est Django ; voir [le bilan actuel](../../../SQL/documentation/Audit_Metier_20261024.md). Les fichiers Node décrits ici ont depuis été supprimés à la demande du propriétaire. Leurs chemins ci-dessous sont historiques ; pour le code actuel, consulter [l’architecture Django](../../../backend/skills/develop-sauverndeko-backend/references/architecture.md). La base est restée inchangée pendant la conversion.
 
 Relevé du 24 octobre 2026, à partir de C:/Users/Benjamin-mupanzi/Documents/SauverNdeko. Référence : projet voisin imf_BB, ses skills backend/frontend et l’historique partagé par le propriétaire. Le dépôt était sans modification Git lors du relevé initial.

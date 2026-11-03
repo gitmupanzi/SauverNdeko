@@ -4,7 +4,7 @@ import { moduleRights, accessSignature } from "../services/moduleAccess";
 import { requestJson } from "../services/api";
 import { getCollection, mapArticlePublic, mapDiseasePublic, mapExpertPublic, mapPharmacyPublic } from "../services/mappers";
 
-const EMPTY_STATS={productsCount:"—",pharmaciesCount:"—",expertsCount:"—",diseasesCount:"—",activeStructures:"—",latestAnnouncements:"—",responseLabel:""};
+const EMPTY_STATS={productsCount:"—",structuresCount:"—",expertsCount:"—",diseasesCount:"—"};
 const EMPTY={articles:[],pharmacies:[],experts:[],diseases:[],stats:EMPTY_STATS};
 const SOURCES=[
   ["catalogue","stats","stats",null],

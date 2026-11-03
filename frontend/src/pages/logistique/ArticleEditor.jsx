@@ -27,9 +27,9 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
   const {openProductLots}=useConsultations();
   const [active,setActive]=useState("article");
   const prefix=useId(),mounted=useRef(true),saving=useRef(false),focusRef=useRef(null);
-  const creationRequestId=useRef(null);
+  const creationRequestId=useRef(null),visibilityTouched=useRef(Boolean(draft?.values));
   if(!creationRequestId.current)creationRequestId.current=createReceiptRequestId();
-  const createForm=()=>draft?.values?{...draft.values}:({...articleForm(null),ID_DeviseFk:newCurrencyId(references)});
+  const createForm=()=>draft?.values?{...draft.values}:({...articleForm(null,references),ID_DeviseFk:newCurrencyId(references)});
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState(createForm);
   const [initial,setInitial]=useState(()=>JSON.stringify(createForm()));
   const [loading,setLoading]=useState(!creating),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({});
@@ -39,6 +39,12 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
   const canWrite=user?.permissions?.canWriteData===true;
   const dirty=JSON.stringify(values)!==initial||Boolean(photo.file||photo.remove||initialLots.length);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  useEffect(()=>{
+    if(!creating||draft?.values||visibilityTouched.current||typeof references?.defaultArticleVisibility!=="boolean")return;
+    const visible=references.defaultArticleVisibility;
+    setValues(current=>({...current,VisibleCatalogue:visible}));
+    setInitial(current=>JSON.stringify({...JSON.parse(current),VisibleCatalogue:visible}));
+  },[creating,draft,references?.defaultArticleVisibility]);
   useEffect(()=>{
     if(creating)return;
     let active=true;setLoading(true);setError("");setErrors({});setConflict(false);
@@ -55,7 +61,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
     const frame=requestAnimationFrame(()=>focusRef.current?.focus({preventScroll:true}));
     return()=>cancelAnimationFrame(frame);
   },[loading]);
-  function change(name,value){if(busy||!canWrite)return;setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));if(name==="QteArticle")setLotsError("");}
+  function change(name,value){if(busy||!canWrite)return;if(name==="VisibleCatalogue")visibilityTouched.current=true;setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));if(name==="QteArticle")setLotsError("");}
   function fieldTab(name){
     if(["ID_UniteFk","QteArticle","QteMinArticle","PoidsUnitaire","ID_UnitePoidsFk","ID_DeviseFk","PUArticle","PVArticle"].includes(name))return "stock";
     if(["DatePeremptionArticle","NbreJoursAlerteArticle","DatePeremptionAlerteArticle"].includes(name))return "conservation";
@@ -129,6 +135,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
         {select("ID_CategorieArticleFk","Catégorie"+(creating?" *":""),references?.articleCategories)}
         {select("ID_TypeArticleFk","Type"+(creating?" *":""),references?.articleTypes)}
         <div className="record-field"><span>État de l’article</span><label className="record-editor-check" htmlFor={prefix+"ValideArticle"}><input id={prefix+"ValideArticle"} name="ValideArticle" type="checkbox" checked={values.ValideArticle===true} onChange={event=>change("ValideArticle",event.target.checked)} disabled={busy||!canWrite}/>Article actif</label></div>
+        <div className="record-field is-wide"><span>Annuaire des produits</span><label className="record-editor-check" htmlFor={prefix+"VisibleCatalogue"}><input id={prefix+"VisibleCatalogue"} name="VisibleCatalogue" type="checkbox" checked={values.VisibleCatalogue===true} onChange={event=>change("VisibleCatalogue",event.target.checked)} disabled={busy||!canWrite} aria-invalid={Boolean(errors.VisibleCatalogue)} aria-describedby={prefix+"VisibleCatalogue-hint"+(errors.VisibleCatalogue?" "+prefix+"VisibleCatalogue-error":"")}/>Visible dans l’annuaire des produits</label><small id={prefix+"VisibleCatalogue-hint"}>Partage la fiche et le prix de vente avec les utilisateurs autorisés. Les notes internes et le prix d’achat restent privés.</small>{errors.VisibleCatalogue?<small id={prefix+"VisibleCatalogue-error"} className="record-field-error">{errors.VisibleCatalogue}</small>:null}</div>
       </Section>
       </section>
       <section role="tabpanel" id={prefix+"-panel-stock"} aria-labelledby={prefix+"-tab-stock"} hidden={active!=="stock"} tabIndex={active==="stock"?0:-1}>

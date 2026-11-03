@@ -10,6 +10,8 @@ Le backend actif est désormais Django + Django REST Framework, connecté au Pos
 
 Documentation de travail :
 
+- [Vision scientifique et feuille de route](docs/vision-et-feuille-de-route-scientifique.md) : résumé de thèse, état observé, publication des offres, données à préparer et évaluations à construire.
+
 - [Module Caisse](docs/module-caisse.md) : journal par entreprise et devise, validation, contrepassation, clôtures et encaissements facultatifs des règlements Logistique.
 - [Modules métier et fonctionnalités associées](docs/modules-et-fonctionnalites.md) : classification commerciale, présentation de l’accueil et conservation des accès existants.
 - [Guide utilisateur intégré](docs/guide-utilisateur.md), disponible dans l’application à `/guide`, avec parcours et exemples selon les modules autorisés.
@@ -65,23 +67,20 @@ Fournir une base web robuste pour :
 
 ## Capacites fonctionnelles
 
-### Espace public
+### Présentation publique
 
-- page d'accueil
-- consultation de contenus publics
-- catalogue de produits ou services
-- consultation de structures
-- consultation d'experts ou professionnels
-- recherche publique
+- vitrine `/catalogue`, sans lecture de données métier ;
+- connexion et récupération d’accès ;
+- présentation des parcours disponibles et de ceux en amélioration, sans données fictives.
 
-### Espace connecte
+### Espace connecté
 
-- inscription
-- connexion
-- verification de session
-- deconnexion
-- profil utilisateur
-- discussions
+- applications et annuaires selon les licences et permissions ;
+- comptes créés par l’administration, inscription libre fermée ;
+- connexion, vérification de session et déconnexion ;
+- profil utilisateur et discussions privées.
+
+La racine `/` conserve l’entrée ERP. La vitrine n’ouvre pas les API historiques `/api/public/*` aux visiteurs anonymes. Le volet prédictif et l’évaluation sanitaire restent à construire selon la feuille de route scientifique.
 
 ### Administration
 

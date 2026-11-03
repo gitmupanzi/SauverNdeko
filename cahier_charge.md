@@ -1,5 +1,7 @@
 # Cahier de charge - SauverNdeko
 
+> Actualisation du 3 novembre 2026 : la [vision scientifique et la feuille de route](docs/vision-et-feuille-de-route-scientifique.md) reprennent le résumé de thèse transmis, distinguent les parcours installés des cibles et précisent les conditions de publication et de recherche. Les intentions historiques ci-dessous ne prouvent ni l’ouverture anonyme des données ni la disponibilité de modèles prédictifs.
+
 ## 1. Contexte
 
 SauverNdeko est un projet d'application web modulaire destine a la sante, a l'orientation, aux services et a l'administration de donnees.

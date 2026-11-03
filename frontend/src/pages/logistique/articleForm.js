@@ -2,10 +2,11 @@ import {quantityError} from "../../utils/quantities";
 import {computeArticleAlertDate,getLogistiqueCrudConfig} from "./views";
 const CONFIG=getLogistiqueCrudConfig("articles");
 const NUMERIC=["CodeArticleExterne","QteMinArticle","PUArticle","PVArticle","PoidsUnitaire","ID_UnitePoidsFk","ID_DeviseFk"];
-export function articleForm(record){
-  if(!record)return CONFIG.createFormState();
+export function articleForm(record,references={}){
+  if(!record)return {...CONFIG.createFormState(),VisibleCatalogue:references?.defaultArticleVisibility===true};
   const form=CONFIG.mapRecordToForm(record);
   return {...form,
+    VisibleCatalogue:record.VisibleCatalogue===true,
     QteArticle:record.QteArticle==null?"":String(record.QteArticle),
     CodeArticleExterne:record.CodeArticleExterne==null?"":String(record.CodeArticleExterne),
     NbreJoursAlerteArticle:record.NbreJoursAlerteArticle==null?"":String(record.NbreJoursAlerteArticle),
@@ -14,6 +15,7 @@ export function articleForm(record){
 }
 export function articleErrors(values,creating){
   const errors={};
+  if(typeof values.VisibleCatalogue!=="boolean")errors.VisibleCatalogue="Choisissez la visibilité dans l’annuaire des produits.";
   if(creating&&!/^[1-9]\d*$/.test(String(values.ID_DeviseFk||"")))errors.ID_DeviseFk="Choisissez une devise.";
   if(!values.NomArticle.trim())errors.NomArticle="Renseignez le nom de l’article.";
   if(creating)for(const [key,label] of [["ID_CategorieArticleFk","une catégorie"],["ID_TypeArticleFk","un type"],["ID_UniteFk","une unité"]])if(!values[key])errors[key]="Choisissez "+label+".";

@@ -68,8 +68,8 @@ class PublicView(APIView):
             )
         if kind == "stats":
             sql = '''SELECT
-              (SELECT count(*) FROM logistique."V_Article" WHERE "ValideArticle"=true) AS "productsCount",
-              (SELECT count(*) FROM systeme."V_Entite_Public") AS "pharmaciesCount",
+              (SELECT count(*) FROM logistique."V_OffreArticle") AS "productsCount",
+              (SELECT count(*) FROM systeme."V_Entite_Public") AS "structuresCount",
               (SELECT count(*) FROM professionnel."V_Professionnel_Public") AS "expertsCount",
               (SELECT count(*) FROM referentiel."T_Generique" g
                 JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
@@ -77,15 +77,11 @@ class PublicView(APIView):
                   AND referentiel.fn_reference_visible(g."ID_Generique",%s)) AS "diseasesCount",
               (SELECT count(*) FROM systeme."T_Entite" WHERE "ValideEntite"=true) AS "activeStructures"'''
             data = db.one(sql, [read_entity(request.user)])
-            data.update(
-                latestAnnouncements=min(data["productsCount"], 6),
-                responseLabel="Réponse rapide",
-            )
             return ok(data)
         if kind == "articles":
-            sql = 'SELECT "ID_Article","NomArticle","RefArticle","PVArticle","PhotoArticle","ObsArticle","ValideArticle" FROM logistique."V_Article" WHERE "ValideArticle"=true'
-            fields = ['"NomArticle"', '"RefArticle"', '"ObsArticle"']
-            order = '"NomArticle" ASC,"ID_Article" DESC'
+            from .offers import offers
+            rows, meta = offers(q, take, skip)
+            return ok(rows, meta=meta)
         elif kind == "pharmacies":
             sql = ENTITY_SQL + ' WHERE e."ValideEntite"=true'
             fields = ['e."NomEntite"', 'e."AdresseEntite"', 'e."PhoneEntite"']

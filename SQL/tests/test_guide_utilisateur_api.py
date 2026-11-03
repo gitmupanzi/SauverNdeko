@@ -205,13 +205,25 @@ class UserGuideAPI(unittest.TestCase):
     def test_15_content_catalogue_has_unique_safe_routes_and_examples(self):
         revision, modules = user_guide.content()
         self.assertEqual(set(modules), (set(MODULE_BY_KEY)-{'guide'})|{'referentiels'})
-        self.assertTrue(revision.startswith('2026-11-02:'))
+        self.assertTrue(revision.startswith('2026-11-03:'))
         for key, module in modules.items():
             for item in module['articles']:
                 self.assertTrue(item['steps'])
                 self.assertTrue(item['example']['text'])
                 detail = self.data(self.client(3).get(BASE+'articles/'+key+'/'+item['id']))
                 self.assertEqual(detail['article'], item)
+
+    def test_catalogue_and_publication_instructions_match_delivered_routes(self):
+        _, modules = user_guide.content()
+        articles = {item['id']: item for item in modules['catalogue']['articles']}
+        presentation = json.dumps(articles['decouvrir-catalogue'], ensure_ascii=False)
+        self.assertIn('présentation', presentation)
+        self.assertIn('connexion', presentation)
+        self.assertNotIn('statistiques en temps réel', presentation)
+        creation = next(item for item in modules['logistique']['articles'] if item['id']=='creer-article')
+        self.assertIn('Choisir la visibilité', [step['title'] for step in creation['steps']])
+        entreprise = next(item for item in modules['parametres']['articles'] if item['id']=='modifier-entreprise')
+        self.assertIn('Régler le partage des articles', [step['title'] for step in entreprise['steps']])
 
     def test_16_invalid_content_and_external_links_fail_closed(self):
         original = json.loads(user_guide.CONTENT_PATH.read_bytes())

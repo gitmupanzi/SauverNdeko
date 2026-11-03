@@ -5,7 +5,15 @@ description: Cartographier et faire évoluer SauverNdeko vers un ERP modulaire, 
 
 # Faire évoluer SauverNdeko
 
+## Vision scientifique et commerciale
+
+Lire la [vision et la feuille de route scientifique](../../docs/vision-et-feuille-de-route-scientifique.md) pour le catalogue, les relations entre produits/structures/professionnels/territoires et toute préparation d’analytics. Le résumé de thèse fourni par le propriétaire y fait référence ; le manuscrit complet reste à compléter. La réduction de mortalité est une contribution visée à évaluer. Recherches, demandes, commandes, sorties, ventes et dispensation constituent des signaux distincts ; aucun ne devient automatiquement un diagnostic ou une mesure des maladies.
+
+Conserver le socle PostgreSQL et les référentiels partagés. Distinguer code présent, installation contrôlée et résultats scientifiques démontrés. Avant collecte de texte, localisation individuelle ou données de santé, définir finalité, minimisation, conservation et accès. Ne pas réaffecter les territoires pour les faire correspondre à une prétendue hiérarchie universelle ONU ; utiliser des rapprochements versionnés et validés. Préparer les prévisions après la qualité des données et les connexions entre modules, avec évaluation chronologique et métriques adaptées à chaque cible.
+
 ## Références à choisir selon la tâche
+
+Le partage d’articles utilise un défaut d’entreprise pour les nouvelles créations et un choix propre à chaque article. Les articles existants ne sont pas publiés automatiquement ; leur retrait ou publication n’affecte jamais le stock. La projection d’offre et sa photo excluent les informations de gestion privées. Ce contrat reste distinct d’une ouverture des annuaires aux visiteurs anonymes.
 
 - Pour repérer un domaine et son état réel : [cartographie](references/cartographie.md), puis [inventaire technique](references/inventaire-technique.md).
 - Pour prioriser une version client ou un module ERP : [trajectoire ERP](references/trajectoire-erp.md).

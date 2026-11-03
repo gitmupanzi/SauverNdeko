@@ -9,7 +9,13 @@ Pour le schéma `operations`, suivre le [module Caisse](../../../docs/module-cai
 
 Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention.
 
+## Vision et données de recherche
+
+La [vision scientifique et sa feuille de route](../../../docs/vision-et-feuille-de-route-scientifique.md) décrivent les cibles futures, pas un moteur prédictif installé. Réutiliser les sources SQL et distinguer article de stock local, offre publiée, demande, vente et événement de recherche. Le socle `analytics.T_Recherche` n’autorise pas une collecte implicite de texte de recherche, GPS ou messages. Finalité, accès, minimisation, conservation, provenance et protocole d’évaluation se décident avant instrumentation. Une vitrine frontend publique n’ouvre aucune API métier anonyme ni ne modifie les licences.
+
 ## Architecture active
+
+Pour le partage d’articles, réutiliser `T_Entite.PartageArticlesPublicParDefaut`, `T_Article.VisibleCatalogue` et la projection fermée `logistique.V_OffreArticle`. Le défaut ne s’applique qu’à la création ; une dérogation explicite est conservée et les articles antérieurs restent masqués jusqu’à examen. La photo repasse par cette même projection. Ne jamais exposer le prix d’achat, les notes internes, l’auteur ou les quantités exactes par simple sérialisation de `V_Article`. La publication n’écrit aucun mouvement et ne crée aucun accès anonyme. Modifier le défaut via la fiche Entreprise versionnée ; conserver révision, motif et rejeu des écritures.
 
 Le propriétaire a autorisé la conversion du dossier backend vers Django le 24/10/2026, puis a limité initialement le travail aux fichiers. Il a ensuite explicitement autorisé les tables natives Django dans le schéma public et demandé une intervention d’administrateur de base de données. Django/DRF est le seul backend. Le propriétaire a ensuite demandé la suppression d’Express/Prisma, de son client généré, de ses dépendances et des lanceurs npm du backend. React et les contrats d’URL restent en place.
 

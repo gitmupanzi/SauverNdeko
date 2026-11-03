@@ -8,7 +8,7 @@ from apps.core import db
 from apps.core.responses import APIError, ExactEncoder
 
 # Le stock varie avec les bons : il ne doit jamais être réécrit par l'édition d'identité.
-VERSION_FIELDS = ("ID_DeviseFk","PoidsUnitaire","ID_UnitePoidsFk","InformationArticle","ID_Article", "NomArticle", "RefArticle", "CodeArticleInterne",
+VERSION_FIELDS = ("VisibleCatalogue","ID_DeviseFk","PoidsUnitaire","ID_UnitePoidsFk","InformationArticle","ID_Article", "NomArticle", "RefArticle", "CodeArticleInterne",
     "CodeArticleExterne", "ID_TypeArticleFk", "ID_CategorieArticleFk", "ID_UniteFk",
     "ID_UserFK", "PUArticle", "PVArticle", "QteMinArticle", "PhotoArticle",
     "ObsArticle", "ValideArticle", "DatePeremptionArticle",

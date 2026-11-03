@@ -3475,6 +3475,18 @@
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Article",
+          "column_name": "VisibleCatalogue",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -7996,6 +8008,18 @@
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": 20,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "systeme",
+          "table_name": "T_Entite",
+          "column_name": "PartageArticlesPublicParDefaut",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "true",
+          "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
           "is_identity": "NO"
@@ -15068,6 +15092,18 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Article",
+          "column_name": "VisibleCatalogue",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
           "is_identity": "NO"
         }
       ]

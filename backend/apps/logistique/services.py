@@ -339,6 +339,10 @@ def references(actor):
     result = {"currencies": currencies, "articleCurrencies": currencies,
               "commandeCurrencies": currency_references(actor, table='T_Commande'),
               "defaultCurrencyId": usd[0]["id"], "defaultCurrencyCode": "USD"}
+    from apps.core.tenancy import read_entity
+    entity = read_entity(actor)
+    publication = db.one('SELECT "PartageArticlesPublicParDefaut" value FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
+    result['defaultArticleVisibility'] = publication['value'] if publication else None
     result['defaultCommandeCurrencyId'] = next((item['id'] for item in result['commandeCurrencies'] if item['code'] == 'USD'), None)
     meta = {}
     rules = [

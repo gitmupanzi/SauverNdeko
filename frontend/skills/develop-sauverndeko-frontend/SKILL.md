@@ -26,9 +26,17 @@ Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention
 
 - Pour les exports Excel, Word et PDF : [skill documentaire SauverNdeko](../../../skills/document-mise-en-forme/SKILL.md). Réutiliser la charte et le contrat de parité sans recalcul métier propre au format.
 
+## Présentation de la plateforme et recherche
+
+La [vision scientifique et commerciale](../../../docs/vision-et-feuille-de-route-scientifique.md) distingue les fonctions disponibles, les développements en cours et les objectifs à évaluer. La vitrine `/catalogue` utilise les composants et thèmes existants, sans exemples présentés comme réels, compteurs fabriqués, témoignages inventés ou promesse de prédiction/qualification vérifiée. Une réponse API réussie ne prouve pas que les stocks sont récents ou représentatifs de tout le pays. Présenter la disponibilité comme déclarée et la devise reçue par le serveur, sans inférence à partir du seul état actif.
+
 ## Entrée de l’application
 
-Le propriétaire demande le login comme écran d’entrée. App.jsx attend la restauration de session, présente /login aux visiteurs sans session et conserve les destinations internes pour le retour après connexion. Le shell et le catalogue se chargent après authentification ; l’inscription libre est fermée. Ne pas rétablir une page d’accueil anonyme par défaut. Django impose aussi l’authentification sur le catalogue et fournit les modules autorisés par /api/workspace/modules. Conserver les contrôles d’objet et de périmètre sur chaque route.
+Le propriétaire conserve le login comme entrée ERP à la racine `/`. App.jsx attend la restauration de session pour les parcours métier et conserve les destinations internes après connexion. Le 3 novembre 2026, il demande une première vitrine de présentation à `/catalogue` : cette page seule est consultable sans session et n’appelle aucune API métier. Ne pas ouvrir les stocks, annuaires, discussions ou l’inscription libre par cette exception. Les API historiques `/api/public/*` restent authentifiées ; `/api/workspace/modules` conserve les licences et droits. Les liens de la vitrine vers un parcours protégé passent par la connexion et les gardes habituels.
+
+La vitrine utilise la largeur disponible avec des gouttières réduites et adaptatives, sans large plafond de conteneur centré. Les paragraphes gardent une longueur lisible ; les grilles passent sur une colonne et les actions s’adaptent aux petits écrans. Vérifier notamment 320, 375, 768, 1440 et 1920 pixels, sans masquer un débordement horizontal pour simuler son absence.
+
+Conserver les illustrations locales des cartes Produits, Professionnels et Structures. La barre de navigation reste visible pendant le défilement, avec une surface opaque du thème ; les ancres et le lien d’accès au contenu tiennent compte de sa hauteur réelle, y compris lorsqu’elle revient à la ligne sur mobile. Les images gardent leurs proportions et un espace réservé pour éviter les décalages au chargement.
 
 ## Profil et récupération d’accès
 

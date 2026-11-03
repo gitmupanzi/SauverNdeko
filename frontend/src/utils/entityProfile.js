@@ -25,6 +25,7 @@ export function entityProfileValues(record=null){
     Localisations:(record?.Localisations||[]).map(entityLocationValues),
     IdentifiantsLegauxEntite:(record?.IdentifiantsLegauxEntite||[]).map(row=>({libelle:string(row.libelle),valeur:string(row.valeur)})),
     AfficherEnteteDocument:record?.AfficherEnteteDocument??true,AfficherPiedDocument:record?.AfficherPiedDocument??true,
+    PartageArticlesPublicParDefaut:record?record.PartageArticlesPublicParDefaut??null:true,
     IdTypeEntiteFk:string(record?.IdTypeEntiteFk),ValideEntite:record?record.ValideEntite??null:true};
 }
 export function entityLogoError(file){
@@ -43,6 +44,7 @@ export function entityProfileErrors(values,motif,{manageStructure=false}={}){
   if(!Array.isArray(rows)||rows.length>10)errors.IdentifiantsLegauxEntite="Ajoutez au maximum dix identifiants.";
   else for(const row of rows){const label=string(row.libelle).trim(),value=string(row.valeur).trim(),key=label.toLocaleLowerCase("fr");if(!label||!value||Array.from(label).length>60||Array.from(value).length>180){errors.IdentifiantsLegauxEntite="Renseignez chaque libellé (60 caractères maximum) et sa référence (180 maximum).";break;}if(seen.has(key)){errors.IdentifiantsLegauxEntite="Chaque libellé d’identifiant doit être unique.";break;}seen.add(key);}
   for(const name of ["AfficherEnteteDocument","AfficherPiedDocument"])if(typeof values[name]!=="boolean")errors[name]="Choisissez une option valide.";
+  if(values.PartageArticlesPublicParDefaut!=null&&typeof values.PartageArticlesPublicParDefaut!=="boolean")errors.PartageArticlesPublicParDefaut="Choisissez une option valide.";
   if(manageStructure&&values.IdTypeEntiteFk&&!/^[1-9]\d*$/.test(values.IdTypeEntiteFk))errors.IdTypeEntiteFk="Choisissez un type d’entreprise valide.";
   if(manageStructure&&values.ValideEntite!=null&&typeof values.ValideEntite!=="boolean")errors.ValideEntite="Choisissez un état valide.";
   if(!string(motif).trim())errors.motif="Précisez le motif de cette mise à jour.";
@@ -55,6 +57,7 @@ export function entityProfilePayload(values,{record=null,motif,requestId,logo={f
     MentionDocumentaireEntite:string(values.MentionDocumentaireEntite).trim()||null,
     IdentifiantsLegauxEntite:values.IdentifiantsLegauxEntite.map(row=>({libelle:row.libelle.trim(),valeur:row.valeur.trim()})),
     AfficherEnteteDocument:values.AfficherEnteteDocument,AfficherPiedDocument:values.AfficherPiedDocument,
+    ...(!record||Object.hasOwn(record,"PartageArticlesPublicParDefaut")?{PartageArticlesPublicParDefaut:values.PartageArticlesPublicParDefaut}:{}),
     ...(!record||Object.hasOwn(record,"TauxTVAEntite")?{TauxTVAEntite:entityTaxRate(values.TauxTVAEntite)}:{}),
     ...(manageLocations?{Localisations:entityLocationPayload(values.Localisations||[])}:{}),
     logoAction:logo.file?"replace":logo.remove?"remove":"keep",motif:motif.trim(),requestId};

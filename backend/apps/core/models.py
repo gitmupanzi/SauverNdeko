@@ -228,6 +228,7 @@ class T_Niveau_5(models.Model):
 
 
 class T_Article(models.Model):
+    VisibleCatalogue = models.BooleanField()
     CreationRequestId = models.UUIDField(null=True, editable=False)
     CreationPayloadHash = models.CharField(max_length=64, null=True, editable=False)
     IdEntiteFk = models.IntegerField(null=True)
@@ -553,6 +554,7 @@ class T_Fk_Correspondance(models.Model):
 
 
 class T_Entite(models.Model):
+    PartageArticlesPublicParDefaut = models.BooleanField(default=True)
     IdEntite = models.AutoField(primary_key=True)
     NomEntite = models.TextField()
     PhoneEntite = models.TextField(null=True)
