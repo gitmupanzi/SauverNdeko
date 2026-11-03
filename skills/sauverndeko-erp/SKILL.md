@@ -56,6 +56,12 @@ Réutiliser `ModuleSidebar` pour les barres latérales : groupes repliables, ét
 
 ## Invariants SauverNdeko
 
+### Annuaire professionnel transversal
+
+Le module Professionnels utilise un annuaire publié et une gestion privée par entreprise. Réutiliser les familles de `T_Generique` et le référencement physique des champs pour les secteurs, professions, spécialités, compétences, prestations et types de rattachement ; ne pas créer de dictionnaires locaux. Les tables de liaison décrivent les choix d’une fiche et les synonymes référencent une valeur centrale. Une recherche par besoin ne confère aucune qualification à une personne.
+
+Conserver la fiche unique par compte, son propriétaire durable, les affiliations et leurs périodes. Les profils nouveaux sont des brouillons ; l’activité et l’autorisation de contact ne valent pas publication. Ne pas exposer dans l’annuaire les coordonnées personnelles, identifiants internes ou données RH. La gestion relève des administrateurs autorisés ; la lecture publiée est transversale et la messagerie contrôle de nouveau le destinataire et ses autorisations. Lire [le contrat Professionnels](../../docs/professionnels.md).
+
 - PostgreSQL reste organisé par schémas métier ; les noms qualifiés existants et leur casse sont des contrats.
 - QteArticle est le stock courant officiel ; T_Mouvement conserve l’historique ; les lignes de BE/BS portent les entrées/sorties effectives. Les lignes de bon de commande CMD décrivent des quantités commandées sans mouvement ni réservation de stock.
 - Les mouvements restent en lecture seule ; les commandes clôturées sont protégées selon le scénario et les règles serveur existants.

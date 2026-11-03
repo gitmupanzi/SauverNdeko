@@ -321,32 +321,32 @@
       "label": "Professionnels",
       "path": "/experts",
       "icon": "bi-people",
-      "description": "Consulter les profils publics et préparer une prise de contact.",
+      "description": "Rechercher un professionnel par besoin, consulter son profil et gérer les fiches publiées de votre entreprise.",
       "articles": [
         {
           "id": "consulter-professionnel",
-          "title": "Consulter un professionnel",
-          "summary": "Vérifiez l’identité et la spécialité d’un profil.",
+          "title": "Rechercher et consulter un professionnel",
+          "summary": "Retrouvez les compétences et prestations correspondant à votre besoin.",
           "steps": [
             {
-              "title": "Ouvrir Professionnels",
-              "text": "Affichez le répertoire depuis Vos applications."
+              "title": "Rechercher un besoin",
+              "text": "Dans Annuaire, saisissez un métier, une spécialité ou le service recherché, puis lancez la recherche."
             },
             {
-              "title": "Lire le profil",
-              "text": "Consultez le nom, le type de professionnel, la spécialité et la structure associée."
+              "title": "Affiner les résultats",
+              "text": "Choisissez les critères disponibles et passez entre Cartes et Tableau selon votre préférence. Les résultats sont paginés."
             },
             {
-              "title": "Vérifier les informations disponibles",
-              "text": "L’expérience et la disponibilité sont affichées lorsqu’elles sont renseignées. Une valeur à confirmer reste à vérifier."
+              "title": "Ouvrir la fiche",
+              "text": "Consultez la présentation, les compétences, les prestations et les structures associées au professionnel sélectionné."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Pour une demande fictive de maintenance, l’utilisateur vérifie la spécialité et la structure associée avant de contacter un profil."
+            "text": "Une personne cherche un architecte pour un projet de construction. Elle recherche « architecture », puis compare les prestations décrites dans les fiches."
           },
           "notes": [
-            "Un profil public ne constitue pas une vérification automatique de qualification."
+            "L’annuaire présente les profils publiés et actifs. L’absence de résultat ne signifie pas qu’aucun professionnel de ce domaine existe."
           ],
           "links": [
             {
@@ -358,27 +358,27 @@
         {
           "id": "contacter-professionnel",
           "title": "Contacter un professionnel",
-          "summary": "Démarrez un échange avec le profil sélectionné.",
+          "summary": "Démarrez un échange avec le destinataire choisi.",
           "steps": [
             {
-              "title": "Vérifier le destinataire",
-              "text": "Relisez le nom complet et la spécialité de la carte."
+              "title": "Vérifier la fiche",
+              "text": "Relisez le nom, la spécialité et les prestations du professionnel avant de prendre contact."
             },
             {
-              "title": "Cliquer Contacter",
-              "text": "Ouvrez Discussions avec le professionnel choisi, si le module est autorisé."
+              "title": "Ouvrir la discussion",
+              "text": "Cliquez sur Contacter lorsque cette option est disponible pour ce profil et votre compte."
             },
             {
-              "title": "Décrire le besoin",
-              "text": "Envoyez une demande courte qui précise le service attendu et les éléments nécessaires à une réponse."
+              "title": "Présenter la demande",
+              "text": "Décrivez brièvement le service attendu et votre localité. Vous pourrez poursuivre l’échange dans Discussions."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "« Bonjour, proposez-vous un entretien de matériel dans le quartier Exemple ? Quels renseignements vous faut-il ? »"
+            "text": "« Bonjour, réalisez-vous des études de plans pour une maison dans la commune Exemple ? Quels documents vous faut-il ? »"
           },
           "notes": [
-            "La prise de contact ne confirme pas un rendez-vous ni une prestation."
+            "Le contact ne confirme ni un rendez-vous ni une prestation. Un profil peut être publié sans accepter de nouvelle discussion."
           ],
           "links": [
             {
@@ -389,33 +389,105 @@
         },
         {
           "id": "comparer-profils",
-          "title": "Comparer les profils",
-          "summary": "Appuyez votre choix sur les champs renseignés.",
+          "title": "Comprendre les résultats de recherche",
+          "summary": "Appuyez votre choix sur les informations déclarées dans les fiches.",
           "steps": [
             {
-              "title": "Parcourir les profils",
-              "text": "Repérez les spécialités pertinentes dans les cartes."
+              "title": "Comparer les prestations",
+              "text": "Examinez les services explicitement proposés et la présentation des professionnels trouvés."
             },
             {
-              "title": "Lire le répertoire public",
-              "text": "Utilisez la vue tabulaire pour comparer identité, spécialité, expérience et structure."
+              "title": "Vérifier les informations",
+              "text": "Demandez les précisions nécessaires sur les qualifications, l’expérience et les conditions du service."
             },
             {
-              "title": "Faire confirmer les détails",
-              "text": "Demandez confirmation des disponibilités et modalités dans un échange autorisé."
+              "title": "Comprendre les mots associés",
+              "text": "Certains termes courants peuvent retrouver une compétence du référentiel : une recherche « cancer » peut ainsi retrouver une compétence déclarée « Oncologie »."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Deux profils fictifs ont une spécialité proche. La structure et l’expérience renseignée aident à préparer les questions à leur poser."
+            "text": "Deux profils peuvent exercer dans la construction et proposer des services différents. Le titre seul ne suffit pas pour conclure qu’ils répondent au même besoin."
           },
           "notes": [
-            "Les données privées des comptes et leurs permissions ne figurent pas dans ce répertoire."
+            "Une compétence déclarée ou un résultat de recherche ne constitue pas une certification automatique. Aucun professionnel n’est ajouté à partir d’un simple mot recherché."
           ],
           "links": [
             {
               "label": "Ouvrir Professionnels",
               "path": "/experts"
+            }
+          ]
+        },
+        {
+          "id": "gerer-profils-professionnels",
+          "title": "Créer et modifier une fiche professionnelle",
+          "summary": "Les gestionnaires autorisés administrent les profils de leur entreprise.",
+          "steps": [
+            {
+              "title": "Choisir l’entreprise",
+              "text": "Un administrateur de la plateforme choisit une entreprise active. Les autres gestionnaires restent dans leur entreprise autorisée."
+            },
+            {
+              "title": "Préparer la fiche",
+              "text": "Dans Profils professionnels, créez une fiche pour un compte existant et renseignez le secteur, le métier et la présentation. Vous pouvez choisir une photo ; elle sera aussi celle du compte associé. Enregistrer le brouillon conserve la fiche sans la rendre visible dans l’annuaire."
+            },
+            {
+              "title": "Renseigner les compétences et prestations",
+              "text": "Sélectionnez les valeurs des listes de référence, puis complétez les structures associées. Enregistrez l’ensemble."
+            },
+            {
+              "title": "Modifier la bonne fiche",
+              "text": "Ouvrez les actions du profil et choisissez Modifier. Le formulaire reprend les valeurs enregistrées ; les modifications simultanées sont contrôlées."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le gestionnaire prépare une fiche pour une personne de son entreprise. Il sélectionne son métier, ajoute les prestations réellement proposées et conserve la fiche en brouillon tant que sa présentation n’est pas terminée."
+          },
+          "notes": [
+            "Une seule fiche professionnelle est associée à un même compte. Les observations internes et les informations de gestion ne sont pas la présentation publiée."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Professionnels",
+              "path": "/experts?onglet=profils"
+            }
+          ]
+        },
+        {
+          "id": "publier-profil-professionnel",
+          "title": "Publier ou retirer un profil",
+          "summary": "Contrôlez la présence de votre fiche dans l’annuaire.",
+          "steps": [
+            {
+              "title": "Relire les informations publiques",
+              "text": "Vérifiez la présentation, les compétences déclarées et les structures de la fiche avant publication."
+            },
+            {
+              "title": "Publier le profil",
+              "text": "Utilisez l’action de publication autorisée. Un nouveau profil commence en brouillon ; son activation seule ne le publie pas."
+            },
+            {
+              "title": "Gérer la visibilité et le contact",
+              "text": "Retirez la publication pour faire disparaître la fiche de l’annuaire ou désactivez la prise de contact. L’archivage conserve l’historique."
+            },
+            {
+              "title": "Tenir les listes à jour",
+              "text": "Les secteurs, métiers, spécialités, compétences et prestations proviennent de Référentiels. La configuration du champ détermine la catégorie des choix."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une fiche est retirée de l’annuaire pendant la mise à jour de ses prestations. Après relecture, le gestionnaire la publie à nouveau."
+          },
+          "notes": [
+            "Un changement de catégorie ne remplace pas les valeurs déjà enregistrées ; les références devenues incompatibles doivent être examinées."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Professionnels",
+              "path": "/experts?onglet=profils"
             }
           ]
         }
@@ -2120,106 +2192,272 @@
           "title": "Suivre les soldes et les mouvements",
           "summary": "Lisez le tableau de bord sans additionner des devises différentes.",
           "steps": [
-            {"title": "Choisir l’entreprise", "text": "Vérifiez l’entreprise affichée dans l’en-tête. Le compte global peut consulter plusieurs entreprises ; les écritures nécessitent une entreprise précise."},
-            {"title": "Lire les montants par devise", "text": "Le solde correspond aux écritures validées. La période limite les flux d’entrée et de sortie ; elle ne transforme pas le solde courant en un solde historique."},
-            {"title": "Ouvrir le détail", "text": "Cliquez un indicateur pour afficher les écritures correspondantes, puis consultez leur caisse, leur date et leur état."}
+            {
+              "title": "Choisir l’entreprise",
+              "text": "Vérifiez l’entreprise affichée dans l’en-tête. Le compte global peut consulter plusieurs entreprises ; les écritures nécessitent une entreprise précise."
+            },
+            {
+              "title": "Lire les montants par devise",
+              "text": "Le solde correspond aux écritures validées. La période limite les flux d’entrée et de sortie ; elle ne transforme pas le solde courant en un solde historique."
+            },
+            {
+              "title": "Ouvrir le détail",
+              "text": "Cliquez un indicateur pour afficher les écritures correspondantes, puis consultez leur caisse, leur date et leur état."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Une caisse contient 100 USD et une autre 50 000 CDF. Le tableau conserve deux montants distincts ; il n’affiche pas un total de 50 100."},
-          "notes": ["La licence Caisse et les droits de votre compte déterminent les actions disponibles.", "Un brouillon ne modifie pas le solde."],
-          "links": [{"label": "Ouvrir le tableau de bord", "path": "/caisse"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une caisse contient 100 USD et une autre 50 000 CDF. Le tableau conserve deux montants distincts ; il n’affiche pas un total de 50 100."
+          },
+          "notes": [
+            "La licence Caisse et les droits de votre compte déterminent les actions disponibles.",
+            "Un brouillon ne modifie pas le solde."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir le tableau de bord",
+              "path": "/caisse"
+            }
+          ]
         },
         {
           "id": "ouvrir-caisse",
           "title": "Créer une caisse dans une devise",
           "summary": "Définissez la caisse avant d’y enregistrer de l’argent réellement détenu.",
           "steps": [
-            {"title": "Renseigner la caisse", "text": "Dans Caisses, ouvrez la création. Indiquez un nom précis, le type, la devise et, si nécessaire, le responsable."},
-            {"title": "Enregistrer", "text": "Le code est attribué automatiquement. La nouvelle caisse démarre à zéro ; son solde ne se saisit pas dans sa fiche."},
-            {"title": "Constater l’argent d’ouverture", "text": "Si de l’argent est réellement présent, créez une entrée avec le motif et la référence utiles, puis validez-la après contrôle."}
+            {
+              "title": "Renseigner la caisse",
+              "text": "Dans Caisses, ouvrez la création. Indiquez un nom précis, le type, la devise et, si nécessaire, le responsable."
+            },
+            {
+              "title": "Enregistrer",
+              "text": "Le code est attribué automatiquement. La nouvelle caisse démarre à zéro ; son solde ne se saisit pas dans sa fiche."
+            },
+            {
+              "title": "Constater l’argent d’ouverture",
+              "text": "Si de l’argent est réellement présent, créez une entrée avec le motif et la référence utiles, puis validez-la après contrôle."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "La caisse « Guichet principal USD » est créée à zéro. Une entrée d’ouverture justifiée de 100 USD porte son solde à 100 USD après validation."},
-          "notes": ["Plusieurs caisses peuvent utiliser la même devise dans une entreprise.", "Une caisse en CDF ne reçoit pas une écriture en USD. Aucun change n’est effectué automatiquement."],
-          "links": [{"label": "Ouvrir Caisses", "path": "/caisse?onglet=caisses"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "La caisse « Guichet principal USD » est créée à zéro. Une entrée d’ouverture justifiée de 100 USD porte son solde à 100 USD après validation."
+          },
+          "notes": [
+            "Plusieurs caisses peuvent utiliser la même devise dans une entreprise.",
+            "Une caisse en CDF ne reçoit pas une écriture en USD. Aucun change n’est effectué automatiquement."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Caisses",
+              "path": "/caisse?onglet=caisses"
+            }
+          ]
         },
         {
           "id": "preparer-operation",
           "title": "Préparer une entrée ou une sortie",
           "summary": "Utilisez un brouillon pour vérifier le montant, le sens et la caisse.",
           "steps": [
-            {"title": "Choisir la caisse et le sens", "text": "Dans Écritures, ouvrez une nouvelle opération. Choisissez la caisse et le mouvement d’entrée ou de sortie proposé par les références."},
-            {"title": "Décrire l’opération réelle", "text": "Renseignez la date et l’heure, le libellé, le montant positif, ainsi que le type, le tiers ou la référence lorsqu’ils sont utiles. La devise provient de la caisse."},
-            {"title": "Conserver ou corriger le brouillon", "text": "Enregistrez le brouillon et relisez-le avant validation. Les montants comportent deux décimales au maximum. Un brouillon reste modifiable selon vos droits."}
+            {
+              "title": "Choisir la caisse et le sens",
+              "text": "Dans Écritures, ouvrez une nouvelle opération. Choisissez la caisse et le mouvement d’entrée ou de sortie proposé par les références."
+            },
+            {
+              "title": "Décrire l’opération réelle",
+              "text": "Renseignez la date et l’heure, le libellé, le montant positif, ainsi que le type, le tiers ou la référence lorsqu’ils sont utiles. La devise provient de la caisse."
+            },
+            {
+              "title": "Conserver ou corriger le brouillon",
+              "text": "Enregistrez le brouillon et relisez-le avant validation. Les montants comportent deux décimales au maximum. Un brouillon reste modifiable selon vos droits."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Une dépense de fournitures de 25 USD est préparée sur la caisse USD avec sa référence justificative. Tant que l’écriture reste en brouillon, le solde de 100 USD reste inchangé."},
-          "notes": ["N’enregistrez pas un transfert entre deux caisses comme une conversion de devises.", "Enregistrer une opération ne réalise aucun virement bancaire."],
-          "links": [{"label": "Ouvrir Écritures", "path": "/caisse?onglet=ecritures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une dépense de fournitures de 25 USD est préparée sur la caisse USD avec sa référence justificative. Tant que l’écriture reste en brouillon, le solde de 100 USD reste inchangé."
+          },
+          "notes": [
+            "N’enregistrez pas un transfert entre deux caisses comme une conversion de devises.",
+            "Enregistrer une opération ne réalise aucun virement bancaire."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Écritures",
+              "path": "/caisse?onglet=ecritures"
+            }
+          ]
         },
         {
           "id": "valider-operation",
           "title": "Valider une opération de caisse",
           "summary": "La validation applique une seule fois le mouvement au solde.",
           "steps": [
-            {"title": "Vérifier le brouillon", "text": "Consultez la caisse, la devise, le montant, le sens et la date. Confirmez que l’encaissement ou le décaissement a réellement eu lieu."},
-            {"title": "Valider", "text": "Utilisez l’action de validation. Une sortie exige un solde suffisant. Une écriture antérieure à une clôture ne peut pas être validée après cette clôture."},
-            {"title": "Contrôler le résultat", "text": "Vérifiez l’état validé, l’auteur et le nouveau solde. Si la réponse réseau est incertaine, réessayez la même demande sans ressaisir une nouvelle opération."}
+            {
+              "title": "Vérifier le brouillon",
+              "text": "Consultez la caisse, la devise, le montant, le sens et la date. Confirmez que l’encaissement ou le décaissement a réellement eu lieu."
+            },
+            {
+              "title": "Valider",
+              "text": "Utilisez l’action de validation. Une sortie exige un solde suffisant. Une écriture antérieure à une clôture ne peut pas être validée après cette clôture."
+            },
+            {
+              "title": "Contrôler le résultat",
+              "text": "Vérifiez l’état validé, l’auteur et le nouveau solde. Si la réponse réseau est incertaine, réessayez la même demande sans ressaisir une nouvelle opération."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "La validation d’une sortie de 25 USD fait passer le solde fictif de 100 USD à 75 USD. Un rejeu de cette validation ne retire pas 25 USD une seconde fois."},
-          "notes": ["Une écriture validée conserve son montant, sa caisse et sa devise.", "Les contrôles de solde s’appliquent aussi lorsque deux utilisateurs travaillent en même temps."],
-          "links": [{"label": "Ouvrir Écritures", "path": "/caisse?onglet=ecritures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "La validation d’une sortie de 25 USD fait passer le solde fictif de 100 USD à 75 USD. Un rejeu de cette validation ne retire pas 25 USD une seconde fois."
+          },
+          "notes": [
+            "Une écriture validée conserve son montant, sa caisse et sa devise.",
+            "Les contrôles de solde s’appliquent aussi lorsque deux utilisateurs travaillent en même temps."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Écritures",
+              "path": "/caisse?onglet=ecritures"
+            }
+          ]
         },
         {
           "id": "contrepasser-operation",
           "title": "Corriger par contrepassation",
           "summary": "Conservez l’écriture initiale et créez son mouvement inverse avec un motif.",
           "steps": [
-            {"title": "Retrouver l’écriture", "text": "Consultez l’opération validée à corriger et vérifiez ses références. Ne créez pas une nouvelle dépense pour masquer une erreur."},
-            {"title": "Indiquer le motif", "text": "Si l’action Contrepasser est autorisée, précisez pourquoi l’opération doit être inversée. Le montant et la devise de la compensation proviennent de l’écriture initiale."},
-            {"title": "Vérifier les deux écritures", "text": "Le journal conserve l’original et son inverse reliés. Une même opération ne peut pas être contrepassée plusieurs fois."}
+            {
+              "title": "Retrouver l’écriture",
+              "text": "Consultez l’opération validée à corriger et vérifiez ses références. Ne créez pas une nouvelle dépense pour masquer une erreur."
+            },
+            {
+              "title": "Indiquer le motif",
+              "text": "Si l’action Contrepasser est autorisée, précisez pourquoi l’opération doit être inversée. Le montant et la devise de la compensation proviennent de l’écriture initiale."
+            },
+            {
+              "title": "Vérifier les deux écritures",
+              "text": "Le journal conserve l’original et son inverse reliés. Une même opération ne peut pas être contrepassée plusieurs fois."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Une sortie autonome erronée de 25 USD est compensée par une entrée de 25 USD. Le journal garde les deux opérations et le motif de correction."},
-          "notes": ["Une entrée ne peut être inversée en sortie que si le solde le permet.", "Une écriture liée à un règlement de facture ne se contre-passe pas isolément : la facture et son règlement doivent rester cohérents."],
-          "links": [{"label": "Ouvrir le journal", "path": "/caisse?onglet=ecritures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une sortie autonome erronée de 25 USD est compensée par une entrée de 25 USD. Le journal garde les deux opérations et le motif de correction."
+          },
+          "notes": [
+            "Une entrée ne peut être inversée en sortie que si le solde le permet.",
+            "Une écriture liée à un règlement de facture ne se contre-passe pas isolément : la facture et son règlement doivent rester cohérents."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir le journal",
+              "path": "/caisse?onglet=ecritures"
+            }
+          ]
         },
         {
           "id": "cloturer-caisse",
           "title": "Compter et clôturer la caisse",
           "summary": "Comparez le montant réellement compté au solde théorique sans effacer les écarts.",
           "steps": [
-            {"title": "Contrôler les opérations", "text": "Vérifiez les mouvements à prendre en compte et traitez les brouillons concernés avant la clôture."},
-            {"title": "Enregistrer le comptage", "text": "Dans Clôtures, choisissez la caisse, renseignez la date et l’heure puis le montant réellement compté. Le solde théorique est repris du serveur."},
-            {"title": "Justifier l’écart", "text": "Si le comptage diffère du théorique, indiquez un motif avant de confirmer. Le comptage ne crée pas automatiquement une entrée ou une sortie de régularisation."},
-            {"title": "Conserver le contrôle", "text": "La clôture conserve le théorique, le compté, l’écart et son auteur. Les nouvelles opérations doivent être postérieures à la clôture."}
+            {
+              "title": "Contrôler les opérations",
+              "text": "Vérifiez les mouvements à prendre en compte et traitez les brouillons concernés avant la clôture."
+            },
+            {
+              "title": "Enregistrer le comptage",
+              "text": "Dans Clôtures, choisissez la caisse, renseignez la date et l’heure puis le montant réellement compté. Le solde théorique est repris du serveur."
+            },
+            {
+              "title": "Justifier l’écart",
+              "text": "Si le comptage diffère du théorique, indiquez un motif avant de confirmer. Le comptage ne crée pas automatiquement une entrée ou une sortie de régularisation."
+            },
+            {
+              "title": "Conserver le contrôle",
+              "text": "La clôture conserve le théorique, le compté, l’écart et son auteur. Les nouvelles opérations doivent être postérieures à la clôture."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Le journal indique 75 USD ; le comptage trouve 74 USD. La clôture conserve un écart de −1 USD et son explication, sans modifier silencieusement le solde."},
-          "notes": ["Une clôture n’est pas un effacement du journal.", "Toute régularisation nécessaire doit faire l’objet d’une opération distincte, justifiée et autorisée."],
-          "links": [{"label": "Ouvrir Clôtures", "path": "/caisse?onglet=clotures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le journal indique 75 USD ; le comptage trouve 74 USD. La clôture conserve un écart de −1 USD et son explication, sans modifier silencieusement le solde."
+          },
+          "notes": [
+            "Une clôture n’est pas un effacement du journal.",
+            "Toute régularisation nécessaire doit faire l’objet d’une opération distincte, justifiée et autorisée."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Clôtures",
+              "path": "/caisse?onglet=clotures"
+            }
+          ]
         },
         {
           "id": "encaisser-reglement-facture",
           "title": "Relier un nouveau règlement à la caisse",
           "summary": "Enregistrez ensemble le paiement d’une facture et son encaissement, avec les droits des deux modules.",
           "steps": [
-            {"title": "Préparer le règlement dans Logistique", "text": "Choisissez la facture, le mode, le montant et la date du règlement. Vérifiez le solde TTC restant."},
-            {"title": "Choisir la caisse facultative", "text": "Si vous êtes habilité dans Caisse, choisissez une caisse active de la même entreprise et de la même devise dans Enregistrer en caisse. Laissez ce champ vide si aucune opération de caisse n’est à constater."},
-            {"title": "Enregistrer une seule fois", "text": "La validation du formulaire enregistre le règlement et une entrée de caisse liée dans une même transaction. Si la caisse refuse l’opération, le règlement n’est pas enregistré partiellement."},
-            {"title": "Consulter le lien", "text": "Retrouvez le règlement sur la facture et l’encaissement dans le journal de caisse. Ne saisissez pas une seconde entrée manuelle pour ce même paiement."}
+            {
+              "title": "Préparer le règlement dans Logistique",
+              "text": "Choisissez la facture, le mode, le montant et la date du règlement. Vérifiez le solde TTC restant."
+            },
+            {
+              "title": "Choisir la caisse facultative",
+              "text": "Si vous êtes habilité dans Caisse, choisissez une caisse active de la même entreprise et de la même devise dans Enregistrer en caisse. Laissez ce champ vide si aucune opération de caisse n’est à constater."
+            },
+            {
+              "title": "Enregistrer une seule fois",
+              "text": "La validation du formulaire enregistre le règlement et une entrée de caisse liée dans une même transaction. Si la caisse refuse l’opération, le règlement n’est pas enregistré partiellement."
+            },
+            {
+              "title": "Consulter le lien",
+              "text": "Retrouvez le règlement sur la facture et l’encaissement dans le journal de caisse. Ne saisissez pas une seconde entrée manuelle pour ce même paiement."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Une facture fictive de 116 USD reçoit 50 USD en espèces. Le règlement lié à la caisse diminue la dette de 50 USD et ajoute exactement 50 USD au solde de la caisse choisie."},
-          "notes": ["Les règlements historiques ne sont pas repris automatiquement en caisse.", "Le champ est facultatif et exige les droits Logistique et Caisse. Le choix d’un mode de paiement seul ne crée pas une écriture de caisse."],
-          "links": [{"label": "Ouvrir le journal de caisse", "path": "/caisse?onglet=ecritures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Une facture fictive de 116 USD reçoit 50 USD en espèces. Le règlement lié à la caisse diminue la dette de 50 USD et ajoute exactement 50 USD au solde de la caisse choisie."
+          },
+          "notes": [
+            "Les règlements historiques ne sont pas repris automatiquement en caisse.",
+            "Le champ est facultatif et exige les droits Logistique et Caisse. Le choix d’un mode de paiement seul ne crée pas une écriture de caisse."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir le journal de caisse",
+              "path": "/caisse?onglet=ecritures"
+            }
+          ]
         },
         {
           "id": "rechercher-exporter-caisse",
           "title": "Rechercher et exporter le journal",
           "summary": "Retrouvez une écriture et extrayez le périmètre autorisé.",
           "steps": [
-            {"title": "Affiner la liste", "text": "Recherchez un code, un libellé ou une référence. Filtrez par caisse, devise, sens, état ou période selon le registre."},
-            {"title": "Consulter la ligne exacte", "text": "Ouvrez la fiche depuis le code ou le menu de la ligne. Vérifiez la caisse, le montant, les auteurs et les liens d’origine avant toute action."},
-            {"title": "Exporter", "text": "Utilisez Excel ou CSV avec vos droits d’export. Les données proviennent du même périmètre que la liste, avec les montants numériques et leur devise."}
+            {
+              "title": "Affiner la liste",
+              "text": "Recherchez un code, un libellé ou une référence. Filtrez par caisse, devise, sens, état ou période selon le registre."
+            },
+            {
+              "title": "Consulter la ligne exacte",
+              "text": "Ouvrez la fiche depuis le code ou le menu de la ligne. Vérifiez la caisse, le montant, les auteurs et les liens d’origine avant toute action."
+            },
+            {
+              "title": "Exporter",
+              "text": "Utilisez Excel ou CSV avec vos droits d’export. Les données proviennent du même périmètre que la liste, avec les montants numériques et leur devise."
+            }
           ],
-          "example": {"title": "Exemple fictif", "text": "Le gestionnaire filtre les sorties USD de la caisse du guichet pendant une semaine, puis exporte ce journal pour son contrôle."},
-          "notes": ["L’export ne donne aucun droit sur les caisses d’une autre entreprise.", "Les montants de devises différentes ne doivent pas être additionnés dans le fichier de contrôle."],
-          "links": [{"label": "Ouvrir Écritures", "path": "/caisse?onglet=ecritures"}]
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Le gestionnaire filtre les sorties USD de la caisse du guichet pendant une semaine, puis exporte ce journal pour son contrôle."
+          },
+          "notes": [
+            "L’export ne donne aucun droit sur les caisses d’une autre entreprise.",
+            "Les montants de devises différentes ne doivent pas être additionnés dans le fichier de contrôle."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Écritures",
+              "path": "/caisse?onglet=ecritures"
+            }
+          ]
         }
       ]
     }

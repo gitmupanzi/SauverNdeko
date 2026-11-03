@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -93,9 +93,9 @@ CREATE FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table tex
     AS $$
 DECLARE owner_id integer;
 BEGIN
- -- L'entreprise de l'utilisateur ou d'un résultat de recherche n'est pas
- -- un propriétaire durable d'une ligne partagée.
  IF p_ligne IS NULL OR NOT EXISTS(SELECT FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "SupportsEntityScope") THEN RETURN NULL;END IF;
+ IF p_schema='professionnel' AND p_table IN('T_Professionnel_Competence','T_Professionnel_Prestation','T_Professionnel_Entite') THEN
+  SELECT "IdEntiteFk" INTO owner_id FROM professionnel."T_Professionnel" WHERE "IdProfessionnel"=nullif(p_ligne->>'IdProfessionnelFk','')::integer;RETURN owner_id;END IF;
  IF (p_schema,p_table)=('logistique','T_PrecisionStock') THEN
   SELECT "IdEntiteFk" INTO owner_id FROM referentiel."T_Generique" WHERE "ID_Generique"=nullif(p_ligne->>'ID_UniteFk','')::integer;RETURN owner_id;END IF;
  IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
@@ -103,18 +103,13 @@ BEGIN
  IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
  IF p_schema='support' AND p_table='T_ResolutionSupport' THEN
   SELECT "IdEntiteFk" INTO owner_id FROM support."T_Support" WHERE "ID_Support"=nullif(p_ligne->>'ID_SupportFk','')::bigint;RETURN owner_id;END IF;
- IF p_schema='logistique' THEN
-  CASE p_table
-   WHEN 'T_Mouvement' THEN
-    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=nullif(p_ligne->>'ID_cmdFk','')::integer;
-    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Article" WHERE "ID_Article"=nullif(p_ligne->>'ID_ArticleFk','')::integer;END IF;
-   WHEN 'T_Reglements' THEN
-    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Facture" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';
-    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';END IF;
-   WHEN 'T_Remboursement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Avoir" WHERE "ID_Avoir"=nullif(p_ligne->>'ID_AvoirFk','')::bigint;
-   ELSE NULL;
-  END CASE;
- END IF;
+ IF p_schema='logistique' THEN CASE p_table
+  WHEN 'T_Mouvement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=nullif(p_ligne->>'ID_cmdFk','')::integer;
+   IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Article" WHERE "ID_Article"=nullif(p_ligne->>'ID_ArticleFk','')::integer;END IF;
+  WHEN 'T_Reglements' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Facture" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';
+   IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';END IF;
+  WHEN 'T_Remboursement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Avoir" WHERE "ID_Avoir"=nullif(p_ligne->>'ID_AvoirFk','')::bigint;
+  ELSE NULL;END CASE;END IF;
  RETURN owner_id;
 END $$;
 
@@ -122,7 +117,7 @@ END $$;
 -- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Résout le propriétaire durable de la vraie ligne, y compris la résolution Support via son parent ; aucune entreprise déduite du compte actuel.';
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Contexte durable des références : propriétaire explicite, ou parent métier prouvé ; compétences, prestations et affiliations prennent l’entreprise de leur fiche. La structure affiliée n’est pas le propriétaire. Ne prend jamais l’entreprise courante du compte représenté.';
 
 --
 -- Name: fn_guard_sens_stock(); Type: FUNCTION; Schema: referentiel; Owner: -

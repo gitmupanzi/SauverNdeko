@@ -1,4 +1,8 @@
 from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
+from apps.professionnels.views import (ContextView as ProfessionalContextView, EntitiesView as ProfessionalEntitiesView,
+    ReferencesView as ProfessionalReferencesView, DirectoryView as ProfessionalDirectoryView,
+    ProfilesView as ProfessionalProfilesView, ProfileActionView, PublicPhotoView as ProfessionalPublicPhotoView,
+    ManagementPhotoView as ProfessionalManagementPhotoView)
 from apps.caisse.views import (ContextView as CashContextView, EntitiesView as CashEntitiesView,
     ReferencesView as CashReferencesView, SynthesisView as CashSynthesisView, RegisterView as CashRegisterView,
     CashAccountsView, EntriesView as CashEntriesView, EntryActionView as CashEntryActionView,
@@ -76,6 +80,14 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/professionnels/contexte/?$", ProfessionalContextView.as_view()),
+    re_path(r"^api/professionnels/entreprises/?$", ProfessionalEntitiesView.as_view()),
+    re_path(r"^api/professionnels/references/?$", ProfessionalReferencesView.as_view()),
+    re_path(r"^api/professionnels/annuaire/(?P<pk>[0-9]+)/photo/?$", ProfessionalPublicPhotoView.as_view()),
+    re_path(r"^api/professionnels/profils/(?P<pk>[0-9]+)/photo/?$", ProfessionalManagementPhotoView.as_view()),
+    re_path(r"^api/professionnels/annuaire(?:/(?P<pk>[0-9]+))?/?$", ProfessionalDirectoryView.as_view()),
+    re_path(r"^api/professionnels/profils/(?P<pk>[0-9]+)/actions/?$", ProfileActionView.as_view()),
+    re_path(r"^api/professionnels/profils(?:/(?P<pk>[0-9]+))?/?$", ProfessionalProfilesView.as_view()),
     re_path(r"^api/caisse/contexte/?$", CashContextView.as_view()),
     re_path(r"^api/caisse/entreprises/?$", CashEntitiesView.as_view()),
     re_path(r"^api/caisse/references/?$", CashReferencesView.as_view()),

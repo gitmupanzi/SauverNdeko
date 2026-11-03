@@ -5,6 +5,8 @@ description: Faire évoluer les interfaces React de SauverNdeko vers des parcour
 
 # Frontend SauverNdeko
 
+Pour [Professionnels](../../../docs/professionnels.md), conserver une seule liste d’annuaire avec choix Cartes/Tableau, recherche serveur par besoin et consultation latérale du même identifiant. Le registre privé suit les droits d’entreprise ; son formulaire commun d’ajout/modification enregistre ensemble les compétences, prestations et structures. Ces enfants partagent le parent, mais la fiche complexe reste individuelle. Les réglages des références affichent les catégories et valeurs renvoyées par l’API. Publication, activité et prise de contact restent distinctes ; ne pas inventer de badge de qualification ni afficher les notes internes dans l’annuaire.
+
 Pour le [module Caisse](../../../docs/module-caisse.md), afficher les totaux séparément par devise, les brouillons et les écritures validées sans ambiguïté. Le frontend utilise les soldes et autorisations du serveur, conserve la même demande après réponse incertaine et ne propose pas de suppression d’écriture validée. Réutiliser les registres, préférences, formulaires et thèmes communs ; documenter le parcours dans le Guide utilisateur.
 
 Le module Guide utilisateur réutilise la navigation, les thèmes et le contexte d’entreprise communs. Ses parcours et exemples proviennent de l’API autorisée, sans manuel complet embarqué côté navigateur. Une recherche ne porte que sur les articles autorisés. Lors d’un changement d’entreprise ou de droits, retirer immédiatement l’ancien contenu et ignorer les réponses périmées. Utiliser des URL stables par module/article et des liens vers les écrans existants ; ne pas inventer de bouton métier ou de démonstration qui écrit des données.

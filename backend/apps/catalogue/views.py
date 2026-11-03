@@ -10,35 +10,13 @@ EXPERT_SQL = 'SELECT p.* FROM professionnel."V_Professionnel_Public" p'
 ENTITY_SQL = 'SELECT e.* FROM systeme."V_Entite_Public" e'
 
 
-def recipient(kind, target_id):
+def recipient(kind, target_id, *, actor=None, contact=False, lock=False):
     if kind == "expert":
-        expert = db.one(
-            EXPERT_SQL
-            + ' WHERE p."IdProfessionnel"=%s AND p."ValideProfessionnel"=true',
-            [target_id],
-        )
-        if not expert:
-            raise APIError("Expert introuvable.", "NOT_FOUND", 404)
-        user = expert["T_Utilisateurs"]
-        links = expert["T_Professionnel_Entite"]
-        entity = links[0]["T_Entite"] if links else {}
-        return {
-            "type": "expert",
-            "id": expert["IdProfessionnel"],
-            "firstName": user.get("PrenomUser") or "",
-            "lastName": user.get("NomUser") or "",
-            "fullName": (
-                (user.get("PrenomUser") or "") + " " + (user.get("NomUser") or "")
-            ).strip(),
-            "photo": user.get("UrlPhoto"),
-            "professionalType": expert["T_GeneriqueType"].get("NomGenerique"),
-            "specialty": expert["T_GeneriqueSpecialite"].get("NomGenerique"),
-            "experience": expert["ExperienceAns"],
-            "structure": entity.get("NomEntite"),
-            "structureId": entity.get("IdEntite"),
-            "publicAddress": entity.get("AdresseEntite"),
-            "publicPhone": entity.get("PhoneEntite"),
-        }
+        from apps.professionnels.services import public_record, public_profile
+        expert = public_profile(public_record(target_id, actor=actor, contact=contact, lock=lock), actor)
+        structure = expert['structures'][0] if expert['structures'] else {}
+        return {**expert, 'type': 'expert', 'structureId': structure.get('id'),
+                'publicAddress': structure.get('address'), 'publicPhone': structure.get('phone')}
     if kind == "structure":
         entity = db.one(
             ENTITY_SQL + ' WHERE e."IdEntite"=%s AND e."ValideEntite"=true', [target_id]
@@ -70,7 +48,7 @@ class PublicView(APIView):
         values = []
         if kind == "chat/context":
             typ = params.get("type")
-            r = recipient(typ, positive(params.get("id")))
+            r = recipient(typ, positive(params.get("id")), actor=request.user, contact=True)
             target = {
                 "id": r["id"],
                 "type": typ,
@@ -113,14 +91,9 @@ class PublicView(APIView):
             fields = ['e."NomEntite"', 'e."AdresseEntite"', 'e."PhoneEntite"']
             order = 'e."NomEntite" ASC,e."IdEntite" DESC'
         elif kind == "experts":
-            sql = EXPERT_SQL + ' WHERE p."ValideProfessionnel"=true'
-            fields = [
-                "(p.\"T_Utilisateurs\"->>'NomUser')",
-                "(p.\"T_Utilisateurs\"->>'PrenomUser')",
-                "(p.\"T_GeneriqueSpecialite\"->>'NomGenerique')",
-                "(p.\"T_GeneriqueType\"->>'NomGenerique')",
-            ]
-            order = 'p."IdProfessionnel" DESC'
+            from apps.professionnels.services import directory
+            result = directory(request.user, {**params, 'take': take, 'skip': skip})
+            return ok(result['rows'], meta={'take': take, 'skip': skip, 'count': len(result['rows']), 'total': result['total']})
         elif kind == "maladies":
             sql = """SELECT g."ID_Generique",g."NomGenerique",g."AbrGenerique",g."ObsGenerique",jsonb_build_object('ID_CategorieGenerique',c."ID_CategorieGenerique",'NomCategorieGenerique',c."NomCategorieGenerique") AS "T_CategorieGenerique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie' """
             sql += ' AND referentiel.fn_reference_visible(g."ID_Generique",%s)'

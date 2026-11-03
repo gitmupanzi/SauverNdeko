@@ -40,7 +40,7 @@ def application_metadata():
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
     read=not item.get("admin") or actor.admin
-    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres"} and actor.admin) or (key=="territoires" and actor.global_admin)
+    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels"} and actor.admin) or (key=="territoires" and actor.global_admin)
     return {"canRead":read,"canManage":manage and read,"canExport":read}
 
 def access_snapshot(actor):
@@ -120,6 +120,7 @@ def enforce_request(actor,request,view):
     elif path.startswith('/api/geolocalisation/'):key='territoires'
     elif path.startswith('/api/support/'):key='support'
     elif path.startswith('/api/caisse/'):key='caisse'
+    elif path.startswith('/api/professionnels/'):key='professionnels'
     elif path.startswith('/api/parametres/'):key='parametres'
     elif path.startswith('/api/guide/'):
         # Le guide ne possède que des lectures : DRF refuse les autres méthodes.

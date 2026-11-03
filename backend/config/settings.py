@@ -138,7 +138,10 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Stockage local privé ; aucun répertoire média n’est exposé par un serveur statique.
 ARTICLE_MEDIA_ROOT = Path(os.getenv("SAUVERNDEKO_MEDIA_ROOT", str(BASE_DIR / "media")))
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+# Une photo professionnelle de 8 Mio devient environ 10,7 Mio en JSON/base64.
+# Cette marge couvre son formulaire ; chaque service conserve ses propres
+# limites, notamment 8 Mio binaires et 24 Mpx pour une image réellement décodée.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 
 # SMTP réel : le secret est un mot de passe d’application Google, jamais celui de SauverNdeko.
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

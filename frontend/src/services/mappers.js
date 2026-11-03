@@ -112,7 +112,7 @@ export function mapExpertPublic(item, index) {
   const lastName = pickNested(item, [["T_Utilisateurs", "NomUser"], ["nom"], ["lastName"]], "");
   const fullName =
     `${firstName} ${lastName}`.trim() ||
-    getFirstDefined(item?.nomComplet, item?.name, `Professionnel ${index + 1}`);
+    getFirstDefined(item?.fullName, item?.nomComplet, item?.name, `Professionnel ${index + 1}`);
   const structure = pickNested(
     item,
     [
@@ -132,7 +132,7 @@ export function mapExpertPublic(item, index) {
     professionalType: pickNested(
       item,
       [["T_GeneriqueType", "NomGenerique"], ["typeProfessionnel"], ["professionalType"]],
-      "Professionnel de sante"
+      "Professionnel"
     ),
     specialty: pickNested(
       item,
@@ -143,7 +143,15 @@ export function mapExpertPublic(item, index) {
     structure,
     availability:
       getFirstDefined(item?.DisponibilitePublique, item?.availability) ||
-      (item?.ValideProfessionnel === false ? "Profil a verifier" : "Disponible pour orientation"),
+      (item?.canContact === true ? "Contact par messagerie" : "Contact indisponible"),
+    sector:item?.sector || "",
+    title:item?.title || "",
+    summary:item?.summary || "",
+    locality:item?.locality || "",
+    skills:Array.isArray(item?.skills)?item.skills:[],
+    services:Array.isArray(item?.services)?item.services:[],
+    structures:Array.isArray(item?.structures)?item.structures:[],
+    canContact:item?.canContact===true,
   };
 }
 

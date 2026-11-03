@@ -105,6 +105,8 @@ Les migrations 11/12 et les services documents.py/credit_notes.py assurent les P
 
 ## Maintenance et livraison
 
+Pour Professionnels, lire [le contrat d’annuaire](../../../docs/professionnels.md) et la migration `20261102_06_professionnels_transversaux.sql`. Les écritures dédiées enregistrent ensemble profil, compétences, prestations et affiliations ; une fiche a un propriétaire durable et une publication explicite. Les catégories viennent de `T_ChampReferentiel`/`T_Generique`, y compris pour une affiliation dont le contexte de référence est celui du profil propriétaire, pas celui de la structure d’exercice. La projection publiée et les messages privés ne doivent jamais exposer les données de compte ou les observations internes ; une affiliation ne rend pas son administrateur participant à une discussion.
+
 Lire [le guide de livraison](../../../docs/livraison-logistique.md) pour provisionner une Entité, sauvegarder DB et médias privés, restaurer dans une base isolée, préparer une installation vierge et servir le backend en production. Les commandes de maintenance ne font jamais partie du démarrage normal et ne migrent pas automatiquement une base cliente. Le provisionnement conserve les dates lors d’un rejeu ; une licence appartient à l’Entité et ne remplace pas les droits des rôles.
 
 Une restauration n’est attestée qu’après comparaison des tables et fichiers restaurés. Le paquet neuf contient une liste fermée de données de dictionnaire, sans compte ni document client. `initialiser_admin` refuse un système possédant déjà des utilisateurs. Les extensions de dépôts, achats/ventes et comptabilité générale suivent le [cadrage ERP](../../../docs/cadrage-extensions-erp.md), avec contrats SQL et critères métier avant livraison.

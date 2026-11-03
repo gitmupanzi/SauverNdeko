@@ -100,9 +100,9 @@ class StartView(APIView):
         db.ensure_writable()
         kind = request.data.get("type")
         target = positive(request.data.get("targetId"))
-        r = recipient(kind, target)
         field = "IdProfessionnelFk" if kind == "expert" else "IdEntiteFk"
         with transaction.atomic():
+            r = recipient(kind, target, actor=request.user, contact=True, lock=True)
             db.query(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
                 [str(request.user.pk) + ":" + kind + ":" + str(target)],

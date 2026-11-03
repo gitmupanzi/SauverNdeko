@@ -413,7 +413,21 @@ class T_Professionnel(models.Model):
     IdProfessionnel = models.AutoField(primary_key=True)
     IdUserFk = models.IntegerField()
     IdTypeProfessionnelFk = models.IntegerField()
-    IdSpecialiteFk = models.IntegerField()
+    IdSpecialiteFk = models.IntegerField(null=True)
+    IdEntiteFk = models.IntegerField()
+    IdSecteurFk = models.IntegerField(null=True)
+    TitrePublic = models.TextField(null=True)
+    PresentationPublique = models.TextField(null=True)
+    LocalitePublique = models.TextField(null=True)
+    ContactAutorise = models.BooleanField(default=True)
+    Publie = models.BooleanField(default=False)
+    Revision = models.BigIntegerField(default=1)
+    CreeLe = models.DateTimeField()
+    ModifieLe = models.DateTimeField()
+    CreeParUserFk = models.IntegerField(null=True)
+    ModifieParUserFk = models.IntegerField(null=True)
+    CreationRequestId = models.UUIDField(null=True)
+    CreationPayloadHash = models.TextField(null=True)
     NumeroIdentification = models.TextField(null=True)
     ExperienceAns = models.IntegerField(null=True)
     ObsProfessionnel = models.TextField(null=True)
@@ -422,6 +436,26 @@ class T_Professionnel(models.Model):
     class Meta:
         managed = False
         db_table = '"professionnel"."T_Professionnel"'
+
+
+class T_Professionnel_Competence(models.Model):
+    pk = models.CompositePrimaryKey('IdProfessionnelFk', 'IdCompetenceFk')
+    IdProfessionnelFk = models.IntegerField()
+    IdCompetenceFk = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = '"professionnel"."T_Professionnel_Competence"'
+
+
+class T_Professionnel_Prestation(models.Model):
+    pk = models.CompositePrimaryKey('IdProfessionnelFk', 'IdPrestationFk')
+    IdProfessionnelFk = models.IntegerField()
+    IdPrestationFk = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = '"professionnel"."T_Professionnel_Prestation"'
 
 
 class T_Professionnel_Entite(models.Model):

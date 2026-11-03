@@ -12,11 +12,12 @@ from django.http import FileResponse
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.renderers import BaseRenderer
 
 from apps.core import db
 from apps.core.registry import model
 from apps.core.repository import audit, coerce
-from apps.core.responses import APIError, ok
+from apps.core.responses import APIError, ExactJSONRenderer, ok
 from apps.logistique.photos import normalize_photo
 from .authentication import actor_by_id, profile
 
@@ -135,9 +136,19 @@ def save_profile(actor, body, upload=None):
         raise
 
 
+class ProfilePhotoFileRenderer(BaseRenderer):
+    media_type = 'image/jpeg'
+    format = 'jpg'
+    charset = None
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return ExactJSONRenderer().render(data, renderer_context=renderer_context)
+
+
 class ProfilePhotoView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    renderer_classes = [ExactJSONRenderer, ProfilePhotoFileRenderer]
     http_method_names = ["get", "post", "options"]
 
     def get(self, request):

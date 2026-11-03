@@ -427,6 +427,7 @@ export default function App() {
   if (location.pathname === "/admin") return <ModuleGate><AdminRoute><Admin key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/caisse") return <ModuleGate><Caisse key={scopeKey} /></ModuleGate>;
+  if (location.pathname === "/experts") return <ModuleGate><Experts key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;

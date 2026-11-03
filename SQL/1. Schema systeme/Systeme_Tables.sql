@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -791,10 +791,10 @@ CREATE TABLE systeme."T_Entite" (
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
-    CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR (((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152)) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
+    CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR ((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
     CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))),
-    CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR (((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20)) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR (((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255)) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
+    CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR ((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR ((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
     CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
 );
 
@@ -1036,7 +1036,7 @@ CREATE TABLE systeme."T_Utilisateurs" (
     "ObservationProfessionnelle" text,
     CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar]))),
     CONSTRAINT ck_user_dates_emploi CHECK (((("DateEmbauche" IS NULL) OR isfinite("DateEmbauche")) AND (("DateFinEmploi" IS NULL) OR isfinite("DateFinEmploi")) AND (("DateEmbauche" IS NULL) OR ("DateFinEmploi" IS NULL) OR ("DateFinEmploi" >= "DateEmbauche")))),
-    CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR (((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50)) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR ((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_user_observation_professionnelle CHECK ((("ObservationProfessionnelle" IS NULL) OR ((char_length("ObservationProfessionnelle") <= 1000) AND (replace(replace("ObservationProfessionnelle", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))))
 );
 
@@ -2052,7 +2052,7 @@ CREATE TABLE systeme."T_LicenceModule" (
     "ModifieParUserFk" integer,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY ((ARRAY['activation'::character varying, 'reprise'::character varying])::text[]))),
+    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY (ARRAY[('activation'::character varying)::text, ('reprise'::character varying)::text]))),
     CONSTRAINT "T_LicenceModule_Version_check" CHECK (("Version" > 0))
 );
 
@@ -2257,7 +2257,7 @@ CREATE TABLE systeme."T_ModuleApplication" (
     CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
     CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
     CONSTRAINT ck_module_parent CHECK (((("ModuleParentCode")::text IS DISTINCT FROM ("CodeModule")::text) AND ((("TypeApplication")::text <> 'MODULE'::text) OR ("ModuleParentCode" IS NULL)))),
-    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY ((ARRAY['MODULE'::character varying, 'FONCTIONNALITE'::character varying])::text[])))
+    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY (ARRAY[('MODULE'::character varying)::text, ('FONCTIONNALITE'::character varying)::text])))
 );
 
 --
@@ -3231,6 +3231,18 @@ CREATE TRIGGER ab_correspondance_categorie_portee BEFORE INSERT OR UPDATE ON sys
 --
 
 COMMENT ON TRIGGER ab_correspondance_categorie_portee ON systeme."T_Fk_Correspondance" IS 'Complète la garde canonique existante par la propriété de la catégorie choisie.';
+
+--
+-- Name: T_Utilisateurs ac_compte_professionnel_entreprise; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER ac_compte_professionnel_entreprise BEFORE UPDATE OF "IdEntiteFk" ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_compte_professionnel_entreprise();
+
+--
+-- Name: TRIGGER ac_compte_professionnel_entreprise ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER ac_compte_professionnel_entreprise ON systeme."T_Utilisateurs" IS 'Conserve la cohérence compte/entreprise du profil sans déplacement implicite des données.';
 
 --
 -- Name: T_LicenceModule licence_module_integrite; Type: TRIGGER; Schema: systeme; Owner: -

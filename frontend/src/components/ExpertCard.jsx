@@ -1,16 +1,11 @@
+import {Link} from "react-router-dom";
+import ExpertAvatar from "../pages/experts/ExpertAvatar";
 export default function ExpertCard({ expert, onContact }) {
-  const initials = `${expert.firstName?.[0] || ""}${expert.lastName?.[0] || ""}`.trim() || "SN";
 
   return (
     <article className="expert-public-card">
       <div className="expert-public-head">
-        <div className="expert-avatar">
-          {expert.photo && expert.photo !== "/illustration-experts.svg" ? (
-            <img src={expert.photo} alt={expert.fullName} />
-          ) : (
-            <span>{initials}</span>
-          )}
-        </div>
+        <ExpertAvatar record={expert}/>
         <div>
           <strong>{expert.fullName}</strong>
           <p>{expert.professionalType}</p>
@@ -34,14 +29,15 @@ export default function ExpertCard({ expert, onContact }) {
           <dd>{expert.availability}</dd>
         </div>
       </dl>
-      <button
+      <Link className="contact-button" to="/experts" state={{focusId:expert.id}}>Voir le profil</Link>
+      {expert.canContact?<button
         className="contact-button d-inline-flex align-items-center gap-2"
         type="button"
         onClick={() => onContact({ type: "expert", id: expert.id, name: expert.fullName })}
       >
         <i className="bi bi-send" aria-hidden="true" />
         Contacter
-      </button>
+      </button>:null}
     </article>
   );
 }

@@ -1,0 +1,94 @@
+.experts-module { color:var(--erp-text); background:var(--erp-bg); }
+.experts-main { min-width:0; }
+.expert-scope-note { margin:0 0 20px; padding:14px 18px; border:1px solid var(--erp-border); border-radius:10px; background:var(--erp-surface); color:var(--erp-muted); font-size:12px; }
+.expert-directory { padding:20px; min-width:0; }
+.expert-directory .erp-register-table { padding:0; }
+.expert-display { display:flex; gap:4px; padding:3px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-surface); }
+.expert-display .ui-action { min-width:36px; padding:8px; border-color:transparent; }
+.expert-display [aria-pressed=true] { background:var(--erp-active); color:var(--erp-action); border-color:var(--erp-border); }
+.expert-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr)); gap:18px; margin-top:22px; min-width:0; }
+.expert-directory-card { display:flex; flex-direction:column; min-width:0; padding:23px; gap:16px; border:1px solid var(--erp-border); border-radius:12px; background:var(--erp-surface); color:var(--erp-text); transition:border-color .15s ease; }
+.expert-directory-card:hover { border-color:var(--erp-action); }
+.expert-directory-card>header { display:flex; align-items:flex-start; gap:14px; }
+:is(.experts-module,.expert-editor,.expert-detail) .expert-avatar { display:grid; place-items:center; flex:none; width:52px; height:52px; border-radius:14px; border:1px solid var(--erp-border); background:var(--erp-active); color:var(--erp-link); font-weight:650; font-size:17px; overflow:hidden; }
+.expert-avatar img { display:block; width:100%; height:100%; object-fit:cover; }
+.expert-sector { display:block; font-size:11px; line-height:1.6; color:var(--erp-muted); }
+.expert-directory-card h2 { margin:2px 0 5px; font-size:17px; line-height:1.4; color:var(--erp-text); }
+.expert-directory-card h2 button { padding:0; border:0; background:transparent; color:inherit; text-align:left; font:inherit; font-weight:650; }
+.expert-directory-card h2 button:hover { color:var(--erp-link); }
+.expert-directory-card header p { margin:0; color:var(--erp-muted); font-size:12px; line-height:1.6; }
+.expert-specialty { align-self:flex-start; display:inline-flex; padding:5px 9px; border-radius:6px; background:var(--erp-active); color:var(--erp-link); font-size:11px; line-height:1.5; }
+.expert-card-summary { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin:0; color:var(--erp-muted); font-size:12px; line-height:1.8; }
+.expert-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.expert-tags>span { padding:4px 7px; border:1px solid var(--erp-border); border-radius:6px; color:var(--erp-text); background:var(--erp-raised); font-size:10px; }
+.expert-directory-card>footer { margin-top:auto; padding-top:15px; border-top:1px solid var(--erp-border); }
+.expert-directory-card>footer>span { display:flex; align-items:center; gap:7px; margin-bottom:12px; color:var(--erp-muted); font-size:11px; }
+.expert-directory-card>footer>div { display:flex; flex-wrap:wrap; gap:8px; }
+.expert-empty { padding:48px 20px; text-align:center; background:var(--erp-surface); color:var(--erp-muted); }
+.expert-empty>.app-icon { color:var(--erp-action); }
+.expert-empty h2 { margin:14px 0 8px; font-size:17px; color:var(--erp-text); }
+.expert-empty p { margin:0; font-size:12px; }
+.expert-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:20px 0 0; margin-top:22px; border-top:1px solid var(--erp-border); color:var(--erp-muted); font-size:11px; }
+.expert-pagination>div { display:flex; align-items:center; gap:10px; }
+.expert-table-person { display:flex; align-items:center; gap:12px; }
+.expert-table-person .expert-avatar { width:38px; height:38px; border-radius:10px; font-size:12px; }
+.expert-table-person strong { display:block; font-size:12px; font-weight:600; color:var(--erp-text); }
+.expert-table-person small { display:block; margin-top:4px; font-size:10px; color:var(--erp-muted); }
+.expert-editor,.expert-detail { color:var(--erp-text); background:var(--erp-surface); }
+.expert-editor .product-photo-preview img { object-fit:cover; background:var(--erp-raised); }
+.expert-editor .product-photo-preview .expert-avatar { width:100%; height:100%; border:0; border-radius:inherit; font-size:28px; }
+.expert-editor .product-photo-picker+.record-editor-note { margin:-6px 0 22px; }
+.expert-editor-panel,.expert-profile-panel { margin-top:20px; }
+.expert-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; color:var(--erp-text); }
+.expert-fields>label { display:flex; flex-direction:column; min-width:0; gap:8px; font-size:12px; color:var(--erp-text); }
+.expert-fields>label>span { color:var(--erp-text); font-weight:600; }
+.expert-fields input:not([type=checkbox]),.expert-fields textarea { width:100%; min-width:0; min-height:42px; padding:10px 12px; border:1px solid var(--erp-border); border-radius:7px; background:var(--erp-surface); color:var(--erp-text); font:inherit; font-size:13px; }
+.expert-fields input:disabled,.expert-fields textarea:disabled { background:var(--erp-hover); color:var(--erp-muted); }
+.expert-fields textarea { resize:vertical; min-height:100px; }
+.expert-fields small { color:var(--erp-muted); font-size:11px; line-height:1.6; }
+.expert-fields [aria-invalid=true] { border-color:var(--erp-danger); }
+.expert-field-wide { grid-column:1/-1; }
+.expert-fields .expert-field-error,.expert-field-error { color:var(--erp-danger); font-size:11px; }
+.expert-checkbox { display:flex !important; align-items:center; gap:10px; font-size:12px; color:var(--erp-text); }
+.expert-fields .expert-checkbox { flex-direction:row; }
+.expert-checkbox input { width:17px; height:17px; min-height:17px; padding:0; accent-color:var(--erp-action); }
+.expert-capability-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+.expert-capability-grid h4,.expert-structures h4,.expert-contact h4 { margin:0 0 14px; color:var(--erp-text); font-size:14px; }
+.expert-choices ul { display:grid; gap:8px; padding:0; margin:16px 0 0; list-style:none; }
+.expert-choices li { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--erp-border); border-radius:8px; background:var(--erp-raised); font-size:12px; color:var(--erp-text); }
+.expert-choices li small { display:block; margin-top:5px; }
+.expert-affiliation { display:grid; gap:14px; margin:18px 0; padding:18px; border:1px solid var(--erp-border); border-radius:10px; background:var(--erp-raised); }
+.expert-affiliation>.ui-action { justify-self:end; }
+.expert-profile-heading { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.expert-profile-heading .expert-avatar { width:72px; height:72px; border-radius:18px; font-size:25px; }
+.expert-profile-heading>div { flex:1; }
+.expert-profile-heading h2 { color:var(--erp-text); margin:3px 0 6px; font-size:23px; }
+.expert-profile-heading p { color:var(--erp-muted); margin:0 0 8px; font-size:13px; }
+.expert-profile-text { margin:0 0 22px; font-size:13px; line-height:1.9; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--erp-text); }
+.expert-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin:0; }
+.expert-summary dt { margin:0 0 7px; font-size:11px; font-weight:400; color:var(--erp-muted); }
+.expert-summary dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; color:var(--erp-text); }
+.expert-capabilities { display:grid; gap:10px; list-style:none; margin:0; padding:0; }
+.expert-capabilities li { display:flex; gap:9px; align-items:flex-start; padding:12px; border:1px solid var(--erp-border); border-radius:8px; background:var(--erp-raised); color:var(--erp-text); font-size:12px; }
+.expert-capabilities .app-icon { flex:none; color:var(--erp-action); }
+.expert-structures { display:grid; gap:12px; }
+.expert-structures article { padding:16px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-raised); }
+.expert-structures h4 { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:0 0 7px; }
+.expert-structures p { margin:5px 0 0; color:var(--erp-muted); font-size:12px; line-height:1.6; }
+.expert-contact { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-top:22px; padding-top:20px; border-top:1px solid var(--erp-border); }
+.expert-contact h4 { margin:0 0 6px; }
+.expert-contact p { margin:0; color:var(--erp-muted); font-size:12px; }
+.expert-detail-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.expert-references { display:grid; gap:14px; margin-top:20px; }
+.expert-references>section { padding:18px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-raised); }
+.expert-references h4 { margin:0 0 8px; font-size:14px; color:var(--erp-text); }
+.expert-references p { margin:0 0 15px; font-size:12px; color:var(--erp-muted); }
+.expert-references details { margin-top:15px; font-size:12px; color:var(--erp-text); }
+.expert-references summary { color:var(--erp-link); cursor:pointer; }
+.expert-references ul { padding-left:20px; margin-bottom:0; line-height:1.9; color:var(--erp-text); }
+.expert-references-link { display:inline-flex; align-items:center; gap:9px; margin-top:20px; color:var(--erp-link); font-size:12px; text-decoration:none; }
+.experts-module button:focus-visible,.expert-fields :is(input,textarea):focus-visible,.expert-detail button:focus-visible { outline:2px solid var(--erp-action); outline-offset:3px; }
+.expert-directory[data-density=airy] .expert-directory-card { padding:28px; gap:22px; }
+@container(max-width:640px) { .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading h2 { font-size:20px; } }
+@media(max-width:640px) { .expert-directory { padding:14px; } .expert-directory-card { padding:18px; } .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading { align-items:flex-start; } .expert-pagination>div { width:100%; justify-content:space-between; } }
+@media(prefers-reduced-motion:reduce) { .expert-directory-card { transition:none; } }

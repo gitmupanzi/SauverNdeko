@@ -158,7 +158,15 @@ class FieldReferencesAPI(unittest.TestCase):
         self.assertEqual(service.reference_context(self.actor(1), 'logistique', 'T_Article', 'ID_CategorieArticleFk')['categoryIds'], [self.categories[0]])
 
     def test_04_null_default_restore_does_not_inherit(self):
-        field = next(f for f in self.fields if f['ID_CategorieDefautFk'] is None and f['CanConfigure'])
+        # Une évolution peut compléter tous les défauts de production. Ce cas
+        # crée donc sa propre définition, adossée à une vraie FK existante,
+        # dans la transaction privée annulée en fin de test.
+        field = db.one('''INSERT INTO referentiel."T_ChampReferentiel"
+            ("SchemaName","TableName","ColumnName","ChampLabel","ModuleName",
+             "ID_CategorieDefautFk","CanConfigure","SupportsEntityScope")
+            VALUES('professionnel','T_SynonymeRecherche','IdGeneriqueFk',
+             'Référence lexicale fictive','professionnel',NULL,true,false)
+            RETURNING *''')
         path = BASE+'/'+str(field['ID_ChampReferentiel'])
         self.response(self.put(path=path)[0])
         result = self.response(self.restore(path=path)[0])
@@ -490,10 +498,13 @@ class FieldReferencesAPI(unittest.TestCase):
 
     def test_26_shared_fields_use_global_options_and_refuse_entity_writes(self):
         shared=[f for f in self.fields if not f['SupportsEntityScope']]
-        # La précision des unités est maintenant rattachée à leur propriétaire
-        # durable : les références purement partagées restent au nombre de22.
-        self.assertEqual(len(shared),22)
-        field=next(f for f in shared if f['CanConfigure'] and f['TableName']=='T_Niveau_2')
+        # Vérifier la politique du domaine partagé, sans figer le nombre global
+        # de champs quand d'autres modules acquièrent un propriétaire durable.
+        territorial=[f for f in self.fields if f['SchemaName']=='geolocalisation']
+        self.assertTrue(territorial)
+        self.assertTrue(all(not f['SupportsEntityScope'] for f in territorial))
+        field=next(f for f in shared if f['CanConfigure'] and f['TableName']=='T_Niveau_2'
+                   and f['ColumnName']=='ID_TypeNiveau_2_Fk')
         path=BASE+'/'+str(field['ID_ChampReferentiel'])
         self.response(self.put(path=path)[0])
         current=self.detail(path=path,scope='entity')
@@ -512,9 +523,22 @@ class FieldReferencesAPI(unittest.TestCase):
 
     def test_27_shared_geography_crud_ignores_legacy_company_override(self):
         field=next(f for f in self.fields if f['TableName']=='T_Niveau_2' and f['ColumnName']=='ID_TypeNiveau_2_Fk')
-        route='/api/geolocalisation/niveau-2'
+        base='/api/geolocalisation/territoires/registres/'
+        route=base+'niveaux2'
+        # Le clone de recette possède le référentiel territorial commun :
+        # réutiliser un vrai parent sans tester ici une autre création de pays.
+        parent=db.one('SELECT "ID_Niveau_1" FROM geolocalisation."T_Niveau_1" ORDER BY "ID_Niveau_1" LIMIT 1')
+        self.assertIsNotNone(parent, 'La recette requiert un parent territorial commun dans le clone privé.')
+        # Le dictionnaire géographique copié conserve ses identifiants importés.
+        # Préparer son générateur dans cette seule base privée permet de créer
+        # les deux fixtures sans collision avec ces lignes ; aucun ID existant
+        # n'est modifié et cette suite refuse une connexion applicative.
+        db.query('SELECT setval(pg_get_serial_sequence(%s,%s),'
+            'GREATEST(coalesce((SELECT max("ID_Niveau_2") FROM geolocalisation."T_Niveau_2"),1),1),true)',
+            ['geolocalisation."T_Niveau_2"','ID_Niveau_2'])
         original=service.reference_options(self.actor(),'geolocalisation','T_Niveau_2','ID_TypeNiveau_2_Fk')[0]['id']
-        previous=self.response(self.client().post(route,{'NomNiveau_2':'Ancien site fictif '+uuid.uuid4().hex,
+        previous=self.response(self.client().post(route,{'requestId':str(uuid.uuid4()),
+            'ID_Niveau_1_FK':parent['ID_Niveau_1'],'NomNiveau_2':'Ancien site fictif '+uuid.uuid4().hex,
             'ID_TypeNiveau_2_Fk':original},format='json'),201)
         self.response(self.put(path=BASE+'/'+str(field['ID_ChampReferentiel']))[0])
         db.one('''INSERT INTO systeme."T_Fk_Correspondance"
@@ -525,13 +549,16 @@ class FieldReferencesAPI(unittest.TestCase):
             [field['AliasSourceKeys'][0],str(self.categories[1]),self.categories[1],str(self.entities[0])])
         options=service.reference_options(self.actor(),'geolocalisation','T_Niveau_2','ID_TypeNiveau_2_Fk')
         self.assertEqual([v['id'] for v in options],[self.generics[0]])
-        created=self.response(self.client().post(route,{'NomNiveau_2':'Site global fictif '+uuid.uuid4().hex,
+        created=self.response(self.client().post(route,{'requestId':str(uuid.uuid4()),
+            'ID_Niveau_1_FK':parent['ID_Niveau_1'],'NomNiveau_2':'Site global fictif '+uuid.uuid4().hex,
             'ID_TypeNiveau_2_Fk':self.generics[0]},format='json'),201)
         self.assertEqual(created['ID_TypeNiveau_2_Fk'],self.generics[0])
-        self.response(self.client().post(route,{'NomNiveau_2':'Site refusé fictif',
+        self.response(self.client().post(route,{'requestId':str(uuid.uuid4()),
+            'ID_Niveau_1_FK':parent['ID_Niveau_1'],'NomNiveau_2':'Site refusé fictif',
             'ID_TypeNiveau_2_Fk':self.generics[1]},format='json'),400)
         edited=self.response(self.client().put(route+'/'+str(previous['ID_Niveau_2']),
-            {'NomNiveau_2':'Ancienne référence conservée'},format='json'))
+            {'requestId':str(uuid.uuid4()),'_version':previous['_version'],
+             'NomNiveau_2':'Ancienne référence conservée'},format='json'))
         self.assertEqual(edited['ID_TypeNiveau_2_Fk'],original)
         self.response(self.client(global_admin=False).post(route,{'NomNiveau_2':'Interdit'},format='json'),403)
 

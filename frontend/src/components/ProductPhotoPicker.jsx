@@ -3,7 +3,7 @@ import ArticlePhoto from "./ArticlePhoto";
 import ActionButton from "./ActionButton";
 import AppIcon from "./AppIcon";
 import "./ProductPhotoPicker.css";
-export default function ProductPhotoPicker({record,value,onChange,disabled=false,error=""}){
+export default function ProductPhotoPicker({record,value,onChange,disabled=false,error="",title="Photo du produit",renderCurrentPhoto,emptyPreview=null,hasExistingPhoto,facingMode="environment",pickerId}){
  const input=useRef(null),video=useRef(null),stream=useRef(null),mounted=useRef(true);
  const [preview,setPreview]=useState(""),[camera,setCamera]=useState(false),[opening,setOpening]=useState(false),[message,setMessage]=useState("");
  function stop(){stream.current?.getTracks().forEach(track=>track.stop());stream.current=null;setCamera(false);setOpening(false);}
@@ -15,7 +15,7 @@ export default function ProductPhotoPicker({record,value,onChange,disabled=false
   if(!navigator.mediaDevices?.getUserMedia){setMessage("La caméra n’est pas disponible ici. Choisissez une photo.");return;}
   setOpening(true);
   try{
-   const capture=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1600},height:{ideal:1200}},audio:false});
+   const capture=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facingMode},width:{ideal:1600},height:{ideal:1200}},audio:false});
    if(!mounted.current){capture.getTracks().forEach(track=>track.stop());return;}
    stream.current=capture;setCamera(true);
   }catch{if(mounted.current)setMessage("La caméra n’a pas pu être ouverte. Vérifiez son autorisation ou choisissez une photo.");}
@@ -34,11 +34,11 @@ export default function ProductPhotoPicker({record,value,onChange,disabled=false
   canvas.getContext("2d").drawImage(source,0,0,canvas.width,canvas.height);
   canvas.toBlob(blob=>{if(blob&&mounted.current)choose(new File([blob],"capture.jpg",{type:"image/jpeg"}));},"image/jpeg",.9);
  }
- const hasPhoto=Boolean(preview||(!value.remove&&record?.PhotoArticle));
- return <section className="product-photo-picker" aria-label="Photo du produit">
-  <div className="product-photo-preview">{preview?<img src={preview} alt="Nouvelle photo du produit"/>:!value.remove&&record?.PhotoArticle?<ArticlePhoto record={record}/>:<AppIcon name="box" size={36}/>}</div>
-  <div className="product-photo-tools"><strong>Photo du produit</strong><span>JPEG, PNG ou WebP · 8 Mo maximum</span><div><ActionButton icon="document" disabled={disabled||opening} onClick={()=>input.current?.click()}>Choisir une photo</ActionButton><ActionButton icon="camera" disabled={disabled||opening} onClick={openCamera}>{opening?"Ouverture…":"Prendre une photo"}</ActionButton></div>
-   <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choisir la photo du produit" hidden disabled={disabled} onChange={e=>{choose(e.target.files?.[0]);e.target.value="";}}/>
+ const existing=hasExistingPhoto===undefined?Boolean(record?.PhotoArticle):hasExistingPhoto,hasPhoto=Boolean(preview||(!value.remove&&existing));
+ return <section className="product-photo-picker" aria-label={title}>
+  <div className="product-photo-preview">{preview?<img src={preview} alt={title==="Photo du produit"?"Nouvelle photo du produit":"Nouvelle photo de profil"}/>:!value.remove&&existing?(renderCurrentPhoto?renderCurrentPhoto():<ArticlePhoto record={record}/>):emptyPreview||<AppIcon name="box" size={36}/>}</div>
+  <div className="product-photo-tools"><strong>{title}</strong><span>JPEG, PNG ou WebP · 8 Mo maximum</span><div><ActionButton id={pickerId} icon="document" disabled={disabled||opening} onClick={()=>input.current?.click()}>Choisir une photo</ActionButton><ActionButton icon="camera" disabled={disabled||opening} onClick={openCamera}>{opening?"Ouverture…":"Prendre une photo"}</ActionButton></div>
+   <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label={title==="Photo du produit"?"Choisir la photo du produit":"Choisir la photo de profil"} hidden disabled={disabled} onChange={e=>{choose(e.target.files?.[0]);e.target.value="";}}/>
    {hasPhoto?<button className="product-photo-link" type="button" disabled={disabled} onClick={()=>onChange({file:null,remove:true})}>Retirer la photo</button>:null}
    {value.file||value.remove?<button className="product-photo-link" type="button" disabled={disabled} onClick={()=>onChange({file:null,remove:false})}>Rétablir la photo</button>:null}
   </div>

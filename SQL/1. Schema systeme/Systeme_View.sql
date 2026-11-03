@@ -1,4 +1,4 @@
--- Extrait canonique du catalogue installé le 02/11/2026, sans données ni propriétaires imposés.
+-- Extrait canonique du catalogue vérifié le 02/11/2026, sans données ni propriétaires imposés.
 -- Voir SQL/README.md. Ces extraits documentent le domaine ; utiliser le fichier global pour une installation vide.
 SET check_function_bodies = false;
 SELECT pg_catalog.set_config('search_path', '', false);

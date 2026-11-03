@@ -83,6 +83,14 @@ class Command(BaseCommand):
                 urls.extend(['/api/caisse/contexte','/api/caisse/entreprises','/api/caisse/references',
                     '/api/caisse/synthese','/api/caisse/registres/caisses?take=1',
                     '/api/caisse/registres/ecritures?take=1','/api/caisse/registres/clotures?take=1'])
+            with connection.cursor() as professional_cursor:
+                professional_cursor.execute('SELECT to_regclass(%s)', ['professionnel."V_Professionnel_Registre"'])
+                professional_installed = bool(professional_cursor.fetchone()[0])
+            if professional_installed:
+                urls.extend(['/api/professionnels/contexte','/api/professionnels/entreprises',
+                    '/api/professionnels/references','/api/professionnels/annuaire?take=1',
+                    '/api/professionnels/annuaire?q=cancer&take=1',
+                    '/api/professionnels/profils?take=1'])
             with connection.cursor() as settings_cursor:
                 settings_cursor.execute("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='systeme' AND table_name='T_Entite' AND column_name='TauxTVAEntite')")
                 entity_settings_installed=bool(settings_cursor.fetchone()[0])

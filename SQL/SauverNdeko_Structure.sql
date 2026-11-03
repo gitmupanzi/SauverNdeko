@@ -5,7 +5,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QDA2CWDmUDIibuA4FF6DXNBHH3fAcoLfuoyPfZ2QPYBqMxDvM4s73Rd4dcvn6kc
+\restrict xypoS5v2tKoODKmxPYUJU3tVkhmWUmUYPvWtK0epy6qkNLZNKBJ3AEOV6NvCtyp
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -4084,6 +4084,211 @@ COMMENT ON FUNCTION operations.tr_reglement_caisse_protege() IS 'Empêche la mod
 
 
 --
+-- Name: fn_expert_recherche(text); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.fn_expert_recherche(p_texte text) RETURNS tsquery
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    SET search_path TO 'pg_catalog'
+    AS $$ SELECT plainto_tsquery('simple'::regconfig,referentiel.fn_normaliser_libelle(p_texte)) $$;
+
+
+--
+-- Name: FUNCTION fn_expert_recherche(p_texte text); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.fn_expert_recherche(p_texte text) IS 'Requête plein texte paramétrée en configuration simple, casse et espaces normalisés ; les mots courants sont reliés par les synonymes explicites de la référence sélectionnée.';
+
+
+--
+-- Name: fn_expert_reference_valide(text, text, integer, integer); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.fn_expert_reference_valide(p_table text, p_champ text, p_valeur integer, p_entite integer) RETURNS boolean
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+ SELECT EXISTS(SELECT FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+ WHERE g."ID_Generique"=p_valeur AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND referentiel.fn_reference_visible(g."ID_Generique",p_entite)
+ AND g."ID_CategorieGeneriqueFk"=ANY(coalesce(referentiel.fn_categories_champ('professionnel',p_table,p_champ,p_entite),ARRAY[]::integer[]))) $$;
+
+
+--
+-- Name: FUNCTION fn_expert_reference_valide(p_table text, p_champ text, p_valeur integer, p_entite integer); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.fn_expert_reference_valide(p_table text, p_champ text, p_valeur integer, p_entite integer) IS 'Contrôle d’une nouvelle sélection : famille configurée du vrai champ, validité de valeur/famille et portée de l’entreprise propriétaire.';
+
+
+--
+-- Name: tr_compte_professionnel_entreprise(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_compte_professionnel_entreprise() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+ IF NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" AND EXISTS(SELECT FROM professionnel."T_Professionnel" p WHERE p."IdUserFk"=NEW."IdUser" AND p."IdEntiteFk" IS DISTINCT FROM NEW."IdEntiteFk") THEN
+  RAISE EXCEPTION 'Ce compte possède une fiche professionnelle rattachée durablement à son entreprise.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_compte_professionnel_entreprise(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_compte_professionnel_entreprise() IS 'Empêche un déplacement de compte qui contredirait la propriété durable d’une fiche professionnelle existante ; ne change ni authentification ni rôles.';
+
+
+--
+-- Name: tr_detail_professionnel_integrite(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_detail_professionnel_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE profile_id integer;owner_id integer;f text;val integer;
+BEGIN
+ profile_id:=CASE WHEN TG_OP='DELETE' THEN OLD."IdProfessionnelFk" ELSE NEW."IdProfessionnelFk" END;
+ SELECT "IdEntiteFk" INTO owner_id FROM professionnel."T_Professionnel" WHERE "IdProfessionnel"=profile_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fiche professionnelle introuvable.' USING ERRCODE='23503';END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ IF TG_OP='UPDATE' AND NEW."IdProfessionnelFk" IS DISTINCT FROM OLD."IdProfessionnelFk" THEN RAISE EXCEPTION 'Le parent du détail est conservé.' USING ERRCODE='23514';END IF;
+ IF TG_TABLE_NAME='T_Professionnel_Entite' THEN
+  IF NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=NEW."IdEntiteFk" AND "ValideEntite") AND (TG_OP='INSERT' OR NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk") THEN RAISE EXCEPTION 'Structure inactive ou introuvable.' USING ERRCODE='23514';END IF;
+  IF (NEW."DateDebut" IS NOT NULL AND NOT isfinite(NEW."DateDebut")) OR (NEW."DateFin" IS NOT NULL AND NOT isfinite(NEW."DateFin")) THEN RAISE EXCEPTION 'Période d’affiliation invalide.' USING ERRCODE='23514';END IF;
+  IF NEW."EstPrincipal" THEN
+   IF EXISTS(SELECT FROM professionnel."T_Professionnel_Entite" x WHERE x."IdProfessionnelFk"=profile_id AND x."IdEntiteFk"<>NEW."IdEntiteFk" AND x."EstPrincipal" AND tsrange(x."DateDebut",x."DateFin",'[)') && tsrange(NEW."DateDebut",NEW."DateFin",'[)')) THEN RAISE EXCEPTION 'Une seule affiliation principale est possible sur la même période.' USING ERRCODE='23514';END IF;
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_detail_professionnel_integrite(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_detail_professionnel_integrite() IS 'Sérialise les détails sous le verrou du profil, conserve le parent et contrôle les affiliations principales et dates finies ; ne réattribue aucune entreprise.';
+
+
+--
+-- Name: tr_detail_professionnel_revision(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_detail_professionnel_revision() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE profile_id integer;actor_id integer:=nullif(current_setting('professionnel.actor_id',true),'')::integer;
+BEGIN
+ IF TG_OP='UPDATE' AND to_jsonb(NEW) IS NOT DISTINCT FROM to_jsonb(OLD) THEN RETURN NULL;END IF;
+ profile_id:=CASE WHEN TG_OP='DELETE' THEN OLD."IdProfessionnelFk" ELSE NEW."IdProfessionnelFk" END;
+ -- La garde BEFORE du détail a déjà verrouillé ce même parent. Un UPDATE
+ -- ordinaire réutilise sa garde, sa révision, son horodatage et son audit.
+ -- Sans acteur explicite, le dernier auteur devient inconnu plutôt que
+ -- d'attribuer le changement au compte affecté ou à un ancien éditeur.
+ IF actor_id IS NOT NULL AND NOT EXISTS(SELECT FROM systeme."T_Utilisateurs" WHERE "IdUser"=actor_id) THEN actor_id:=NULL;END IF;
+ UPDATE professionnel."T_Professionnel" SET "ModifieParUserFk"=actor_id WHERE "IdProfessionnel"=profile_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Fiche professionnelle parente introuvable.' USING ERRCODE='23503';END IF;
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_detail_professionnel_revision(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_detail_professionnel_revision() IS 'Après un véritable ajout, changement ou retrait de détail, touche le parent sous le verrou existant pour incrémenter sa révision SQL et son horodatage/audit. Une mise à jour sans différence ne change pas sa version. Aucun compte ou propriétaire n’est déduit ; auteur NULL en l’absence de contexte explicite. Tout est annulé avec la transaction en cas de rejet.';
+
+
+--
+-- Name: tr_professionnel_audit(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_professionnel_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE before_row jsonb;after_row jsonb;entity_id integer;profile_id integer;extra jsonb;
+BEGIN
+ extra:=jsonb_strip_nulls(jsonb_build_object('_requestId',nullif(current_setting('professionnel.request_id',true),''),'_payloadHash',nullif(current_setting('professionnel.payload_hash',true),''),'_actorId',nullif(current_setting('professionnel.actor_id',true),''),'_operation',nullif(current_setting('professionnel.operation',true),''),'_motif',nullif(current_setting('professionnel.motif',true),'')));
+ IF TG_OP IN('UPDATE','DELETE') THEN before_row:=systeme.fn_audit_sans_secrets(to_jsonb(OLD))||extra;END IF;
+ IF TG_OP IN('INSERT','UPDATE') THEN after_row:=systeme.fn_audit_sans_secrets(to_jsonb(NEW))||extra;END IF;
+ IF TG_TABLE_NAME='T_Professionnel' THEN entity_id:=coalesce((after_row->>'IdEntiteFk')::integer,(before_row->>'IdEntiteFk')::integer);
+ ELSIF TG_TABLE_NAME='T_SynonymeRecherche' THEN entity_id:=coalesce((after_row->>'IdEntiteFk')::integer,(before_row->>'IdEntiteFk')::integer);
+ ELSE profile_id:=coalesce((after_row->>'IdProfessionnelFk')::integer,(before_row->>'IdProfessionnelFk')::integer);SELECT "IdEntiteFk" INTO entity_id FROM professionnel."T_Professionnel" WHERE "IdProfessionnel"=profile_id;END IF;
+ INSERT INTO systeme."T_Audit_Log"("TableName","Operation","OldData","NewData","ChangedAt","IdEntiteFk") VALUES(TG_TABLE_SCHEMA||'.'||TG_TABLE_NAME,TG_OP,before_row,after_row,clock_timestamp(),entity_id);
+ RETURN NULL;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_professionnel_audit(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_professionnel_audit() IS 'Événement SQL unique et transactionnel des fiches, sélections et affiliations ; images sans secrets et métadonnées de rejeu/acteur/motif. Ces métadonnées ne remplacent jamais les permissions serveur.';
+
+
+--
+-- Name: tr_professionnel_integrite(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_professionnel_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE account_entity integer;account_global boolean;actor integer:=nullif(current_setting('professionnel.actor_id',true),'')::integer;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Archivez la fiche pour conserver son historique.' USING ERRCODE='23514';END IF;
+ IF TG_OP='UPDATE' AND (NEW."IdEntiteFk" IS DISTINCT FROM OLD."IdEntiteFk" OR NEW."IdUserFk" IS DISTINCT FROM OLD."IdUserFk" OR NEW."CreeLe" IS DISTINCT FROM OLD."CreeLe" OR NEW."CreeParUserFk" IS DISTINCT FROM OLD."CreeParUserFk" OR NEW."CreationRequestId" IS DISTINCT FROM OLD."CreationRequestId" OR NEW."CreationPayloadHash" IS DISTINCT FROM OLD."CreationPayloadHash") THEN RAISE EXCEPTION 'Propriétaire, compte et identité de création sont conservés.' USING ERRCODE='23514';END IF;
+ IF TG_OP='INSERT' THEN
+  SELECT "IdEntiteFk",coalesce("Is_Admin",false) INTO account_entity,account_global FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."IdUserFk" FOR SHARE;
+  IF NOT FOUND OR (account_entity IS DISTINCT FROM NEW."IdEntiteFk" AND NOT(account_entity IS NULL AND account_global AND coalesce(actor=NEW."IdUserFk",false))) THEN RAISE EXCEPTION 'Le compte professionnel appartient à une autre entreprise.' USING ERRCODE='23514';END IF;
+  NEW."Revision":=1;NEW."CreeLe":=clock_timestamp();NEW."ModifieLe":=NEW."CreeLe";
+ ELSE NEW."Revision":=OLD."Revision"+1;NEW."ModifieLe":=clock_timestamp();END IF;
+ IF NEW."Publie" AND (TG_OP='INSERT' OR NOT OLD."Publie") THEN
+  IF NOT EXISTS(SELECT FROM systeme."T_Utilisateurs" WHERE "IdUser"=NEW."IdUserFk" AND "ValideUser") OR NOT EXISTS(SELECT FROM systeme."T_Entite" WHERE "IdEntite"=NEW."IdEntiteFk" AND "ValideEntite") OR NOT NEW."ValideProfessionnel" THEN RAISE EXCEPTION 'Seule une fiche active d’un compte et d’une entreprise actifs peut être publiée.' USING ERRCODE='23514';END IF;
+  IF NOT professionnel.fn_expert_reference_valide('T_Professionnel','IdTypeProfessionnelFk',NEW."IdTypeProfessionnelFk",NEW."IdEntiteFk") OR NOT professionnel.fn_expert_reference_valide('T_Professionnel','IdSecteurFk',NEW."IdSecteurFk",NEW."IdEntiteFk") OR (NEW."IdSpecialiteFk" IS NOT NULL AND NOT professionnel.fn_expert_reference_valide('T_Professionnel','IdSpecialiteFk',NEW."IdSpecialiteFk",NEW."IdEntiteFk")) THEN RAISE EXCEPTION 'Corrigez les références devenues incompatibles avant de publier.' USING ERRCODE='23514';END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_professionnel_integrite(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_professionnel_integrite() IS 'Propriété et compte immuables, révision SQL, cohérence initiale compte/entreprise et publication explicite. Exception limitée au compte global qui se représente lui-même dans une entreprise choisie ; la GUC n’accorde aucun droit API.';
+
+
+--
+-- Name: tr_synonyme_portee(); Type: FUNCTION; Schema: professionnel; Owner: -
+--
+
+CREATE FUNCTION professionnel.tr_synonyme_portee() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE owner_id integer;
+BEGIN
+ SELECT "IdEntiteFk" INTO owner_id FROM referentiel."T_Generique" WHERE "ID_Generique"=NEW."IdGeneriqueFk" FOR SHARE;
+ IF NOT FOUND OR NEW."IdEntiteFk" IS DISTINCT FROM owner_id THEN RAISE EXCEPTION 'La portée du synonyme doit être celle de sa référence.' USING ERRCODE='23514';END IF;
+ RETURN NEW;
+END $$;
+
+
+--
+-- Name: FUNCTION tr_synonyme_portee(); Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON FUNCTION professionnel.tr_synonyme_portee() IS 'Un terme de recherche hérite exactement de la portée de sa valeur centrale, sans exposer les dictionnaires d’une autre entreprise.';
+
+
+--
 -- Name: fn_catalogue_tableau_verifier(); Type: FUNCTION; Schema: referentiel; Owner: -
 --
 
@@ -4173,9 +4378,9 @@ CREATE FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table tex
     AS $$
 DECLARE owner_id integer;
 BEGIN
- -- L'entreprise de l'utilisateur ou d'un résultat de recherche n'est pas
- -- un propriétaire durable d'une ligne partagée.
  IF p_ligne IS NULL OR NOT EXISTS(SELECT FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=p_schema AND "TableName"=p_table AND "SupportsEntityScope") THEN RETURN NULL;END IF;
+ IF p_schema='professionnel' AND p_table IN('T_Professionnel_Competence','T_Professionnel_Prestation','T_Professionnel_Entite') THEN
+  SELECT "IdEntiteFk" INTO owner_id FROM professionnel."T_Professionnel" WHERE "IdProfessionnel"=nullif(p_ligne->>'IdProfessionnelFk','')::integer;RETURN owner_id;END IF;
  IF (p_schema,p_table)=('logistique','T_PrecisionStock') THEN
   SELECT "IdEntiteFk" INTO owner_id FROM referentiel."T_Generique" WHERE "ID_Generique"=nullif(p_ligne->>'ID_UniteFk','')::integer;RETURN owner_id;END IF;
  IF (p_schema,p_table)=('systeme','T_Entite') THEN RETURN nullif(p_ligne->>'IdEntite','')::integer;END IF;
@@ -4183,18 +4388,13 @@ BEGIN
  IF owner_id IS NOT NULL THEN RETURN owner_id;END IF;
  IF p_schema='support' AND p_table='T_ResolutionSupport' THEN
   SELECT "IdEntiteFk" INTO owner_id FROM support."T_Support" WHERE "ID_Support"=nullif(p_ligne->>'ID_SupportFk','')::bigint;RETURN owner_id;END IF;
- IF p_schema='logistique' THEN
-  CASE p_table
-   WHEN 'T_Mouvement' THEN
-    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=nullif(p_ligne->>'ID_cmdFk','')::integer;
-    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Article" WHERE "ID_Article"=nullif(p_ligne->>'ID_ArticleFk','')::integer;END IF;
-   WHEN 'T_Reglements' THEN
-    SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Facture" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';
-    IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';END IF;
-   WHEN 'T_Remboursement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Avoir" WHERE "ID_Avoir"=nullif(p_ligne->>'ID_AvoirFk','')::bigint;
-   ELSE NULL;
-  END CASE;
- END IF;
+ IF p_schema='logistique' THEN CASE p_table
+  WHEN 'T_Mouvement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "ID_Commande"=nullif(p_ligne->>'ID_cmdFk','')::integer;
+   IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Article" WHERE "ID_Article"=nullif(p_ligne->>'ID_ArticleFk','')::integer;END IF;
+  WHEN 'T_Reglements' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Facture" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';
+   IF owner_id IS NULL THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Commande" WHERE "CodeFacture"=p_ligne->>'CodeFactureFk';END IF;
+  WHEN 'T_Remboursement' THEN SELECT "IdEntiteFk" INTO owner_id FROM logistique."T_Avoir" WHERE "ID_Avoir"=nullif(p_ligne->>'ID_AvoirFk','')::bigint;
+  ELSE NULL;END CASE;END IF;
  RETURN owner_id;
 END $$;
 
@@ -4203,7 +4403,7 @@ END $$;
 -- Name: FUNCTION fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb); Type: COMMENT; Schema: referentiel; Owner: -
 --
 
-COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Résout le propriétaire durable de la vraie ligne, y compris la résolution Support via son parent ; aucune entreprise déduite du compte actuel.';
+COMMENT ON FUNCTION referentiel.fn_entite_reference_champ(p_schema text, p_table text, p_ligne jsonb) IS 'Contexte durable des références : propriétaire explicite, ou parent métier prouvé ; compétences, prestations et affiliations prennent l’entreprise de leur fiche. La structure affiliée n’est pas le propriétaire. Ne prend jamais l’entreprise courante du compte représenté.';
 
 
 --
@@ -6572,10 +6772,10 @@ CREATE TABLE systeme."T_Entite" (
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
-    CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR (((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152)) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
+    CONSTRAINT ck_entite_logo_png CHECK ((("LogoEntite" IS NULL) OR ((octet_length("LogoEntite") >= 45) AND (octet_length("LogoEntite") <= 2097152) AND (("LogoMimeEntite")::text = 'image/png'::text) AND (SUBSTRING("LogoEntite" FROM 1 FOR 8) = decode('89504e470d0a1a0a'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM 9 FOR 8) = decode('0000000d49484452'::text, 'hex'::text)) AND (SUBSTRING("LogoEntite" FROM (octet_length("LogoEntite") - 11) FOR 12) = decode('0000000049454e44ae426082'::text, 'hex'::text)) AND (("LogoSha256Entite")::text = encode(sha256("LogoEntite"), 'hex'::text))))),
     CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))),
-    CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR (((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20)) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR (((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255)) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
+    CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR ((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR ((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
     CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
 );
 
@@ -6853,7 +7053,7 @@ CREATE TABLE systeme."T_Utilisateurs" (
     "ObservationProfessionnelle" text,
     CONSTRAINT chk_sexe_utilisateur CHECK (("SexeUser" = ANY (ARRAY['M'::bpchar, 'F'::bpchar]))),
     CONSTRAINT ck_user_dates_emploi CHECK (((("DateEmbauche" IS NULL) OR isfinite("DateEmbauche")) AND (("DateFinEmploi" IS NULL) OR isfinite("DateFinEmploi")) AND (("DateEmbauche" IS NULL) OR ("DateFinEmploi" IS NULL) OR ("DateFinEmploi" >= "DateEmbauche")))),
-    CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR (((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50)) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_user_matricule CHECK ((("MatriculeUser" IS NULL) OR ((char_length(("MatriculeUser")::text) >= 1) AND (char_length(("MatriculeUser")::text) <= 50) AND (("MatriculeUser")::text = btrim(("MatriculeUser")::text)) AND (("MatriculeUser")::text !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_user_observation_professionnelle CHECK ((("ObservationProfessionnelle" IS NULL) OR ((char_length("ObservationProfessionnelle") <= 1000) AND (replace(replace("ObservationProfessionnelle", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text))))
 );
 
@@ -12059,7 +12259,7 @@ CREATE TABLE logistique."T_CategorieDossierSuivi" (
     "Actif" boolean DEFAULT true NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_CategorieDossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
+    CONSTRAINT "T_CategorieDossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY (ARRAY[('vert'::character varying)::text, ('rouge'::character varying)::text, ('orange'::character varying)::text, ('bleu'::character varying)::text, ('violet'::character varying)::text, ('ardoise'::character varying)::text]))),
     CONSTRAINT "T_CategorieDossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text))
 );
 
@@ -12939,10 +13139,10 @@ CREATE TABLE logistique."T_DossierSuivi" (
     "Version" integer DEFAULT 1 NOT NULL,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_DossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY ((ARRAY['vert'::character varying, 'rouge'::character varying, 'orange'::character varying, 'bleu'::character varying, 'violet'::character varying, 'ardoise'::character varying])::text[]))),
-    CONSTRAINT "T_DossierSuivi_Mode_check" CHECK ((("Mode")::text = ANY ((ARRAY['manuel'::character varying, 'automatique'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_Couleur_check" CHECK ((("Couleur")::text = ANY (ARRAY[('vert'::character varying)::text, ('rouge'::character varying)::text, ('orange'::character varying)::text, ('bleu'::character varying)::text, ('violet'::character varying)::text, ('ardoise'::character varying)::text]))),
+    CONSTRAINT "T_DossierSuivi_Mode_check" CHECK ((("Mode")::text = ANY (ARRAY[('manuel'::character varying)::text, ('automatique'::character varying)::text]))),
     CONSTRAINT "T_DossierSuivi_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
-    CONSTRAINT "T_DossierSuivi_TypeObjet_check" CHECK ((("TypeObjet")::text = ANY ((ARRAY['article'::character varying, 'bon'::character varying, 'facture'::character varying])::text[]))),
+    CONSTRAINT "T_DossierSuivi_TypeObjet_check" CHECK ((("TypeObjet")::text = ANY (ARRAY[('article'::character varying)::text, ('bon'::character varying)::text, ('facture'::character varying)::text]))),
     CONSTRAINT "T_DossierSuivi_Version_check" CHECK (("Version" > 0)),
     CONSTRAINT "T_DossierSuivi_check" CHECK (((jsonb_typeof("Regles") = 'object'::text) AND (("Regles" -
 CASE "TypeObjet"
@@ -13852,13 +14052,13 @@ CREATE TABLE logistique."T_Immobilisation" (
     CONSTRAINT ck_immobilisation_caracteristiques CHECK ((("Caracteristiques" IS NULL) OR ((char_length("Caracteristiques") <= 4000) AND (replace(replace("Caracteristiques", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_immobilisation_dates CHECK ((isfinite("DateEntree") AND (("DateAcquisition" IS NULL) OR isfinite("DateAcquisition")))),
     CONSTRAINT ck_immobilisation_individuelle CHECK ((((NOT "SuiviIndividuel") AND ("NumeroSerie" IS NULL)) OR ("Quantite" = (1)::numeric))),
-    CONSTRAINT ck_immobilisation_localisation_complement CHECK ((("LocalisationComplement" IS NULL) OR (((char_length(("LocalisationComplement")::text) >= 1) AND (char_length(("LocalisationComplement")::text) <= 255)) AND (("LocalisationComplement")::text = btrim(("LocalisationComplement")::text)) AND (("LocalisationComplement")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_immobilisation_nom CHECK ((((char_length(("NomImmobilisation")::text) >= 1) AND (char_length(("NomImmobilisation")::text) <= 200)) AND (("NomImmobilisation")::text = btrim(("NomImmobilisation")::text)) AND (("NomImmobilisation")::text !~ '[[:cntrl:]]'::text))),
+    CONSTRAINT ck_immobilisation_localisation_complement CHECK ((("LocalisationComplement" IS NULL) OR ((char_length(("LocalisationComplement")::text) >= 1) AND (char_length(("LocalisationComplement")::text) <= 255) AND (("LocalisationComplement")::text = btrim(("LocalisationComplement")::text)) AND (("LocalisationComplement")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_nom CHECK (((char_length(("NomImmobilisation")::text) >= 1) AND (char_length(("NomImmobilisation")::text) <= 200) AND (("NomImmobilisation")::text = btrim(("NomImmobilisation")::text)) AND (("NomImmobilisation")::text !~ '[[:cntrl:]]'::text))),
     CONSTRAINT ck_immobilisation_observations CHECK ((("Observations" IS NULL) OR ((char_length("Observations") <= 4000) AND (replace(replace("Observations", E'\r\n'::text, E'\n'::text), E'\n'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_immobilisation_prix CHECK ((("PrixUnitaire" IS NULL) OR (("PrixUnitaire" >= (0)::numeric) AND ("PrixUnitaire" <> 'NaN'::numeric) AND ("ID_DeviseFk" IS NOT NULL)))),
     CONSTRAINT ck_immobilisation_quantite CHECK ((("Quantite" > (0)::numeric) AND ("Quantite" = trunc("Quantite")) AND ("Quantite" <= ('999999999999999999'::bigint)::numeric))),
-    CONSTRAINT ck_immobilisation_reference CHECK ((("Reference" IS NULL) OR (((char_length(("Reference")::text) >= 1) AND (char_length(("Reference")::text) <= 255)) AND (("Reference")::text = btrim(("Reference")::text)) AND (("Reference")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_immobilisation_serie CHECK ((("NumeroSerie" IS NULL) OR (((char_length(("NumeroSerie")::text) >= 1) AND (char_length(("NumeroSerie")::text) <= 255)) AND (("NumeroSerie")::text = btrim(("NumeroSerie")::text)) AND (("NumeroSerie")::text !~ '[[:cntrl:]]'::text))))
+    CONSTRAINT ck_immobilisation_reference CHECK ((("Reference" IS NULL) OR ((char_length(("Reference")::text) >= 1) AND (char_length(("Reference")::text) <= 255) AND (("Reference")::text = btrim(("Reference")::text)) AND (("Reference")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_immobilisation_serie CHECK ((("NumeroSerie" IS NULL) OR ((char_length(("NumeroSerie")::text) >= 1) AND (char_length(("NumeroSerie")::text) <= 255) AND (("NumeroSerie")::text = btrim(("NumeroSerie")::text)) AND (("NumeroSerie")::text !~ '[[:cntrl:]]'::text))))
 );
 
 
@@ -17966,13 +18166,35 @@ CREATE TABLE professionnel."T_Professionnel" (
     "IdProfessionnel" integer CONSTRAINT "T_Professionnel_IdProfessionnel_not_null" NOT NULL,
     "IdUserFk" integer CONSTRAINT "T_Professionnel_IdUserFk_not_null" NOT NULL,
     "IdTypeProfessionnelFk" integer CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" NOT NULL,
-    "IdSpecialiteFk" integer CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" NOT NULL,
+    "IdSpecialiteFk" integer,
     "NumeroIdentification" character varying(50),
     "ExperienceAns" integer,
     "ObsProfessionnel" text,
     "ValideProfessionnel" boolean DEFAULT true,
+    "IdEntiteFk" integer NOT NULL,
+    "IdSecteurFk" integer,
+    "TitrePublic" text,
+    "PresentationPublique" text,
+    "LocalitePublique" text,
+    "ContactAutorise" boolean DEFAULT true NOT NULL,
+    "Publie" boolean DEFAULT false NOT NULL,
+    "Revision" bigint DEFAULT 1 NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "CreeParUserFk" integer,
+    "ModifieParUserFk" integer,
+    "CreationRequestId" uuid,
+    "CreationPayloadHash" text,
     CONSTRAINT "Chk_Prof_Experience_NonNegative" CHECK ((("ExperienceAns" IS NULL) OR ("ExperienceAns" >= 0))),
-    CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" CHECK ((("NumeroIdentification" IS NULL) OR (length(TRIM(BOTH FROM "NumeroIdentification")) > 0)))
+    CONSTRAINT "Chk_Prof_NumeroIdentification_NotEmpty" CHECK ((("NumeroIdentification" IS NULL) OR (length(TRIM(BOTH FROM "NumeroIdentification")) > 0))),
+    CONSTRAINT ck_prof_experience_max CHECK ((("ExperienceAns" IS NULL) OR ("ExperienceAns" <= 100))),
+    CONSTRAINT ck_prof_localite CHECK ((("LocalitePublique" IS NULL) OR ((length(btrim("LocalitePublique")) >= 1) AND (length(btrim("LocalitePublique")) <= 255)))),
+    CONSTRAINT ck_prof_note CHECK ((("ObsProfessionnel" IS NULL) OR (length("ObsProfessionnel") <= 5000))),
+    CONSTRAINT ck_prof_presentation CHECK ((("PresentationPublique" IS NULL) OR ((length(btrim("PresentationPublique")) >= 1) AND (length(btrim("PresentationPublique")) <= 10000)))),
+    CONSTRAINT ck_prof_publication CHECK (((NOT "Publie") OR (("IdSecteurFk" IS NOT NULL) AND (NULLIF(btrim("TitrePublic"), ''::text) IS NOT NULL) AND (NULLIF(btrim("PresentationPublique"), ''::text) IS NOT NULL)))),
+    CONSTRAINT ck_prof_rejeu CHECK (((("CreationRequestId" IS NULL) = ("CreationPayloadHash" IS NULL)) AND (("CreationPayloadHash" IS NULL) OR ("CreationPayloadHash" ~ '^[a-f0-9]{64}$'::text)))),
+    CONSTRAINT ck_prof_revision CHECK (("Revision" > 0)),
+    CONSTRAINT ck_prof_titre CHECK ((("TitrePublic" IS NULL) OR ((length(btrim("TitrePublic")) >= 1) AND (length(btrim("TitrePublic")) <= 180))))
 );
 
 
@@ -17980,7 +18202,7 @@ CREATE TABLE professionnel."T_Professionnel" (
 -- Name: TABLE "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
 --
 
-COMMENT ON TABLE professionnel."T_Professionnel" IS 'Profil professionnel lié à un utilisateur, avec type, spécialité, identification, expérience et validité.';
+COMMENT ON TABLE professionnel."T_Professionnel" IS 'Fiche professionnelle unique par compte et propriétaire entreprise durable. Les compétences sont déclarées, la publication est explicite et distincte de l’activité ; aucune validation de diplôme n’est déduite de ces états.';
 
 
 --
@@ -18008,7 +18230,7 @@ COMMENT ON COLUMN professionnel."T_Professionnel"."IdTypeProfessionnelFk" IS 'Ty
 -- Name: COLUMN "T_Professionnel"."IdSpecialiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
 --
 
-COMMENT ON COLUMN professionnel."T_Professionnel"."IdSpecialiteFk" IS 'Spécialité du professionnel dans le référentiel. Relation imposée : FOREIGN KEY ("IdSpecialiteFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON UPDATE CASCADE ON DELETE RESTRICT.';
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdSpecialiteFk" IS 'Spécialité facultative du référentiel central ; son absence permet les professions transversales sans spécialité sanitaire artificielle.';
 
 
 --
@@ -18036,7 +18258,105 @@ COMMENT ON COLUMN professionnel."T_Professionnel"."ObsProfessionnel" IS 'Observa
 -- Name: COLUMN "T_Professionnel"."ValideProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
 --
 
-COMMENT ON COLUMN professionnel."T_Professionnel"."ValideProfessionnel" IS 'Indique si le profil professionnel est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
+COMMENT ON COLUMN professionnel."T_Professionnel"."ValideProfessionnel" IS 'Activité de la fiche, distincte de sa publication et de toute vérification de qualification ; faux désigne une fiche archivée.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdEntiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdEntiteFk" IS 'Entreprise propriétaire immuable de la fiche ; distincte des structures auxquelles le professionnel est affilié.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."IdSecteurFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."IdSecteurFk" IS 'Secteur déclaré, valeur T_Generique filtrée par le référencement central de ce champ ; requis pour publier.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."TitrePublic"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."TitrePublic" IS 'Titre professionnel public volontaire, sans vérification automatique de qualification ; requis pour publier.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."PresentationPublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."PresentationPublique" IS 'Présentation destinée aux lecteurs de l’annuaire ; séparée de la note interne ObsProfessionnel.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."LocalitePublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."LocalitePublique" IS 'Localité ou zone de service déclarée, y compris prestations à distance ; aucune adresse personnelle n’est déduite du compte.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ContactAutorise"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ContactAutorise" IS 'Autorise la demande de contact dans la messagerie pour un profil public actif ; ne publie ni email ni téléphone personnel.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."Publie"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."Publie" IS 'Consentement de publication explicite, faux par défaut ; l’activité du profil ou du compte ne vaut jamais publication.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."Revision"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."Revision" IS 'Version concurrente de la fiche, incrémentée par PostgreSQL ; le service la compare sous verrou avant modification.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."CreeLe"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."CreeLe" IS 'Instant technique de création, conservé après enregistrement.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ModifieLe"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ModifieLe" IS 'Instant technique de la dernière modification de la fiche.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."CreeParUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."CreeParUserFk" IS 'Compte auteur de la création, distinct du compte professionnel représenté.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."ModifieParUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."ModifieParUserFk" IS 'Compte auteur de la dernière modification autorisée.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."CreationRequestId"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."CreationRequestId" IS 'Identifiant UUID de demande pour le rejeu de création, unique et immuable.';
+
+
+--
+-- Name: COLUMN "T_Professionnel"."CreationPayloadHash"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel"."CreationPayloadHash" IS 'Empreinte SHA256 du contenu normalisé de création ; ne contient aucun secret de compte.';
 
 
 --
@@ -18058,13 +18378,6 @@ COMMENT ON CONSTRAINT "T_Professionnel_IdUserFk_not_null" ON professionnel."T_Pr
 --
 
 COMMENT ON CONSTRAINT "T_Professionnel_IdTypeProfessionnelFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdTypeProfessionnelFk".';
-
-
---
--- Name: CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_Professionnel_IdSpecialiteFk_not_null" ON professionnel."T_Professionnel" IS 'Non-nullité : exige une valeur renseignée dans "professionnel"."T_Professionnel". Définition : NOT NULL "IdSpecialiteFk".';
 
 
 --
@@ -27263,6 +27576,37 @@ COMMENT ON COLUMN operations."V_JournalCaisse"."SoldeApres" IS 'Projection de le
 
 
 --
+-- Name: T_Professionnel_Competence; Type: TABLE; Schema: professionnel; Owner: -
+--
+
+CREATE TABLE professionnel."T_Professionnel_Competence" (
+    "IdProfessionnelFk" integer NOT NULL,
+    "IdCompetenceFk" integer NOT NULL
+);
+
+
+--
+-- Name: TABLE "T_Professionnel_Competence"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TABLE professionnel."T_Professionnel_Competence" IS 'Liaison entre fiche et compétence déclarée du référentiel central ; cette sélection n’est pas une certification.';
+
+
+--
+-- Name: COLUMN "T_Professionnel_Competence"."IdProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel_Competence"."IdProfessionnelFk" IS 'Fiche professionnelle propriétaire ; son entreprise détermine le contexte des références.';
+
+
+--
+-- Name: COLUMN "T_Professionnel_Competence"."IdCompetenceFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel_Competence"."IdCompetenceFk" IS 'Valeur ID_Generique d’une famille de compétences configurée pour ce champ.';
+
+
+--
 -- Name: T_Professionnel_Entite; Type: TABLE; Schema: professionnel; Owner: -
 --
 
@@ -27374,6 +27718,107 @@ ALTER TABLE professionnel."T_Professionnel" ALTER COLUMN "IdProfessionnel" ADD G
 --
 
 COMMENT ON SEQUENCE professionnel."T_Professionnel_IdProfessionnel_seq" IS 'Séquence de génération de "professionnel"."T_Professionnel"."IdProfessionnel". Les valeurs produites identifient les enregistrements ; les écarts de numérotation ne prouvent pas une suppression.';
+
+
+--
+-- Name: T_Professionnel_Prestation; Type: TABLE; Schema: professionnel; Owner: -
+--
+
+CREATE TABLE professionnel."T_Professionnel_Prestation" (
+    "IdProfessionnelFk" integer NOT NULL,
+    "IdPrestationFk" integer NOT NULL
+);
+
+
+--
+-- Name: TABLE "T_Professionnel_Prestation"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TABLE professionnel."T_Professionnel_Prestation" IS 'Liaison entre fiche et prestation proposée du référentiel central ; aucune table de dictionnaire locale.';
+
+
+--
+-- Name: COLUMN "T_Professionnel_Prestation"."IdProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel_Prestation"."IdProfessionnelFk" IS 'Fiche professionnelle propriétaire ; le service contrôle ses droits avant toute modification.';
+
+
+--
+-- Name: COLUMN "T_Professionnel_Prestation"."IdPrestationFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_Professionnel_Prestation"."IdPrestationFk" IS 'Valeur ID_Generique de la famille de prestations configurée pour ce champ.';
+
+
+--
+-- Name: T_SynonymeRecherche; Type: TABLE; Schema: professionnel; Owner: -
+--
+
+CREATE TABLE professionnel."T_SynonymeRecherche" (
+    "ID_SynonymeRecherche" bigint NOT NULL,
+    "IdGeneriqueFk" integer NOT NULL,
+    "Terme" text NOT NULL,
+    "Actif" boolean DEFAULT true NOT NULL,
+    "IdEntiteFk" integer,
+    CONSTRAINT "T_SynonymeRecherche_Terme_check" CHECK (((length(btrim("Terme")) >= 1) AND (length(btrim("Terme")) <= 200)))
+);
+
+
+--
+-- Name: TABLE "T_SynonymeRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TABLE professionnel."T_SynonymeRecherche" IS 'Détails lexicaux rattachés à une valeur existante de T_Generique, pour retrouver un besoin par un mot courant. Ne relie jamais arbitrairement une personne à une compétence.';
+
+
+--
+-- Name: COLUMN "T_SynonymeRecherche"."ID_SynonymeRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_SynonymeRecherche"."ID_SynonymeRecherche" IS 'Identifiant technique du terme de recherche.';
+
+
+--
+-- Name: COLUMN "T_SynonymeRecherche"."IdGeneriqueFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_SynonymeRecherche"."IdGeneriqueFk" IS 'Valeur centrale visée par le synonyme ; le terme ne crée pas une nouvelle compétence.';
+
+
+--
+-- Name: COLUMN "T_SynonymeRecherche"."Terme"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_SynonymeRecherche"."Terme" IS 'Expression de recherche explicite, sans interprétation médicale ni promesse de service.';
+
+
+--
+-- Name: COLUMN "T_SynonymeRecherche"."Actif"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_SynonymeRecherche"."Actif" IS 'Terme utilisé dans la projection de recherche s’il est actif et sa référence reste valide.';
+
+
+--
+-- Name: COLUMN "T_SynonymeRecherche"."IdEntiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."T_SynonymeRecherche"."IdEntiteFk" IS 'Portée identique à la référence centrale : NULL commune, sinon entreprise propriétaire de la valeur.';
+
+
+--
+-- Name: T_SynonymeRecherche_ID_SynonymeRecherche_seq; Type: SEQUENCE; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE professionnel."T_SynonymeRecherche" ALTER COLUMN "ID_SynonymeRecherche" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME professionnel."T_SynonymeRecherche_ID_SynonymeRecherche_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 
 --
@@ -27975,6 +28420,68 @@ COMMENT ON COLUMN professionnel."V_Professionnel_Par_Entite"."ValideProfessionne
 
 
 --
+-- Name: T_CategorieGenerique; Type: TABLE; Schema: referentiel; Owner: -
+--
+
+CREATE TABLE referentiel."T_CategorieGenerique" (
+    "ID_CategorieGenerique" integer CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" NOT NULL,
+    "NomCategorieGenerique" character varying(255),
+    "ModuleCategorieGenerique" text,
+    "ValideCategorieGenerique" boolean DEFAULT true,
+    "IdEntiteFk" integer
+);
+
+
+--
+-- Name: TABLE "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON TABLE referentiel."T_CategorieGenerique" IS 'Familles transversales communes ou propres à une entreprise, réutilisées par les champs catalogués. Identifiants et familles antérieures conservés.';
+
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."ID_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ID_CategorieGenerique" IS 'Identifiant de la catégorie de nomenclature.';
+
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."NomCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."NomCategorieGenerique" IS 'Libellé de la catégorie de nomenclature.';
+
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."ModuleCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ModuleCategorieGenerique" IS 'Module ou domaine d’usage de la catégorie de nomenclature.';
+
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."ValideCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ValideCategorieGenerique" IS 'Indique si la catégorie est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
+
+
+--
+-- Name: COLUMN "T_CategorieGenerique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON COLUMN referentiel."T_CategorieGenerique"."IdEntiteFk" IS 'Propriétaire durable facultatif : NULL désigne le référentiel commun. Toutes les catégories antérieures restent communes ; une propriété enregistrée est immuable.';
+
+
+--
+-- Name: CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" ON "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" ON referentiel."T_CategorieGenerique" IS 'Non-nullité : exige une valeur renseignée dans "referentiel"."T_CategorieGenerique". Définition : NOT NULL "ID_CategorieGenerique".';
+
+
+--
 -- Name: V_Professionnel_Public; Type: VIEW; Schema: professionnel; Owner: -
 --
 
@@ -27982,25 +28489,71 @@ CREATE VIEW professionnel."V_Professionnel_Public" AS
  SELECT p."IdProfessionnel",
     p."ExperienceAns",
     p."ValideProfessionnel",
-    jsonb_build_object('ID_Generique', s."ID_Generique", 'NomGenerique', s."NomGenerique", 'AbrGenerique', s."AbrGenerique") AS "T_GeneriqueSpecialite",
+    jsonb_build_object('ID_Generique', sp."ID_Generique", 'NomGenerique', sp."NomGenerique", 'AbrGenerique', sp."AbrGenerique") AS "T_GeneriqueSpecialite",
     jsonb_build_object('ID_Generique', t."ID_Generique", 'NomGenerique', t."NomGenerique", 'AbrGenerique', t."AbrGenerique") AS "T_GeneriqueType",
     jsonb_build_object('IdUser', u."IdUser", 'NomUser', u."NomUser", 'PrenomUser', u."PrenomUser", 'UrlPhoto', u."UrlPhoto") AS "T_Utilisateurs",
-    COALESCE(( SELECT jsonb_agg(jsonb_build_object('EstPrincipal', l."EstPrincipal", 'T_Entite', jsonb_build_object('IdEntite', e."IdEntite", 'NomEntite', e."NomEntite", 'PhoneEntite', e."PhoneEntite", 'AdresseEntite', e."AdresseEntite")) ORDER BY l."EstPrincipal" DESC, l."IdEntiteFk") AS jsonb_agg
-           FROM (professionnel."T_Professionnel_Entite" l
-             JOIN systeme."T_Entite" e ON ((e."IdEntite" = l."IdEntiteFk")))
-          WHERE ((l."IdProfessionnelFk" = p."IdProfessionnel") AND (e."ValideEntite" = true) AND ((l."DateDebut" IS NULL) OR (l."DateDebut" <= CURRENT_TIMESTAMP)) AND ((l."DateFin" IS NULL) OR (l."DateFin" > CURRENT_TIMESTAMP)))), '[]'::jsonb) AS "T_Professionnel_Entite"
-   FROM (((professionnel."T_Professionnel" p
+    COALESCE(aff."Affiliations", '[]'::jsonb) AS "T_Professionnel_Entite",
+    p."IdEntiteFk",
+    e."NomEntite",
+    p."IdSecteurFk",
+    COALESCE(NULLIF((s."AbrGenerique")::text, ''::text), (s."NomGenerique")::text) AS "Secteur",
+    p."TitrePublic",
+    p."PresentationPublique",
+    p."LocalitePublique",
+    p."ContactAutorise",
+    COALESCE(sk."Competences", '[]'::jsonb) AS "Competences",
+    COALESCE(sv."Prestations", '[]'::jsonb) AS "Prestations",
+    search."TexteRecherche",
+    to_tsvector('simple'::regconfig, search."TexteRecherche") AS "RechercheVecteur",
+    p."IdUserFk",
+    p."IdSpecialiteFk",
+    p."IdTypeProfessionnelFk",
+    btrim(concat_ws(' '::text, u."PrenomUser", u."NomUser")) AS "NomComplet",
+    jsonb_build_object('ID_Generique', s."ID_Generique", 'NomGenerique', s."NomGenerique", 'AbrGenerique', s."AbrGenerique") AS "T_GeneriqueSecteur"
+   FROM (((((((((professionnel."T_Professionnel" p
      JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = p."IdUserFk")))
-     LEFT JOIN referentiel."T_Generique" s ON ((s."ID_Generique" = p."IdSpecialiteFk")))
-     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = p."IdTypeProfessionnelFk")))
-  WHERE ((p."ValideProfessionnel" = true) AND (u."ValideUser" = true));
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = p."IdEntiteFk")))
+     LEFT JOIN referentiel."T_Generique" s ON (((s."ID_Generique" = p."IdSecteurFk") AND s."ValideGenerique" AND referentiel.fn_reference_visible(s."ID_Generique", p."IdEntiteFk") AND (EXISTS ( SELECT
+           FROM referentiel."T_CategorieGenerique" c
+          WHERE ((c."ID_CategorieGenerique" = s."ID_CategorieGeneriqueFk") AND c."ValideCategorieGenerique"))))))
+     LEFT JOIN referentiel."T_Generique" t ON (((t."ID_Generique" = p."IdTypeProfessionnelFk") AND t."ValideGenerique" AND referentiel.fn_reference_visible(t."ID_Generique", p."IdEntiteFk") AND (EXISTS ( SELECT
+           FROM referentiel."T_CategorieGenerique" c
+          WHERE ((c."ID_CategorieGenerique" = t."ID_CategorieGeneriqueFk") AND c."ValideCategorieGenerique"))))))
+     LEFT JOIN referentiel."T_Generique" sp ON (((sp."ID_Generique" = p."IdSpecialiteFk") AND sp."ValideGenerique" AND referentiel.fn_reference_visible(sp."ID_Generique", p."IdEntiteFk") AND (EXISTS ( SELECT
+           FROM referentiel."T_CategorieGenerique" c
+          WHERE ((c."ID_CategorieGenerique" = sp."ID_CategorieGeneriqueFk") AND c."ValideCategorieGenerique"))))))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('EstPrincipal', l."EstPrincipal", 'T_Entite', jsonb_build_object('IdEntite', x."IdEntite", 'NomEntite', x."NomEntite", 'PhoneEntite', x."PhoneEntite", 'AdresseEntite', x."AdresseEntite")) ORDER BY l."EstPrincipal" DESC, l."IdEntiteFk") AS "Affiliations",
+            string_agg(x."NomEntite", ' '::text) AS words
+           FROM (professionnel."T_Professionnel_Entite" l
+             JOIN systeme."T_Entite" x ON ((x."IdEntite" = l."IdEntiteFk")))
+          WHERE ((l."IdProfessionnelFk" = p."IdProfessionnel") AND x."ValideEntite" AND ((l."DateDebut" IS NULL) OR (l."DateDebut" <= LOCALTIMESTAMP)) AND ((l."DateFin" IS NULL) OR (l."DateFin" > LOCALTIMESTAMP)))) aff ON (true))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") ORDER BY g."NomGenerique", g."ID_Generique") AS "Competences",
+            string_agg(concat_ws(' '::text, g."NomGenerique", g."AbrGenerique", syn.words), ' '::text) AS words
+           FROM (((professionnel."T_Professionnel_Competence" l
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = l."IdCompetenceFk")))
+             JOIN referentiel."T_CategorieGenerique" c ON ((c."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk")))
+             LEFT JOIN LATERAL ( SELECT string_agg(z."Terme", ' '::text) AS words
+                   FROM professionnel."T_SynonymeRecherche" z
+                  WHERE ((z."IdGeneriqueFk" = g."ID_Generique") AND z."Actif" AND ((z."IdEntiteFk" IS NULL) OR (z."IdEntiteFk" = p."IdEntiteFk")))) syn ON (true))
+          WHERE ((l."IdProfessionnelFk" = p."IdProfessionnel") AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND referentiel.fn_reference_visible(g."ID_Generique", p."IdEntiteFk"))) sk ON (true))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") ORDER BY g."NomGenerique", g."ID_Generique") AS "Prestations",
+            string_agg(concat_ws(' '::text, g."NomGenerique", g."AbrGenerique", syn.words), ' '::text) AS words
+           FROM (((professionnel."T_Professionnel_Prestation" l
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = l."IdPrestationFk")))
+             JOIN referentiel."T_CategorieGenerique" c ON ((c."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk")))
+             LEFT JOIN LATERAL ( SELECT string_agg(z."Terme", ' '::text) AS words
+                   FROM professionnel."T_SynonymeRecherche" z
+                  WHERE ((z."IdGeneriqueFk" = g."ID_Generique") AND z."Actif" AND ((z."IdEntiteFk" IS NULL) OR (z."IdEntiteFk" = p."IdEntiteFk")))) syn ON (true))
+          WHERE ((l."IdProfessionnelFk" = p."IdProfessionnel") AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND referentiel.fn_reference_visible(g."ID_Generique", p."IdEntiteFk"))) sv ON (true))
+     CROSS JOIN LATERAL ( SELECT referentiel.fn_normaliser_libelle(concat_ws(' '::text, u."NomUser", u."PrenomUser", p."TitrePublic", p."PresentationPublique", p."LocalitePublique", s."NomGenerique", s."AbrGenerique", t."NomGenerique", t."AbrGenerique", sp."NomGenerique", sp."AbrGenerique", sk.words, sv.words, aff.words)) AS "TexteRecherche") search)
+  WHERE (p."Publie" AND p."ValideProfessionnel" AND u."ValideUser" AND e."ValideEntite");
 
 
 --
 -- Name: VIEW "V_Professionnel_Public"; Type: COMMENT; Schema: professionnel; Owner: -
 --
 
-COMMENT ON VIEW professionnel."V_Professionnel_Public" IS 'Annuaire public au grain professionnel actif et utilisateur actif. Identité, spécialité et affiliations valables à la date de lecture ; aucun email, téléphone personnel, numéro professionnel ou mot de passe. Les affiliations sont agrégées pour éviter de dupliquer les professionnels.';
+COMMENT ON VIEW professionnel."V_Professionnel_Public" IS 'Annuaire transversal publié, actif et lié à un compte/entreprise actifs, une ligne par fiche. Compétences et prestations déclarées, affiliations valables ; sans email/téléphone personnel, numéro professionnel privé, note interne ni donnée RH. Les synonymes appartiennent à la valeur sélectionnée, jamais à un expert supposé.';
 
 
 --
@@ -28050,6 +28603,516 @@ COMMENT ON COLUMN professionnel."V_Professionnel_Public"."T_Utilisateurs" IS 'Id
 --
 
 COMMENT ON COLUMN professionnel."V_Professionnel_Public"."T_Professionnel_Entite" IS 'Affiliations vers les structures actives, valables à la date de lecture ; tri principal puis identifiant, tableau JSON vide si aucune.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."IdEntiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."IdEntiteFk" IS 'Projection publique limitée : IdEntiteFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."NomEntite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."NomEntite" IS 'Projection publique limitée : NomEntite. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."IdSecteurFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."IdSecteurFk" IS 'Projection publique limitée : IdSecteurFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."Secteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."Secteur" IS 'Projection publique limitée : Secteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."TitrePublic"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."TitrePublic" IS 'Projection publique limitée : TitrePublic. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."PresentationPublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."PresentationPublique" IS 'Projection publique limitée : PresentationPublique. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."LocalitePublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."LocalitePublique" IS 'Projection publique limitée : LocalitePublique. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."ContactAutorise"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."ContactAutorise" IS 'Projection publique limitée : ContactAutorise. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."Competences"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."Competences" IS 'Projection publique limitée : Competences. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."Prestations"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."Prestations" IS 'Projection publique limitée : Prestations. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."TexteRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."TexteRecherche" IS 'Projection publique limitée : TexteRecherche. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."RechercheVecteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."RechercheVecteur" IS 'Projection publique limitée : RechercheVecteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."IdUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."IdUserFk" IS 'Projection publique limitée : IdUserFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."IdSpecialiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."IdSpecialiteFk" IS 'Projection publique limitée : IdSpecialiteFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."IdTypeProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."IdTypeProfessionnelFk" IS 'Projection publique limitée : IdTypeProfessionnelFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."NomComplet"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."NomComplet" IS 'Projection publique limitée : NomComplet. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Public"."T_GeneriqueSecteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Public"."T_GeneriqueSecteur" IS 'Projection publique limitée : T_GeneriqueSecteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: V_Professionnel_Registre; Type: VIEW; Schema: professionnel; Owner: -
+--
+
+CREATE VIEW professionnel."V_Professionnel_Registre" AS
+ SELECT p."IdProfessionnel",
+    p."IdUserFk",
+    p."IdTypeProfessionnelFk",
+    p."IdSpecialiteFk",
+    p."NumeroIdentification",
+    p."ExperienceAns",
+    p."ObsProfessionnel",
+    p."ValideProfessionnel",
+    p."IdEntiteFk",
+    p."IdSecteurFk",
+    p."TitrePublic",
+    p."PresentationPublique",
+    p."LocalitePublique",
+    p."ContactAutorise",
+    p."Publie",
+    p."Revision",
+    p."CreeLe",
+    p."ModifieLe",
+    p."CreeParUserFk",
+    p."ModifieParUserFk",
+    p."CreationRequestId",
+    p."CreationPayloadHash",
+    u."NomUser",
+    u."PrenomUser",
+    u."EmailUser",
+    u."UrlPhoto",
+    u."ValideUser",
+    btrim(concat_ws(' '::text, u."PrenomUser", u."NomUser")) AS "NomComplet",
+    e."NomEntite",
+    COALESCE(NULLIF((s."AbrGenerique")::text, ''::text), (s."NomGenerique")::text) AS "Secteur",
+    COALESCE(NULLIF((t."AbrGenerique")::text, ''::text), (t."NomGenerique")::text) AS "TypeProfessionnel",
+    COALESCE(NULLIF((sp."AbrGenerique")::text, ''::text), (sp."NomGenerique")::text) AS "Specialite",
+    COALESCE(c."Competences", '[]'::jsonb) AS "Competences",
+    COALESCE(pr."Prestations", '[]'::jsonb) AS "Prestations",
+    COALESCE(a."Affiliations", '[]'::jsonb) AS "Affiliations",
+    COALESCE(c."NbCompetences", (0)::bigint) AS "NbCompetences",
+    COALESCE(pr."NbPrestations", (0)::bigint) AS "NbPrestations",
+        CASE
+            WHEN (NOT COALESCE(p."ValideProfessionnel", false)) THEN 'archive'::text
+            WHEN p."Publie" THEN 'publie'::text
+            ELSE 'brouillon'::text
+        END AS "EtatProfil",
+    jsonb_build_object('ID_Generique', s."ID_Generique", 'NomGenerique', s."NomGenerique", 'AbrGenerique', s."AbrGenerique") AS "T_GeneriqueSecteur",
+    jsonb_build_object('ID_Generique', sp."ID_Generique", 'NomGenerique', sp."NomGenerique", 'AbrGenerique', sp."AbrGenerique") AS "T_GeneriqueSpecialite",
+    jsonb_build_object('ID_Generique', t."ID_Generique", 'NomGenerique', t."NomGenerique", 'AbrGenerique', t."AbrGenerique") AS "T_GeneriqueType",
+    jsonb_build_object('IdUser', u."IdUser", 'NomUser', u."NomUser", 'PrenomUser', u."PrenomUser", 'UrlPhoto', u."UrlPhoto") AS "T_Utilisateurs",
+    search."TexteRecherche",
+    to_tsvector('simple'::regconfig, search."TexteRecherche") AS "RechercheVecteur"
+   FROM (((((((((professionnel."T_Professionnel" p
+     JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = p."IdUserFk")))
+     JOIN systeme."T_Entite" e ON ((e."IdEntite" = p."IdEntiteFk")))
+     LEFT JOIN referentiel."T_Generique" s ON ((s."ID_Generique" = p."IdSecteurFk")))
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = p."IdTypeProfessionnelFk")))
+     LEFT JOIN referentiel."T_Generique" sp ON ((sp."ID_Generique" = p."IdSpecialiteFk")))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") ORDER BY g."NomGenerique", g."ID_Generique") AS "Competences",
+            count(*) AS "NbCompetences"
+           FROM (professionnel."T_Professionnel_Competence" l
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = l."IdCompetenceFk")))
+          WHERE (l."IdProfessionnelFk" = p."IdProfessionnel")) c ON (true))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") ORDER BY g."NomGenerique", g."ID_Generique") AS "Prestations",
+            count(*) AS "NbPrestations"
+           FROM (professionnel."T_Professionnel_Prestation" l
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = l."IdPrestationFk")))
+          WHERE (l."IdProfessionnelFk" = p."IdProfessionnel")) pr ON (true))
+     LEFT JOIN LATERAL ( SELECT jsonb_agg(jsonb_build_object('IdEntiteFk', l."IdEntiteFk", 'NomEntite', x."NomEntite", 'IdTypeLienFk', l."IdTypeLienFk", 'EstPrincipal', l."EstPrincipal", 'DateDebut', l."DateDebut", 'DateFin', l."DateFin", 'ObsLien', l."ObsLien") ORDER BY l."EstPrincipal" DESC, l."IdEntiteFk") AS "Affiliations"
+           FROM (professionnel."T_Professionnel_Entite" l
+             JOIN systeme."T_Entite" x ON ((x."IdEntite" = l."IdEntiteFk")))
+          WHERE (l."IdProfessionnelFk" = p."IdProfessionnel")) a ON (true))
+     CROSS JOIN LATERAL ( SELECT referentiel.fn_normaliser_libelle(concat_ws(' '::text, u."NomUser", u."PrenomUser", p."TitrePublic", p."PresentationPublique", p."LocalitePublique", s."NomGenerique", t."NomGenerique", sp."NomGenerique", (c."Competences")::text, (pr."Prestations")::text, (a."Affiliations")::text)) AS "TexteRecherche") search);
+
+
+--
+-- Name: VIEW "V_Professionnel_Registre"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON VIEW professionnel."V_Professionnel_Registre" IS 'Registre privé, une ligne par fiche propriétaire ; informations compte minimales, références et détails agrégés. Réservé aux services autorisés, jamais SELECT * dans une réponse publique.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdProfessionnel" IS 'Projection privée du registre autorisé : IdProfessionnel. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdUserFk" IS 'Projection privée du registre autorisé : IdUserFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdTypeProfessionnelFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdTypeProfessionnelFk" IS 'Projection privée du registre autorisé : IdTypeProfessionnelFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdSpecialiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdSpecialiteFk" IS 'Projection privée du registre autorisé : IdSpecialiteFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NumeroIdentification"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NumeroIdentification" IS 'Projection privée du registre autorisé : NumeroIdentification. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ExperienceAns"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ExperienceAns" IS 'Projection privée du registre autorisé : ExperienceAns. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ObsProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ObsProfessionnel" IS 'Projection privée du registre autorisé : ObsProfessionnel. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ValideProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ValideProfessionnel" IS 'Projection privée du registre autorisé : ValideProfessionnel. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdEntiteFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdEntiteFk" IS 'Projection privée du registre autorisé : IdEntiteFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."IdSecteurFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."IdSecteurFk" IS 'Projection privée du registre autorisé : IdSecteurFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."TitrePublic"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."TitrePublic" IS 'Projection privée du registre autorisé : TitrePublic. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."PresentationPublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."PresentationPublique" IS 'Projection privée du registre autorisé : PresentationPublique. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."LocalitePublique"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."LocalitePublique" IS 'Projection privée du registre autorisé : LocalitePublique. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ContactAutorise"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ContactAutorise" IS 'Projection privée du registre autorisé : ContactAutorise. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Publie"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Publie" IS 'Projection privée du registre autorisé : Publie. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Revision"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Revision" IS 'Projection privée du registre autorisé : Revision. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."CreeLe"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."CreeLe" IS 'Projection privée du registre autorisé : CreeLe. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ModifieLe"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ModifieLe" IS 'Projection privée du registre autorisé : ModifieLe. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."CreeParUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."CreeParUserFk" IS 'Projection privée du registre autorisé : CreeParUserFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ModifieParUserFk"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ModifieParUserFk" IS 'Projection privée du registre autorisé : ModifieParUserFk. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."CreationRequestId"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."CreationRequestId" IS 'Projection privée du registre autorisé : CreationRequestId. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."CreationPayloadHash"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."CreationPayloadHash" IS 'Projection privée du registre autorisé : CreationPayloadHash. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NomUser"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NomUser" IS 'Projection privée du registre autorisé : NomUser. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."PrenomUser"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."PrenomUser" IS 'Projection privée du registre autorisé : PrenomUser. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."EmailUser"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."EmailUser" IS 'Projection privée du registre autorisé : EmailUser. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."UrlPhoto"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."UrlPhoto" IS 'Projection privée du registre autorisé : UrlPhoto. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."ValideUser"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."ValideUser" IS 'Projection privée du registre autorisé : ValideUser. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NomComplet"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NomComplet" IS 'Projection privée du registre autorisé : NomComplet. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NomEntite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NomEntite" IS 'Projection privée du registre autorisé : NomEntite. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Secteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Secteur" IS 'Projection privée du registre autorisé : Secteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."TypeProfessionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."TypeProfessionnel" IS 'Projection privée du registre autorisé : TypeProfessionnel. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Specialite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Specialite" IS 'Projection privée du registre autorisé : Specialite. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Competences"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Competences" IS 'Projection privée du registre autorisé : Competences. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Prestations"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Prestations" IS 'Projection privée du registre autorisé : Prestations. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."Affiliations"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."Affiliations" IS 'Projection privée du registre autorisé : Affiliations. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NbCompetences"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NbCompetences" IS 'Projection privée du registre autorisé : NbCompetences. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."NbPrestations"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."NbPrestations" IS 'Projection privée du registre autorisé : NbPrestations. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."EtatProfil"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."EtatProfil" IS 'Projection privée du registre autorisé : EtatProfil. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."T_GeneriqueSecteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."T_GeneriqueSecteur" IS 'Projection privée du registre autorisé : T_GeneriqueSecteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."T_GeneriqueSpecialite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."T_GeneriqueSpecialite" IS 'Projection privée du registre autorisé : T_GeneriqueSpecialite. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."T_GeneriqueType"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."T_GeneriqueType" IS 'Projection privée du registre autorisé : T_GeneriqueType. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."T_Utilisateurs"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."T_Utilisateurs" IS 'Projection privée du registre autorisé : T_Utilisateurs. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."TexteRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."TexteRecherche" IS 'Projection privée du registre autorisé : TexteRecherche. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
+
+
+--
+-- Name: COLUMN "V_Professionnel_Registre"."RechercheVecteur"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON COLUMN professionnel."V_Professionnel_Registre"."RechercheVecteur" IS 'Projection privée du registre autorisé : RechercheVecteur. Issue de la fiche et de ses références centrales, sans effet sur les droits.';
 
 
 --
@@ -29036,68 +30099,6 @@ COMMENT ON CONSTRAINT django_session_session_data_not_null ON public.django_sess
 --
 
 COMMENT ON CONSTRAINT django_session_expire_date_not_null ON public.django_session IS 'Valeur obligatoire du socle Django : NOT NULL expire_date.';
-
-
---
--- Name: T_CategorieGenerique; Type: TABLE; Schema: referentiel; Owner: -
---
-
-CREATE TABLE referentiel."T_CategorieGenerique" (
-    "ID_CategorieGenerique" integer CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" NOT NULL,
-    "NomCategorieGenerique" character varying(255),
-    "ModuleCategorieGenerique" text,
-    "ValideCategorieGenerique" boolean DEFAULT true,
-    "IdEntiteFk" integer
-);
-
-
---
--- Name: TABLE "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON TABLE referentiel."T_CategorieGenerique" IS 'Familles transversales communes ou propres à une entreprise, réutilisées par les champs catalogués. Identifiants et familles antérieures conservés.';
-
-
---
--- Name: COLUMN "T_CategorieGenerique"."ID_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ID_CategorieGenerique" IS 'Identifiant de la catégorie de nomenclature.';
-
-
---
--- Name: COLUMN "T_CategorieGenerique"."NomCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON COLUMN referentiel."T_CategorieGenerique"."NomCategorieGenerique" IS 'Libellé de la catégorie de nomenclature.';
-
-
---
--- Name: COLUMN "T_CategorieGenerique"."ModuleCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ModuleCategorieGenerique" IS 'Module ou domaine d’usage de la catégorie de nomenclature.';
-
-
---
--- Name: COLUMN "T_CategorieGenerique"."ValideCategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON COLUMN referentiel."T_CategorieGenerique"."ValideCategorieGenerique" IS 'Indique si la catégorie est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
-
-
---
--- Name: COLUMN "T_CategorieGenerique"."IdEntiteFk"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON COLUMN referentiel."T_CategorieGenerique"."IdEntiteFk" IS 'Propriétaire durable facultatif : NULL désigne le référentiel commun. Toutes les catégories antérieures restent communes ; une propriété enregistrée est immuable.';
-
-
---
--- Name: CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" ON "T_CategorieGenerique"; Type: COMMENT; Schema: referentiel; Owner: -
---
-
-COMMENT ON CONSTRAINT "T_CategorieGenerique_ID_CategorieGenerique_not_null" ON referentiel."T_CategorieGenerique" IS 'Non-nullité : exige une valeur renseignée dans "referentiel"."T_CategorieGenerique". Définition : NOT NULL "ID_CategorieGenerique".';
 
 
 --
@@ -30103,7 +31104,7 @@ CREATE VIEW referentiel."V_ReferencementChamp" AS
     c."ID_CategorieDefautFk" AS "DefaultCategoryId",
     s."OrigineReglage",
     (c."Revision")::text AS _version,
-    (((c."SchemaName")::text = 'logistique'::text) AND ((((c."TableName")::text = ANY ((ARRAY['T_Mouvement'::character varying, 'T_Facture'::character varying, 'T_Avoir'::character varying, 'T_Reglements'::character varying, 'T_ValorisationOuverture'::character varying])::text[])) AND ((c."ColumnName")::text = 'ID_DeviseFk'::text)) OR (((c."TableName")::text = 'T_Mouvement'::text) AND ((c."ColumnName")::text = 'ID_TypeMvtFk'::text)) OR (((c."TableName")::text = 'T_Facture'::text) AND ((c."ColumnName")::text = ANY ((ARRAY['ID_ModePaiementFk'::character varying, 'ID_ConditionPaiementFk'::character varying])::text[]))))) AS "ReferenceHeriteeParent"
+    (((c."SchemaName")::text = 'logistique'::text) AND ((((c."TableName")::text = ANY (ARRAY[('T_Mouvement'::character varying)::text, ('T_Facture'::character varying)::text, ('T_Avoir'::character varying)::text, ('T_Reglements'::character varying)::text, ('T_ValorisationOuverture'::character varying)::text])) AND ((c."ColumnName")::text = 'ID_DeviseFk'::text)) OR (((c."TableName")::text = 'T_Mouvement'::text) AND ((c."ColumnName")::text = 'ID_TypeMvtFk'::text)) OR (((c."TableName")::text = 'T_Facture'::text) AND ((c."ColumnName")::text = ANY (ARRAY[('ID_ModePaiementFk'::character varying)::text, ('ID_ConditionPaiementFk'::character varying)::text]))))) AS "ReferenceHeriteeParent"
    FROM ((referentiel."T_ChampReferentiel" c
      LEFT JOIN referentiel."T_CategorieGenerique" d ON ((d."ID_CategorieGenerique" = c."ID_CategorieDefautFk")))
      CROSS JOIN LATERAL referentiel.fn_resolution_champ((c."SchemaName")::text, (c."TableName")::text, (c."ColumnName")::text, NULL::integer) s("CategoryIds", "OrigineReglage"));
@@ -32320,7 +33321,7 @@ CREATE TABLE systeme."T_LicenceModule" (
     "ModifieParUserFk" integer,
     "CreeLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ModifieLe" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY ((ARRAY['activation'::character varying, 'reprise'::character varying])::text[]))),
+    CONSTRAINT "T_LicenceModule_Origine_check" CHECK ((("Origine")::text = ANY (ARRAY[('activation'::character varying)::text, ('reprise'::character varying)::text]))),
     CONSTRAINT "T_LicenceModule_Version_check" CHECK (("Version" > 0))
 );
 
@@ -32552,7 +33553,7 @@ CREATE TABLE systeme."T_ModuleApplication" (
     CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
     CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
     CONSTRAINT ck_module_parent CHECK (((("ModuleParentCode")::text IS DISTINCT FROM ("CodeModule")::text) AND ((("TypeApplication")::text <> 'MODULE'::text) OR ("ModuleParentCode" IS NULL)))),
-    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY ((ARRAY['MODULE'::character varying, 'FONCTIONNALITE'::character varying])::text[])))
+    CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY (ARRAY[('MODULE'::character varying)::text, ('FONCTIONNALITE'::character varying)::text])))
 );
 
 
@@ -35674,6 +36675,38 @@ COMMENT ON CONSTRAINT "Pk_Professionnel_Entite" ON professionnel."T_Professionne
 
 
 --
+-- Name: T_Professionnel_Competence T_Professionnel_Competence_pkey; Type: CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Competence"
+    ADD CONSTRAINT "T_Professionnel_Competence_pkey" PRIMARY KEY ("IdProfessionnelFk", "IdCompetenceFk");
+
+
+--
+-- Name: T_Professionnel T_Professionnel_CreationRequestId_key; Type: CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel"
+    ADD CONSTRAINT "T_Professionnel_CreationRequestId_key" UNIQUE ("CreationRequestId");
+
+
+--
+-- Name: T_Professionnel_Prestation T_Professionnel_Prestation_pkey; Type: CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Prestation"
+    ADD CONSTRAINT "T_Professionnel_Prestation_pkey" PRIMARY KEY ("IdProfessionnelFk", "IdPrestationFk");
+
+
+--
+-- Name: T_SynonymeRecherche T_SynonymeRecherche_pkey; Type: CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_SynonymeRecherche"
+    ADD CONSTRAINT "T_SynonymeRecherche_pkey" PRIMARY KEY ("ID_SynonymeRecherche");
+
+
+--
 -- Name: T_Professionnel Uq_Prof_IdUser; Type: CONSTRAINT; Schema: professionnel; Owner: -
 --
 
@@ -38129,6 +39162,76 @@ CREATE INDEX idx_profession_principal ON professionnel."T_Professionnel_Entite" 
 --
 
 COMMENT ON INDEX professionnel.idx_profession_principal IS 'Index d’accès sur "professionnel"."T_Professionnel_Entite". La définition précise méthode, colonnes/expressions, ordre et éventuel prédicat partiel : CREATE INDEX idx_profession_principal ON professionnel."T_Professionnel_Entite" USING btree ("IdEntiteFk") WHERE ("EstPrincipal" = true).';
+
+
+--
+-- Name: ix_competence_reference; Type: INDEX; Schema: professionnel; Owner: -
+--
+
+CREATE INDEX ix_competence_reference ON professionnel."T_Professionnel_Competence" USING btree ("IdCompetenceFk", "IdProfessionnelFk");
+
+
+--
+-- Name: INDEX ix_competence_reference; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON INDEX professionnel.ix_competence_reference IS 'Recherche des fiches par compétence centrale sans dupliquer les profils.';
+
+
+--
+-- Name: ix_prestation_reference; Type: INDEX; Schema: professionnel; Owner: -
+--
+
+CREATE INDEX ix_prestation_reference ON professionnel."T_Professionnel_Prestation" USING btree ("IdPrestationFk", "IdProfessionnelFk");
+
+
+--
+-- Name: INDEX ix_prestation_reference; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON INDEX professionnel.ix_prestation_reference IS 'Recherche des fiches par prestation centrale sans double comptage.';
+
+
+--
+-- Name: ix_prof_owner; Type: INDEX; Schema: professionnel; Owner: -
+--
+
+CREATE INDEX ix_prof_owner ON professionnel."T_Professionnel" USING btree ("IdEntiteFk", "IdProfessionnel");
+
+
+--
+-- Name: INDEX ix_prof_owner; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON INDEX professionnel.ix_prof_owner IS 'Registre autorisé et pagination par entreprise propriétaire.';
+
+
+--
+-- Name: ix_prof_secteur; Type: INDEX; Schema: professionnel; Owner: -
+--
+
+CREATE INDEX ix_prof_secteur ON professionnel."T_Professionnel" USING btree ("IdSecteurFk") WHERE ("Publie" AND "ValideProfessionnel");
+
+
+--
+-- Name: INDEX ix_prof_secteur; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON INDEX professionnel.ix_prof_secteur IS 'Filtre des fiches publiées et actives par secteur.';
+
+
+--
+-- Name: uq_synonyme_reference_terme; Type: INDEX; Schema: professionnel; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_synonyme_reference_terme ON professionnel."T_SynonymeRecherche" USING btree ("IdGeneriqueFk", referentiel.fn_normaliser_libelle("Terme"));
+
+
+--
+-- Name: INDEX uq_synonyme_reference_terme; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON INDEX professionnel.uq_synonyme_reference_terme IS 'Interdit un même terme normalisé plusieurs fois pour la même référence.';
 
 
 --
@@ -41285,6 +42388,20 @@ COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel" IS 'Val
 
 
 --
+-- Name: T_Professionnel_Competence aa_reference_champ; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON professionnel."T_Professionnel_Competence" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Professionnel_Competence"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel_Competence" IS 'Valide les nouvelles références depuis le catalogue central dans le contexte propriétaire du profil.';
+
+
+--
 -- Name: T_Professionnel_Entite aa_reference_champ; Type: TRIGGER; Schema: professionnel; Owner: -
 --
 
@@ -41296,6 +42413,202 @@ CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON professionnel."T_Pr
 --
 
 COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel_Entite" IS 'Valide les nouvelles références du catalogue physique ; conserve les valeurs historiques inchangées, même devenues hors famille.';
+
+
+--
+-- Name: T_Professionnel_Prestation aa_reference_champ; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER aa_reference_champ BEFORE INSERT OR UPDATE ON professionnel."T_Professionnel_Prestation" FOR EACH ROW EXECUTE FUNCTION referentiel.tr_valider_champ_referentiel();
+
+
+--
+-- Name: TRIGGER aa_reference_champ ON "T_Professionnel_Prestation"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER aa_reference_champ ON professionnel."T_Professionnel_Prestation" IS 'Valide les nouvelles références depuis le catalogue central dans le contexte propriétaire du profil.';
+
+
+--
+-- Name: T_Professionnel_Competence ab_detail_professionnel_integrite; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER ab_detail_professionnel_integrite BEFORE INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Competence" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_integrite();
+
+
+--
+-- Name: TRIGGER ab_detail_professionnel_integrite ON "T_Professionnel_Competence"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_detail_professionnel_integrite ON professionnel."T_Professionnel_Competence" IS 'Verrou parent, intégrité des liens et des affiliations principales sans double comptage.';
+
+
+--
+-- Name: T_Professionnel_Entite ab_detail_professionnel_integrite; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER ab_detail_professionnel_integrite BEFORE INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Entite" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_integrite();
+
+
+--
+-- Name: TRIGGER ab_detail_professionnel_integrite ON "T_Professionnel_Entite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_detail_professionnel_integrite ON professionnel."T_Professionnel_Entite" IS 'Verrou parent, intégrité des liens et des affiliations principales sans double comptage.';
+
+
+--
+-- Name: T_Professionnel_Prestation ab_detail_professionnel_integrite; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER ab_detail_professionnel_integrite BEFORE INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Prestation" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_integrite();
+
+
+--
+-- Name: TRIGGER ab_detail_professionnel_integrite ON "T_Professionnel_Prestation"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_detail_professionnel_integrite ON professionnel."T_Professionnel_Prestation" IS 'Verrou parent, intégrité des liens et des affiliations principales sans double comptage.';
+
+
+--
+-- Name: T_Professionnel ab_professionnel_integrite; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER ab_professionnel_integrite BEFORE INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_integrite();
+
+
+--
+-- Name: TRIGGER ab_professionnel_integrite ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_professionnel_integrite ON professionnel."T_Professionnel" IS 'Garde commune du registre et des écritures SQL ; la suppression physique est remplacée par l’archivage.';
+
+
+--
+-- Name: T_SynonymeRecherche ab_synonyme_portee; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER ab_synonyme_portee BEFORE INSERT OR UPDATE ON professionnel."T_SynonymeRecherche" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_synonyme_portee();
+
+
+--
+-- Name: TRIGGER ab_synonyme_portee ON "T_SynonymeRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER ab_synonyme_portee ON professionnel."T_SynonymeRecherche" IS 'Garde la cohérence de portée du dictionnaire lexical.';
+
+
+--
+-- Name: T_Professionnel_Competence zy_detail_professionnel_revision; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zy_detail_professionnel_revision AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Competence" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_revision();
+
+
+--
+-- Name: TRIGGER zy_detail_professionnel_revision ON "T_Professionnel_Competence"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zy_detail_professionnel_revision ON professionnel."T_Professionnel_Competence" IS 'Révision atomique du parent après une mutation réelle de ce détail, avant son audit ; aucune version nouvelle sur un simple UPDATE identique.';
+
+
+--
+-- Name: T_Professionnel_Entite zy_detail_professionnel_revision; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zy_detail_professionnel_revision AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Entite" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_revision();
+
+
+--
+-- Name: TRIGGER zy_detail_professionnel_revision ON "T_Professionnel_Entite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zy_detail_professionnel_revision ON professionnel."T_Professionnel_Entite" IS 'Révision atomique du parent après une mutation réelle de ce détail, avant son audit ; aucune version nouvelle sur un simple UPDATE identique.';
+
+
+--
+-- Name: T_Professionnel_Prestation zy_detail_professionnel_revision; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zy_detail_professionnel_revision AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Prestation" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_detail_professionnel_revision();
+
+
+--
+-- Name: TRIGGER zy_detail_professionnel_revision ON "T_Professionnel_Prestation"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zy_detail_professionnel_revision ON professionnel."T_Professionnel_Prestation" IS 'Révision atomique du parent après une mutation réelle de ce détail, avant son audit ; aucune version nouvelle sur un simple UPDATE identique.';
+
+
+--
+-- Name: T_Professionnel zz_professionnel_audit; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zz_professionnel_audit AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_audit();
+
+
+--
+-- Name: TRIGGER zz_professionnel_audit ON "T_Professionnel"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zz_professionnel_audit ON professionnel."T_Professionnel" IS 'Trace SQL transactionnelle sans secret ; parent et entreprise restent identifiables après modification.';
+
+
+--
+-- Name: T_Professionnel_Competence zz_professionnel_audit; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zz_professionnel_audit AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Competence" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_audit();
+
+
+--
+-- Name: TRIGGER zz_professionnel_audit ON "T_Professionnel_Competence"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zz_professionnel_audit ON professionnel."T_Professionnel_Competence" IS 'Trace SQL transactionnelle sans secret ; parent et entreprise restent identifiables après modification.';
+
+
+--
+-- Name: T_Professionnel_Entite zz_professionnel_audit; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zz_professionnel_audit AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Entite" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_audit();
+
+
+--
+-- Name: TRIGGER zz_professionnel_audit ON "T_Professionnel_Entite"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zz_professionnel_audit ON professionnel."T_Professionnel_Entite" IS 'Trace SQL transactionnelle sans secret ; parent et entreprise restent identifiables après modification.';
+
+
+--
+-- Name: T_Professionnel_Prestation zz_professionnel_audit; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zz_professionnel_audit AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_Professionnel_Prestation" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_audit();
+
+
+--
+-- Name: TRIGGER zz_professionnel_audit ON "T_Professionnel_Prestation"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zz_professionnel_audit ON professionnel."T_Professionnel_Prestation" IS 'Trace SQL transactionnelle sans secret ; parent et entreprise restent identifiables après modification.';
+
+
+--
+-- Name: T_SynonymeRecherche zz_professionnel_audit; Type: TRIGGER; Schema: professionnel; Owner: -
+--
+
+CREATE TRIGGER zz_professionnel_audit AFTER INSERT OR DELETE OR UPDATE ON professionnel."T_SynonymeRecherche" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_professionnel_audit();
+
+
+--
+-- Name: TRIGGER zz_professionnel_audit ON "T_SynonymeRecherche"; Type: COMMENT; Schema: professionnel; Owner: -
+--
+
+COMMENT ON TRIGGER zz_professionnel_audit ON professionnel."T_SynonymeRecherche" IS 'Trace SQL transactionnelle sans secret ; parent et entreprise restent identifiables après modification.';
 
 
 --
@@ -41660,6 +42973,20 @@ CREATE TRIGGER ab_correspondance_categorie_portee BEFORE INSERT OR UPDATE ON sys
 --
 
 COMMENT ON TRIGGER ab_correspondance_categorie_portee ON systeme."T_Fk_Correspondance" IS 'Complète la garde canonique existante par la propriété de la catégorie choisie.';
+
+
+--
+-- Name: T_Utilisateurs ac_compte_professionnel_entreprise; Type: TRIGGER; Schema: systeme; Owner: -
+--
+
+CREATE TRIGGER ac_compte_professionnel_entreprise BEFORE UPDATE OF "IdEntiteFk" ON systeme."T_Utilisateurs" FOR EACH ROW EXECUTE FUNCTION professionnel.tr_compte_professionnel_entreprise();
+
+
+--
+-- Name: TRIGGER ac_compte_professionnel_entreprise ON "T_Utilisateurs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TRIGGER ac_compte_professionnel_entreprise ON systeme."T_Utilisateurs" IS 'Conserve la cohérence compte/entreprise du profil sans déplacement implicite des données.';
 
 
 --
@@ -44132,6 +45459,86 @@ COMMENT ON CONSTRAINT "Fk_Prof_User" ON professionnel."T_Professionnel" IS 'Clé
 
 
 --
+-- Name: T_Professionnel_Competence T_Professionnel_Competence_IdCompetenceFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Competence"
+    ADD CONSTRAINT "T_Professionnel_Competence_IdCompetenceFk_fkey" FOREIGN KEY ("IdCompetenceFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel_Competence T_Professionnel_Competence_IdProfessionnelFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Competence"
+    ADD CONSTRAINT "T_Professionnel_Competence_IdProfessionnelFk_fkey" FOREIGN KEY ("IdProfessionnelFk") REFERENCES professionnel."T_Professionnel"("IdProfessionnel") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel T_Professionnel_CreeParUserFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel"
+    ADD CONSTRAINT "T_Professionnel_CreeParUserFk_fkey" FOREIGN KEY ("CreeParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel T_Professionnel_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel"
+    ADD CONSTRAINT "T_Professionnel_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel T_Professionnel_IdSecteurFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel"
+    ADD CONSTRAINT "T_Professionnel_IdSecteurFk_fkey" FOREIGN KEY ("IdSecteurFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel T_Professionnel_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel"
+    ADD CONSTRAINT "T_Professionnel_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel_Prestation T_Professionnel_Prestation_IdPrestationFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Prestation"
+    ADD CONSTRAINT "T_Professionnel_Prestation_IdPrestationFk_fkey" FOREIGN KEY ("IdPrestationFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_Professionnel_Prestation T_Professionnel_Prestation_IdProfessionnelFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_Professionnel_Prestation"
+    ADD CONSTRAINT "T_Professionnel_Prestation_IdProfessionnelFk_fkey" FOREIGN KEY ("IdProfessionnelFk") REFERENCES professionnel."T_Professionnel"("IdProfessionnel") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_SynonymeRecherche T_SynonymeRecherche_IdEntiteFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_SynonymeRecherche"
+    ADD CONSTRAINT "T_SynonymeRecherche_IdEntiteFk_fkey" FOREIGN KEY ("IdEntiteFk") REFERENCES systeme."T_Entite"("IdEntite") ON DELETE RESTRICT;
+
+
+--
+-- Name: T_SynonymeRecherche T_SynonymeRecherche_IdGeneriqueFk_fkey; Type: FK CONSTRAINT; Schema: professionnel; Owner: -
+--
+
+ALTER TABLE ONLY professionnel."T_SynonymeRecherche"
+    ADD CONSTRAINT "T_SynonymeRecherche_IdGeneriqueFk_fkey" FOREIGN KEY ("IdGeneriqueFk") REFERENCES referentiel."T_Generique"("ID_Generique") ON DELETE RESTRICT;
+
+
+--
 -- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -44930,8 +46337,4 @@ COMMENT ON CONSTRAINT fk_module_parent ON systeme."T_ModuleApplication" IS 'Le m
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QDA2CWDmUDIibuA4FF6DXNBHH3fAcoLfuoyPfZ2QPYBqMxDvM4s73Rd4dcvn6kc
-
-COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
-COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
-COMMENT ON CONSTRAINT "ck_caisse_journal" ON "operations"."T_Caisse" IS 'Intégrité de caisse : ck_caisse_journal ; montants exacts, historique conservé et rattachements prouvés.';
+\unrestrict xypoS5v2tKoODKmxPYUJU3tVkhmWUmUYPvWtK0epy6qkNLZNKBJ3AEOV6NvCtyp

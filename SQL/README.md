@@ -264,6 +264,12 @@ La recette `tests/test_immobilisations_postgresql.py` passe **159 contrôles pri
 
 Le paquet fermé de format 2 contient structure, références, correspondances et LIRE-MOI, tous contrôlés par SHA. L’installateur applique les trois SQL dans l’ordre puis 18 migrations Django natives dans public. Cette vraie installation vierge a confirmé trois correspondances fonctionnelles et aucune donnée cliente ; neuf contrôles complémentaires couvrent les paquets incorrects, le format 1 historique et le refus d’une base non vide. Voir [le contrat SQL et les preuves](documentation/Immobilisations_Affectations_20261028.md) et [le guide utilisateur](../docs/prise-en-main-patrimoine.md).
 
+## Professionnels — évolutions des 2 et 3 novembre 2026
+
+Les migrations `20261102_06_professionnels_transversaux.sql` et `20261102_07_revision_details_professionnels.sql` fournissent le socle de l’annuaire `/experts` : entreprise propriétaire durable, publication explicite, compétences/prestations reliées au dictionnaire central, recherche SQL par besoin, confidentialité et révision des détails. Les profils nouveaux restent des brouillons ; aucune qualification ni personne de démonstration n’est créée. Les fonctions, tables, vues, colonnes et triggers sont commentés. Lire [le bilan SQL et les tests](documentation/Professionnels_20261102.md) et [le contrat du module](../docs/professionnels.md).
+
+SQL06 refuse une base contenant déjà des profils tant que leur reprise n’a pas été définie. Ne pas contourner cette garde ni attribuer arbitrairement une entreprise. SQL07 complète une base déjà migrée en06, sans modifier les données métier existantes. Les structures canoniques et le paquet vierge incluent les deux évolutions ; ne pas rejouer les migrations sur une installation déjà conforme pour modifier une configuration cliente.
+
 ## Portail territorial et type de site — évolutions du 30 octobre 2026
 
 Les deux structures globales et les extraits géographiques tables/vues intègrent ces évolutions, en conservant les autres contraintes et commentaires canoniques. Leur restauration dans deux bases privées vides a vérifié la nouvelle FK validée, les vues enrichies et le module territorial du catalogue : 69 tables, 84 vues et 163 triggers pour le global ; 59 tables, 84 vues et 163 triggers pour le métier. Aucune donnée géographique source n’est chargée dans ces restaurations. Une installation vierge reçoit ensuite le dictionnaire fermé et son catalogue de champs ; une base existante reçoit seulement les migrations versionnées nécessaires.

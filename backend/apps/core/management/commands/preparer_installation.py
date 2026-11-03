@@ -66,6 +66,34 @@ def common_dictionary_seed():
     return ''.join(commands),counts
 
 
+def professional_search_seed():
+    """Conserver seulement les synonymes du dictionnaire commun.
+
+    Les profils, affiliations, choix individuels et termes privés d'entreprise
+    ne sont jamais un jeu de démonstration d'une nouvelle installation.
+    """
+    relation = 'professionnel."T_SynonymeRecherche"'
+    if not db.one('SELECT to_regclass(%s) relation', [relation])['relation']:
+        return '', 0
+    payload = db.one('''SELECT coalesce(jsonb_agg(to_jsonb(s)
+         ORDER BY s."ID_SynonymeRecherche"),'[]'::jsonb)::text payload,count(*) n
+         FROM professionnel."T_SynonymeRecherche" s
+         JOIN referentiel."T_Generique" g ON g."ID_Generique"=s."IdGeneriqueFk"
+         JOIN referentiel."T_CategorieGenerique" c
+           ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+         WHERE s."IdEntiteFk" IS NULL AND g."IdEntiteFk" IS NULL
+           AND c."IdEntiteFk" IS NULL''')
+    literal = "'" + payload['payload'].replace("'", "''") + "'::jsonb"
+    command = ('\n-- Termes de recherche du dictionnaire commun, sans profils ni termes privés.\n'
+        'DO $$ BEGIN IF EXISTS(SELECT FROM ' + relation + ") THEN RAISE EXCEPTION 'Termes de recherche non vides : chargement initial refusé';END IF;END $$;\n"
+        'INSERT INTO ' + relation + ' OVERRIDING SYSTEM VALUE SELECT * FROM '
+        'jsonb_populate_recordset(NULL::' + relation + ',' + literal + ');\n'
+        "SELECT pg_catalog.setval(pg_get_serial_sequence('" + relation + "','ID_SynonymeRecherche'),"
+        'coalesce((SELECT max("ID_SynonymeRecherche") FROM ' + relation + '),1),'
+        'EXISTS(SELECT FROM ' + relation + '));\n')
+    return command, payload['n']
+
+
 class Command(BaseCommand):
     help='Exporter un socle neuf sans utilisateurs, entreprises ni mouvements ; la liste de données est fermée au dictionnaire et aux modules.'
     def add_arguments(self,parser):
@@ -121,6 +149,10 @@ class Command(BaseCommand):
                 precision=subprocess.run([*base,'--data-only','--table=logistique."T_PrecisionStock"'],env=pg_environment(),capture_output=True,timeout=180)
                 if precision.returncode:raise CommandError('Export précision des unités refusé.')
                 with refs.open('ab') as output:output.write(b'\n'+precision.stdout)
+            search_seed,search_count=professional_search_seed()
+            if search_seed:
+                with refs.open('ab') as output:output.write(search_seed.encode('utf8'))
+                common_counts['professionnel.T_SynonymeRecherche']=search_count
             mappings=target/'correspondances.sql';mappings.write_bytes(closed_mapping_seed.read_bytes())
             support_present=bool(db.one('SELECT to_regclass(%s) relation',['support."T_Support"'])['relation'])
             if support_present:
@@ -132,6 +164,9 @@ class Command(BaseCommand):
             migrations=sorted((project/'SQL/migrations').glob('*.sql'))
             manifest={'format':2,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs),'correspondances.sql':digest_file(mappings),'LIRE-MOI.md':digest_file(instructions)},'installationOrder':['structure.sql','references.sql','correspondances.sql'],'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','referentiel.T_InterfaceTableau','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'mappingSeed':'closed-code-defaults','constraintTriggerCommentsSupplemented':len(comments),'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
             manifest['applicationCatalogueSeed']={'rows':application_count,'order':'parents-before-children','identityGuardsEnabled':True}
+            if search_seed:
+                manifest['dataTables'].append('professionnel.T_SynonymeRecherche')
+                manifest['professionalSearchSeed']={'rows':search_count,'scope':'common-only','profilesCopied':False,'privateTermsCopied':False}
             if support_present:
                 with instructions.open('a',encoding='utf8') as output:output.write('\n4. support.sql, après correspondances.sql : initialise uniquement le circuit Support standard à partir du dictionnaire chargé. Aucune configuration personnalisée ni aucun dossier de la source n’est copié. Ce fichier porte sa transaction.\n')
                 manifest['format']=3
