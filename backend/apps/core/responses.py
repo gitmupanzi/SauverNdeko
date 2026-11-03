@@ -63,7 +63,13 @@ def exception_handler(exc, context):
         )
     elif isinstance(exc, DatabaseError):
         state = getattr(exc.__cause__, "sqlstate", None)
-        if state in {"P0001", "23514", "23503", "23505", "55P03", "40P01"}:
+        if state in {"55P03", "40P01"}:
+            exc = APIError(
+                "Une autre opération est en cours. Réessayez dans un instant.",
+                "BUSINESS_CONFLICT",
+                409,
+            )
+        elif state in {"P0001", "23514", "23503", "23505"}:
             exc = APIError(
                 "Opération incompatible avec le stock, les références ou l’état de la commande.",
                 "BUSINESS_CONFLICT",

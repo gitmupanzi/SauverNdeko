@@ -789,6 +789,8 @@ CREATE TABLE systeme."T_Entite" (
     "PhoneSecondaireEntite" character varying(20),
     "TauxTVAEntite" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Entite_TauxTVAEntite_not_null" NOT NULL,
     "PartageArticlesPublicParDefaut" boolean DEFAULT true NOT NULL,
+    "VisibleAnnuaireEntite" boolean DEFAULT false CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" NOT NULL,
+    "PresentationPubliqueEntite" text,
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
@@ -796,6 +798,7 @@ CREATE TABLE systeme."T_Entite" (
     CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
 '::text, ''::text) !~ '[[:cntrl:]]'::text))),
     CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR ((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_entite_presentation_publique CHECK ((char_length("PresentationPubliqueEntite") <= 5000)),
     CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR ((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
     CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
 );
@@ -2267,6 +2270,7 @@ CREATE TABLE systeme."T_ModuleApplication" (
     "TypeApplication" character varying(20) DEFAULT 'MODULE'::character varying NOT NULL,
     "Commercialisable" boolean DEFAULT false NOT NULL,
     "ModuleParentCode" character varying(32),
+    "AfficherDansEspace" boolean DEFAULT true CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" NOT NULL,
     CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
     CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
     CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
@@ -3820,3 +3824,37 @@ COMMENT ON CONSTRAINT fk_module_parent ON systeme."T_ModuleApplication" IS 'Le m
 
 --
 --
+--
+-- Name: COLUMN "T_Entite"."VisibleAnnuaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."VisibleAnnuaireEntite" IS 'Autorisation explicite de publier la fiche professionnelle dans l’annuaire Structures authentifié. False par défaut, y compris pour les entreprises antérieures. Une entreprise inactive reste masquée. Indépendant du partage des articles : ce choix ne modifie aucune offre ni quantité de stock.';
+
+--
+-- Name: COLUMN "T_Entite"."PresentationPubliqueEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."PresentationPubliqueEntite" IS 'Présentation professionnelle facultative de 5 000 caractères au maximum, visible seulement pour une entreprise active ayant autorisé sa publication. Texte affiché sans interprétation HTML ; aucune donnée légale, RH ou de connexion n’est déduite de cette présentation.';
+
+--
+-- Name: CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" ON systeme."T_Entite" IS 'Le consentement de publication de la fiche entreprise est toujours explicite : true ou false, jamais une absence interprétée comme autorisation.';
+
+--
+-- Name: CONSTRAINT ck_entite_presentation_publique ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_presentation_publique ON systeme."T_Entite" IS 'Limite la présentation professionnelle facultative de l’annuaire Structures à 5 000 caractères. NULL signifie absence de présentation.';
+--
+-- Name: COLUMN "T_ModuleApplication"."AfficherDansEspace"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."AfficherDansEspace" IS 'Affiche une tuile dans le lanceur des applications autorisées ; ne change ni les droits, ni les licences, ni les données ou les API du module.';
+
+--
+-- Name: CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" ON systeme."T_ModuleApplication" IS 'La visibilité du lanceur est explicite pour chaque application ; elle vaut Oui par défaut sans modifier ses habilitations.';

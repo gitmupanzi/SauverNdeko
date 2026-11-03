@@ -13,7 +13,7 @@ import DataTableToolbar from "../../components/DataTableToolbar";
 import SearchSelect from "../../components/SearchSelect";
 import RowActionsMenu from "../../components/RowActionsMenu";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
-import {SimpleTable} from "../logistique/logistiqueShared";
+import {SimpleTable,formatDate} from "../logistique/logistiqueShared";
 import TerritoryEditor from "./TerritoryEditor";
 import TerritoryBatchComposer from "./TerritoryBatchComposer";
 import {territoryHasBatch} from "./territorialBatch";
@@ -25,7 +25,7 @@ const remember=(key,fallback)=>{try{return localStorage.getItem(key)||fallback;}
 const hierarchySources={ID_Niveau_0:"niveaux0",ID_Niveau_0_Fk:"niveaux0",ID_Niveau_1:"niveaux1",ID_Niveau_1_FK:"niveaux1",ID_Niveau_1_Old_Fk:"niveaux1Old",ID_Niveau_2:"niveaux2",ID_Niveau_2_FK:"niveaux2",ID_Niveau_3:"niveaux3",ID_Niveau_3_Fk:"niveaux3",ID_Niveau_4:"niveaux4",ID_Niveau_4_Fk:"niveaux4"};
 export function territoryFilterFields(kind,columns=[]){const definition=TERRITORY_REGISTERS[kind],seen=new Set(),fields=[];const add=field=>{if(field.key===definition.pk||seen.has(field.key))return;seen.add(field.key);fields.push(field);};territoryFields(kind).filter(field=>field.type==="select").forEach(field=>add({key:field.name,label:field.label,source:field.optionsSource}));columns.forEach(column=>{const key=column.key||column.column_name;if(hierarchySources[key])add({key,label:territoryColumnLabel(key),source:hierarchySources[key]});else if(/boolean/.test(column.data_type||""))add({key,label:territoryColumnLabel(key),options:[{value:"true",label:"Oui"},{value:"false",label:"Non"}]});else if(key==="ID_TypeNiveau_5_Fk")add({key,label:"Type de site",source:"niveau5Types"});else if(key==="ID_TypeNiveau_4_Fk")add({key,label:"Type d’aire",source:"niveau4Types"});else if(key==="ID_TypeNiveau_2_Fk")add({key,label:"Type",source:"niveau2Types"});});return fields;}
 const optionsFor=(field,support)=>field.options||referenceOptions(support?.options?.[field.source]||[]);
-export function territoryCell(value,column){if(value==null||value==="")return "—";const key=column.key||column.column_name;if(typeof value==="boolean")return <span className={"erp-status is-"+(value?"success":"neutral")}>{value?"Oui":"Non"}</span>;if(/^geometry/.test(key))return "Renseignée";if(/numeric|bigint/.test(column.data_type||"")&&!/^ID_/.test(key)){const parts=String(value).split("."),fraction=(parts[1]||"").replace(/0+$/,"");return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g," ")+(fraction?","+fraction:"");}return typeof value==="object"?JSON.stringify(value):String(value);}
+export function territoryCell(value,column){if(value==null||value==="")return "—";const key=column.key||column.column_name;if(key==="CoordonneesModifieLe")return formatDate(value);if(typeof value==="boolean")return <span className={"erp-status is-"+(value?"success":"neutral")}>{value?"Oui":"Non"}</span>;if(/^geometry/.test(key))return "Renseignée";if(/numeric|bigint/.test(column.data_type||"")&&!/^ID_/.test(key)){const parts=String(value).split("."),fraction=(parts[1]||"").replace(/0+$/,"");return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g," ")+(fraction?","+fraction:"");}return typeof value==="object"?JSON.stringify(value):String(value);}
 
 export default function TerritoryRegister({kind,initial={},refresh=0,onChanged,onNavigate}){
  const definition=TERRITORY_REGISTERS[kind],{user}=useAuth(),scope=useEntityScope(),prefix=useId(),preferences=useTablePreferences(definition.preference);

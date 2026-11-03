@@ -47,7 +47,7 @@ function apiFilters(kind, criteria) {
 export function ReferenceRegister({kind,categories,initialCategory,onBrowseCategory,refresh,onChanged,categoryError}) {
   const {user}=useAuth(), entity=useEntityScope(), definition=DEFINITIONS[kind];
   const preferences=useTablePreferences("referentiels."+(kind==="values"?"valeurs":"categories"));
-  const canWrite=user?.permissions?.canWriteData===true && (user?.Is_Admin===true || Boolean(entity.entityId) && user?.moduleAccess && Object.values(user.moduleAccess.modules||{}).some(module=>module.canManage));
+  const canWrite=user?.permissions?.canWriteData===true && user?.permissions?.canAccessAdmin===true && (user?.Is_Admin===true || Boolean(entity.entityId) && user?.moduleAccess && Object.values(user.moduleAccess.modules||{}).some(module=>module.canManage));
   const canExport=user?.permissions?.canExportData===true;
   const [search,setSearch]=useState("");
   const [draft,setDraft]=useState({...EMPTY_FILTERS,category:initialCategory||""});
@@ -169,7 +169,7 @@ export default function Referentiels() {
     <ModuleSidebar title="Référentiels" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={kind} onNavigate={navigate} storageKey="sauverndeko.references.navigation" groups={[{label:"Nomenclatures",items:Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{}),tables:{title:"Tableaux et exports",icon:"table"}}).map(([key,definition])=>({key,label:definition.title,icon:definition.icon}))}]} footerItems={[
       ...(user?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
       ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
-      {key:"applications",label:"Applications",icon:"apps",to:"/"},
+      {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
     ]}/>
 
     <ModuleHeader title="Référentiels"/>

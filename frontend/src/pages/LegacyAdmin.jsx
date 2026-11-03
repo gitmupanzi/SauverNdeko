@@ -3762,7 +3762,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
         ])} footerItems={[
           ...(currentUser?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
           ...(currentUser?.permissions?.canAccessAdmin?[{key:"administration",label:"Administration",icon:"shield",to:"/admin"}]:[]),
-          {key:"applications",label:"Applications",icon:"apps",to:"/"},
+          {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
         ]}>{loadingViews?<p role="status">Chargement du menu…</p>:!schemaGroups.length?<p>Aucune rubrique disponible.</p>:null}</ModuleSidebar>
 
         <div className="admin-main-column">

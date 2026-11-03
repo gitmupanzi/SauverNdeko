@@ -197,7 +197,11 @@ CREATE VIEW support."V_ResolutionSupport" AS
     s."IdEntiteFk",
     concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "ProposePar",
     NULLIF(concat_ws(' '::text, v."PrenomUser", v."NomUser"), ''::text) AS "VerifiePar",
-    g."NomGenerique" AS "ResultatVerification"
+    (
+        CASE
+            WHEN (g."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((g."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (g."ID_Generique")::text))
+        END)::character varying(255) AS "ResultatVerification"
    FROM ((((support."T_ResolutionSupport" x
      JOIN support."T_Support" s ON ((s."ID_Support" = x."ID_SupportFk")))
      JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = x."ID_ProposeParFk")))
@@ -292,7 +296,7 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."VerifiePar" IS 'Donnée Support
 -- Name: COLUMN "V_ResolutionSupport"."ResultatVerification"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_ResolutionSupport"."ResultatVerification" IS 'Donnée Support ResultatVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_ResolutionSupport"."ResultatVerification" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: V_Support; Type: VIEW; Schema: support; Owner: -
@@ -329,12 +333,36 @@ CREATE VIEW support."V_Support" AS
     d."Nom" AS "Demandeur",
     concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Createur",
     NULLIF(concat_ws(' '::text, r."PrenomUser", r."NomUser"), ''::text) AS "Responsable",
-    typ."NomGenerique" AS "TypeSupport",
-    cat."NomGenerique" AS "CategorieSupport",
-    pri."NomGenerique" AS "Priorite",
-    sta."NomGenerique" AS "Statut",
-    can."NomGenerique" AS "CanalOrigine",
-    ser."NomGenerique" AS "ServiceConcerne",
+    (
+        CASE
+            WHEN (typ."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((typ."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (typ."ID_Generique")::text))
+        END)::character varying(255) AS "TypeSupport",
+    (
+        CASE
+            WHEN (cat."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((cat."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (cat."ID_Generique")::text))
+        END)::character varying(255) AS "CategorieSupport",
+    (
+        CASE
+            WHEN (pri."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((pri."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (pri."ID_Generique")::text))
+        END)::character varying(255) AS "Priorite",
+    (
+        CASE
+            WHEN (sta."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((sta."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (sta."ID_Generique")::text))
+        END)::character varying(255) AS "Statut",
+    (
+        CASE
+            WHEN (can."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((can."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (can."ID_Generique")::text))
+        END)::character varying(255) AS "CanalOrigine",
+    (
+        CASE
+            WHEN (ser."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((ser."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (ser."ID_Generique")::text))
+        END)::character varying(255) AS "ServiceConcerne",
     support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") AS "StatutCode",
     ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text]))) AS "Ouvert",
     ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text])) AND (s."DateEcheance" < clock_timestamp())) AS "EnRetard",
@@ -560,37 +588,37 @@ COMMENT ON COLUMN support."V_Support"."Responsable" IS 'Donnée Support Responsa
 -- Name: COLUMN "V_Support"."TypeSupport"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."TypeSupport" IS 'Donnée Support TypeSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."TypeSupport" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."CategorieSupport"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."CategorieSupport" IS 'Donnée Support CategorieSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."CategorieSupport" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."Priorite"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."Priorite" IS 'Donnée Support Priorite : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."Priorite" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."Statut"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."Statut" IS 'Donnée Support Statut : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."Statut" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."CanalOrigine"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."CanalOrigine" IS 'Donnée Support CanalOrigine : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."CanalOrigine" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."ServiceConcerne"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Donnée Support ServiceConcerne : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
+COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."StatutCode"; Type: COMMENT; Schema: support; Owner: -

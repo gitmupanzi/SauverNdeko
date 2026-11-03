@@ -1,4 +1,4 @@
-import {REFERENCE_RETAINED_HINT,isRetainedReference} from "../../utils/referenceOptions";
+import {REFERENCE_RETAINED_HINT,referenceLabel,isRetainedReference} from "../../utils/referenceOptions";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
@@ -65,7 +65,7 @@ export default function ImmobilisationEditor({recordId=null,operation="edit",onC
  function field(name,label,control){const id=prefix+name;return <div className="record-field" key={name}><label htmlFor={id}>{label}</label>{control(id)}{errors[name]?<small id={id+"-error"} className="record-field-error" role="alert">{errors[name]}</small>:null}</div>;}
  function input(name,label,props={}){return field(name,label,id=><input id={id} value={values[name]} onChange={event=>change(name,event.target.value)} disabled={disabled} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name]?id+"-error":undefined} {...props}/>);}
  function select(name,label,options){return field(name,label,id=><><SearchSelect id={id} label={label} value={String(values[name])} options={options} onChange={value=>change(name,name==="SuiviIndividuel"?value==="true":value)} disabled={disabled} invalid={Boolean(errors[name])}/>{isRetainedReference(options,values[name])?<small className="record-editor-note">{REFERENCE_RETAINED_HINT}</small>:null}</>);}
- function reference(name,label,required=false){return select(name,label,immobilisationOptions(references[IMMOBILISATION_REFERENCES[name]],{optional:!required,current:values[name],currentLabel:record?.[LABELS[name]]}));}
+ function reference(name,label,required=false){return select(name,label,immobilisationOptions(references[IMMOBILISATION_REFERENCES[name]],{optional:!required,current:values[name],currentLabel:["ID_CategorieFk","ID_EtatFk","ID_ServiceFk","ID_DeviseFk"].includes(name)?referenceLabel({ID_Generique:values[name]}):record?.[LABELS[name]]}));}
  function area(name,label,max){return field(name,label,id=><textarea id={id} value={values[name]} maxLength={max} rows={4} disabled={disabled} onChange={event=>change(name,event.target.value)} aria-invalid={Boolean(errors[name])}/>);}
 
  const title=onDraftSave?"Immobilisation du panier":creating?"Nouvelle immobilisation":operation==="archive"?"Archiver l’immobilisation":operation==="restore"?"Réactiver l’immobilisation":"Modifier l’immobilisation";

@@ -26,6 +26,8 @@ export function entityProfileValues(record=null){
     IdentifiantsLegauxEntite:(record?.IdentifiantsLegauxEntite||[]).map(row=>({libelle:string(row.libelle),valeur:string(row.valeur)})),
     AfficherEnteteDocument:record?.AfficherEnteteDocument??true,AfficherPiedDocument:record?.AfficherPiedDocument??true,
     PartageArticlesPublicParDefaut:record?record.PartageArticlesPublicParDefaut??null:true,
+    VisibleAnnuaireEntite:record?record.VisibleAnnuaireEntite??null:false,
+    PresentationPubliqueEntite:string(record?.PresentationPubliqueEntite),
     IdTypeEntiteFk:string(record?.IdTypeEntiteFk),ValideEntite:record?record.ValideEntite??null:true};
 }
 export function entityLogoError(file){
@@ -45,6 +47,8 @@ export function entityProfileErrors(values,motif,{manageStructure=false}={}){
   else for(const row of rows){const label=string(row.libelle).trim(),value=string(row.valeur).trim(),key=label.toLocaleLowerCase("fr");if(!label||!value||Array.from(label).length>60||Array.from(value).length>180){errors.IdentifiantsLegauxEntite="Renseignez chaque libellé (60 caractères maximum) et sa référence (180 maximum).";break;}if(seen.has(key)){errors.IdentifiantsLegauxEntite="Chaque libellé d’identifiant doit être unique.";break;}seen.add(key);}
   for(const name of ["AfficherEnteteDocument","AfficherPiedDocument"])if(typeof values[name]!=="boolean")errors[name]="Choisissez une option valide.";
   if(values.PartageArticlesPublicParDefaut!=null&&typeof values.PartageArticlesPublicParDefaut!=="boolean")errors.PartageArticlesPublicParDefaut="Choisissez une option valide.";
+  if(values.VisibleAnnuaireEntite!=null&&typeof values.VisibleAnnuaireEntite!=="boolean")errors.VisibleAnnuaireEntite="Choisissez une option valide.";
+  if(Array.from(string(values.PresentationPubliqueEntite)).length>5000)errors.PresentationPubliqueEntite="Limitez la présentation à 5000 caractères.";
   if(manageStructure&&values.IdTypeEntiteFk&&!/^[1-9]\d*$/.test(values.IdTypeEntiteFk))errors.IdTypeEntiteFk="Choisissez un type d’entreprise valide.";
   if(manageStructure&&values.ValideEntite!=null&&typeof values.ValideEntite!=="boolean")errors.ValideEntite="Choisissez un état valide.";
   if(!string(motif).trim())errors.motif="Précisez le motif de cette mise à jour.";
@@ -58,6 +62,8 @@ export function entityProfilePayload(values,{record=null,motif,requestId,logo={f
     IdentifiantsLegauxEntite:values.IdentifiantsLegauxEntite.map(row=>({libelle:row.libelle.trim(),valeur:row.valeur.trim()})),
     AfficherEnteteDocument:values.AfficherEnteteDocument,AfficherPiedDocument:values.AfficherPiedDocument,
     ...(!record||Object.hasOwn(record,"PartageArticlesPublicParDefaut")?{PartageArticlesPublicParDefaut:values.PartageArticlesPublicParDefaut}:{}),
+    ...(!record||Object.hasOwn(record,"VisibleAnnuaireEntite")?{VisibleAnnuaireEntite:values.VisibleAnnuaireEntite}:{}),
+    ...(!record||Object.hasOwn(record,"PresentationPubliqueEntite")?{PresentationPubliqueEntite:string(values.PresentationPubliqueEntite).trim()||null}:{}),
     ...(!record||Object.hasOwn(record,"TauxTVAEntite")?{TauxTVAEntite:entityTaxRate(values.TauxTVAEntite)}:{}),
     ...(manageLocations?{Localisations:entityLocationPayload(values.Localisations||[])}:{}),
     logoAction:logo.file?"replace":logo.remove?"remove":"keep",motif:motif.trim(),requestId};

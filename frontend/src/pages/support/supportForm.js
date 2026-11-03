@@ -1,4 +1,4 @@
-import {retainReference,referenceOptions} from "../../utils/referenceOptions";
+import {retainReference,referenceLabel,referenceOptions} from "../../utils/referenceOptions";
 
 export const SUPPORT_ROOT="/api/support";
 export const SUPPORT_FIELDS=[
@@ -20,9 +20,9 @@ export const SUPPORT_LABELS={NumeroSupport:"N° de dossier",Objet:"Objet",Descri
 const oldLabels={ID_DemandeurFk:"Demandeur",ID_ResponsableFk:"Responsable",ID_TypeSupportFk:"TypeSupport",ID_CategorieSupportFk:"CategorieSupport",ID_PrioriteFk:"Priorite",ID_CanalOrigineFk:"CanalOrigine",ID_ServiceConcerneFk:"ServiceConcerne",ID_ArticleFk:"Article",ID_CommandeFk:"Bon",ID_ImmobilisationFk:"Immobilisation"};
 export function supportOptions(context,field,record={}){
  const raw=context?.references?.[field.source]||context?.[field.source]||context?.links?.[field.source]||[];
- // Le circuit conserve des codes stables ; son libellé de sélection reste humain.
- const values=referenceOptions(raw).map(option=>({...option,label:raw.find(item=>String(item.value??item.id??item.ID_Generique)===option.value)?.label||option.label}));
- return retainReference(values,record[field.key],record[oldLabels[field.key]]||"Valeur actuelle hors des choix disponibles");
+ // Le code AbrGenerique est le libellé des choix ; le circuit conserve les IDs.
+ const values=referenceOptions(raw);
+ return retainReference(values,record[field.key],["types","categories","priorities","channels","services","statuses","verificationResults"].includes(field.source)?referenceLabel({ID_Generique:record[field.key]}):record[oldLabels[field.key]]||"Valeur actuelle hors des choix disponibles");
 }
 export function supportInputDate(value){
  if(!value)return "";

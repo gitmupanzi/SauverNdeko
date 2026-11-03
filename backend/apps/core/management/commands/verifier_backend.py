@@ -83,6 +83,18 @@ class Command(BaseCommand):
                     product_offer = products_cursor.fetchone()
                 if product_offer:
                     urls.append('/api/produits/offres/'+str(product_offer[0]))
+            with connection.cursor() as structures_cursor:
+                structures_cursor.execute('SELECT to_regclass(%s)', ['systeme."V_StructurePublique"'])
+                structures_installed = bool(structures_cursor.fetchone()[0])
+            if structures_installed:
+                urls.extend(['/api/structures/contexte','/api/structures/entreprises',
+                    '/api/structures/references','/api/structures/profils?take=1','/api/structures/annuaire?take=1'])
+                with connection.cursor() as structures_cursor:
+                    structures_cursor.execute('SELECT "IdEntite" FROM systeme."V_StructurePublique" ORDER BY "IdEntite" LIMIT 1')
+                    published_structure = structures_cursor.fetchone()
+                if published_structure:
+                    urls.extend('/api/structures/annuaire/'+str(published_structure[0])+suffix
+                        for suffix in ('','/offres?take=1','/professionnels?take=1'))
             urls.append("/api/systeme/administration/entreprises")
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))

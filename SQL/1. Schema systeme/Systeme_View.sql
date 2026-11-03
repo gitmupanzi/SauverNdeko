@@ -736,13 +736,13 @@ CREATE VIEW systeme."V_Entite_Public" AS
     jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") AS "T_Generique"
    FROM (systeme."T_Entite" e
      LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = e."IdTypeEntiteFk")))
-  WHERE (e."ValideEntite" = true);
+  WHERE ((e."ValideEntite" IS TRUE) AND (e."VisibleAnnuaireEntite" IS TRUE));
 
 --
 -- Name: VIEW "V_Entite_Public"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_Entite_Public" IS 'Annuaire public des structures actives au grain entité : nom, adresse et téléphone de structure, type ; aucune donnée de connexion utilisateur.';
+COMMENT ON VIEW systeme."V_Entite_Public" IS 'Projection historique à six colonnes des entreprises actives ayant explicitement publié leur fiche Structures. Nom, adresse, téléphone professionnel et type central uniquement. Le nom technique historique du parcours pharmacies ne qualifie pas toutes ces entreprises de pharmacie. Authentification, licence et droits restent contrôlés par les API.';
 
 --
 -- Name: COLUMN "V_Entite_Public"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -1862,3 +1862,151 @@ COMMENT ON COLUMN systeme."V_User_profil"."EmailEntite" IS 'Adresse électroniqu
 --
 
 COMMENT ON COLUMN systeme."V_User_profil"."PhoneEntite" IS 'Téléphone de contact de l’entité. Expression projetée : e."PhoneEntite".';
+--
+-- Name: V_StructurePublique; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_StructurePublique" AS
+ SELECT e."IdEntite",
+    e."NomEntite",
+    e."IdTypeEntiteFk",
+    COALESCE(NULLIF((t."AbrGenerique")::text, ''::text), (t."NomGenerique")::text) AS "TypeEntite",
+    e."AdresseEntite",
+    e."PhoneEntite",
+    e."SiteWebEntite",
+    e."PresentationPubliqueEntite",
+    (e."LogoEntite" IS NOT NULL) AS "HasLogo",
+    e."LogoMimeEntite",
+    e."LogoSha256Entite"
+   FROM (systeme."T_Entite" e
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = e."IdTypeEntiteFk")))
+  WHERE ((e."ValideEntite" IS TRUE) AND (e."VisibleAnnuaireEntite" IS TRUE));
+
+--
+-- Name: VIEW "V_StructurePublique"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_StructurePublique" IS 'Annuaire transversal des entreprises actives dont la publication a été explicitement autorisée. Grain entreprise, projection fermée : identité professionnelle, type central déjà enregistré, coordonnées professionnelles déclarées, présentation et métadonnées du logo. Exclut comptes, données RH, e-mail, identifiants fiscaux/légaux et octets du logo. Ne prouve ni qualification médicale, agrément, horaires ni proximité. Aucune permission applicative ni publication d’article n’est accordée par cette vue.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."IdEntite" IS 'Identifiant de la structure publiée ; le détail et le logo doivent revérifier sa publication actuelle.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."NomEntite" IS 'Nom courant déclaré de l’entreprise ayant autorisé sa publication, sans requalification automatique.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."IdTypeEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."IdTypeEntiteFk" IS 'Valeur centrale ID_Generique déjà enregistrée sur l’entreprise. Le référencement du champ détermine la famille proposée aux nouvelles saisies.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."TypeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."TypeEntite" IS 'Abréviation courante de la valeur centrale de type, ou son nom si elle est absente. Une ancienne valeur reste identifiable sans être réécrite.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."AdresseEntite" IS 'Adresse professionnelle générale déclarée par l’entreprise ; aucune géolocalisation automatique ni distance calculée.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."PhoneEntite" IS 'Téléphone professionnel déclaré de l’entreprise publiée, distinct des coordonnées personnelles des comptes.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."SiteWebEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."SiteWebEntite" IS 'Site web facultatif déclaré de l’entreprise. Son affichage ne constitue pas une validation ou un agrément.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."PresentationPubliqueEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."PresentationPubliqueEntite" IS 'Présentation professionnelle facultative autorisée à la publication, affichée comme texte sans interprétation HTML.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."HasLogo"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."HasLogo" IS 'Indique la présence du logo existant validé par les contraintes de l’identité documentaire ; ses octets sont exclus de la projection.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."LogoMimeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."LogoMimeEntite" IS 'Type MIME du logo validé, permettant la réponse binaire authentifiée après contrôle de publication.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."LogoSha256Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."LogoSha256Entite" IS 'Empreinte du logo validé destinée à sa révision de lecture ; aucun contenu binaire ou chemin privé n’est exposé.';
+
+--
+-- Name: V_StructureLocalisation; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_StructureLocalisation" AS
+ SELECT s."IdEntite",
+    COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) AS label,
+    NULLIF(l."AdresseDetaillee", ''::text) AS address,
+    NULLIF((l."NomNiveau_3")::text, ''::text) AS zone,
+    NULLIF((l."NomNiveau_4")::text, ''::text) AS area,
+    NULLIF((l."NomNiveau_5")::text, ''::text) AS site
+   FROM (systeme."V_StructurePublique" s
+     JOIN systeme."V_Entite_Localisation_Detail" l ON ((l."IdEntite" = s."IdEntite")))
+  WHERE ((l."IdEntiteLocalisation" IS NOT NULL) AND (COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) IS NOT NULL));
+
+--
+-- Name: VIEW "V_StructureLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_StructureLocalisation" IS 'Lieux professionnels existants explicitement déclarés par une entreprise actuellement publiée. Grain entreprise/localisation, noms et adresse seulement ; aucune ligne fictive sans point. Exclut GPS brut, identifiant de point, auteur et historique. Les liens territoriaux absents ne sont pas inférés et aucune proximité ou présence de produits/professionnels n’est déduite.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation"."IdEntite" IS 'Entreprise actuellement active et publiée portant le lieu professionnel déclaré.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".label; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".label IS 'Libellé déclaré le plus précis : niveau 5, sinon 4, sinon 3, sinon adresse détaillée.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".address; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".address IS 'Adresse détaillée professionnelle enregistrée sur ce point, sans coordonnée de son auteur.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".zone; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".zone IS 'Nom du niveau 3 explicitement rattaché au point ; aucune parenté non renseignée n’est inventée.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".area; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".area IS 'Nom du niveau 4 explicitement rattaché au point, sans résolution automatique d’une hiérarchie internationale.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".site; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".site IS 'Nom du niveau 5 explicitement rattaché au point, sans certification ou qualification de la structure.';

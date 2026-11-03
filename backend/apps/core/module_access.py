@@ -30,17 +30,18 @@ def storage_ready():
 
 def application_metadata():
     """Classification commerciale persistante ; aucun changement d’habilitation."""
-    rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode"
+    rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","AfficherDansEspace"
         FROM systeme."T_ModuleApplication" WHERE "CodeModule"=ANY(%s::text[])''',[list(MODULE_BY_KEY)])
     if len(rows)!=len(MODULE_BY_KEY):
         raise APIError('Le catalogue des applications est incomplet.','MODULE_CONFIGURATION_UNAVAILABLE',503)
     return {row['CodeModule']:{'type':row['TypeApplication'],'commercialisable':row['Commercialisable'],
-                             'parentModule':row['ModuleParentCode']} for row in rows}
+                             'parentModule':row['ModuleParentCode'],
+                             'showInWorkspace':row['AfficherDansEspace']} for row in rows}
 
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
     read=not item.get("admin") or actor.admin
-    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels"} and actor.admin) or (key=="territoires" and actor.global_admin)
+    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels","structures"} and actor.admin) or (key=="territoires" and actor.global_admin)
     return {"canRead":read,"canManage":manage and read,"canExport":read}
 
 def access_snapshot(actor):
@@ -111,6 +112,8 @@ def enforce_request(actor,request,view):
         key={'stats':'catalogue','articles':'produits','pharmacies':'structures','experts':'professionnels','maladies':'sante'}.get(kind)
     elif path.startswith('/api/produits/'):
         key='produits'
+    elif path.startswith('/api/structures/'):
+        key='structures'
     elif path.startswith('/api/discussions'):
         key='discussions'
         if path.rstrip('/').endswith('/start'):

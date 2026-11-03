@@ -13,6 +13,7 @@ from .repository import audit, mutate, payload, positive
 from .reference_integration import validate_changed
 from .responses import APIError, ExactEncoder, ok
 from .territorial_portal import MODELS, hierarchy_lock, record, source, validate_body
+from . import territorial_contacts
 
 
 PARENTS = {
@@ -146,7 +147,8 @@ def save_batch(actor, kind, body):
                 continue
             try:
                 with transaction.atomic():
-                    data = validate_body(kind, {**data, **header})
+                    data, contacts = territorial_contacts.split(kind, {**data, **header})
+                    data = validate_body(kind, data)
                     data = payload(obj, data, actor, creating=True)
                     validate_changed(obj, data, None, actor)
                     identity = _identity(kind, data)
@@ -158,16 +160,17 @@ def save_batch(actor, kind, body):
                     elif _exists(obj, kind, identity):
                         issues.setdefault(row_id, {})[field] = 'Un enregistrement possède déjà ce nom, ce code et ce rattachement.'
                     seen[identity] = row_id
-                    prepared.append((row_id, data))
+                    prepared.append((row_id, data, contacts))
             except (APIError, DatabaseError) as error:
                 issues[row_id] = _details(error)
         if issues:
             _invalid(rows=issues)
         records = []
-        for row_id, data in prepared:
+        for row_id, data, contacts in prepared:
             try:
                 with transaction.atomic():
                     saved = mutate(obj['name'], actor, data)
+                    territorial_contacts.save(actor,kind,saved[obj['primaryKey'][0]],contacts)
                     saved = record(actor, kind, saved[obj['primaryKey'][0]])
             except (APIError, DatabaseError) as error:
                 _invalid(rows={row_id: _details(error)})

@@ -6784,6 +6784,8 @@ CREATE TABLE systeme."T_Entite" (
     "PhoneSecondaireEntite" character varying(20),
     "TauxTVAEntite" numeric(7,4) DEFAULT 0 CONSTRAINT "T_Entite_TauxTVAEntite_not_null" NOT NULL,
     "PartageArticlesPublicParDefaut" boolean DEFAULT true NOT NULL,
+    "VisibleAnnuaireEntite" boolean DEFAULT false CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" NOT NULL,
+    "PresentationPubliqueEntite" text,
     CONSTRAINT "T_Entite_AlertePeremptionJours_check" CHECK ((("AlertePeremptionJours" >= 0) AND ("AlertePeremptionJours" <= 3650))),
     CONSTRAINT ck_entite_identifiants_legaux CHECK (systeme.fn_identifiants_legaux_valides("IdentifiantsLegauxEntite")),
     CONSTRAINT ck_entite_logo_complet CHECK ((num_nonnulls("LogoEntite", "LogoMimeEntite", "LogoSha256Entite", "LogoModifieLe") = ANY (ARRAY[0, 4]))),
@@ -6791,10 +6793,10 @@ CREATE TABLE systeme."T_Entite" (
     CONSTRAINT ck_entite_mention_documentaire CHECK ((("MentionDocumentaireEntite" IS NULL) OR (replace(("MentionDocumentaireEntite")::text, '
 '::text, ''::text) !~ '[[:cntrl:]]'::text))),
     CONSTRAINT ck_entite_phone_secondaire CHECK ((("PhoneSecondaireEntite" IS NULL) OR ((char_length(("PhoneSecondaireEntite")::text) >= 1) AND (char_length(("PhoneSecondaireEntite")::text) <= 20) AND (("PhoneSecondaireEntite")::text = btrim(("PhoneSecondaireEntite")::text)) AND (("PhoneSecondaireEntite")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_entite_presentation_publique CHECK ((char_length("PresentationPubliqueEntite") <= 5000)),
     CONSTRAINT ck_entite_site_web CHECK ((("SiteWebEntite" IS NULL) OR ((char_length("SiteWebEntite") >= 1) AND (char_length("SiteWebEntite") <= 255) AND ("SiteWebEntite" = btrim("SiteWebEntite")) AND ("SiteWebEntite" ~* '^https?://[^[:space:]/?#@]+([/?#][^[:space:]]*)?$'::text)))),
     CONSTRAINT ck_entite_taux_tva CHECK ((("TauxTVAEntite" >= (0)::numeric) AND ("TauxTVAEntite" <= (100)::numeric)))
 );
-
 
 --
 -- Name: TABLE "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -9132,6 +9134,84 @@ COMMENT ON SEQUENCE geolocalisation."T_Niveau_5_ID_Niveau_5_seq" IS 'Séquence d
 
 
 --
+-- Name: tr_coordonnees_territoire_integrite(); Type: FUNCTION; Schema: geolocalisation; Owner: -
+--
+
+CREATE FUNCTION geolocalisation.tr_coordonnees_territoire_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE parent_data jsonb; level integer; parent_id integer;
+BEGIN
+ IF TG_OP='UPDATE' AND ROW(NEW."ID_CoordonneesTerritoire",NEW."ID_Niveau_1Fk",NEW."ID_Niveau_2Fk",
+   NEW."ID_Niveau_3Fk",NEW."ID_Niveau_4Fk",NEW."ID_Niveau_5Fk") IS DISTINCT FROM
+   ROW(OLD."ID_CoordonneesTerritoire",OLD."ID_Niveau_1Fk",OLD."ID_Niveau_2Fk",OLD."ID_Niveau_3Fk",
+   OLD."ID_Niveau_4Fk",OLD."ID_Niveau_5Fk") THEN
+  RAISE EXCEPTION 'Le territoire d’une fiche de coordonnées enregistrée est conservé.'
+   USING ERRCODE='23514',CONSTRAINT='ck_coordonnees_territoire_parent_immuable';
+ END IF;
+ -- Même verrou commun que l’édition territoriale dédiée. Une écriture SQL
+ -- directe ne peut se glisser entre sa vérification de révision et l’upsert.
+ -- Un ordre inverse externe peut produire un deadlock : PostgreSQL annule alors
+ -- une transaction, sans écrasement silencieux de la dernière modification.
+ parent_data:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+ FOR level IN 1..5 LOOP
+  parent_id:=(parent_data->>('ID_Niveau_'||level||'Fk'))::integer;
+  IF parent_id IS NOT NULL THEN
+   EXECUTE format('SELECT 1 FROM geolocalisation.%I WHERE %I=$1 FOR UPDATE',
+    'T_Niveau_'||level,'ID_Niveau_'||level) USING parent_id;
+  END IF;
+ END LOOP;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ NEW."ModifieLe":=clock_timestamp();
+ NEW."ModifieParUserFk":=systeme.fn_admin_actor_user_id();
+ RETURN NEW;
+END $_$;
+
+--
+-- Name: T_CoordonneesTerritoire; Type: TABLE; Schema: geolocalisation; Owner: -
+--
+
+CREATE TABLE geolocalisation."T_CoordonneesTerritoire" (
+    "ID_CoordonneesTerritoire" bigint CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" NOT NULL,
+    "ID_Niveau_1Fk" integer,
+    "ID_Niveau_2Fk" integer,
+    "ID_Niveau_3Fk" integer,
+    "ID_Niveau_4Fk" integer,
+    "ID_Niveau_5Fk" integer,
+    "AdresseTerritoire" text,
+    "TelephoneTerritoire" character varying(50),
+    "TelephoneSecondaireTerritoire" character varying(50),
+    "EmailTerritoire" character varying(255),
+    "SiteWebTerritoire" character varying(255),
+    "InformationsAccueilTerritoire" text,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" NOT NULL,
+    "ModifieParUserFk" integer,
+    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_parent_unique CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1)),
+    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
+);
+
+--
+-- Name: T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq; Type: SEQUENCE; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE geolocalisation."T_CoordonneesTerritoire" ALTER COLUMN "ID_CoordonneesTerritoire" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME geolocalisation."T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
 -- Name: V_AS_sans_Site; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
@@ -9400,45 +9480,77 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_0"."Nb_Niveau_1" IS 'Nombre exact de
 --
 
 CREATE VIEW geolocalisation."V_Niveau_1" AS
- SELECT n1a."ID_Niveau_0_Fk",
-    n0."NomNiveau_0",
-    n1a."ID_Niveau_1_Old_Fk",
-    n1b."NomNiveau_1_Old",
-    n1a."ID_Niveau_1",
-    n1a."NomNiveau_1",
-    n1a."Alt1_Niveau_1",
-    n1a."Alt2_Niveau_1",
-    n1a."AbreNiveau_1",
-    n1a."CodeSNIS",
-    n1a."CodeNiveau_1",
-    n1a."PopulationNiveau_1",
-    n1a."LatitudeNiveau_1",
-    n1a."LongitudeNiveau_1",
-    n1a."surfaceNiveau_1",
-    n1a."geometryNiveau_1",
-    n1a."EtenduNiveau_1",
-    n1a."timezoneNiveau_1",
-    n1a."wikidataNiveau_1",
-    n1a."FusionNiveau_1",
-    n1a."VisibleNiveau_1",
-    n1a."VisibleNiveau_5",
-    n1a."ObsNiveau_1",
-    n1a.prov_uid,
-    n1a."uidSNIS",
-    ( SELECT count(*) AS count
-           FROM geolocalisation."T_Niveau_2" child
-          WHERE (child."ID_Niveau_1_FK" = n1a."ID_Niveau_1")) AS "Nb_Niveau_2"
-   FROM ((geolocalisation."T_Niveau_1" n1a
-     LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
-     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")));
-
+ SELECT q."ID_Niveau_0_Fk",
+    q."NomNiveau_0",
+    q."ID_Niveau_1_Old_Fk",
+    q."NomNiveau_1_Old",
+    q."ID_Niveau_1",
+    q."NomNiveau_1",
+    q."Alt1_Niveau_1",
+    q."Alt2_Niveau_1",
+    q."AbreNiveau_1",
+    q."CodeSNIS",
+    q."CodeNiveau_1",
+    q."PopulationNiveau_1",
+    q."LatitudeNiveau_1",
+    q."LongitudeNiveau_1",
+    q."surfaceNiveau_1",
+    q."geometryNiveau_1",
+    q."EtenduNiveau_1",
+    q."timezoneNiveau_1",
+    q."wikidataNiveau_1",
+    q."FusionNiveau_1",
+    q."VisibleNiveau_1",
+    q."VisibleNiveau_5",
+    q."ObsNiveau_1",
+    q.prov_uid,
+    q."uidSNIS",
+    q."Nb_Niveau_2",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."ModifieLe" AS "CoordonneesModifieLe"
+   FROM (( SELECT n1a."ID_Niveau_0_Fk",
+            n0."NomNiveau_0",
+            n1a."ID_Niveau_1_Old_Fk",
+            n1b."NomNiveau_1_Old",
+            n1a."ID_Niveau_1",
+            n1a."NomNiveau_1",
+            n1a."Alt1_Niveau_1",
+            n1a."Alt2_Niveau_1",
+            n1a."AbreNiveau_1",
+            n1a."CodeSNIS",
+            n1a."CodeNiveau_1",
+            n1a."PopulationNiveau_1",
+            n1a."LatitudeNiveau_1",
+            n1a."LongitudeNiveau_1",
+            n1a."surfaceNiveau_1",
+            n1a."geometryNiveau_1",
+            n1a."EtenduNiveau_1",
+            n1a."timezoneNiveau_1",
+            n1a."wikidataNiveau_1",
+            n1a."FusionNiveau_1",
+            n1a."VisibleNiveau_1",
+            n1a."VisibleNiveau_5",
+            n1a."ObsNiveau_1",
+            n1a.prov_uid,
+            n1a."uidSNIS",
+            ( SELECT count(*) AS count
+                   FROM geolocalisation."T_Niveau_2" child
+                  WHERE (child."ID_Niveau_1_FK" = n1a."ID_Niveau_1")) AS "Nb_Niveau_2"
+           FROM ((geolocalisation."T_Niveau_1" n1a
+             LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
+             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))) q
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_1Fk" = q."ID_Niveau_1")));
 
 --
 -- Name: VIEW "V_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_1" IS 'Référentiel territorial partagé du niveau 1. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
-
+COMMENT ON VIEW geolocalisation."V_Niveau_1" IS 'Référentiel territorial partagé du niveau 1. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
 
 --
 -- Name: COLUMN "V_Niveau_1"."ID_Niveau_0_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9446,13 +9558,11 @@ COMMENT ON VIEW geolocalisation."V_Niveau_1" IS 'Référentiel territorial parta
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."ID_Niveau_0_Fk" IS 'Unité géographique de rattachement de niveau 0. Expression projetée : n1a."ID_Niveau_0_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_0" IS 'Nom de l’unité géographique de niveau 0. Expression projetée : n0."NomNiveau_0".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."ID_Niveau_1_Old_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9460,13 +9570,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_0" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."ID_Niveau_1_Old_Fk" IS 'Unité géographique de rattachement de niveau 1_Old. Expression projetée : n1a."ID_Niveau_1_Old_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."NomNiveau_1_Old"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_1_Old" IS 'Nom de l’unité géographique de niveau 1 historique. Expression projetée : n1b."NomNiveau_1_Old".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9474,13 +9582,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_1_Old" IS 'Nom de l’
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."ID_Niveau_1" IS 'Identifiant de l’unité géographique de niveau 1. Expression projetée : n1a."ID_Niveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_1" IS 'Nom de l’unité géographique de niveau 1. Expression projetée : n1a."NomNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."Alt1_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9488,13 +9594,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."NomNiveau_1" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Alt1_Niveau_1" IS 'Première appellation alternative de l’unité de niveau 1. Expression projetée : n1a."Alt1_Niveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."Alt2_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Alt2_Niveau_1" IS 'Deuxième appellation alternative de l’unité de niveau 1. Expression projetée : n1a."Alt2_Niveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."AbreNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9502,13 +9606,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Alt2_Niveau_1" IS 'Deuxième app
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."AbreNiveau_1" IS 'Abréviation de l’unité géographique de niveau 1. Expression projetée : n1a."AbreNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."CodeSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."CodeSNIS" IS 'Code SNIS enregistré pour l’unité géographique de niveau 1. Expression projetée : n1a."CodeSNIS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."CodeNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9516,13 +9618,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."CodeSNIS" IS 'Code SNIS enregist
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."CodeNiveau_1" IS 'Code de référence de l’unité géographique de niveau 1. Expression projetée : n1a."CodeNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."PopulationNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."PopulationNiveau_1" IS 'Population déclarée de l’unité géographique, exprimée en habitants de niveau 1. Expression projetée : n1a."PopulationNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."LatitudeNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9530,13 +9630,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."PopulationNiveau_1" IS 'Populati
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."LatitudeNiveau_1" IS 'Latitude enregistrée pour l’unité géographique de niveau 1. Expression projetée : n1a."LatitudeNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."LongitudeNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."LongitudeNiveau_1" IS 'Longitude enregistrée pour l’unité géographique de niveau 1. Expression projetée : n1a."LongitudeNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."surfaceNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9544,13 +9642,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."LongitudeNiveau_1" IS 'Longitude
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."surfaceNiveau_1" IS 'Surface déclarée de l’unité géographique conservée en texte ; l’unité n’est pas imposée par le schéma de niveau 1. Expression projetée : n1a."surfaceNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."geometryNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."geometryNiveau_1" IS 'Géométrie de l’unité géographique conservée en texte ; aucun type spatial n’est imposé par cette colonne de niveau 1. Expression projetée : n1a."geometryNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."EtenduNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9558,13 +9654,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."geometryNiveau_1" IS 'Géométri
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."EtenduNiveau_1" IS 'Étendue descriptive déclarée pour l’unité géographique de niveau 1. Expression projetée : n1a."EtenduNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."timezoneNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."timezoneNiveau_1" IS 'Fuseau horaire déclaré pour l’unité de niveau 1. Expression projetée : n1a."timezoneNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."wikidataNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9572,13 +9666,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."timezoneNiveau_1" IS 'Fuseau hor
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."wikidataNiveau_1" IS 'Référence Wikidata déclarée pour l’unité de niveau 1. Expression projetée : n1a."wikidataNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."FusionNiveau_1" IS 'Indicateur de fusion enregistré pour l’unité de niveau 1. Expression projetée : n1a."FusionNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9586,13 +9678,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."FusionNiveau_1" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."VisibleNiveau_1" IS 'Indicateur de visibilité pour le niveau géographique de niveau 1. Expression projetée : n1a."VisibleNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."VisibleNiveau_5" IS 'Indicateur de visibilité pour le niveau géographique de niveau 5. Expression projetée : n1a."VisibleNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."ObsNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9600,13 +9690,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1"."VisibleNiveau_5" IS 'Indicateur 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."ObsNiveau_1" IS 'Observations sur l’unité géographique de niveau 1. Expression projetée : n1a."ObsNiveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_1".prov_uid; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1".prov_uid IS 'Identifiant provincial complémentaire, conservé depuis la table source.';
-
 
 --
 -- Name: COLUMN "V_Niveau_1"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9614,13 +9702,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1".prov_uid IS 'Identifiant provinci
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."uidSNIS" IS 'Identifiant SNIS provincial, conservé depuis la table source.';
 
-
 --
 -- Name: COLUMN "V_Niveau_1"."Nb_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_1"."Nb_Niveau_2" IS 'Nombre exact de niveaux 2 rattachés à la province. Correspond au registre des antennes filtré sur ID_Niveau_1_FK.';
-
 
 --
 -- Name: V_Niveau_1_Old; Type: VIEW; Schema: geolocalisation; Owner: -
@@ -9674,59 +9760,100 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_1_Old"."surfaceNiveau_1_Old" IS 'Sur
 --
 
 CREATE VIEW geolocalisation."V_Niveau_2" AS
- SELECT n0."NomNiveau_0",
-    n1b."NomNiveau_1_Old",
-    n2."ID_Niveau_1_FK",
-    n1a."NomNiveau_1",
-    n2."ID_Niveau_2",
-    n2."ID_TypeNiveau_2_Fk",
-    COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_2",
-    n2."NomNiveau_2",
-    n2."Alt1_NomNiveau_2",
-    n2."AbreNiveau_2",
-    n2."CodeNiveau_2",
-    n2."PopulationNiveau_2",
-    n2."LatitudeNiveau_2",
-    n2."LongitudeNiveau_2",
-    n2."AltitudeNiveau_2",
-    n2."geometryNiveau_2",
-    n2."surfaceNiveau_2",
-    n2."EtenduNiveau_2",
-    n2."ObsNiveau_2",
-    n2."ID_StatutNiveau_2",
-    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_2",
-    n2."ID_StatusDeploiFk",
-    COALESCE(g_deploi."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
-    n2."KmDPSANT",
-    n2."ID_VoieAccesDPSANTFk",
-    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "Voie_Acces_DPS",
-    n2."SelectNiveau_2",
-    n1a."ID_Niveau_0_Fk" AS "ID_Niveau_0",
-    n1a."ID_Niveau_1",
-    n1a."FusionNiveau_1",
-    n1a."VisibleNiveau_1",
-    n1a."VisibleNiveau_5",
-    n2.iso,
-    n2."uidSNIS",
-    ( SELECT count(*) AS count
-           FROM geolocalisation."T_Niveau_3" child
-          WHERE (child."ID_Niveau_2_FK" = n2."ID_Niveau_2")) AS "Nb_Niveau_3"
-   FROM (((((((geolocalisation."T_Niveau_2" n2
-     LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
-     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-     LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
-     LEFT JOIN referentiel."T_Generique" g_type ON ((n2."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_statut ON ((n2."ID_StatutNiveau_2" = g_statut."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_deploi ON ((n2."ID_StatusDeploiFk" = g_deploi."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_voie ON ((n2."ID_VoieAccesDPSANTFk" = g_voie."ID_Generique")));
-
+ SELECT q."NomNiveau_0",
+    q."NomNiveau_1_Old",
+    q."ID_Niveau_1_FK",
+    q."NomNiveau_1",
+    q."ID_Niveau_2",
+    q."ID_TypeNiveau_2_Fk",
+    q."Type_Niveau_2",
+    q."NomNiveau_2",
+    q."Alt1_NomNiveau_2",
+    q."AbreNiveau_2",
+    q."CodeNiveau_2",
+    q."PopulationNiveau_2",
+    q."LatitudeNiveau_2",
+    q."LongitudeNiveau_2",
+    q."AltitudeNiveau_2",
+    q."geometryNiveau_2",
+    q."surfaceNiveau_2",
+    q."EtenduNiveau_2",
+    q."ObsNiveau_2",
+    q."ID_StatutNiveau_2",
+    q."Statut_Niveau_2",
+    q."ID_StatusDeploiFk",
+    q."Statut_Deploiement",
+    q."KmDPSANT",
+    q."ID_VoieAccesDPSANTFk",
+    q."Voie_Acces_DPS",
+    q."SelectNiveau_2",
+    q."ID_Niveau_0",
+    q."ID_Niveau_1",
+    q."FusionNiveau_1",
+    q."VisibleNiveau_1",
+    q."VisibleNiveau_5",
+    q.iso,
+    q."uidSNIS",
+    q."Nb_Niveau_3",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."ModifieLe" AS "CoordonneesModifieLe"
+   FROM (( SELECT n0."NomNiveau_0",
+            n1b."NomNiveau_1_Old",
+            n2."ID_Niveau_1_FK",
+            n1a."NomNiveau_1",
+            n2."ID_Niveau_2",
+            n2."ID_TypeNiveau_2_Fk",
+            COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_2",
+            n2."NomNiveau_2",
+            n2."Alt1_NomNiveau_2",
+            n2."AbreNiveau_2",
+            n2."CodeNiveau_2",
+            n2."PopulationNiveau_2",
+            n2."LatitudeNiveau_2",
+            n2."LongitudeNiveau_2",
+            n2."AltitudeNiveau_2",
+            n2."geometryNiveau_2",
+            n2."surfaceNiveau_2",
+            n2."EtenduNiveau_2",
+            n2."ObsNiveau_2",
+            n2."ID_StatutNiveau_2",
+            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_2",
+            n2."ID_StatusDeploiFk",
+            COALESCE(g_deploi."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
+            n2."KmDPSANT",
+            n2."ID_VoieAccesDPSANTFk",
+            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "Voie_Acces_DPS",
+            n2."SelectNiveau_2",
+            n1a."ID_Niveau_0_Fk" AS "ID_Niveau_0",
+            n1a."ID_Niveau_1",
+            n1a."FusionNiveau_1",
+            n1a."VisibleNiveau_1",
+            n1a."VisibleNiveau_5",
+            n2.iso,
+            n2."uidSNIS",
+            ( SELECT count(*) AS count
+                   FROM geolocalisation."T_Niveau_3" child
+                  WHERE (child."ID_Niveau_2_FK" = n2."ID_Niveau_2")) AS "Nb_Niveau_3"
+           FROM (((((((geolocalisation."T_Niveau_2" n2
+             LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
+             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+             LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
+             LEFT JOIN referentiel."T_Generique" g_type ON ((n2."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_statut ON ((n2."ID_StatutNiveau_2" = g_statut."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_deploi ON ((n2."ID_StatusDeploiFk" = g_deploi."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_voie ON ((n2."ID_VoieAccesDPSANTFk" = g_voie."ID_Generique")))) q
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_2Fk" = q."ID_Niveau_2")));
 
 --
 -- Name: VIEW "V_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_2" IS 'Référentiel territorial partagé du niveau 2. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
-
+COMMENT ON VIEW geolocalisation."V_Niveau_2" IS 'Référentiel territorial partagé du niveau 2. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
 
 --
 -- Name: COLUMN "V_Niveau_2"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9734,13 +9861,11 @@ COMMENT ON VIEW geolocalisation."V_Niveau_2" IS 'Référentiel territorial parta
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_0" IS 'Nom de l’unité géographique de niveau 0. Expression projetée : n0."NomNiveau_0".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."NomNiveau_1_Old"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_1_Old" IS 'Nom de l’unité géographique de niveau 1 historique. Expression projetée : n1b."NomNiveau_1_Old".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."ID_Niveau_1_FK"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9748,13 +9873,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_1_Old" IS 'Nom de l’
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_1_FK" IS 'Unité géographique de rattachement de niveau 1. Expression projetée : n2."ID_Niveau_1_FK".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_1" IS 'Nom de l’unité géographique de niveau 1. Expression projetée : n1a."NomNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9762,13 +9885,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_1" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_2" IS 'Identifiant de l’unité géographique de niveau 2. Expression projetée : n2."ID_Niveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."ID_TypeNiveau_2_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_TypeNiveau_2_Fk" IS 'Type de l’unité géographique dans le référentiel. Expression projetée : n2."ID_TypeNiveau_2_Fk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."Type_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9776,13 +9897,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_TypeNiveau_2_Fk" IS 'Type de 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Type_Niveau_2" IS 'Abréviation du type d’unité de niveau 2 dans le référentiel. Expression projetée : COALESCE(g_type."AbrGenerique", '' ''::character varying) AS "Type_Niveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_2" IS 'Nom de l’unité géographique de niveau 2. Expression projetée : n2."NomNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."Alt1_NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9790,13 +9909,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."NomNiveau_2" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Alt1_NomNiveau_2" IS 'Appellation alternative de l’unité de niveau 2. Expression projetée : n2."Alt1_NomNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."AbreNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."AbreNiveau_2" IS 'Abréviation de l’unité géographique de niveau 2. Expression projetée : n2."AbreNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."CodeNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9804,13 +9921,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."AbreNiveau_2" IS 'Abréviation d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."CodeNiveau_2" IS 'Code de référence de l’unité géographique de niveau 2. Expression projetée : n2."CodeNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."PopulationNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."PopulationNiveau_2" IS 'Population déclarée de l’unité géographique, exprimée en habitants de niveau 2. Expression projetée : n2."PopulationNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."LatitudeNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9818,13 +9933,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."PopulationNiveau_2" IS 'Populati
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."LatitudeNiveau_2" IS 'Latitude enregistrée pour l’unité géographique de niveau 2. Expression projetée : n2."LatitudeNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."LongitudeNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."LongitudeNiveau_2" IS 'Longitude enregistrée pour l’unité géographique de niveau 2. Expression projetée : n2."LongitudeNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."AltitudeNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9832,13 +9945,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."LongitudeNiveau_2" IS 'Longitude
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."AltitudeNiveau_2" IS 'Altitude déclarée pour l’unité géographique ; l’unité n’est pas imposée par le schéma de niveau 2. Expression projetée : n2."AltitudeNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."geometryNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."geometryNiveau_2" IS 'Géométrie de l’unité géographique conservée en texte ; aucun type spatial n’est imposé par cette colonne de niveau 2. Expression projetée : n2."geometryNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."surfaceNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9846,13 +9957,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."geometryNiveau_2" IS 'Géométri
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."surfaceNiveau_2" IS 'Surface déclarée de l’unité géographique conservée en texte ; l’unité n’est pas imposée par le schéma de niveau 2. Expression projetée : n2."surfaceNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."EtenduNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."EtenduNiveau_2" IS 'Étendue descriptive déclarée pour l’unité géographique de niveau 2. Expression projetée : n2."EtenduNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."ObsNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9860,13 +9969,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."EtenduNiveau_2" IS 'Étendue des
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ObsNiveau_2" IS 'Observations sur l’unité géographique de niveau 2. Expression projetée : n2."ObsNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."ID_StatutNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_StatutNiveau_2" IS 'Statut de l’unité géographique dans le référentiel. Expression projetée : n2."ID_StatutNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."Statut_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9874,13 +9981,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_StatutNiveau_2" IS 'Statut de
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Statut_Niveau_2" IS 'Abréviation du statut de l’unité de niveau 2. Expression projetée : COALESCE(g_statut."AbrGenerique", '' ''::character varying) AS "Statut_Niveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."ID_StatusDeploiFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_StatusDeploiFk" IS 'Statut de déploiement enregistré pour l’unité de niveau 2. Expression projetée : n2."ID_StatusDeploiFk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."Statut_Deploiement"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9888,13 +9993,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_StatusDeploiFk" IS 'Statut de
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Statut_Deploiement" IS 'Abréviation du statut de déploiement issu du référentiel. Expression projetée : COALESCE(g_deploi."AbrGenerique", '' ''::character varying) AS "Statut_Deploiement".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."KmDPSANT"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."KmDPSANT" IS 'Distance enregistrée entre la DPS et l’antenne, en kilomètres. Expression projetée : n2."KmDPSANT".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."ID_VoieAccesDPSANTFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9902,13 +10005,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."KmDPSANT" IS 'Distance enregistr
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_VoieAccesDPSANTFk" IS 'Voie d’accès entre la DPS et l’antenne. Expression projetée : n2."ID_VoieAccesDPSANTFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."Voie_Acces_DPS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Voie_Acces_DPS" IS 'Abréviation de la voie d’accès DPS/antenne. Expression projetée : COALESCE(g_voie."AbrGenerique", '' ''::character varying) AS "Voie_Acces_DPS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."SelectNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9916,13 +10017,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Voie_Acces_DPS" IS 'Abréviation
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."SelectNiveau_2" IS 'Indicateur de sélection enregistré pour l’unité géographique de niveau 2. Expression projetée : n2."SelectNiveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par la province, utilisable pour filtrer le découpage partagé.';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9930,13 +10029,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_0" IS 'Identifiant du 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."ID_Niveau_1" IS 'Identifiant de province parent ; alias de lecture compatible avec les analyses territoriales.';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente ; NULL reste inconnu, aucune exclusion automatique.';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9944,13 +10041,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."FusionNiveau_1" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_1" IS 'Visibilité déclarée du niveau provincial parent, sans restriction implicite des compteurs.';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_5" IS 'Visibilité des sites déclarée par la province parente, conservée sans modifier ses sites.';
-
 
 --
 -- Name: COLUMN "V_Niveau_2".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9958,13 +10053,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."VisibleNiveau_5" IS 'Visibilité
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2".iso IS 'Code ISO ou identifiant géographique enregistré pour cette subdivision.';
 
-
 --
 -- Name: COLUMN "V_Niveau_2"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette subdivision.';
-
 
 --
 -- Name: COLUMN "V_Niveau_2"."Nb_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -9972,76 +10065,121 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_2"."uidSNIS" IS 'Identifiant SNIS en
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_2"."Nb_Niveau_3" IS 'Nombre exact de zones de santé rattachées à cette subdivision. Correspond au registre des zones filtré sur ID_Niveau_2_FK.';
 
-
 --
 -- Name: V_Niveau_3; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
 CREATE VIEW geolocalisation."V_Niveau_3" AS
- SELECT n3."ID_TypeNiveau_2_Fk",
-    COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_3",
-    n3."ID_Niveau_3",
-    n3."NomNiveau_3",
-    n3."Alt_Niveau_3",
-    n3."AbreNiveau_3",
-    n3."CodeNiveau_3",
-    n3."LatitudeNiveau_3",
-    n3."PopulationNiveau_3",
-    n3."LongitudeNiveau_3",
-    n3."AltitudeNiveau_3",
-    n3."EtenduNiveau_3",
-    n3."surfaceNiveau_3",
-    n3."geometryNiveau_3",
-    n3."ObsNiveau_3",
-    n3."ID_StatutNiveau_3_Fk",
-    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_3",
-    n3."ID_StatutDeploieFk",
-    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
-    n3."KmAntenneBCZS",
-    n3."ID_VoieAccesANTBCZFk",
-    COALESCE(g_voie1."AbrGenerique", ' '::character varying) AS "Voie_ANTBCZ",
-    n3."KmDPSBCZS",
-    n3."ID_VoieAccesDPSBCZFk",
-    COALESCE(g_voie2."AbrGenerique", ' '::character varying) AS "Voie_DPSBCZS",
-    n3."SelectNiveau_3",
-    n3."ID_Niveau_2_FK",
-    n0."ID_Niveau_0",
-    n0."NomNiveau_0",
-    n1a."ID_Niveau_1",
-    n1a."NomNiveau_1",
-    n2."ID_Niveau_2",
-    n2."NomNiveau_2",
-    n1a."FusionNiveau_1",
-    n1a."VisibleNiveau_1",
-    n1a."VisibleNiveau_5",
-    n3.iso,
-    n3."uidSNIS",
-    ( SELECT count(*) AS count
-           FROM geolocalisation."T_Niveau_4" child
-          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) AS "Nb_Niveau_4",
-    (( SELECT count(*) AS count
-           FROM geolocalisation."T_Niveau_5" child
-          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) + ( SELECT count(*) AS count
-           FROM (geolocalisation."T_Niveau_4" area
-             JOIN geolocalisation."T_Niveau_5" child ON ((child."ID_Niveau_4_Fk" = area."ID_Niveau_4")))
-          WHERE ((child."ID_Niveau_3_Fk" IS NULL) AND (area."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))) AS "Nb_Niveau_5"
-   FROM ((((((((geolocalisation."T_Niveau_3" n3
-     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-     LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
-     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-     LEFT JOIN referentiel."T_Generique" g_type ON ((n3."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_statut ON ((n3."ID_StatutNiveau_3_Fk" = g_statut."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n3."ID_StatutDeploieFk" = g_deploiement."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_voie1 ON ((n3."ID_VoieAccesANTBCZFk" = g_voie1."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_voie2 ON ((n3."ID_VoieAccesDPSBCZFk" = g_voie2."ID_Generique")));
-
+ SELECT q."ID_TypeNiveau_2_Fk",
+    q."Type_Niveau_3",
+    q."ID_Niveau_3",
+    q."NomNiveau_3",
+    q."Alt_Niveau_3",
+    q."AbreNiveau_3",
+    q."CodeNiveau_3",
+    q."LatitudeNiveau_3",
+    q."PopulationNiveau_3",
+    q."LongitudeNiveau_3",
+    q."AltitudeNiveau_3",
+    q."EtenduNiveau_3",
+    q."surfaceNiveau_3",
+    q."geometryNiveau_3",
+    q."ObsNiveau_3",
+    q."ID_StatutNiveau_3_Fk",
+    q."Statut_Niveau_3",
+    q."ID_StatutDeploieFk",
+    q."Statut_Deploiement",
+    q."KmAntenneBCZS",
+    q."ID_VoieAccesANTBCZFk",
+    q."Voie_ANTBCZ",
+    q."KmDPSBCZS",
+    q."ID_VoieAccesDPSBCZFk",
+    q."Voie_DPSBCZS",
+    q."SelectNiveau_3",
+    q."ID_Niveau_2_FK",
+    q."ID_Niveau_0",
+    q."NomNiveau_0",
+    q."ID_Niveau_1",
+    q."NomNiveau_1",
+    q."ID_Niveau_2",
+    q."NomNiveau_2",
+    q."FusionNiveau_1",
+    q."VisibleNiveau_1",
+    q."VisibleNiveau_5",
+    q.iso,
+    q."uidSNIS",
+    q."Nb_Niveau_4",
+    q."Nb_Niveau_5",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."ModifieLe" AS "CoordonneesModifieLe"
+   FROM (( SELECT n3."ID_TypeNiveau_2_Fk",
+            COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_3",
+            n3."ID_Niveau_3",
+            n3."NomNiveau_3",
+            n3."Alt_Niveau_3",
+            n3."AbreNiveau_3",
+            n3."CodeNiveau_3",
+            n3."LatitudeNiveau_3",
+            n3."PopulationNiveau_3",
+            n3."LongitudeNiveau_3",
+            n3."AltitudeNiveau_3",
+            n3."EtenduNiveau_3",
+            n3."surfaceNiveau_3",
+            n3."geometryNiveau_3",
+            n3."ObsNiveau_3",
+            n3."ID_StatutNiveau_3_Fk",
+            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_3",
+            n3."ID_StatutDeploieFk",
+            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
+            n3."KmAntenneBCZS",
+            n3."ID_VoieAccesANTBCZFk",
+            COALESCE(g_voie1."AbrGenerique", ' '::character varying) AS "Voie_ANTBCZ",
+            n3."KmDPSBCZS",
+            n3."ID_VoieAccesDPSBCZFk",
+            COALESCE(g_voie2."AbrGenerique", ' '::character varying) AS "Voie_DPSBCZS",
+            n3."SelectNiveau_3",
+            n3."ID_Niveau_2_FK",
+            n0."ID_Niveau_0",
+            n0."NomNiveau_0",
+            n1a."ID_Niveau_1",
+            n1a."NomNiveau_1",
+            n2."ID_Niveau_2",
+            n2."NomNiveau_2",
+            n1a."FusionNiveau_1",
+            n1a."VisibleNiveau_1",
+            n1a."VisibleNiveau_5",
+            n3.iso,
+            n3."uidSNIS",
+            ( SELECT count(*) AS count
+                   FROM geolocalisation."T_Niveau_4" child
+                  WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) AS "Nb_Niveau_4",
+            (( SELECT count(*) AS count
+                   FROM geolocalisation."T_Niveau_5" child
+                  WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) + ( SELECT count(*) AS count
+                   FROM (geolocalisation."T_Niveau_4" area
+                     JOIN geolocalisation."T_Niveau_5" child ON ((child."ID_Niveau_4_Fk" = area."ID_Niveau_4")))
+                  WHERE ((child."ID_Niveau_3_Fk" IS NULL) AND (area."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))) AS "Nb_Niveau_5"
+           FROM ((((((((geolocalisation."T_Niveau_3" n3
+             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+             LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
+             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+             LEFT JOIN referentiel."T_Generique" g_type ON ((n3."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_statut ON ((n3."ID_StatutNiveau_3_Fk" = g_statut."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n3."ID_StatutDeploieFk" = g_deploiement."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_voie1 ON ((n3."ID_VoieAccesANTBCZFk" = g_voie1."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_voie2 ON ((n3."ID_VoieAccesDPSBCZFk" = g_voie2."ID_Generique")))) q
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_3Fk" = q."ID_Niveau_3")));
 
 --
 -- Name: VIEW "V_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_3" IS 'Référentiel territorial partagé du niveau 3. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
-
+COMMENT ON VIEW geolocalisation."V_Niveau_3" IS 'Référentiel territorial partagé du niveau 3. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
 
 --
 -- Name: COLUMN "V_Niveau_3"."ID_TypeNiveau_2_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10049,13 +10187,11 @@ COMMENT ON VIEW geolocalisation."V_Niveau_3" IS 'Référentiel territorial parta
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_TypeNiveau_2_Fk" IS 'Type de l’unité géographique dans le référentiel. Expression projetée : n3."ID_TypeNiveau_2_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."Type_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Type_Niveau_3" IS 'Abréviation du type d’unité de niveau 3 dans le référentiel. Expression projetée : COALESCE(g_type."AbrGenerique", '' ''::character varying) AS "Type_Niveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."ID_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10063,13 +10199,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Type_Niveau_3" IS 'Abréviation 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_3" IS 'Identifiant de l’unité géographique de niveau 3. Expression projetée : n3."ID_Niveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."NomNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."Alt_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10077,13 +10211,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_3" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Alt_Niveau_3" IS 'Appellation alternative de l’unité de niveau 3. Expression projetée : n3."Alt_Niveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."AbreNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."AbreNiveau_3" IS 'Abréviation de l’unité géographique de niveau 3. Expression projetée : n3."AbreNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."CodeNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10091,13 +10223,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."AbreNiveau_3" IS 'Abréviation d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."CodeNiveau_3" IS 'Code de référence de l’unité géographique de niveau 3. Expression projetée : n3."CodeNiveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."LatitudeNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."LatitudeNiveau_3" IS 'Latitude enregistrée pour l’unité géographique de niveau 3. Expression projetée : n3."LatitudeNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."PopulationNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10105,13 +10235,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."LatitudeNiveau_3" IS 'Latitude e
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."PopulationNiveau_3" IS 'Population déclarée de l’unité géographique, exprimée en habitants de niveau 3. Expression projetée : n3."PopulationNiveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."LongitudeNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."LongitudeNiveau_3" IS 'Longitude enregistrée pour l’unité géographique de niveau 3. Expression projetée : n3."LongitudeNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."AltitudeNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10119,13 +10247,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."LongitudeNiveau_3" IS 'Longitude
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."AltitudeNiveau_3" IS 'Altitude déclarée pour l’unité géographique ; l’unité n’est pas imposée par le schéma de niveau 3. Expression projetée : n3."AltitudeNiveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."EtenduNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."EtenduNiveau_3" IS 'Étendue descriptive déclarée pour l’unité géographique de niveau 3. Expression projetée : n3."EtenduNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."surfaceNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10133,13 +10259,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."EtenduNiveau_3" IS 'Étendue des
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."surfaceNiveau_3" IS 'Surface déclarée de l’unité géographique conservée en texte ; l’unité n’est pas imposée par le schéma de niveau 3. Expression projetée : n3."surfaceNiveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."geometryNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."geometryNiveau_3" IS 'Géométrie de l’unité géographique conservée en texte ; aucun type spatial n’est imposé par cette colonne de niveau 3. Expression projetée : n3."geometryNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."ObsNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10147,13 +10271,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."geometryNiveau_3" IS 'Géométri
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ObsNiveau_3" IS 'Observations sur l’unité géographique de niveau 3. Expression projetée : n3."ObsNiveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_StatutNiveau_3_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_StatutNiveau_3_Fk" IS 'Statut de l’unité géographique dans le référentiel. Expression projetée : n3."ID_StatutNiveau_3_Fk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."Statut_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10161,13 +10283,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_StatutNiveau_3_Fk" IS 'Statut
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Statut_Niveau_3" IS 'Abréviation du statut de l’unité de niveau 3. Expression projetée : COALESCE(g_statut."AbrGenerique", '' ''::character varying) AS "Statut_Niveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_StatutDeploieFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_StatutDeploieFk" IS 'Statut de déploiement enregistré pour l’unité de niveau 3. Expression projetée : n3."ID_StatutDeploieFk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."Statut_Deploiement"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10175,13 +10295,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_StatutDeploieFk" IS 'Statut d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Statut_Deploiement" IS 'Abréviation du statut de déploiement issu du référentiel. Expression projetée : COALESCE(g_deploiement."AbrGenerique", '' ''::character varying) AS "Statut_Deploiement".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."KmAntenneBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."KmAntenneBCZS" IS 'Distance enregistrée entre l’antenne et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmAntenneBCZS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."ID_VoieAccesANTBCZFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10189,13 +10307,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."KmAntenneBCZS" IS 'Distance enre
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_VoieAccesANTBCZFk" IS 'Voie d’accès entre l’antenne et le bureau central de zone de santé. Expression projetée : n3."ID_VoieAccesANTBCZFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."Voie_ANTBCZ"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Voie_ANTBCZ" IS 'Abréviation de la voie d’accès antenne/bureau central de zone. Expression projetée : COALESCE(g_voie1."AbrGenerique", '' ''::character varying) AS "Voie_ANTBCZ".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."KmDPSBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10203,13 +10319,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Voie_ANTBCZ" IS 'Abréviation de
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."KmDPSBCZS" IS 'Distance enregistrée entre la DPS et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmDPSBCZS".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_VoieAccesDPSBCZFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_VoieAccesDPSBCZFk" IS 'Voie d’accès entre la DPS et le bureau central de zone de santé. Expression projetée : n3."ID_VoieAccesDPSBCZFk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."Voie_DPSBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10217,13 +10331,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_VoieAccesDPSBCZFk" IS 'Voie d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Voie_DPSBCZS" IS 'Abréviation de la voie d’accès DPS/bureau central de zone. Expression projetée : COALESCE(g_voie2."AbrGenerique", '' ''::character varying) AS "Voie_DPSBCZS".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."SelectNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."SelectNiveau_3" IS 'Indicateur de sélection enregistré pour l’unité géographique de niveau 3. Expression projetée : n3."SelectNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."ID_Niveau_2_FK"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10231,13 +10343,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."SelectNiveau_3" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2_FK" IS 'Unité géographique de rattachement de niveau 2. Expression projetée : n3."ID_Niveau_2_FK".';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_0" IS 'Identifiant du pays parent obtenu par les jointures de rattachement.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10245,13 +10355,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_0" IS 'Identifiant du 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_0" IS 'Nom courant du pays parent, issu de la source unique géographique.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_1" IS 'Identifiant de la province parente de la zone.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10259,13 +10367,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_1" IS 'Identifiant de 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_1" IS 'Nom courant de la province parente de la zone.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2" IS 'Identifiant de la subdivision parente de la zone.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10273,13 +10379,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2" IS 'Identifiant de 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."NomNiveau_2" IS 'Nom courant de la subdivision parente de la zone.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."FusionNiveau_1" IS 'Indicateur de fusion provincial, exposé pour les filtres sans exclusion implicite.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10287,13 +10391,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."FusionNiveau_1" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente ; aucun territoire n’est masqué par cette vue.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_5" IS 'Visibilité déclarée des sites de la province parente, sans réécriture de données.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10301,13 +10403,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."VisibleNiveau_5" IS 'Visibilité
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3".iso IS 'Code ISO ou identifiant géographique enregistré pour cette zone.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette zone.';
-
 
 --
 -- Name: COLUMN "V_Niveau_3"."Nb_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10315,82 +10415,128 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."uidSNIS" IS 'Identifiant SNIS en
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_4" IS 'Nombre exact d’aires rattachées à cette zone. Correspond au registre des aires filtré sur ID_Niveau_3_Fk.';
 
-
 --
 -- Name: COLUMN "V_Niveau_3"."Nb_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_3"."Nb_Niveau_5" IS 'Nombre exact de sites de cette zone : rattachement direct prioritaire, sinon zone de l’aire. Chaque site compte une fois. Correspond au registre des sites filtré sur ID_Niveau_3 effectif.';
 
-
 --
 -- Name: V_Niveau_4; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
 CREATE VIEW geolocalisation."V_Niveau_4" AS
- SELECT n0."ID_Niveau_0",
-    n0."NomNiveau_0",
-    n1."ID_Niveau_1",
-    n1."NomNiveau_1",
-    n2."ID_Niveau_2",
-    n2."NomNiveau_2",
-    n3."ID_Niveau_3",
-    n3."NomNiveau_3",
-    n4."ID_TypeNiveau_4_Fk",
-    COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_4",
-    n4."AbreNiveau_4",
-    (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n4."NomNiveau_4", ''::character varying))::text) AS "SITE",
-    n4."CodeNiveau_4",
-    n4."PopulationNiveau_4",
-    n4."LatitudeNiveau_4",
-    n4."LongitudeNiveau_4",
-    n4."AltitudeNiveau_4",
-    n4."geometryNiveau_4",
-    COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
-    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_ZS",
-    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_AS",
-    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
-    n3."KmAntenneBCZS",
-    n3."KmDPSBCZS",
-    n4."ObsNiveau_4",
-    n4."SelectNiveau_4",
-    n4."ID_Niveau_4",
-    n4."ID_Niveau_3_Fk",
-    n4."NomNiveau_4",
-    n4."KmZoneSanteAS",
-    n4."surfaceNiveau_4",
-    n4."ID_DispoReseauNiveau_4",
-    n4."ID_VoieAccesZsASFk",
-    n4."ID_StatutNiveau_4",
-    n4."ID_StatutDeploiementFk",
-    n1."FusionNiveau_1",
-    n1."VisibleNiveau_1",
-    n1."VisibleNiveau_5",
-    n4.iso,
-    n4."uidSNIS",
-    ( SELECT count(*) AS count
-           FROM geolocalisation."T_Niveau_5" child
-          WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
-    ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
-   FROM (((((((((geolocalisation."T_Niveau_4" n4
-     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
-     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-     LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
-     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-     LEFT JOIN referentiel."T_Generique" g_type ON ((n4."ID_TypeNiveau_4_Fk" = g_type."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_reseau ON ((n4."ID_DispoReseauNiveau_4" = g_reseau."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_voie ON ((n4."ID_VoieAccesZsASFk" = g_voie."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_statut ON ((n4."ID_StatutNiveau_4" = g_statut."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n4."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
-  ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n4."NomNiveau_4";
-
+ SELECT q."ID_Niveau_0",
+    q."NomNiveau_0",
+    q."ID_Niveau_1",
+    q."NomNiveau_1",
+    q."ID_Niveau_2",
+    q."NomNiveau_2",
+    q."ID_Niveau_3",
+    q."NomNiveau_3",
+    q."ID_TypeNiveau_4_Fk",
+    q."Type_Niveau_4",
+    q."AbreNiveau_4",
+    q."SITE",
+    q."CodeNiveau_4",
+    q."PopulationNiveau_4",
+    q."LatitudeNiveau_4",
+    q."LongitudeNiveau_4",
+    q."AltitudeNiveau_4",
+    q."geometryNiveau_4",
+    q."RESEAU",
+    q."VOIE_AS_ZS",
+    q."STATUT_AS",
+    q."STATUT_DEPLOI",
+    q."KmAntenneBCZS",
+    q."KmDPSBCZS",
+    q."ObsNiveau_4",
+    q."SelectNiveau_4",
+    q."ID_Niveau_4",
+    q."ID_Niveau_3_Fk",
+    q."NomNiveau_4",
+    q."KmZoneSanteAS",
+    q."surfaceNiveau_4",
+    q."ID_DispoReseauNiveau_4",
+    q."ID_VoieAccesZsASFk",
+    q."ID_StatutNiveau_4",
+    q."ID_StatutDeploiementFk",
+    q."FusionNiveau_1",
+    q."VisibleNiveau_1",
+    q."VisibleNiveau_5",
+    q.iso,
+    q."uidSNIS",
+    q."Nb_Niveau_5",
+    q."AvecReseau",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."ModifieLe" AS "CoordonneesModifieLe"
+   FROM (( SELECT n0."ID_Niveau_0",
+            n0."NomNiveau_0",
+            n1."ID_Niveau_1",
+            n1."NomNiveau_1",
+            n2."ID_Niveau_2",
+            n2."NomNiveau_2",
+            n3."ID_Niveau_3",
+            n3."NomNiveau_3",
+            n4."ID_TypeNiveau_4_Fk",
+            COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_4",
+            n4."AbreNiveau_4",
+            (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n4."NomNiveau_4", ''::character varying))::text) AS "SITE",
+            n4."CodeNiveau_4",
+            n4."PopulationNiveau_4",
+            n4."LatitudeNiveau_4",
+            n4."LongitudeNiveau_4",
+            n4."AltitudeNiveau_4",
+            n4."geometryNiveau_4",
+            COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
+            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_ZS",
+            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_AS",
+            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
+            n3."KmAntenneBCZS",
+            n3."KmDPSBCZS",
+            n4."ObsNiveau_4",
+            n4."SelectNiveau_4",
+            n4."ID_Niveau_4",
+            n4."ID_Niveau_3_Fk",
+            n4."NomNiveau_4",
+            n4."KmZoneSanteAS",
+            n4."surfaceNiveau_4",
+            n4."ID_DispoReseauNiveau_4",
+            n4."ID_VoieAccesZsASFk",
+            n4."ID_StatutNiveau_4",
+            n4."ID_StatutDeploiementFk",
+            n1."FusionNiveau_1",
+            n1."VisibleNiveau_1",
+            n1."VisibleNiveau_5",
+            n4.iso,
+            n4."uidSNIS",
+            ( SELECT count(*) AS count
+                   FROM geolocalisation."T_Niveau_5" child
+                  WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
+            ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
+           FROM (((((((((geolocalisation."T_Niveau_4" n4
+             LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
+             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+             LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
+             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+             LEFT JOIN referentiel."T_Generique" g_type ON ((n4."ID_TypeNiveau_4_Fk" = g_type."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_reseau ON ((n4."ID_DispoReseauNiveau_4" = g_reseau."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_voie ON ((n4."ID_VoieAccesZsASFk" = g_voie."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_statut ON ((n4."ID_StatutNiveau_4" = g_statut."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n4."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
+          ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n4."NomNiveau_4") q
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_4Fk" = q."ID_Niveau_4")));
 
 --
 -- Name: VIEW "V_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial partagé du niveau 4. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels ainsi que les compteurs exacts des enfants consultables, sans multiplication par les jointures ni exclusion implicite de visibilité.';
-
+COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial partagé du niveau 4. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10398,13 +10544,11 @@ COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial parta
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_0" IS 'Identifiant de l’unité géographique de niveau 0. Expression projetée : n0."ID_Niveau_0".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_0" IS 'Nom de l’unité géographique de niveau 0. Expression projetée : n0."NomNiveau_0".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10412,13 +10556,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_0" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_1" IS 'Identifiant de l’unité géographique de niveau 1. Expression projetée : n1."ID_Niveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_1" IS 'Nom de l’unité géographique de niveau 1. Expression projetée : n1."NomNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10426,13 +10568,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_1" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_2" IS 'Identifiant de l’unité géographique de niveau 2. Expression projetée : n2."ID_Niveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_2" IS 'Nom de l’unité géographique de niveau 2. Expression projetée : n2."NomNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10440,13 +10580,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_2" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_3" IS 'Identifiant de l’unité géographique de niveau 3. Expression projetée : n3."ID_Niveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."NomNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_TypeNiveau_4_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10454,13 +10592,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_3" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_TypeNiveau_4_Fk" IS 'Type de l’unité géographique dans le référentiel. Expression projetée : n4."ID_TypeNiveau_4_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."Type_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Type_Niveau_4" IS 'Abréviation du type d’unité de niveau 4 dans le référentiel. Expression projetée : COALESCE(g_type."AbrGenerique", ''''::character varying) AS "Type_Niveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."AbreNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10468,13 +10604,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Type_Niveau_4" IS 'Abréviation 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AbreNiveau_4" IS 'Abréviation de l’unité géographique de niveau 4. Expression projetée : n4."AbreNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."SITE"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."SITE" IS 'Libellé de présentation composé de l’abréviation du type et du nom brut de l’unité ; ne remplace pas l’identifiant. Expression projetée : (COALESCE(g_type."AbrGenerique", ''''::character varying)::text || '' ''::text) || COALESCE(n4."NomNiveau_4", ''''::character varying)::text AS "SITE".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."CodeNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10482,13 +10616,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."SITE" IS 'Libellé de présentat
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."CodeNiveau_4" IS 'Code de référence de l’unité géographique de niveau 4. Expression projetée : n4."CodeNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."PopulationNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."PopulationNiveau_4" IS 'Population déclarée de l’unité géographique, exprimée en habitants de niveau 4. Expression projetée : n4."PopulationNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."LatitudeNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10496,13 +10628,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."PopulationNiveau_4" IS 'Populati
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."LatitudeNiveau_4" IS 'Latitude enregistrée pour l’unité géographique de niveau 4. Expression projetée : n4."LatitudeNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."LongitudeNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."LongitudeNiveau_4" IS 'Longitude enregistrée pour l’unité géographique de niveau 4. Expression projetée : n4."LongitudeNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."AltitudeNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10510,13 +10640,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."LongitudeNiveau_4" IS 'Longitude
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AltitudeNiveau_4" IS 'Altitude déclarée pour l’unité géographique ; l’unité n’est pas imposée par le schéma de niveau 4. Expression projetée : n4."AltitudeNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."geometryNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."geometryNiveau_4" IS 'Géométrie de l’unité géographique conservée en texte ; aucun type spatial n’est imposé par cette colonne de niveau 4. Expression projetée : n4."geometryNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."RESEAU"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10524,13 +10652,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."geometryNiveau_4" IS 'Géométri
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."RESEAU" IS 'Abréviation du statut de disponibilité réseau issu du référentiel. Expression projetée : COALESCE(g_reseau."AbrGenerique", '' ''::character varying) AS "RESEAU".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."VOIE_AS_ZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VOIE_AS_ZS" IS 'Abréviation de la voie d’accès entre aire et zone de santé. Expression projetée : COALESCE(g_voie."AbrGenerique", '' ''::character varying) AS "VOIE_AS_ZS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."STATUT_AS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10538,13 +10664,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VOIE_AS_ZS" IS 'Abréviation de 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."STATUT_AS" IS 'Abréviation du statut de l’aire de santé. Expression projetée : COALESCE(g_statut."AbrGenerique", '' ''::character varying) AS "STATUT_AS".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."STATUT_DEPLOI"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."STATUT_DEPLOI" IS 'Abréviation du statut de déploiement issu du référentiel. Expression projetée : COALESCE(g_deploiement."AbrGenerique", '' ''::character varying) AS "STATUT_DEPLOI".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."KmAntenneBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10552,13 +10676,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."STATUT_DEPLOI" IS 'Abréviation 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."KmAntenneBCZS" IS 'Distance enregistrée entre l’antenne et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmAntenneBCZS".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."KmDPSBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."KmDPSBCZS" IS 'Distance enregistrée entre la DPS et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmDPSBCZS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ObsNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10566,13 +10688,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."KmDPSBCZS" IS 'Distance enregist
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ObsNiveau_4" IS 'Observations sur l’unité géographique de niveau 4. Expression projetée : n4."ObsNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."SelectNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."SelectNiveau_4" IS 'Indicateur de sélection enregistré pour l’unité géographique de niveau 4. Expression projetée : n4."SelectNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10580,13 +10700,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."SelectNiveau_4" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_4" IS 'Identifiant de l’unité géographique de niveau 4. Expression projetée : n4."ID_Niveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_3_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_3_Fk" IS 'Unité géographique de rattachement de niveau 3. Expression projetée : n4."ID_Niveau_3_Fk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."NomNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10594,13 +10712,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_Niveau_3_Fk" IS 'Unité géog
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."NomNiveau_4" IS 'Nom de l’unité géographique de niveau 4. Expression projetée : n4."NomNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."KmZoneSanteAS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."KmZoneSanteAS" IS 'Distance enregistrée entre la zone de santé et l’aire de santé, en kilomètres. Expression projetée : n4."KmZoneSanteAS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."surfaceNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10608,13 +10724,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."KmZoneSanteAS" IS 'Distance enre
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."surfaceNiveau_4" IS 'Surface déclarée de l’unité géographique conservée en texte ; l’unité n’est pas imposée par le schéma de niveau 4. Expression projetée : n4."surfaceNiveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."ID_DispoReseauNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_DispoReseauNiveau_4" IS 'Disponibilité du réseau déclarée pour l’unité géographique, dans le référentiel. Expression projetée : n4."ID_DispoReseauNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_VoieAccesZsASFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10622,13 +10736,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_DispoReseauNiveau_4" IS 'Disp
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_VoieAccesZsASFk" IS 'Voie d’accès entre la zone de santé et l’aire de santé. Expression projetée : n4."ID_VoieAccesZsASFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."ID_StatutNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_StatutNiveau_4" IS 'Statut de l’unité géographique dans le référentiel. Expression projetée : n4."ID_StatutNiveau_4".';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_StatutDeploiementFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10636,13 +10748,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_StatutNiveau_4" IS 'Statut de
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."ID_StatutDeploiementFk" IS 'Statut de déploiement enregistré pour l’unité géographique. Expression projetée : n4."ID_StatutDeploiementFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans filtre implicite.';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10650,13 +10760,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."FusionNiveau_1" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente, exposée sans altération.';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
-
 
 --
 -- Name: COLUMN "V_Niveau_4".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10664,13 +10772,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."VisibleNiveau_5" IS 'Visibilité
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4".iso IS 'Code ISO ou identifiant géographique enregistré pour cette aire.';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS enregistré pour cette aire.';
-
 
 --
 -- Name: COLUMN "V_Niveau_4"."Nb_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10678,87 +10784,137 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS en
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de sites directement rattachés à cette aire. Les sites rattachés seulement à une zone ne sont pas attribués arbitrairement à une aire.';
 
-
 --
 -- Name: COLUMN "V_Niveau_4"."AvecReseau"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
 
-
 --
 -- Name: V_Niveau_5; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
 CREATE VIEW geolocalisation."V_Niveau_5" AS
- SELECT n0."ID_Niveau_0",
-    n0."NomNiveau_0",
-    n1."ID_Niveau_1",
-    n1."NomNiveau_1",
-    n2."ID_Niveau_2",
-    n2."NomNiveau_2",
-    n3."ID_Niveau_3",
-    n3."NomNiveau_3",
-    n5."ID_TypeNiveau_5_Fk",
-    COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_5",
-    (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n5."NomNiveau_5", ''::character varying))::text) AS "SITE",
-    n5."AbreNiveau_5",
-    n5."CodeNiveau_5",
-    n5."PopulationNiveau_5",
-    n5."LongitudeNiveau_5",
-    n5."LatitudeNiveau_5",
-    n5."AltitudeNiveau_5",
-    n5."geometryNiveau_5",
-    COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
-    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_Site",
-    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_Site",
-    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
-    n3."KmAntenneBCZS",
-    n3."KmDPSBCZS",
-    n4."ID_Niveau_4",
-    n5."ID_Niveau_5",
-    n5."ID_Niveau_4_Fk",
-    n5."ID_Niveau_3_Fk",
-    n5."NomNiveau_5",
-    n5."KmZoneSanteNiveau_5",
-    n5."surfaceNiveau_5",
-    n5."ID_DispoReseauNiveau_5",
-    n5."ID_VoieAccesZsSiteFk",
-    n5."ID_StatutNiveau_5",
-    n5."ID_StatutDeploiementFk",
-    n5."ID_TypeToitFk",
-    n5."ObsNiveau_5",
-    n5."SelectNiveau_5",
-    n4."NomNiveau_4",
-    ( SELECT roof."AbrGenerique"
-           FROM referentiel."T_Generique" roof
-          WHERE (roof."ID_Generique" = n5."ID_TypeToitFk")) AS "Type_Toit",
-    n1."FusionNiveau_1",
-    n1."VisibleNiveau_1",
-    n1."VisibleNiveau_5",
-    n5.iso,
-    n5."uidSNIS",
-    n4."ID_TypeNiveau_4_Fk"
-   FROM ((((((((((geolocalisation."T_Niveau_5" n5
-     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n5."ID_Niveau_4_Fk" = n4."ID_Niveau_4")))
-     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk") = n3."ID_Niveau_3")))
-     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-     LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
-     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-     LEFT JOIN referentiel."T_Generique" g_type ON ((n5."ID_TypeNiveau_5_Fk" = g_type."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_reseau ON ((n5."ID_DispoReseauNiveau_5" = g_reseau."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_voie ON ((n5."ID_VoieAccesZsSiteFk" = g_voie."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_statut ON ((n5."ID_StatutNiveau_5" = g_statut."ID_Generique")))
-     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n5."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
-  ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n5."NomNiveau_5";
-
+ SELECT q."ID_Niveau_0",
+    q."NomNiveau_0",
+    q."ID_Niveau_1",
+    q."NomNiveau_1",
+    q."ID_Niveau_2",
+    q."NomNiveau_2",
+    q."ID_Niveau_3",
+    q."NomNiveau_3",
+    q."ID_TypeNiveau_5_Fk",
+    q."Type_Niveau_5",
+    q."SITE",
+    q."AbreNiveau_5",
+    q."CodeNiveau_5",
+    q."PopulationNiveau_5",
+    q."LongitudeNiveau_5",
+    q."LatitudeNiveau_5",
+    q."AltitudeNiveau_5",
+    q."geometryNiveau_5",
+    q."RESEAU",
+    q."VOIE_AS_Site",
+    q."STATUT_Site",
+    q."STATUT_DEPLOI",
+    q."KmAntenneBCZS",
+    q."KmDPSBCZS",
+    q."ID_Niveau_4",
+    q."ID_Niveau_5",
+    q."ID_Niveau_4_Fk",
+    q."ID_Niveau_3_Fk",
+    q."NomNiveau_5",
+    q."KmZoneSanteNiveau_5",
+    q."surfaceNiveau_5",
+    q."ID_DispoReseauNiveau_5",
+    q."ID_VoieAccesZsSiteFk",
+    q."ID_StatutNiveau_5",
+    q."ID_StatutDeploiementFk",
+    q."ID_TypeToitFk",
+    q."ObsNiveau_5",
+    q."SelectNiveau_5",
+    q."NomNiveau_4",
+    q."Type_Toit",
+    q."FusionNiveau_1",
+    q."VisibleNiveau_1",
+    q."VisibleNiveau_5",
+    q.iso,
+    q."uidSNIS",
+    q."ID_TypeNiveau_4_Fk",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."ModifieLe" AS "CoordonneesModifieLe"
+   FROM (( SELECT n0."ID_Niveau_0",
+            n0."NomNiveau_0",
+            n1."ID_Niveau_1",
+            n1."NomNiveau_1",
+            n2."ID_Niveau_2",
+            n2."NomNiveau_2",
+            n3."ID_Niveau_3",
+            n3."NomNiveau_3",
+            n5."ID_TypeNiveau_5_Fk",
+            COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_5",
+            (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n5."NomNiveau_5", ''::character varying))::text) AS "SITE",
+            n5."AbreNiveau_5",
+            n5."CodeNiveau_5",
+            n5."PopulationNiveau_5",
+            n5."LongitudeNiveau_5",
+            n5."LatitudeNiveau_5",
+            n5."AltitudeNiveau_5",
+            n5."geometryNiveau_5",
+            COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
+            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_Site",
+            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_Site",
+            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
+            n3."KmAntenneBCZS",
+            n3."KmDPSBCZS",
+            n4."ID_Niveau_4",
+            n5."ID_Niveau_5",
+            n5."ID_Niveau_4_Fk",
+            n5."ID_Niveau_3_Fk",
+            n5."NomNiveau_5",
+            n5."KmZoneSanteNiveau_5",
+            n5."surfaceNiveau_5",
+            n5."ID_DispoReseauNiveau_5",
+            n5."ID_VoieAccesZsSiteFk",
+            n5."ID_StatutNiveau_5",
+            n5."ID_StatutDeploiementFk",
+            n5."ID_TypeToitFk",
+            n5."ObsNiveau_5",
+            n5."SelectNiveau_5",
+            n4."NomNiveau_4",
+            ( SELECT roof."AbrGenerique"
+                   FROM referentiel."T_Generique" roof
+                  WHERE (roof."ID_Generique" = n5."ID_TypeToitFk")) AS "Type_Toit",
+            n1."FusionNiveau_1",
+            n1."VisibleNiveau_1",
+            n1."VisibleNiveau_5",
+            n5.iso,
+            n5."uidSNIS",
+            n4."ID_TypeNiveau_4_Fk"
+           FROM ((((((((((geolocalisation."T_Niveau_5" n5
+             LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n5."ID_Niveau_4_Fk" = n4."ID_Niveau_4")))
+             LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk") = n3."ID_Niveau_3")))
+             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+             LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
+             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+             LEFT JOIN referentiel."T_Generique" g_type ON ((n5."ID_TypeNiveau_5_Fk" = g_type."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_reseau ON ((n5."ID_DispoReseauNiveau_5" = g_reseau."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_voie ON ((n5."ID_VoieAccesZsSiteFk" = g_voie."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_statut ON ((n5."ID_StatutNiveau_5" = g_statut."ID_Generique")))
+             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n5."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
+          ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n5."NomNiveau_5") q
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_5Fk" = q."ID_Niveau_5")));
 
 --
 -- Name: VIEW "V_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_5" IS 'Référentiel territorial partagé du niveau 5. Conserve les colonnes historiques et les rattachements absents ; expose les identifiants et libellés actuels. Aucun compteur métier non disponible, budget ou intervention historique n’est inventé.';
-
+COMMENT ON VIEW geolocalisation."V_Niveau_5" IS 'Référentiel territorial partagé du niveau 5. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10766,13 +10922,11 @@ COMMENT ON VIEW geolocalisation."V_Niveau_5" IS 'Référentiel territorial parta
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_0" IS 'Identifiant de l’unité géographique de niveau 0. Expression projetée : n0."ID_Niveau_0".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_0" IS 'Nom de l’unité géographique de niveau 0. Expression projetée : n0."NomNiveau_0".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10780,13 +10934,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_0" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_1" IS 'Identifiant de l’unité géographique de niveau 1. Expression projetée : n1."ID_Niveau_1".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_1" IS 'Nom de l’unité géographique de niveau 1. Expression projetée : n1."NomNiveau_1".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10794,13 +10946,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_1" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_2" IS 'Identifiant de l’unité géographique de niveau 2. Expression projetée : n2."ID_Niveau_2".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_2" IS 'Nom de l’unité géographique de niveau 2. Expression projetée : n2."NomNiveau_2".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10808,13 +10958,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_2" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_3" IS 'Identifiant de l’unité géographique de niveau 3. Expression projetée : n3."ID_Niveau_3".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_3" IS 'Nom de l’unité géographique de niveau 3. Expression projetée : n3."NomNiveau_3".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_TypeNiveau_5_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10822,13 +10970,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_3" IS 'Nom de l’unit
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeNiveau_5_Fk" IS 'Type de l’unité géographique dans le référentiel. Expression projetée : n5."ID_TypeNiveau_5_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."Type_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Niveau_5" IS 'Abréviation du type d’unité de niveau 5 dans le référentiel. Expression projetée : COALESCE(g_type."AbrGenerique", ''''::character varying) AS "Type_Niveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."SITE"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10836,13 +10982,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Niveau_5" IS 'Abréviation 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."SITE" IS 'Libellé de présentation composé de l’abréviation du type et du nom brut de l’unité ; ne remplace pas l’identifiant. Expression projetée : (COALESCE(g_type."AbrGenerique", ''''::character varying)::text || '' ''::text) || COALESCE(n5."NomNiveau_5", ''''::character varying)::text AS "SITE".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."AbreNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."AbreNiveau_5" IS 'Abréviation de l’unité géographique de niveau 5. Expression projetée : n5."AbreNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."CodeNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10850,13 +10994,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."AbreNiveau_5" IS 'Abréviation d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."CodeNiveau_5" IS 'Code de référence de l’unité géographique de niveau 5. Expression projetée : n5."CodeNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."PopulationNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."PopulationNiveau_5" IS 'Population déclarée de l’unité géographique, exprimée en habitants de niveau 5. Expression projetée : n5."PopulationNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."LongitudeNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10864,13 +11006,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."PopulationNiveau_5" IS 'Populati
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."LongitudeNiveau_5" IS 'Longitude enregistrée pour l’unité géographique de niveau 5. Expression projetée : n5."LongitudeNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."LatitudeNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."LatitudeNiveau_5" IS 'Latitude enregistrée pour l’unité géographique de niveau 5. Expression projetée : n5."LatitudeNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."AltitudeNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10878,13 +11018,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."LatitudeNiveau_5" IS 'Latitude e
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."AltitudeNiveau_5" IS 'Altitude déclarée pour l’unité géographique ; l’unité n’est pas imposée par le schéma de niveau 5. Expression projetée : n5."AltitudeNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."geometryNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."geometryNiveau_5" IS 'Géométrie de l’unité géographique conservée en texte ; aucun type spatial n’est imposé par cette colonne de niveau 5. Expression projetée : n5."geometryNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."RESEAU"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10892,13 +11030,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."geometryNiveau_5" IS 'Géométri
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."RESEAU" IS 'Abréviation du statut de disponibilité réseau issu du référentiel. Expression projetée : COALESCE(g_reseau."AbrGenerique", '' ''::character varying) AS "RESEAU".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."VOIE_AS_Site"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VOIE_AS_Site" IS 'Abréviation de la voie d’accès zone/site selon le rattachement enregistré. Expression projetée : COALESCE(g_voie."AbrGenerique", '' ''::character varying) AS "VOIE_AS_Site".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."STATUT_Site"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10906,13 +11042,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VOIE_AS_Site" IS 'Abréviation d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."STATUT_Site" IS 'Abréviation du statut du site. Expression projetée : COALESCE(g_statut."AbrGenerique", '' ''::character varying) AS "STATUT_Site".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."STATUT_DEPLOI"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."STATUT_DEPLOI" IS 'Abréviation du statut de déploiement issu du référentiel. Expression projetée : COALESCE(g_deploiement."AbrGenerique", '' ''::character varying) AS "STATUT_DEPLOI".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."KmAntenneBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10920,13 +11054,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."STATUT_DEPLOI" IS 'Abréviation 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."KmAntenneBCZS" IS 'Distance enregistrée entre l’antenne et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmAntenneBCZS".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."KmDPSBCZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."KmDPSBCZS" IS 'Distance enregistrée entre la DPS et le bureau central de zone de santé, en kilomètres. Expression projetée : n3."KmDPSBCZS".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10934,13 +11066,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."KmDPSBCZS" IS 'Distance enregist
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_4" IS 'Identifiant de l’unité géographique de niveau 4. Expression projetée : n4."ID_Niveau_4".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_5" IS 'Identifiant de l’unité géographique de niveau 5. Expression projetée : n5."ID_Niveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_4_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10948,13 +11078,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_5" IS 'Identifiant de 
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_4_Fk" IS 'Unité géographique de rattachement de niveau 4. Expression projetée : n5."ID_Niveau_4_Fk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_Niveau_3_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_3_Fk" IS 'Unité géographique de rattachement de niveau 3. Expression projetée : n5."ID_Niveau_3_Fk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10962,13 +11090,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_Niveau_3_Fk" IS 'Unité géog
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_5" IS 'Nom de l’unité géographique de niveau 5. Expression projetée : n5."NomNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."KmZoneSanteNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."KmZoneSanteNiveau_5" IS 'Distance enregistrée entre la zone de santé et le site, en kilomètres. Expression projetée : n5."KmZoneSanteNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."surfaceNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10976,13 +11102,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."KmZoneSanteNiveau_5" IS 'Distanc
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."surfaceNiveau_5" IS 'Surface déclarée de l’unité géographique conservée en texte ; l’unité n’est pas imposée par le schéma de niveau 5. Expression projetée : n5."surfaceNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_DispoReseauNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_DispoReseauNiveau_5" IS 'Disponibilité du réseau déclarée pour l’unité géographique, dans le référentiel. Expression projetée : n5."ID_DispoReseauNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_VoieAccesZsSiteFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -10990,13 +11114,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_DispoReseauNiveau_5" IS 'Disp
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_VoieAccesZsSiteFk" IS 'Voie d’accès entre la zone de santé et le site. Expression projetée : n5."ID_VoieAccesZsSiteFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_StatutNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_StatutNiveau_5" IS 'Statut de l’unité géographique dans le référentiel. Expression projetée : n5."ID_StatutNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ID_StatutDeploiementFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11004,13 +11126,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_StatutNiveau_5" IS 'Statut de
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_StatutDeploiementFk" IS 'Statut de déploiement enregistré pour l’unité géographique. Expression projetée : n5."ID_StatutDeploiementFk".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_TypeToitFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeToitFk" IS 'Type de toiture du site, issu du référentiel. Expression projetée : n5."ID_TypeToitFk".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."ObsNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11018,13 +11138,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeToitFk" IS 'Type de toitu
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ObsNiveau_5" IS 'Observations sur l’unité géographique de niveau 5. Expression projetée : n5."ObsNiveau_5".';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."SelectNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."SelectNiveau_5" IS 'Indicateur de sélection enregistré pour l’unité géographique de niveau 5. Expression projetée : n5."SelectNiveau_5".';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."NomNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11032,13 +11150,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."SelectNiveau_5" IS 'Indicateur d
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_4" IS 'Nom courant de l’aire lorsque le site lui est réellement rattaché ; NULL si aucun rattachement à une aire.';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."Type_Toit"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Toit" IS 'Abréviation du type de toit selon la valeur générique enregistrée ; ne remplace pas sa clé étrangère.';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."FusionNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11046,13 +11162,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."Type_Toit" IS 'Abréviation du t
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."FusionNiveau_1" IS 'Indicateur de fusion de la province parente, sans exclusion implicite des sites.';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."VisibleNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_1" IS 'Visibilité déclarée de la province parente du site.';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."VisibleNiveau_5"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11060,13 +11174,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_1" IS 'Visibilité
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."VisibleNiveau_5" IS 'Visibilité déclarée des sites au niveau provincial parent.';
 
-
 --
 -- Name: COLUMN "V_Niveau_5".iso; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5".iso IS 'Code ISO ou identifiant géographique enregistré pour ce site.';
-
 
 --
 -- Name: COLUMN "V_Niveau_5"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -11074,13 +11186,11 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_5".iso IS 'Code ISO ou identifiant g
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."uidSNIS" IS 'Identifiant SNIS enregistré pour ce site.';
 
-
 --
 -- Name: COLUMN "V_Niveau_5"."ID_TypeNiveau_4_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."ID_TypeNiveau_4_Fk" IS 'Type de l’aire réellement liée au site ; NULL lorsque le site n’a pas d’aire ou que son type est absent. Permet le détail exact des analyses par type d’aire.';
-
 
 --
 -- Name: V_Pop_N3_Couverte_Sites; Type: VIEW; Schema: geolocalisation; Owner: -
@@ -31223,13 +31333,16 @@ CREATE VIEW support."V_ResolutionSupport" AS
     s."IdEntiteFk",
     concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "ProposePar",
     NULLIF(concat_ws(' '::text, v."PrenomUser", v."NomUser"), ''::text) AS "VerifiePar",
-    g."NomGenerique" AS "ResultatVerification"
+    (
+        CASE
+            WHEN (g."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((g."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (g."ID_Generique")::text))
+        END)::character varying(255) AS "ResultatVerification"
    FROM ((((support."T_ResolutionSupport" x
      JOIN support."T_Support" s ON ((s."ID_Support" = x."ID_SupportFk")))
      JOIN systeme."T_Utilisateurs" u ON ((u."IdUser" = x."ID_ProposeParFk")))
      LEFT JOIN systeme."T_Utilisateurs" v ON ((v."IdUser" = x."ID_VerifieParFk")))
      LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = x."ID_ResultatVerificationFk")));
-
 
 --
 -- Name: VIEW "V_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
@@ -31237,13 +31350,11 @@ CREATE VIEW support."V_ResolutionSupport" AS
 
 COMMENT ON VIEW support."V_ResolutionSupport" IS 'Toutes les tentatives successives et leurs vérifications, distinctes du statut courant du dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."ID_ResolutionSupport"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResolutionSupport" IS 'Donnée Support ID_ResolutionSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."ID_SupportFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31251,13 +31362,11 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResolutionSupport" IS 'Donn�
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ID_SupportFk" IS 'Donnée Support ID_SupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."CauseIdentifiee"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."CauseIdentifiee" IS 'Donnée Support CauseIdentifiee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."SolutionAppliquee"; Type: COMMENT; Schema: support; Owner: -
@@ -31265,13 +31374,11 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."CauseIdentifiee" IS 'Donnée Su
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."SolutionAppliquee" IS 'Donnée Support SolutionAppliquee : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."ID_ProposeParFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ProposeParFk" IS 'Auteur réel de cette tentative de résolution ; les tentatives antérieures restent conservées.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."DateProposition"; Type: COMMENT; Schema: support; Owner: -
@@ -31279,13 +31386,11 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ProposeParFk" IS 'Auteur ré
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."DateProposition" IS 'Donnée Support DateProposition : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."ID_ResultatVerificationFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResultatVerificationFk" IS 'Résultat dans T_Generique, parmi ceux capturés dans le circuit ; NULL tant que la solution n’est pas vérifiée.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."ID_VerifieParFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31293,13 +31398,11 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."ID_ResultatVerificationFk" IS '
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ID_VerifieParFk" IS 'Personne habilitée ayant vérifié la dernière solution, obligatoirement différente de son auteur.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."DateVerification"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."DateVerification" IS 'Donnée Support DateVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."CommentaireVerification"; Type: COMMENT; Schema: support; Owner: -
@@ -31307,13 +31410,11 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."DateVerification" IS 'Donnée S
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."CommentaireVerification" IS 'Donnée Support CommentaireVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
-
 
 --
 -- Name: COLUMN "V_ResolutionSupport"."ProposePar"; Type: COMMENT; Schema: support; Owner: -
@@ -31321,20 +31422,17 @@ COMMENT ON COLUMN support."V_ResolutionSupport"."IdEntiteFk" IS 'Entreprise prop
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."ProposePar" IS 'Donnée Support ProposePar : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."VerifiePar"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_ResolutionSupport"."VerifiePar" IS 'Donnée Support VerifiePar : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_ResolutionSupport"."ResultatVerification"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_ResolutionSupport"."ResultatVerification" IS 'Donnée Support ResultatVerification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_ResolutionSupport"."ResultatVerification" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: V_Support; Type: VIEW; Schema: support; Owner: -
@@ -31371,12 +31469,36 @@ CREATE VIEW support."V_Support" AS
     d."Nom" AS "Demandeur",
     concat_ws(' '::text, u."PrenomUser", u."NomUser") AS "Createur",
     NULLIF(concat_ws(' '::text, r."PrenomUser", r."NomUser"), ''::text) AS "Responsable",
-    typ."NomGenerique" AS "TypeSupport",
-    cat."NomGenerique" AS "CategorieSupport",
-    pri."NomGenerique" AS "Priorite",
-    sta."NomGenerique" AS "Statut",
-    can."NomGenerique" AS "CanalOrigine",
-    ser."NomGenerique" AS "ServiceConcerne",
+    (
+        CASE
+            WHEN (typ."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((typ."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (typ."ID_Generique")::text))
+        END)::character varying(255) AS "TypeSupport",
+    (
+        CASE
+            WHEN (cat."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((cat."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (cat."ID_Generique")::text))
+        END)::character varying(255) AS "CategorieSupport",
+    (
+        CASE
+            WHEN (pri."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((pri."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (pri."ID_Generique")::text))
+        END)::character varying(255) AS "Priorite",
+    (
+        CASE
+            WHEN (sta."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((sta."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (sta."ID_Generique")::text))
+        END)::character varying(255) AS "Statut",
+    (
+        CASE
+            WHEN (can."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((can."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (can."ID_Generique")::text))
+        END)::character varying(255) AS "CanalOrigine",
+    (
+        CASE
+            WHEN (ser."ID_Generique" IS NULL) THEN NULL::text
+            ELSE COALESCE(NULLIF(btrim((ser."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (ser."ID_Generique")::text))
+        END)::character varying(255) AS "ServiceConcerne",
     support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") AS "StatutCode",
     ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text]))) AS "Ouvert",
     ((NOT s."Archive") AND (support.fn_etat_support(s."CircuitSnapshot", s."ID_StatutFk") <> ALL (ARRAY['resolved'::text, 'closed'::text])) AND (s."DateEcheance" < clock_timestamp())) AS "EnRetard",
@@ -31412,13 +31534,11 @@ CREATE VIEW support."V_Support" AS
      LEFT JOIN logistique."T_Commande" c ON ((c."ID_Commande" = s."ID_CommandeFk")))
      LEFT JOIN logistique."T_Article" a ON ((a."ID_Article" = s."ID_ArticleFk")));
 
-
 --
 -- Name: VIEW "V_Support"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON VIEW support."V_Support" IS 'Une ligne par dossier avec labels de référence courants, rôles du circuit capturé, entreprise durable et indicateurs exacts ; le service applique le périmètre utilisateur et la visibilité des échanges.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_Support"; Type: COMMENT; Schema: support; Owner: -
@@ -31426,13 +31546,11 @@ COMMENT ON VIEW support."V_Support" IS 'Une ligne par dossier avec labels de ré
 
 COMMENT ON COLUMN support."V_Support"."ID_Support" IS 'Donnée Support ID_Support : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."IdEntiteFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."IdEntiteFk" IS 'Entreprise propriétaire durable, indépendante du rattachement actuel du créateur.';
-
 
 --
 -- Name: COLUMN "V_Support"."NumeroSupport"; Type: COMMENT; Schema: support; Owner: -
@@ -31440,13 +31558,11 @@ COMMENT ON COLUMN support."V_Support"."IdEntiteFk" IS 'Entreprise propriétaire 
 
 COMMENT ON COLUMN support."V_Support"."NumeroSupport" IS 'Numéro court SUP-identifiant attribué par PostgreSQL ; unique dans son entreprise et non modifiable.';
 
-
 --
 -- Name: COLUMN "V_Support"."Objet"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Objet" IS 'Donnée Support Objet : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."Description"; Type: COMMENT; Schema: support; Owner: -
@@ -31454,13 +31570,11 @@ COMMENT ON COLUMN support."V_Support"."Objet" IS 'Donnée Support Objet : valeur
 
 COMMENT ON COLUMN support."V_Support"."Description" IS 'Donnée Support Description : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_DemandeurFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_DemandeurFk" IS 'Tiers de T_Client dans la même entreprise ; peut ne pas disposer de compte connecté.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_CreateurFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31468,13 +31582,11 @@ COMMENT ON COLUMN support."V_Support"."ID_DemandeurFk" IS 'Tiers de T_Client dan
 
 COMMENT ON COLUMN support."V_Support"."ID_CreateurFk" IS 'Compte actif ayant réellement créé le dossier ; identité attribuée depuis le contexte transactionnel validé.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_ResponsableFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_ResponsableFk" IS 'Compte actif affectataire de la même entreprise ou administrateur de plateforme ; requis pour traiter le dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_ServiceConcerneFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31482,13 +31594,11 @@ COMMENT ON COLUMN support."V_Support"."ID_ResponsableFk" IS 'Compte actif affect
 
 COMMENT ON COLUMN support."V_Support"."ID_ServiceConcerneFk" IS 'Donnée Support ID_ServiceConcerneFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_TypeSupportFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_TypeSupportFk" IS 'Donnée Support ID_TypeSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_CategorieSupportFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31496,13 +31606,11 @@ COMMENT ON COLUMN support."V_Support"."ID_TypeSupportFk" IS 'Donnée Support ID_
 
 COMMENT ON COLUMN support."V_Support"."ID_CategorieSupportFk" IS 'Donnée Support ID_CategorieSupportFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_PrioriteFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_PrioriteFk" IS 'Donnée Support ID_PrioriteFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_StatutFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31510,13 +31618,11 @@ COMMENT ON COLUMN support."V_Support"."ID_PrioriteFk" IS 'Donnée Support ID_Pri
 
 COMMENT ON COLUMN support."V_Support"."ID_StatutFk" IS 'ID_Generique de l’état courant dans le circuit initial du dossier, distinct de son libellé modifiable.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_CanalOrigineFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_CanalOrigineFk" IS 'Donnée Support ID_CanalOrigineFk : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_ImmobilisationFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31524,13 +31630,11 @@ COMMENT ON COLUMN support."V_Support"."ID_CanalOrigineFk" IS 'Donnée Support ID
 
 COMMENT ON COLUMN support."V_Support"."ID_ImmobilisationFk" IS 'Matériel facultatif lié par FK réelle, propriétaire vérifié ; aucune opération de stock.';
 
-
 --
 -- Name: COLUMN "V_Support"."ID_CommandeFk"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."ID_CommandeFk" IS 'Bon facultatif lié par FK réelle et limité à la même entreprise.';
-
 
 --
 -- Name: COLUMN "V_Support"."ID_ArticleFk"; Type: COMMENT; Schema: support; Owner: -
@@ -31538,13 +31642,11 @@ COMMENT ON COLUMN support."V_Support"."ID_CommandeFk" IS 'Bon facultatif lié pa
 
 COMMENT ON COLUMN support."V_Support"."ID_ArticleFk" IS 'Article facultatif lié par FK réelle et limité à la même entreprise.';
 
-
 --
 -- Name: COLUMN "V_Support"."DateCreation"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."DateCreation" IS 'Donnée Support DateCreation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."DateModification"; Type: COMMENT; Schema: support; Owner: -
@@ -31552,13 +31654,11 @@ COMMENT ON COLUMN support."V_Support"."DateCreation" IS 'Donnée Support DateCre
 
 COMMENT ON COLUMN support."V_Support"."DateModification" IS 'Donnée Support DateModification : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."DateEcheance"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."DateEcheance" IS 'Donnée Support DateEcheance : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."DateResolution"; Type: COMMENT; Schema: support; Owner: -
@@ -31566,13 +31666,11 @@ COMMENT ON COLUMN support."V_Support"."DateEcheance" IS 'Donnée Support DateEch
 
 COMMENT ON COLUMN support."V_Support"."DateResolution" IS 'Instant effectif de passage à Résolu ; remise à NULL après réouverture, valeur antérieure conservée dans l’audit.';
 
-
 --
 -- Name: COLUMN "V_Support"."DateCloture"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."DateCloture" IS 'Instant de clôture après vérification conforme de la dernière solution ; NULL pendant un traitement rouvert.';
-
 
 --
 -- Name: COLUMN "V_Support"."VersionEnregistrement"; Type: COMMENT; Schema: support; Owner: -
@@ -31580,13 +31678,11 @@ COMMENT ON COLUMN support."V_Support"."DateCloture" IS 'Instant de clôture apr�
 
 COMMENT ON COLUMN support."V_Support"."VersionEnregistrement" IS 'Révision positive augmentée atomiquement à chaque écriture ; le service compare la version reçue sous verrou avant modification.';
 
-
 --
 -- Name: COLUMN "V_Support"."Archive"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Archive" IS 'Retrait du parcours actif sans suppression du dossier, de ses échanges, résolutions et preuves.';
-
 
 --
 -- Name: COLUMN "V_Support"."CircuitSnapshot"; Type: COMMENT; Schema: support; Owner: -
@@ -31594,13 +31690,11 @@ COMMENT ON COLUMN support."V_Support"."Archive" IS 'Retrait du parcours actif sa
 
 COMMENT ON COLUMN support."V_Support"."CircuitSnapshot" IS 'Copie immuable du circuit système et de sa version à la création, avec les ID_Generique des états et résultats ; une modification de configuration ne migre aucun dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."NomEntite"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."NomEntite" IS 'Donnée Support NomEntite : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."Entreprise"; Type: COMMENT; Schema: support; Owner: -
@@ -31608,13 +31702,11 @@ COMMENT ON COLUMN support."V_Support"."NomEntite" IS 'Donnée Support NomEntite 
 
 COMMENT ON COLUMN support."V_Support"."Entreprise" IS 'Donnée Support Entreprise : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."Demandeur"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Demandeur" IS 'Donnée Support Demandeur : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."Createur"; Type: COMMENT; Schema: support; Owner: -
@@ -31622,55 +31714,47 @@ COMMENT ON COLUMN support."V_Support"."Demandeur" IS 'Donnée Support Demandeur 
 
 COMMENT ON COLUMN support."V_Support"."Createur" IS 'Donnée Support Createur : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."Responsable"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Responsable" IS 'Donnée Support Responsable : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."TypeSupport"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."TypeSupport" IS 'Donnée Support TypeSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."TypeSupport" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."CategorieSupport"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."CategorieSupport" IS 'Donnée Support CategorieSupport : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."CategorieSupport" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."Priorite"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."Priorite" IS 'Donnée Support Priorite : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."Priorite" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."Statut"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."Statut" IS 'Donnée Support Statut : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."Statut" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."CanalOrigine"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."CanalOrigine" IS 'Donnée Support CanalOrigine : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."CanalOrigine" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."ServiceConcerne"; Type: COMMENT; Schema: support; Owner: -
 --
 
-COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Donnée Support ServiceConcerne : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
+COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Libellé courant de la valeur centrale liée : AbrGenerique nettoyée, ou indication neutre avec ID_Generique si elle manque. Les identifiants, codes du circuit et données historiques ne sont pas réécrits.';
 
 --
 -- Name: COLUMN "V_Support"."StatutCode"; Type: COMMENT; Schema: support; Owner: -
@@ -31678,13 +31762,11 @@ COMMENT ON COLUMN support."V_Support"."ServiceConcerne" IS 'Donnée Support Serv
 
 COMMENT ON COLUMN support."V_Support"."StatutCode" IS 'Rôle du statut dans le circuit capturé : new, active, pending, resolved ou closed ; les libellés proviennent du référentiel.';
 
-
 --
 -- Name: COLUMN "V_Support"."Ouvert"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Ouvert" IS 'Dossier non archivé non résolu et non clôturé ; inclut les états Nouveau, En cours et En attente.';
-
 
 --
 -- Name: COLUMN "V_Support"."EnRetard"; Type: COMMENT; Schema: support; Owner: -
@@ -31692,13 +31774,11 @@ COMMENT ON COLUMN support."V_Support"."Ouvert" IS 'Dossier non archivé non rés
 
 COMMENT ON COLUMN support."V_Support"."EnRetard" IS 'Dossier non archivé toujours ouvert avec échéance passée ; critère partagé par indicateur et liste.';
 
-
 --
 -- Name: COLUMN "V_Support"."CodeImmobilisation"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."CodeImmobilisation" IS 'Donnée Support CodeImmobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."NomImmobilisation"; Type: COMMENT; Schema: support; Owner: -
@@ -31706,13 +31786,11 @@ COMMENT ON COLUMN support."V_Support"."CodeImmobilisation" IS 'Donnée Support C
 
 COMMENT ON COLUMN support."V_Support"."NomImmobilisation" IS 'Donnée Support NomImmobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."CodeCmd"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."CodeCmd" IS 'Donnée Support CodeCmd : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."NomArticle"; Type: COMMENT; Schema: support; Owner: -
@@ -31720,13 +31798,11 @@ COMMENT ON COLUMN support."V_Support"."CodeCmd" IS 'Donnée Support CodeCmd : va
 
 COMMENT ON COLUMN support."V_Support"."NomArticle" IS 'Donnée Support NomArticle : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."Immobilisation"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Immobilisation" IS 'Donnée Support Immobilisation : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."BonStock"; Type: COMMENT; Schema: support; Owner: -
@@ -31734,13 +31810,11 @@ COMMENT ON COLUMN support."V_Support"."Immobilisation" IS 'Donnée Support Immob
 
 COMMENT ON COLUMN support."V_Support"."BonStock" IS 'Donnée Support BonStock : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."Article"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."Article" IS 'Donnée Support Article : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: COLUMN "V_Support"."NbCommentaires"; Type: COMMENT; Schema: support; Owner: -
@@ -31748,20 +31822,17 @@ COMMENT ON COLUMN support."V_Support"."Article" IS 'Donnée Support Article : va
 
 COMMENT ON COLUMN support."V_Support"."NbCommentaires" IS 'Donnée Support NbCommentaires : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."NbResolutions"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."NbResolutions" IS 'Donnée Support NbResolutions : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
 
-
 --
 -- Name: COLUMN "V_Support"."NbDocuments"; Type: COMMENT; Schema: support; Owner: -
 --
 
 COMMENT ON COLUMN support."V_Support"."NbDocuments" IS 'Donnée Support NbDocuments : valeur métier ou projection de la source liée, conservée avec son propriétaire et son contexte de dossier.';
-
 
 --
 -- Name: T_Admin_UI_Setting; Type: TABLE; Schema: systeme; Owner: -
@@ -32798,13 +32869,13 @@ CREATE TABLE systeme."T_ModuleApplication" (
     "TypeApplication" character varying(20) DEFAULT 'MODULE'::character varying NOT NULL,
     "Commercialisable" boolean DEFAULT false NOT NULL,
     "ModuleParentCode" character varying(32),
+    "AfficherDansEspace" boolean DEFAULT true CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" NOT NULL,
     CONSTRAINT "T_ModuleApplication_Nom_check" CHECK ((btrim(("Nom")::text) <> ''::text)),
     CONSTRAINT "T_ModuleApplication_check" CHECK ((("CodeIncluant")::text IS DISTINCT FROM ("CodeModule")::text)),
     CONSTRAINT ck_module_commercial CHECK (((NOT "Commercialisable") OR (("TypeApplication")::text = 'MODULE'::text))),
     CONSTRAINT ck_module_parent CHECK (((("ModuleParentCode")::text IS DISTINCT FROM ("CodeModule")::text) AND ((("TypeApplication")::text <> 'MODULE'::text) OR ("ModuleParentCode" IS NULL)))),
     CONSTRAINT ck_module_type_application CHECK ((("TypeApplication")::text = ANY (ARRAY[('MODULE'::character varying)::text, ('FONCTIONNALITE'::character varying)::text])))
 );
-
 
 --
 -- Name: TABLE "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
@@ -33712,15 +33783,13 @@ CREATE VIEW systeme."V_Entite_Public" AS
     jsonb_build_object('ID_Generique', g."ID_Generique", 'NomGenerique', g."NomGenerique", 'AbrGenerique', g."AbrGenerique") AS "T_Generique"
    FROM (systeme."T_Entite" e
      LEFT JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = e."IdTypeEntiteFk")))
-  WHERE (e."ValideEntite" = true);
-
+  WHERE ((e."ValideEntite" IS TRUE) AND (e."VisibleAnnuaireEntite" IS TRUE));
 
 --
 -- Name: VIEW "V_Entite_Public"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON VIEW systeme."V_Entite_Public" IS 'Annuaire public des structures actives au grain entité : nom, adresse et téléphone de structure, type ; aucune donnée de connexion utilisateur.';
-
+COMMENT ON VIEW systeme."V_Entite_Public" IS 'Projection historique à six colonnes des entreprises actives ayant explicitement publié leur fiche Structures. Nom, adresse, téléphone professionnel et type central uniquement. Le nom technique historique du parcours pharmacies ne qualifie pas toutes ces entreprises de pharmacie. Authentification, licence et droits restent contrôlés par les API.';
 
 --
 -- Name: COLUMN "V_Entite_Public"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -33728,13 +33797,11 @@ COMMENT ON VIEW systeme."V_Entite_Public" IS 'Annuaire public des structures act
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."IdEntite" IS 'Identifiant de l’entité.';
 
-
 --
 -- Name: COLUMN "V_Entite_Public"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."NomEntite" IS 'Nom de la structure ou organisation.';
-
 
 --
 -- Name: COLUMN "V_Entite_Public"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -33742,13 +33809,11 @@ COMMENT ON COLUMN systeme."V_Entite_Public"."NomEntite" IS 'Nom de la structure 
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."PhoneEntite" IS 'Téléphone de contact de l’entité.';
 
-
 --
 -- Name: COLUMN "V_Entite_Public"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."AdresseEntite" IS 'Adresse générale enregistrée pour l’entité.';
-
 
 --
 -- Name: COLUMN "V_Entite_Public"."ValideEntite"; Type: COMMENT; Schema: systeme; Owner: -
@@ -33756,13 +33821,11 @@ COMMENT ON COLUMN systeme."V_Entite_Public"."AdresseEntite" IS 'Adresse généra
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."ValideEntite" IS 'Indique si l’entité est déclaré valide/actif dans le registre ; distinct des qualifications calculées dans les vues.';
 
-
 --
 -- Name: COLUMN "V_Entite_Public"."T_Generique"; Type: COMMENT; Schema: systeme; Owner: -
 --
 
 COMMENT ON COLUMN systeme."V_Entite_Public"."T_Generique" IS 'Type de structure sous forme JSON : identifiant, nom et abréviation du référentiel.';
-
 
 --
 -- Name: V_Fk_Correspondance; Type: VIEW; Schema: systeme; Owner: -
@@ -44988,6 +45051,727 @@ COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".area IS 'Nom du niveau
 --
 
 COMMENT ON COLUMN logistique."V_OffreArticleLocalisation".site IS 'Nom du niveau 5 explicitement rattaché au point, sans garantie de disponibilité de l’article sur ce site.';
+
+--
+-- Name: COLUMN "T_Entite"."VisibleAnnuaireEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."VisibleAnnuaireEntite" IS 'Autorisation explicite de publier la fiche professionnelle dans l’annuaire Structures authentifié. False par défaut, y compris pour les entreprises antérieures. Une entreprise inactive reste masquée. Indépendant du partage des articles : ce choix ne modifie aucune offre ni quantité de stock.';
+
+--
+-- Name: COLUMN "T_Entite"."PresentationPubliqueEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_Entite"."PresentationPubliqueEntite" IS 'Présentation professionnelle facultative de 5 000 caractères au maximum, visible seulement pour une entreprise active ayant autorisé sa publication. Texte affiché sans interprétation HTML ; aucune donnée légale, RH ou de connexion n’est déduite de cette présentation.';
+
+--
+-- Name: CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_Entite_VisibleAnnuaireEntite_not_null" ON systeme."T_Entite" IS 'Le consentement de publication de la fiche entreprise est toujours explicite : true ou false, jamais une absence interprétée comme autorisation.';
+
+--
+-- Name: CONSTRAINT ck_entite_presentation_publique ON "T_Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_entite_presentation_publique ON systeme."T_Entite" IS 'Limite la présentation professionnelle facultative de l’annuaire Structures à 5 000 caractères. NULL signifie absence de présentation.';
+
+--
+-- Name: V_StructurePublique; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_StructurePublique" AS
+ SELECT e."IdEntite",
+    e."NomEntite",
+    e."IdTypeEntiteFk",
+    COALESCE(NULLIF((t."AbrGenerique")::text, ''::text), (t."NomGenerique")::text) AS "TypeEntite",
+    e."AdresseEntite",
+    e."PhoneEntite",
+    e."SiteWebEntite",
+    e."PresentationPubliqueEntite",
+    (e."LogoEntite" IS NOT NULL) AS "HasLogo",
+    e."LogoMimeEntite",
+    e."LogoSha256Entite"
+   FROM (systeme."T_Entite" e
+     LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = e."IdTypeEntiteFk")))
+  WHERE ((e."ValideEntite" IS TRUE) AND (e."VisibleAnnuaireEntite" IS TRUE));
+
+--
+-- Name: VIEW "V_StructurePublique"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_StructurePublique" IS 'Annuaire transversal des entreprises actives dont la publication a été explicitement autorisée. Grain entreprise, projection fermée : identité professionnelle, type central déjà enregistré, coordonnées professionnelles déclarées, présentation et métadonnées du logo. Exclut comptes, données RH, e-mail, identifiants fiscaux/légaux et octets du logo. Ne prouve ni qualification médicale, agrément, horaires ni proximité. Aucune permission applicative ni publication d’article n’est accordée par cette vue.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."IdEntite" IS 'Identifiant de la structure publiée ; le détail et le logo doivent revérifier sa publication actuelle.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."NomEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."NomEntite" IS 'Nom courant déclaré de l’entreprise ayant autorisé sa publication, sans requalification automatique.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."IdTypeEntiteFk"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."IdTypeEntiteFk" IS 'Valeur centrale ID_Generique déjà enregistrée sur l’entreprise. Le référencement du champ détermine la famille proposée aux nouvelles saisies.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."TypeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."TypeEntite" IS 'Abréviation courante de la valeur centrale de type, ou son nom si elle est absente. Une ancienne valeur reste identifiable sans être réécrite.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."AdresseEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."AdresseEntite" IS 'Adresse professionnelle générale déclarée par l’entreprise ; aucune géolocalisation automatique ni distance calculée.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."PhoneEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."PhoneEntite" IS 'Téléphone professionnel déclaré de l’entreprise publiée, distinct des coordonnées personnelles des comptes.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."SiteWebEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."SiteWebEntite" IS 'Site web facultatif déclaré de l’entreprise. Son affichage ne constitue pas une validation ou un agrément.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."PresentationPubliqueEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."PresentationPubliqueEntite" IS 'Présentation professionnelle facultative autorisée à la publication, affichée comme texte sans interprétation HTML.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."HasLogo"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."HasLogo" IS 'Indique la présence du logo existant validé par les contraintes de l’identité documentaire ; ses octets sont exclus de la projection.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."LogoMimeEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."LogoMimeEntite" IS 'Type MIME du logo validé, permettant la réponse binaire authentifiée après contrôle de publication.';
+
+--
+-- Name: COLUMN "V_StructurePublique"."LogoSha256Entite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructurePublique"."LogoSha256Entite" IS 'Empreinte du logo validé destinée à sa révision de lecture ; aucun contenu binaire ou chemin privé n’est exposé.';
+
+--
+-- Name: V_StructureLocalisation; Type: VIEW; Schema: systeme; Owner: -
+--
+
+CREATE VIEW systeme."V_StructureLocalisation" AS
+ SELECT s."IdEntite",
+    COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) AS label,
+    NULLIF(l."AdresseDetaillee", ''::text) AS address,
+    NULLIF((l."NomNiveau_3")::text, ''::text) AS zone,
+    NULLIF((l."NomNiveau_4")::text, ''::text) AS area,
+    NULLIF((l."NomNiveau_5")::text, ''::text) AS site
+   FROM (systeme."V_StructurePublique" s
+     JOIN systeme."V_Entite_Localisation_Detail" l ON ((l."IdEntite" = s."IdEntite")))
+  WHERE ((l."IdEntiteLocalisation" IS NOT NULL) AND (COALESCE(NULLIF((l."NomNiveau_5")::text, ''::text), NULLIF((l."NomNiveau_4")::text, ''::text), NULLIF((l."NomNiveau_3")::text, ''::text), NULLIF(l."AdresseDetaillee", ''::text)) IS NOT NULL));
+
+--
+-- Name: VIEW "V_StructureLocalisation"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON VIEW systeme."V_StructureLocalisation" IS 'Lieux professionnels existants explicitement déclarés par une entreprise actuellement publiée. Grain entreprise/localisation, noms et adresse seulement ; aucune ligne fictive sans point. Exclut GPS brut, identifiant de point, auteur et historique. Les liens territoriaux absents ne sont pas inférés et aucune proximité ou présence de produits/professionnels n’est déduite.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation"."IdEntite"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation"."IdEntite" IS 'Entreprise actuellement active et publiée portant le lieu professionnel déclaré.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".label; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".label IS 'Libellé déclaré le plus précis : niveau 5, sinon 4, sinon 3, sinon adresse détaillée.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".address; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".address IS 'Adresse détaillée professionnelle enregistrée sur ce point, sans coordonnée de son auteur.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".zone; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".zone IS 'Nom du niveau 3 explicitement rattaché au point ; aucune parenté non renseignée n’est inventée.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".area; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".area IS 'Nom du niveau 4 explicitement rattaché au point, sans résolution automatique d’une hiérarchie internationale.';
+
+--
+-- Name: COLUMN "V_StructureLocalisation".site; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."V_StructureLocalisation".site IS 'Nom du niveau 5 explicitement rattaché au point, sans certification ou qualification de la structure.';
+
+--
+-- Name: FUNCTION tr_coordonnees_territoire_integrite(); Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON FUNCTION geolocalisation.tr_coordonnees_territoire_integrite() IS 'Verrouille le territoire parent pour chaque insertion, modification ou suppression, comme le service versionné. Préserve l’identité et le rattachement de la fiche ; impose horodatage et acteur transactionnel actif. Un ordre externe inverse peut provoquer un deadlock annulé par PostgreSQL, jamais une perte silencieuse. Le contexte d’audit ne constitue pas une permission.';
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: TABLE "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Coordonnées professionnelles facultatives d’un territoire partagé de niveau 1 à 5, une seule fiche par territoire. Rattachement explicite et immuable, sans entreprise propriétaire ou affiliation inventée. Les coordonnées de personnes, GPS, horaires déduits et contacts importés sans provenance n’y sont pas ajoutés. L’accès reste contrôlé par les services territoriaux.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_CoordonneesTerritoire" IS 'Identifiant technique unique de la fiche de coordonnées territoriales, généré en base.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_1Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_1Fk" IS 'Rattachement explicite au territoire existant de niveau 1. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_2Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_2Fk" IS 'Rattachement explicite au territoire existant de niveau 2. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_3Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_3Fk" IS 'Rattachement explicite au territoire existant de niveau 3. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_4Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_4Fk" IS 'Rattachement explicite au territoire existant de niveau 4. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_5Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_5Fk" IS 'Rattachement explicite au territoire existant de niveau 5. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."AdresseTerritoire" IS 'Adresse professionnelle déclarée, facultative, 2 000 caractères au maximum ; les retours à la ligne sont admis. Aucune localisation n’est calculée.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré pour ce territoire, facultatif, 50 caractères au maximum ; aucune qualification automatique.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré, 50 caractères au maximum, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."EmailTerritoire" IS 'Adresse e-mail professionnelle déclarée, facultative, 255 caractères au maximum sans espaces ni contrôles. Le format est validé par le service avant enregistrement.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."SiteWebTerritoire" IS 'URL professionnelle déclarée, facultative, 255 caractères au maximum sans espaces ni contrôles. Le service limite les liens aux schémas web autorisés.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées en texte simple, facultatives, 3 000 caractères au maximum. Ne constitue pas une vérification d’horaires, d’agrément ou de permanence.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ModifieLe" IS 'Instant technique réel de la dernière écriture, imposé par le trigger ; ne prouve pas une vérification métier des coordonnées.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ModifieParUserFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ModifieParUserFk" IS 'Acteur actif du contexte systeme.actor_user_id, imposé par le trigger ; NULL lorsqu’aucun acteur valide n’est disponible. Ne constitue pas une autorisation.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Valeur technique obligatoire, produite et contrôlée en PostgreSQL.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Valeur technique obligatoire, produite et contrôlée en PostgreSQL.';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_accueil ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_accueil ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''''::text, ''''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_adresse ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_adresse ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''''::text, ''''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_email ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_email ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ ''[[:space:][:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_parent_unique ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_parent_unique ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_site_web ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_site_web ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ ''[[:space:][:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_telephone ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_telephone ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_telephone_secondaire ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_telephone_secondaire ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: SEQUENCE "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON SEQUENCE geolocalisation."T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq" IS 'Génération de l’identifiant des coordonnées territoriales ; les écarts de numérotation ne prouvent pas une suppression.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_pkey" PRIMARY KEY ("ID_CoordonneesTerritoire");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_pkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_pkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Identifiant unique de la fiche de coordonnées territoriales.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_1; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_1 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_1Fk") WHERE ("ID_Niveau_1Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_1; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_1 IS 'Une seule fiche de coordonnées par territoire de niveau 1 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_2; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_2 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_2Fk") WHERE ("ID_Niveau_2Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_2; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_2 IS 'Une seule fiche de coordonnées par territoire de niveau 2 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_3; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_3 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_3Fk") WHERE ("ID_Niveau_3Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_3; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_3 IS 'Une seule fiche de coordonnées par territoire de niveau 3 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_4; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_4 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_4Fk") WHERE ("ID_Niveau_4Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_4; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_4 IS 'Une seule fiche de coordonnées par territoire de niveau 4 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_5; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_5 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_5Fk") WHERE ("ID_Niveau_5Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_5; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_5 IS 'Une seule fiche de coordonnées par territoire de niveau 5 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: T_CoordonneesTerritoire coordonnees_territoire_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER coordonnees_territoire_integrite BEFORE INSERT OR DELETE OR UPDATE ON geolocalisation."T_CoordonneesTerritoire" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_coordonnees_territoire_integrite();
+
+--
+-- Name: TRIGGER coordonnees_territoire_integrite ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER coordonnees_territoire_integrite ON geolocalisation."T_CoordonneesTerritoire" IS 'Verrouille le territoire parent pour toutes les écritures, contrôle les métadonnées et interdit de réaffecter une fiche existante à un autre territoire.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" FOREIGN KEY ("ID_Niveau_1Fk") REFERENCES geolocalisation."T_Niveau_1"("ID_Niveau_1");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" FOREIGN KEY ("ID_Niveau_2Fk") REFERENCES geolocalisation."T_Niveau_2"("ID_Niveau_2");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" FOREIGN KEY ("ID_Niveau_3Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" FOREIGN KEY ("ID_Niveau_4Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" FOREIGN KEY ("ID_Niveau_5Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."AdresseTerritoire" IS 'Adresse professionnelle facultative explicitement déclarée pour ce territoire ; aucune localisation calculée.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré du territoire, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré pour le territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."EmailTerritoire" IS 'Adresse e-mail professionnelle facultative déclarée du territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."SiteWebTerritoire" IS 'Site web professionnel facultatif déclaré du territoire, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées, affichées en texte simple sans garantie de permanence ou de certification.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."CoordonneesModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."CoordonneesModifieLe" IS 'Dernière écriture technique de la fiche de coordonnées ; NULL en son absence. Ne constitue pas une date de vérification métier.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."AdresseTerritoire" IS 'Adresse professionnelle facultative explicitement déclarée pour ce territoire ; aucune localisation calculée.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré du territoire, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré pour le territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."EmailTerritoire" IS 'Adresse e-mail professionnelle facultative déclarée du territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."SiteWebTerritoire" IS 'Site web professionnel facultatif déclaré du territoire, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées, affichées en texte simple sans garantie de permanence ou de certification.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."CoordonneesModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."CoordonneesModifieLe" IS 'Dernière écriture technique de la fiche de coordonnées ; NULL en son absence. Ne constitue pas une date de vérification métier.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."AdresseTerritoire" IS 'Adresse professionnelle facultative explicitement déclarée pour ce territoire ; aucune localisation calculée.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré du territoire, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré pour le territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."EmailTerritoire" IS 'Adresse e-mail professionnelle facultative déclarée du territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."SiteWebTerritoire" IS 'Site web professionnel facultatif déclaré du territoire, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées, affichées en texte simple sans garantie de permanence ou de certification.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."CoordonneesModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."CoordonneesModifieLe" IS 'Dernière écriture technique de la fiche de coordonnées ; NULL en son absence. Ne constitue pas une date de vérification métier.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AdresseTerritoire" IS 'Adresse professionnelle facultative explicitement déclarée pour ce territoire ; aucune localisation calculée.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré du territoire, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré pour le territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."EmailTerritoire" IS 'Adresse e-mail professionnelle facultative déclarée du territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."SiteWebTerritoire" IS 'Site web professionnel facultatif déclaré du territoire, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées, affichées en texte simple sans garantie de permanence ou de certification.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."CoordonneesModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."CoordonneesModifieLe" IS 'Dernière écriture technique de la fiche de coordonnées ; NULL en son absence. Ne constitue pas une date de vérification métier.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."AdresseTerritoire" IS 'Adresse professionnelle facultative explicitement déclarée pour ce territoire ; aucune localisation calculée.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré du territoire, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré pour le territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."EmailTerritoire" IS 'Adresse e-mail professionnelle facultative déclarée du territoire.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."SiteWebTerritoire" IS 'Site web professionnel facultatif déclaré du territoire, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées, affichées en texte simple sans garantie de permanence ou de certification.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."CoordonneesModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."CoordonneesModifieLe" IS 'Dernière écriture technique de la fiche de coordonnées ; NULL en son absence. Ne constitue pas une date de vérification métier.';
+
+--
+-- Name: COLUMN "T_ModuleApplication"."AfficherDansEspace"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_ModuleApplication"."AfficherDansEspace" IS 'Affiche une tuile dans le lanceur des applications autorisées ; ne change ni les droits, ni les licences, ni les données ou les API du module.';
+
+--
+-- Name: CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" ON "T_ModuleApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" ON systeme."T_ModuleApplication" IS 'La visibilité du lanceur est explicite pour chaque application ; elle vaut Oui par défaut sans modifier ses habilitations.';
 
 --
 -- PostgreSQL database dump complete

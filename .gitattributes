@@ -1,0 +1,9 @@
+# Les instantanés PostgreSQL contiennent des retours CR/LF dans certains
+# littéraux et corps de fonctions. Conserver leurs octets au dépôt/checkout.
+SQL/SauverNdeko_Structure.sql -text
+SQL/SauverNdeko_Metier_Structure.sql -text
+"SQL/1. Schema systeme/Systeme_Tables.sql" -text
+"SQL/1. Schema systeme/Systeme_View.sql" -text
+"SQL/4. Schema geolocalisation/geolocalisation_Tables.sql" -text
+"SQL/4. Schema geolocalisation/geolocalisation_views.sql" -text
+"SQL/8. Schema support/Support_views.sql" -text

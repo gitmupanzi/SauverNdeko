@@ -2011,6 +2011,410 @@ COMMENT ON CONSTRAINT "Fk_TypeNiveau_5_Generique" ON geolocalisation."T_Niveau_5
 
 
 --
+-- Name: tr_coordonnees_territoire_integrite(); Type: FUNCTION; Schema: geolocalisation; Owner: -
+--
+
+CREATE FUNCTION geolocalisation.tr_coordonnees_territoire_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+DECLARE parent_data jsonb; level integer; parent_id integer;
+BEGIN
+ IF TG_OP='UPDATE' AND ROW(NEW."ID_CoordonneesTerritoire",NEW."ID_Niveau_1Fk",NEW."ID_Niveau_2Fk",
+   NEW."ID_Niveau_3Fk",NEW."ID_Niveau_4Fk",NEW."ID_Niveau_5Fk") IS DISTINCT FROM
+   ROW(OLD."ID_CoordonneesTerritoire",OLD."ID_Niveau_1Fk",OLD."ID_Niveau_2Fk",OLD."ID_Niveau_3Fk",
+   OLD."ID_Niveau_4Fk",OLD."ID_Niveau_5Fk") THEN
+  RAISE EXCEPTION 'Le territoire d’une fiche de coordonnées enregistrée est conservé.'
+   USING ERRCODE='23514',CONSTRAINT='ck_coordonnees_territoire_parent_immuable';
+ END IF;
+ -- Même verrou commun que l’édition territoriale dédiée. Une écriture SQL
+ -- directe ne peut se glisser entre sa vérification de révision et l’upsert.
+ -- Un ordre inverse externe peut produire un deadlock : PostgreSQL annule alors
+ -- une transaction, sans écrasement silencieux de la dernière modification.
+ parent_data:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+ FOR level IN 1..5 LOOP
+  parent_id:=(parent_data->>('ID_Niveau_'||level||'Fk'))::integer;
+  IF parent_id IS NOT NULL THEN
+   EXECUTE format('SELECT 1 FROM geolocalisation.%I WHERE %I=$1 FOR UPDATE',
+    'T_Niveau_'||level,'ID_Niveau_'||level) USING parent_id;
+  END IF;
+ END LOOP;
+ IF TG_OP='DELETE' THEN RETURN OLD;END IF;
+ NEW."ModifieLe":=clock_timestamp();
+ NEW."ModifieParUserFk":=systeme.fn_admin_actor_user_id();
+ RETURN NEW;
+END $_$;
+
+--
+-- Name: FUNCTION tr_coordonnees_territoire_integrite(); Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON FUNCTION geolocalisation.tr_coordonnees_territoire_integrite() IS 'Verrouille le territoire parent pour chaque insertion, modification ou suppression, comme le service versionné. Préserve l’identité et le rattachement de la fiche ; impose horodatage et acteur transactionnel actif. Un ordre externe inverse peut provoquer un deadlock annulé par PostgreSQL, jamais une perte silencieuse. Le contexte d’audit ne constitue pas une permission.';
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: T_CoordonneesTerritoire; Type: TABLE; Schema: geolocalisation; Owner: -
+--
+
+CREATE TABLE geolocalisation."T_CoordonneesTerritoire" (
+    "ID_CoordonneesTerritoire" bigint CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" NOT NULL,
+    "ID_Niveau_1Fk" integer,
+    "ID_Niveau_2Fk" integer,
+    "ID_Niveau_3Fk" integer,
+    "ID_Niveau_4Fk" integer,
+    "ID_Niveau_5Fk" integer,
+    "AdresseTerritoire" text,
+    "TelephoneTerritoire" character varying(50),
+    "TelephoneSecondaireTerritoire" character varying(50),
+    "EmailTerritoire" character varying(255),
+    "SiteWebTerritoire" character varying(255),
+    "InformationsAccueilTerritoire" text,
+    "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" NOT NULL,
+    "ModifieParUserFk" integer,
+    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_parent_unique CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1)),
+    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
+);
+
+--
+-- Name: TABLE "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Coordonnées professionnelles facultatives d’un territoire partagé de niveau 1 à 5, une seule fiche par territoire. Rattachement explicite et immuable, sans entreprise propriétaire ou affiliation inventée. Les coordonnées de personnes, GPS, horaires déduits et contacts importés sans provenance n’y sont pas ajoutés. L’accès reste contrôlé par les services territoriaux.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_CoordonneesTerritoire" IS 'Identifiant technique unique de la fiche de coordonnées territoriales, généré en base.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_1Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_1Fk" IS 'Rattachement explicite au territoire existant de niveau 1. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_2Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_2Fk" IS 'Rattachement explicite au territoire existant de niveau 2. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_3Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_3Fk" IS 'Rattachement explicite au territoire existant de niveau 3. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_4Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_4Fk" IS 'Rattachement explicite au territoire existant de niveau 4. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ID_Niveau_5Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ID_Niveau_5Fk" IS 'Rattachement explicite au territoire existant de niveau 5. Une seule des cinq FK est renseignée ; ce rattachement est immuable.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."AdresseTerritoire" IS 'Adresse professionnelle déclarée, facultative, 2 000 caractères au maximum ; les retours à la ligne sont admis. Aucune localisation n’est calculée.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."TelephoneTerritoire" IS 'Téléphone professionnel principal déclaré pour ce territoire, facultatif, 50 caractères au maximum ; aucune qualification automatique.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."TelephoneSecondaireTerritoire" IS 'Téléphone professionnel secondaire facultatif déclaré, 50 caractères au maximum, distinct des comptes utilisateurs.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."EmailTerritoire" IS 'Adresse e-mail professionnelle déclarée, facultative, 255 caractères au maximum sans espaces ni contrôles. Le format est validé par le service avant enregistrement.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."SiteWebTerritoire" IS 'URL professionnelle déclarée, facultative, 255 caractères au maximum sans espaces ni contrôles. Le service limite les liens aux schémas web autorisés.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."InformationsAccueilTerritoire" IS 'Informations d’accueil déclarées en texte simple, facultatives, 3 000 caractères au maximum. Ne constitue pas une vérification d’horaires, d’agrément ou de permanence.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ModifieLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ModifieLe" IS 'Instant technique réel de la dernière écriture, imposé par le trigger ; ne prouve pas une vérification métier des coordonnées.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."ModifieParUserFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."ModifieParUserFk" IS 'Acteur actif du contexte systeme.actor_user_id, imposé par le trigger ; NULL lorsqu’aucun acteur valide n’est disponible. Ne constitue pas une autorisation.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Valeur technique obligatoire, produite et contrôlée en PostgreSQL.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Valeur technique obligatoire, produite et contrôlée en PostgreSQL.';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_accueil ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_accueil ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''''::text, ''''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_adresse ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_adresse ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''''::text, ''''::text), ''
+''::text, ''''::text) !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_email ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_email ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ ''[[:space:][:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_parent_unique ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_parent_unique ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_site_web ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_site_web ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ ''[[:space:][:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_telephone ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_telephone ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_telephone_secondaire ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_telephone_secondaire ON geolocalisation."T_CoordonneesTerritoire" IS 'Contrôle du rattachement exclusif ou de la longueur et du contenu déclaré ; absence représentée par NULL. Définition : CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ ''[[:cntrl:]]''::text))))';
+
+--
+-- Name: T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq; Type: SEQUENCE; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE geolocalisation."T_CoordonneesTerritoire" ALTER COLUMN "ID_CoordonneesTerritoire" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME geolocalisation."T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON SEQUENCE geolocalisation."T_CoordonneesTerritoire_ID_CoordonneesTerritoire_seq" IS 'Génération de l’identifiant des coordonnées territoriales ; les écarts de numérotation ne prouvent pas une suppression.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_pkey" PRIMARY KEY ("ID_CoordonneesTerritoire");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_pkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_pkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Identifiant unique de la fiche de coordonnées territoriales.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_1; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_1 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_1Fk") WHERE ("ID_Niveau_1Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_1; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_1 IS 'Une seule fiche de coordonnées par territoire de niveau 1 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_2; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_2 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_2Fk") WHERE ("ID_Niveau_2Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_2; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_2 IS 'Une seule fiche de coordonnées par territoire de niveau 2 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_3; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_3 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_3Fk") WHERE ("ID_Niveau_3Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_3; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_3 IS 'Une seule fiche de coordonnées par territoire de niveau 3 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_4; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_4 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_4Fk") WHERE ("ID_Niveau_4Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_4; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_4 IS 'Une seule fiche de coordonnées par territoire de niveau 4 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: uq_coordonnees_territoire_niveau_5; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_coordonnees_territoire_niveau_5 ON geolocalisation."T_CoordonneesTerritoire" USING btree ("ID_Niveau_5Fk") WHERE ("ID_Niveau_5Fk" IS NOT NULL);
+
+--
+-- Name: INDEX uq_coordonnees_territoire_niveau_5; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_coordonnees_territoire_niveau_5 IS 'Une seule fiche de coordonnées par territoire de niveau 5 ; aucune multiplication de lignes dans sa vue.';
+
+--
+-- Name: T_CoordonneesTerritoire coordonnees_territoire_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER coordonnees_territoire_integrite BEFORE INSERT OR DELETE OR UPDATE ON geolocalisation."T_CoordonneesTerritoire" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_coordonnees_territoire_integrite();
+
+--
+-- Name: TRIGGER coordonnees_territoire_integrite ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER coordonnees_territoire_integrite ON geolocalisation."T_CoordonneesTerritoire" IS 'Verrouille le territoire parent pour toutes les écritures, contrôle les métadonnées et interdit de réaffecter une fiche existante à un autre territoire.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" FOREIGN KEY ("ID_Niveau_1Fk") REFERENCES geolocalisation."T_Niveau_1"("ID_Niveau_1");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_1Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" FOREIGN KEY ("ID_Niveau_2Fk") REFERENCES geolocalisation."T_Niveau_2"("ID_Niveau_2");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_2Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" FOREIGN KEY ("ID_Niveau_3Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_3Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" FOREIGN KEY ("ID_Niveau_4Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_4Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" FOREIGN KEY ("ID_Niveau_5Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ID_Niveau_5Fk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: T_CoordonneesTerritoire T_CoordonneesTerritoire_ModifieParUserFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
+    ADD CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" FOREIGN KEY ("ModifieParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser");
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
 -- PostgreSQL database dump complete
 --
 

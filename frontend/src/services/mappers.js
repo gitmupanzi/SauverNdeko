@@ -1,3 +1,4 @@
+import {referenceLabel} from "../utils/referenceOptions";
 import {formatCurrency} from "../utils/money";
 
 export function normalizeText(value) {
@@ -91,7 +92,7 @@ export function mapArticlePublic(item, index) {
 }
 
 export function mapPharmacyPublic(item, index) {
-  const type = pickNested(item, [["T_Generique", "NomGenerique"], ["type"], ["TypeStructure"]], "Structure");
+  const type = item?.T_Generique ? referenceLabel(item.T_Generique) : pickNested(item, [["type"], ["TypeStructure"]], "Structure");
   const status = getFirstDefined(item?.StatutPublic, item?.statut, item?.ValideEntite);
 
   return {
@@ -132,14 +133,14 @@ export function mapExpertPublic(item, index) {
     lastName: lastName || fullName.split(" ").slice(1).join(" "),
     fullName,
     photo: pickNested(item, [["T_Utilisateurs", "UrlPhoto"], ["photo"], ["Photo"]], "/illustration-experts.svg"),
-    professionalType: pickNested(
+    professionalType: item?.T_GeneriqueType ? referenceLabel(item.T_GeneriqueType) : pickNested(
       item,
-      [["T_GeneriqueType", "NomGenerique"], ["typeProfessionnel"], ["professionalType"]],
+      [["typeProfessionnel"], ["professionalType"]],
       "Professionnel"
     ),
-    specialty: pickNested(
+    specialty: item?.T_GeneriqueSpecialite ? referenceLabel(item.T_GeneriqueSpecialite) : pickNested(
       item,
-      [["T_GeneriqueSpecialite", "NomGenerique"], ["specialite"], ["specialty"]],
+      [["specialite"], ["specialty"]],
       "Specialite a confirmer"
     ),
     experience: getFirstDefined(item?.ExperienceAns, item?.experience, item?.experienceYears, null),

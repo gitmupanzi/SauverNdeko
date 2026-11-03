@@ -44,6 +44,14 @@ Les suppressions sont physiques et explicites, avec confirmation UI ; les clés 
 
 ## Concurrence et traçabilité
 
+### Coordonnées professionnelles des niveaux 1 à 5
+
+`20261103_04_coordonnees_territoires.sql` ajoute `T_CoordonneesTerritoire`, initialement vide. Une fiche porte exactement une FK vers un niveau 1, 2, 3, 4 ou 5, avec unicité partielle par FK et rattachement immuable. Les six champs facultatifs sont `AdresseTerritoire`, `TelephoneTerritoire`, `TelephoneSecondaireTerritoire`, `EmailTerritoire`, `SiteWebTerritoire`, `InformationsAccueilTerritoire`. Le trigger impose auteur et instant de modification et verrouille le parent ; les vues existantes conservent leurs anciennes colonnes et leur grain, puis ajoutent ces champs et `CoordonneesModifieLe`.
+
+Les fiches et paniers acceptent ces champs à plat dans leur enveloppe existante. Le service les sépare des colonnes physiques du territoire et sauvegarde l’ensemble dans la même transaction, après les mêmes droits et gardes hiérarchiques. La révision opaque combine territoire et fiche associée : un changement direct des coordonnées doit invalider une édition déjà ouverte. Les suppressions contrôlées doivent traiter la fiche associée sans laisser d’orphelin et conserver les journaux. Ne pas supprimer cette dépendance par `CASCADE` pour contourner les contrôles.
+
+Les contacts ne sont ni copiés du parent, ni attribués à une entreprise, ni qualifiés de vérifiés. N0 et l’ancien découpage conservent leur modèle. Les champs facultatifs apparaissent dans le catalogue des colonnes sans changer les préférences personnelles ni les colonnes affichées par défaut.
+
 Chaque écriture dédiée porte un `requestId` UUID canonique. La modification et la suppression portent aussi la révision `_version` issue de `xmin`. Une révision périmée retourne 409 ; un rejeu identique retrouve son résultat ; un même UUID avec un contenu différent est refusé. L'écriture métier et les journaux sont dans une même transaction. Les contrôles de doublons et de rattachement conservent les contraintes existantes, sans supprimer ni fusionner les territoires historiques.
 
 ## Lecture des indicateurs

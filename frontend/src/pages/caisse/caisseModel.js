@@ -1,4 +1,5 @@
 import {compareDecimal, decimalParts} from "../../utils/money";
+import {referenceLabel} from "../../utils/referenceOptions";
 
 export const CAISSE_ROOT="/api/caisse";
 export const CAISSE_REGISTERS={
@@ -20,7 +21,7 @@ export function caisseQuery(criteria={},grid={}){
  return query;
 }
 export function caisseOptions(items=[],emptyLabel="Choisir…"){
- return [{value:"",label:emptyLabel},...items.map(item=>({value:String(item.id),label:item.abbr||item.label||String(item.id),disabled:item.disabled===true||item.active===false}))];
+ return [{value:"",label:emptyLabel},...items.map(item=>({value:String(item.id),label:referenceLabel(item),disabled:item.disabled===true||item.active===false}))];
 }
 export function cashboxOptions(references={},emptyLabel="Choisir une caisse…"){
  return [{value:"",label:emptyLabel},...(references.caisses||[]).map(row=>({value:String(row.IdCaisse),label:[row.CodeCaisse,row.NomCaisse,row.DeviseCode].filter(Boolean).join(" · "),disabled:row.Actif===false}))];

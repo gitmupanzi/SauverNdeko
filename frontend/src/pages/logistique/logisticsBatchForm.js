@@ -1,3 +1,4 @@
+import {referenceLabel} from "../../utils/referenceOptions";
 import {articleForm,articleErrors,articlePayload} from "./articleForm";
 import {tiersForm,tiersFormErrors,tiersPayload} from "./TiersEditor";
 import {immobilisationValues,immobilisationErrors,immobilisationPayload,IMMOBILISATION_REFERENCES} from "./immobilisationForm";
@@ -17,7 +18,7 @@ export function batchChoices(kind,field,references){
  if(field==="Nature")return [{value:"personne",label:"Personne"},{value:"entreprise",label:"Entreprise"}];
  const items=references?.[sourceFields[kind]?.[field]]||(kind==="articles"&&field==="ID_DeviseFk"?references?.currencies:null);
  if(!items)return null;
- return items.map(item=>({value:String(item.id??item.value),label:item.label??item.name??item.code??String(item.id),code:item.code,disabled:item.disabled===true||item.active===false}));
+ return items.map(item=>({value:String(item.id??item.value),label:referenceLabel(item),code:item.code,disabled:item.disabled===true||item.active===false}));
 }
 export function logisticsBatchRow(kind,references={},overrides={},id=referenceBatchId()){
  const values=kind==="tiers"?tiersForm(null,references.defaultTypeClientId):kind==="articles"?{...articleForm(null,references),ID_DeviseFk:newCurrencyId(fieldCurrencyReferences(references,"articleCurrencies"))}:immobilisationValues(null,references);

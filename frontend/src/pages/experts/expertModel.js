@@ -1,9 +1,10 @@
 import {commandeDateInput,validCommandeDate} from "../logistique/commandeForm";
+import {referenceLabel} from "../../utils/referenceOptions";
 export const EXPERT_ROOT = "/api/professionnels";
 export const EXPERT_LIMITS={TitrePublic:180,PresentationPublique:10000,LocalitePublique:255,NumeroIdentification:50,ObsProfessionnel:5000};
 export const EXPERT_FIELDS = ["IdUserFk", "IdTypeProfessionnelFk", "IdSpecialiteFk", "IdSecteurFk", "TitrePublic", "PresentationPublique", "LocalitePublique", "ExperienceAns", "NumeroIdentification", "ObsProfessionnel", "ContactAutorise"];
 export function expertOptions(items = [], emptyLabel = "Choisir…") {
-  return [{value:"", label:emptyLabel}, ...items.map(item => ({value:String(item.id), label:item.label || item.name || String(item.id), disabled:item.disabled === true, incompatible:item.incompatible === true}))];
+  return [{value:"", label:emptyLabel}, ...items.map(item => ({value:String(item.id), label:referenceLabel(item), disabled:item.disabled === true, incompatible:item.incompatible === true}))];
 }
 export function expertQuery(criteria = {}, grid = {}) {
   const query = new URLSearchParams();
@@ -15,7 +16,7 @@ export function expertQuery(criteria = {}, grid = {}) {
 }
 export function expertName(record = {}) { return record.fullName || record.NomComplet || [record.PrenomUser, record.NomUser].filter(Boolean).join(" ") || "Professionnel"; }
 export function expertId(record = {}) { return record.id ?? record.IdProfessionnel; }
-export function expertLabels(items = []) { return items.map(item => item.label || item.name || item.NomGenerique).filter(Boolean); }
+export function expertLabels(items = []) { return items.map(item => referenceLabel(item, "")).filter(Boolean); }
 export function expertPublicationMissing(record={}){
  return [{key:"IdSecteurFk",label:"secteur"},{key:"TitrePublic",label:"titre professionnel"},{key:"PresentationPublique",label:"présentation"}].filter(field=>!String(record[field.key]||"").trim()).map(field=>field.label);
 }

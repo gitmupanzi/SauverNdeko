@@ -11,6 +11,7 @@ $Ast=[System.Management.Automation.Language.Parser]::ParseFile($Launcher,[ref]$T
 if ($ErrorsFound.Count) {throw 'Syntaxe du lanceur invalide.'}
 $StopServiceDefinition=@($Ast.FindAll({param($Node) $Node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'Stop-ServiceRecord'},$true))[0].Extent.Text
 $RequiredFrontendPort=5174
+$NoBrowser=$true
 $Names=@('Network-Option','Network-Settings','Get-ServiceRecordStatus','Expected-Process','Assert-ServiceRecordsInspectable','Stop-Project','Start-Project','Free-Port','Frontend-Port')
 foreach ($Definition in $Ast.FindAll({param($Node) $Node -is [System.Management.Automation.Language.FunctionDefinitionAst]},$true)) {
  if ($Definition.Name -in $Names) {Invoke-Expression $Definition.Extent.Text}

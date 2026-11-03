@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { requestJson } from "../services/api";
 import "./WorkspaceHome.css";
 
-const MODULE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/caisse", "/territoires", "/support", "/parametres", "/guide", "/admin"]);
+const WORKSPACE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/maladies", "/discussions", "/logistique", "/caisse", "/territoires", "/support", "/parametres", "/guide", "/admin", "/referentiels"]);
 
 export default function WorkspaceHome() {
   const { user } = useAuth();
@@ -29,7 +29,7 @@ export default function WorkspaceHome() {
     requestJson("/api/workspace/modules", { requiresAuth: true }).then((payload) => {
       if (!active) return;
       if (!payload?.success || !Array.isArray(payload.data) ||
-          payload.data.some((module) => !MODULE_PATHS.has(module.path) || !module.key || !module.label || !applicationClassificationValid(module))) {
+          payload.data.some((module) => !WORKSPACE_PATHS.has(module.path) || !module.key || !module.label || !applicationClassificationValid(module))) {
         setModules([]);
         setError("Vos applications ne sont pas disponibles. Réessayez dans un instant.");
       } else {
@@ -46,7 +46,7 @@ export default function WorkspaceHome() {
   return (
     <div className="workspace-home">
       <header className="workspace-bar">
-        <Link className="workspace-brand" to="/" aria-label="SauverNdeko — applications">
+        <Link className="workspace-brand" to="/espace" aria-label="SauverNdeko — applications">
           <img src="/sauverndeko-logo.jpg" alt="" width="40" height="40" />
           <span>SauverNdeko</span>
         </Link>

@@ -46,7 +46,7 @@ export default function PublicCatalogue() {
       <div className="catalogue-header-inner">
         <Brand />
         <nav className="catalogue-nav" aria-label="Présentation de SauverNdeko"><a href="#services">La plateforme</a><a href="#entreprises">Pour les entreprises</a><a href="#demarche">Notre démarche</a></nav>
-        <div className="catalogue-header-actions"><ThemePicker /><Link className="catalogue-button is-outline" to={isAuthenticated ? "/" : "/login"}><AppIcon name={isAuthenticated ? "apps" : "lock"} />{isAuthenticated ? "Mes applications" : "Se connecter"}</Link></div>
+        <div className="catalogue-header-actions"><ThemePicker /><Link className="catalogue-button is-outline" to={isAuthenticated ? "/espace" : "/login"}><AppIcon name={isAuthenticated ? "apps" : "lock"} />{isAuthenticated ? "Mes applications" : "Se connecter"}</Link></div>
       </div>
     </header>
 
@@ -104,7 +104,7 @@ export default function PublicCatalogue() {
           <details><summary>Que contient un profil professionnel ?<AppIcon name="chevron-down" /></summary><p>Une présentation, des compétences et des services déclarés par le gestionnaire du profil. Sa publication ne constitue pas une vérification des diplômes ni un diagnostic médical. La messagerie permet de présenter votre demande directement au professionnel.</p></details>
         </div>
       </section>
-      <section className="catalogue-start catalogue-container" aria-labelledby="catalogue-start-title"><div><h2 id="catalogue-start-title">Votre espace SauverNdeko.</h2><p>Retrouvez les applications accessibles à votre compte.</p></div><Link className="catalogue-button is-primary" to={isAuthenticated ? "/" : "/login"}>{isAuthenticated ? "Ouvrir mes applications" : "Se connecter"}<AppIcon name="chevron-right" /></Link></section>
+      <section className="catalogue-start catalogue-container" aria-labelledby="catalogue-start-title"><div><h2 id="catalogue-start-title">Votre espace SauverNdeko.</h2><p>Retrouvez les applications accessibles à votre compte.</p></div><Link className="catalogue-button is-primary" to={isAuthenticated ? "/espace" : "/login"}>{isAuthenticated ? "Ouvrir mes applications" : "Se connecter"}<AppIcon name="chevron-right" /></Link></section>
     </main>
     <footer className="catalogue-footer"><div className="catalogue-container"><Brand /><p>Une plateforme en développement, pensée pour la RDC.</p><a href="#catalogue-start">Retour en haut<AppIcon name="arrow-up" /></a></div></footer>
   </div>;

@@ -1,5 +1,5 @@
 import {fieldCurrencyReferences} from "../../utils/money";
-import {REFERENCE_RETAINED_HINT,retainReference,isRetainedReference} from "../../utils/referenceOptions";
+import {REFERENCE_RETAINED_HINT,referenceLabel,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import { newCurrencyId, currencyOptions } from "../../utils/money";
 import SearchSelect from "../../components/SearchSelect";
 import ConsultationTabs from "../../components/ConsultationTabs";
@@ -82,7 +82,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
   }
   function select(name,label,source,locked=false){
     const id=prefix+name,options=buildReferenceOptions(source,label),known=options.some(x=>String(x.value)===String(values[name]));
-    const choices=retainReference(options,values[name],record?.[{ID_TypeArticleFk:"TypeArticle",ID_CategorieArticleFk:"CategorieArticle",ID_UniteFk:"Unite",ID_UnitePoidsFk:"UnitePoids",ID_DeviseFk:"DeviseCode"}[name]]||"Valeur actuelle");
+    const choices=retainReference(options,values[name],referenceLabel({ID_Generique:values[name]}));
     const hint=isRetainedReference(choices,values[name])?REFERENCE_RETAINED_HINT:locked?(name==="ID_DeviseFk"?"La devise est conservée après une opération de stock.":"L’unité est conservée après le premier mouvement."):!options.length?"Aucune valeur disponible. Vérifiez les références.":"";
     return <Field name={id} label={label} error={errors[name]} hint={hint}><SearchSelect id={id} label={label} value={values[name]} options={name==="ID_UnitePoidsFk"?[{value:"",label:"Non renseignée"},...choices]:choices} onChange={next=>change(name,next)} disabled={busy||!canWrite||locked||(!options.length&&!values[name])} invalid={Boolean(errors[name])} describedBy={errors[name]?id+"-error":hint?id+"-hint":undefined}/></Field>;
   }

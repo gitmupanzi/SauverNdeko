@@ -4,7 +4,7 @@ import AccountControls from "./AccountControls";
 import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
-  { label: "Applications", path: "/" },
+  { label: "Applications", path: "/espace" },
   { label: "Produits", path: "/produits" },
   { label: "Pharmacies", path: "/pharmacies" },
   { label: "Experts", path: "/experts" },
@@ -13,7 +13,7 @@ const NAV_ITEMS = [
 ];
 
 const TITLE_BY_PATH = {
-  "/": "Applications",
+  "/espace": "Applications",
   "/catalogue": "Catalogue",
   "/produits": "Produits",
   "/pharmacies": "Pharmacies et depots",
@@ -56,7 +56,7 @@ export default function Navbar({
       </div>
 
       <div className="topbar-desktop">
-        <NavLink className="desktop-brand" to="/">
+        <NavLink className="desktop-brand" to="/espace">
           <img src="/sauverndeko-logo.jpg" alt="SauverNdeko" />
           <span>
             <strong>SauverNdeko</strong>
@@ -69,7 +69,7 @@ export default function Navbar({
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === "/"}
+              end={item.path === "/espace"}
               className={({ isActive }) => `desktop-tab ${isActive ? "is-active" : ""}`}
             >
               {item.label}

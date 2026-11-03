@@ -553,7 +553,30 @@ class T_Fk_Correspondance(models.Model):
         db_table = '"systeme"."T_Fk_Correspondance"'
 
 
+class T_CoordonneesTerritoire(models.Model):
+    ID_CoordonneesTerritoire = models.BigAutoField(primary_key=True)
+    ID_Niveau_1Fk = models.IntegerField(blank=True, null=True)
+    ID_Niveau_2Fk = models.IntegerField(blank=True, null=True)
+    ID_Niveau_3Fk = models.IntegerField(blank=True, null=True)
+    ID_Niveau_4Fk = models.IntegerField(blank=True, null=True)
+    ID_Niveau_5Fk = models.IntegerField(blank=True, null=True)
+    AdresseTerritoire = models.TextField(blank=True, null=True)
+    TelephoneTerritoire = models.CharField(max_length=50, blank=True, null=True)
+    TelephoneSecondaireTerritoire = models.CharField(max_length=50, blank=True, null=True)
+    EmailTerritoire = models.CharField(max_length=255, blank=True, null=True)
+    SiteWebTerritoire = models.CharField(max_length=255, blank=True, null=True)
+    InformationsAccueilTerritoire = models.TextField(blank=True, null=True)
+    ModifieLe = models.DateTimeField()
+    ModifieParUserFk = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = '"geolocalisation"."T_CoordonneesTerritoire"'
+
+
 class T_Entite(models.Model):
+    VisibleAnnuaireEntite = models.BooleanField(default=False)
+    PresentationPubliqueEntite = models.TextField(blank=True, null=True)
     PartageArticlesPublicParDefaut = models.BooleanField(default=True)
     IdEntite = models.AutoField(primary_key=True)
     NomEntite = models.TextField()

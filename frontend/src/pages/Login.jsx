@@ -174,7 +174,7 @@ export default function Login() {
         </header>
 
         {location.state?.passwordChanged===true?<p className="login-success" role="status"><i className="bi bi-check-circle" aria-hidden="true"/>Votre mot de passe a été modifié. Reconnectez-vous.</p>:null}
-        {redirectTarget !== "/" ? (
+        {redirectTarget !== "/espace" ? (
           <p className="login-destination">
             <i className="bi bi-arrow-return-right" aria-hidden="true" />
             Après connexion : <strong>{destinationLabel(redirectTarget)}</strong>

@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 function buildRedirectPath(location) {
-  return `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
+  return `${location.pathname || "/espace"}${location.search || ""}${location.hash || ""}`;
 }
 
 export default function ProtectedRoute({ children }) {

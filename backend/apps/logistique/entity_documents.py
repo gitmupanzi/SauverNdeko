@@ -26,8 +26,8 @@ from apps.core.repository import audit, clean, positive
 from apps.core.responses import APIError, ExactEncoder, ok
 from apps.core.tenancy import read_entity, require_entity
 
-FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut'}
-OPTIONAL_FIELDS = {'PhoneSecondaireEntite', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut'}
+FIELDS = {'NomEntite', 'AdresseEntite', 'EmailEntite', 'PhoneEntite', 'PhoneSecondaireEntite', 'IdentifiantsLegauxEntite', 'MentionDocumentaireEntite', 'SiteWebEntite', 'AfficherEnteteDocument', 'AfficherPiedDocument', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut', 'VisibleAnnuaireEntite', 'PresentationPubliqueEntite'}
+OPTIONAL_FIELDS = {'PhoneSecondaireEntite', 'TauxTVAEntite', 'PartageArticlesPublicParDefaut', 'VisibleAnnuaireEntite', 'PresentationPubliqueEntite'}
 ADMIN_FIELDS = {'IdTypeEntiteFk', 'ValideEntite'}
 LOGO_FIELDS = {'LogoEntite', 'LogoMimeEntite', 'LogoSha256Entite', 'LogoModifieLe'}
 OPERATION = 'ENTITY_DOCUMENT_PROFILE'
@@ -47,7 +47,7 @@ def current_identity(entity_id, include_logo=False, *, include_locations=False):
         from apps.core.entity_locations import snapshot_projection
         projection+=',points."CollectionRevision",points."Localisations"'
         locations_join=' LEFT JOIN LATERAL (SELECT '+snapshot_projection()+' FROM systeme."T_Entite_Localisation" l WHERE l."IdEntiteFk"=e."IdEntite") points ON TRUE '
-    row = db.one('SELECT v.*,e."IdTypeEntiteFk",e."ValideEntite",e."PartageArticlesPublicParDefaut"' + projection + '''
+    row = db.one('SELECT v.*,e."IdTypeEntiteFk",e."ValideEntite",e."PartageArticlesPublicParDefaut",e."VisibleAnnuaireEntite",e."PresentationPubliqueEntite"' + projection + '''
         FROM systeme."V_IdentiteDocumentaire" v JOIN systeme."T_Entite" e ON e."IdEntite"=v."IdEntite"
         '''+locations_join+''' WHERE v."IdEntite"=%s''', [entity_id])
     if not row:
@@ -60,7 +60,7 @@ def current_identity(entity_id, include_logo=False, *, include_locations=False):
 
 
 def workspace_module(administration=False, workspace=None):
-    if workspace is not None and workspace != 'parametres':
+    if workspace is not None and workspace not in {'parametres', 'structures'}:
         raise APIError('Espace de paramétrage invalide.')
     return workspace or ('administration' if administration else 'logistique')
 
@@ -71,11 +71,23 @@ def target(actor, entity=None, *, administration=False, writing=False, creating=
     if not actor.admin and (writing or workspace != 'parametres'):
         raise APIError('Ce réglage est réservé à l’administrateur de l’entreprise.', 'FORBIDDEN', 403)
     if creating:
-        if workspace == 'parametres':
+        if workspace in {'parametres', 'structures'}:
             raise APIError('La création d’une entreprise se fait dans Administration.', 'GLOBAL_ADMIN_REQUIRED', 403)
         if not actor.global_admin:
             raise APIError('La création d’une entreprise est réservée à la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
         return None
+    if workspace == 'structures':
+        # La fiche de structure réutilise l'entreprise existante. Sa gestion
+        # relève du module Structures, sans licence Logistique/Administration.
+        require_module(actor, 'structures', 'manage')
+        entity = positive(entity, 'Entreprise')
+        if not actor.global_admin and entity != actor.row.get('IdEntiteFk'):
+            raise APIError('Entreprise introuvable dans votre périmètre.', 'NOT_FOUND', 404)
+        if not db.one('SELECT "IdEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]):
+            raise APIError('Entreprise introuvable dans votre périmètre.', 'NOT_FOUND', 404)
+        if writing and require_entity(actor) != entity:
+            raise APIError('L’entreprise active a changé. Rechargez la fiche.', 'ENTITY_MISMATCH', 403)
+        return entity
     if workspace == 'parametres':
         # Le contexte d’entreprise provient de tenancy, jamais d’un identifiant
         # libre envoyé dans le profil. La consultation globale ne cible rien.
@@ -119,14 +131,16 @@ def profile(actor, entity=None, *, administration=False, workspace=None):
     row['documentsExistants'] = db.one('SELECT count(*) AS n FROM logistique."T_DocumentIdentite" WHERE "IdEntiteFk"=%s', [entity])['n']
     rights = access_snapshot(actor)['modules'][workspace_module(administration, workspace)]
     row['canConfigure'] = bool(actor.admin and not settings.DB_READ_ONLY and rights['canManage']
-        and (workspace != 'parametres' or row['ValideEntite'] is not False))
-    row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY and workspace != 'parametres'
+        and (workspace not in {'parametres', 'structures'} or row['ValideEntite'] is not False)
+        and (workspace != 'structures' or read_entity(actor) == entity))
+    row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY and workspace not in {'parametres', 'structures'}
     row['logoUrl'] = ((f'/api/parametres/entreprises/{entity}/logo' if workspace == 'parametres'
+        else f'/api/structures/profils/{entity}/logo' if workspace == 'structures'
         else f'/api/systeme/entites/{entity}/logo') if row.get('HasLogo') else None)
-    if administration or workspace == 'parametres':
+    if administration or workspace in {'parametres', 'structures'}:
         from apps.core.entity_locations import geographical_references
         row['references'] = {'entityTypes': entity_types(entity, row.get('IdTypeEntiteFk'), actor=actor), **geographical_references()}
-    if not administration and workspace != 'parametres':
+    if not administration and workspace not in {'parametres', 'structures'}:
         row.pop('Localisations',None)
         for key in ADMIN_FIELDS:
             row.pop(key, None)
@@ -150,11 +164,11 @@ def values(body):
         if len(value) > maximum or (required and not value):
             errors[key] = f'Utilisez entre 1 et {maximum} caractères.' if required else f'Utilisez au maximum {maximum} caractères.'
         return value or None
-    for key, maximum in [('NomEntite', 200), ('AdresseEntite', 1000), ('EmailEntite', 255), ('PhoneEntite', 20), ('PhoneSecondaireEntite', 20), ('MentionDocumentaireEntite', 1000), ('SiteWebEntite', 255)]:
+    for key, maximum in [('NomEntite', 200), ('AdresseEntite', 1000), ('EmailEntite', 255), ('PhoneEntite', 20), ('PhoneSecondaireEntite', 20), ('MentionDocumentaireEntite', 1000), ('SiteWebEntite', 255), ('PresentationPubliqueEntite', 5000)]:
         # Un ancien formulaire ignorant la nouvelle coordonnée ne l’efface pas.
         if key in OPTIONAL_FIELDS and key not in body:
             continue
-        result[key] = text(body.get(key), key, maximum, key == 'NomEntite', key in {'AdresseEntite', 'MentionDocumentaireEntite'})
+        result[key] = text(body.get(key), key, maximum, key == 'NomEntite', key in {'AdresseEntite', 'MentionDocumentaireEntite', 'PresentationPubliqueEntite'})
     result['EmailEntite'] = result.get('EmailEntite') or ''
     if result['EmailEntite']:
         try:
@@ -182,11 +196,12 @@ def values(body):
             errors[key] = 'Choisissez une option activée ou désactivée.'
         else:
             result[key] = body[key]
-    if 'PartageArticlesPublicParDefaut' in body:
-        if type(body['PartageArticlesPublicParDefaut']) is not bool:
-            errors['PartageArticlesPublicParDefaut'] = 'Choisissez une option activée ou désactivée.'
-        else:
-            result['PartageArticlesPublicParDefaut'] = body['PartageArticlesPublicParDefaut']
+    for key in ('PartageArticlesPublicParDefaut', 'VisibleAnnuaireEntite'):
+        if key in body:
+            if type(body[key]) is not bool:
+                errors[key] = 'Choisissez une option activée ou désactivée.'
+            else:
+                result[key] = body[key]
     if 'TauxTVAEntite' in body:
         raw = body['TauxTVAEntite']
         try:
@@ -313,7 +328,7 @@ def admin_values(body, actor, old, entity):
 def save(actor, body, upload=None, *, entity=None, administration=False, creating=False, workspace=None):
     entity = target(actor, entity, administration=administration, writing=True, creating=creating, workspace=workspace)
     db.ensure_writable()
-    includes_locations = administration or workspace == 'parametres'
+    includes_locations = administration or workspace in {'parametres', 'structures'}
     allowed = FIELDS | {'logoAction', 'motif', 'requestId'} | (ADMIN_FIELDS | {'Localisations'} if includes_locations else set())
     required = (FIELDS - OPTIONAL_FIELDS) | {'motif', 'requestId'}
     if not creating:
@@ -353,7 +368,7 @@ def save(actor, body, upload=None, *, entity=None, administration=False, creatin
             raise APIError('Le profil a changé. Rechargez la fiche avant de confirmer.', 'VERSION_CONFLICT', 409)
         if old and old['ValideEntite'] is False and (not administration or not actor.global_admin):
             raise APIError('Les écritures de cette entreprise sont désactivées.', 'ENTITY_INACTIVE', 409)
-        if workspace == 'parametres' and any(key in body and body[key] != (old or {}).get(key) for key in ADMIN_FIELDS):
+        if workspace in {'parametres', 'structures'} and any(key in body and body[key] != (old or {}).get(key) for key in ADMIN_FIELDS):
             raise APIError('Le type et l’état de l’entreprise se modifient dans Administration.', 'ENTITY_ADMIN_FIELDS', 403)
         if administration:
             data.update(admin_values(body, actor, old, entity))
@@ -421,7 +436,7 @@ class EntityIdentityDefaultsView(APIView):
             raise APIError('Aucun critère attendu pour les valeurs initiales.')
         data = {key: None for key in FIELDS | ADMIN_FIELDS}
         data.update(IdentifiantsLegauxEntite=[], AfficherEnteteDocument=True,
-            AfficherPiedDocument=True, TauxTVAEntite='0', PartageArticlesPublicParDefaut=True, ValideEntite=True, HasLogo=False,
+            AfficherPiedDocument=True, TauxTVAEntite='0', PartageArticlesPublicParDefaut=True, VisibleAnnuaireEntite=False, ValideEntite=True, HasLogo=False,
             canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
             canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
         from apps.core.entity_locations import geographical_references

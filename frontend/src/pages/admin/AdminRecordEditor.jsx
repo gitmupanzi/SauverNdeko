@@ -1,4 +1,4 @@
-import {REFERENCE_RETAINED_HINT,referenceOptions,retainReference,isRetainedReference} from "../../utils/referenceOptions";
+import {REFERENCE_RETAINED_HINT,referenceLabel,referenceOptions,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import { useEffect, useId, useRef, useState } from "react";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
 import ConsultationTabs from "../../components/ConsultationTabs";
@@ -141,7 +141,7 @@ export function adminEditorOptions(type,field,values,support) {
     if (field.name === "SettingType") return ["text", "number", "boolean", "select", "json", "color", "file", "email", "phone", "url", "textarea"].map(value => ({ value, label: ({ text: "Texte", number: "Nombre", boolean: "Oui / Non", select: "Liste", json: "JSON", color: "Couleur", file: "Fichier", email: "Adresse e-mail", phone: "Téléphone", url: "Lien", textarea: "Texte long" })[value] }));
     if (field.options) return field.options.map(option => ({ ...option, label: ({ Feminin: "Féminin", Masculin: "Masculin" })[option.label] || option.label }));
     const source = field.optionsSource;
-    if(["personnelServices","personnelFonctions"].includes(source))return (support[source]||[]).map(item=>({value:String(item.id),label:item.label||item.abbr||"Valeur sans libellé",disabled:item.disabled===true}));
+    if(["personnelServices","personnelFonctions"].includes(source))return referenceOptions(support[source]||[]);
     if (source === "entities") return (support.entities || []).map(entity => ({ value: String(entity.IdEntite), label: entity.NomEntite || "Entreprise sans nom", disabled: entity.ValideEntite === false }));
     if (source === "categories") return (support.categories || []).map(category => ({ value: String(category.ID_CategorieGenerique), label: category.NomCategorieGenerique || "Catégorie sans nom", disabled: category.ValideCategorieGenerique === false }));
     if (["roles","entityTypes","licenseStatuses"].includes(source)) return referenceOptions(support.referenceOptions?.[source]||[]);
@@ -260,7 +260,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
     if (!field.required) options.unshift({ value: "", label: "Non renseigné" });
     const value = values[field.name];
     if (value && !options.some(option => String(option.value) === String(value))) {
-      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : field.name === "IdRoleFk" ? record?.NomRole || record?.Role || row?.NomRole || row?.Role : field.name === "IdStatutLicenceFk" ? record?.NomStatutLicence : field.name==="ID_ServiceFk"?row?.Service:field.name==="ID_FonctionFk"?row?.Fonction:null;
+      const fallback = field.name === "IdEntiteFk" ? record?.NomEntite || row?.NomEntite : ["IdRoleFk","IdStatutLicenceFk","ID_ServiceFk","ID_FonctionFk","IdTypeEntiteFk"].includes(field.name)?referenceLabel({ID_Generique:value}):null;
       options.push({ value: String(value), label: fallback || "Valeur actuelle",disabled:true,incompatible:true });
     }
     return options;

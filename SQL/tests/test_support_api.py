@@ -92,7 +92,10 @@ class SupportAPI(unittest.TestCase):
     def test_01_context_references_labels_and_entity_selector(self):
         context=self.status(self.client().get(BASE+'contexte'));self.assertTrue(context['canCreate']);self.assertTrue(context['defaults']);self.assertEqual(context['entityId'],self.entities[0])
         for field,value in context['fieldReferences'].items():self.assertIn('categoryIds',value);self.assertIn('categoryLabels',value);self.assertIn('options',value)
-        for options in context['references'].values():self.assertTrue(all(not str(item['label']).startswith('support.') for item in options))
+        for options in context['references'].values():
+            for item in options:
+                expected=db.one('SELECT "AbrGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[item['id']])['AbrGenerique']
+                self.assertEqual(item['label'],str(expected).strip() if expected and str(expected).strip() else 'Valeur sans abréviation #'+str(item['id']))
         self.assertEqual(len(self.status(self.client(2).get(BASE+'entreprises'))),1)
 
     def test_02_create_real_fk_number_and_version(self):
@@ -257,7 +260,10 @@ class SupportAPI(unittest.TestCase):
 
     def test_30_exact_filters_null_and_kanban_zero_labels(self):
         row=self.create();response=self.client().get(BASE+'tickets',{'filters':json.dumps({'ID_ResponsableFk':None})});found=self.status(response);self.assertIn(row['ID_Support'],[item['ID_Support'] for item in found])
-        empty=self.status(self.client().get(BASE+'kanban',{'q':uuid.uuid4().hex}));self.assertTrue(empty['columns']);self.assertTrue(all(item['count']==0 for item in empty['columns']));self.assertTrue(all(not str(item['label']).startswith('support.') for item in empty['columns']))
+        empty=self.status(self.client().get(BASE+'kanban',{'q':uuid.uuid4().hex}));self.assertTrue(empty['columns']);self.assertTrue(all(item['count']==0 for item in empty['columns']))
+        for item in empty['columns']:
+            abbreviation=db.one('SELECT "AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[item['id']])['abbr']
+            self.assertEqual(item['label'],str(abbreviation).strip() if abbreviation and str(abbreviation).strip() else 'Valeur sans abréviation #'+str(item['id']))
 
     def test_31_comment_mutation_replay_and_global_context_safety(self):
         row=self.active();body={'requestId':str(uuid.uuid4()),'_version':row['_version'],'Contenu':'Échange public fictif','Visibilite':'public'}
@@ -284,6 +290,23 @@ class SupportAPI(unittest.TestCase):
         self.status(self.client(all_entities=True).get('/api/systeme/audit-logs'))
         self.assertTrue(self.get_detail(row,1)['history']);self.assertFalse(self.get_detail(row,1,manage=False)['history'])
 
+
+    def test_reference_labels_use_abbreviation_and_keep_ids_and_rules(self):
+        refs=portal.references(self.actor())
+        identifier=refs['references']['categories'][0]['id']
+        row=self.create(ID_CategorieSupportFk=identifier)
+        db.query('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s',
+                 ['Nom descriptif de recette '+uuid.uuid4().hex,'ABR-'+uuid.uuid4().hex[:8],identifier])
+        expected=db.one('SELECT "AbrGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[identifier])['AbrGenerique']
+        choices=portal.references(self.actor(),portal.record(self.actor(),row['ID_Support']))['references']['categories']
+        self.assertEqual(next(item['label'] for item in choices if item['id']==identifier),expected)
+        info=self.get_detail(row)['record'];self.assertEqual(info['ID_CategorieSupportFk'],identifier)
+        self.assertEqual(info['CategorieSupport'],expected)
+        self.assertEqual(info['StatutCode'],row['StatutCode'])
+        db.query('UPDATE referentiel."T_Generique" SET "AbrGenerique"=NULL WHERE "ID_Generique"=%s',[identifier])
+        choices=portal.references(self.actor(),portal.record(self.actor(),row['ID_Support']))['references']['categories']
+        self.assertEqual(next(item['label'] for item in choices if item['id']==identifier),'Valeur sans abréviation #'+str(identifier))
+        self.assertEqual(self.get_detail(row)['record']['CategorieSupport'],'Valeur sans abréviation #'+str(identifier))
 
 XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 if __name__=='__main__':unittest.main(verbosity=2)

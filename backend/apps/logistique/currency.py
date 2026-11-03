@@ -3,6 +3,7 @@ import re
 from apps.core import db
 from apps.core.repository import positive
 from apps.core.responses import APIError
+from apps.core.reference_labels import reference_label, reference_label_sql
 
 MONETARY_KEYS = {"montantBons", "montantTotalFacture", "montantTotalRegle", "montantRestant"}
 AMOUNT_FIELDS = {
@@ -29,8 +30,8 @@ def currency_references(actor=None, *, active=True, table='T_Article', column='I
     categories = (reference_context(actor, 'logistique', table, column)['categoryIds'] if actor is not None else
                   db.one('SELECT referentiel.fn_categories_champ(%s,%s,%s,NULL) AS ids',
                          ['logistique', table, column])['ids']) or []
-    rows = db.query('''SELECT g."ID_Generique" AS id, g."NomGenerique" AS name,g."AbrGenerique" AS abbr,
-        COALESCE(NULLIF(BTRIM(g."AbrGenerique"),''),g."NomGenerique") AS label,
+    rows = db.query(f'''SELECT g."ID_Generique" AS id, g."NomGenerique" AS name,g."AbrGenerique" AS abbr,
+        {reference_label_sql('g')} AS label,
         COALESCE(NULLIF(BTRIM(g."AbrGenerique"),''),g."NomGenerique") AS code
         FROM referentiel."T_Generique" g
         JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
@@ -38,7 +39,7 @@ def currency_references(actor=None, *, active=True, table='T_Article', column='I
           AND referentiel.fn_reference_visible(g."ID_Generique",%s) '''
         + ('AND c."ValideCategorieGenerique" IS TRUE AND g."ValideGenerique" IS TRUE ' if active else '')
         + 'ORDER BY g."ID_Generique"', [categories, entity])
-    return sorted([{**row, "code": normalize_code(row["code"])} for row in rows], key=lambda row: (row["code"],row["id"]))
+    return sorted([{**row, "label": reference_label(row), "code": normalize_code(row["code"])} for row in rows], key=lambda row: (row["code"],row["id"]))
 
 
 def default_currency(actor=None, *, table='T_Article'):
@@ -54,10 +55,11 @@ def validate_currency(value, *, unchanged=False, actor=None, table='T_Article'):
         # Le service appelant a déjà autorisé le parent historique. Un changement
         # de nomenclature ne remplace jamais sa devise ni ses montants.
         row = db.one('SELECT "ID_Generique" AS id,"NomGenerique" AS name,"AbrGenerique" AS abbr,'
-                     'COALESCE(NULLIF(btrim("AbrGenerique"),\'\'),"NomGenerique") AS label,'
+                     +reference_label_sql()+' AS label,'
                      'COALESCE(NULLIF(btrim("AbrGenerique"),\'\'),"NomGenerique") AS code '
                      'FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [identifier])
         if row:
+            row['label'] = reference_label(row)
             row['code'] = normalize_code(row['code'])
     else:
         row = next((row for row in currency_references(actor, table=table) if row["id"] == identifier), None)

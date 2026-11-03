@@ -1,0 +1,33 @@
+// Navigation publique/privée et retour de connexion réels, sans navigateur ni API.
+const fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'../../..'),front=path.join(root,'frontend'),esbuild=require(path.join(front,'node_modules/esbuild'));
+let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;},ok=(value,message)=>{assert(value,message);checks++;};
+class Hooks{constructor(){this.slots=[];this.cursor=0;this.effects=[];}state(value){const i=this.cursor++;if(!this.slots[i])this.slots[i]={value:typeof value==='function'?value():value};return[this.slots[i].value,next=>this.slots[i].value=typeof next==='function'?next(this.slots[i].value):next];}ref(value){return this.slots[this.cursor++]|| (this.slots[this.cursor-1]={current:value});}effect(fn,deps=[]){const i=this.cursor++,old=this.slots[i];if(!old||deps.some((v,j)=>!Object.is(v,old.deps[j])))this.effects.push(()=>{old?.clean?.();this.slots[i]={deps,clean:fn()};});}render(component,props={}){this.cursor=0;globalThis.__hooks=this;return component(props);}flush(){for(const fn of this.effects.splice(0))fn();}unmount(){this.slots.forEach(slot=>slot?.clean?.());}}
+function nodes(tree,out=[]){if(!tree||typeof tree!=='object')return out;if(Array.isArray(tree)){tree.forEach(node=>nodes(node,out));return out;}if(tree.type)out.push(tree);nodes(tree.props?.children,out);return out;}
+const mocks=[
+ [/^react$/,'hooks',`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useEffect=(f,d)=>globalThis.__hooks.effect(f,d);`],
+ [/^react-router-dom$/,'router',`export function Link(){}export function NavLink(){}export const useNavigate=()=>globalThis.__navigate,useLocation=()=>globalThis.__location,useSearchParams=()=>[new URLSearchParams(globalThis.__location.search)];`],
+ [/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>globalThis.__auth;`],
+ [/\/components\/ThemePicker$/,'theme',`export default function Theme(){}`],
+ [/\.\/EntityScopePicker$/,'scope',`export default function Scope(){}`],
+ [/\.\/AccountControls$/,'account',`export default function Account(){}`],
+];
+(async()=>{
+ const built=await esbuild.build({stdin:{contents:"export {default as Login} from './src/pages/Login';export * from './src/services/authNavigation';export {default as Header} from './src/components/ModuleHeader';export {default as Navbar} from './src/components/Navbar';",loader:'jsx',resolveDir:front},bundle:true,write:false,platform:'node',format:'cjs',jsx:'automatic',external:['react/jsx-runtime'],loader:{'.css':'empty'},plugins:[{name:'fixtures',setup(build){for(const[filter,namespace,source]of mocks){build.onResolve({filter},()=>({path:namespace,namespace}));build.onLoad({filter:/.*/,namespace},()=>({contents:source,loader:'jsx',resolveDir:front}));}}}],logLevel:'error'});
+ const compiled=new Module(path.join(front,'workspace-navigation-proof.cjs'));compiled.filename=path.join(front,'workspace-navigation-proof.cjs');compiled.paths=Module._nodeModulePaths(front);compiled._compile(built.outputFiles[0].text,compiled.filename);const page=compiled.exports;
+ eq(page.normalizeAuthRedirect(''),'/espace');eq(page.normalizeAuthRedirect(undefined),'/espace');
+ for(const redirect of ['https://other.invalid/path','//other.invalid/path','/login','/register?redirect=/admin','/\\evil','/%2f%2fevil','/%0aevil','/%zz'])eq(page.normalizeAuthRedirect(redirect),'/espace');
+ for(const redirect of ['/produits?structure=7#offres','/logistique?onglet=articles','/referentiels?onglet=categories','/espace','/catalogue'])eq(page.normalizeAuthRedirect(redirect),redirect);
+ eq(page.loginPathFor({pathname:'/espace'}),'/login');eq(page.loginPathFor({pathname:'/espace',search:'?recherche=stock'}),'/login?redirect='+encodeURIComponent('/espace?recherche=stock'));
+ const cases=[['',null,'/espace'],['?redirect='+encodeURIComponent('/logistique?onglet=articles#registre'),null,'/logistique?onglet=articles#registre'],['?redirect='+encodeURIComponent('https://other.invalid'),null,'/espace'],['',{from:{pathname:'/experts',search:'?annuaire=1',hash:'#profils'}},'/experts?annuaire=1#profils']];
+ globalThis.document={title:'SauverNdeko'};
+ for(const[search,state,target]of cases){const transitions=[];globalThis.__navigate=(...args)=>transitions.push(args);globalThis.__location={pathname:'/login',search,hash:'',state};globalThis.__auth={loading:false,isAuthenticated:false,login:async()=>({success:true})};const h=new Hooks();h.render(page.Login);h.flush();eq(transitions,[]);eq(document.title,'Connexion | SauverNdeko');globalThis.__auth={...__auth,isAuthenticated:true};h.render(page.Login);h.flush();eq(transitions,[[target,{replace:true}]]);h.unmount();eq(document.title,'SauverNdeko');}
+ globalThis.__auth={user:{permissions:{canAccessAdmin:false},moduleAccess:{modules:{}}}};
+ const header=page.Header({title:'Logistique'});eq(nodes(header).filter(node=>node.type?.name==='Link').map(node=>node.props.to),['/espace','/espace']);
+ const navbar=page.Navbar({currentPath:'/espace',isAuthenticated:true,user:__auth.user});eq(nodes(navbar).find(node=>node.props.className==='desktop-brand').props.to,'/espace');eq(nodes(navbar).find(node=>node.props.className==='topbar-title').props.children,'Applications');
+ // Tous les retours explicites vers les applications pointent vers l’espace
+ // privé ; la route / et les ancres de la présentation ne sont pas réécrites.
+ for(const name of ['GuideUtilisateur.jsx','Experts.jsx','Caisse.jsx','OrganisationTerritoriale.jsx','Pharmacies.jsx','Parametres.jsx','Logistique.jsx','Referentiels.jsx','LegacyAdmin.jsx','admin/AdminPortal.jsx','support/SupportPortal.jsx','produits/ProductDirectory.jsx']){const source=fs.readFileSync(path.join(front,'src/pages',name),'utf8');ok(/label:"Applications",icon:"apps",to:"\/espace"/.test(source),name+' doit revenir à /espace');}
+ for(const name of ['Applications.jsx','ApplicationLicences.jsx','WorkspaceHome.jsx'])ok(fs.readFileSync(path.join(front,'src/pages',name),'utf8').includes('to="/espace"'),name+' conserve le retour privé');
+ console.log(JSON.stringify({success:true,checks,coverage:['Connexion par défaut vers /espace et URL protégées préservées','Redirections externes et boucles de connexion refusées','Titre, logos et liens Applications vers le bon espace','Menus des modules conservés','Aucune requête applicative'],limits:['Hooks et navigation contrôlés ; pas de recette navigateur']}));
+})().catch(error=>{console.error(error);process.exitCode=1;});

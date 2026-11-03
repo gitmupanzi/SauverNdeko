@@ -25,6 +25,7 @@ from .repository import clean, page, positive, predicate, mutate, audit, coerce
 from .responses import APIError, ExactEncoder, ExactJSONRenderer, ok
 from apps.logistique.excel import ExcelDownloadView, CSVFileRenderer, XLSX_MEDIA_TYPE, MAX_EXPORT_ROWS
 from apps.logistique.table_queries import document_zone
+from . import territorial_contacts
 
 SOURCES = {
     'niveaux0': ('geolocalisation','V_Niveau_0','ID_Niveau_0','NomNiveau_0'),
@@ -69,6 +70,10 @@ DEFAULTS = {
     'statistiques-zones':['NomNiveau_3','NomNiveau_1','Type_Niveau_4','Type_Niveau_5','Nb_Aires_Sante','Nb_Structures_Sante'],
 }
 LABELS.update({'Nb_Niveau_1':'Provinces / DPS','Nb_Niveau_2':'Antennes / subdivisions','Nb_Niveau_3':'Zones de santé','Nb_Niveau_4':'Aires de santé','Nb_Niveau_5':'Structures / sites','ID_TypeNiveau_4_Fk':'Identifiant type d’aire','AvecReseau':'Avec réseau déclaré','StructuresZone':'Zone du rapport','StructuresTypeSite':'Type de site du rapport','prov_uid':'Identifiant de province','Type_Toit':'Type de toit'})
+LABELS.update({'AdresseTerritoire':'Adresse','TelephoneTerritoire':'Téléphone principal',
+    'TelephoneSecondaireTerritoire':'Téléphone secondaire','EmailTerritoire':'Adresse e-mail',
+    'SiteWebTerritoire':'Site web','InformationsAccueilTerritoire':'Informations d’accueil',
+    'CoordonneesModifieLe':'Coordonnées mises à jour le'})
 
 
 def _drill(kind,filters,**extra):
@@ -155,7 +160,15 @@ def record(actor,kind,pk,lock=False):
     source(actor,kind)
     if kind not in MODELS:raise APIError('Ce rapport est en consultation.','READ_ONLY_REGISTER',405)
     obj=model(MODELS[kind]);key=obj['primaryKey'][0]
-    row=db.one('SELECT v.*,v.xmin::text AS "_version" FROM '+db.qualified(obj['schema'],obj['name'])+' v WHERE v.'+db.ident(key)+'=%s'+(' FOR UPDATE' if lock else ''),[positive(pk)])
+    table=db.qualified(obj['schema'],obj['name']);identifier=positive(pk)
+    if kind in territorial_contacts.KINDS:
+        # Obtenir le verrou avant le nouvel instantané parent/enfant : une
+        # édition SQL directe des contacts prend le même verrou via son trigger.
+        if lock:db.one('SELECT '+db.ident(key)+' FROM '+table+' WHERE '+db.ident(key)+'=%s FOR UPDATE',[identifier])
+        row=db.one('SELECT v.*,'+territorial_contacts.projection()+' FROM '+table+' v LEFT JOIN '+territorial_contacts.TABLE
+            +' c ON c.'+db.ident(territorial_contacts.foreign_key(kind))+'=v.'+db.ident(key)+' WHERE v.'+db.ident(key)+'=%s',[identifier])
+    else:
+        row=db.one('SELECT v.*,v.xmin::text AS "_version" FROM '+table+' v WHERE v.'+db.ident(key)+'=%s'+(' FOR UPDATE' if lock else ''),[identifier])
     if not row:raise APIError('Territoire introuvable.','NOT_FOUND',404)
     return clean(row)
 
@@ -265,10 +278,14 @@ def save(actor,kind,body,pk=None,delete=False):
         if not old and revision is not None:raise APIError('Révision inattendue à la création.')
         if delete and data:raise APIError('La suppression ne comporte pas de modification de champs.')
         try:
-            if delete:result=mutate(obj['name'],actor,keys={key:positive(pk)},operation='delete',hard=True)
+            if delete:
+                territorial_contacts.save(actor,kind,positive(pk),{},delete=True)
+                result=mutate(obj['name'],actor,keys={key:positive(pk)},operation='delete',hard=True)
             else:
-                prepared=validate_body(kind,data,old)
+                parent_data,contacts=territorial_contacts.split(kind,data,old)
+                prepared=validate_body(kind,parent_data,old)
                 result=mutate(obj['name'],actor,prepared,keys={key:positive(pk)} if pk else None,operation='update' if pk else 'create')
+                territorial_contacts.save(actor,kind,result[key],contacts)
                 result=record(actor,kind,result[key])
         except IntegrityError as exc:
             state=getattr(exc.__cause__,'sqlstate',None)

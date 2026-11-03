@@ -1,6 +1,6 @@
 const INTERNAL_ORIGIN = "https://sauverndeko.invalid";
 
-export function normalizeAuthRedirect(rawValue, fallbackPath = "/") {
+export function normalizeAuthRedirect(rawValue, fallbackPath = "/espace") {
   if (
     typeof rawValue !== "string" ||
     !rawValue.startsWith("/") ||
@@ -29,7 +29,7 @@ export function normalizeAuthRedirect(rawValue, fallbackPath = "/") {
 
 export function loginPathFor(location) {
   const destination = normalizeAuthRedirect(
-    (location.pathname || "/") + (location.search || "") + (location.hash || "")
+    (location.pathname || "/espace") + (location.search || "") + (location.hash || "")
   );
-  return destination === "/" ? "/login" : "/login?redirect=" + encodeURIComponent(destination);
+  return destination === "/espace" ? "/login" : "/login?redirect=" + encodeURIComponent(destination);
 }

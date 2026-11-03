@@ -1,3 +1,4 @@
+import {referenceLabel} from "../../utils/referenceOptions";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
@@ -61,7 +62,7 @@ export default function CaisseEditor({kind,id=null,mode="create",defaults={},con
  }
  function field(key,label,{type="text",options,required=false,disabled=false,note,wide=false}={}){
   const preserved=options&&loaded.record&&values[key]!==""&&!options.some(option=>String(option.value)===String(values[key]));
-  if(preserved){const names={IdDeviseFk:"DeviseCode",IdTypeCaisseFk:"TypeCaisse",IdResponsableFk:"Responsable",IdCaisseFk:"NomCaisse",IdTypePaiementFk:"TypePaiement",IdTiersFk:"NomTiers"};options=[...options,{value:String(values[key]),label:loaded.record[names[key]]||"Valeur historique #"+values[key],disabled:true}];note="Valeur historique conservée, indisponible pour une nouvelle affectation.";}
+  if(preserved){const names={IdDeviseFk:"DeviseCode",IdTypeCaisseFk:"TypeCaisse",IdResponsableFk:"Responsable",IdCaisseFk:"NomCaisse",IdTypePaiementFk:"TypePaiement",IdTiersFk:"NomTiers"};options=[...options,{value:String(values[key]),label:["IdDeviseFk","IdTypeCaisseFk","IdTypePaiementFk"].includes(key)?referenceLabel({ID_Generique:values[key]}):loaded.record[names[key]]||"Valeur historique #"+values[key],disabled:true}];note="Valeur historique conservée, indisponible pour une nouvelle affectation.";}
   const fieldId=prefix+"-"+key,description=errors[key]?fieldId+"-error":note?fieldId+"-note":undefined;
   return <label className={wide?"is-wide":""} key={key} htmlFor={fieldId}><span>{label}{required?" *":""}</span>{options?<SearchSelect id={fieldId} label={label} value={String(values[key]??"")} options={options} disabled={frozen||disabled} invalid={Boolean(errors[key])} describedBy={description} onChange={value=>change(key,value)}/>:type==="textarea"?<textarea id={fieldId} value={values[key]||""} disabled={frozen||disabled} aria-invalid={Boolean(errors[key])} aria-describedby={description} onChange={event=>change(key,event.target.value)} rows={3}/>:<input id={fieldId} type={type==="decimal"?"text":type} inputMode={type==="decimal"?"decimal":undefined} step={type==="datetime-local"?1:undefined} value={values[key]??""} disabled={frozen||disabled} aria-invalid={Boolean(errors[key])} aria-describedby={description} maxLength={type==="decimal"?20:undefined} onChange={event=>change(key,event.target.value)}/>} {errors[key]?<small className="record-field-error" id={fieldId+"-error"} role="alert">{errors[key]}</small>:note?<small id={fieldId+"-note"}>{note}</small>:null}</label>;
  }

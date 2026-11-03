@@ -19,11 +19,15 @@ export function territoryErrors(kind,values,baseline,support){
   if(!value)return;
   if(field.type==="select"&&!territoryOptions(field,support,values).some(item=>item.value===value&&!item.disabled))errors[field.name]="Choisissez une valeur autorisée.";
   if(field.type==="checkbox"&&!["true","false"].includes(value))errors[field.name]="Choisissez Oui ou Non.";
+  if(field.max&&Array.from(value).length>field.max)errors[field.name]="Limitez ce champ à "+field.max+" caractères.";
+  if(["tel","email","url"].includes(field.type)&&/[\u0000-\u001f\u007f]/.test(value))errors[field.name]="Utilisez une seule ligne sans caractère de contrôle.";
+  if(field.type==="email"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))errors[field.name]="Renseignez une adresse e-mail valide.";
+  if(field.type==="url"){try{const url=new URL(value);if(!["http:","https:"].includes(url.protocol)||!url.hostname||url.username||url.password)throw Error();}catch{errors[field.name]="Utilisez une adresse http:// ou https:// sans identifiants.";}}
   if(field.type==="number"){
    if(!/^-?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(value))errors[field.name]="Renseignez un nombre valide.";
    else{const normalized=value.replace(",","."),number=Number(normalized);if(!Number.isFinite(number))errors[field.name]="Ce nombre est trop grand.";else if(/^Population/.test(field.name)&&normalized.includes(".")&&!/^0*$/.test(normalized.split(".")[1]))errors[field.name]="Renseignez une population entière.";else if(field.min!=null&&number<Number(field.min))errors[field.name]="La valeur doit être positive ou nulle.";else if(/^Latitude/.test(field.name)&&Math.abs(number)>90||/^Longitude/.test(field.name)&&Math.abs(number)>180)errors[field.name]="Vérifiez cette coordonnée géographique.";}
   }
-  if(field.type!=="textarea"&&value.length>1000)errors[field.name]="Utilisez un texte plus court.";
+  if(!field.max&&field.type!=="textarea"&&value.length>1000)errors[field.name]="Utilisez un texte plus court.";
  });
  if(kind==="niveaux5"&&!values.ID_Niveau_4_Fk&&!values.ID_Niveau_3_Fk&&(!baseline||values.ID_Niveau_4_Fk!==baseline.ID_Niveau_4_Fk||values.ID_Niveau_3_Fk!==baseline.ID_Niveau_3_Fk))errors.ID_Niveau_3_Fk="Choisissez une zone ou une aire de rattachement.";
  if(/^niveaux[1-5]$/.test(kind)){const n=kind.at(-1),lat="LatitudeNiveau_"+n,lon="LongitudeNiveau_"+n;if((!baseline||values[lat]!==baseline[lat]||values[lon]!==baseline[lon])&&Boolean(values[lat])!==Boolean(values[lon]))errors[lat]="Renseignez ensemble latitude et longitude.";}

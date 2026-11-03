@@ -43,7 +43,7 @@ demarrer.bat contrôle Django, démarre les services en arrière-plan, attend le
 
 On peut aussi ouvrir ces fichiers BAT depuis l’Explorateur. Leurs chemins sont calculés à partir du dossier du projet.
 
-Le frontend utilise le port fixe 5174 : http://localhost:5174/. Si ce port est occupé, le démarrage s’arrête avec un message explicite ; aucun autre port frontend n’est choisi. Vite applique aussi ce comportement avec npm run dev. Django utilise le port 5000 par défaut et peut choisir un port libre dans la plage 5000–5029. Le proxy Vite reçoit le port Django choisi.
+Le frontend utilise le port fixe 5174. Le lanceur ouvre la page d’accueil publique http://localhost:5174/catalogue ; la racine `/` y redirige également. Après connexion, **Vos applications** se trouve à http://localhost:5174/espace. Les liens directs vers les modules conservent leur destination après authentification. Si le port 5174 est occupé, le démarrage s’arrête avec un message explicite ; aucun autre port frontend n’est choisi. Vite applique aussi ce comportement avec npm run dev. Django utilise le port 5000 par défaut et peut choisir un port libre dans la plage 5000–5029. Le proxy Vite reçoit le port Django choisi.
 
 Utiliser l’adresse affichée par adresse-reseau.bat : le port frontend reste 5174 après un redémarrage. Le navigateur utilise l’adresse du frontend, qui transmet les requêtes API au backend. Fermer le navigateur n’arrête pas les serveurs.
 

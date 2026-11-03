@@ -1,3 +1,4 @@
+import {referenceLabel} from "./referenceOptions";
 // Monetary values stay decimal strings throughout the UI; no implicit conversion.
 export function decimalParts(value) {
   if (value == null || String(value).trim() === "") return null;
@@ -37,8 +38,8 @@ export function formatCurrency(value, code) {
 }
 export function currencyOptions(references, unknown = false) {
   const items = (references?.currencies || []).map(item => {
-    const code=currencyCode(item.code||item.abbr||item.AbrGenerique),label=String(item.name||item.NomGenerique||item.label||"").trim();
-    return {...item,value:String(item.id),label:code||label,disabled:item.disabled===true||item.incompatible===true||item.active===false};
+    const generic=["AbrGenerique","abbr","NomGenerique","ID_Generique"].some(key=>Object.prototype.hasOwnProperty.call(item,key)),code=currencyCode(item.code),label=generic?referenceLabel(item):code||referenceLabel(item);
+    return {...item,value:String(item.id??item.ID_Generique),label,disabled:item.disabled===true||item.incompatible===true||item.active===false};
   });
   return unknown ? [...items, { value:"sans-devise", label:"Devise non renseignée" }] : items;
 }

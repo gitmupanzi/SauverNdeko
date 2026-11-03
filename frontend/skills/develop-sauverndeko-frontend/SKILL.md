@@ -5,6 +5,10 @@ description: Faire évoluer les interfaces React de SauverNdeko vers des parcour
 
 # Frontend SauverNdeko
 
+Pour **Structures** (`/pharmacies`), réutiliser Annuaire et Profils des structures : une seule population publiée avec recherche serveur, filtres, pagination, Cartes/Tableau et fiche latérale. Garder la barre de recherche visible dans les deux présentations, en dehors d’un `SimpleTable` dont les contrôles sont masqués. La fiche Entreprise commune gère coordonnées, présentation, publication, localisations et logo ; le registre privé n’est pas un annuaire des sites territoriaux. Respecter les capacités Structures du serveur, indépendamment de Logistique, et charger les produits/professionnels liés seulement avec leurs droits propres.
+
+Les niveaux territoriaux 1 à 5 affichent une rubrique **Coordonnées** dans la fiche commune et les détails des lignes du panier. Préserver les champs inconnus comme valeurs absentes, la révision opaque et la saisie après erreur. Ne pas copier les contacts du parent ni confondre une adresse professionnelle avec un point GPS ou l’identité d’une entreprise.
+
 Pour [Professionnels](../../../docs/professionnels.md), conserver une seule liste d’annuaire avec choix Cartes/Tableau, recherche serveur par besoin et consultation latérale du même identifiant. Le registre privé suit les droits d’entreprise ; son formulaire commun d’ajout/modification enregistre ensemble les compétences, prestations et structures. Ces enfants partagent le parent, mais la fiche complexe reste individuelle. Les réglages des références affichent les catégories et valeurs renvoyées par l’API. Publication, activité et prise de contact restent distinctes ; ne pas inventer de badge de qualification ni afficher les notes internes dans l’annuaire.
 
 Pour le [module Caisse](../../../docs/module-caisse.md), afficher les totaux séparément par devise, les brouillons et les écritures validées sans ambiguïté. Le frontend utilise les soldes et autorisations du serveur, conserve la même demande après réponse incertaine et ne propose pas de suppression d’écriture validée. Réutiliser les registres, préférences, formulaires et thèmes communs ; documenter le parcours dans le Guide utilisateur.
@@ -14,6 +18,8 @@ Le module Guide utilisateur réutilise la navigation, les thèmes et le contexte
 Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention.
 
 ## Références
+
+**Libellés catégoriels communs :** pour les choix provenant de `referentiel.T_Generique`, afficher `AbrGenerique` et transmettre `ID_Generique`. Appliquer cette règle aux listes SearchSelect, filtres, formulaires, paniers et anciennes valeurs conservées, y compris Support. Ne pas remplacer cette abréviation par `NomGenerique` ni afficher un identifiant de catégorie à la place de la valeur choisie. Si l’abréviation manque, conserver l’identifiant et un libellé neutre explicite ; ne pas modifier les données pour corriger un simple affichage. Les listes d’entreprises, utilisateurs et catégories gardent leurs propres libellés.
 
 - [Architecture existante](references/architecture.md) pour les composants, routes, helpers et limites du code actuel.
 - [Référence visuelle](references/design-reference.md) pour l’accueil, le login, les blocs du tableau de bord et les tableaux inspirés de TailAdmin.
@@ -38,7 +44,7 @@ Le prix porte unité et devise de l’offre. Deux articles locaux de même nom n
 
 ## Entrée de l’application
 
-Le propriétaire conserve le login comme entrée ERP à la racine `/`. App.jsx attend la restauration de session pour les parcours métier et conserve les destinations internes après connexion. Le 3 novembre 2026, il demande une première vitrine de présentation à `/catalogue` : cette page seule est consultable sans session et n’appelle aucune API métier. Ne pas ouvrir les stocks, annuaires, discussions ou l’inscription libre par cette exception. Les API historiques `/api/public/*` restent authentifiées ; `/api/workspace/modules` conserve les licences et droits. Les liens de la vitrine vers un parcours protégé passent par la connexion et les gardes habituels.
+À la demande du propriétaire du 3 novembre 2026, `/` redirige vers `/catalogue`, accueil public de SauverNdeko. Cette vitrine n’est pas une tuile de module métier et n’appelle aucune API métier. L’espace privé « Vos applications » se trouve à `/espace` ; la connexion y conduit par défaut, tout en conservant une destination protégée explicitement demandée. App.jsx attend la restauration de session pour les parcours métier. Les liens « Applications » des modules ouvrent `/espace` et les liens de présentation ouvrent `/catalogue`. Ne pas ouvrir les stocks, annuaires, discussions ou l’inscription libre par cette exception. Les API historiques `/api/public/*` restent authentifiées ; `/api/workspace/modules` conserve les licences et droits. Les liens de la vitrine vers un parcours protégé passent par la connexion et les gardes habituels.
 
 La vitrine utilise la largeur disponible avec des gouttières réduites et adaptatives, sans large plafond de conteneur centré. Les paragraphes gardent une longueur lisible ; les grilles passent sur une colonne et les actions s’adaptent aux petits écrans. Vérifier notamment 320, 375, 768, 1440 et 1920 pixels, sans masquer un débordement horizontal pour simuler son absence.
 

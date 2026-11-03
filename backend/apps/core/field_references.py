@@ -223,14 +223,16 @@ def reference_options(actor, schema, table, column, current=None, visibility=Non
     for key, expected in (visibility or {}).items():
         clauses.append('g.'+db.ident(key)+' IS NOT DISTINCT FROM %s')
         params.append(expected)
-    projection = '''SELECT g."ID_Generique" AS id,
-        COALESCE(NULLIF(btrim(g."AbrGenerique"),''),g."NomGenerique") AS label,
+    from .reference_labels import reference_label_sql
+    label_sql=reference_label_sql('g')
+    projection = f'''SELECT g."ID_Generique" AS id,
+        {label_sql} AS label,
         g."NomGenerique" AS name,g."AbrGenerique" AS abbr,g."ID_CategorieGeneriqueFk" AS "categoryId",
         (g."ValideGenerique" IS TRUE AND c."ValideCategorieGenerique" IS TRUE) AS active
         FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
           ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"'''
     result = [{**row, 'disabled': False, 'incompatible': False} for row in db.query(
-        projection+' WHERE '+' AND '.join(clauses)+' ORDER BY lower(COALESCE(NULLIF(btrim(g."AbrGenerique"),\'\'),g."NomGenerique")),g."ID_Generique"', params)]
+        projection+' WHERE '+' AND '.join(clauses)+' ORDER BY lower('+label_sql+'),g."ID_Generique"', params)]
     retained = [] if current is None or current == '' else current if isinstance(current, (list, tuple)) else [current]
     retained = list(dict.fromkeys(positive(v, 'Valeur actuelle') for v in retained))
     missing = [key for key in retained if not any(row['id'] == key for row in result)]

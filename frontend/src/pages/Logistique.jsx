@@ -457,7 +457,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
     ...(onIdentity?[{key:"identity",label:"Identité de l’entreprise",icon:"document",onClick:onIdentity,disabled:!identityAvailable,title:identityAvailable?"Identité de l’entreprise":"Choisissez une entreprise active."}]:[]),
     ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
     {key:"references",label:"Référentiels",icon:"tag",to:"/referentiels"},
-    {key:"applications",label:"Applications",icon:"apps",to:"/"},
+    {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
   ];
   return <ModuleSidebar title="Logistique" collapsed={collapsed} onToggle={onToggle} groups={navigation} activeKey={dashboardActive?"dashboard":activeTab} onNavigate={onNavigate} footerItems={footerItems} storageKey="sauverndeko.logistique.navigation"/>;
 }

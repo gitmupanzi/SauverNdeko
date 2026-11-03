@@ -444,7 +444,9 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
     if obj['schema'] == 'professionnel':
         raise APIError('Utilisez le module Professionnels pour préserver les références, les affiliations et la publication des profils.', 'DEDICATED_PROFESSIONAL_REQUIRED', 405)
     check_global_write(obj, actor)
-    if name == 'T_Entite' and isinstance(body, dict) and 'PartageArticlesPublicParDefaut' in body:
+    if name == 'T_CoordonneesTerritoire':
+        raise APIError('Modifiez les coordonnées depuis la fiche territoriale pour conserver sa révision et sa transaction.', 'DEDICATED_TERRITORIAL_PROFILE_REQUIRED', 405)
+    if name == 'T_Entite' and isinstance(body, dict) and {'PartageArticlesPublicParDefaut', 'VisibleAnnuaireEntite', 'PresentationPubliqueEntite'} & set(body):
         raise APIError('Ce réglage utilise la fiche Entreprise et sa révision.', 'DEDICATED_ENTITY_PROFILE_REQUIRED', 405)
     if name == 'T_Immobilisation':
         raise APIError('Utilisez le formulaire des immobilisations avec sa révision et son motif.', 'DEDICATED_IMMOBILISATION_REQUIRED', 405)

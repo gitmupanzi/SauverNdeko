@@ -12,6 +12,7 @@ import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 import unittest
+import unicodedata
 from urllib.parse import urlsplit
 import uuid
 from contextlib import contextmanager
@@ -75,6 +76,17 @@ class ProfessionalsAPI(unittest.TestCase):
             query += ' AND "AbrGenerique"=%s'
             params.append(code)
         row = cls.sql.execute(query+' ORDER BY "ID_Generique" LIMIT 1', params).fetchone()
+        if not row and code:
+            # Le dictionnaire vivant peut afficher « Santé » au lieu de
+            # l'ancien code SANTE : la recette ne réécrit aucune référence.
+            normalize = lambda value: ''.join(char for char in unicodedata.normalize('NFKD', value or '')
+                if not unicodedata.combining(char)).casefold()
+            candidates = cls.sql.execute('''SELECT "ID_Generique" id,"AbrGenerique","NomGenerique"
+                FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=ANY(
+                  referentiel.fn_categories_champ('professionnel',%s,%s,NULL))
+                AND "ValideGenerique" AND "IdEntiteFk" IS NULL ORDER BY "ID_Generique"''',[table,field]).fetchall()
+            matches = [item for item in candidates if normalize(code) in {normalize(item['AbrGenerique']),normalize(item['NomGenerique'])}]
+            row = matches[0] if len(matches)==1 else None
         if not row:
             raise AssertionError('Référence de recette manquante : '+field+' '+str(code))
         return row['id']

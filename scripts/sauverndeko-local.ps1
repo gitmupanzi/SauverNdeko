@@ -154,7 +154,7 @@ function Network-Settings {
 }
 function Show-Addresses($State) {
  $Port=if ($null -ne $State) {[int]$State.frontend_port} else {$RequiredFrontendPort}
- $Lines=@('SauverNdeko',('Sur ce PC : http://localhost:'+ $Port +'/'))
+ $Lines=@('SauverNdeko',('Sur ce PC : http://localhost:'+ $Port +'/catalogue'))
  $Active=$null -ne $State -and @($State.services | Where-Object {Expected-Process $_}).Count -gt 0
  $Inaccessible=$null -ne $State -and @($State.services | Where-Object {(Get-ServiceRecordStatus $_) -eq 'inaccessible'}).Count -gt 0
  if ($Active -and $State.network_mode -eq 'lan') {
@@ -164,10 +164,10 @@ function Show-Addresses($State) {
    foreach ($Entry in $Adapter.GetIPProperties().UnicastAddresses) {
     if ($Entry.Address.AddressFamily -ne 'InterNetwork') { continue }
     $Bytes=$Entry.Address.GetAddressBytes()
-    if ($Bytes[0] -eq 10 -or ($Bytes[0] -eq 172 -and $Bytes[1] -ge 16 -and $Bytes[1] -le 31) -or ($Bytes[0] -eq 192 -and $Bytes[1] -eq 168)) { $Lines+='  http://'+$Entry.Address.IPAddressToString+':'+$Port+'/' }
+    if ($Bytes[0] -eq 10 -or ($Bytes[0] -eq 172 -and $Bytes[1] -ge 16 -and $Bytes[1] -le 31) -or ($Bytes[0] -eq 192 -and $Bytes[1] -eq 168)) { $Lines+='  http://'+$Entry.Address.IPAddressToString+':'+$Port+'/catalogue' }
    }
   }
-  foreach ($Name in ([string]$State.network_hosts).Split(',')) { $Lines+='Nom du PC ou alias DNS : http://'+$Name+':'+$Port+'/' }
+  foreach ($Name in ([string]$State.network_hosts).Split(',')) { $Lines+='Nom du PC ou alias DNS : http://'+$Name+':'+$Port+'/catalogue' }
  } elseif ($Active) { $Lines+='Acces local. Pour le reseau : redemarrer.bat -Reseau' }
  elseif ($Inaccessible) { $Lines+='Identite des processus inaccessible avec les droits Windows actuels. Informations de suivi conservees ; aucun arret force.' }
  else { $Lines+='Application arretee. Lancer demarrer.bat ; ajouter -Reseau pour le reseau local.' }
@@ -209,7 +209,11 @@ function Start-Project {
   $Alive=@($State.services | Where-Object {Expected-Process $_})
   $Known=@($State.services | Where-Object {(Get-ServiceRecordStatus $_) -in @('owned','inaccessible')})
   if ($Known.Count -eq 2 -and [int]$State.frontend_port -eq $RequiredFrontendPort -and $State.network_mode -eq $Network.mode -and $State.network_hosts -eq $Network.hosts) {
-   if ((Http-Ready ('http://127.0.0.1:'+$State.frontend_port+'/health')) -and (Http-Ready ('http://127.0.0.1:'+$State.backend_port+'/health'))) { Step 'Application deja demarree.';Show-Addresses $State;return }
+   if ((Http-Ready ('http://127.0.0.1:'+$State.frontend_port+'/health')) -and (Http-Ready ('http://127.0.0.1:'+$State.backend_port+'/health'))) {
+    Step 'Application deja demarree.';Show-Addresses $State
+    if (-not $NoBrowser) { Start-Process ('http://localhost:'+$State.frontend_port+'/catalogue') | Out-Null }
+    return
+   }
   }
   Assert-ServiceRecordsInspectable $State
   if ($Alive.Count) { Stop-Project }
@@ -234,7 +238,7 @@ function Start-Project {
   Wait-Service "http://127.0.0.1:$FrontendPort/health" $Record
   Show-Addresses $State
   Step ('Journaux : '+$RuntimeRoot)
-  if (-not $NoBrowser) { Start-Process ('http://localhost:'+$FrontendPort+'/') | Out-Null }
+  if (-not $NoBrowser) { Start-Process ('http://localhost:'+$FrontendPort+'/catalogue') | Out-Null }
  } catch {
   foreach ($Record in $Launched) {Stop-ServiceRecord $Record}
   $State.services=@();Save-State $State

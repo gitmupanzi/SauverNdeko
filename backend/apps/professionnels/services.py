@@ -88,7 +88,8 @@ def record(actor, pk, *, lock=False):
 
 
 def _label(value):
-    return value.get('AbrGenerique') or value.get('NomGenerique') or '' if isinstance(value, dict) else ''
+    from apps.core.reference_labels import reference_label
+    return reference_label(value)
 
 
 def _reference(value):

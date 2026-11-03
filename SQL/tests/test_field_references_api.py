@@ -216,10 +216,15 @@ class FieldReferencesAPI(unittest.TestCase):
         retained = service.reference_options(self.actor(), 'logistique', 'T_Article', 'ID_CategorieArticleFk', old)
         item = next(o for o in retained if o['id'] == old)
         self.assertTrue(item['disabled']); self.assertTrue(item['incompatible'])
+        db.query('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s', ['Nom historique non affiché',' RETENU-ABR ',old])
+        again = service.reference_options(self.actor(), 'logistique', 'T_Article', 'ID_CategorieArticleFk', old)
+        kept = next(o for o in again if o['id'] == old)
+        self.assertEqual(kept['label'], 'RETENU-ABR'); self.assertEqual(kept['id'], old)
+        self.assertTrue(kept['disabled']); self.assertTrue(kept['incompatible'])
         db.query('UPDATE referentiel."T_Generique" SET "VisibleArticle"=false WHERE "ID_Generique"=%s', [self.generics[0]])
         self.assertEqual(service.reference_options(self.actor(), 'logistique', 'T_Article', 'ID_CategorieArticleFk', visibility={'VisibleArticle': True}), [])
         db.query('UPDATE referentiel."T_Generique" SET "AbrGenerique"=\'  \',"NomGenerique"=\'Nom de remplacement\' WHERE "ID_Generique"=%s', [self.generics[0]])
-        self.assertEqual(service.reference_options(self.actor(), 'logistique', 'T_Article', 'ID_CategorieArticleFk')[0]['label'], 'Nom de remplacement')
+        self.assertEqual(service.reference_options(self.actor(), 'logistique', 'T_Article', 'ID_CategorieArticleFk')[0]['label'], 'Valeur sans abréviation #'+str(self.generics[0]))
 
     def test_09_normal_lookup_scope_rights_and_closed_targets(self):
         self.response(self.put(scope='entity')[0])

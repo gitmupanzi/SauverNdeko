@@ -1,7 +1,9 @@
 const text=value=>String(value??"").trim();
 export const REFERENCE_RETAINED_HINT="Référence conservée. Choisissez une valeur de la nouvelle catégorie pour la remplacer.";
 export function referenceLabel(item,fallback="Valeur sans libellé") {
- return text(item?.abbr??item?.AbrGenerique)||text(item?.name??item?.NomGenerique)||text(item?.label)||text(item?.code)||fallback;
+ const generic=item&&["AbrGenerique","abbr","ID_Generique","NomGenerique","categoryId"].some(key=>Object.prototype.hasOwnProperty.call(item,key));
+ if(generic){const label=text(Object.prototype.hasOwnProperty.call(item,"AbrGenerique")?item.AbrGenerique:item.abbr),id=item.ID_Generique??item.id??item.value;return label||"Valeur sans abréviation"+(id!=null&&text(id)?" #"+text(id):"");}
+ return text(item?.label)||text(item?.name)||text(item?.code)||fallback;
 }
 export function referenceOptions(items=[]) {
  return items.map(item=>({...item,value:String(item.value??item.id??item.ID_Generique??""),label:referenceLabel(item),disabled:item.disabled===true||item.incompatible===true||item.active===false})).filter(item=>item.value);

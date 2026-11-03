@@ -121,15 +121,15 @@
           "steps": [
             {
               "title": "Ouvrir Produits",
-            "text": "Depuis Vos applications, ouvrez Produits. Choisissez les cartes ou le tableau : les deux affichages présentent les mêmes offres et les mêmes critères."
+              "text": "Depuis Vos applications, ouvrez Produits. Choisissez les cartes ou le tableau : les deux affichages présentent les mêmes offres et les mêmes critères."
             },
             {
               "title": "Identifier le produit",
-            "text": "Comparez le nom, la photo lorsqu’elle existe, la référence et l’entreprise. Cliquez sur le nom ou sur Consulter pour ouvrir la fiche de l’offre."
+              "text": "Comparez le nom, la photo lorsqu’elle existe, la référence et l’entreprise. Cliquez sur le nom ou sur Consulter pour ouvrir la fiche de l’offre."
             },
             {
-            "title": "Vérifier le prix et son unité",
-            "text": "Lisez le prix de vente avec sa devise et son unité, la catégorie et le type renseignés. Une valeur absente reste indiquée comme telle."
+              "title": "Vérifier le prix et son unité",
+              "text": "Lisez le prix de vente avec sa devise et son unité, la catégorie et le type renseignés. Une valeur absente reste indiquée comme telle."
             }
           ],
           "example": {
@@ -137,8 +137,8 @@
             "text": "Deux articles portent le nom fictif « Lampe ». Les références « LAMPE-A » et « LAMPE-B » permettent de les distinguer."
           },
           "notes": [
-          "Le prix d’achat, les notes de gestion et le stock exact ne sont pas exposés dans cet annuaire.",
-          "Un même nom dans deux entreprises ne garantit pas un produit équivalent. Comparez les références, unités et devises."
+            "Le prix d’achat, les notes de gestion et le stock exact ne sont pas exposés dans cet annuaire.",
+            "Un même nom dans deux entreprises ne garantit pas un produit équivalent. Comparez les références, unités et devises."
           ],
           "links": [
             {
@@ -150,19 +150,19 @@
         {
           "id": "retrouver-reference-produit",
           "title": "Retrouver une référence produit",
-        "summary": "Recherchez dans toutes les offres publiées et affinez la liste.",
+          "summary": "Recherchez dans toutes les offres publiées et affinez la liste.",
           "steps": [
             {
               "title": "Lancer une recherche",
-            "text": "Dans Produits, saisissez une partie du nom, de la référence ou de l’entreprise, puis cliquez sur Rechercher. La recherche porte sur toutes les offres autorisées, y compris au-delà de la page affichée."
+              "text": "Dans Produits, saisissez une partie du nom, de la référence ou de l’entreprise, puis cliquez sur Rechercher. La recherche porte sur toutes les offres autorisées, y compris au-delà de la page affichée."
             },
             {
-            "title": "Affiner les résultats",
-            "text": "Ouvrez Filtrer pour choisir une catégorie, un type, une entreprise, une devise ou une disponibilité déclarée. Appliquez les critères, puis utilisez la pagination ou changez le nombre de lignes."
+              "title": "Affiner les résultats",
+              "text": "Ouvrez Filtrer pour choisir une catégorie, un type, une entreprise, une devise ou une disponibilité déclarée. Appliquez les critères, puis utilisez la pagination ou changez le nombre de lignes."
             },
             {
               "title": "Comparer les informations",
-            "text": "Ouvrez la fiche de l’offre recherchée. En la fermant, retrouvez vos critères et votre page. Réinitialiser retire les critères appliqués."
+              "text": "Ouvrez la fiche de l’offre recherchée. En la fermant, retrouvez vos critères et votre page. Réinitialiser retire les critères appliqués."
             }
           ],
           "example": {
@@ -190,11 +190,11 @@
             },
             {
               "title": "Lire la disponibilité",
-            "text": "Stock déclaré indique qu’une quantité positive est enregistrée ; Stock nul déclaré indique qu’aucune quantité positive n’est enregistrée. Ces informations ne constituent ni une réservation ni une garantie de disponibilité."
+              "text": "Stock déclaré indique qu’une quantité positive est enregistrée ; Stock nul déclaré indique qu’aucune quantité positive n’est enregistrée. Ces informations ne constituent ni une réservation ni une garantie de disponibilité."
             },
             {
               "title": "Confirmer auprès de la structure",
-            "text": "Dans la fiche, consultez les coordonnées et les adresses déclarées de l’entreprise. Si Discussions est autorisé pour votre compte, Contacter l’entreprise ouvre cette messagerie. Saisissez et envoyez ensuite votre demande."
+              "text": "Dans la fiche, consultez les coordonnées et les adresses déclarées de l’entreprise. Si Discussions est autorisé pour votre compte, Contacter l’entreprise ouvre cette messagerie. Saisissez et envoyez ensuite votre demande."
             }
           ],
           "example": {
@@ -202,8 +202,8 @@
             "text": "Le demandeur relève « LAMPE-B » et demande si deux unités sont disponibles avant de convenir d’un retrait."
           },
           "notes": [
-          "Aucune réservation, commande de vente ou message n’est créé par la simple consultation de l’offre.",
-          "Les coordonnées et lieux affichés sont ceux déclarés par l’entreprise ; ils ne prouvent ni sa proximité ni une qualification pharmaceutique."
+            "Aucune réservation, commande de vente ou message n’est créé par la simple consultation de l’offre.",
+            "Les coordonnées et lieux affichés sont ceux déclarés par l’entreprise ; ils ne prouvent ni sa proximité ni une qualification pharmaceutique."
           ],
           "links": [
             {
@@ -219,32 +219,36 @@
       "label": "Structures",
       "path": "/pharmacies",
       "icon": "bi-hospital",
-      "description": "Identifier un établissement et utiliser ses coordonnées publiques.",
+      "description": "Rechercher les structures publiées et gérer la présentation de votre entreprise.",
       "articles": [
         {
           "id": "consulter-structure",
-          "title": "Consulter une structure",
-          "summary": "Retrouvez les informations utiles d’un établissement.",
+          "title": "Trouver et consulter une structure",
+          "summary": "Recherchez une structure publiée par son nom, son type ou sa localité.",
           "steps": [
             {
-              "title": "Ouvrir Structures",
-              "text": "Ouvrez la rubrique depuis Vos applications. L’écran présente les cartes des pharmacies et autres structures répertoriées."
+              "title": "Ouvrir l’annuaire",
+              "text": "Ouvrez Structures depuis Vos applications. Recherchez un nom ou utilisez les filtres Type et Localité."
             },
             {
-              "title": "Lire les coordonnées",
-              "text": "Vérifiez le nom, le type, l’adresse, le téléphone public et les horaires lorsqu’ils sont renseignés."
+              "title": "Choisir une présentation",
+              "text": "Passez de Cartes à Tableau sans perdre vos critères de recherche. Les deux vues présentent les mêmes résultats."
             },
             {
-              "title": "Comparer le statut",
-              "text": "Consultez l’indication de disponibilité avant de préparer votre déplacement."
+              "title": "Consulter la fiche",
+              "text": "Cliquez sur le nom ou sur Consulter. La fiche présente les coordonnées professionnelles, la présentation et les lieux déclarés."
+            },
+            {
+              "title": "Examiner les liens disponibles",
+              "text": "Consultez les offres de produits et les professionnels publiés liés à la structure lorsque votre accès le permet."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Une structure fictive « Point Exemple » est située à une adresse précise. L’utilisateur vérifie aussi les horaires au lieu de se fier au seul nom."
+            "text": "Pour distinguer deux établissements nommés « Centre Exemple », l’utilisateur filtre la localité puis compare leurs adresses et téléphones déclarés."
           },
           "notes": [
-            "Une information non renseignée ne signifie pas que le service n’existe pas."
+            "Seules les entreprises actives ayant autorisé la publication de leur fiche apparaissent dans cet annuaire. Une fiche publiée ne constitue pas un agrément ni une confirmation d’horaires ou de disponibilité."
           ],
           "links": [
             {
@@ -259,16 +263,16 @@
           "summary": "Ouvrez un échange depuis la bonne carte.",
           "steps": [
             {
-              "title": "Identifier l’établissement",
-              "text": "Contrôlez le nom et l’adresse de la carte sélectionnée."
+              "title": "Vérifier la structure",
+              "text": "Ouvrez la fiche et contrôlez son nom et ses coordonnées professionnelles."
             },
             {
-              "title": "Cliquer Contacter la structure",
-              "text": "Le bouton ouvre Discussions avec l’établissement choisi, si les droits du compte le permettent."
+              "title": "Ouvrir la discussion",
+              "text": "Utilisez Contacter la structure lorsque cette action est proposée. Le destinataire est repris automatiquement dans Discussions."
             },
             {
-              "title": "Formuler la demande",
-              "text": "Indiquez le produit ou le service recherché, sa référence et la question à confirmer."
+              "title": "Présenter votre besoin",
+              "text": "Précisez le produit ou le service recherché et les informations que vous souhaitez confirmer."
             }
           ],
           "example": {
@@ -276,7 +280,7 @@
             "text": "« Bonjour, pouvez-vous confirmer la disponibilité de la référence LAMPE-B et vos horaires de retrait ? »"
           },
           "notes": [
-            "Les échanges nécessitent l’accès à Discussions. Une demande n’est pas un engagement de livraison."
+            "La prise de contact nécessite les droits de messagerie. Elle ne crée ni commande ni engagement de livraison. Les échanges existants restent accessibles à leurs participants après un retrait de publication."
           ],
           "links": [
             {
@@ -287,28 +291,32 @@
         },
         {
           "id": "comparer-structures",
-          "title": "Comparer les structures",
-          "summary": "Utilisez la liste pour distinguer des établissements au nom proche.",
+          "title": "Gérer le profil de votre structure",
+          "summary": "Mettez à jour la présentation publiée depuis la fiche de l’entreprise.",
           "steps": [
             {
-              "title": "Consulter les cartes",
-              "text": "Repérez les structures pertinentes pour votre besoin."
+              "title": "Ouvrir Profils des structures",
+              "text": "Ce registre est accessible aux gestionnaires habilités. Choisissez l’entreprise active avant de modifier sa fiche."
             },
             {
-              "title": "Lire la vue tabulaire",
-              "text": "Comparez le nom, l’adresse, le type et le statut dans la liste publique des structures."
+              "title": "Compléter le profil",
+              "text": "Utilisez Modifier pour renseigner les coordonnées, la présentation, les localisations et le logo dans la même fiche."
             },
             {
-              "title": "Choisir le bon interlocuteur",
-              "text": "Utilisez les coordonnées de la structure vérifiée pour poursuivre votre démarche."
+              "title": "Décider de la publication",
+              "text": "Dans Présentation, activez ou désactivez la publication de la structure. Le partage de chaque article reste un réglage séparé."
+            },
+            {
+              "title": "Enregistrer les changements",
+              "text": "Indiquez le motif demandé puis enregistrez. En cas de modification simultanée, rechargez la fiche avant de reprendre vos changements."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Deux structures fictives se nomment « Centre Exemple ». Le quartier et le téléphone public permettent de distinguer les établissements."
+            "text": "Le gestionnaire de « Pharmacie Exemple » complète son adresse et sa présentation puis publie sa fiche. Il peut ensuite retirer cette fiche sans changer les quantités de ses articles."
           },
           "notes": [
-            "La fiche visible ne donne pas accès aux données internes de l’entreprise."
+            "La création d’une entreprise et la modification de son type ou de son état restent réservées à l’administration habilitée. Le découpage territorial et ses coordonnées se gèrent dans Organisation territoriale."
           ],
           "links": [
             {
@@ -1333,6 +1341,10 @@
               "text": "Renseignez les coordonnées et informations utiles lorsque vous disposez d’une source fiable."
             },
             {
+              "title": "Compléter les coordonnées professionnelles",
+              "text": "Dans Coordonnées, renseignez l’adresse, les téléphones, l’e-mail, le site web et les informations d’accueil connus. Ces champs sont aussi disponibles pour les provinces, subdivisions, zones et aires."
+            },
+            {
               "title": "Vérifier la cohérence",
               "text": "Si une aire est renseignée, contrôlez sa cohérence avec la zone. Enregistrez après correction des éventuels messages."
             }
@@ -1342,7 +1354,8 @@
             "text": "Un site fictif est connu dans une zone, mais son aire n’est pas encore confirmée. L’utilisateur conserve le rattachement direct à la zone sans inventer une aire."
           },
           "notes": [
-            "Une information inconnue reste non renseignée. Une coordonnée ou un parent ne se déduit pas d’un simple nom proche."
+            "Une information inconnue reste non renseignée. Une coordonnée ou un parent ne se déduit pas d’un simple nom proche.",
+            "Les coordonnées appartiennent au territoire concerné. Elles ne sont pas copiées automatiquement depuis son parent ni assimilées à la fiche d’une entreprise."
           ],
           "links": [
             {

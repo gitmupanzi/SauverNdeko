@@ -135,7 +135,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     ...(canAccessAdmin?[{key:"/admin",label:"Administration",icon:"shield"}]:[]),
   ].filter(item=>mayOpen(user,item.key));
   return <ModuleSidebar title="Applications" overlay open={isOpen} onClose={onClose} activeKey={pathname} onNavigate={onNavigate} storageKey="sauverndeko.catalogue.navigation" groups={[
-    {label:"Votre espace",items:[{key:"/",label:"Applications",icon:"apps"}]},
+    {label:"Votre espace",items:[{key:"/espace",label:"Applications",icon:"apps"}]},
     {label:"Catalogue",items:catalogue},
     {label:"Gestion",items:modules},
   ]} footerItems={isAuthenticated?[
@@ -239,7 +239,7 @@ function ApplicationShell() {
       return;
     }
 
-    goTo("/");
+    goTo("/espace");
   }
 
   function openDiscussion(target) {
@@ -330,16 +330,6 @@ function ApplicationShell() {
 
         <main className="mobile-content" ref={contentRef}>
           <Routes>
-            <Route
-              path="/pharmacies"
-              element={
-                <Pharmacies
-                  pharmacies={catalogue.pharmacies}
-                  onNavigate={goTo}
-                  onContact={openDiscussion}
-                />
-              }
-            />
             <Route path="/experts" element={<Experts experts={catalogue.experts} onContact={openDiscussion} />} />
             <Route path="/maladies" element={<Diseases diseases={catalogue.diseases} />} />
             <Route
@@ -374,13 +364,13 @@ function ApplicationShell() {
                 </AdminRoute>
               }
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/espace" replace />} />
           </Routes>
         </main>
 
         <BottomNav
           currentPath={location.pathname}
-          onHome={() => goTo("/")}
+          onHome={() => goTo("/espace")}
           onDiscussions={() => goTo("/discussions")}
           onSearch={toggleSearchOverlay}
         />
@@ -397,6 +387,7 @@ export default function App() {
   const { loading, isAuthenticated, user } = useAuth();
   const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.IdRoleFk, user?.permissions?.canAccessAdmin, accessSignature(user)].join(":");
 
+  if (location.pathname === "/") return <Navigate to="/catalogue" replace />;
   if (location.pathname === "/catalogue") return <PublicCatalogue />;
   if (isPasswordResetRoute) return <PasswordReset />;
   if (isLoginRoute) return <Login />;
@@ -405,7 +396,7 @@ export default function App() {
   if (!isAuthenticated) {
     return <Navigate to={loginPathFor(location)} replace />;
   }
-  if (location.pathname === "/") return <WorkspaceHome key={scopeKey} />;
+  if (location.pathname === "/espace") return <WorkspaceHome key={scopeKey} />;
   if (location.pathname === "/profil") return <div className="applications-page"><ModuleHeader title="Mon profil" /><Profile key={scopeKey} /></div>;
   if (location.pathname === "/applications") return <Applications key={scopeKey} />;
   if (location.pathname === "/abonnements") return <AdminRoute><ApplicationLicences key={scopeKey} /></AdminRoute>;
@@ -413,6 +404,7 @@ export default function App() {
   if (location.pathname === "/logistique") return <ModuleGate><AdminRoute><Logistique key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/caisse") return <ModuleGate><Caisse key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/produits") return <ModuleGate><Products key={scopeKey} /></ModuleGate>;
+  if (location.pathname === "/pharmacies") return <ModuleGate><Pharmacies key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/experts") return <ModuleGate><Experts key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;

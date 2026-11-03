@@ -68,7 +68,10 @@ def criteria(params):
     return ' AND '.join(where), values
 
 
-def can_contact(actor):
+def can_contact(actor, entity=None):
+    if entity is not None:
+        from .structures import contact_available
+        return contact_available(actor, entity)
     rights = access_snapshot(actor)['modules']
     return bool(not settings.DB_READ_ONLY and rights.get('discussions', {}).get('canManage')
                 and rights.get('structures', {}).get('canRead'))
@@ -122,7 +125,7 @@ def detail(actor, pk):
     locations = db.query('''SELECT label,address,zone,area,site
         FROM logistique."V_OffreArticleLocalisation" WHERE "ID_Article"=%s
         ORDER BY label NULLS LAST,address NULLS LAST,zone NULLS LAST,area NULLS LAST,site NULLS LAST''', [row['ID_Article']])
-    return {'record': offer(row), 'locations': locations, 'canContact': can_contact(actor)}
+    return {'record': offer(row), 'locations': locations, 'canContact': can_contact(actor, row['IdEntite'])}
 
 
 class ProductReferencesView(APIView):

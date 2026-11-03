@@ -24,6 +24,13 @@ class TerritorialAPI(unittest.TestCase):
  def setUpClass(cls):
   cls.override=override_settings(ALLOWED_HOSTS=['testserver']);cls.override.enable()
   cls.sql=psycopg.connect(DSN,autocommit=True,row_factory=dict_row)
+  # Les jeux géographiques importent parfois leurs ID explicitement. Préparer
+  # uniquement les séquences de la copie privée de recette, sans modifier la
+  # base applicative ni interpréter cette préparation comme une migration.
+  for n in range(6):
+   field='ID_Niveau_'+str(n);table='geolocalisation."T_Niveau_'+str(n)+'"'
+   seq=cls.sql.execute('SELECT pg_get_serial_sequence(%s,%s) seq',[table,field]).fetchone()['seq']
+   if seq:cls.sql.execute('SELECT setval(%s::regclass,GREATEST((SELECT COALESCE(max("'+field+'"),1) FROM '+table+'),pg_sequence_last_value(%s::regclass)),true)',[seq,seq])
   cls.user=cls.sql.execute('INSERT INTO systeme."T_Utilisateurs"("NomUser","PrenomUser","EmailUser","MotdepasseUser","ValideUser","SexeUser","Is_Admin","Is_staff") VALUES(\'Territoire\',\'Fictif\',%s,\'inutilisable\',true,\'M\',true,true) RETURNING *',[uuid.uuid4().hex+'@example.invalid']).fetchone()
  @classmethod
  def tearDownClass(cls):cls.sql.close();cls.override.disable()

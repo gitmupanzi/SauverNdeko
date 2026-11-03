@@ -212,21 +212,22 @@ def _option_rows(actor, table, pk, label, *, current=None, active=None):
 
 
 def references(actor, current=None):
+    from apps.core.reference_labels import reference_label_sql
     require_module(actor,'support')
     selected=current or {}
     scoped=document_reference_actor(actor,selected['IdEntiteFk']) if selected else actor
     choices={};fields={}
     for key,alias in REFERENCE_FIELDS.items():
         context=reference_context(scoped,'support','T_Support',key)
-        options=[{**item,'label':item.get('name') or item['label']} for item in reference_options(scoped,'support','T_Support',key,selected.get(key))]
+        options=reference_options(scoped,'support','T_Support',key,selected.get(key))
         choices[alias]=options;fields[key]={**context,'options':options}
     resolution_context=reference_context(scoped,'support','T_ResolutionSupport','ID_ResultatVerificationFk')
-    choices['resultats']=[{**item,'label':item.get('name') or item['label']} for item in reference_options(scoped,'support','T_ResolutionSupport','ID_ResultatVerificationFk')]
+    choices['resultats']=reference_options(scoped,'support','T_ResolutionSupport','ID_ResultatVerificationFk')
     if selected:
         # Le circuit capturé reste utilisable même après remplacement de sa
         # famille dans les réglages. Les autres champs suivent les choix actuels.
         ids=list(selected['CircuitSnapshot']['verification'].values())
-        choices['resultats']=db.query('SELECT "ID_Generique" AS id,"NomGenerique" AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_Generique"=ANY(%s::integer[]) AND referentiel.fn_reference_visible("ID_Generique",%s) ORDER BY "ID_Generique"',[ids,selected['IdEntiteFk']])
+        choices['resultats']=db.query('SELECT "ID_Generique" AS id,'+reference_label_sql()+' AS label,"AbrGenerique" AS abbr FROM referentiel."T_Generique" WHERE "ID_Generique"=ANY(%s::integer[]) AND referentiel.fn_reference_visible("ID_Generique",%s) ORDER BY "ID_Generique"',[ids,selected['IdEntiteFk']])
     fields['ID_ResultatVerificationFk']={**resolution_context,'options':choices['resultats']}
     users=_option_rows(scoped,'systeme."T_Utilisateurs"','IdUser',"concat_ws(' ',\"PrenomUser\",\"NomUser\")",current=selected.get('ID_ResponsableFk'),active='ValideUser')
     # Le compte global qui réalise le traitement peut être affecté explicitement.
@@ -292,7 +293,8 @@ def detail(actor, pk):
                         if key in generic_fields:generic_ids.add(item)
                         elif key in user_fields:user_ids.add(item)
                         elif key=='ID_DemandeurFk':client_ids.add(item)
-        generic_names={str(item['id']):item['label'] for item in db.query('SELECT "ID_Generique" id,"NomGenerique" label FROM referentiel."T_Generique" WHERE "ID_Generique"=ANY(%s::integer[])',[list(generic_ids)])} if generic_ids else {}
+        from apps.core.reference_labels import reference_label_sql
+        generic_names={str(item['id']):item['label'] for item in db.query('SELECT "ID_Generique" id,'+reference_label_sql()+' label FROM referentiel."T_Generique" WHERE "ID_Generique"=ANY(%s::integer[])',[list(generic_ids)])} if generic_ids else {}
         user_names={str(item['id']):item['label'] for item in db.query('SELECT "IdUser" id,concat_ws(\' \',"PrenomUser","NomUser") label FROM systeme."T_Utilisateurs" WHERE "IdUser"=ANY(%s::integer[])',[list(user_ids)])} if user_ids else {}
         client_names={str(item['id']):item['label'] for item in db.query('SELECT "ID_Client" id,"Nom" label FROM logistique."T_Client" WHERE "ID_Client"=ANY(%s::bigint[]) AND "IdEntiteFk"=%s',[list(client_ids),row['IdEntiteFk']])} if client_ids else {}
         diff_labels={**LABELS,'ID_ResponsableFk':'Responsable','ID_DemandeurFk':'Demandeur',
@@ -663,7 +665,7 @@ class SupportKanbanView(APIView):
         groups=db.query('SELECT v."ID_StatutFk" AS id,v."Statut" AS label,count(*) AS count FROM support."V_Support" v WHERE '+where+' GROUP BY v."ID_StatutFk",v."Statut" ORDER BY label,id',values)
         known={row['id'] for row in groups}
         for option in reference_options(actor,'support','T_Support','ID_StatutFk'):
-            if option['id'] not in known:groups.append({'id':option['id'],'label':option.get('name') or option['label'],'count':0})
+            if option['id'] not in known:groups.append({'id':option['id'],'label':option['label'],'count':0})
         take=20
         for group in groups:
             group['rows']=[public_record(row) for row in db.query('SELECT v.* FROM support."V_Support" v WHERE '+where+' AND v."ID_StatutFk"=%s ORDER BY '+order+' LIMIT %s',[*values,group['id'],take])]

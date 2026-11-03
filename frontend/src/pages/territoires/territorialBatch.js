@@ -1,4 +1,4 @@
-import {territoryFields,territoryValues,TERRITORY_REGISTERS} from "./territorialDefinitions";
+import {territoryFields,territoryValues,TERRITORY_REGISTERS,TERRITORY_CONTACT_FIELDS} from "./territorialDefinitions";
 import {territoryErrors,territoryPayload,territoryOptions} from "./territorialForm";
 import {parseExcelTsv} from "../referentiels/referenceBatch";
 
@@ -7,7 +7,7 @@ export const TERRITORY_BATCH_PARENTS={niveaux0:[],niveaux1:["ID_Niveau_0_Fk"],ni
 export const territoryHasBatch=kind=>Object.hasOwn(TERRITORY_BATCH_PARENTS,kind);
 export const territoryBatchFields=kind=>territoryFields(kind).filter(field=>!TERRITORY_BATCH_PARENTS[kind]?.includes(field.name));
 export const territoryBatchColumns=kind=>{const fields=territoryBatchFields(kind),type=fields.find(field=>field.type==="select"&&/^ID_TypeNiveau_/.test(field.name));return [TERRITORY_REGISTERS[kind].name,"CodeNiveau_"+kind.at(-1),"AbreNiveau_"+kind.at(-1),type?.name||(!fields.some(field=>/^AbreNiveau_/.test(field.name))?"iso":null)].filter(name=>fields.some(field=>field.name===name));};
-export const territoryBatchPasteFields=kind=>[...new Set([...territoryBatchColumns(kind),...territoryBatchFields(kind).filter(field=>field.type==="select"||/^Population|^Obs/.test(field.name)).map(field=>field.name)])];
+export const territoryBatchPasteFields=kind=>[...new Set([...territoryBatchColumns(kind),...territoryBatchFields(kind).filter(field=>field.type==="select"||/^Population|^Obs/.test(field.name)||TERRITORY_CONTACT_FIELDS.some(item=>item.name===field.name)).map(field=>field.name)])];
 export function territoryBatchRow(kind,values={}){const parents=TERRITORY_BATCH_PARENTS[kind]||[];return {rowId:crypto.randomUUID(),pristine:true,values:Object.fromEntries(Object.entries({...territoryValues(kind),...values}).filter(([name])=>!parents.includes(name)))};}
 const duplicate=value=>String(value??"").trim().replace(/\s+/g," ").toLocaleLowerCase("fr");
 const normalize=value=>String(value??"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr").replace(/[^a-z0-9]/g,"");
