@@ -49863,6 +49863,135 @@ COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ZoneSansAireR
 COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."AireSansZoneRapprochee" IS 'Aire dont la zone canonique est absente ou ambiguë ; son parent physique et son identité restent conservés.';
 
 --
+-- Name: T_MigrationSchema; Type: TABLE; Schema: systeme; Owner: -
+--
+
+CREATE TABLE systeme."T_MigrationSchema" (
+    "Identifiant" text NOT NULL,
+    "EmpreinteFichier" character varying(64) NOT NULL,
+    "Nature" text NOT NULL,
+    "Description" text NOT NULL,
+    "VersionApplication" text NOT NULL,
+    "AppliqueLe" timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    "DureeMs" bigint NOT NULL,
+    "Dependances" jsonb NOT NULL,
+    "Position" integer NOT NULL,
+    "EmpreinteStructure" character varying(64) NOT NULL,
+    "Structure" jsonb NOT NULL,
+    CONSTRAINT "T_MigrationSchema_Dependances_check" CHECK ((jsonb_typeof("Dependances") = 'array'::text)),
+    CONSTRAINT "T_MigrationSchema_DureeMs_check" CHECK (("DureeMs" >= 0)),
+    CONSTRAINT "T_MigrationSchema_EmpreinteFichier_check" CHECK ((("EmpreinteFichier")::text ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT "T_MigrationSchema_EmpreinteStructure_check" CHECK ((("EmpreinteStructure")::text ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT "T_MigrationSchema_Nature_check" CHECK (("Nature" = ANY (ARRAY['socle'::text, 'migration'::text]))),
+    CONSTRAINT "T_MigrationSchema_Position_check" CHECK (("Position" >= 0)),
+    CONSTRAINT "T_MigrationSchema_Structure_check" CHECK ((jsonb_typeof("Structure") = 'object'::text))
+);
+
+--
+-- Name: TABLE "T_MigrationSchema"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON TABLE systeme."T_MigrationSchema" IS 'Journal technique immuable des socles attestés et migrations métier réussies, sans données clientes. Écrit exclusivement par la maintenance de déploiement.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Identifiant"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Identifiant" IS 'Identité stable du socle ou de la migration, unique par base.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."EmpreinteFichier"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."EmpreinteFichier" IS 'SHA-256 du fichier UTF-8 normalisé LF effectivement validé.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Nature"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Nature" IS 'socle : catalogue déjà présent vérifié ; migration : SQL exécuté avec succès.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Description"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Description" IS 'Objet de la livraison technique, sans secret ni donnée métier.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."VersionApplication"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."VersionApplication" IS 'Version applicative déclarée par la livraison du schéma.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."AppliqueLe"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."AppliqueLe" IS 'Instant serveur de validation de cette entrée de maintenance.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."DureeMs"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."DureeMs" IS 'Durée de la vérification et de l’application, en millisecondes.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Dependances"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Dependances" IS 'Identifiants des migrations préalables explicitement requis.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Position"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Position" IS 'Position séquentielle depuis le socle numéro zéro.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."EmpreinteStructure"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."EmpreinteStructure" IS 'Empreinte du catalogue métier après validation, hors journal.';
+
+--
+-- Name: COLUMN "T_MigrationSchema"."Structure"; Type: COMMENT; Schema: systeme; Owner: -
+--
+
+COMMENT ON COLUMN systeme."T_MigrationSchema"."Structure" IS 'Empreintes par objet du catalogue, sans lignes ni valeurs de séquence.';
+
+--
+-- Name: T_MigrationSchema T_MigrationSchema_Position_key; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_MigrationSchema"
+    ADD CONSTRAINT "T_MigrationSchema_Position_key" UNIQUE ("Position");
+
+--
+-- Name: T_MigrationSchema T_MigrationSchema_pkey; Type: CONSTRAINT; Schema: systeme; Owner: -
+--
+
+ALTER TABLE ONLY systeme."T_MigrationSchema"
+    ADD CONSTRAINT "T_MigrationSchema_pkey" PRIMARY KEY ("Identifiant");
+
+--
+-- Name: CONSTRAINT facture_ligne_coherente ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+-- Name: CONSTRAINT ck_caisse_journal ON "T_Caisse"; Type: COMMENT; Schema: operations; Owner: -
+--
+
+COMMENT ON CONSTRAINT "ck_caisse_journal" ON "operations"."T_Caisse" IS 'Intégrité de caisse : ck_caisse_journal ; montants exacts, historique conservé et rattachements prouvés.';
+
+--
+-- Name: CONSTRAINT facture_snapshot_coherent ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
 -- PostgreSQL database dump complete
 --
 

@@ -1,0 +1,100 @@
+name: Livraison Render contrôlée
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_reference:
+        description: Référence de la sauvegarde DB et médias vérifiée hors CI
+        required: true
+        type: string
+      confirm_maintenance:
+        description: Sauvegarde vérifiée et fenêtre de maintenance autorisée
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sauverndeko-render-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s scripts/tests -p test_render_preparation.py
+      - run: npm ci && npm run test:ux && npm run build
+        working-directory: frontend
+      # Valider l'image complète avant toute migration de production.
+      - run: docker build --file deploy/render/Dockerfile --tag sauverndeko-render-check .
+
+  maintenance:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: render-production
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: ${{ secrets.MAINTENANCE_DATABASE_URL }}
+      MAINTENANCE_DATABASE_URL: ${{ secrets.MAINTENANCE_DATABASE_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+      CONFIRM_MAINTENANCE: ${{ inputs.confirm_maintenance }}
+      DJANGO_SETTINGS_MODULE: config.maintenance
+      SAUVERNDEKO_DB_READ_ONLY: '0'
+      SAUVERNDEKO_DB_SSLMODE: verify-full
+      SAUVERNDEKO_DB_SSLROOTCERT: /etc/ssl/certs/ca-certificates.crt
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Vérifier les confirmations avant toute connexion métier
+        run: python deploy/render/release.py validate
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Installer le client SQL pour les droits runtime
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+      - name: Présenter le plan métier
+        run: python backend/manage.py migrer_metier
+      - name: Appliquer uniquement les migrations métier manquantes
+        run: python backend/manage.py migrer_metier --apply --release "$GITHUB_SHA"
+      - name: Mettre à niveau les seules tables natives Django dans public
+        run: python backend/manage.py migrate --noinput
+      - name: Actualiser les droits du service web après les créations d'objets
+        run: python deploy/render/release.py grants
+      - name: Vérifier la version réellement installée
+        run: python backend/manage.py migrer_metier --check && python backend/manage.py migrate --check
+
+  deploy:
+    needs: maintenance
+    runs-on: ubuntu-latest
+    environment: render-production
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Déployer exactement le commit vérifié
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: python3 deploy/render/release.py deploy

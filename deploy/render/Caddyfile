@@ -1,0 +1,51 @@
+{
+    admin off
+    auto_https off
+    servers {
+        # Le frontal Render arrive par le réseau privé ; Cloudflare remplace
+        # CF-Connecting-IP. Ne jamais reprendre la chaîne X-Forwarded-For reçue.
+        trusted_proxies static private_ranges
+        trusted_proxies_strict
+        client_ip_headers CF-Connecting-IP
+    }
+}
+
+# Render termine TLS. Seul Caddy écoute sur le port public du conteneur.
+http://:{$PORT:10000} {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+    @backend path /api /api/* /SauverNdeko /SauverNdeko/* /django-admin /django-admin/* /health /health/
+    handle @backend {
+        reverse_proxy 127.0.0.1:5000 {
+            # Ne jamais transmettre une valeur X-Forwarded-* fournie par l'usager.
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Port 443
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {client_ip}
+        }
+    }
+    # Les médias privés passent exclusivement par les routes Django autorisées.
+    @privateFiles path /media /media/* /backend/* /SQL/* /deploy/* /.env /.env.* /.git/*
+    handle @privateFiles {
+        respond 404
+    }
+    handle_path /static/* {
+        root * /app/backend/staticfiles
+        file_server
+    }
+    handle /assets/* {
+        root * /app/frontend/dist
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+    }
+    handle {
+        root * /app/frontend/dist
+        header Cache-Control no-cache
+        try_files {path} /index.html
+        file_server
+    }
+}

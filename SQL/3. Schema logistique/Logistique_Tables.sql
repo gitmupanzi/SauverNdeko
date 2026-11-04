@@ -10768,3 +10768,14 @@ COMMENT ON CONSTRAINT reglement_devise_fk ON logistique."T_Reglements" IS 'Conse
 
 --
 --
+--
+-- Name: CONSTRAINT facture_ligne_coherente ON "T_FactureLigne"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "facture_ligne_coherente" ON "logistique"."T_FactureLigne" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';
+
+--
+-- Name: CONSTRAINT facture_snapshot_coherent ON "T_Facture"; Type: COMMENT; Schema: logistique; Owner: -
+--
+
+COMMENT ON CONSTRAINT "facture_snapshot_coherent" ON "logistique"."T_Facture" IS 'Intégrité de l’instantané financier : source conservée, unicité, quantités et montants cohérents.';

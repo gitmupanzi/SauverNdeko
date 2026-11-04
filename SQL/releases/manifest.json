@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "hashAlgorithm": "sha256-utf8-lf-v1",
+  "baseline": {
+    "id": "20261104_socle",
+    "file": "baseline-20261104.json",
+    "sha256": "f47a96a5faaab2520abf1147e5899c788843378c17576b9159afec3352c2f222"
+  },
+  "migrations": []
+}

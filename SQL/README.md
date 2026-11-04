@@ -44,6 +44,8 @@ Les exports canoniques ne remplacent pas une sauvegarde de données. Les premiè
 
 ## Base existante
 
+Depuis le 4 novembre 2026, le suivi des prochaines mises à jour est préparé dans `releases/manifest.json` et la commande Django `migrer_metier`. Le socle vérifie le catalogue existant sans rejouer les 65 anciens scripts. Les futures évolutions doivent être inscrites dans le manifeste avec leurs empreintes et dépendances ; leur réussite est journalisée dans `systeme.T_MigrationSchema`. Le plan est en lecture seule ; l'attestation initiale et l'application restent des opérations explicites de maintenance. Voir [le parcours complet](../docs/mises-a-jour-base.md) et [la préparation Render](../docs/deploiement-render.md).
+
 Appliquer uniquement l’évolution nécessaire, avec contrôle des préconditions, sauvegarde adaptée au périmètre, limites de verrouillage et vérification avant/après. Ne pas rejouer les extraits canoniques sur la base courante. Les migrations historiques 01, 02 et 03 gardent leur contenu ; leur réapplication après la version 04 peut rétablir des définitions anciennes.
 
 La migration 04 est transactionnelle et réexécutable. Son retour arrière ne constitue pas une restauration de données. Une sauvegarde de la seule structure précède cette intervention ; aucune nouvelle copie des données privées n’a été créée.

@@ -35,7 +35,7 @@ BEGIN
  REVOKE CREATE ON SCHEMA public FROM PUBLIC;
  REVOKE ALL ON SCHEMA public FROM sauverndeko_runtime;
  GRANT USAGE ON SCHEMA public TO sauverndeko_runtime;
- FOREACH s IN ARRAY ARRAY['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','systeme'] LOOP
+ FOREACH s IN ARRAY ARRAY['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','support','systeme'] LOOP
   IF NOT EXISTS(SELECT FROM pg_namespace WHERE nspname=s) THEN RAISE EXCEPTION 'Schéma requis manquant : %',s;END IF;
   EXECUTE format('REVOKE ALL ON SCHEMA %I FROM sauverndeko_runtime',s);
   EXECUTE format('GRANT USAGE ON SCHEMA %I TO sauverndeko_runtime',s);
@@ -61,5 +61,12 @@ BEGIN
  IF to_regclass('public.django_migrations') IS NOT NULL THEN GRANT SELECT ON public.django_migrations TO sauverndeko_runtime;END IF;
  -- Les journaux sont append-only au niveau de ce compte ; les triggers écrivent en INSERT.
  REVOKE UPDATE,DELETE ON systeme."T_Audit_Log",systeme."T_Login",operations."T_Paiement_Archive" FROM sauverndeko_runtime;
+ -- Les déploiements sont attestés par la maintenance, jamais par le serveur HTTP.
+ -- Cette exception vient après les droits métier communs et doit être conservée
+ -- lors de toute réapplication de ce script ou des privilèges par défaut.
+ IF to_regclass('systeme."T_MigrationSchema"') IS NOT NULL THEN
+  REVOKE ALL ON systeme."T_MigrationSchema" FROM PUBLIC,sauverndeko_runtime;
+  GRANT SELECT ON systeme."T_MigrationSchema" TO sauverndeko_runtime;
+ END IF;
 END $grants$;
 COMMIT;

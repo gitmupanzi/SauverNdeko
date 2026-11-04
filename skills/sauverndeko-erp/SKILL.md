@@ -98,6 +98,8 @@ Conserver la fiche unique par compte, son propriétaire durable, les affiliation
 
 ## Préparation d’une version client
 
+Le schéma métier suit un manifeste de migrations et un journal par base ; lire [les mises à jour sans recréation de données](../../docs/mises-a-jour-base.md) avant une livraison. Le socle existant est attesté par comparaison du catalogue, sans rejeu des anciens SQL. Une nouvelle version ajoute une migration immuable, testée sur copie restaurée, et conserve la compatibilité backend/frontend pendant son installation. Les réglages privés de `.env` ne sont jamais publiés ; [le parcours Render](../../docs/deploiement-render.md) sépare maintenance et service web. Ne pas confondre un push, une demande de déploiement et une mise en ligne effectivement vérifiée.
+
 Utiliser les jalons de la trajectoire ERP comme critères de travail, puis rapporter les résultats observés et les écarts restants. La livraison doit préciser les modules activés, les rôles, les données de démonstration fictives, l’installation, la sauvegarde/restauration et les limites connues. L’existence d’un client intéressé ne permet pas de présenter une fonction cible comme disponible.
 
 ## Architecture actualisée

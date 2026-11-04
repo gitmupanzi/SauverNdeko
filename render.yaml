@@ -1,0 +1,39 @@
+# Blueprint à activer après initialisation/vérification de la base et des médias.
+# Aucun compte PostgreSQL propriétaire ni URL de maintenance dans le service web.
+services:
+  - type: web
+    name: sauverndeko
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeployTrigger: off
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    preDeployCommand: python deploy/render/predeploy.py
+    healthCheckPath: /health
+    numInstances: 1
+    disk:
+      name: sauverndeko-media
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SAUVERNDEKO_DB_READ_ONLY
+        value: "0"
+      # TLS chiffré sur réseau Render privé : certificat auto-signé de Render.
+      - key: SAUVERNDEKO_DB_SSLMODE
+        value: require
+      - key: SAUVERNDEKO_MEDIA_ROOT
+        value: /var/data/media
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.production
+      - key: DJANGO_DEBUG
+        value: "0"
