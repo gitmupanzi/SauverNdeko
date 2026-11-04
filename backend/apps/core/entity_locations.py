@@ -43,11 +43,11 @@ def locations(entity):
 def geographical_references():
     result={}
     for n in (3,4,5):
-        parent=(',"ID_Niveau_3_Fk" AS "parent3"' if n==4 else ',"ID_Niveau_3_Fk" AS "parent3","ID_Niveau_4_Fk" AS "parent4"' if n==5 else '')
+        parent=(',n."ID_Niveau_3_Fk" AS "parent3"' if n==4 else '')
         if n==5:
-            result['niveaux5']=db.query('SELECT n."ID_Niveau_5" AS id,n."NomNiveau_5" AS label,COALESCE(n."ID_Niveau_3_Fk",p."ID_Niveau_3_Fk") AS "parent3",n."ID_Niveau_4_Fk" AS "parent4" FROM geolocalisation."T_Niveau_5" n LEFT JOIN geolocalisation."T_Niveau_4" p ON p."ID_Niveau_4"=n."ID_Niveau_4_Fk" ORDER BY label,n."ID_Niveau_5"')
+            result['niveaux5']=db.query('SELECT n."ID_Niveau_5" AS id,c.label,COALESCE(n."ID_Niveau_3_Fk",p."ID_Niveau_3_Fk") AS "parent3",n."ID_Niveau_4_Fk" AS "parent4" FROM geolocalisation."T_Niveau_5" n JOIN geolocalisation."V_ChoixTerritorial" c ON c.niveau=5 AND c.id=n."ID_Niveau_5" LEFT JOIN geolocalisation."T_Niveau_4" p ON p."ID_Niveau_4"=n."ID_Niveau_4_Fk" ORDER BY label,n."ID_Niveau_5"')
             continue
-        result['niveaux'+str(n)]=db.query('SELECT "ID_Niveau_'+str(n)+'" AS id,"NomNiveau_'+str(n)+'" AS label'+parent+' FROM geolocalisation."T_Niveau_'+str(n)+'" ORDER BY label,"ID_Niveau_'+str(n)+'"')
+        result['niveaux'+str(n)]=db.query('SELECT c.id,c.label'+parent+' FROM geolocalisation."T_Niveau_'+str(n)+'" n JOIN geolocalisation."V_ChoixTerritorial" c ON c.niveau=%s AND c.id=n."ID_Niveau_'+str(n)+'" ORDER BY c.label,c.id',[n])
     return result
 
 def prepared(row):

@@ -10,7 +10,10 @@ const mark=(tree,name)=>nodes(tree).find(n=>n.type?.name===name),button=(tree,la
 globalThis.requestAnimationFrame=fn=>fn();globalThis.document={getElementById:()=>({focus(){}})};
 const support={entityId:7,canCreate:true,platformAdmin:true,roleCategoryId:39,entities:[{id:7,label:'Entreprise fictive',active:true,IdEntite:7,NomEntite:'Entreprise fictive',ValideEntite:true}],categories:[{id:40,label:'Famille',ID_CategorieGenerique:40,NomCategorieGenerique:'Famille',ValideCategorieGenerique:true}],referenceOptions:{roles:[{id:111,label:'Agent',abbr:'AG',active:true}]},roles:[{id:111,label:'Agent',abbr:'AG',active:true}],personnelServices:[{id:25,label:'Informatique',active:true}],personnelFonctions:[]};
 (async()=>{
- const p=await bundle("export * from './src/pages/admin/adminBatchForm'; export {adminEditorFields} from './src/pages/admin/AdminRecordEditor';");
+ const p=await bundle("export * from './src/pages/admin/adminBatchForm'; export {adminEditorFields,adminEditorOptions} from './src/pages/admin/AdminRecordEditor';");
+ const territorialChoice={id:7,ID_Niveau_4:7,ID_Niveau_3_Fk:3,NomNiveau_4:'Centre',label:'COD / Kinshasa / Ant PEV - Kinshasa / ZS - Ngiri Ngiri / AS - Centre'},territorialChoices={niveaux4:[territorialChoice,{...territorialChoice,id:8,ID_Niveau_4:8,ID_Niveau_3_Fk:4,label:'COD / Kinshasa / Ville - Kinshasa / Secteur - Ngiri Ngiri / Grp - Centre'}]};
+ eq(p.adminEditorOptions('locations',{optionsSource:'niveaux4'},{IdNiveau_3_Fk:'3'},territorialChoices),[{value:'7',label:territorialChoice.label,disabled:false}]);
+ eq(p.adminEditorOptions('locations',{optionsSource:'niveaux4'},{IdNiveau_3_Fk:'3'},{niveaux4:[{id:7,parentId:3,label:territorialChoice.label,disabled:true}]}),[{value:'7',label:territorialChoice.label,disabled:true}]);
  eq(Object.keys(p.ADMIN_BATCH),['utilisateurs','roles','correspondances','parametres']);eq(p.ADMIN_BATCH_MAX,100);
  for(const kind of Object.keys(p.ADMIN_BATCH)){const row=p.adminBatchRow(kind,support);eq(row.pristine,true);ok(/^[a-f0-9-]{36}$/.test(row.clientRowId));ok(p.validateAdminBatch(kind,[],support).header.rows);}
  let rows=p.adminBatchFromExcel('utilisateurs','Prénom\tNom\tAdresse e-mail\tRôle\tMot de passe initial\tTéléphone\tSexe\nAnne\tTest\tanne@example.invalid\tAG\tTest-Password-123\t00123\tFéminin',support,{hasHeaders:true});

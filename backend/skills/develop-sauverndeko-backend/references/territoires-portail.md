@@ -34,6 +34,16 @@ La même combinaison nom + code + rattachements, normalisée par `referentiel.fn
 
 ## Références et hiérarchie
 
+### Libellés des listes territoriales
+
+Produire un libellé commun depuis les rattachements physiques existants, jusqu’au niveau de l’option : `iso pays / province / Type - Nom / Type - Nom / …`. Utiliser `geolocalisation.T_Niveau_0.iso` pour le premier segment (`COD` pour la RDC lorsque cette valeur est renseignée), jamais `NomNiveau_0`. La province conserve son nom ; chaque segment des niveaux 2 à 5 porte le type issu de `referentiel.T_Generique.AbrGenerique` puis le nom du territoire. Ne pas employer `NomGenerique` à la place de cette abréviation. Un nom identique sous plusieurs types, comme Ngiri Ngiri secteur, ZS ou BCZS, doit rester distinguable.
+
+Partager ce format entre références territoriales, créations individuelles et paniers, modifications, filtres, destinations Logistique, localisations des entreprises et autres sélecteurs de territoire. Conserver les vraies clés comme valeurs, ainsi que les métadonnées de parent nécessaires au filtrage ; un changement de libellé ne modifie ni FK, ni portée, ni validité, ni visibilité. Les anciennes valeurs non proposées doivent rester identifiables et conservables selon le contrat existant.
+
+Construire uniquement les segments reliés et réellement renseignés. Si l’ISO, le type ou le nom manque, utiliser un repère neutre avec l’identifiant lorsqu’il est nécessaire pour identifier l’option ; ne pas inventer `COD`, recopier le nom long du pays ou supposer un type d’après le niveau. Ne pas remplacer silencieusement les parents physiques par les nouveaux liens sanitaires de rapprochement. Un site sans aire reste directement rattaché à sa zone ; ne pas fabriquer de segment AS. Vérifier les homonymes, les niveaux manquants, les choix historiques et les recherches portant sur tout le chemin.
+
+### Familles et cohérence hiérarchique
+
 Les familles viennent de `referentiel.T_ChampReferentiel` et de la résolution commune des correspondances. Ne pas ajouter de numéros de catégories dans les composants ou les API. Les nouvelles valeurs doivent respecter la famille, la validité et les règles de visibilité existantes ; une valeur historique devenue incompatible reste affichée et conservée si elle n'est pas changée. Les rapports reprennent les familles des champs physiques qu'ils projettent.
 
 Les types de N3, N4 et N5 proposés en saisie imposent respectivement `VisibleNiveau_3`, `VisibleNiveau_4` et `VisibleNiveau_5` à `true`, dans leur famille physique. Ces champs existent déjà avec un défaut `true` ; ne pas réécrire les anciens choix. `currentId` réinjecte une ancienne FK hors liste en option désactivée. Le serveur renvoie `availableCount` hors valeurs désactivées et `choiceMessage` si aucun choix n’est activé. La même règle s’applique à une nouvelle FK ou à son remplacement ; une autre modification de la fiche conserve sa FK historique. Les visibilités de saisie ne filtrent pas l’annuaire des affectations historiques valides.
@@ -73,6 +83,20 @@ Ne pas agréger les populations de sites comme un taux de couverture : leurs pé
 Le rapport réseau conserve les valeurs SQL inconnues, notamment un pourcentage NULL lorsque le dénominateur est nul. Son détail « avec réseau » reprend exactement le prédicat `AbrGenerique IS NOT NULL AND AbrGenerique <> 'Sans reseau'` dans la projection SQL `AvecReseau`, sans coder d'identifiant de référence ; ce classement ne prouve pas une connexion Internet vérifiée.
 
 ## Installation et validation
+
+### Rapprochement SNIS/DHIS2 et GRID3
+
+Le [dossier du 4 novembre 2026](../../../../docs/fiabilisation-geolocalisation-20261104.md) distingue la hiérarchie administrative et les liens sanitaires versionnés. Une ZS est une zone canonique ; son BCZS est un bureau distinct. Ne pas leur recopier le même UID par homonymie et ne pas déplacer les parents historiques pour superposer les deux organisations. Les liens `bureau_de_zone`, `rattachement_sanitaire`, `aire_de_zone` et `copie_n5_n4` de `T_LienTerritorial` conservent les sources, preuves, décisions et acteurs. Un groupement ne devient jamais une aire de santé. Une copie N5/N4 ne prouve pas qu'un établissement est contenu dans une aire.
+
+Réutiliser la vue privée `V_PyramideSanitaireRapprochee` pour lire les ZS/AS et leurs liens confirmés, sans multiplier les aires par les bureaux, antennes ou objets GRID3. Les anciennes vues et les API continuent à représenter les parents physiques ; ne pas présenter leurs compteurs comme une projection déjà complète de cette nouvelle pyramide. La vue conserve les AS non rapprochées et ZS sans aire et signale les cibles contradictoires, sans en choisir une arbitrairement.
+
+`T_SourceRapprochementTerritorial` identifie les versions par empreinte ; `T_CorrespondanceTerritoriale` conserve les objets externes et leurs vraies FK. Plusieurs `grid3id` peuvent viser la même AS. Aucun calcul de coordonnées depuis une surface ou une longueur. Les décisions finales et sources restent immuables ; aucune suppression en cascade pour annuler une reprise.
+
+Les UID SNIS N1/N3/N4 sont facultatifs, sensibles à la casse et, lorsqu'ils sont renseignés, composés de 11 caractères DHIS2 : une lettre puis des lettres ou chiffres. Les index assurent l'unicité dans chaque niveau ; ils ne garantissent pas l'unicité entre niveaux ni la justesse du rapprochement. L'import contrôle également ces identités entre niveaux et les préconditions, sous verrou partagé de hiérarchie. Une correction explicite reste possible avec les droits, révisions et audits existants.
+
+`appliquer_reprise_territoriale` exige le plan, son SHA-256 et un administrateur global actif. Le mode par défaut est un prévol réellement en lecture seule, sans consommation de séquence. `--simulate` est réservé aux bases locales `sauverndeko_test_*` : le rollback des lignes n'annule pas la consommation des séquences PostgreSQL. `--apply` conserve une seule transaction, les preuves et l'audit avant/après. Le rejeu vérifie l'état appliqué ; il refuse une modification ultérieure plutôt que réappliquer aveuglément. Les cas incertains restent dans les listes de décision, sans mutation des données métier. Une reprise ne doit pas devenir un contournement permanent des règles de visibilité : seule l'activation N4 du type AS physique a été incluse explicitement dans le lot approuvé.
+
+Les gros journaux doivent rester consultables sans perdre leurs preuves. `20261104_05_performance_masquage_audit.sql` conserve le masquage récursif de `fn_audit_sans_secrets` en utilisant des agrégats JSON structurés suivis d'un cast JSONB unique. Éviter les concaténations répétées et vérifier les gros objets imbriqués, les types scalaires, les secrets et les chaînes JSON encodées ; ne pas raccourcir un audit ou relever le délai d'expiration pour masquer une régression de lecture.
 
 `20261030_03_portail_territorial.sql` étend le catalogue des tableaux et des exports. `20261030_04_type_site_referentiel.sql` corrige une FK physique manquante du type de site, puis inscrit son champ dans le référencement central. L'inspection source a prouvé 21 949 types renseignés, 28 identifiants distincts, une famille unanime et aucun orphelin. Le défaut est dérivé du type d'aire déjà catalogué ; il n'est pas codé en dur. La migration ne réécrit aucun territoire ni réglage existant et son rejeu préserve la configuration.
 

@@ -158,12 +158,19 @@ def references(actor, current=None):
         AND (u."DateEmbauche" IS NULL OR u."DateEmbauche"<=CURRENT_DATE)
         AND (u."DateFinEmploi" IS NULL OR u."DateFinEmploi">=CURRENT_DATE)
         ORDER BY lower(u."NomUser"),lower(u."PrenomUser"),u."IdUser"''', params)
-    result['localisations'] = db.query('''SELECT l."IdEntiteLocalisation" AS id,l."IdEntite" AS "entityId",
-        COALESCE(NULLIF(concat_ws(' · ',NULLIF(l."AdresseDetaillee",''),NULLIF(l."NomNiveau_3",''),NULLIF(l."NomNiveau_4",''),NULLIF(l."NomNiveau_5",'')),''),'Localisation #'||l."IdEntiteLocalisation"::text) AS label
-        FROM systeme."V_Entite_Localisation_Detail" l WHERE l."IdEntiteLocalisation" IS NOT NULL AND ''' + ('l."IdEntite"=%s' if entity else 'TRUE')
+    # Le bien reste affecté au point de son entreprise, pas au territoire.
+    # Utiliser le chemin du niveau le plus précis réellement renseigné.
+    location_choices = '''SELECT l."IdEntiteLocalisation" AS id,l."IdEntite" AS "entityId",
+        COALESCE(NULLIF(concat_ws(' · ',NULLIF(l."AdresseDetaillee",''),
+            COALESCE(c5.label,c4.label,c3.label)),''),'Localisation #'||l."IdEntiteLocalisation"::text) AS label
+        FROM systeme."V_Entite_Localisation_Detail" l
+        LEFT JOIN geolocalisation."V_ChoixTerritorial" c3 ON c3.niveau=3 AND c3.id=l."IdNiveau_3_Fk"
+        LEFT JOIN geolocalisation."V_ChoixTerritorial" c4 ON c4.niveau=4 AND c4.id=l."IdNiveau_4_Fk"
+        LEFT JOIN geolocalisation."V_ChoixTerritorial" c5 ON c5.niveau=5 AND c5.id=l."IdNiveau_5_Fk"'''
+    result['localisations'] = db.query(location_choices + ''' WHERE l."IdEntiteLocalisation" IS NOT NULL AND ''' + ('l."IdEntite"=%s' if entity else 'TRUE')
         + ' ORDER BY label,l."IdEntiteLocalisation"', [entity] if entity else [])
     for field, key, sql in [('ID_ResponsableFk', 'responsables', 'SELECT "IdUser" AS id,concat_ws(\' \',"PrenomUser","NomUser") AS label FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s AND "IdEntiteFk"=%s'),
-        ('ID_LocalisationFk', 'localisations', 'SELECT "IdEntiteLocalisation" AS id,COALESCE(NULLIF("AdresseDetaillee",\'\'),\'Localisation #\'||"IdEntiteLocalisation"::text) AS label FROM systeme."T_Entite_Localisation" WHERE "IdEntiteLocalisation"=%s AND "IdEntiteFk"=%s')]:
+        ('ID_LocalisationFk', 'localisations', location_choices + ' WHERE l."IdEntiteLocalisation"=%s AND l."IdEntite"=%s')]:
         retained = (current or {}).get(field)
         if retained is not None and not any(row['id'] == retained for row in result[key]):
             old = db.one(sql, [retained, entity])

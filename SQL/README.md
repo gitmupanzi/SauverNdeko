@@ -1,6 +1,26 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
-Les sources canoniques de structure sont alignées sur la base locale au 2 novembre 2026, jusqu’à `20261102_05_commentaire_catalogue_caisse.sql`. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+Les sources canoniques de structure sont mises à jour par périmètre vérifié. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
+
+## Rapprochement territorial SNIS/DHIS2 et GRID3 — 4 novembre 2026
+
+Les migrations `20261104_02_rapprochement_territorial.sql` et `20261104_04_integrite_uid_snis.sql` sont installées après validation du modèle additif, sauvegarde restaurée et tests privés. Trois tables conservent les versions de source, les correspondances externes et les liens typés. La vue `V_PyramideSanitaireRapprochee` distingue les ZS, leurs bureaux BCZS et les antennes PEV, sans déplacer les parents existants ni assimiler les groupements aux AS. Les UID N1/N3/N4 reçoivent un contrôle de format et d'unicité locale ; plusieurs objets GRID3 peuvent viser une aire.
+
+Un plan privé épinglé par SHA-256 a complété 25 provinces, 479 ZS et 127 AS, puis créé 8 655 AS. L'importeur Django `appliquer_reprise_territoriale` assure prévol réellement en lecture seule, transaction unique, préconditions, audit et rejeu sans doublon. La migration autonome `20261104_03_uid_provinces_prouves.sql` teste et documente le sous-lot provincial ; les mêmes compléments ont déjà été appliqués par l'importeur. Les données externes et plans complets restent hors Git. Les quatre canoniques géographiques/globaux ont été restaurés sur bases privées vides et leurs nouveaux objets comparés à la source.
+
+`20261104_05_performance_masquage_audit.sql` optimise la lecture des gros journaux sans réécrire leurs données ni modifier les règles de masquage ou les contrats API. La fonction agrège les objets et tableaux en un seul passage. Les huit tests dédiés vérifient parité, secrets, charge, droits, rejeu et retour ; la correction est installée dans la source.
+
+Lire le [rapport, les preuves, les limites et le retour arrière](../docs/fiabilisation-geolocalisation-20261104.md). Les cas contradictoires restent en attente et aucun lien établissement→aire n'est déduit d'une homonymie. Les vues historiques continuent à représenter leurs parents physiques ; leur nombre de sites sans aire n'est pas une preuve d'affectation clinique manquante pour toutes les lignes.
+
+## Libellés des choix territoriaux — 4 novembre 2026
+
+`migrations/20261104_06_libelles_territoriaux.sql` installe `geolocalisation.V_ChoixTerritorial`, source commune des listes N0 à N5. Le format est `iso / province / AbrGenerique - nom / …`, jusqu’au niveau choisi. Par exemple : `COD / Kinshasa`, puis les subdivisions, zones, aires et sites réellement rattachés. Les types référencés distinguent les homonymes ZS, BCZS, Secteur, etc. Aucun rattachement sanitaire rapproché ne remplace implicitement un parent physique. Un ISO ou un type absent reçoit un repère neutre, sans inventer COD ni prendre NomGenerique à la place d’AbrGenerique.
+
+Les parents de saisie individuelle et groupée de Territoires, les filtres, les localisations d’entreprise et d’immobilisations et le filtre provincial de Structures réutilisent cette lecture. `V_DestinationLogistique` reprend le même libellé pour les bons ; ses autres colonnes et sa règle de cohérence sont conservées. Un N5 sans aire conserve son chemin direct vers N3. Une aire contradictoire avec la zone directe n’est pas présentée comme un rattachement cohérent ; le libellé le signale et le bon conserve son refus existant.
+
+Installation effectuée dans SauverNdeko après sauvegarde privée vérifiée : aucune table métier modifiée et aucune destination ajoutée ou retirée. Les trois canoniques de vues et de structure ont été actualisés par blocs ciblés, puis les deux structures globales restaurées dans des bases privées vides. La recette `tests/test_libelles_territoriaux_postgresql.py` a réussi ses 13 tests sur copie privée : chemins, homonymes, abréviations différentes des noms, valeurs manquantes, parents directs/hérités, cardinalité, permissions, API, rejeu et rollback. Les tests frontend Territoires, Administration et SearchSelect ainsi que la compilation ont réussi. Le serveur a été redémarré par le lanceur du projet ; les 362 contrôles GET de `verifier_backend` ont réussi en lecture seule. Le contrôle visuel Windows a été interrompu par l’outil de navigation ; il ne constitue pas une recette visuelle complète.
+
+Le retour `migrations/rollback/20261104_06_libelles_territoriaux.sql` restaure l’ancien libellé logistique et retire la nouvelle vue sans toucher aux données. Revenir d’abord au backend compatible, car les nouveaux sélecteurs utilisent cette vue. Les commentaires des deux vues et de leurs colonnes font partie des migrations et canoniques.
 
 ## Caisse et classification des applications — 2 novembre 2026
 
@@ -12,7 +32,7 @@ Voir le [contrat PostgreSQL](documentation/Caisse_20261102.md), le [guide Caisse
 
 | Fichier | Usage |
 |---|---|
-| SauverNdeko_Metier_Structure.sql | Structure des huit schémas métier, sans données. Pour une base vide ; les tables natives public sont créées séparément par les migrations Django. |
+| SauverNdeko_Metier_Structure.sql | Structure des schémas métier, sans données. Pour une base vide ; les tables natives public sont créées séparément par les migrations Django. |
 | SauverNdeko_Structure.sql | Référence complète de structure, y compris les tables natives Django. Sans données ni historique django_migrations ; ce fichier n’est pas un installateur applicatif complet. |
 | Dossiers 0 à 7, fichiers Tables et View/views | Extraits canoniques par domaine : tables, séquences, contraintes, index, fonctions, triggers et vues commentées. Le domaine operations ne possède actuellement aucune vue et conserve uniquement son fichier Tables. Les dépendances entre domaines exigent le fichier global pour une installation complète. |
 | migrations/20261024_04_coherence_schemas_metier.sql | Évolution contrôlée d’une base existante au socle précédent ; déjà appliquée à la base locale. Aucun DML sur les données métier existantes. |

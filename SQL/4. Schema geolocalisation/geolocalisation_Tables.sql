@@ -2443,6 +2443,1358 @@ COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_nu
 COMMENT ON CONSTRAINT ck_coordonnees_territoire_horaires ON geolocalisation."T_CoordonneesTerritoire" IS 'Horaires déclarés facultatifs bornés à 1 000 caractères, sans contrôles autres que les retours à la ligne et sans espaces extérieurs.';
 
 --
+-- Name: tr_rapprochement_territorial_integrite(); Type: FUNCTION; Schema: geolocalisation; Owner: -
+--
+
+CREATE FUNCTION geolocalisation.tr_rapprochement_territorial_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'geolocalisation'
+    AS $$
+DECLARE current_uid text; province_uid text; zone_uid text; area_uid text;
+ local_n3 integer; local_n4 integer; local_n1 integer;
+ source_parent integer; target_parent integer; source_type integer; target_type integer;
+ source_province integer; target_province integer; source_type_label text; target_type_label text; parent_type_label text;
+ source_name text; target_name text; source_uid text; target_uid text; matching_areas integer;
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Une preuve de rapprochement ne se supprime pas ; conserver sa version et sa décision.' USING ERRCODE='23514';END IF;
+ IF TG_TABLE_NAME='T_SourceRapprochementTerritorial' THEN
+  IF TG_OP='UPDATE' THEN RAISE EXCEPTION 'La provenance est immuable ; enregistrer une nouvelle version de source.' USING ERRCODE='23514';END IF;
+  NEW."CreeLe":=clock_timestamp();RETURN NEW;
+ END IF;
+ IF TG_OP='UPDATE' THEN
+  IF OLD."Decision"<>'proposee' THEN RAISE EXCEPTION 'La décision finale est immuable ; réexaminer dans une nouvelle version de source.' USING ERRCODE='23514';END IF;
+  IF (to_jsonb(NEW)-ARRAY['Decision','MotifDecision','DecideParUserFk','DecideLe']) IS DISTINCT FROM
+     (to_jsonb(OLD)-ARRAY['Decision','MotifDecision','DecideParUserFk','DecideLe']) THEN
+   RAISE EXCEPTION 'La cible et les preuves importées sont immuables ; créer une nouvelle version.' USING ERRCODE='23514';
+  END IF;
+ ELSE NEW."CreeLe":=clock_timestamp();END IF;
+ IF NEW."Decision"='proposee' THEN
+  NEW."DecideLe":=NULL;NEW."DecideParUserFk":=NULL;
+ ELSE NEW."DecideLe":=clock_timestamp();END IF;
+ IF NEW."Decision"<>'confirmee' THEN RETURN NEW;END IF;
+ IF NEW."ConflitSource" THEN RAISE EXCEPTION 'Une correspondance en conflit ne peut pas être confirmée.' USING ERRCODE='23514';END IF;
+
+ IF TG_TABLE_NAME='T_CorrespondanceTerritoriale' THEN
+  IF NEW."ID_Niveau_1Fk" IS NOT NULL THEN
+   local_n1:=NEW."ID_Niveau_1Fk";
+   SELECT "uidSNIS" INTO current_uid FROM geolocalisation."T_Niveau_1" WHERE "ID_Niveau_1"=local_n1 FOR SHARE;
+  ELSIF NEW."ID_Niveau_3Fk" IS NOT NULL THEN
+   local_n3:=NEW."ID_Niveau_3Fk";
+   SELECT "uidSNIS" INTO current_uid FROM geolocalisation."T_Niveau_3" WHERE "ID_Niveau_3"=local_n3 FOR SHARE;
+  ELSIF NEW."ID_Niveau_4Fk" IS NOT NULL THEN
+   local_n4:=NEW."ID_Niveau_4Fk";
+   SELECT "uidSNIS","ID_Niveau_3_Fk" INTO current_uid,local_n3 FROM geolocalisation."T_Niveau_4" WHERE "ID_Niveau_4"=local_n4 FOR SHARE;
+  ELSE
+   SELECT "uidSNIS","ID_Niveau_3_Fk","ID_Niveau_4_Fk" INTO current_uid,local_n3,local_n4 FROM geolocalisation."T_Niveau_5" WHERE "ID_Niveau_5"=NEW."ID_Niveau_5Fk" FOR SHARE;
+   IF local_n4 IS NOT NULL THEN
+    SELECT "ID_Niveau_3_Fk" INTO target_parent FROM geolocalisation."T_Niveau_4" WHERE "ID_Niveau_4"=local_n4 FOR SHARE;
+    IF local_n3 IS NOT NULL AND target_parent IS NOT NULL AND local_n3<>target_parent THEN
+     RAISE EXCEPTION 'Le site et son aire indiquent des zones contradictoires.' USING ERRCODE='23514';
+    END IF;
+    local_n3:=coalesce(local_n3,target_parent);
+   END IF;
+  END IF;
+  IF local_n3 IS NOT NULL THEN
+   SELECT n3."uidSNIS",n2."ID_Niveau_1_FK" INTO zone_uid,local_n1
+    FROM geolocalisation."T_Niveau_3" n3 LEFT JOIN geolocalisation."T_Niveau_2" n2 ON n2."ID_Niveau_2"=n3."ID_Niveau_2_FK" WHERE n3."ID_Niveau_3"=local_n3;
+  END IF;
+  IF local_n4 IS NOT NULL THEN SELECT "uidSNIS" INTO area_uid FROM geolocalisation."T_Niveau_4" WHERE "ID_Niveau_4"=local_n4;END IF;
+  IF local_n1 IS NOT NULL THEN SELECT "uidSNIS" INTO province_uid FROM geolocalisation."T_Niveau_1" WHERE "ID_Niveau_1"=local_n1;END IF;
+  IF (nullif(btrim(current_uid),'') IS NOT NULL AND nullif(btrim(NEW."UidSNISSource"),'') IS NOT NULL AND current_uid<>NEW."UidSNISSource")
+   OR (nullif(btrim(province_uid),'') IS NOT NULL AND nullif(btrim(NEW."UidProvinceSource"),'') IS NOT NULL AND province_uid<>NEW."UidProvinceSource")
+   OR (nullif(btrim(zone_uid),'') IS NOT NULL AND nullif(btrim(NEW."UidZoneSource"),'') IS NOT NULL AND zone_uid<>NEW."UidZoneSource")
+   OR (nullif(btrim(area_uid),'') IS NOT NULL AND nullif(btrim(NEW."UidAireSource"),'') IS NOT NULL AND area_uid<>NEW."UidAireSource") THEN
+   RAISE EXCEPTION 'Identifiant SNIS ou parent existant contradictoire ; conserver la proposition pour validation.' USING ERRCODE='23514';
+  END IF;
+  IF nullif(btrim(NEW."UidSNISSource"),'') IS NOT NULL THEN
+   PERFORM pg_advisory_xact_lock(hashtextextended('geolocalisation:uid-snis:'||NEW."UidSNISSource",0));
+   IF EXISTS(SELECT FROM geolocalisation."T_CorrespondanceTerritoriale" c WHERE c."Decision"='confirmee'
+    AND c."ID_CorrespondanceTerritoriale"<>NEW."ID_CorrespondanceTerritoriale"
+    AND c."UidSNISSource"=NEW."UidSNISSource"
+    AND ROW(c."ID_Niveau_1Fk",c."ID_Niveau_3Fk",c."ID_Niveau_4Fk",c."ID_Niveau_5Fk") IS DISTINCT FROM ROW(NEW."ID_Niveau_1Fk",NEW."ID_Niveau_3Fk",NEW."ID_Niveau_4Fk",NEW."ID_Niveau_5Fk")) THEN
+    RAISE EXCEPTION 'Le même UID SNIS confirmé désigne déjà une autre identité locale ; conserver le conflit proposé.' USING ERRCODE='23514';
+   END IF;
+  END IF;
+ ELSE
+  IF NEW."NatureLien"='copie_n5_n4' THEN
+   SELECT "ID_Niveau_3_Fk","ID_TypeNiveau_5_Fk","NomNiveau_5","uidSNIS" INTO source_parent,source_type,source_name,source_uid FROM geolocalisation."T_Niveau_5" WHERE "ID_Niveau_5"=NEW."ID_OrigineNiveau_5Fk" FOR SHARE;
+   SELECT "ID_Niveau_3_Fk","ID_TypeNiveau_4_Fk","NomNiveau_4","uidSNIS" INTO target_parent,target_type,target_name,target_uid FROM geolocalisation."T_Niveau_4" WHERE "ID_Niveau_4"=NEW."ID_CibleNiveau_4Fk" FOR SHARE;
+   SELECT count(*) INTO matching_areas FROM geolocalisation."T_Niveau_4" n WHERE n."ID_Niveau_3_Fk"=source_parent AND n."ID_TypeNiveau_4_Fk"=source_type
+    AND referentiel.fn_normaliser_libelle(n."NomNiveau_4")=referentiel.fn_normaliser_libelle(source_name);
+   IF source_parent IS NULL OR target_parent IS NULL OR source_parent<>target_parent OR source_type IS NULL OR target_type IS NULL OR source_type<>target_type
+    OR nullif(btrim(source_name),'') IS NULL OR referentiel.fn_normaliser_libelle(source_name) IS DISTINCT FROM referentiel.fn_normaliser_libelle(target_name)
+    OR matching_areas<>1 OR (nullif(btrim(source_uid),'') IS NOT NULL AND nullif(btrim(target_uid),'') IS NOT NULL AND source_uid<>target_uid) THEN
+    RAISE EXCEPTION 'Une copie N5/N4 confirmée exige un nom, un type et un parent concordants, une cible unique et aucun UID contradictoire ; aucune fusion par homonymie.' USING ERRCODE='23514';
+   END IF;
+  ELSIF NEW."NatureLien"='aire_de_zone' THEN
+   SELECT n."ID_Niveau_3_Fk",g."AbrGenerique" INTO source_parent,source_type_label
+    FROM geolocalisation."T_Niveau_4" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_4_Fk"
+    WHERE n."ID_Niveau_4"=NEW."ID_OrigineNiveau_4Fk" FOR SHARE OF n;
+   SELECT g."AbrGenerique",n2."ID_Niveau_1_FK" INTO target_type_label,target_province
+    FROM geolocalisation."T_Niveau_3" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk"
+    JOIN geolocalisation."T_Niveau_2" n2 ON n2."ID_Niveau_2"=n."ID_Niveau_2_FK"
+    WHERE n."ID_Niveau_3"=NEW."ID_CibleNiveau_3Fk";
+   SELECT n2."ID_Niveau_1_FK",g."AbrGenerique" INTO source_province,parent_type_label
+    FROM geolocalisation."T_Niveau_3" n JOIN geolocalisation."T_Niveau_2" n2 ON n2."ID_Niveau_2"=n."ID_Niveau_2_FK"
+    JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk" WHERE n."ID_Niveau_3"=source_parent;
+   IF NOT coalesce(source_type_label='AS' AND target_type_label='ZS' AND parent_type_label IN ('BCZS','ZS'),false)
+    OR source_province IS NULL OR target_province IS NULL OR source_province<>target_province
+    OR (parent_type_label='ZS' AND source_parent<>NEW."ID_CibleNiveau_3Fk")
+    OR EXISTS(SELECT FROM geolocalisation."T_LienTerritorial" l WHERE l."NatureLien"='bureau_de_zone' AND l."Decision"='confirmee'
+      AND l."ID_OrigineNiveau_3Fk"=source_parent AND l."ID_CibleNiveau_3Fk"<>NEW."ID_CibleNiveau_3Fk") THEN
+    RAISE EXCEPTION 'Le lien aire-zone exige une AS, une ZS et une province concordantes, sans contredire le parent sanitaire prouvé.' USING ERRCODE='23514';
+   END IF;
+  ELSE
+   SELECT n2."ID_Niveau_1_FK" INTO source_province FROM geolocalisation."T_Niveau_3" n3 JOIN geolocalisation."T_Niveau_2" n2 ON n2."ID_Niveau_2"=n3."ID_Niveau_2_FK" WHERE n3."ID_Niveau_3"=NEW."ID_OrigineNiveau_3Fk";
+   IF NEW."NatureLien"='bureau_de_zone' THEN
+    SELECT n2."ID_Niveau_1_FK" INTO target_province FROM geolocalisation."T_Niveau_3" n3 JOIN geolocalisation."T_Niveau_2" n2 ON n2."ID_Niveau_2"=n3."ID_Niveau_2_FK" WHERE n3."ID_Niveau_3"=NEW."ID_CibleNiveau_3Fk";
+    SELECT g."AbrGenerique" INTO source_type_label FROM geolocalisation."T_Niveau_3" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk" WHERE n."ID_Niveau_3"=NEW."ID_OrigineNiveau_3Fk";
+    SELECT g."AbrGenerique" INTO target_type_label FROM geolocalisation."T_Niveau_3" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk" WHERE n."ID_Niveau_3"=NEW."ID_CibleNiveau_3Fk";
+    IF NOT coalesce(source_type_label='BCZS' AND target_type_label='ZS',false) THEN
+     RAISE EXCEPTION 'Le bureau de zone exige un BCZS d’origine et une ZS cible distincte ; un bureau ne devient pas la zone desservie.' USING ERRCODE='23514';
+    END IF;
+   ELSE
+    SELECT "ID_Niveau_1_FK" INTO target_province FROM geolocalisation."T_Niveau_2" WHERE "ID_Niveau_2"=NEW."ID_CibleNiveau_2Fk";
+    SELECT g."AbrGenerique" INTO source_type_label FROM geolocalisation."T_Niveau_3" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk" WHERE n."ID_Niveau_3"=NEW."ID_OrigineNiveau_3Fk";
+    SELECT g."AbrGenerique" INTO target_type_label FROM geolocalisation."T_Niveau_2" n JOIN referentiel."T_Generique" g ON g."ID_Generique"=n."ID_TypeNiveau_2_Fk" WHERE n."ID_Niveau_2"=NEW."ID_CibleNiveau_2Fk";
+    IF NOT coalesce(source_type_label='ZS' AND target_type_label='Ant PEV',false) THEN
+     RAISE EXCEPTION 'Un rattachement sanitaire exige une ZS et une antenne PEV identifiées par le référentiel.' USING ERRCODE='23514';
+    END IF;
+   END IF;
+   IF source_province IS NULL OR target_province IS NULL OR source_province<>target_province THEN
+    RAISE EXCEPTION 'Un lien bureau-zone ou un rattachement sanitaire confirmé exige une province commune prouvée.' USING ERRCODE='23514';
+   END IF;
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+
+--
+-- Name: FUNCTION tr_rapprochement_territorial_integrite(); Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON FUNCTION geolocalisation.tr_rapprochement_territorial_integrite() IS 'Garde transactionnelle additive du rapprochement : sources, preuves, cibles et décisions finales immuables, acteur/motif pour les décisions, refus des UID ou parents contradictoires. Ne peuple aucun UID, parent ou GPS ; n’accorde aucun droit applicatif.';
+
+--
+-- Name: tr_uid_snis_integrite(); Type: FUNCTION; Schema: geolocalisation; Owner: -
+--
+
+CREATE FUNCTION geolocalisation.tr_uid_snis_integrite() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $_$
+BEGIN
+ -- Une modification descriptive n'oblige pas à réécrire une identité historique.
+ IF TG_OP='UPDATE' AND NEW."uidSNIS" IS NOT DISTINCT FROM OLD."uidSNIS" THEN RETURN NEW;END IF;
+ IF NEW."uidSNIS" IS NULL THEN RETURN NEW;END IF;
+ IF NEW."uidSNIS" !~ '^[A-Za-z][A-Za-z0-9]{10}$' THEN
+  RAISE EXCEPTION 'Identifiant SNIS invalide : saisir les 11 caractères DHIS2 (une lettre puis lettres ou chiffres), ou laisser vide.' USING ERRCODE='23514', CONSTRAINT='ck_uid_snis_format';
+ END IF;
+ RETURN NEW;
+END $_$;
+
+--
+-- Name: FUNCTION tr_uid_snis_integrite(); Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON FUNCTION geolocalisation.tr_uid_snis_integrite() IS 'Contrôle des nouveaux UID SNIS/DHIS2 N1/N3/N4 : NULL ou 11 caractères, première lettre, sans espaces et avec casse conservée. Les valeurs inchangées sont conservées ; une correction d’UID valide reste possible sous les droits et audits métier existants. Ne valide pas la correspondance scientifique d’un UID ni son unicité entre niveaux.';
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: T_CorrespondanceTerritoriale; Type: TABLE; Schema: geolocalisation; Owner: -
+--
+
+CREATE TABLE geolocalisation."T_CorrespondanceTerritoriale" (
+    "ID_CorrespondanceTerritoriale" bigint CONSTRAINT "T_CorrespondanceTerritorial_ID_CorrespondanceTerritori_not_null" NOT NULL,
+    "ID_SourceRapprochementFk" bigint CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_not_null" NOT NULL,
+    "CleLigneSource" text CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_not_null" NOT NULL,
+    "UidSource" text,
+    "UidSNISSource" text,
+    "UidProvinceSource" text,
+    "UidZoneSource" text,
+    "UidAireSource" text,
+    "Grid3Id" text,
+    "NomSource" text,
+    "ID_Niveau_1Fk" integer,
+    "ID_Niveau_3Fk" integer,
+    "ID_Niveau_4Fk" integer,
+    "ID_Niveau_5Fk" integer,
+    "Decision" text DEFAULT 'proposee'::text CONSTRAINT "T_CorrespondanceTerritoriale_Decision_not_null" NOT NULL,
+    "ConflitSource" boolean DEFAULT false CONSTRAINT "T_CorrespondanceTerritoriale_ConflitSource_not_null" NOT NULL,
+    "Preuves" jsonb DEFAULT '{}'::jsonb CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_not_null" NOT NULL,
+    "MotifDecision" text,
+    "DecideParUserFk" integer,
+    "DecideLe" timestamp with time zone,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_CorrespondanceTerritoriale_CreeLe_not_null" NOT NULL,
+    CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_check" CHECK (((length(btrim("CleLigneSource")) >= 1) AND (length(btrim("CleLigneSource")) <= 500))),
+    CONSTRAINT "T_CorrespondanceTerritoriale_Decision_check" CHECK (("Decision" = ANY (ARRAY['proposee'::text, 'confirmee'::text, 'refusee'::text]))),
+    CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_check" CHECK ((jsonb_typeof("Preuves") = 'object'::text)),
+    CONSTRAINT ck_correspondance_conflit_non_confirme CHECK ((("Decision" <> 'confirmee'::text) OR (NOT "ConflitSource"))),
+    CONSTRAINT ck_correspondance_decision_tracee CHECK ((("Decision" = 'proposee'::text) OR ((length(btrim("MotifDecision")) > 0) AND ("MotifDecision" IS NOT NULL) AND ("DecideParUserFk" IS NOT NULL) AND ("DecideLe" IS NOT NULL) AND ("Preuves" <> '{}'::jsonb)))),
+    CONSTRAINT ck_correspondance_une_cible CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1))
+);
+
+--
+-- Name: TABLE "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TABLE geolocalisation."T_CorrespondanceTerritoriale" IS 'Correspondance documentée d’une ligne source vers une seule vraie FK territoriale N1, N3, N4 ou N5. Un objet GRID3 est unique dans sa version de source, mais plusieurs objets GRID3 peuvent pointer vers une même aire ; aucune unicité artificielle par aire n’est déduite. Une confirmation ne modifie ni uidSNIS ni la hiérarchie : une migration de données contrôlée et validée est nécessaire.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_CorrespondanceTerritoriale" IS 'Clé primaire technique de la preuve de correspondance, distincte des identifiants externes et des clés territoriales.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_SourceRapprochementFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_SourceRapprochementFk" IS 'Vraie FK vers la version immuable de provenance ; plusieurs lignes peuvent partager cette source.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."CleLigneSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."CleLigneSource" IS 'Clé textuelle stable de ligne dans cette version de source, éventuellement feuille et numéro de ligne ; unique avec la source.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."UidSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."UidSource" IS 'Identifiant externe tel que fourni, sans le confondre par égalité textuelle avec un UID SNIS.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."UidSNISSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."UidSNISSource" IS 'UID SNIS/DHIS2 explicitement proposé par la source, distinct du champ uidSNIS territorial ; un conflit existant interdit la confirmation.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."UidProvinceSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."UidProvinceSource" IS 'Identifiant externe de la province parente cité dans la preuve ; comparaison SNIS seulement si cette identité est prouvée.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."UidZoneSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."UidZoneSource" IS 'Identifiant externe de zone de santé cité dans la preuve, sans écrasement du rattachement existant.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."UidAireSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."UidAireSource" IS 'Identifiant externe de l’aire de santé ; plusieurs objets GRID3 peuvent partager cette valeur.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."Grid3Id"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."Grid3Id" IS 'Identifiant de l’objet GRID3 source, conservé textuellement sans supposer une relation un-à-un avec l’aire métier.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."NomSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."NomSource" IS 'Libellé original de la ligne externe, conservé pour vérifier et expliquer la correspondance.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_Niveau_1Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_Niveau_1Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_Niveau_3Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_Niveau_3Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_Niveau_4Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_Niveau_4Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ID_Niveau_5Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ID_Niveau_5Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."Decision"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."Decision" IS 'État technique de revue : proposee, confirmee ou refusee. La proposition ne vaut pas modification métier ; la décision finale est immuable.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."ConflitSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."ConflitSource" IS 'Conflit détecté entre identifiants, parents ou sources ; une ligne en conflit ne peut pas être confirmée.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."Preuves"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."Preuves" IS 'Éléments immuables justifiant la proposition : méthode, noms, parents et références de ligne ; objet non vide requis pour conclure.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."MotifDecision"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."MotifDecision" IS 'Justification obligatoire d’une confirmation ou d’un refus, sans effacer les données source.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."DecideParUserFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."DecideParUserFk" IS 'Compte métier existant ayant pris la décision ; une GUC de session ne vaut pas autorisation.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."DecideLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."DecideLe" IS 'Instant technique de décision renseigné par le trigger ; NULL pour une proposition non décidée.';
+
+--
+-- Name: COLUMN "T_CorrespondanceTerritoriale"."CreeLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CorrespondanceTerritoriale"."CreeLe" IS 'Instant technique de conservation de la preuve, indépendant de la date des données source.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritorial_ID_CorrespondanceTerritori_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritorial_ID_CorrespondanceTerritori_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_Decision_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_Decision_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ConflitSource_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ConflitSource_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_CreeLe_not_null" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_CreeLe_not_null" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_check" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_CleLigneSource_check" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_Decision_check" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_Decision_check" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_check" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_Preuves_check" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_correspondance_conflit_non_confirme ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_correspondance_conflit_non_confirme ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_correspondance_decision_tracee ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_correspondance_decision_tracee ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_correspondance_une_cible ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_correspondance_une_cible ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale_ID_CorrespondanceTerritoriale_seq; Type: SEQUENCE; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE geolocalisation."T_CorrespondanceTerritoriale" ALTER COLUMN "ID_CorrespondanceTerritoriale" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME geolocalisation."T_CorrespondanceTerritoriale_ID_CorrespondanceTerritoriale_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_CorrespondanceTerritoriale_ID_CorrespondanceTerritoriale_seq"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON SEQUENCE geolocalisation."T_CorrespondanceTerritoriale_ID_CorrespondanceTerritoriale_seq" IS 'Séquence technique d’identité du rapprochement ; aucun UID externe ou code métier n’est généré par cette séquence.';
+
+--
+-- Name: T_LienTerritorial; Type: TABLE; Schema: geolocalisation; Owner: -
+--
+
+CREATE TABLE geolocalisation."T_LienTerritorial" (
+    "ID_LienTerritorial" bigint CONSTRAINT "T_LienTerritorial_ID_LienTerritorial_not_null" NOT NULL,
+    "ID_SourceRapprochementFk" bigint CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_not_null" NOT NULL,
+    "CleLienSource" text CONSTRAINT "T_LienTerritorial_CleLienSource_not_null" NOT NULL,
+    "NatureLien" text CONSTRAINT "T_LienTerritorial_NatureLien_not_null" NOT NULL,
+    "DomaineLien" text CONSTRAINT "T_LienTerritorial_DomaineLien_not_null" NOT NULL,
+    "ID_OrigineNiveau_3Fk" integer,
+    "ID_OrigineNiveau_4Fk" integer,
+    "ID_OrigineNiveau_5Fk" integer,
+    "ID_CibleNiveau_2Fk" integer,
+    "ID_CibleNiveau_3Fk" integer,
+    "ID_CibleNiveau_4Fk" integer,
+    "Decision" text DEFAULT 'proposee'::text CONSTRAINT "T_LienTerritorial_Decision_not_null" NOT NULL,
+    "ConflitSource" boolean DEFAULT false CONSTRAINT "T_LienTerritorial_ConflitSource_not_null" NOT NULL,
+    "Preuves" jsonb DEFAULT '{}'::jsonb CONSTRAINT "T_LienTerritorial_Preuves_not_null" NOT NULL,
+    "MotifDecision" text,
+    "DecideParUserFk" integer,
+    "DecideLe" timestamp with time zone,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_LienTerritorial_CreeLe_not_null" NOT NULL,
+    CONSTRAINT "T_LienTerritorial_CleLienSource_check" CHECK (((length(btrim("CleLienSource")) >= 1) AND (length(btrim("CleLienSource")) <= 500))),
+    CONSTRAINT "T_LienTerritorial_Decision_check" CHECK (("Decision" = ANY (ARRAY['proposee'::text, 'confirmee'::text, 'refusee'::text]))),
+    CONSTRAINT "T_LienTerritorial_DomaineLien_check" CHECK (("DomaineLien" = ANY (ARRAY['sanitaire'::text, 'administratif'::text, 'compatibilite'::text]))),
+    CONSTRAINT "T_LienTerritorial_NatureLien_check" CHECK (("NatureLien" = ANY (ARRAY['copie_n5_n4'::text, 'bureau_de_zone'::text, 'rattachement_sanitaire'::text, 'aire_de_zone'::text]))),
+    CONSTRAINT "T_LienTerritorial_Preuves_check" CHECK ((jsonb_typeof("Preuves") = 'object'::text)),
+    CONSTRAINT ck_lien_territorial_conflit_non_confirme CHECK ((("Decision" <> 'confirmee'::text) OR (NOT "ConflitSource"))),
+    CONSTRAINT ck_lien_territorial_decision_tracee CHECK ((("Decision" = 'proposee'::text) OR ((length(btrim("MotifDecision")) > 0) AND ("MotifDecision" IS NOT NULL) AND ("DecideParUserFk" IS NOT NULL) AND ("DecideLe" IS NOT NULL) AND ("Preuves" <> '{}'::jsonb)))),
+    CONSTRAINT ck_lien_territorial_forme CHECK (((num_nonnulls("ID_OrigineNiveau_3Fk", "ID_OrigineNiveau_4Fk", "ID_OrigineNiveau_5Fk") = 1) AND (num_nonnulls("ID_CibleNiveau_2Fk", "ID_CibleNiveau_3Fk", "ID_CibleNiveau_4Fk") = 1) AND ((("NatureLien" = 'copie_n5_n4'::text) AND ("ID_OrigineNiveau_5Fk" IS NOT NULL) AND ("ID_CibleNiveau_4Fk" IS NOT NULL)) OR (("NatureLien" = 'bureau_de_zone'::text) AND ("DomaineLien" = 'sanitaire'::text) AND ("ID_OrigineNiveau_3Fk" IS NOT NULL) AND ("ID_CibleNiveau_3Fk" IS NOT NULL) AND ("ID_OrigineNiveau_3Fk" <> "ID_CibleNiveau_3Fk")) OR (("NatureLien" = 'rattachement_sanitaire'::text) AND ("DomaineLien" = 'sanitaire'::text) AND ("ID_OrigineNiveau_3Fk" IS NOT NULL) AND ("ID_CibleNiveau_2Fk" IS NOT NULL)) OR (("NatureLien" = 'aire_de_zone'::text) AND ("DomaineLien" = 'sanitaire'::text) AND ("ID_OrigineNiveau_4Fk" IS NOT NULL) AND ("ID_CibleNiveau_3Fk" IS NOT NULL)))))
+);
+
+--
+-- Name: TABLE "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TABLE geolocalisation."T_LienTerritorial" IS 'Liens explicites versionnés entre identités locales conservées : copie N5/N4, bureau BCZS vers zone ZS distincte, rattachement sanitaire ZS vers antenne PEV ou aire AS vers zone ZS canonique. Un bureau et sa zone ne sont pas une même identité et ne partagent pas leur UID par déduction. Ne fusionne pas les organisations administrative et sanitaire, ne déplace pas les parents physiques historiques et ne supprime aucune copie utilisée comme destination.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_LienTerritorial" IS 'Clé primaire technique du lien local versionné ; ne remplace aucune identité N2, N3, N4 ou N5.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_SourceRapprochementFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_SourceRapprochementFk" IS 'Vraie FK vers la version immuable de provenance ; plusieurs lignes peuvent partager cette source.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."CleLienSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."CleLienSource" IS 'Clé stable de la proposition de lien dans sa version de source ; unique avec cette version.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."NatureLien"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."NatureLien" IS 'Forme technique fermée : copie_n5_n4, bureau_de_zone (BCZS vers ZS distincte), rattachement_sanitaire (ZS vers antenne PEV) ou aire_de_zone (AS vers ZS canonique). Ne remplace pas le type catégoriel et ne fusionne pas le bureau et sa zone.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."DomaineLien"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."DomaineLien" IS 'Organisation concernée par la proposition : sanitaire, administratif ou compatibilite ; ne déduit aucune équivalence de périmètre.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_OrigineNiveau_3Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_OrigineNiveau_3Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_OrigineNiveau_4Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_OrigineNiveau_4Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_OrigineNiveau_5Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_OrigineNiveau_5Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_CibleNiveau_2Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_CibleNiveau_2Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_CibleNiveau_3Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_CibleNiveau_3Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ID_CibleNiveau_4Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ID_CibleNiveau_4Fk" IS 'Identité locale protégée par une vraie clé étrangère ; niveau indiqué dans le nom du champ, sans conversion par simple égalité numérique.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."Decision"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."Decision" IS 'État technique de revue : proposee, confirmee ou refusee. La proposition ne vaut pas modification métier ; la décision finale est immuable.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."ConflitSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."ConflitSource" IS 'Conflit détecté entre identifiants, parents ou sources ; une ligne en conflit ne peut pas être confirmée.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."Preuves"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."Preuves" IS 'Éléments immuables justifiant la proposition : méthode, noms, parents et références de ligne ; objet non vide requis pour conclure.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."MotifDecision"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."MotifDecision" IS 'Justification obligatoire d’une confirmation ou d’un refus, sans effacer les données source.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."DecideParUserFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."DecideParUserFk" IS 'Compte métier existant ayant pris la décision ; une GUC de session ne vaut pas autorisation.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."DecideLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."DecideLe" IS 'Instant technique de décision renseigné par le trigger ; NULL pour une proposition non décidée.';
+
+--
+-- Name: COLUMN "T_LienTerritorial"."CreeLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_LienTerritorial"."CreeLe" IS 'Instant technique de conservation de la preuve, indépendant de la date des données source.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_LienTerritorial_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_LienTerritorial_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_CleLienSource_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_CleLienSource_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_NatureLien_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_NatureLien_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_DomaineLien_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_DomaineLien_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_Decision_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_Decision_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ConflitSource_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ConflitSource_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_Preuves_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_Preuves_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_CreeLe_not_null" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_CreeLe_not_null" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_CleLienSource_check" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_CleLienSource_check" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_Decision_check" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_Decision_check" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_DomaineLien_check" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_DomaineLien_check" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_NatureLien_check" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_NatureLien_check" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_Preuves_check" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_Preuves_check" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_lien_territorial_conflit_non_confirme ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_lien_territorial_conflit_non_confirme ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_lien_territorial_decision_tracee ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_lien_territorial_decision_tracee ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT ck_lien_territorial_forme ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_lien_territorial_forme ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial_ID_LienTerritorial_seq; Type: SEQUENCE; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE geolocalisation."T_LienTerritorial" ALTER COLUMN "ID_LienTerritorial" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME geolocalisation."T_LienTerritorial_ID_LienTerritorial_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_LienTerritorial_ID_LienTerritorial_seq"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON SEQUENCE geolocalisation."T_LienTerritorial_ID_LienTerritorial_seq" IS 'Séquence technique d’identité du rapprochement ; aucun UID externe ou code métier n’est généré par cette séquence.';
+
+--
+-- Name: COLUMN "T_Niveau_1"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_Niveau_1"."uidSNIS" IS 'Identifiant SNIS/DHIS2 propre à cette identité territoriale, NULL si non rapprochée avec preuve. Les nouvelles valeurs ont 11 caractères (lettre puis lettres ou chiffres), sans espaces ; leur casse est significative. Unique localement dans ce niveau, sans copie vers un bureau, une autre organisation ou un autre niveau. L’import vérifie aussi la cohérence inter-niveaux et la provenance.';
+
+--
+-- Name: COLUMN "T_Niveau_3"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_Niveau_3"."uidSNIS" IS 'Identifiant SNIS/DHIS2 propre à cette identité territoriale, NULL si non rapprochée avec preuve. Les nouvelles valeurs ont 11 caractères (lettre puis lettres ou chiffres), sans espaces ; leur casse est significative. Unique localement dans ce niveau, sans copie vers un bureau, une autre organisation ou un autre niveau. L’import vérifie aussi la cohérence inter-niveaux et la provenance.';
+
+--
+-- Name: COLUMN "T_Niveau_4"."uidSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_Niveau_4"."uidSNIS" IS 'Identifiant SNIS/DHIS2 propre à cette identité territoriale, NULL si non rapprochée avec preuve. Les nouvelles valeurs ont 11 caractères (lettre puis lettres ou chiffres), sans espaces ; leur casse est significative. Unique localement dans ce niveau, sans copie vers un bureau, une autre organisation ou un autre niveau. L’import vérifie aussi la cohérence inter-niveaux et la provenance.';
+
+--
+-- Name: T_SourceRapprochementTerritorial; Type: TABLE; Schema: geolocalisation; Owner: -
+--
+
+CREATE TABLE geolocalisation."T_SourceRapprochementTerritorial" (
+    "ID_SourceRapprochementTerritorial" bigint CONSTRAINT "T_SourceRapprochementTerrit_ID_SourceRapprochementTerr_not_null" NOT NULL,
+    "CodeSource" text CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_not_null" NOT NULL,
+    "VersionSource" text CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_not_null" NOT NULL,
+    "Sha256Source" text CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_not_null" NOT NULL,
+    "NomFichierSource" text CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_not_null" NOT NULL,
+    "DateSource" date,
+    "MetadonneesSource" jsonb DEFAULT '{}'::jsonb CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_not_null" NOT NULL,
+    "CreeLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_SourceRapprochementTerritorial_CreeLe_not_null" NOT NULL,
+    CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_check" CHECK (((length(btrim("CodeSource")) >= 1) AND (length(btrim("CodeSource")) <= 80))),
+    CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_check" CHECK ((jsonb_typeof("MetadonneesSource") = 'object'::text)),
+    CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_check" CHECK (((length(btrim("NomFichierSource")) >= 1) AND (length(btrim("NomFichierSource")) <= 255))),
+    CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_check" CHECK (("Sha256Source" ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_check" CHECK (((length(btrim("VersionSource")) >= 1) AND (length(btrim("VersionSource")) <= 160)))
+);
+
+--
+-- Name: TABLE "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TABLE geolocalisation."T_SourceRapprochementTerritorial" IS 'Version immuable et empreinte vérifiable d’une source de rapprochement géographique. Socle installé sans import implicite ; toute application d’une décision utilise une migration de données contrôlée. Ne contient aucune géométrie fabriquée à partir de surfaces ou de longueurs.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."ID_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."ID_SourceRapprochementTerritorial" IS 'Identifiant technique stable de cette version de source.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."CodeSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."CodeSource" IS 'Nom technique de la source, par exemple SNIS/DHIS2, GRID3 ou un état local ; ne constitue pas une catégorie métier.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."VersionSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."VersionSource" IS 'Version ou date déclarée de la source ; ne pas remplacer une version antérieure.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."Sha256Source"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."Sha256Source" IS 'Empreinte SHA-256 des octets du fichier ou de l’état source, 64 caractères hexadécimaux minuscules uniques.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."NomFichierSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."NomFichierSource" IS 'Nom du fichier justificatif ; privilégier le nom simple plutôt qu’un chemin personnel ou un secret.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."DateSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."DateSource" IS 'Date déclarée dans la source ; NULL si inconnue, distincte de la date d’import.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."MetadonneesSource"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."MetadonneesSource" IS 'Provenance et périmètre de la source en objet JSON, sans géométrie ou coordonnées déduites de mesures de surface/longueur.';
+
+--
+-- Name: COLUMN "T_SourceRapprochementTerritorial"."CreeLe"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_SourceRapprochementTerritorial"."CreeLe" IS 'Instant technique de conservation de la preuve, indépendant de la date des données source.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerrit_ID_SourceRapprochementTerr_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerrit_ID_SourceRapprochementTerr_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_CreeLe_not_null" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_CreeLe_not_null" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_check" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_CodeSource_check" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_check" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_MetadonneesSource_check" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_check" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_NomFichierSource_check" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_check" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_check" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_check" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_VersionSource_check" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_SourceRapprochementTerritor_ID_SourceRapprochementTerrito_seq; Type: SEQUENCE; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE geolocalisation."T_SourceRapprochementTerritorial" ALTER COLUMN "ID_SourceRapprochementTerritorial" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME geolocalisation."T_SourceRapprochementTerritor_ID_SourceRapprochementTerrito_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: SEQUENCE "T_SourceRapprochementTerritor_ID_SourceRapprochementTerrito_seq"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON SEQUENCE geolocalisation."T_SourceRapprochementTerritor_ID_SourceRapprochementTerrito_seq" IS 'Séquence technique d’identité du rapprochement ; aucun UID externe ou code métier n’est généré par cette séquence.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_pkey" PRIMARY KEY ("ID_CorrespondanceTerritoriale");
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_pkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_pkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_pkey" PRIMARY KEY ("ID_LienTerritorial");
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_pkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_pkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_SourceRapprochementTerritorial T_SourceRapprochementTerritorial_Sha256Source_key; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_SourceRapprochementTerritorial"
+    ADD CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_key" UNIQUE ("Sha256Source");
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_key" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_Sha256Source_key" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_SourceRapprochementTerritorial T_SourceRapprochementTerritorial_pkey; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_SourceRapprochementTerritorial"
+    ADD CONSTRAINT "T_SourceRapprochementTerritorial_pkey" PRIMARY KEY ("ID_SourceRapprochementTerritorial");
+
+--
+-- Name: CONSTRAINT "T_SourceRapprochementTerritorial_pkey" ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_SourceRapprochementTerritorial_pkey" ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale uq_correspondance_source_ligne; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT uq_correspondance_source_ligne UNIQUE ("ID_SourceRapprochementFk", "CleLigneSource");
+
+--
+-- Name: CONSTRAINT uq_correspondance_source_ligne ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_correspondance_source_ligne ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial uq_lien_territorial_source_ligne; Type: CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT uq_lien_territorial_source_ligne UNIQUE ("ID_SourceRapprochementFk", "CleLienSource");
+
+--
+-- Name: CONSTRAINT uq_lien_territorial_source_ligne ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT uq_lien_territorial_source_ligne ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: INDEX "T_CorrespondanceTerritoriale_pkey"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation."T_CorrespondanceTerritoriale_pkey" IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: INDEX "T_LienTerritorial_pkey"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation."T_LienTerritorial_pkey" IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: INDEX "T_SourceRapprochementTerritorial_Sha256Source_key"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation."T_SourceRapprochementTerritorial_Sha256Source_key" IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: INDEX "T_SourceRapprochementTerritorial_pkey"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation."T_SourceRapprochementTerritorial_pkey" IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: ix_correspondance_territoire_n1; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_correspondance_territoire_n1 ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("ID_Niveau_1Fk") WHERE ("ID_Niveau_1Fk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_correspondance_territoire_n1; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_correspondance_territoire_n1 IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: ix_correspondance_territoire_n3; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_correspondance_territoire_n3 ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("ID_Niveau_3Fk") WHERE ("ID_Niveau_3Fk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_correspondance_territoire_n3; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_correspondance_territoire_n3 IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: ix_correspondance_territoire_n4; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_correspondance_territoire_n4 ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("ID_Niveau_4Fk") WHERE ("ID_Niveau_4Fk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_correspondance_territoire_n4; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_correspondance_territoire_n4 IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: ix_correspondance_territoire_n5; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_correspondance_territoire_n5 ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("ID_Niveau_5Fk") WHERE ("ID_Niveau_5Fk" IS NOT NULL);
+
+--
+-- Name: INDEX ix_correspondance_territoire_n5; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_correspondance_territoire_n5 IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: ix_correspondance_uid_confirme; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE INDEX ix_correspondance_uid_confirme ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("UidSNISSource") WHERE (("Decision" = 'confirmee'::text) AND ("UidSNISSource" IS NOT NULL));
+
+--
+-- Name: INDEX ix_correspondance_uid_confirme; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.ix_correspondance_uid_confirme IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: uq_correspondance_source_grid3id; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_correspondance_source_grid3id ON geolocalisation."T_CorrespondanceTerritoriale" USING btree ("ID_SourceRapprochementFk", "Grid3Id") WHERE ("Grid3Id" IS NOT NULL);
+
+--
+-- Name: INDEX uq_correspondance_source_grid3id; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_correspondance_source_grid3id IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: INDEX uq_correspondance_source_ligne; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_correspondance_source_ligne IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: INDEX uq_lien_territorial_source_ligne; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_lien_territorial_source_ligne IS 'Index de conservation et de recherche des preuves versionnées, sans unicité artificielle entre les objets GRID3 et les aires de santé.';
+
+--
+-- Name: uq_uid_snis_niveau_1; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_uid_snis_niveau_1 ON geolocalisation."T_Niveau_1" USING btree (btrim("uidSNIS")) WHERE (NULLIF(btrim("uidSNIS"), ''::text) IS NOT NULL);
+
+--
+-- Name: INDEX uq_uid_snis_niveau_1; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_uid_snis_niveau_1 IS 'Unicité locale d’un UID SNIS non vide dans ce niveau territorial, casse conservée. Plusieurs NULL restent possibles. Ne garantit pas l’unicité inter-niveaux ni la correspondance avec une source externe.';
+
+--
+-- Name: uq_uid_snis_niveau_3; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_uid_snis_niveau_3 ON geolocalisation."T_Niveau_3" USING btree (btrim("uidSNIS")) WHERE (NULLIF(btrim("uidSNIS"), ''::text) IS NOT NULL);
+
+--
+-- Name: INDEX uq_uid_snis_niveau_3; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_uid_snis_niveau_3 IS 'Unicité locale d’un UID SNIS non vide dans ce niveau territorial, casse conservée. Plusieurs NULL restent possibles. Ne garantit pas l’unicité inter-niveaux ni la correspondance avec une source externe.';
+
+--
+-- Name: uq_uid_snis_niveau_4; Type: INDEX; Schema: geolocalisation; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_uid_snis_niveau_4 ON geolocalisation."T_Niveau_4" USING btree (btrim("uidSNIS")) WHERE (NULLIF(btrim("uidSNIS"), ''::text) IS NOT NULL);
+
+--
+-- Name: INDEX uq_uid_snis_niveau_4; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON INDEX geolocalisation.uq_uid_snis_niveau_4 IS 'Unicité locale d’un UID SNIS non vide dans ce niveau territorial, casse conservée. Plusieurs NULL restent possibles. Ne garantit pas l’unicité inter-niveaux ni la correspondance avec une source externe.';
+
+--
+-- Name: T_CorrespondanceTerritoriale rapprochement_territorial_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER rapprochement_territorial_integrite BEFORE INSERT OR DELETE OR UPDATE ON geolocalisation."T_CorrespondanceTerritoriale" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_rapprochement_territorial_integrite();
+
+--
+-- Name: TRIGGER rapprochement_territorial_integrite ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER rapprochement_territorial_integrite ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Provenance et décisions finales immuables ; contrôles des parents et conflits avant confirmation, sans réécriture des territoires.';
+
+--
+-- Name: T_LienTerritorial rapprochement_territorial_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER rapprochement_territorial_integrite BEFORE INSERT OR DELETE OR UPDATE ON geolocalisation."T_LienTerritorial" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_rapprochement_territorial_integrite();
+
+--
+-- Name: TRIGGER rapprochement_territorial_integrite ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER rapprochement_territorial_integrite ON geolocalisation."T_LienTerritorial" IS 'Provenance et décisions finales immuables ; contrôles des parents et conflits avant confirmation, sans réécriture des territoires.';
+
+--
+-- Name: T_SourceRapprochementTerritorial rapprochement_territorial_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER rapprochement_territorial_integrite BEFORE INSERT OR DELETE OR UPDATE ON geolocalisation."T_SourceRapprochementTerritorial" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_rapprochement_territorial_integrite();
+
+--
+-- Name: TRIGGER rapprochement_territorial_integrite ON "T_SourceRapprochementTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER rapprochement_territorial_integrite ON geolocalisation."T_SourceRapprochementTerritorial" IS 'Provenance et décisions finales immuables ; contrôles des parents et conflits avant confirmation, sans réécriture des territoires.';
+
+--
+-- Name: T_Niveau_1 uid_snis_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER uid_snis_integrite BEFORE INSERT OR UPDATE OF "uidSNIS" ON geolocalisation."T_Niveau_1" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_uid_snis_integrite();
+
+--
+-- Name: TRIGGER uid_snis_integrite ON "T_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER uid_snis_integrite ON geolocalisation."T_Niveau_1" IS 'Refuse un nouvel UID SNIS mal formé, conserve les valeurs inchangées et les NULL ; correction explicite toujours possible.';
+
+--
+-- Name: T_Niveau_3 uid_snis_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER uid_snis_integrite BEFORE INSERT OR UPDATE OF "uidSNIS" ON geolocalisation."T_Niveau_3" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_uid_snis_integrite();
+
+--
+-- Name: TRIGGER uid_snis_integrite ON "T_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER uid_snis_integrite ON geolocalisation."T_Niveau_3" IS 'Refuse un nouvel UID SNIS mal formé, conserve les valeurs inchangées et les NULL ; correction explicite toujours possible.';
+
+--
+-- Name: T_Niveau_4 uid_snis_integrite; Type: TRIGGER; Schema: geolocalisation; Owner: -
+--
+
+CREATE TRIGGER uid_snis_integrite BEFORE INSERT OR UPDATE OF "uidSNIS" ON geolocalisation."T_Niveau_4" FOR EACH ROW EXECUTE FUNCTION geolocalisation.tr_uid_snis_integrite();
+
+--
+-- Name: TRIGGER uid_snis_integrite ON "T_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON TRIGGER uid_snis_integrite ON geolocalisation."T_Niveau_4" IS 'Refuse un nouvel UID SNIS mal formé, conserve les valeurs inchangées et les NULL ; correction explicite toujours possible.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_DecideParUserFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_DecideParUserFk_fkey" FOREIGN KEY ("DecideParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_DecideParUserFk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_DecideParUserFk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_ID_Niveau_1Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_1Fk_fkey" FOREIGN KEY ("ID_Niveau_1Fk") REFERENCES geolocalisation."T_Niveau_1"("ID_Niveau_1") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_1Fk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_1Fk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_ID_Niveau_3Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_3Fk_fkey" FOREIGN KEY ("ID_Niveau_3Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_3Fk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_3Fk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_ID_Niveau_4Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_4Fk_fkey" FOREIGN KEY ("ID_Niveau_4Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_4Fk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_4Fk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_ID_Niveau_5Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_5Fk_fkey" FOREIGN KEY ("ID_Niveau_5Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_5Fk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_Niveau_5Fk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_CorrespondanceTerritoriale T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_CorrespondanceTerritoriale"
+    ADD CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_fkey" FOREIGN KEY ("ID_SourceRapprochementFk") REFERENCES geolocalisation."T_SourceRapprochementTerritorial"("ID_SourceRapprochementTerritorial") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_fkey" ON "T_CorrespondanceTerritoriale"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CorrespondanceTerritoriale_ID_SourceRapprochementFk_fkey" ON geolocalisation."T_CorrespondanceTerritoriale" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_DecideParUserFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_DecideParUserFk_fkey" FOREIGN KEY ("DecideParUserFk") REFERENCES systeme."T_Utilisateurs"("IdUser") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_DecideParUserFk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_DecideParUserFk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_CibleNiveau_2Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_2Fk_fkey" FOREIGN KEY ("ID_CibleNiveau_2Fk") REFERENCES geolocalisation."T_Niveau_2"("ID_Niveau_2") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_2Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_2Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_CibleNiveau_3Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_3Fk_fkey" FOREIGN KEY ("ID_CibleNiveau_3Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_3Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_3Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_CibleNiveau_4Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_4Fk_fkey" FOREIGN KEY ("ID_CibleNiveau_4Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_4Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_CibleNiveau_4Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_OrigineNiveau_3Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_3Fk_fkey" FOREIGN KEY ("ID_OrigineNiveau_3Fk") REFERENCES geolocalisation."T_Niveau_3"("ID_Niveau_3") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_3Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_3Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_OrigineNiveau_4Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_4Fk_fkey" FOREIGN KEY ("ID_OrigineNiveau_4Fk") REFERENCES geolocalisation."T_Niveau_4"("ID_Niveau_4") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_4Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_4Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_OrigineNiveau_5Fk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_5Fk_fkey" FOREIGN KEY ("ID_OrigineNiveau_5Fk") REFERENCES geolocalisation."T_Niveau_5"("ID_Niveau_5") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_5Fk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_OrigineNiveau_5Fk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
+-- Name: T_LienTerritorial T_LienTerritorial_ID_SourceRapprochementFk_fkey; Type: FK CONSTRAINT; Schema: geolocalisation; Owner: -
+--
+
+ALTER TABLE ONLY geolocalisation."T_LienTerritorial"
+    ADD CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_fkey" FOREIGN KEY ("ID_SourceRapprochementFk") REFERENCES geolocalisation."T_SourceRapprochementTerritorial"("ID_SourceRapprochementTerritorial") ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+--
+-- Name: CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_fkey" ON "T_LienTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_LienTerritorial_ID_SourceRapprochementFk_fkey" ON geolocalisation."T_LienTerritorial" IS 'Intégrité du rapprochement versionné : identité, unicité de ligne source, FK réelles ou décision explicite ; aucun changement implicite des territoires.';
+
+--
 -- PostgreSQL database dump complete
 --
 

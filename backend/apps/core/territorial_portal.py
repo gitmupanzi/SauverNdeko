@@ -179,9 +179,9 @@ def references(actor,kind,current_id=None):
     source(actor,kind);options={};field_refs={};current=record(actor,kind,current_id) if current_id and kind in MODELS else {}
     # Les parents sont les seules listes hiérarchiques nécessaires aux formulaires.
     for n in range(5):
-        table='T_Niveau_'+str(n);name='NomNiveau_'+str(n);pk='ID_Niveau_'+str(n)
+        table='T_Niveau_'+str(n)
         columns=model(table)['columns'];names={c['column_name'] for c in columns};parent=next((key for key in names if re.fullmatch(r'ID_Niveau_[0-4]_[Ff][Kk]',key)),None)
-        rows=db.query('SELECT '+db.ident(pk)+' AS id,'+db.ident(name)+' AS label'+(','+db.ident(parent)+' AS "parentId"' if parent else '')+' FROM geolocalisation.'+db.ident(table)+' ORDER BY '+db.ident(name)+','+db.ident(pk))
+        rows=db.query('SELECT id,label,"parentId" FROM geolocalisation."V_ChoixTerritorial" WHERE niveau=%s ORDER BY label,id',[n])
         options['niveaux'+str(n)]=[{**row,**({'parentKey':parent,parent:row['parentId']} if parent else {})} for row in rows]
     options['niveaux1Old']=db.query('SELECT "ID_Niveau_1_Old" AS id,"NomNiveau_1_Old" AS label FROM geolocalisation."T_Niveau_1_Old" ORDER BY label,id')
     if kind in MODELS or kind in {'population-sites','statistiques-provinces','statistiques-zones'}:

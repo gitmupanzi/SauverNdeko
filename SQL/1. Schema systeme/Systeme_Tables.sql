@@ -180,21 +180,38 @@ COMMENT ON FUNCTION systeme.fn_admin_ui_setting_set_updated_at() IS 'Horodate et
 CREATE FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) RETURNS jsonb
     LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
     AS $$
-DECLARE v_type text;v_result jsonb;v_key text;v_value jsonb;v_setting_secret boolean:=false;v_decoded jsonb;v_string text;
+DECLARE
+ v_type text; v_result jsonb; v_setting_secret boolean:=false;
+ v_decoded jsonb; v_string text;
 BEGIN
  IF p_data IS NULL THEN RETURN NULL;END IF;
  v_type:=jsonb_typeof(p_data);
  IF v_type='object' THEN
-  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value#>>'{}')),false) INTO v_setting_secret FROM jsonb_each(p_data) WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
-  v_result:='{}'::jsonb;
-  FOR v_key,v_value IN SELECT key,value FROM jsonb_each(p_data) LOOP
-   IF systeme.fn_admin_cle_sensible(v_key) OR regexp_replace(lower(v_key),'[^a-z0-9]','','g')='logoentite' THEN CONTINUE;END IF;
-   IF v_setting_secret AND regexp_replace(lower(v_key),'[^a-z0-9]','','g') IN ('settingvalue','settingvaluejson') THEN v_result:=v_result||jsonb_build_object(v_key,'[Masqué]');
-   ELSE v_result:=v_result||jsonb_build_object(v_key,systeme.fn_audit_sans_secrets(v_value));END IF;
-  END LOOP;
+  SELECT coalesce(bool_or(systeme.fn_admin_cle_sensible(value#>>'{}')),false)
+    INTO v_setting_secret FROM jsonb_each(p_data)
+   WHERE regexp_replace(lower(key),'[^a-z0-9]','','g')='settingkey';
+  -- Une concaténation JSONB à chaque clé recopierait tout l'objet précédent.
+  -- L'agrégat JSON conserve les types, puis un seul cast restitue le JSONB.
+  -- jsonb_object_agg réencapsule trop coûteusement les gros objets imbriqués.
+  SELECT coalesce(json_object_agg(key,
+    CASE WHEN v_setting_secret AND regexp_replace(lower(key),'[^a-z0-9]','','g') IN ('settingvalue','settingvaluejson')
+         THEN to_jsonb('[Masqué]'::text)
+         WHEN jsonb_typeof(value) IN ('object','array')
+           OR (jsonb_typeof(value)='string' AND left(btrim(value#>>'{}'),1) IN ('{','['))
+         THEN systeme.fn_audit_sans_secrets(value)
+         ELSE value END),'{}'::json)::jsonb
+    INTO v_result FROM jsonb_each(p_data)
+   WHERE NOT systeme.fn_admin_cle_sensible(key)
+     AND regexp_replace(lower(key),'[^a-z0-9]','','g')<>'logoentite';
   RETURN v_result;
  ELSIF v_type='array' THEN
-  SELECT coalesce(jsonb_agg(systeme.fn_audit_sans_secrets(value) ORDER BY ord),'[]'::jsonb) INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);RETURN v_result;
+  SELECT coalesce(json_agg(
+    CASE WHEN jsonb_typeof(value) IN ('object','array')
+           OR (jsonb_typeof(value)='string' AND left(btrim(value#>>'{}'),1) IN ('{','['))
+         THEN systeme.fn_audit_sans_secrets(value)
+         ELSE value END ORDER BY ord),'[]'::json)::jsonb
+    INTO v_result FROM jsonb_array_elements(p_data) WITH ORDINALITY AS a(value,ord);
+  RETURN v_result;
  ELSIF v_type='string' THEN
   v_string:=btrim(p_data#>>'{}');
   IF left(v_string,1) IN ('{','[') THEN
@@ -209,7 +226,7 @@ END $$;
 -- Name: FUNCTION fn_audit_sans_secrets(p_data jsonb); Type: COMMENT; Schema: systeme; Owner: -
 --
 
-COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement secrets, anciennes images JSON encodées et octets LogoEntite ; conserve les métadonnées de logo comme SHA/MIME/date. N’effectue aucune réécriture des journaux antérieurs.';
+COMMENT ON FUNCTION systeme.fn_audit_sans_secrets(p_data jsonb) IS 'Nettoie récursivement secrets, anciennes images JSON encodées et octets LogoEntite ; conserve les métadonnées de logo comme SHA/MIME/date. Agrège objets et listes en JSON structuré puis reconvertit une seule fois en JSONB, sans concaténations quadratiques ni réécriture des journaux antérieurs. Les scalaires ordinaires restent inchangés.';
 
 --
 -- Name: fn_fk_correspondance_actualiser(); Type: FUNCTION; Schema: systeme; Owner: -

@@ -113,8 +113,11 @@ def references(actor):
     types = db.query('''SELECT "ID_TypeStructureFk" id,"TypeStructure" label,
         array_agg(DISTINCT "NiveauStructure" ORDER BY "NiveauStructure") levels
         FROM ''' + SOURCE + ''' GROUP BY "ID_TypeStructureFk","TypeStructure" ORDER BY label,id''')
-    provinces = db.query('''SELECT DISTINCT "ID_Niveau_1" id,"NomNiveau_1" label FROM ''' + SOURCE + '''
-        WHERE "ID_Niveau_1" IS NOT NULL ORDER BY label NULLS LAST,id''')
+    # Garder les seuls parents de l'annuaire autorisé ; le chemin partagé
+    # différencie les homonymes sans élargir la population des structures.
+    provinces = db.query('''SELECT DISTINCT v."ID_Niveau_1" id,c.label FROM ''' + SOURCE + ''' v
+        JOIN geolocalisation."V_ChoixTerritorial" c ON c.niveau=1 AND c.id=v."ID_Niveau_1"
+        WHERE v."ID_Niveau_1" IS NOT NULL ORDER BY label NULLS LAST,id''')
     return {'types': types, 'levels': LEVELS, 'provinces': provinces,
             'canManageTerritories': can_manage_territories(actor)}
 

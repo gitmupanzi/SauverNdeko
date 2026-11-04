@@ -148,7 +148,7 @@ export function adminEditorOptions(type,field,values,support) {
 
     if (["niveaux3", "niveaux4", "niveaux5"].includes(source)) {
       const level = source.slice(-1);
-      return (support[source] || []).filter(item => source === "niveaux4" && values.IdNiveau_3_Fk ? String(item.ID_Niveau_3_Fk) === values.IdNiveau_3_Fk : source === "niveaux5" && values.IdNiveau_4_Fk ? String(item.ID_Niveau_4_Fk) === values.IdNiveau_4_Fk : true).map(item => ({ value: String(item["ID_Niveau_" + level]), label: item["NomNiveau_" + level] || "Localisation sans nom" }));
+      return (support[source] || []).filter(item => source === "niveaux4" && values.IdNiveau_3_Fk ? String(item.ID_Niveau_3_Fk ?? item.parent3 ?? item.parentId) === values.IdNiveau_3_Fk : source === "niveaux5" && values.IdNiveau_4_Fk ? String(item.ID_Niveau_4_Fk ?? item.parent4 ?? item.parentId) === values.IdNiveau_4_Fk : true).map(item => ({ value: String(item.id ?? item["ID_Niveau_" + level]), label: item.label || item["NomNiveau_" + level] || "Localisation sans nom", disabled: item.disabled === true }));
     }
     return [];
 }

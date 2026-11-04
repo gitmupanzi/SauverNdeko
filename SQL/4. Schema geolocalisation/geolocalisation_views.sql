@@ -93,6 +93,204 @@ COMMENT ON COLUMN geolocalisation."V_AS_sans_Site"."ID_Niveau_4" IS 'Identifiant
 COMMENT ON COLUMN geolocalisation."V_AS_sans_Site"."NomNiveau_4" IS 'Nom de l’unité géographique de niveau 4. Expression projetée : n4."NomNiveau_4".';
 
 --
+-- Name: V_ChoixTerritorial; Type: VIEW; Schema: geolocalisation; Owner: -
+--
+
+CREATE VIEW geolocalisation."V_ChoixTerritorial" AS
+ WITH p0 AS (
+         SELECT n."ID_Niveau_0" AS id,
+            COALESCE(NULLIF(btrim((n.iso)::text), ''::text), (('Pays #'::text || (n."ID_Niveau_0")::text) || ' (ISO absent)'::text)) AS label,
+            NULL::integer AS "parentId",
+            NULL::integer AS "parentNiveau",
+            NULL::text AS "TypeTerritoire",
+            (n."CodeNiveau_0")::text AS "CodeTerritoire"
+           FROM geolocalisation."T_Niveau_0" n
+        ), p1 AS (
+         SELECT n."ID_Niveau_1" AS id,
+            concat_ws(' / '::text, p.label, COALESCE(NULLIF(btrim((n."NomNiveau_1")::text), ''::text), ('Sans nom #'::text || (n."ID_Niveau_1")::text))) AS label,
+            n."ID_Niveau_0_Fk" AS "parentId",
+            0 AS "parentNiveau",
+            NULL::text AS "TypeTerritoire",
+            (n."CodeNiveau_1")::text AS "CodeTerritoire"
+           FROM (geolocalisation."T_Niveau_1" n
+             LEFT JOIN p0 p ON ((p.id = n."ID_Niveau_0_Fk")))
+        ), p2 AS (
+         SELECT n."ID_Niveau_2" AS id,
+            concat_ws(' / '::text, p.label, concat(COALESCE(NULLIF(btrim((t."AbrGenerique")::text), ''::text),
+                CASE
+                    WHEN (n."ID_TypeNiveau_2_Fk" IS NOT NULL) THEN ('Type #'::text || (n."ID_TypeNiveau_2_Fk")::text)
+                    ELSE 'Niveau 2'::text
+                END), ' - ', COALESCE(NULLIF(btrim((n."NomNiveau_2")::text), ''::text), ('Sans nom #'::text || (n."ID_Niveau_2")::text)))) AS label,
+            n."ID_Niveau_1_FK" AS "parentId",
+            1 AS "parentNiveau",
+            (t."AbrGenerique")::text AS "TypeTerritoire",
+            (n."CodeNiveau_2")::text AS "CodeTerritoire"
+           FROM ((geolocalisation."T_Niveau_2" n
+             LEFT JOIN p1 p ON ((p.id = n."ID_Niveau_1_FK")))
+             LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = n."ID_TypeNiveau_2_Fk")))
+        ), p3 AS (
+         SELECT n."ID_Niveau_3" AS id,
+            concat_ws(' / '::text, p.label, concat(COALESCE(NULLIF(btrim((t."AbrGenerique")::text), ''::text),
+                CASE
+                    WHEN (n."ID_TypeNiveau_2_Fk" IS NOT NULL) THEN ('Type #'::text || (n."ID_TypeNiveau_2_Fk")::text)
+                    ELSE 'Niveau 3'::text
+                END), ' - ', COALESCE(NULLIF(btrim((n."NomNiveau_3")::text), ''::text), ('Sans nom #'::text || (n."ID_Niveau_3")::text)))) AS label,
+            n."ID_Niveau_2_FK" AS "parentId",
+            2 AS "parentNiveau",
+            (t."AbrGenerique")::text AS "TypeTerritoire",
+            (n."CodeNiveau_3")::text AS "CodeTerritoire"
+           FROM ((geolocalisation."T_Niveau_3" n
+             LEFT JOIN p2 p ON ((p.id = n."ID_Niveau_2_FK")))
+             LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = n."ID_TypeNiveau_2_Fk")))
+        ), p4 AS (
+         SELECT n."ID_Niveau_4" AS id,
+            concat_ws(' / '::text, p.label, concat(COALESCE(NULLIF(btrim((t."AbrGenerique")::text), ''::text),
+                CASE
+                    WHEN (n."ID_TypeNiveau_4_Fk" IS NOT NULL) THEN ('Type #'::text || (n."ID_TypeNiveau_4_Fk")::text)
+                    ELSE 'Niveau 4'::text
+                END), ' - ', COALESCE(NULLIF(btrim((n."NomNiveau_4")::text), ''::text), ('Sans nom #'::text || (n."ID_Niveau_4")::text)))) AS label,
+            n."ID_Niveau_3_Fk" AS "parentId",
+            3 AS "parentNiveau",
+            (t."AbrGenerique")::text AS "TypeTerritoire",
+            (n."CodeNiveau_4")::text AS "CodeTerritoire"
+           FROM ((geolocalisation."T_Niveau_4" n
+             LEFT JOIN p3 p ON ((p.id = n."ID_Niveau_3_Fk")))
+             LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = n."ID_TypeNiveau_4_Fk")))
+        ), p5 AS (
+         SELECT n."ID_Niveau_5" AS id,
+            concat_ws(' / '::text, p.label,
+                CASE
+                    WHEN ((a."ID_Niveau_4" IS NOT NULL) AND ((n."ID_Niveau_3_Fk" IS NULL) OR (NOT (n."ID_Niveau_3_Fk" IS DISTINCT FROM a."ID_Niveau_3_Fk")))) THEN concat(COALESCE(NULLIF(btrim((t4."AbrGenerique")::text), ''::text),
+                    CASE
+                        WHEN (a."ID_TypeNiveau_4_Fk" IS NOT NULL) THEN ('Type #'::text || (a."ID_TypeNiveau_4_Fk")::text)
+                        ELSE 'Niveau 4'::text
+                    END), ' - ', COALESCE(NULLIF(btrim((a."NomNiveau_4")::text), ''::text), ('Sans nom #'::text || (a."ID_Niveau_4")::text)))
+                    ELSE NULL::text
+                END, concat(COALESCE(NULLIF(btrim((t."AbrGenerique")::text), ''::text),
+                CASE
+                    WHEN (n."ID_TypeNiveau_5_Fk" IS NOT NULL) THEN ('Type #'::text || (n."ID_TypeNiveau_5_Fk")::text)
+                    ELSE 'Niveau 5'::text
+                END), ' - ', COALESCE(NULLIF(btrim((n."NomNiveau_5")::text), ''::text), ('Sans nom #'::text || (n."ID_Niveau_5")::text))),
+                CASE
+                    WHEN ((n."ID_Niveau_3_Fk" IS NOT NULL) AND (a."ID_Niveau_4" IS NOT NULL) AND (n."ID_Niveau_3_Fk" IS DISTINCT FROM a."ID_Niveau_3_Fk")) THEN '(aire hors zone)'::text
+                    ELSE NULL::text
+                END) AS label,
+            COALESCE(n."ID_Niveau_4_Fk", n."ID_Niveau_3_Fk") AS "parentId",
+                CASE
+                    WHEN (n."ID_Niveau_4_Fk" IS NOT NULL) THEN 4
+                    ELSE 3
+                END AS "parentNiveau",
+            (t."AbrGenerique")::text AS "TypeTerritoire",
+            (n."CodeNiveau_5")::text AS "CodeTerritoire"
+           FROM ((((geolocalisation."T_Niveau_5" n
+             LEFT JOIN geolocalisation."T_Niveau_4" a ON ((a."ID_Niveau_4" = n."ID_Niveau_4_Fk")))
+             LEFT JOIN p3 p ON ((p.id = COALESCE(n."ID_Niveau_3_Fk", a."ID_Niveau_3_Fk"))))
+             LEFT JOIN referentiel."T_Generique" t ON ((t."ID_Generique" = n."ID_TypeNiveau_5_Fk")))
+             LEFT JOIN referentiel."T_Generique" t4 ON ((t4."ID_Generique" = a."ID_TypeNiveau_4_Fk")))
+        )
+ SELECT 0 AS niveau,
+    p0.id,
+    p0.label,
+    p0."parentId",
+    p0."parentNiveau",
+    p0."TypeTerritoire",
+    p0."CodeTerritoire"
+   FROM p0
+UNION ALL
+ SELECT 1 AS niveau,
+    p1.id,
+    p1.label,
+    p1."parentId",
+    p1."parentNiveau",
+    p1."TypeTerritoire",
+    p1."CodeTerritoire"
+   FROM p1
+UNION ALL
+ SELECT 2 AS niveau,
+    p2.id,
+    p2.label,
+    p2."parentId",
+    p2."parentNiveau",
+    p2."TypeTerritoire",
+    p2."CodeTerritoire"
+   FROM p2
+UNION ALL
+ SELECT 3 AS niveau,
+    p3.id,
+    p3.label,
+    p3."parentId",
+    p3."parentNiveau",
+    p3."TypeTerritoire",
+    p3."CodeTerritoire"
+   FROM p3
+UNION ALL
+ SELECT 4 AS niveau,
+    p4.id,
+    p4.label,
+    p4."parentId",
+    p4."parentNiveau",
+    p4."TypeTerritoire",
+    p4."CodeTerritoire"
+   FROM p4
+UNION ALL
+ SELECT 5 AS niveau,
+    p5.id,
+    p5.label,
+    p5."parentId",
+    p5."parentNiveau",
+    p5."TypeTerritoire",
+    p5."CodeTerritoire"
+   FROM p5;
+
+--
+-- Name: VIEW "V_ChoixTerritorial"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON VIEW geolocalisation."V_ChoixTerritorial" IS 'Choix territoriaux partagés N0 à N5 : un identifiant par niveau et un chemin ISO / province / type - nom selon les parents physiques existants. Aucun rattachement sanitaire ou administratif n’est inventé.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial".niveau; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial".niveau IS 'Niveau physique 0 à 5 ; associé à id pour désigner un territoire sans ambiguïté entre tables.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial".id; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial".id IS 'Clé primaire inchangée de T_Niveau_n ; jamais remplacée par un libellé.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial".label; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial".label IS 'Chemin lisible : iso du pays, nom de province puis AbrGenerique - NomNiveau_n pour chaque niveau typé. Un champ manquant conserve un repère neutre identifié, sans repli vers NomGenerique.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial"."parentId"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial"."parentId" IS 'Clé du parent physique direct ; pour N5, aire si renseignée, sinon zone directe. Ne remplace aucune FK de la fiche.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial"."parentNiveau"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial"."parentNiveau" IS 'Niveau de la clé parentId, NULL pour N0. N5 conserve son lien direct à N3 en absence d’aire.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial"."TypeTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial"."TypeTerritoire" IS 'AbrGenerique du type réellement référencé, sans priorité au nom de dictionnaire et sans filtre de visibilité sur les affectations historiques.';
+
+--
+-- Name: COLUMN "V_ChoixTerritorial"."CodeTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_ChoixTerritorial"."CodeTerritoire" IS 'Code local existant, distinct de iso du pays et des UID SNIS ; aucune conversion ni création de code.';
+
+--
 -- Name: V_DestinationLogistique; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
@@ -100,27 +298,11 @@ CREATE VIEW geolocalisation."V_DestinationLogistique" AS
  SELECT n5."ID_Niveau_5" AS id,
     n5."NomNiveau_5",
     n5."CodeNiveau_5",
-    concat_ws(' / '::text, NULLIF(btrim((n0."NomNiveau_0")::text), ''::text), NULLIF(btrim((n1."NomNiveau_1")::text), ''::text),
-        CASE
-            WHEN (NULLIF(btrim((n2."NomNiveau_2")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t2."AbrGenerique")::text), ''::text), NULLIF(btrim((t2."NomGenerique")::text), ''::text), 'Niveau 2'::text), ' · ', btrim((n2."NomNiveau_2")::text))
-            ELSE NULL::text
-        END,
-        CASE
-            WHEN (NULLIF(btrim((n3."NomNiveau_3")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t3."AbrGenerique")::text), ''::text), NULLIF(btrim((t3."NomGenerique")::text), ''::text), 'Niveau 3'::text), ' · ', btrim((n3."NomNiveau_3")::text))
-            ELSE NULL::text
-        END,
-        CASE
-            WHEN (NULLIF(btrim((n4."NomNiveau_4")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t4."AbrGenerique")::text), ''::text), NULLIF(btrim((t4."NomGenerique")::text), ''::text), 'Niveau 4'::text), ' · ', btrim((n4."NomNiveau_4")::text))
-            ELSE NULL::text
-        END,
-        CASE
-            WHEN (NULLIF(btrim((n5."NomNiveau_5")::text), ''::text) IS NOT NULL) THEN concat(COALESCE(NULLIF(btrim((t5."AbrGenerique")::text), ''::text), NULLIF(btrim((t5."NomGenerique")::text), ''::text), 'Niveau 5'::text), ' · ', btrim((n5."NomNiveau_5")::text))
-            ELSE NULL::text
-        END) AS label,
+    chemin.label,
     n3."ID_Niveau_3" AS "ID_Niveau_3_Fk",
     n4."ID_Niveau_4" AS "ID_Niveau_4_Fk",
     ((NULLIF(btrim((n5."NomNiveau_5")::text), ''::text) IS NOT NULL) AND (n3."ID_Niveau_3" IS NOT NULL) AND (n2."ID_Niveau_2" IS NOT NULL) AND (n1."ID_Niveau_1" IS NOT NULL) AND (n0."ID_Niveau_0" IS NOT NULL) AND ((n5."ID_Niveau_4_Fk" IS NULL) OR (n4."ID_Niveau_4" IS NOT NULL)) AND ((n5."ID_Niveau_3_Fk" IS NULL) OR (n5."ID_Niveau_4_Fk" IS NULL) OR (n5."ID_Niveau_3_Fk" = n4."ID_Niveau_3_Fk"))) AS "EstCoherente"
-   FROM (((((((((geolocalisation."T_Niveau_5" n5
+   FROM ((((((((((geolocalisation."T_Niveau_5" n5
      LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n4."ID_Niveau_4" = n5."ID_Niveau_4_Fk")))
      LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk"))))
      LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n2."ID_Niveau_2" = n3."ID_Niveau_2_FK")))
@@ -129,13 +311,14 @@ CREATE VIEW geolocalisation."V_DestinationLogistique" AS
      LEFT JOIN referentiel."T_Generique" t2 ON ((t2."ID_Generique" = n2."ID_TypeNiveau_2_Fk")))
      LEFT JOIN referentiel."T_Generique" t3 ON ((t3."ID_Generique" = n3."ID_TypeNiveau_2_Fk")))
      LEFT JOIN referentiel."T_Generique" t4 ON ((t4."ID_Generique" = n4."ID_TypeNiveau_4_Fk")))
-     LEFT JOIN referentiel."T_Generique" t5 ON ((t5."ID_Generique" = n5."ID_TypeNiveau_5_Fk")));
+     LEFT JOIN referentiel."T_Generique" t5 ON ((t5."ID_Generique" = n5."ID_TypeNiveau_5_Fk")))
+     LEFT JOIN geolocalisation."V_ChoixTerritorial" chemin ON (((chemin.niveau = 5) AND (chemin.id = n5."ID_Niveau_5"))));
 
 --
 -- Name: VIEW "V_DestinationLogistique"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_DestinationLogistique" IS 'Destinations avec types géographiques et sanitaires issus du référentiel commun ; chemin hiérarchique conservé et cohérence des parents contrôlée.';
+COMMENT ON VIEW geolocalisation."V_DestinationLogistique" IS 'Destinations logistiques avec le chemin partagé ISO / province / type - nom ; identifiants, parents et critères de cohérence historiques conservés.';
 
 --
 -- Name: COLUMN "V_DestinationLogistique".id; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -159,7 +342,7 @@ COMMENT ON COLUMN geolocalisation."V_DestinationLogistique"."CodeNiveau_5" IS 'L
 -- Name: COLUMN "V_DestinationLogistique".label; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON COLUMN geolocalisation."V_DestinationLogistique".label IS 'Chemin hiérarchique : chaque niveau typé porte l’abréviation réelle du référentiel (AS, ZS, etc.), ou son libellé de type ; aucune classification déduite du nom du lieu.';
+COMMENT ON COLUMN geolocalisation."V_DestinationLogistique".label IS 'Libellé de V_ChoixTerritorial au niveau 5 : iso du pays et abréviations réelles des types, sans classification déduite du nom.';
 
 --
 -- Name: COLUMN "V_DestinationLogistique"."ID_Niveau_3_Fk"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -3266,3 +3449,292 @@ COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."HorairesOuvert
 --
 
 COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."CoordonneesPubliees" IS 'True seulement lorsqu’une fiche de coordonnées du territoire porte le consentement explicite. Ne garantit ni complétude ni vérification métier.';
+--
+-- Name: V_PyramideSanitaireRapprochee; Type: VIEW; Schema: geolocalisation; Owner: -
+--
+
+CREATE VIEW geolocalisation."V_PyramideSanitaireRapprochee" AS
+ WITH zones AS (
+         SELECT n."ID_Niveau_3" AS id,
+            n."NomNiveau_3" AS nom,
+            n."uidSNIS" AS uid,
+            n."ID_Niveau_2_FK" AS parent,
+            n2_1."ID_Niveau_1_FK" AS province
+           FROM ((geolocalisation."T_Niveau_3" n
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = n."ID_TypeNiveau_2_Fk")))
+             LEFT JOIN geolocalisation."T_Niveau_2" n2_1 ON ((n2_1."ID_Niveau_2" = n."ID_Niveau_2_FK")))
+          WHERE (((g."AbrGenerique")::text = 'ZS'::text) AND (g."IdEntiteFk" IS NULL) AND (g."ID_CategorieGeneriqueFk" = ANY (referentiel.fn_categories_champ('geolocalisation'::text, 'T_Niveau_3'::text, 'ID_TypeNiveau_2_Fk'::text, NULL::integer))))
+        ), aires AS (
+         SELECT n."ID_Niveau_4" AS id,
+            n."NomNiveau_4" AS nom,
+            n."uidSNIS" AS uid,
+            n."ID_Niveau_3_Fk" AS parent,
+            n2_1."ID_Niveau_1_FK" AS province
+           FROM (((geolocalisation."T_Niveau_4" n
+             JOIN referentiel."T_Generique" g ON ((g."ID_Generique" = n."ID_TypeNiveau_4_Fk")))
+             LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = n."ID_Niveau_3_Fk")))
+             LEFT JOIN geolocalisation."T_Niveau_2" n2_1 ON ((n2_1."ID_Niveau_2" = n3."ID_Niveau_2_FK")))
+          WHERE (((g."AbrGenerique")::text = 'AS'::text) AND (g."IdEntiteFk" IS NULL) AND (g."ID_CategorieGeneriqueFk" = ANY (referentiel.fn_categories_champ('geolocalisation'::text, 'T_Niveau_4'::text, 'ID_TypeNiveau_4_Fk'::text, NULL::integer))))
+        ), liens_confirmes AS (
+         SELECT "T_LienTerritorial"."ID_LienTerritorial",
+            "T_LienTerritorial"."ID_SourceRapprochementFk",
+            "T_LienTerritorial"."CleLienSource",
+            "T_LienTerritorial"."NatureLien",
+            "T_LienTerritorial"."DomaineLien",
+            "T_LienTerritorial"."ID_OrigineNiveau_3Fk",
+            "T_LienTerritorial"."ID_OrigineNiveau_4Fk",
+            "T_LienTerritorial"."ID_OrigineNiveau_5Fk",
+            "T_LienTerritorial"."ID_CibleNiveau_2Fk",
+            "T_LienTerritorial"."ID_CibleNiveau_3Fk",
+            "T_LienTerritorial"."ID_CibleNiveau_4Fk",
+            "T_LienTerritorial"."Decision",
+            "T_LienTerritorial"."ConflitSource",
+            "T_LienTerritorial"."Preuves",
+            "T_LienTerritorial"."MotifDecision",
+            "T_LienTerritorial"."DecideParUserFk",
+            "T_LienTerritorial"."DecideLe",
+            "T_LienTerritorial"."CreeLe"
+           FROM geolocalisation."T_LienTerritorial"
+          WHERE (("T_LienTerritorial"."Decision" = 'confirmee'::text) AND (NOT "T_LienTerritorial"."ConflitSource"))
+        ), candidats_zones AS (
+         SELECT a.id AS aire,
+            z.id AS zone
+           FROM (aires a
+             JOIN zones z ON ((z.id = a.parent)))
+        UNION
+         SELECT a.id,
+            z.id
+           FROM ((liens_confirmes l_1
+             JOIN aires a ON ((a.id = l_1."ID_OrigineNiveau_4Fk")))
+             JOIN zones z ON ((z.id = l_1."ID_CibleNiveau_3Fk")))
+          WHERE (l_1."NatureLien" = 'aire_de_zone'::text)
+        ), affectations_aires AS (
+         SELECT candidats_zones.aire,
+            (count(DISTINCT candidats_zones.zone))::integer AS nombre,
+                CASE
+                    WHEN (count(DISTINCT candidats_zones.zone) = 1) THEN min(candidats_zones.zone)
+                    ELSE NULL::integer
+                END AS zone
+           FROM candidats_zones
+          GROUP BY candidats_zones.aire
+        ), candidats_antennes AS (
+         SELECT z.id AS zone,
+            n2_1."ID_Niveau_2" AS antenne
+           FROM ((zones z
+             JOIN geolocalisation."T_Niveau_2" n2_1 ON ((n2_1."ID_Niveau_2" = z.parent)))
+             JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = n2_1."ID_TypeNiveau_2_Fk") AND ((g."AbrGenerique")::text = 'Ant PEV'::text))))
+        UNION
+         SELECT z.id,
+            n2_1."ID_Niveau_2"
+           FROM (((liens_confirmes l_1
+             JOIN zones z ON ((z.id = l_1."ID_OrigineNiveau_3Fk")))
+             JOIN geolocalisation."T_Niveau_2" n2_1 ON ((n2_1."ID_Niveau_2" = l_1."ID_CibleNiveau_2Fk")))
+             JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = n2_1."ID_TypeNiveau_2_Fk") AND ((g."AbrGenerique")::text = 'Ant PEV'::text))))
+          WHERE (l_1."NatureLien" = 'rattachement_sanitaire'::text)
+        ), affectations_antennes AS (
+         SELECT candidats_antennes.zone,
+            (count(DISTINCT candidats_antennes.antenne))::integer AS nombre,
+                CASE
+                    WHEN (count(DISTINCT candidats_antennes.antenne) = 1) THEN min(candidats_antennes.antenne)
+                    ELSE NULL::integer
+                END AS antenne
+           FROM candidats_antennes
+          GROUP BY candidats_antennes.zone
+        ), bureaux AS (
+         SELECT z.id AS zone,
+            (count(DISTINCT n3."ID_Niveau_3"))::integer AS nombre
+           FROM (((liens_confirmes l_1
+             JOIN zones z ON ((z.id = l_1."ID_CibleNiveau_3Fk")))
+             JOIN geolocalisation."T_Niveau_3" n3 ON ((n3."ID_Niveau_3" = l_1."ID_OrigineNiveau_3Fk")))
+             JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = n3."ID_TypeNiveau_2_Fk") AND ((g."AbrGenerique")::text = 'BCZS'::text))))
+          WHERE (l_1."NatureLien" = 'bureau_de_zone'::text)
+          GROUP BY z.id
+        ), lignes AS (
+         SELECT ('as:'::text || (a.id)::text) AS cle,
+            a.id AS aire,
+            a.nom AS nom_aire,
+            a.uid AS uid_aire,
+            a.parent AS parent_aire,
+            COALESCE(z.province, a.province) AS province,
+            z.id AS zone,
+            z.nom AS nom_zone,
+            z.uid AS uid_zone,
+            COALESCE(az.nombre, 0) AS nombre_zones,
+            false AS sans_aire
+           FROM ((aires a
+             LEFT JOIN affectations_aires az ON ((az.aire = a.id)))
+             LEFT JOIN zones z ON ((z.id = az.zone)))
+        UNION ALL
+         SELECT ('zs:'::text || (z.id)::text),
+            NULL::integer AS int4,
+            NULL::text AS text,
+            NULL::text AS text,
+            NULL::integer AS int4,
+            z.province,
+            z.id,
+            z.nom,
+            z.uid,
+            1,
+            true
+           FROM zones z
+          WHERE (NOT (EXISTS ( SELECT
+                   FROM affectations_aires az
+                  WHERE ((az.zone = z.id) AND (az.nombre = 1)))))
+        )
+ SELECT l.cle AS "ClePyramide",
+    p."ID_Niveau_1",
+    p."NomNiveau_1" AS "NomProvince",
+    p."uidSNIS" AS "UidProvinceSNIS",
+    n2."ID_Niveau_2" AS "ID_AntennePEV",
+    n2."NomNiveau_2" AS "NomAntennePEV",
+    COALESCE(an.nombre, 0) AS "NbAntennesCandidates",
+        CASE
+            WHEN (an.nombre > 1) THEN an.nombre
+            ELSE 0
+        END AS "NbConflitsAntenne",
+    l.zone AS "ID_ZoneSante",
+    l.nom_zone AS "NomZoneSante",
+    l.uid_zone AS "UidZoneSNIS",
+    l.aire AS "ID_AireSante",
+    l.nom_aire AS "NomAireSante",
+    l.uid_aire AS "UidAireSNIS",
+    l.parent_aire AS "ID_ParentPhysiqueAire",
+    l.nombre_zones AS "NbZonesCandidates",
+        CASE
+            WHEN (l.nombre_zones > 1) THEN l.nombre_zones
+            ELSE 0
+        END AS "NbConflitsZone",
+    COALESCE(b.nombre, 0) AS "NbBureauxZone",
+    l.sans_aire AS "ZoneSansAireRapprochee",
+    (l.zone IS NULL) AS "AireSansZoneRapprochee"
+   FROM ((((lignes l
+     LEFT JOIN geolocalisation."T_Niveau_1" p ON ((p."ID_Niveau_1" = l.province)))
+     LEFT JOIN affectations_antennes an ON ((an.zone = l.zone)))
+     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n2."ID_Niveau_2" = an.antenne)))
+     LEFT JOIN bureaux b ON ((b.zone = l.zone)));
+
+--
+-- Name: VIEW "V_PyramideSanitaireRapprochee"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON VIEW geolocalisation."V_PyramideSanitaireRapprochee" IS 'Lecture privée de la pyramide sanitaire rapprochée, une ligne par AS N4 plus une ligne par ZS sans AS rapprochée. ZS canonique distincte de son BCZS ; antenne via lien confirmé ou parent PEV réel, AS via lien confirmé ou parent ZS réel. Les parents historiques restent inchangés et les copies N5 ne gonflent pas les effectifs. Les cibles multiples restent NULL et sont signalées ; les UID viennent des champs territoriaux, sans copie d’UID de bureau vers zone. Pas de géométrie, contact ou droit public ajouté.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ClePyramide"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ClePyramide" IS 'Identité stable de ligne as:ID ou zs:ID ; niveaux distincts, aucune clé partagée par égalité numérique.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ID_Niveau_1" IS 'Province réelle de la zone rapprochée ou, si la zone manque, province du parent physique de l’aire.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NomProvince"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NomProvince" IS 'Nom courant de la province, sans correction silencieuse des homonymies.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."UidProvinceSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."UidProvinceSNIS" IS 'UID SNIS effectivement enregistré sur la province ; NULL si non validé.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ID_AntennePEV"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ID_AntennePEV" IS 'Unique antenne candidate prouvée ; NULL si aucune ou plusieurs cibles distinctes.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NomAntennePEV"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NomAntennePEV" IS 'Nom de l’unique antenne PEV prouvée ; aucun choix arbitraire parmi plusieurs antennes.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NbAntennesCandidates"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NbAntennesCandidates" IS 'Nombre de cibles antennes distinctes, versions de sources identiques dédupliquées.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NbConflitsAntenne"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NbConflitsAntenne" IS 'Zéro pour zéro ou une antenne, sinon nombre de cibles distinctes concurrentes ; l’antenne reste NULL.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ID_ZoneSante"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ID_ZoneSante" IS 'Identifiant N3 de la ZS canonique, jamais celui de son bureau BCZS par déduction.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NomZoneSante"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NomZoneSante" IS 'Nom courant de la zone de santé canonique prouvée.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."UidZoneSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."UidZoneSNIS" IS 'UID SNIS de la ZS réellement enregistré ; ne reprend pas l’identité d’un BCZS distinct.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ID_AireSante"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ID_AireSante" IS 'Identifiant N4 de l’aire de santé, sans duplication par ses objets GRID3 ou sa copie historique N5.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NomAireSante"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NomAireSante" IS 'Nom courant de l’aire N4 ; NULL sur la ligne d’une zone sans aire rapprochée.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."UidAireSNIS"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."UidAireSNIS" IS 'UID SNIS de l’aire effectivement enregistré ; NULL lorsque la correspondance reste non validée.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ID_ParentPhysiqueAire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ID_ParentPhysiqueAire" IS 'Parent N3 conservé sur l’aire ; peut être un BCZS historique distinct de la ZS canonique.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NbZonesCandidates"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NbZonesCandidates" IS 'Nombre de zones sanitaires candidates distinctes pour une aire ; vaut un sur la ligne ZS sans aire.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NbConflitsZone"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NbConflitsZone" IS 'Zéro pour zéro ou une zone, sinon nombre de cibles distinctes concurrentes ; la zone canonique reste NULL.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."NbBureauxZone"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."NbBureauxZone" IS 'Nombre de bureaux BCZS distincts explicitement liés à la ZS ; ne multiplie pas les lignes des aires.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."ZoneSansAireRapprochee"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."ZoneSansAireRapprochee" IS 'Ligne de ZS sans aire reliée de manière univoque ; ne prouve pas une absence réelle d’aires.';
+
+--
+-- Name: COLUMN "V_PyramideSanitaireRapprochee"."AireSansZoneRapprochee"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_PyramideSanitaireRapprochee"."AireSansZoneRapprochee" IS 'Aire dont la zone canonique est absente ou ambiguë ; son parent physique et son identité restent conservés.';
