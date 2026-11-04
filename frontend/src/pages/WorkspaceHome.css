@@ -48,3 +48,13 @@
 .workspace-application-group.is-features .workspace-app-description { max-width:none; font-size:11px; }
 .workspace-app-parent { display:block; color:var(--erp-muted); font-size:10px; line-height:1.5; }
 @media(max-width:640px) { .workspace-application-group.is-features .workspace-modules { grid-template-columns:minmax(0,1fr); } }
+
+/* Recherche et retours de l’espace privé, sans modifier les en-têtes des modules. */
+.workspace-home .workspace-search { display:flex; align-items:center; min-width:0; }
+.workspace-home .workspace-search input { min-width:0; flex:1; padding-right:52px; }
+.workspace-home .workspace-search input::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; }
+.workspace-search-clear { position:absolute; right:2px; top:50%; transform:translateY(-50%); display:grid; place-items:center; flex:none; width:30px; height:30px; padding:0; border:0; border-radius:6px; background:transparent; color:var(--erp-muted); }
+.workspace-search-clear:hover { color:var(--erp-text); background:var(--erp-hover); }
+.workspace-home .workspace-status { margin-top:24px; border:1px solid var(--erp-border); border-radius:12px; background:var(--erp-surface); }
+@media(max-width:420px) { .workspace-home .workspace-main { padding-inline:14px; }.workspace-search-clear { width:36px;height:36px; }.workspace-home .workspace-status { padding-inline:14px; } }
+@media(pointer:coarse) { .workspace-search-clear { width:44px; height:44px; } }

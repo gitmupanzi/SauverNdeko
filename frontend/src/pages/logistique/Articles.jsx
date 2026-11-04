@@ -108,6 +108,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [readRetry,setReadRetry]=useState(0);
   const [feedback, setFeedback] = useState(null);
   const [editor,setEditor]=useState(null),[batchOpen,setBatchOpen]=useState(false);
   const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null);
@@ -213,7 +214,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
     return () => {
       isMounted = false;
     };
-  }, [criteria, refreshKey, gridState]);
+  }, [criteria, refreshKey, gridState, readRetry]);
 
   return (
     <div className="logistics-screen">
@@ -231,7 +232,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
             {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
             <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>
           </div> : null}
-          {error ? <div className="erp-table-error" role="alert">{error}</div> : null}
+          {error ? <div className="erp-table-error" role="alert"><span>{error}</span><ActionButton icon="refresh" disabled={loading} onClick={()=>setReadRetry(value=>value+1)}>Réessayer</ActionButton></div> : null}
           <SimpleTable tablePreferences={preferences} rows={visibleRows} columns={tableColumns} selectedRowId={selectedArticle?.ID_Article ?? null} enableSelection onSelectionChange={selected => { setSelectedRows(selected); sharedTable?.setSelectedRow?.(selected.length === 1 ? selected[0] : null); }} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={serverMeta} serverState={gridState} onServerChange={changeGrid} onRowConsult={openProduct} consultColumns={["NomArticle","CodeArticleInterne"]} isCellConsultable={(row,key) => row[key] != null && row[key] !== ""} loading={loading} emptyMessage={error ? "Les articles ne sont pas disponibles." : "Aucun article pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={() => setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns}
             toolbar={<>
               <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={search} setSearch={setSearch} onApply={applyFilters} onReset={resetFilters} pending={pending} take={gridState.take} onTake={take => changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId="article-filters" toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={loading} placeholder="Rechercher un article, un code ou une référence…" exportFile={canExport?()=>exportArticles():undefined} exportCsv={canExport?()=>exportArticles("csv"):undefined} exporting={exporting} exportDisabled={Boolean(error) || !serverMeta?.filteredCount || !preferences.ready || !preferences.canExport || !preferences.exportKeys.length} error={exportError||preferences.error}/>

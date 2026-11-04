@@ -19,7 +19,6 @@ const PasswordReset=lazyView(()=>import("./pages/PasswordReset"),{label:"Ouvertu
 const Applications=lazyView(()=>import("./pages/Applications"),{label:"Ouverture de la page…"});
 const ApplicationLicences=lazyView(()=>import("./pages/ApplicationLicences"),{label:"Ouverture de la page…"});
 const Discussions=lazyView(()=>import("./pages/Discussions"),{label:"Ouverture de la page…"});
-const Diseases=lazyView(()=>import("./pages/Diseases"),{label:"Ouverture de la page…"});
 const Experts=lazyView(()=>import("./pages/Experts"),{label:"Ouverture de la page…"});
 const PublicCatalogue=lazyView(()=>import("./pages/PublicCatalogue"),{label:"Ouverture de la présentation…"});
 const Pharmacies=lazyView(()=>import("./pages/Pharmacies"),{label:"Ouverture de la page…"});
@@ -121,7 +120,6 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     {key:"/produits",label:"Produits",icon:"bi-capsule"},
     {key:"/pharmacies",label:"Pharmacies",icon:"globe"},
     {key:"/experts",label:"Experts",icon:"user"},
-    {key:"/maladies",label:"Informations santé",icon:"bi-heart-pulse"},
     {key:"/discussions",label:"Discussions",icon:"bi-chat-dots"},
   ].filter(item=>mayOpen(user,item.key));
   const modules=[
@@ -331,7 +329,6 @@ function ApplicationShell() {
         <main className="mobile-content" ref={contentRef}>
           <Routes>
             <Route path="/experts" element={<Experts experts={catalogue.experts} onContact={openDiscussion} />} />
-            <Route path="/maladies" element={<Diseases diseases={catalogue.diseases} />} />
             <Route
               path="/profil"
               element={
@@ -388,6 +385,7 @@ export default function App() {
   const scopeKey = [user?.IdUser, user?.IdEntiteFk, user?.IdRoleFk, user?.permissions?.canAccessAdmin, accessSignature(user)].join(":");
 
   if (location.pathname === "/") return <Navigate to="/catalogue" replace />;
+  if (location.pathname === "/maladies") return <Navigate to="/catalogue" replace />;
   if (location.pathname === "/catalogue") return <PublicCatalogue />;
   if (isPasswordResetRoute) return <PasswordReset />;
   if (isLoginRoute) return <Login />;

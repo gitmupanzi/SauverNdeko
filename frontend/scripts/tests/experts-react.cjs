@@ -44,6 +44,15 @@ const scope={scopeKey:'u:9',entityId:'9',globalAdmin:false},context={canManage:t
  await act(async()=>component.update(React.createElement(Directory,{...props,context:{...context},references:{}})));eq(calls,1);eq(component.root.findByType('toolbar-stub').props.loading,false);
  await act(async()=>component.root.findAllByType('button-stub').find(node=>node.props.children==='Profils professionnels').props.onClick());eq(globalThis.__managed,true);
  await act(async()=>component.unmount());eq(timers.size,0);
+ // Les filtres appliqués sont retirables sans soumettre les autres champs en cours de saisie.
+ const searched=[];globalThis.__request=async(url)=>{searched.push(new URL(url,'https://proof.invalid').searchParams);return {success:true,data:{rows:[],total:0}};};
+ await act(async()=>{component=Renderer.create(React.createElement(Directory,{...props,references:{secteurs:[{id:10,label:'Santé'}]}}));});
+ await act(async()=>component.root.findByType('toolbar-stub').props.toggleFilters());
+ await act(async()=>{component.root.findByType('toolbar-stub').props.setSearch('premier besoin');component.root.findAllByType('select-stub').find(node=>node.props.label==='Secteur').props.onChange('10');});
+ await act(async()=>component.root.findByType('toolbar-stub').props.onApply());eq(searched.at(-1).get('q'),'premier besoin');eq(searched.at(-1).get('sectorId'),'10');
+ await act(async()=>component.root.findByType('toolbar-stub').props.setSearch('saisie conservée'));const removeSector=component.root.findAllByType('button').find(node=>node.props['aria-label']==='Retirer le filtre Secteur : Santé');ok(removeSector);
+ await act(async()=>removeSector.props.onClick());eq(searched.at(-1).get('sectorId'),null);eq(searched.at(-1).get('q'),'premier besoin');eq(searched.at(-1).get('skip'),'0');eq(component.root.findByType('toolbar-stub').props.search,'saisie conservée');eq(component.root.findByType('toolbar-stub').props.pending,true);
+ await act(async()=>component.root.findByType('toolbar-stub').props.onApply());eq(searched.at(-1).get('q'),'saisie conservée');const readsBefore=searched.length;await act(async()=>component.root.findByType('toolbar-stub').props.onApply());eq(searched.length,readsBefore+1);await act(async()=>component.unmount());eq(timers.size,0);
  // Erreur réseau rejetée : on sort de l'état d'attente et la relance fonctionne.
  calls=0;globalThis.__request=()=>{calls++;return calls===1?Promise.reject(Error('offline')):Promise.resolve({success:true,data:{rows:[],total:0}});};
  await act(async()=>{component=Renderer.create(React.createElement(Directory,props));});eq(component.root.findByType('toolbar-stub').props.loading,false);ok(text(component.toJSON()).includes('La recherche n’a pas abouti.'));eq(timers.size,0);

@@ -1,0 +1,10 @@
+.applied-criteria { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0; min-width:0; }
+.applied-criterion { display:inline-flex; align-items:center; justify-content:space-between; gap:9px; min-width:0; max-width:100%; min-height:32px; padding:6px 10px; border:1px solid var(--erp-border); border-radius:8px; background:var(--erp-active); color:var(--erp-link); font:inherit; font-size:12px; line-height:1.5; text-align:left; cursor:pointer; }
+.applied-criterion>span { min-width:0; overflow-wrap:anywhere; }
+.applied-criterion strong { font-weight:600; }
+.applied-criterion>.app-icon { flex-shrink:0; opacity:.8; }
+.applied-criterion:hover:not(:disabled) { border-color:var(--erp-link); background:var(--erp-hover); }
+.applied-criterion:focus-visible { outline:2px solid var(--erp-link); outline-offset:3px; }
+html button.applied-criterion:disabled { cursor:wait; opacity:1; color:var(--erp-muted); background:var(--erp-raised); }
+@media(max-width:420px) { .applied-criterion { min-height:40px; } }
+@media(pointer:coarse) { .applied-criterion { min-height:44px; } }

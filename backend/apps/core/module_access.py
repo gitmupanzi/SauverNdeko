@@ -8,7 +8,6 @@ WORKSPACE_MODULES = (
     {"key": "produits", "label": "Produits", "description": "Rechercher et consulter les produits disponibles.", "path": "/produits", "icon": "capsule", "tone": "teal"},
     {"key": "structures", "label": "Structures", "description": "Pharmacies, dépôts et établissements.", "path": "/pharmacies", "icon": "hospital", "tone": "coral"},
     {"key": "professionnels", "label": "Professionnels", "description": "Consulter les profils des professionnels.", "path": "/experts", "icon": "people", "tone": "purple"},
-    {"key": "sante", "label": "Informations santé", "description": "Consulter les informations par maladie.", "path": "/maladies", "icon": "heart-pulse", "tone": "rose"},
     {"key": "discussions", "label": "Discussions", "description": "Retrouver vos échanges et messages.", "path": "/discussions", "icon": "chat-dots", "tone": "sky"},
     {"key": "logistique", "label": "Logistique", "description": "Articles, stock, bons et factures.", "path": "/logistique", "icon": "box-seam", "tone": "amber", "admin": True},
     {"key": "caisse", "label": "Caisse", "description": "Caisses, encaissements, décaissements et clôtures.", "path": "/caisse", "icon": "wallet2", "tone": "teal", "admin": True},
@@ -20,7 +19,9 @@ WORKSPACE_MODULES = (
 )
 MODULE_BY_KEY={item["key"]:item for item in WORKSPACE_MODULES}
 BASE_MODULES={"discussions","territoires","administration","parametres","guide"}
-INCLUSIONS={"catalogue":{"produits","structures","professionnels","sante"}}
+# Les activations historiques restent conservées en base ; seules les
+# applications toujours livrées sont proposées et contrôlées par ce manifeste.
+INCLUSIONS={"catalogue":{"produits","structures","professionnels"}}
 OBJECT_MODULES={"operations":"caisse","logistique":"logistique","support":"support","professionnel":"professionnels","geolocalisation":"territoires","communication":"discussions","analytics":"administration","systeme":"administration"}
 
 def storage_ready():
@@ -109,7 +110,7 @@ def enforce_request(actor,request,view):
             target={'expert':'professionnels','structure':'structures'}.get(request.query_params.get('type'))
             if target:require_module(actor,target)
             return
-        key={'stats':'catalogue','articles':'produits','pharmacies':'structures','experts':'professionnels','maladies':'sante'}.get(kind)
+        key={'stats':'catalogue','articles':'produits','pharmacies':'structures','experts':'professionnels'}.get(kind)
     elif path.startswith('/api/produits/'):
         key='produits'
     elif path.startswith('/api/structures/'):

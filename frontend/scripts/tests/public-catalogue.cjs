@@ -32,6 +32,8 @@ async function bundle(contents,extra=[]){const built=await esbuild.build({stdin:
  ]);
  for(const auth of[{loading:true,isAuthenticated:false},{loading:false,isAuthenticated:false},{loading:false,isAuthenticated:true}]){globalThis.__auth={...auth,user:null};globalThis.__location={pathname:'/',search:'',hash:''};const landing=app.default();eq(landing.type.name,'Navigate');eq(landing.props.to,'/catalogue');eq(landing.props.replace,true);globalThis.__location={pathname:'/catalogue',search:'',hash:''};eq(app.default().type.proofKind,'PublicCatalogue');}
  globalThis.__auth={loading:false,isAuthenticated:false,user:null};
+ for(const auth of[{loading:true,isAuthenticated:false},{loading:false,isAuthenticated:false},{loading:false,isAuthenticated:true}]){globalThis.__auth={...auth,user:null};globalThis.__location={pathname:'/maladies',search:'',hash:''};const retired=app.default();eq(retired.type.name,'Navigate');eq(retired.props.to,'/catalogue');eq(retired.props.replace,true);}
+ globalThis.__auth={loading:false,isAuthenticated:false,user:null};
  for(const pathname of['/espace','/produits','/pharmacies','/experts','/logistique','/discussions','/admin','/referentiels']){globalThis.__location={pathname,search:'',hash:''};const view=app.default();eq(view.type.name,'Navigate');ok(view.props.to.startsWith('/login'));}
  globalThis.__location={pathname:'/referentiels',search:'?onglet=categories',hash:'#registre'};eq(app.default().props.to,'/login?redirect='+encodeURIComponent('/referentiels?onglet=categories#registre'));
  globalThis.__auth={loading:true,isAuthenticated:false,user:null};globalThis.__location={pathname:'/espace',search:'',hash:''};eq(app.default().type.name,'SessionLoading');

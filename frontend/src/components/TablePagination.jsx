@@ -15,7 +15,7 @@ export default function TablePagination({total,take,page,onPage,loading=false}){
     {pages>1?<nav className="table-pagination-nav" aria-label="Pagination du tableau">
       <ActionButton icon="chevron-left" aria-label="Précédent" title={current===1?"Première page":"Page précédente"} disabled={loading || current===1} onClick={()=>onPage(current-1)}><span className="table-pagination-step-label">Précédent</span></ActionButton>
       <div className="table-pagination-pages">{pageNumbers(current,pages).map(value=>typeof value==="string"?<span key={value} className="table-pagination-gap" aria-hidden="true">…</span>:value===current?<span key={value} className="table-pagination-number is-current" aria-current="page" title={"Page "+value}>{value}</span>:<button key={value} type="button" className="table-pagination-number" aria-label={"Aller à la page "+value} disabled={loading} onClick={()=>onPage(value)}>{value}</button>)}</div>
-      <span className="table-pagination-mobile">{current} / {pages}</span>
+      <span className="table-pagination-mobile" aria-label={"Page "+current+" sur "+pages}>{current} / {pages}</span>
       <ActionButton aria-label="Suivant" title={current===pages?"Dernière page":"Page suivante"} disabled={loading || current===pages} onClick={()=>onPage(current+1)}><span className="table-pagination-step-label">Suivant</span><AppIcon name="chevron-right" /></ActionButton>
     </nav>:<span className="table-pagination-complete">{count?"Tous les résultats sont affichés":""}</span>}
   </footer>;

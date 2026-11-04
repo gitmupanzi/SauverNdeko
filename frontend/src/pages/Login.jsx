@@ -51,6 +51,15 @@ function destinationLabel(pathname) {
   if (pathname.startsWith("/admin")) return "Administration";
   if (pathname.startsWith("/discussions")) return "Discussions";
   if (pathname.startsWith("/profil")) return "Votre profil";
+  if (pathname.startsWith("/produits")) return "Produits";
+  if (pathname.startsWith("/experts")) return "Professionnels";
+  if (pathname.startsWith("/pharmacies")) return "Structures";
+  if (pathname.startsWith("/territoires")) return "Organisation territoriale";
+  if (pathname.startsWith("/referentiels")) return "Référentiels";
+  if (pathname.startsWith("/caisse")) return "Caisse";
+  if (pathname.startsWith("/support")) return "Support";
+  if (pathname.startsWith("/parametres")) return "Paramètres";
+  if (pathname.startsWith("/guide")) return "Guide utilisateur";
   return "La page demandée";
 }
 

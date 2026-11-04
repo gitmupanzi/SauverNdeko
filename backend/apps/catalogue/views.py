@@ -103,12 +103,6 @@ class PublicView(APIView):
             from apps.professionnels.services import directory
             result = directory(request.user, {**params, 'take': take, 'skip': skip})
             return ok(result['rows'], meta={'take': take, 'skip': skip, 'count': len(result['rows']), 'total': result['total']})
-        elif kind == "maladies":
-            sql = """SELECT g."ID_Generique",g."NomGenerique",g."AbrGenerique",g."ObsGenerique",jsonb_build_object('ID_CategorieGenerique',c."ID_CategorieGenerique",'NomCategorieGenerique',c."NomCategorieGenerique") AS "T_CategorieGenerique" FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie' """
-            sql += ' AND referentiel.fn_reference_visible(g."ID_Generique",%s)'
-            values.append(read_entity(request.user))
-            fields = ['g."NomGenerique"', 'g."AbrGenerique"', 'g."ObsGenerique"']
-            order = 'g."NomGenerique" ASC,g."ID_Generique" DESC'
         else:
             raise APIError("Ressource publique introuvable.", "NOT_FOUND", 404)
         if q:

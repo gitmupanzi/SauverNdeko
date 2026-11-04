@@ -120,10 +120,6 @@ export function fetchPublicExperts() {
   return safeFetchJson("/api/public/experts");
 }
 
-export function fetchPublicMaladies() {
-  return safeFetchJson("/api/public/maladies");
-}
-
 export function fetchPublicChatContext(type, id) {
   const params = new URLSearchParams();
   params.set("type", type);

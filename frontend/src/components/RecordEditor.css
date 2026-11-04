@@ -39,3 +39,14 @@ button.ui-action.is-danger{color:var(--erp-danger);border-color:#e8b6c0;}button.
 .record-editor-section .record-editor-check input{width:17px;height:17px;min-height:17px;padding:0;flex:none;}
 
 .stock-receipt-total{display:block;padding:12px 14px;border:1px solid var(--erp-border);border-radius:7px;background:var(--erp-raised);font-size:20px;font-weight:650;color:var(--erp-text);font-variant-numeric:tabular-nums;}
+
+.record-editor-section{border-radius:12px;}
+.record-editor-section h3{line-height:1.5;margin-bottom:18px;}
+.record-field small{font-size:12px;}
+.record-field :is(input,select,textarea),.record-editor-error{scroll-margin-block:20px;}
+.record-editor-error{border-color:color-mix(in srgb,var(--erp-danger) 40%,var(--erp-border));background:color-mix(in srgb,var(--erp-danger) 5%,var(--erp-surface));line-height:1.5;overflow-wrap:anywhere;}
+.record-editor-error:focus{outline:2px solid var(--erp-danger);outline-offset:2px;}
+.record-discard{padding:12px 14px;border:1px solid var(--erp-border);border-radius:10px;background:var(--erp-raised);line-height:1.5;}
+.record-editor-footer{padding-bottom:max(16px,env(safe-area-inset-bottom));}
+.record-editor-body form[aria-busy=true]{cursor:progress;}
+@media(max-width:480px){.record-editor-footer>div:not(.record-discard){width:100%;justify-content:flex-end;flex-wrap:wrap;}.record-editor-footer .ui-action{min-height:42px;}.record-discard>div{width:100%;justify-content:flex-end;flex-wrap:wrap;}.record-editor-section{padding:15px;}.record-editor-body{padding:14px;}.record-field small{line-height:1.6;}}

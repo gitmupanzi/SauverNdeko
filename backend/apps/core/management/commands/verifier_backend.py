@@ -60,7 +60,6 @@ class Command(BaseCommand):
                 "/api/public/articles",
                 "/api/public/pharmacies",
                 "/api/public/experts",
-                "/api/public/maladies",
                 "/api/logistique/dashboard",
                 "/api/logistique/references",
                 "/api/logistique/commande-details",

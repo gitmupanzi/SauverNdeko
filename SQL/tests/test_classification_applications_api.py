@@ -76,21 +76,21 @@ class ClassificationApplicationsAPI(unittest.TestCase):
         self.assertTrue(snapshot['modules']['caisse']['canManage'])
         self.assertFalse(snapshot['modules']['caisse']['base'])
 
-    def test_03_launcher_visibility_never_revokes_health_access(self):
+    def test_03_retired_health_module_is_not_available(self):
         client=APIClient();client.force_authenticate(self.actor)
         launcher=client.get('/api/workspace/modules').data['data']
         self.assertNotIn('sante',{item['key'] for item in launcher})
         catalogue={item['key']:item for item in client.get('/api/workspace/catalogue').data['data']['modules']}
-        self.assertIn('sante',catalogue)
-        self.assertFalse(catalogue['sante']['showInWorkspace'])
-        self.assertTrue(catalogue['sante']['canRead'])
-        self.assertIsNone(catalogue['sante']['parentModule'])
+        self.assertNotIn('sante',catalogue)
         self.assertIsNone(catalogue['catalogue']['parentModule'])
         self.assertEqual(catalogue['catalogue']['type'],'FONCTIONNALITE')
         self.assertFalse(catalogue['catalogue']['commercialisable'])
         self.assertFalse(catalogue['catalogue']['showInWorkspace'])
         self.assertTrue(catalogue['catalogue']['canRead'])
-        require_module(self.actor,'sante')
+        with self.assertRaises(APIError) as error:
+            require_module(self.actor,'sante')
+        self.assertEqual(error.exception.status_code,404)
+        self.assertEqual(client.get('/api/public/maladies').status_code,404)
         self.assertNotIn('referentiels',catalogue)
         self.assertEqual(set(catalogue),set(MODULE_BY_KEY))
 

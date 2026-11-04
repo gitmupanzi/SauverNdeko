@@ -2,16 +2,15 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { moduleRights, accessSignature } from "../services/moduleAccess";
 import { requestJson } from "../services/api";
-import { getCollection, mapArticlePublic, mapDiseasePublic, mapExpertPublic, mapPharmacyPublic } from "../services/mappers";
+import { getCollection, mapArticlePublic, mapExpertPublic, mapPharmacyPublic } from "../services/mappers";
 
-const EMPTY_STATS={productsCount:"—",structuresCount:"—",expertsCount:"—",diseasesCount:"—"};
-const EMPTY={articles:[],pharmacies:[],experts:[],diseases:[],stats:EMPTY_STATS};
+const EMPTY_STATS={productsCount:"—",structuresCount:"—",expertsCount:"—"};
+const EMPTY={articles:[],pharmacies:[],experts:[],stats:EMPTY_STATS};
 const SOURCES=[
   ["catalogue","stats","stats",null],
   ["produits","articles","articles",mapArticlePublic],
   ["structures","pharmacies","pharmacies",mapPharmacyPublic],
   ["professionnels","experts","experts",mapExpertPublic],
-  ["sante","diseases","maladies",mapDiseasePublic],
 ];
 export function usePublicCatalogue() {
   const {user}=useAuth();

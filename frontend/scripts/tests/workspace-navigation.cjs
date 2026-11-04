@@ -25,6 +25,7 @@ const mocks=[
  globalThis.__auth={user:{permissions:{canAccessAdmin:false},moduleAccess:{modules:{}}}};
  const header=page.Header({title:'Logistique'});eq(nodes(header).filter(node=>node.type?.name==='Link').map(node=>node.props.to),['/espace','/espace']);
  const navbar=page.Navbar({currentPath:'/espace',isAuthenticated:true,user:__auth.user});eq(nodes(navbar).find(node=>node.props.className==='desktop-brand').props.to,'/espace');eq(nodes(navbar).find(node=>node.props.className==='topbar-title').props.children,'Applications');
+ const legacyNavbar=page.Navbar({currentPath:'/espace',isAuthenticated:true,user:{permissions:{canAccessAdmin:true},moduleAccess:{modules:{sante:{canRead:true},produits:{canRead:true}}}}});eq(nodes(legacyNavbar).filter(node=>node.type?.name==='NavLink'&&node.props.to==='/maladies').length,0);ok(nodes(legacyNavbar).some(node=>node.type?.name==='NavLink'&&node.props.to==='/produits'));
  // Tous les retours explicites vers les applications pointent vers l’espace
  // privé ; la route / et les ancres de la présentation ne sont pas réécrites.
  for(const name of ['GuideUtilisateur.jsx','Experts.jsx','Caisse.jsx','OrganisationTerritoriale.jsx','Pharmacies.jsx','Parametres.jsx','Logistique.jsx','Referentiels.jsx','LegacyAdmin.jsx','admin/AdminPortal.jsx','support/SupportPortal.jsx','produits/ProductDirectory.jsx']){const source=fs.readFileSync(path.join(front,'src/pages',name),'utf8');ok(/label:"Applications",icon:"apps",to:"\/espace"/.test(source),name+' doit revenir à /espace');}

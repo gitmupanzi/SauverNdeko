@@ -3,11 +3,13 @@ export function applicationType(item){return item?.type||item?.TypeApplication||
 export function applicationCommercialisable(item){return item?.commercialisable??item?.Commercialisable;}
 export function applicationParent(item){return item?.parentModule??item?.ModuleParentCode??null;}
 export function applicationClassificationValid(item){return TYPES.has(applicationType(item))&&typeof applicationCommercialisable(item)==="boolean"&&!(applicationType(item)==="FONCTIONNALITE"&&applicationCommercialisable(item));}
+// Masquer aussi un ancien manifeste encore en cache pendant le redémarrage du serveur.
+export function applicationRetired(item){return (item?.key||item?.CodeModule)==="sante"||item?.path==="/maladies";}
 const normalize=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr");
 export function applicationGroups(items=[],query=""){
  const term=normalize(query).trim();
  return [{type:"MODULE",label:"Modules métier"},{type:"FONCTIONNALITE",label:"Fonctionnalités associées"}].map(group=>{
-  const all=items.filter(item=>applicationType(item)===group.type),visible=all.filter(item=>normalize([item.label||item.Nom,item.description||item.Description].join(" ")).includes(term));
+  const all=items.filter(item=>!applicationRetired(item)&&applicationType(item)===group.type),visible=all.filter(item=>normalize([item.label||item.Nom,item.description||item.Description].join(" ")).includes(term));
   return {...group,total:all.length,items:visible,accessible:visible.filter(item=>item.canRead===true).length};
  });
 }

@@ -34,8 +34,19 @@ html[data-theme] .erp-module-sidebar .logistics-app-switcher .logistics-sidebar-
 html[data-theme] aside.erp-module-sidebar.logistics-sidebar-shell :is(button,a):focus-visible { outline:2px solid var(--erp-sidebar-text); outline-offset:2px; }
 .erp-module-sidebar .module-sidebar-extra { color:var(--erp-sidebar-muted); font-size:12px; }
 .erp-module-sidebar .module-sidebar-extra :is(select,input) { width:100%; background:var(--erp-sidebar-bg); color:var(--erp-sidebar-text); border-color:var(--erp-sidebar-border); }
+.erp-module-sidebar .module-menu-search { flex:none; min-width:0; padding:14px 0 0; }
+.erp-module-sidebar .module-menu-search-field { display:flex; align-items:center; gap:7px; min-width:0; min-height:36px; padding:0 9px; border:1px solid var(--erp-sidebar-border); border-radius:8px; color:var(--erp-sidebar-muted); background:var(--erp-sidebar-hover); }
+.erp-module-sidebar .module-menu-search-field:focus-within { outline:2px solid var(--erp-primary); outline-offset:2px; }
+html[data-theme] .erp-module-sidebar .module-menu-search-field input { min-width:0; width:100%; flex:1; height:34px; padding:4px 0; background:transparent; color:var(--erp-sidebar-text); border:0; border-radius:0; outline:none; box-shadow:none; font:400 12px/1.4 "Segoe UI",sans-serif; }
+.erp-module-sidebar .module-menu-search-field input::placeholder { color:var(--erp-sidebar-muted); opacity:1; }
+.erp-module-sidebar .module-menu-search-field input::-webkit-search-cancel-button { display:none; }
+.erp-module-sidebar .module-menu-search-field>button { display:grid; place-items:center; flex:none; width:26px; height:28px; padding:3px; border:0; border-radius:5px; color:var(--erp-sidebar-text); background:transparent; box-shadow:none; }
+.erp-module-sidebar .module-menu-result { display:block; padding:7px 4px 0; color:var(--erp-sidebar-muted); font-size:11px; }
+.erp-module-sidebar .module-menu-empty { margin:0; padding:8px 10px; color:var(--erp-sidebar-muted); font-size:12px; line-height:1.6; }
+.erp-module-sidebar .module-nav-group-toggle:disabled { opacity:1; cursor:default; }
+.module-rail-hint { position:fixed; z-index:85; transform:translateY(-50%); max-width:min(240px,calc(100vw - 100px)); padding:8px 11px; border:1px solid var(--erp-border); border-radius:7px; background:var(--erp-surface); color:var(--erp-text); box-shadow:0 4px 16px rgb(0 0 0 / 13%); font:500 12px/1.4 "Segoe UI",sans-serif; pointer-events:none; overflow-wrap:anywhere; }
 html .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-top { flex-direction:column; justify-content:center; gap:6px; }
-.erp-module-sidebar.is-collapsed:not(.is-mobile-open) :is(.logistics-brand-copy,.logistics-sidebar-label,.module-nav-group-toggle,.module-nav-badge,.module-nav-external,.module-sidebar-extra) { display:none; }
+.erp-module-sidebar.is-collapsed:not(.is-mobile-open) :is(.logistics-brand-copy,.logistics-sidebar-label,.module-nav-group-toggle,.module-nav-badge,.module-nav-external,.module-sidebar-extra,.module-menu-search) { display:none; }
 html .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-nav { gap:15px; }
 html[data-theme] .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-link { justify-content:center; padding-inline:0; }
 .module-sidebar-backdrop { position:fixed; inset:0; z-index:79; margin:0; padding:0; border:0; border-radius:0; background:rgb(4 15 29 / 48%); box-shadow:none; }
@@ -47,7 +58,7 @@ html .erp-module-sidebar.is-overlay.is-open { transform:translateX(0); visibilit
  html .logistics-modern.logistics-app .erp-module-sidebar.logistics-sidebar-shell { padding:0 7px; }
  html .erp-module-sidebar:not(.is-overlay) .logistics-sidebar-top { min-height:96px; flex-direction:column; justify-content:center; gap:7px; padding:10px 0; }
  html .erp-module-sidebar .logistics-sidebar-toggle { display:grid; width:28px; height:27px; }
- html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) :is(.logistics-brand-copy,.logistics-sidebar-label,.module-nav-group-toggle,.module-nav-badge,.module-nav-external,.module-sidebar-extra) { display:none; }
+ html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) :is(.logistics-brand-copy,.logistics-sidebar-label,.module-nav-group-toggle,.module-nav-badge,.module-nav-external,.module-sidebar-extra,.module-menu-search) { display:none; }
  html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) .logistics-sidebar-nav { gap:14px; padding-top:14px; }
  html[data-theme] .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) .logistics-sidebar-link { justify-content:center; padding:8px 0; }
  html .logistics-modern.logistics-app .erp-module-sidebar.is-mobile-open { z-index:80; width:min(286px,calc(100vw - 44px)); padding:0 14px; box-shadow:12px 0 35px rgb(0 0 0 / 18%); }

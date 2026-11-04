@@ -7,8 +7,8 @@ export default function DataTableToolbar({ search, setSearch, onApply, onReset, 
   const id = useId();
   const { user } = useAuth();
   return <>
-    <form className="erp-table-toolbar" role="search" onSubmit={(event) => { event.preventDefault(); onApply(); }}>
-      <label className="erp-table-search" htmlFor={id}><AppIcon name="search" /><span className="erp-sr-only">Rechercher dans la liste</span><input id={id} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={placeholder} /></label>
+    <form className="erp-table-toolbar" role="search" aria-label="Recherche et outils de la liste" onSubmit={(event) => { event.preventDefault(); if(!loading) onApply(); }}>
+      <label className="erp-table-search" htmlFor={id}><AppIcon name="search" /><span className="erp-sr-only">Rechercher dans la liste</span><input id={id} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={placeholder} enterKeyHint="search" aria-describedby={pending ? id+"-pending" : undefined} /></label>
       <ActionButton type="submit" variant="primary" disabled={loading}>Rechercher</ActionButton>
       <label className="erp-table-size"><span>Lignes</span><select aria-label="Lignes par page" value={take} onChange={(event) => onTake(Number(event.target.value))} disabled={loading}>{[10,25,50,100].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
       {showFilters?<ActionButton icon="filter" className={filtersOpen ? "is-active" : ""} aria-expanded={filtersOpen} aria-controls={filterControlsId} onClick={toggleFilters}>Filtrer{activeFilters ? <span className="erp-filter-count">{activeFilters}</span> : null}</ActionButton>:null}
@@ -19,7 +19,7 @@ export default function DataTableToolbar({ search, setSearch, onApply, onReset, 
       {exportCsv ? <ActionButton icon="download" onClick={exportCsv} disabled={user?.permissions?.canExportData === false || loading || exporting || exportDisabled || pending} title={pending ? "Appliquez les filtres avant l’export." : "Exporter tous les résultats filtrés en CSV"}>CSV</ActionButton> : null}
     </form>
     {filterContent}
-    {pending ? <p className="erp-table-pending" role="status">Filtres à appliquer.</p> : null}
-    {error ? <p className="erp-table-error" role="alert">{error}</p> : null}
+    {pending ? <p className="erp-table-pending" id={id+"-pending"} role="status"><AppIcon name="clock"/>Validez la recherche pour actualiser les résultats.</p> : null}
+    {error ? <p className="erp-table-error" role="alert"><AppIcon name="alert"/>{error}</p> : null}
   </>;
 }

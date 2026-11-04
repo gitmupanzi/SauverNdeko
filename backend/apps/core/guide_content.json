@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-03",
+  "version": "2026-11-04",
   "modules": [
     {
       "key": "catalogue",
@@ -499,111 +499,6 @@
             {
               "label": "Ouvrir Professionnels",
               "path": "/experts?onglet=profils"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "sante",
-      "label": "Informations santé",
-      "path": "/maladies",
-      "icon": "bi-heart-pulse",
-      "description": "Lire les informations et abréviations du répertoire santé.",
-      "articles": [
-        {
-          "id": "consulter-information-sante",
-          "title": "Consulter une information santé",
-          "summary": "Retrouvez les entrées disponibles et leur description.",
-          "steps": [
-            {
-              "title": "Ouvrir Informations santé",
-              "text": "Accédez au module depuis Vos applications."
-            },
-            {
-              "title": "Lire les cartes",
-              "text": "Consultez le nom, l’abréviation et la description de l’entrée."
-            },
-            {
-              "title": "Comparer la catégorie",
-              "text": "Vérifiez la catégorie affichée pour comprendre le classement de l’information."
-            }
-          ],
-          "example": {
-            "title": "Exemple fictif",
-            "text": "Une entrée fictive « Information Exemple » porte l’abréviation « IE ». Le lecteur ouvre le module pour retrouver sa description."
-          },
-          "notes": [
-            "Ce répertoire fournit une information d’orientation ; il ne pose pas de diagnostic individuel."
-          ],
-          "links": [
-            {
-              "label": "Ouvrir Informations santé",
-              "path": "/maladies"
-            }
-          ]
-        },
-        {
-          "id": "lire-abreviation-sante",
-          "title": "Comprendre une abréviation",
-          "summary": "Reliez le code affiché à son libellé complet.",
-          "steps": [
-            {
-              "title": "Repérer l’abréviation",
-              "text": "Relevez le code rencontré dans une liste ou un document."
-            },
-            {
-              "title": "Consulter la vue tabulaire",
-              "text": "Comparez les colonnes Nom de la maladie, Abréviation, Description et Catégorie."
-            },
-            {
-              "title": "Vérifier le libellé",
-              "text": "Retenez le nom complet plutôt qu’une interprétation déduite du code seul."
-            }
-          ],
-          "example": {
-            "title": "Exemple fictif",
-            "text": "Le code fictif « IE » peut sembler ambigu. Le libellé complet du répertoire permet de le replacer dans son contexte."
-          },
-          "notes": [
-            "Une description absente reste une information manquante, pas une absence de risque."
-          ],
-          "links": [
-            {
-              "label": "Ouvrir Informations santé",
-              "path": "/maladies"
-            }
-          ]
-        },
-        {
-          "id": "signaler-information-sante",
-          "title": "Faire préciser une information",
-          "summary": "Préparez un signalement utile lorsqu’un libellé manque de clarté.",
-          "steps": [
-            {
-              "title": "Relever l’entrée",
-              "text": "Notez le libellé, l’abréviation et la catégorie concernés."
-            },
-            {
-              "title": "Décrire le point à préciser",
-              "text": "Indiquez ce qui manque ou paraît incohérent, sans modifier vous-même le sens du libellé."
-            },
-            {
-              "title": "Transmettre au responsable",
-              "text": "Adressez la demande à votre administrateur ou utilisez Support si ce module vous est accordé."
-            }
-          ],
-          "example": {
-            "title": "Exemple fictif",
-            "text": "Le lecteur signale que l’abréviation fictive « IE » n’a pas de description, en citant le libellé exact."
-          },
-          "notes": [
-            "La modification des nomenclatures relève des personnes habilitées."
-          ],
-          "links": [
-            {
-              "label": "Ouvrir Informations santé",
-              "path": "/maladies"
             }
           ]
         }

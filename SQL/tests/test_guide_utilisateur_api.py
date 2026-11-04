@@ -200,7 +200,8 @@ class UserGuideAPI(unittest.TestCase):
     def test_14_catalogue_includes_children_of_catalogue_licence(self):
         self.licence('catalogue')
         keys = {item['key'] for item in self.context()['modules']}
-        self.assertTrue({'catalogue', 'produits', 'structures', 'professionnels', 'sante'}.issubset(keys))
+        self.assertTrue({'catalogue', 'produits', 'structures', 'professionnels'}.issubset(keys))
+        self.assertNotIn('sante',keys)
 
     def test_15_content_catalogue_has_unique_safe_routes_and_examples(self):
         revision, modules = user_guide.content()

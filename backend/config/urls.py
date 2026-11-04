@@ -237,7 +237,7 @@ urlpatterns = [
     re_path(r"^SauverNdeko/auth/verify/?$", VerifyView.as_view()),
     re_path(r"^SauverNdeko/auth/logout/?$", LogoutView.as_view()),
     re_path(
-        r"^api/public/(?P<kind>stats|articles|pharmacies|experts|maladies|chat/context)/?$",
+        r"^api/public/(?P<kind>stats|articles|pharmacies|experts|chat/context)/?$",
         PublicView.as_view(),
     ),
     re_path(r"^api/notifications/?$", NotificationsView.as_view()),

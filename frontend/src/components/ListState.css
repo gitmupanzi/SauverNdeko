@@ -1,0 +1,12 @@
+.ui-list-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; min-width:0; min-height:160px; padding:28px 18px; text-align:center; color:var(--erp-text,#243b55); }
+.ui-list-state-icon { display:grid; place-items:center; flex:none; width:44px; height:44px; border:1px solid var(--erp-border,#dce5ef); border-radius:12px; background:var(--erp-raised,#f3f6fa); color:var(--erp-muted,#62758c); }
+.ui-list-state-icon .app-icon { width:21px; height:21px; }
+.ui-list-state-copy { display:grid; gap:5px; max-width:54ch; min-width:0; overflow-wrap:anywhere; }
+.ui-list-state-copy > strong { color:var(--erp-text,#243b55); font-size:14px; font-weight:600; line-height:1.5; }
+.ui-list-state-description { color:var(--erp-muted,#62758c); font-size:12px; line-height:1.6; }
+.ui-list-state-action { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; max-width:100%; }
+.ui-list-state-action .ui-action { max-width:100%; white-space:normal; height:auto; min-height:40px; padding-block:9px; }
+.ui-list-state.is-loading .ui-list-state-icon .app-icon { animation:ui-list-state-spin 1.4s linear infinite; }
+@keyframes ui-list-state-spin { to { transform:rotate(360deg); } }
+@media(max-width:520px) { .ui-list-state { min-height:144px; padding:24px 12px; }.ui-list-state-copy { max-width:100%; } }
+@media(prefers-reduced-motion:reduce) { .ui-list-state.is-loading .ui-list-state-icon .app-icon { animation:none; } }

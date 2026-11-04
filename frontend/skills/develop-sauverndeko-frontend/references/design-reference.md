@@ -1,6 +1,28 @@
-# Référence visuelle SauverNdeko
+# Références de design et d’usage SauverNdeko
 
-Le propriétaire retient [TailAdmin React](https://react-demo.tailadmin.com/) comme référence de modernité, le 25 octobre 2026. S’en inspirer pour la cohérence, la lisibilité et les interactions ; conserver les contenus métier et la marque SauverNdeko dans la pile React JSX/Vite/Bootstrap existante.
+Le propriétaire retient [TailAdmin](https://tailadmin.com/) depuis le 25 octobre 2026 et ajoute [shadcn/ui](https://ui.shadcn.com/) le 3 novembre 2026. Ces deux références servent la cohérence, la lisibilité et les interactions ; conserver les contenus métier et la marque SauverNdeko dans la pile React JSX/Vite/Bootstrap existante.
+
+## Choisir une amélioration utile
+
+Avant de modifier, lire les composants et le parcours réellement raccordés. Garder ce qui fonctionne. Identifier le problème observable : action difficile à trouver, filtre perdu, erreur peu exploitable, panneau inaccessible au clavier ou débordement sur téléphone. Réutiliser d’abord les composants transversaux, puis adapter les particularités du module. Une nouvelle décoration ne justifie pas une réécriture ni un changement du backend ou de la base.
+
+Comparer les exemples pertinents : [tableaux TailAdmin](https://demo.tailadmin.com/data-tables), [formulaires TailAdmin](https://demo.tailadmin.com/form-elements), [tableaux shadcn/ui](https://ui.shadcn.com/docs/components/data-table), [barre latérale](https://ui.shadcn.com/docs/components/sidebar), [champs et erreurs](https://ui.shadcn.com/docs/components/field), [états vides](https://ui.shadcn.com/docs/components/empty) et [confirmation](https://ui.shadcn.com/docs/components/alert-dialog). Si une page ne répond pas, le préciser sans en inventer le contenu. Les références consultées le 3 novembre 2026 étaient accessibles.
+
+Les composants shadcn/ui du dépôt officiel sont sous [licence MIT](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md), avec conservation des mentions pour une reprise de code. Les composants Pro TailAdmin suivent leur [licence commerciale](https://tailadmin.com/license) : la présence d’une démo ne donne pas un droit de copie. L’évolution du 3 novembre adapte les composants maison, sans importer de code de ces bibliothèques, sans ressource payante et sans nouvelle dépendance.
+
+Priorités : navigation et repères ; outils de listes constants ; formulaires guidés et erreurs actionnables ; chargement stable ; contrastes, focus et commandes tactiles. Les actions importantes conservent leur confirmation et leur motif métier. Éviter les confirmations pour une simple consultation ou une préférence d’affichage. Une liste vide permet de corriger les critères ; une erreur ne doit pas se présenter comme une absence de données. Ne pas annoncer une opération réussie avant la réponse réelle du serveur.
+
+Vérifier les thèmes clair, sombre et contraste, les largeurs 320/375/768/1440/1920, les touches Tab/Entrée/Échap et le retour au contexte. Distinguer tests React/SSR, cascade CSS, réponses API et véritable recette visuelle ; ne pas présenter un test de dimensions simulées comme une capture du navigateur.
+
+### Composants communs — 3 novembre 2026
+
+Réutiliser `ListState` pour les chargements, résultats vides et indisponibilités, avec une action réellement raccordée si elle est utile. `AppliedCriteria` retire un seul critère appliqué sans perdre les autres critères, le brouillon non appliqué ni le périmètre autorisé ; une nouvelle population repart de la première page. Ne pas confondre une erreur d’export avec une erreur de chargement de la liste.
+
+`ModuleSidebar` permet de rechercher localement une rubrique dans les menus longs ; cette recherche ne filtre aucune donnée métier et ne modifie aucun droit. `ModuleHeader` fournit le retour aux applications et l’accès clavier au contenu. Conserver les libellés accessibles du rail compact. Les surfaces superposées utilisent le verrou de défilement partagé `bodyScrollLock`, libéré seulement après leur dernière fermeture.
+
+`SearchSelect` conserve les touches d’édition du texte et adapte sa liste au clavier mobile. `RecordEditorFrame` guide vers le champ invalide visible ou le résumé d’erreur, protège la saisie pendant la confirmation d’abandon et rétablit le focus si l’utilisateur continue. `SimpleTable` conserve les lignes pendant l’actualisation, expose une région de défilement nommée et permet la consultation au clavier sans intercepter les touches des champs ou boutons imbriqués. Les cibles tactiles des commandes communes visent 44 pixels ; un libellé visible ne doit pas être enfermé dans une largeur d’icône.
+
+`npm run test:ux` exécute les contrôles des handlers et effets des primitives communes. Les scripts `table_theme.py`, `forms_theme.py` et `navigation_theme.py` complètent la vérification CSS ; ils ne remplacent pas la recette dans le navigateur.
 
 ## Navigation commune — 30 octobre 2026
 

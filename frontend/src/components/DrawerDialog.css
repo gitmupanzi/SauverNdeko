@@ -3,3 +3,11 @@
 @media(max-width:640px) { .resizable-drawer { inset:0 auto 0 0; width:100vw; border:0; }.drawer-width-actions,.drawer-resize { display:none; }.drawer-header { padding:15px 18px; }.drawer-body { padding:18px; } }
 
 .drawer-body { scrollbar-gutter:stable; }
+
+.drawer-mark{display:grid;place-items:center;flex:none;width:40px;height:40px;border:1px solid var(--erp-border);border-radius:10px;background:var(--erp-action-soft);color:var(--erp-action);}
+.drawer-heading p{overflow-wrap:anywhere;}
+.drawer-body{overscroll-behavior:contain;scroll-padding-block:16px;}
+.drawer-controls button{border-radius:8px;}
+.drawer-controls button:hover:not(:disabled){border-color:var(--erp-link);}
+@media(max-width:640px){.drawer-header{gap:10px;padding:14px 16px;}.drawer-header h2{font-size:17px;}.drawer-mark{width:34px;height:34px;border-radius:9px;}.drawer-close{width:40px!important;height:40px!important;min-height:40px!important;}.drawer-body{padding:16px;}}
+@media(pointer:coarse){.drawer-controls button{min-width:44px;min-height:44px;}}

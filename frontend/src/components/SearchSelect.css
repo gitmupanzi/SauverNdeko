@@ -2,13 +2,21 @@
 .search-select-trigger>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.search-select-trigger>.app-icon{flex:none;color:var(--erp-muted);transition:transform .15s;}.search-select-trigger[aria-expanded=true]>.app-icon{transform:rotate(180deg);}
 .search-select-trigger.is-placeholder{color:var(--erp-muted);}.search-select-trigger:focus-visible,.search-select-trigger[aria-expanded=true]{outline:3px solid color-mix(in srgb,var(--erp-link) 13%,transparent);outline-offset:0;border-color:var(--erp-link);}
 .search-select-trigger[aria-invalid=true]{border-color:var(--erp-danger);}.search-select-trigger:disabled{background:var(--erp-raised);color:var(--erp-muted);cursor:not-allowed;}
-.search-select-panel{position:fixed;margin:0;inset:auto;border:1px solid var(--erp-border);border-radius:10px;background:var(--erp-surface);color:var(--erp-text);padding:0;box-shadow:0 10px 32px #15284124;max-height:320px;overflow:hidden;z-index:10000;font:13px "Segoe UI",sans-serif;}
+.search-select-panel{position:fixed;margin:0;inset:auto;display:flex;flex-direction:column;border:1px solid var(--erp-border);border-radius:12px;background:var(--erp-surface);color:var(--erp-text);padding:0;box-shadow:0 14px 36px rgb(16 24 40 / 18%);max-height:min(340px,calc(100dvh - 24px));overflow:hidden;z-index:10000;font:13px "Segoe UI",sans-serif;}
 .search-select-search{display:flex;align-items:center;gap:8px;margin:9px;border:1px solid var(--erp-border);border-radius:7px;padding:0 10px;color:var(--erp-muted);}
 .search-select-search input{border:0!important;box-shadow:none!important;outline:0!important;width:100%;height:38px;min-height:38px!important;background:transparent;color:var(--erp-text);font:13px "Segoe UI",sans-serif;padding:5px 0!important;}
-.search-select-options{max-height:220px;overflow:auto;padding:0 6px 6px;}.search-select-options>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px;border:0;border-radius:6px;background:transparent;color:var(--erp-text);text-align:left;font:13px "Segoe UI",sans-serif;min-height:39px;}
+.search-select-options{min-height:0;flex:1;max-height:230px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 6px 6px;}.search-select-options>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px;border:0;border-radius:7px;background:transparent;color:var(--erp-text);text-align:left;font:13px "Segoe UI",sans-serif;line-height:1.5;min-height:40px;}.search-select-options>button>span{overflow-wrap:anywhere;}.search-select-options>button>.app-icon{flex:none;}
 .search-select-options>button:hover,.search-select-options>button:focus-visible{outline:0;background:var(--erp-hover);}.search-select-options>button[aria-selected=true]{color:var(--erp-action);background:var(--erp-action-soft);font-weight:600;}
 .search-select-options>p{padding:16px 10px;color:var(--erp-muted);font-size:12px;}.search-select-footer{padding:8px 12px;border-top:1px solid var(--erp-border);font-size:11px;color:var(--erp-muted);background:var(--erp-raised);}
 
 button.search-select-trigger > span{font:inherit;color:inherit;text-transform:none;letter-spacing:normal;}
 
 .search-select-panel.is-remote .search-select-options{max-height:190px}.search-select-panel.is-remote .search-select-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}.search-select-footer>button{border:1px solid var(--erp-border);background:var(--erp-surface);color:var(--erp-action);border-radius:6px;padding:5px 9px;font:inherit;cursor:pointer}.search-select-footer>button:focus-visible{outline:2px solid var(--erp-link);outline-offset:1px}.search-select-footer>button:disabled{opacity:.6;cursor:wait}
+
+.search-select-search,.search-select-footer{flex:none;}
+.search-select-search:focus-within{border-color:var(--erp-link);box-shadow:0 0 0 2px color-mix(in srgb,var(--erp-link) 15%,transparent);}
+.search-select-options>button:focus-visible{outline:2px solid var(--erp-link);outline-offset:-2px;}
+.search-select-options>button:disabled{color:var(--erp-muted);cursor:not-allowed;}
+.search-select-options>p[role=alert]{color:var(--erp-danger);}
+@media(pointer:coarse){.search-select-options>button{min-height:44px;}.search-select-footer>button{min-height:40px;}}
+@media(prefers-reduced-motion:reduce){.search-select-trigger>.app-icon{transition:none;}}

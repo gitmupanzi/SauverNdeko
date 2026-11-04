@@ -7,6 +7,7 @@ import ColumnPicker from "../../components/ColumnPicker";
 import TableSettings from "../../components/TableSettings";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
+import ListState from "../../components/ListState";
 import "../../components/DataTable.css";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -502,6 +503,7 @@ export function SimpleTable({
   onColumnFilterChange,
   onApplyColumnFilters,
   tablePreferences = null,
+  tableLabel = "Liste des résultats",
 }) {
   const tableWrapRef = useRef(null);
   const tableHeadingRef = useRef(null);
@@ -1127,9 +1129,10 @@ export function SimpleTable({
         inert={loading ? true : undefined}
         className="public-table-wrap logistics-table-wrap admin-table-wrap"
         tabIndex={0}
-        aria-label="Tableau logistique avance avec defilement horizontal et vertical"
+        role="region"
+        aria-label={tableLabel + " · tableau défilant"}
       >
-        <table className="public-table logistics-table admin-table table table-hover align-middle mb-0">
+        <table className="public-table logistics-table admin-table table table-hover align-middle mb-0" aria-label={tableLabel}>
           <colgroup>
             {enableSelection ? <col style={{ width: SELECTION_COLUMN_WIDTH }} /> : null}
             {effectiveVisibleColumns.map((column) => (
@@ -1139,13 +1142,13 @@ export function SimpleTable({
           <thead>
             <tr ref={tableHeadingRef}>
               {enableSelection ? (
-                <th className="admin-select-column">
+                <th scope="col" className="admin-select-column">
                   <input
                     type="checkbox"
                     checked={selectedPageIds.length > 0 && selectedPageIds.every((rowId) => selectedRowIds.includes(String(rowId)))}
                     onChange={handleTogglePageSelection}
                     ref={selectPageRef}
-                    aria-label="Selectionner la page"
+                    aria-label="Sélectionner toutes les lignes de cette page"
                   />
                 </th>
               ) : null}
@@ -1157,7 +1160,8 @@ export function SimpleTable({
                 return (
                   <th
                     key={column.key}
-                    aria-sort={sortConfig.column === column.key ? (sortConfig.direction === "asc" ? "ascending" : "descending") : "none"}
+                    scope="col"
+                    aria-sort={isSortable ? sortConfig.column === column.key ? (sortConfig.direction === "asc" ? "ascending" : "descending") : "none" : undefined}
                     className={`admin-table-head-cell ${isPinned ? "is-pinned" : ""} ${column.align === "right" ? "is-numeric" : ""}`}
                     style={getCellStyle(column)}
                   >
@@ -1211,7 +1215,7 @@ export function SimpleTable({
           </thead>
 
           <tbody>
-            {!paginatedRowEntries.length ? <tr className="erp-grid-empty"><td colSpan={Math.max(1,effectiveVisibleColumns.length + Number(enableSelection))}>{loading ? "Chargement…" : emptyMessage || "Aucun résultat pour ces critères."}</td></tr> : null}
+            {!paginatedRowEntries.length ? <tr className="erp-grid-empty"><td colSpan={Math.max(1,effectiveVisibleColumns.length + Number(enableSelection))}><ListState title={loading ? "Chargement des résultats…" : emptyMessage || "Aucun résultat pour ces critères."} loading={loading} description={!loading && !emptyMessage ? "Essayez un autre mot-clé ou ajustez les filtres." : undefined}/></td></tr> : null}
             {paginatedRowEntries.map((entry) => {
               const row = entry.row;
               const rowIndex = entry.index;
@@ -1228,6 +1232,11 @@ export function SimpleTable({
                     onRowSelect ? "logistics-row-clickable" : ""
                   }`.trim()}
                   onClick={onRowSelect ? () => onRowSelect(row) : undefined}
+                  tabIndex={onRowSelect ? 0 : undefined}
+                  onKeyDown={onRowSelect ? event => {
+                    if (event.target !== event.currentTarget || loading || !["Enter"," "].includes(event.key)) return;
+                    event.preventDefault(); onRowSelect(row);
+                  } : undefined}
                 >
                   {enableSelection ? (
                     <td className="admin-select-column" onClick={(event) => event.stopPropagation()}>
@@ -1262,6 +1271,7 @@ export function SimpleTable({
         </table>
       </div>
 
+      {scrollState.overflow ? <div className="erp-table-scroll-help"><AppIcon name="movements"/><span>Faites défiler le tableau pour voir les autres colonnes.</span></div> : null}
       <TablePagination total={serverMode ? serverMeta?.filteredCount : sortedRows.length} take={rowsPerPage} page={currentPage} onPage={setCurrentPage} loading={loading} />
     </div>
   );

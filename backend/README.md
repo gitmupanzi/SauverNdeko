@@ -78,7 +78,7 @@ Le serveur local ferme les connexions PostgreSQL après chaque requête (CONN_MA
 La migration SQL 20261025_02_modules_entites ajoute trois tables, trois vues et deux triggers commentés dans systeme. T_LicenceModule rattache un module à une licence existante ; l’Entité et les dates restent celles de T_Licence. T_RoleModule définit des restrictions par Entité/rôle/module. Les nouvelles lectures et écritures utilisent les services dédiés apps/core/module_access.py et application_licences.py ; ces tables ne sont pas exposées au CRUD générique.
 
 - Socle : Discussions, Organisation territoriale, Administration, sous réserve des habilitations existantes.
-- Modules optionnels : Catalogue, Produits, Structures, Professionnels, Informations santé et Logistique. Catalogue inclut ses quatre rubriques.
+- Modules optionnels historiques : Catalogue, Produits, Structures, Professionnels et Logistique. Le code Catalogue conserve ses inclusions de Produits, Structures et Professionnels ; la fonctionnalité Informations santé a été retirée le 4 novembre 2026, sans effacement des anciennes activations ni des valeurs du référentiel.
 - Les six activations reprises sur la licence existante portent Origine=reprise. Aucun contrat, prix, compte ou nouveau privilège administratif n’a été créé.
 - Un utilisateur d’entreprise hérite de son Entité relue en base ; une valeur d’Entité envoyée par le client ne peut pas changer son périmètre.
 - Seul Is_Admin configure les activations et restrictions. Un administrateur d’entreprise consulte son offre et ne peut pas prolonger sa licence par les anciennes routes CRUD.

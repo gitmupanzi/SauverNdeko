@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { label: "Produits", path: "/produits" },
   { label: "Pharmacies", path: "/pharmacies" },
   { label: "Experts", path: "/experts" },
-  { label: "Maladies", path: "/maladies" },
   { label: "Discussions", path: "/discussions" },
 ];
 
@@ -18,7 +17,6 @@ const TITLE_BY_PATH = {
   "/produits": "Produits",
   "/pharmacies": "Pharmacies et depots",
   "/experts": "Experts",
-  "/maladies": "Maladies",
   "/discussions": "Discussions",
   "/login": "Connexion",
   "/register": "Creer un compte",
