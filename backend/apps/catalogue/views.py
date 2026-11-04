@@ -8,7 +8,6 @@ from apps.core.tenancy import read_entity
 from apps.core.reference_labels import reference_label
 
 EXPERT_SQL = 'SELECT p.* FROM professionnel."V_Professionnel_Public" p'
-ENTITY_SQL = 'SELECT e.* FROM systeme."V_Entite_Public" e'
 
 
 def recipient(kind, target_id, *, actor=None, contact=False, lock=False):
@@ -52,13 +51,16 @@ class PublicView(APIView):
     permission_classes = [HasModuleAccess]
 
     def get(self, request, kind):
+        if kind == 'pharmacies':
+            from .territorial_structures import listing, parameters
+            result = listing(parameters(request.query_params))
+            return ok(result['rows'], meta={key: result[key] for key in ('total', 'take', 'skip')} | {'count': len(result['rows'])})
         params = request.query_params.dict()
         take, skip = page({**params, "take": params.get("take", 20)})
         take = min(take, 100)
         q = str(params.get("q", "")).strip()
         if len(q) > 300:
             raise APIError("Recherche trop longue.")
-        values = []
         if kind == "chat/context":
             typ = params.get("type")
             r = recipient(typ, positive(params.get("id")), actor=request.user, contact=True)
@@ -82,33 +84,22 @@ class PublicView(APIView):
         if kind == "stats":
             sql = '''SELECT
               (SELECT count(*) FROM logistique."V_OffreArticle") AS "productsCount",
-              (SELECT count(*) FROM systeme."V_Entite_Public") AS "structuresCount",
+              (SELECT count(*) FROM geolocalisation."V_StructureSanitairePublique") AS "structuresCount",
               (SELECT count(*) FROM professionnel."V_Professionnel_Public") AS "expertsCount",
               (SELECT count(*) FROM referentiel."T_Generique" g
                 JOIN referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
                 WHERE g."ValideGenerique"=true AND lower(c."NomCategorieGenerique")='maladie'
                   AND referentiel.fn_reference_visible(g."ID_Generique",%s)) AS "diseasesCount",
-              (SELECT count(*) FROM systeme."V_Entite_Public") AS "activeStructures"'''
+              (SELECT count(*) FROM geolocalisation."V_StructureSanitairePublique") AS "activeStructures"'''
             data = db.one(sql, [read_entity(request.user)])
             return ok(data)
         if kind == "articles":
             from .offers import offers
             rows, meta = offers(q, take, skip)
             return ok(rows, meta=meta)
-        elif kind == "pharmacies":
-            sql = ENTITY_SQL + ' WHERE e."ValideEntite"=true'
-            fields = ['e."NomEntite"', 'e."AdresseEntite"', 'e."PhoneEntite"']
-            order = 'e."NomEntite" ASC,e."IdEntite" DESC'
         elif kind == "experts":
             from apps.professionnels.services import directory
             result = directory(request.user, {**params, 'take': take, 'skip': skip})
             return ok(result['rows'], meta={'take': take, 'skip': skip, 'count': len(result['rows']), 'total': result['total']})
         else:
             raise APIError("Ressource publique introuvable.", "NOT_FOUND", 404)
-        if q:
-            sql += " AND (" + " OR ".join(f + " ILIKE %s" for f in fields) + ")"
-            values.extend(["%" + q + "%"] * len(fields))
-        rows = db.query(
-            sql + " ORDER BY " + order + " LIMIT %s OFFSET %s", [*values, take, skip]
-        )
-        return ok(rows, meta={"take": take, "skip": skip, "count": len(rows)})

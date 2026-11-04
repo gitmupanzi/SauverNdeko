@@ -73,6 +73,7 @@ LABELS.update({'Nb_Niveau_1':'Provinces / DPS','Nb_Niveau_2':'Antennes / subdivi
 LABELS.update({'AdresseTerritoire':'Adresse','TelephoneTerritoire':'Téléphone principal',
     'TelephoneSecondaireTerritoire':'Téléphone secondaire','EmailTerritoire':'Adresse e-mail',
     'SiteWebTerritoire':'Site web','InformationsAccueilTerritoire':'Informations d’accueil',
+    'HorairesOuvertureTerritoire':'Horaires d’ouverture','PublierCoordonneesAnnuaire':'Publier les coordonnées dans l’annuaire des structures et territoires',
     'CoordonneesModifieLe':'Coordonnées mises à jour le'})
 
 
@@ -185,6 +186,7 @@ def references(actor,kind,current_id=None):
     options['niveaux1Old']=db.query('SELECT "ID_Niveau_1_Old" AS id,"NomNiveau_1_Old" AS label FROM geolocalisation."T_Niveau_1_Old" ORDER BY label,id')
     if kind in MODELS or kind in {'population-sites','statistiques-provinces','statistiques-zones'}:
         from .field_references import reference_context,reference_options
+        from .reference_integration import territorial_type_visibility
         tables=([MODELS[kind]]+(['T_Niveau_4'] if kind=='niveaux5' else ['T_Niveau_5'] if kind=='niveaux4' else [])) if kind in MODELS else ['T_Niveau_5'] if kind=='population-sites' else ['T_Niveau_2'] if kind=='statistiques-provinces' else ['T_Niveau_4','T_Niveau_5']
         fields=db.query('SELECT "TableName","ColumnName" FROM referentiel."T_ChampReferentiel" WHERE "SchemaName"=\'geolocalisation\' AND "TableName"=ANY(%s::text[]) ORDER BY "TableName","ColumnName"',[tables])
         for item in fields:
@@ -192,9 +194,15 @@ def references(actor,kind,current_id=None):
             if kind not in MODELS and not item['ColumnName'].startswith('ID_TypeNiveau_'):continue
             if kind in MODELS and table!=MODELS[kind] and item['ColumnName']!='ID_TypeNiveau_'+str(level)+'_Fk':continue
             column=item['ColumnName'];context=reference_context(actor,'geolocalisation',table,column)
-            visibility={'VisibleNiveau_3':False} if level==3 and column=='ID_TypeNiveau_2_Fk' else {'VisibleVoie':False} if column=='ID_VoieAccesDPSANTFk' else None
+            visibility={'VisibleVoie':False} if column=='ID_VoieAccesDPSANTFk' else None
             choices=reference_options(actor,'geolocalisation',table,column,current.get(column),visibility)
             field_refs[column]={**context,'options':choices}
+            visibility_key=territorial_type_visibility('geolocalisation',table,column)
+            if visibility_key:
+                available=sum(not item.get('disabled') for item in choices)
+                field_refs[column].update(visibility={visibility_key:True},availableCount=available,
+                    choiceMessage='' if available else 'Aucun type actif n’est proposé au niveau '+str(level)
+                        +'. Dans Référentiels, vérifiez la catégorie du champ et la visibilité « Niveau territorial '+str(level)+' » des valeurs.')
             alias=GENERIC_ALIASES.get(column,column);alias=alias.get(level,column) if isinstance(alias,dict) else alias
             options[alias]=choices
             options[column]=choices

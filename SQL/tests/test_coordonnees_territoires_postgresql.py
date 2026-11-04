@@ -46,7 +46,12 @@ class TerritoryContactsSQL(unittest.TestCase):
 
     def test_01_shared_table_has_no_entity_or_personal_gps(self):
         fields=[r['column_name'] for r in self.c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='geolocalisation' AND table_name='T_CoordonneesTerritoire' ORDER BY ordinal_position")]
-        self.assertEqual(fields,['ID_CoordonneesTerritoire',*[f'ID_Niveau_{n}Fk' for n in range(1,6)],*FIELDS[:-1],'ModifieLe','ModifieParUserFk'])
+        expected=['ID_CoordonneesTerritoire',*[f'ID_Niveau_{n}Fk' for n in range(1,6)],*FIELDS[:-1],'ModifieLe','ModifieParUserFk']
+        # L'extension sanitaire conserve les colonnes historiques et ajoute
+        # uniquement le consentement et les horaires à la fin de la fiche.
+        if 'PublierCoordonneesAnnuaire' in fields:
+            expected+=['PublierCoordonneesAnnuaire','HorairesOuvertureTerritoire']
+        self.assertEqual(fields,expected)
 
     def test_02_exactly_one_existing_parent(self):
         with self.assertRaises(psycopg.errors.CheckViolation):

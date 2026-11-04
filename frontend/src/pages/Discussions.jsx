@@ -47,7 +47,7 @@ function buildRecipientFromExpert(expert) {
 }
 
 function buildRecipientFromStructure(pharmacy) {
-  if (!pharmacy) {
+  if (!pharmacy || pharmacy.territorialKey || !/^[1-9]\d*$/.test(String(pharmacy.id))) {
     return null;
   }
 

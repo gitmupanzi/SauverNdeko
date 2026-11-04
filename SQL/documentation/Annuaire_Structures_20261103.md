@@ -1,5 +1,7 @@
 # Annuaire Structures — contrat PostgreSQL
 
+> Document historique du parcours d’entreprises ERP du 3 novembre 2026. Depuis la correction du 4 novembre, `/pharmacies` utilise l’annuaire des structures et territoires N3/N4/N5 décrit dans [le contrat actuel](Annuaire_Sanitaire_Territorial_20261104.md). Les descriptions de publication d’entreprise, de profils, de logos et de contact par Discussions ci-dessous ne définissent plus cette page. Les objets ERP et leurs usages propres sont conservés.
+
 La migration `20261103_03_annuaire_structures.sql` distingue l’entreprise administrée de sa fiche professionnelle publiée. Elle ne crée pas de table de pharmacies, ne transforme pas les entreprises existantes en pharmacies et ne modifie pas les offres d’articles publiées.
 
 ## Publication

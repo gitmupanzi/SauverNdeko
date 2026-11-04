@@ -6,7 +6,7 @@ import { NavLink } from "react-router-dom";
 const NAV_ITEMS = [
   { label: "Applications", path: "/espace" },
   { label: "Produits", path: "/produits" },
-  { label: "Pharmacies", path: "/pharmacies" },
+  { label: "Structures sanitaires", path: "/pharmacies" },
   { label: "Experts", path: "/experts" },
   { label: "Discussions", path: "/discussions" },
 ];
@@ -15,7 +15,7 @@ const TITLE_BY_PATH = {
   "/espace": "Applications",
   "/catalogue": "Catalogue",
   "/produits": "Produits",
-  "/pharmacies": "Pharmacies et depots",
+  "/pharmacies": "Structures sanitaires",
   "/experts": "Experts",
   "/discussions": "Discussions",
   "/login": "Connexion",

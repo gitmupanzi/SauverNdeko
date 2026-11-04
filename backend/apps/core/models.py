@@ -566,6 +566,8 @@ class T_CoordonneesTerritoire(models.Model):
     EmailTerritoire = models.CharField(max_length=255, blank=True, null=True)
     SiteWebTerritoire = models.CharField(max_length=255, blank=True, null=True)
     InformationsAccueilTerritoire = models.TextField(blank=True, null=True)
+    HorairesOuvertureTerritoire = models.CharField(max_length=1000, blank=True, null=True)
+    PublierCoordonneesAnnuaire = models.BooleanField(default=False)
     ModifieLe = models.DateTimeField()
     ModifieParUserFk = models.IntegerField(blank=True, null=True)
 

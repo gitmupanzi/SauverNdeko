@@ -94,6 +94,18 @@ class Command(BaseCommand):
                 if published_structure:
                     urls.extend('/api/structures/annuaire/'+str(published_structure[0])+suffix
                         for suffix in ('','/offres?take=1','/professionnels?take=1'))
+            with connection.cursor() as sanitary_cursor:
+                sanitary_cursor.execute('SELECT to_regclass(%s)', ['geolocalisation."V_StructureSanitairePublique"'])
+                sanitary_installed = bool(sanitary_cursor.fetchone()[0])
+            if sanitary_installed:
+                urls.extend(['/api/structures/annuaire-sanitaire/references',
+                    '/api/structures/annuaire-sanitaire?take=1', '/api/public/pharmacies?take=1'])
+                with connection.cursor() as sanitary_cursor:
+                    sanitary_cursor.execute('SELECT "NiveauStructure","ID_Structure" FROM geolocalisation."V_StructureSanitairePublique" '
+                        'ORDER BY "NiveauStructure","ID_Structure" LIMIT 1')
+                    sanitary_structure = sanitary_cursor.fetchone()
+                if sanitary_structure:
+                    urls.append('/api/structures/annuaire-sanitaire/'+str(sanitary_structure[0])+'/'+str(sanitary_structure[1]))
             urls.append("/api/systeme/administration/entreprises")
             urls.extend("/api/systeme/administration/references/" + kind for kind in
                         ("utilisateurs", "roles", "correspondances", "parametres"))

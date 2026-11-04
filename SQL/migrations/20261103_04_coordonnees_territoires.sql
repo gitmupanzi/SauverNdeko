@@ -129,9 +129,11 @@ DO $$ DECLARE level integer; view_name text; old_definition text; existing integ
    SELECT rtrim(pg_get_viewdef(to_regclass(format('geolocalisation.%I',view_name)),true),E';\n ') INTO old_definition;
    EXECUTE format('CREATE OR REPLACE VIEW geolocalisation.%I AS SELECT q.*,c."AdresseTerritoire",c."TelephoneTerritoire",c."TelephoneSecondaireTerritoire",c."EmailTerritoire",c."SiteWebTerritoire",c."InformationsAccueilTerritoire",c."ModifieLe" AS "CoordonneesModifieLe" FROM (%s) q LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON c.%I=q.%I',view_name,old_definition,'ID_Niveau_'||level||'Fk','ID_Niveau_'||level);
   ELSIF existing=7 THEN
+   -- Les évolutions suivantes peuvent ajouter leurs propres colonnes après
+   -- celles-ci ; vérifier leur ordre sans exiger qu'elles terminent la vue.
    SELECT array_agg(attname ORDER BY attnum) INTO actual_suffix FROM
     (SELECT attname,attnum FROM pg_attribute WHERE attrelid=to_regclass(format('geolocalisation.%I',view_name))
-      AND attnum>0 AND NOT attisdropped ORDER BY attnum DESC LIMIT 7) a;
+      AND attnum>0 AND NOT attisdropped AND attname=ANY(fields)) a;
    IF actual_suffix IS DISTINCT FROM fields THEN RAISE EXCEPTION 'Contrat des colonnes de coordonnées différent : %',view_name;END IF;
   ELSE RAISE EXCEPTION 'Coordonnées territoriales partiellement installées : %',view_name;
   END IF;

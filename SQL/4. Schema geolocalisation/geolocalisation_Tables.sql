@@ -2075,22 +2075,26 @@ CREATE TABLE geolocalisation."T_CoordonneesTerritoire" (
     "InformationsAccueilTerritoire" text,
     "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" NOT NULL,
     "ModifieParUserFk" integer,
-    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
+    "PublierCoordonneesAnnuaire" boolean DEFAULT false CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" NOT NULL,
+    "HorairesOuvertureTerritoire" text,
+    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR ((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
 '::text, ''::text) !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
+    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR ((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
 '::text, ''::text) !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR ((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_horaires CHECK ((("HorairesOuvertureTerritoire" IS NULL) OR (((char_length("HorairesOuvertureTerritoire") >= 1) AND (char_length("HorairesOuvertureTerritoire") <= 1000)) AND ("HorairesOuvertureTerritoire" = btrim("HorairesOuvertureTerritoire")) AND (replace(replace("HorairesOuvertureTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_coordonnees_territoire_parent_unique CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1)),
-    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
+    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR ((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR ((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR ((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
 );
 
 --
 -- Name: TABLE "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Coordonnées professionnelles facultatives d’un territoire partagé de niveau 1 à 5, une seule fiche par territoire. Rattachement explicite et immuable, sans entreprise propriétaire ou affiliation inventée. Les coordonnées de personnes, GPS, horaires déduits et contacts importés sans provenance n’y sont pas ajoutés. L’accès reste contrôlé par les services territoriaux.';
+COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Fiche institutionnelle partagée facultative d’un territoire N1 à N5, une seule FK explicite et immuable par fiche, sans entreprise propriétaire. Adresse, contacts, accueil et horaires déclarés sont conservés dans l’administration territoriale. Le consentement explicite PublierCoordonneesAnnuaire contrôle leur divulgation dans la projection sanitaire N3/N4/N5 ; aucune coordonnée de parent ou de personne n’est déduite. Auteur et date techniques ne constituent pas une vérification métier.';
 
 --
 -- Name: COLUMN "T_CoordonneesTerritoire"."ID_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -2413,6 +2417,30 @@ ALTER TABLE ONLY geolocalisation."T_CoordonneesTerritoire"
 --
 
 COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_ModifieParUserFk_fkey" ON geolocalisation."T_CoordonneesTerritoire" IS 'Relation réelle imposée : aucun territoire ou acteur orphelin ; suppression du parent refusée tant que cette fiche le référence.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."PublierCoordonneesAnnuaire" IS 'Autorisation explicite de divulguer les coordonnées institutionnelles et horaires dans l’annuaire sanitaire authentifié. False par défaut, y compris pour les fiches antérieures ; le retrait masque immédiatement les contacts sans supprimer le territoire ou sa fiche privée. Ne publie aucune entreprise ERP.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés en texte simple facultatif, de 1 à 1 000 caractères après retrait des espaces extérieurs ; retours à la ligne admis. NULL signifie inconnus. Ne constitue pas un calcul « ouvert maintenant », une garde ou une vérification de permanence.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Choix explicite obligatoire, false par défaut : NULL ne vaut jamais autorisation.';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_horaires ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_horaires ON geolocalisation."T_CoordonneesTerritoire" IS 'Horaires déclarés facultatifs bornés à 1 000 caractères, sans contrôles autres que les retours à la ligne et sans espaces extérieurs.';
 
 --
 -- PostgreSQL database dump complete

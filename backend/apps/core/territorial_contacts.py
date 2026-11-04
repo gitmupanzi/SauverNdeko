@@ -11,7 +11,9 @@ from .responses import APIError
 
 FIELDS = {'AdresseTerritoire': 2000, 'TelephoneTerritoire': 50,
           'TelephoneSecondaireTerritoire': 50, 'EmailTerritoire': 255,
-          'SiteWebTerritoire': 255, 'InformationsAccueilTerritoire': 3000}
+          'SiteWebTerritoire': 255, 'InformationsAccueilTerritoire': 3000,
+          'HorairesOuvertureTerritoire': 1000, 'PublierCoordonneesAnnuaire': None}
+BOOLEAN_FIELD = 'PublierCoordonneesAnnuaire'
 KINDS = {f'niveaux{level}' for level in range(1, 6)}
 TABLE = 'geolocalisation."T_CoordonneesTerritoire"'
 
@@ -30,6 +32,12 @@ def split(kind, data, old=None):
         foreign_key(kind)
     result, errors = {}, {}
     for key, raw in contacts.items():
+        if key == BOOLEAN_FIELD:
+            if type(raw) is not bool:
+                errors[key] = 'Choisissez explicitement de publier ou non ces coordonnées.'
+            else:
+                result[key] = raw
+            continue
         if old is not None and raw == old.get(key):
             result[key] = raw
             continue
@@ -39,7 +47,7 @@ def split(kind, data, old=None):
         if not isinstance(raw, str):
             errors[key] = 'Renseignez une valeur texte.'
             continue
-        multiline = key in {'AdresseTerritoire', 'InformationsAccueilTerritoire'}
+        multiline = key in {'AdresseTerritoire', 'InformationsAccueilTerritoire', 'HorairesOuvertureTerritoire'}
         raw = raw.replace('\r\n', '\n') if multiline else raw
         if any(unicodedata.category(char) in {'Cc', 'Cs', 'Zl', 'Zp'} and not (multiline and char in '\r\n') for char in raw):
             errors[key] = 'Retirez les caractères de contrôle.'
@@ -79,12 +87,12 @@ def save(actor, kind, parent_id, data, *, delete=False):
         return
     fk = foreign_key(kind)
     old = db.one('SELECT * FROM ' + TABLE + ' WHERE ' + db.ident(fk) + '=%s FOR UPDATE', [parent_id])
-    effective = {**{key: (old or {}).get(key) for key in FIELDS}, **data}
+    effective = {**{key: (old or {}).get(key, False if key == BOOLEAN_FIELD else None) for key in FIELDS}, **data}
     if not delete and old and all(old.get(key) == effective[key] for key in FIELDS):
         return
     obj = {'schema': 'geolocalisation', 'name': 'T_CoordonneesTerritoire'}
     set_admin_actor(actor)
-    if delete or not any(value is not None for value in effective.values()):
+    if delete or not any(value is not None for key, value in effective.items() if key != BOOLEAN_FIELD) and not effective[BOOLEAN_FIELD]:
         if old:
             db.query('DELETE FROM ' + TABLE + ' WHERE ' + db.ident(fk) + '=%s', [parent_id])
             audit(obj, 'DELETE', old=old, actor=actor)
@@ -100,7 +108,8 @@ def save(actor, kind, parent_id, data, *, delete=False):
 
 
 def projection():
-    fields = ','.join('c.' + db.ident(key) for key in FIELDS)
+    fields = ','.join(('COALESCE(c.' + db.ident(key) + ',false) AS ' + db.ident(key))
+                      if key == BOOLEAN_FIELD else 'c.' + db.ident(key) for key in FIELDS)
     # xmin ET contenu détectent également deux changements réalisés dans une
     # même transaction. Un parent inchangé ne masque pas une édition de sa fiche.
     revision = '''concat('territory:',v.xmin::text,':',md5(jsonb_build_array(

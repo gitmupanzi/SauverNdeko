@@ -216,6 +216,13 @@ def reference_options(actor, schema, table, column, current=None, visibility=Non
     if visibility is not None and (not isinstance(visibility, dict) or set(visibility)-VISIBILITY
                                    or any(type(v) is not bool for v in visibility.values())):
         raise APIError('Règle de visibilité non autorisée.', 'REFERENCE_VISIBILITY_INVALID', 400)
+    from .reference_integration import territorial_type_visibility
+    required_visibility = territorial_type_visibility(schema, table, column)
+    if required_visibility:
+        if visibility is not None and visibility.get(required_visibility, True) is not True:
+            raise APIError('Les nouveaux types proposés respectent la visibilité de leur niveau territorial.',
+                           'REFERENCE_VISIBILITY_INVALID', 400)
+        visibility = {**(visibility or {}), required_visibility: True}
     clauses = ['g."ID_CategorieGeneriqueFk"=ANY(%s::integer[])',
                'g."ValideGenerique" IS TRUE', 'c."ValideCategorieGenerique" IS TRUE',
                'referentiel.fn_reference_visible(g."ID_Generique",%s)']

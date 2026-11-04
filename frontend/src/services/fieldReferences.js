@@ -27,7 +27,8 @@ export async function fetchTerritorialReferences({signal}={}) {
  for(const level of [2,3,4,5])physical["deployment"+level]=["T_Niveau_"+level,level===2?"ID_StatusDeploiFk":level===3?"ID_StatutDeploieFk":"ID_StatutDeploiementFk"];
  for(const level of [4,5])physical["network"+level]=["T_Niveau_"+level,"ID_DispoReseauNiveau_"+level];
  const entries=await Promise.all(Object.entries(physical).map(async([key,[table,column]])=>{
-  const response=await fetchFieldValues("geolocalisation",table,column,{signal,visibility:key==="niveau3Types"?{VisibleNiveau_3:false}:key==="dpsAccessRoutes"?{VisibleVoie:false}:undefined});
+  const typeLevel=key.match(/^niveau([345])Types$/)?.[1];
+  const response=await fetchFieldValues("geolocalisation",table,column,{signal,visibility:typeLevel?{["VisibleNiveau_"+typeLevel]:true}:key==="dpsAccessRoutes"?{VisibleVoie:false}:undefined});
   return [key,response];
  }));
  const failures=entries.filter(([,response])=>!response?.success);

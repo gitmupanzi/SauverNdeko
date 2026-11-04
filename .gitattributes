@@ -2,6 +2,8 @@
 # littéraux et corps de fonctions. Conserver leurs octets au dépôt/checkout.
 SQL/SauverNdeko_Structure.sql -text
 SQL/SauverNdeko_Metier_Structure.sql -text
+"SQL/0. Schema referentiel/Referentiel_Tables.sql" -text
+"SQL/0. Schema referentiel/Referentiel_views.sql" -text
 "SQL/1. Schema systeme/Systeme_Tables.sql" -text
 "SQL/1. Schema systeme/Systeme_View.sql" -text
 "SQL/4. Schema geolocalisation/geolocalisation_Tables.sql" -text

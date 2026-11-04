@@ -64,8 +64,7 @@ const GENERIC_OPTION_SOURCE_CONFIG = {
   niveau3Types: {
     label: "Type niveau 3",
     defaultCategoryIds: [],
-    predicate: (item) => isFalseFlag(item.VisibleNiveau_3),
-    fallbackMode: "withoutPredicate",
+    predicate: (item) => isTrueFlag(item.VisibleNiveau_3),
   },
   niveau2Statuses: {
     label: "Statut niveau 2",
@@ -96,10 +95,12 @@ const GENERIC_OPTION_SOURCE_CONFIG = {
   niveau4Types: {
     label: "Type niveau 4",
     defaultCategoryIds: [],
+    predicate: (item) => isTrueFlag(item.VisibleNiveau_4),
   },
   niveau5Types: {
     label: "Type niveau 5",
     defaultCategoryIds: [],
+    predicate: (item) => isTrueFlag(item.VisibleNiveau_5),
   },
   niveau4Statuses: {
     label: "Statut niveau 4",
@@ -566,6 +567,11 @@ function filterGenericsByCategory(generics, keywords, fallbackKeywords = []) {
   }
 
   return generics.filter((item) => matchKeywords(item, fallbackKeywords));
+}
+
+function isTrueFlag(value) {
+  if (value === true || value === 1) return true;
+  return ["true", "1", "yes", "oui"].includes(String(value ?? "").trim().toLowerCase());
 }
 
 function isFalseFlag(value) {
@@ -2683,7 +2689,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
         niveaux4,
         niveaux5,
         niveau2Types,
-        niveau3Types: niveau3Types.length > 0 ? niveau3Types : niveau2Types,
+        niveau3Types,
         niveau2Statuses,
         niveau3Statuses,
         deploymentStatuses,

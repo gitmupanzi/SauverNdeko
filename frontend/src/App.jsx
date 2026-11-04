@@ -69,7 +69,7 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
         <div className="search-head">
           <div>
             <span className="search-kicker">Recherche</span>
-            <h2>Rechercher un produit, une pharmacie ou un expert</h2>
+            <h2>Rechercher un produit, une structure ou un expert</h2>
           </div>
           <button className="search-close" type="button" onClick={onClose}>
             Fermer
@@ -80,7 +80,7 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
           ref={inputRef}
           className="search-input"
           type="search"
-          placeholder="Produit, pharmacie, expert..."
+          placeholder="Produit, structure sanitaire, expert…"
           value={search}
           onChange={onChange}
         />
@@ -92,8 +92,8 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
               <p>Trouvez rapidement un article public et consultez sa fiche.</p>
             </article>
             <article>
-              <strong>Pharmacie</strong>
-              <p>Reperez les structures et points de disponibilite utiles.</p>
+              <strong>Structure sanitaire</strong>
+              <p>Retrouvez un centre de santé, un hôpital ou une pharmacie.</p>
             </article>
             <article>
               <strong>Expert</strong>
@@ -105,7 +105,7 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
         ) : (
           <div className="search-results-grid">
             <SearchResultGroup title="Produits" items={results.products} onSelect={onSelect} />
-            <SearchResultGroup title="Pharmacies" items={results.pharmacies} onSelect={onSelect} />
+            <SearchResultGroup title="Structures sanitaires" items={results.pharmacies} onSelect={onSelect} />
             <SearchResultGroup title="Experts" items={results.experts} onSelect={onSelect} />
           </div>
         )}
@@ -118,7 +118,7 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
   const {pathname}=useLocation(),canAccessAdmin=Boolean(user?.permissions?.canAccessAdmin);
   const catalogue=[
     {key:"/produits",label:"Produits",icon:"bi-capsule"},
-    {key:"/pharmacies",label:"Pharmacies",icon:"globe"},
+    {key:"/pharmacies",label:"Structures sanitaires",icon:"building"},
     {key:"/experts",label:"Experts",icon:"user"},
     {key:"/discussions",label:"Discussions",icon:"bi-chat-dots"},
   ].filter(item=>mayOpen(user,item.key));
@@ -228,7 +228,7 @@ function ApplicationShell() {
     }
 
     if (result.type === "pharmacy") {
-      goTo("/pharmacies", { state: { focusId: result.payload.id } });
+      if (result.payload.territorialKey) goTo("/pharmacies", { state: { focusId: result.payload.territorialKey } });
       return;
     }
 
@@ -269,6 +269,7 @@ function ApplicationShell() {
               payload: item,
             })),
           pharmacies: catalogue.pharmacies
+            .filter((item) => item.territorialKey)
             .filter((item) => matchesSearch(item, deferredSearch))
             .slice(0, 5)
             .map((item) => ({

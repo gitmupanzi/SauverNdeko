@@ -206,7 +206,7 @@ class UserGuideAPI(unittest.TestCase):
     def test_15_content_catalogue_has_unique_safe_routes_and_examples(self):
         revision, modules = user_guide.content()
         self.assertEqual(set(modules), (set(MODULE_BY_KEY)-{'guide'})|{'referentiels'})
-        self.assertTrue(revision.startswith('2026-11-03:'))
+        self.assertTrue(revision.startswith('2026-11-04:'))
         for key, module in modules.items():
             for item in module['articles']:
                 self.assertTrue(item['steps'])

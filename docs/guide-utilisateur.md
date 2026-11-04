@@ -19,15 +19,14 @@ Les tutoriels n’utilisent aucun enregistrement client pour leurs exemples. Les
 
 ## Contenu livré
 
-Le catalogue contient **65 tutoriels dans 13 guides** :
+Le catalogue contient **64 tutoriels dans 12 guides** :
 
 | Guide | Tutoriels | Principaux sujets |
 |---|---:|---|
 | Catalogue | 3 | Orientation, recherche, disponibilité affichée |
 | Produits | 3 | Recherche exhaustive, filtres, cartes/tableau, fiche d’offre, disponibilité déclarée et contact |
-| Structures | 3 | Annuaire, filtres, fiche publiée, contact et gestion du profil d’entreprise |
-| Professionnels | 3 | Profil public, spécialité, contact |
-| Informations santé | 3 | Consultation, abréviations, signalement |
+| Structures | 3 | Annuaire des structures et territoires, filtres, coordonnées publiées et gestion territoriale |
+| Professionnels | 5 | Annuaire, besoins, compétences, prestations, rattachements et contact |
 | Discussions | 3 | Conversation, message, destinataire |
 | Logistique | 14 | Tableau de bord, tiers, articles, BE, BS, CMD, lots, retours, factures, TVA, règlements, avoirs, inventaires, dossiers, immobilisations et exports |
 | Caisse | 8 | Solde par devise, ouverture, brouillon, validation, contrepassation, clôture, règlement de facture et exports |
@@ -41,9 +40,15 @@ Le catalogue public est décrit comme un outil de consultation et d’orientatio
 
 Dans **Produits**, la recherche et les filtres s’appliquent à toutes les offres publiées, avec pagination. Cartes et tableau proposent les mêmes résultats. Un clic ouvre la fiche de l’offre et conserve la recherche au retour. Le prix est accompagné de sa devise et de son unité ; le stock est déclaré, à confirmer auprès de l’entreprise. Le lien **Contacter l’entreprise**, lorsqu’il est autorisé, rejoint Discussions sans envoyer de message. Les notes internes, le stock exact et le prix d’achat restent dans Logistique. La consultation ne publie pas les anciens articles : leur entreprise garde le choix de visibilité.
 
-Dans **Structures**, Annuaire présente les profils d’entreprises explicitement publiés. La recherche, le type et la localité filtrent les mêmes résultats en cartes et tableau. La fiche permet de consulter les coordonnées et lieux déclarés, ainsi que les offres et professionnels publiés lorsque les droits correspondants le permettent. **Profils des structures** permet aux gestionnaires habilités de mettre à jour la fiche de leur entreprise active : coordonnées, présentation, publication, localisations et logo. Publier la structure ne publie pas ses articles ; retirer son profil ne change pas le stock.
+Dans **Structures**, Annuaire présente les structures et territoires des niveaux 3, 4 et 5 : centres de santé, hôpitaux, pharmacies, zones, districts, secteurs, groupements et autres types territoriaux enregistrés. Les types proposés lors d’une nouvelle saisie suivent les réglages du niveau. Une ancienne affectation reste consultable dans l’annuaire si le type n’est plus proposé à la saisie. Recherche, niveau territorial, type, province et localité filtrent les mêmes résultats en cartes et tableau. La fiche conserve le rattachement territorial et affiche l’adresse, les téléphones, l’e-mail, le site web, l’accueil et les horaires lorsque ces coordonnées sont publiées. Les informations absentes restent non renseignées. Un téléphone ou e-mail publié permet une prise de contact avec les outils habituels de l’utilisateur ; la fiche territoriale n’ouvre pas de conversation d’entreprise.
 
-Dans **Organisation territoriale**, les provinces, subdivisions, zones, aires et sites disposent d’une rubrique Coordonnées : adresse, téléphones, e-mail, site web et informations d’accueil. Elle est accessible dans la fiche individuelle et les détails des lignes du panier. Chaque fiche concerne son territoire ; les contacts des parents ne sont pas copiés. La fiche territoriale reste distincte de l’entreprise licenciée qui peut déclarer un lieu dans ce territoire.
+**Gestion territoriale**, proposée aux administrateurs autorisés, rejoint les registres des niveaux 3, 4 et 5. Une pharmacie se renseigne dans **Structures et sites, niveau 5**. La lecture de l’annuaire nécessite les accès Structures, indépendamment de l’entreprise active et de l’accès à la gestion territoriale. Les fiches d’entreprise ERP restent distinctes de ces territoires.
+
+Si aucun type n’est proposé pour une nouvelle saisie, ouvrir **Réglages des références** pour consulter les valeurs autorisées et les liens de paramétrage. Une valeur déjà enregistrée reste visible et conservée même si elle n’est plus proposée pour ce niveau. Son absence parmi les nouveaux choix ne retire pas automatiquement la fiche de l’annuaire.
+
+Dans **Organisation territoriale**, les provinces, subdivisions, zones, aires et sites disposent d’une rubrique Coordonnées : adresse, téléphones, e-mail, site web, informations d’accueil et horaires d’ouverture déclarés. Elle est accessible dans la fiche individuelle et les détails des lignes du panier, ainsi que par collage Excel. **Publier les coordonnées dans l’annuaire** vaut Non par défaut et porte uniquement sur ces informations. Le nom, le type et le rattachement territorial restent consultables lorsque la structure fait partie de l’annuaire. Les contacts des parents ne sont pas copiés ; les horaires déclarés ne garantissent pas une ouverture actuelle.
+
+Dans **Discussions**, un nouveau contact part d’une offre Produits ou d’un profil Professionnels autorisé, ou d’une entreprise explicitement liée et autorisée par ce parcours. Le destinataire est vérifié avant l’envoi. Une structure de l’annuaire territorial n’est pas un destinataire d’entreprise. Les conversations déjà autorisées restent soumises aux droits de leurs participants.
 
 ## Maintenir les tutoriels
 

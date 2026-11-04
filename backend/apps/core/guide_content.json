@@ -219,109 +219,115 @@
       "label": "Structures",
       "path": "/pharmacies",
       "icon": "bi-hospital",
-      "description": "Rechercher les structures publiées et gérer la présentation de votre entreprise.",
+      "description": "Rechercher les structures et les territoires, consulter leurs coordonnées publiées et rejoindre la gestion territoriale autorisée.",
       "articles": [
         {
           "id": "consulter-structure",
-          "title": "Trouver et consulter une structure",
-          "summary": "Recherchez une structure publiée par son nom, son type ou sa localité.",
+          "title": "Trouver et consulter une structure ou un territoire",
+          "summary": "Recherchez une structure, un district, un secteur, un groupement ou un autre territoire.",
           "steps": [
             {
               "title": "Ouvrir l’annuaire",
-              "text": "Ouvrez Structures depuis Vos applications. Recherchez un nom ou utilisez les filtres Type et Localité."
+              "text": "Ouvrez Structures depuis Vos applications. Recherchez un nom, un type ou une localité, puis validez Rechercher."
+            },
+            {
+              "title": "Préciser les critères",
+              "text": "Dans Filtrer, choisissez le niveau territorial, le type, la province ou DPS et la localité utiles, puis appliquez les filtres. Les pharmacies se trouvent parmi les structures et sites du niveau 5."
             },
             {
               "title": "Choisir une présentation",
-              "text": "Passez de Cartes à Tableau sans perdre vos critères de recherche. Les deux vues présentent les mêmes résultats."
+              "text": "Passez de Cartes à Tableau sans perdre vos critères ni votre page. Les deux présentations utilisent les mêmes résultats ; utilisez la pagination pour poursuivre la consultation."
             },
             {
               "title": "Consulter la fiche",
-              "text": "Cliquez sur le nom ou sur Consulter. La fiche présente les coordonnées professionnelles, la présentation et les lieux déclarés."
-            },
-            {
-              "title": "Examiner les liens disponibles",
-              "text": "Consultez les offres de produits et les professionnels publiés liés à la structure lorsque votre accès le permet."
+              "text": "Cliquez sur le nom ou sur Consulter la fiche. Coordonnées présente les contacts et horaires publiés ; Rattachement présente la province, la subdivision et les territoires des niveaux 3 et 4 renseignés. Fermer permet de retrouver la liste."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Pour distinguer deux établissements nommés « Centre Exemple », l’utilisateur filtre la localité puis compare leurs adresses et téléphones déclarés."
+            "text": "Pour distinguer deux centres fictifs nommés « Centre Exemple », l’utilisateur filtre la province, ouvre leurs fiches et compare leurs rattachements et leurs adresses lorsqu’elles sont publiées."
           },
           "notes": [
-            "Seules les entreprises actives ayant autorisé la publication de leur fiche apparaissent dans cet annuaire. Une fiche publiée ne constitue pas un agrément ni une confirmation d’horaires ou de disponibilité."
+            "L’annuaire réunit les structures et les territoires des niveaux 3, 4 et 5 : centres de santé, hôpitaux, pharmacies, districts, secteurs, groupements et autres types enregistrés. Il reste distinct des entreprises ERP.",
+            "Le nom, le type et le rattachement peuvent être consultables alors que les coordonnées ne sont pas publiées. Une information non renseignée n’est pas déduite du territoire parent.",
+            "Une fiche ou un type ne constitue pas un agrément, une confirmation de stock ou une garantie d’ouverture."
           ],
           "links": [
             {
-              "label": "Ouvrir Structures",
+              "label": "Ouvrir l’annuaire des structures et territoires",
               "path": "/pharmacies"
             }
           ]
         },
         {
           "id": "contacter-structure",
-          "title": "Contacter une structure",
-          "summary": "Ouvrez un échange depuis la bonne carte.",
+          "title": "Retrouver les coordonnées d’une structure ou d’un territoire",
+          "summary": "Utilisez les téléphones ou l’e-mail publiés pour demander une confirmation à la structure.",
           "steps": [
             {
               "title": "Vérifier la structure",
-              "text": "Ouvrez la fiche et contrôlez son nom et ses coordonnées professionnelles."
+              "text": "Ouvrez la fiche et vérifiez le nom, le type et le rattachement territorial pour identifier la bonne structure."
             },
             {
-              "title": "Ouvrir la discussion",
-              "text": "Utilisez Contacter la structure lorsque cette action est proposée. Le destinataire est repris automatiquement dans Discussions."
+              "title": "Consulter Coordonnées",
+              "text": "Relevez le téléphone principal, le téléphone secondaire ou l’adresse e-mail lorsqu’ils sont publiés. Consultez aussi les horaires et les informations d’accueil disponibles."
             },
             {
-              "title": "Présenter votre besoin",
-              "text": "Précisez le produit ou le service recherché et les informations que vous souhaitez confirmer."
+              "title": "Demander confirmation",
+              "text": "Utilisez votre téléphone ou votre messagerie habituelle pour confirmer l’adresse, les horaires et les conditions d’accueil avant de vous déplacer."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "« Bonjour, pouvez-vous confirmer la disponibilité de la référence LAMPE-B et vos horaires de retrait ? »"
+            "text": "L’utilisateur ouvre « Pharmacie Exemple », vérifie sa zone, puis utilise le numéro publié pour demander si l’horaire affiché s’applique au jour de sa visite."
           },
           "notes": [
-            "La prise de contact nécessite les droits de messagerie. Elle ne crée ni commande ni engagement de livraison. Les échanges existants restent accessibles à leurs participants après un retrait de publication."
+            "Si les coordonnées ne sont pas publiées ou ne sont pas renseignées, l’annuaire n’invente aucun numéro, e-mail ou horaire.",
+            "La fiche territoriale ne propose pas de contact par Discussions. Une consultation ne crée ni message, ni commande, ni réservation."
           ],
           "links": [
             {
-              "label": "Ouvrir Structures",
+              "label": "Consulter les coordonnées publiées",
               "path": "/pharmacies"
             }
           ]
         },
         {
           "id": "comparer-structures",
-          "title": "Gérer le profil de votre structure",
-          "summary": "Mettez à jour la présentation publiée depuis la fiche de l’entreprise.",
+          "title": "Gérer une fiche de structure ou de territoire",
+          "summary": "Rejoignez le registre territorial autorisé et publiez les seules coordonnées souhaitées.",
           "steps": [
             {
-              "title": "Ouvrir Profils des structures",
-              "text": "Ce registre est accessible aux gestionnaires habilités. Choisissez l’entreprise active avant de modifier sa fiche."
+              "title": "Ouvrir Gestion territoriale",
+              "text": "Dans Structures, Gestion territoriale est proposée aux administrateurs autorisés. Elle permet de rejoindre les registres de niveau 3, de niveau 4 et Structures et sites, niveau 5, dans Organisation territoriale."
             },
             {
-              "title": "Compléter le profil",
-              "text": "Utilisez Modifier pour renseigner les coordonnées, la présentation, les localisations et le logo dans la même fiche."
+              "title": "Choisir le bon registre",
+              "text": "Pour une pharmacie, ouvrez Structures et sites, niveau 5, puis la fiche concernée. Lors d’une création autorisée, choisissez son type et ses rattachements réels ; une aire peut rester absente si la zone est connue."
             },
             {
-              "title": "Décider de la publication",
-              "text": "Dans Présentation, activez ou désactivez la publication de la structure. Le partage de chaque article reste un réglage séparé."
+              "title": "Compléter Coordonnées",
+              "text": "Dans la fiche ou les détails de la ligne du panier, renseignez les contacts, les informations d’accueil et les horaires d’ouverture connus. Ne recopiez pas automatiquement les contacts du parent."
             },
             {
-              "title": "Enregistrer les changements",
-              "text": "Indiquez le motif demandé puis enregistrez. En cas de modification simultanée, rechargez la fiche avant de reprendre vos changements."
+              "title": "Choisir la publication et enregistrer",
+              "text": "Publier les coordonnées dans l’annuaire vaut Non par défaut. Choisissez Oui pour rendre ces coordonnées, horaires et informations d’accueil consultables dans l’annuaire, puis enregistrez. Ce choix ne masque pas le nom, le type ou le rattachement territorial."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Le gestionnaire de « Pharmacie Exemple » complète son adresse et sa présentation puis publie sa fiche. Il peut ensuite retirer cette fiche sans changer les quantités de ses articles."
+            "text": "L’administrateur habilité complète les horaires de « Pharmacie Exemple » dans Structures et sites, puis publie ses coordonnées. Il peut ensuite les retirer de l’annuaire en choisissant Non, sans supprimer la pharmacie du référentiel."
           },
           "notes": [
-            "La création d’une entreprise et la modification de son type ou de son état restent réservées à l’administration habilitée. Le découpage territorial et ses coordonnées se gèrent dans Organisation territoriale."
+            "La lecture de l’annuaire Structures ne nécessite pas l’accès à Gestion territoriale. Les registres et les modifications conservent leurs droits propres.",
+            "Une fiche territoriale reste distincte de la fiche d’une entreprise licenciée. Aucun choix d’entreprise n’est demandé pour gérer ce territoire partagé.",
+            "En cas d’erreur, corrigez le brouillon conservé. Si la réponse d’enregistrement reste incertaine, utilisez la vérification proposée avant de préparer une autre demande.",
+            "Si aucun type n’est proposé, ouvrez Réglages des références pour vérifier les choix du niveau. Une ancienne valeur reste conservée même si elle n’est plus proposée ; cela ne retire pas automatiquement la fiche de l’annuaire."
           ],
           "links": [
             {
-              "label": "Ouvrir Structures",
-              "path": "/pharmacies"
+              "label": "Ouvrir la gestion territoriale autorisée",
+              "path": "/pharmacies?onglet=gestion"
             }
           ]
         }
@@ -578,27 +584,28 @@
         {
           "id": "commencer-conversation",
           "title": "Commencer une conversation",
-          "summary": "Passez par la carte d’un interlocuteur autorisé.",
+          "summary": "Partez d’une offre ou d’un profil autorisé et vérifiez le destinataire.",
           "steps": [
             {
-              "title": "Ouvrir la carte concernée",
-              "text": "Dans Structures ou Professionnels, identifiez l’interlocuteur auquel votre compte a accès."
+              "title": "Choisir une offre ou un professionnel",
+              "text": "Dans Produits ou Professionnels, ouvrez la fiche à laquelle votre compte a accès et vérifiez l’identité présentée."
             },
             {
-              "title": "Cliquer Contacter",
-              "text": "La plateforme ouvre la conversation correspondant à cette carte."
+              "title": "Utiliser l’action de contact proposée",
+              "text": "Si Contacter est disponible, ouvrez Discussions. Pour une offre, le destinataire est l’entreprise explicitement liée à cette offre ; pour un profil, il s’agit du professionnel autorisé."
             },
             {
               "title": "Contrôler le destinataire",
-              "text": "Relisez son identité avant d’envoyer votre premier message."
+              "text": "Relisez son identité avant d’envoyer votre premier message. L’ouverture de Discussions n’envoie aucun message à votre place."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "L’utilisateur sélectionne la carte fictive « Point Exemple », puis Contacter la structure. Il vérifie ce nom dans Discussions."
+            "text": "Depuis une offre fictive « LAMPE-B », l’utilisateur choisit Contacter l’entreprise, vérifie le nom de l’entreprise liée à l’offre, puis rédige sa demande."
           },
           "notes": [
-            "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue."
+            "La fiche d’une structure territoriale ne désigne pas une entreprise de messagerie et ne propose pas d’action de discussion.",
+            "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue. Chaque parcours vérifie aussi ses propres droits."
           ],
           "links": [
             {
@@ -1237,7 +1244,7 @@
             },
             {
               "title": "Compléter les coordonnées professionnelles",
-              "text": "Dans Coordonnées, renseignez l’adresse, les téléphones, l’e-mail, le site web et les informations d’accueil connus. Ces champs sont aussi disponibles pour les provinces, subdivisions, zones et aires."
+              "text": "Dans Coordonnées, renseignez l’adresse, les téléphones, l’e-mail, le site web, les informations d’accueil et les horaires connus. Ces champs sont aussi disponibles pour les provinces, subdivisions, zones et aires. Publier les coordonnées dans l’annuaire vaut Non par défaut ; ce choix porte sur ces informations, sans masquer le nom, le type et le rattachement territorial."
             },
             {
               "title": "Vérifier la cohérence",
@@ -1250,7 +1257,8 @@
           },
           "notes": [
             "Une information inconnue reste non renseignée. Une coordonnée ou un parent ne se déduit pas d’un simple nom proche.",
-            "Les coordonnées appartiennent au territoire concerné. Elles ne sont pas copiées automatiquement depuis son parent ni assimilées à la fiche d’une entreprise."
+            "Les coordonnées appartiennent au territoire concerné. Elles ne sont pas copiées automatiquement depuis son parent ni assimilées à la fiche d’une entreprise.",
+            "Les pharmacies se renseignent dans Structures et sites, niveau 5. Les horaires sont déclarés ; ils ne prouvent pas une ouverture actuelle."
           ],
           "links": [
             {

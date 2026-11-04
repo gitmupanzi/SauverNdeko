@@ -5,6 +5,17 @@ from . import db
 from .responses import APIError, ExactEncoder
 from .tenancy import read_entity
 
+TERRITORIAL_TYPE_VISIBILITY = {
+    ('geolocalisation', 'T_Niveau_3', 'ID_TypeNiveau_2_Fk'): 'VisibleNiveau_3',
+    ('geolocalisation', 'T_Niveau_4', 'ID_TypeNiveau_4_Fk'): 'VisibleNiveau_4',
+    ('geolocalisation', 'T_Niveau_5', 'ID_TypeNiveau_5_Fk'): 'VisibleNiveau_5',
+}
+
+
+def territorial_type_visibility(schema, table, column):
+    """Même indicateur existant pour les choix et les nouvelles affectations."""
+    return TERRITORIAL_TYPE_VISIBILITY.get((schema, table, column))
+
 
 def entity_actor(actor, entity):
     """Contexte interne d'un objet déjà autorisé par son service propriétaire."""
@@ -36,3 +47,12 @@ def validate_changed(obj, data, old, actor):
         if not valid:
             raise APIError({field: 'Choisissez une valeur active de la catégorie configurée.'},
                            'REFERENCE_INCOMPATIBLE', 400)
+        visibility = territorial_type_visibility(obj['schema'], obj['name'], field)
+        if visibility:
+            selected = db.one('SELECT ' + db.ident(visibility) + ' IS TRUE AS visible FROM referentiel."T_Generique" '
+                              'WHERE "ID_Generique"=%s', [data[field]])
+            if not selected or not selected['visible']:
+                number = obj['name'][-1]
+                raise APIError({field: 'Ce type n’est pas proposé au niveau ' + number
+                                + '. Vérifiez sa visibilité dans Référentiels ou choisissez une autre valeur.'},
+                               'REFERENCE_NOT_VISIBLE', 400)

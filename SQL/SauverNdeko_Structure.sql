@@ -9208,15 +9208,19 @@ CREATE TABLE geolocalisation."T_CoordonneesTerritoire" (
     "InformationsAccueilTerritoire" text,
     "ModifieLe" timestamp with time zone DEFAULT clock_timestamp() CONSTRAINT "T_CoordonneesTerritoire_ModifieLe_not_null" NOT NULL,
     "ModifieParUserFk" integer,
-    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR (((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000)) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
+    "PublierCoordonneesAnnuaire" boolean DEFAULT false CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" NOT NULL,
+    "HorairesOuvertureTerritoire" text,
+    CONSTRAINT ck_coordonnees_territoire_accueil CHECK ((("InformationsAccueilTerritoire" IS NULL) OR ((char_length("InformationsAccueilTerritoire") >= 1) AND (char_length("InformationsAccueilTerritoire") <= 3000) AND ("InformationsAccueilTerritoire" = btrim("InformationsAccueilTerritoire")) AND (replace(replace("InformationsAccueilTerritoire", ''::text, ''::text), '
 '::text, ''::text) !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR (((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000)) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
+    CONSTRAINT ck_coordonnees_territoire_adresse CHECK ((("AdresseTerritoire" IS NULL) OR ((char_length("AdresseTerritoire") >= 1) AND (char_length("AdresseTerritoire") <= 2000) AND ("AdresseTerritoire" = btrim("AdresseTerritoire")) AND (replace(replace("AdresseTerritoire", ''::text, ''::text), '
 '::text, ''::text) !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR (((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255)) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_email CHECK ((("EmailTerritoire" IS NULL) OR ((char_length(("EmailTerritoire")::text) >= 1) AND (char_length(("EmailTerritoire")::text) <= 255) AND (("EmailTerritoire")::text = btrim(("EmailTerritoire")::text)) AND (("EmailTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_horaires CHECK ((("HorairesOuvertureTerritoire" IS NULL) OR (((char_length("HorairesOuvertureTerritoire") >= 1) AND (char_length("HorairesOuvertureTerritoire") <= 1000)) AND ("HorairesOuvertureTerritoire" = btrim("HorairesOuvertureTerritoire")) AND (replace(replace("HorairesOuvertureTerritoire", ''::text, ''::text), '
+'::text, ''::text) !~ '[[:cntrl:]]'::text)))),
     CONSTRAINT ck_coordonnees_territoire_parent_unique CHECK ((num_nonnulls("ID_Niveau_1Fk", "ID_Niveau_2Fk", "ID_Niveau_3Fk", "ID_Niveau_4Fk", "ID_Niveau_5Fk") = 1)),
-    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR (((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255)) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR (((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50)) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
-    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR (((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50)) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
+    CONSTRAINT ck_coordonnees_territoire_site_web CHECK ((("SiteWebTerritoire" IS NULL) OR ((char_length(("SiteWebTerritoire")::text) >= 1) AND (char_length(("SiteWebTerritoire")::text) <= 255) AND (("SiteWebTerritoire")::text = btrim(("SiteWebTerritoire")::text)) AND (("SiteWebTerritoire")::text !~ '[[:space:][:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone CHECK ((("TelephoneTerritoire" IS NULL) OR ((char_length(("TelephoneTerritoire")::text) >= 1) AND (char_length(("TelephoneTerritoire")::text) <= 50) AND (("TelephoneTerritoire")::text = btrim(("TelephoneTerritoire")::text)) AND (("TelephoneTerritoire")::text !~ '[[:cntrl:]]'::text)))),
+    CONSTRAINT ck_coordonnees_territoire_telephone_secondaire CHECK ((("TelephoneSecondaireTerritoire" IS NULL) OR ((char_length(("TelephoneSecondaireTerritoire")::text) >= 1) AND (char_length(("TelephoneSecondaireTerritoire")::text) <= 50) AND (("TelephoneSecondaireTerritoire")::text = btrim(("TelephoneSecondaireTerritoire")::text)) AND (("TelephoneSecondaireTerritoire")::text !~ '[[:cntrl:]]'::text))))
 );
 
 --
@@ -9527,44 +9531,80 @@ CREATE VIEW geolocalisation."V_Niveau_1" AS
     q.prov_uid,
     q."uidSNIS",
     q."Nb_Niveau_2",
-    c."AdresseTerritoire",
-    c."TelephoneTerritoire",
-    c."TelephoneSecondaireTerritoire",
-    c."EmailTerritoire",
-    c."SiteWebTerritoire",
-    c."InformationsAccueilTerritoire",
-    c."ModifieLe" AS "CoordonneesModifieLe"
-   FROM (( SELECT n1a."ID_Niveau_0_Fk",
-            n0."NomNiveau_0",
-            n1a."ID_Niveau_1_Old_Fk",
-            n1b."NomNiveau_1_Old",
-            n1a."ID_Niveau_1",
-            n1a."NomNiveau_1",
-            n1a."Alt1_Niveau_1",
-            n1a."Alt2_Niveau_1",
-            n1a."AbreNiveau_1",
-            n1a."CodeSNIS",
-            n1a."CodeNiveau_1",
-            n1a."PopulationNiveau_1",
-            n1a."LatitudeNiveau_1",
-            n1a."LongitudeNiveau_1",
-            n1a."surfaceNiveau_1",
-            n1a."geometryNiveau_1",
-            n1a."EtenduNiveau_1",
-            n1a."timezoneNiveau_1",
-            n1a."wikidataNiveau_1",
-            n1a."FusionNiveau_1",
-            n1a."VisibleNiveau_1",
-            n1a."VisibleNiveau_5",
-            n1a."ObsNiveau_1",
-            n1a.prov_uid,
-            n1a."uidSNIS",
-            ( SELECT count(*) AS count
-                   FROM geolocalisation."T_Niveau_2" child
-                  WHERE (child."ID_Niveau_1_FK" = n1a."ID_Niveau_1")) AS "Nb_Niveau_2"
-           FROM ((geolocalisation."T_Niveau_1" n1a
-             LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
-             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))) q
+    q."AdresseTerritoire",
+    q."TelephoneTerritoire",
+    q."TelephoneSecondaireTerritoire",
+    q."EmailTerritoire",
+    q."SiteWebTerritoire",
+    q."InformationsAccueilTerritoire",
+    q."CoordonneesModifieLe",
+    COALESCE(c."PublierCoordonneesAnnuaire", false) AS "PublierCoordonneesAnnuaire",
+    c."HorairesOuvertureTerritoire"
+   FROM (( SELECT q_1."ID_Niveau_0_Fk",
+            q_1."NomNiveau_0",
+            q_1."ID_Niveau_1_Old_Fk",
+            q_1."NomNiveau_1_Old",
+            q_1."ID_Niveau_1",
+            q_1."NomNiveau_1",
+            q_1."Alt1_Niveau_1",
+            q_1."Alt2_Niveau_1",
+            q_1."AbreNiveau_1",
+            q_1."CodeSNIS",
+            q_1."CodeNiveau_1",
+            q_1."PopulationNiveau_1",
+            q_1."LatitudeNiveau_1",
+            q_1."LongitudeNiveau_1",
+            q_1."surfaceNiveau_1",
+            q_1."geometryNiveau_1",
+            q_1."EtenduNiveau_1",
+            q_1."timezoneNiveau_1",
+            q_1."wikidataNiveau_1",
+            q_1."FusionNiveau_1",
+            q_1."VisibleNiveau_1",
+            q_1."VisibleNiveau_5",
+            q_1."ObsNiveau_1",
+            q_1.prov_uid,
+            q_1."uidSNIS",
+            q_1."Nb_Niveau_2",
+            c_1."AdresseTerritoire",
+            c_1."TelephoneTerritoire",
+            c_1."TelephoneSecondaireTerritoire",
+            c_1."EmailTerritoire",
+            c_1."SiteWebTerritoire",
+            c_1."InformationsAccueilTerritoire",
+            c_1."ModifieLe" AS "CoordonneesModifieLe"
+           FROM (( SELECT n1a."ID_Niveau_0_Fk",
+                    n0."NomNiveau_0",
+                    n1a."ID_Niveau_1_Old_Fk",
+                    n1b."NomNiveau_1_Old",
+                    n1a."ID_Niveau_1",
+                    n1a."NomNiveau_1",
+                    n1a."Alt1_Niveau_1",
+                    n1a."Alt2_Niveau_1",
+                    n1a."AbreNiveau_1",
+                    n1a."CodeSNIS",
+                    n1a."CodeNiveau_1",
+                    n1a."PopulationNiveau_1",
+                    n1a."LatitudeNiveau_1",
+                    n1a."LongitudeNiveau_1",
+                    n1a."surfaceNiveau_1",
+                    n1a."geometryNiveau_1",
+                    n1a."EtenduNiveau_1",
+                    n1a."timezoneNiveau_1",
+                    n1a."wikidataNiveau_1",
+                    n1a."FusionNiveau_1",
+                    n1a."VisibleNiveau_1",
+                    n1a."VisibleNiveau_5",
+                    n1a."ObsNiveau_1",
+                    n1a.prov_uid,
+                    n1a."uidSNIS",
+                    ( SELECT count(*) AS count
+                           FROM geolocalisation."T_Niveau_2" child
+                          WHERE (child."ID_Niveau_1_FK" = n1a."ID_Niveau_1")) AS "Nb_Niveau_2"
+                   FROM ((geolocalisation."T_Niveau_1" n1a
+                     LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
+                     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))) q_1
+             LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c_1 ON ((c_1."ID_Niveau_1Fk" = q_1."ID_Niveau_1")))) q
      LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_1Fk" = q."ID_Niveau_1")));
 
 --
@@ -9816,58 +9856,103 @@ CREATE VIEW geolocalisation."V_Niveau_2" AS
     q.iso,
     q."uidSNIS",
     q."Nb_Niveau_3",
-    c."AdresseTerritoire",
-    c."TelephoneTerritoire",
-    c."TelephoneSecondaireTerritoire",
-    c."EmailTerritoire",
-    c."SiteWebTerritoire",
-    c."InformationsAccueilTerritoire",
-    c."ModifieLe" AS "CoordonneesModifieLe"
-   FROM (( SELECT n0."NomNiveau_0",
-            n1b."NomNiveau_1_Old",
-            n2."ID_Niveau_1_FK",
-            n1a."NomNiveau_1",
-            n2."ID_Niveau_2",
-            n2."ID_TypeNiveau_2_Fk",
-            COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_2",
-            n2."NomNiveau_2",
-            n2."Alt1_NomNiveau_2",
-            n2."AbreNiveau_2",
-            n2."CodeNiveau_2",
-            n2."PopulationNiveau_2",
-            n2."LatitudeNiveau_2",
-            n2."LongitudeNiveau_2",
-            n2."AltitudeNiveau_2",
-            n2."geometryNiveau_2",
-            n2."surfaceNiveau_2",
-            n2."EtenduNiveau_2",
-            n2."ObsNiveau_2",
-            n2."ID_StatutNiveau_2",
-            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_2",
-            n2."ID_StatusDeploiFk",
-            COALESCE(g_deploi."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
-            n2."KmDPSANT",
-            n2."ID_VoieAccesDPSANTFk",
-            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "Voie_Acces_DPS",
-            n2."SelectNiveau_2",
-            n1a."ID_Niveau_0_Fk" AS "ID_Niveau_0",
-            n1a."ID_Niveau_1",
-            n1a."FusionNiveau_1",
-            n1a."VisibleNiveau_1",
-            n1a."VisibleNiveau_5",
-            n2.iso,
-            n2."uidSNIS",
-            ( SELECT count(*) AS count
-                   FROM geolocalisation."T_Niveau_3" child
-                  WHERE (child."ID_Niveau_2_FK" = n2."ID_Niveau_2")) AS "Nb_Niveau_3"
-           FROM (((((((geolocalisation."T_Niveau_2" n2
-             LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
-             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-             LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
-             LEFT JOIN referentiel."T_Generique" g_type ON ((n2."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_statut ON ((n2."ID_StatutNiveau_2" = g_statut."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_deploi ON ((n2."ID_StatusDeploiFk" = g_deploi."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_voie ON ((n2."ID_VoieAccesDPSANTFk" = g_voie."ID_Generique")))) q
+    q."AdresseTerritoire",
+    q."TelephoneTerritoire",
+    q."TelephoneSecondaireTerritoire",
+    q."EmailTerritoire",
+    q."SiteWebTerritoire",
+    q."InformationsAccueilTerritoire",
+    q."CoordonneesModifieLe",
+    COALESCE(c."PublierCoordonneesAnnuaire", false) AS "PublierCoordonneesAnnuaire",
+    c."HorairesOuvertureTerritoire"
+   FROM (( SELECT q_1."NomNiveau_0",
+            q_1."NomNiveau_1_Old",
+            q_1."ID_Niveau_1_FK",
+            q_1."NomNiveau_1",
+            q_1."ID_Niveau_2",
+            q_1."ID_TypeNiveau_2_Fk",
+            q_1."Type_Niveau_2",
+            q_1."NomNiveau_2",
+            q_1."Alt1_NomNiveau_2",
+            q_1."AbreNiveau_2",
+            q_1."CodeNiveau_2",
+            q_1."PopulationNiveau_2",
+            q_1."LatitudeNiveau_2",
+            q_1."LongitudeNiveau_2",
+            q_1."AltitudeNiveau_2",
+            q_1."geometryNiveau_2",
+            q_1."surfaceNiveau_2",
+            q_1."EtenduNiveau_2",
+            q_1."ObsNiveau_2",
+            q_1."ID_StatutNiveau_2",
+            q_1."Statut_Niveau_2",
+            q_1."ID_StatusDeploiFk",
+            q_1."Statut_Deploiement",
+            q_1."KmDPSANT",
+            q_1."ID_VoieAccesDPSANTFk",
+            q_1."Voie_Acces_DPS",
+            q_1."SelectNiveau_2",
+            q_1."ID_Niveau_0",
+            q_1."ID_Niveau_1",
+            q_1."FusionNiveau_1",
+            q_1."VisibleNiveau_1",
+            q_1."VisibleNiveau_5",
+            q_1.iso,
+            q_1."uidSNIS",
+            q_1."Nb_Niveau_3",
+            c_1."AdresseTerritoire",
+            c_1."TelephoneTerritoire",
+            c_1."TelephoneSecondaireTerritoire",
+            c_1."EmailTerritoire",
+            c_1."SiteWebTerritoire",
+            c_1."InformationsAccueilTerritoire",
+            c_1."ModifieLe" AS "CoordonneesModifieLe"
+           FROM (( SELECT n0."NomNiveau_0",
+                    n1b."NomNiveau_1_Old",
+                    n2."ID_Niveau_1_FK",
+                    n1a."NomNiveau_1",
+                    n2."ID_Niveau_2",
+                    n2."ID_TypeNiveau_2_Fk",
+                    COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_2",
+                    n2."NomNiveau_2",
+                    n2."Alt1_NomNiveau_2",
+                    n2."AbreNiveau_2",
+                    n2."CodeNiveau_2",
+                    n2."PopulationNiveau_2",
+                    n2."LatitudeNiveau_2",
+                    n2."LongitudeNiveau_2",
+                    n2."AltitudeNiveau_2",
+                    n2."geometryNiveau_2",
+                    n2."surfaceNiveau_2",
+                    n2."EtenduNiveau_2",
+                    n2."ObsNiveau_2",
+                    n2."ID_StatutNiveau_2",
+                    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_2",
+                    n2."ID_StatusDeploiFk",
+                    COALESCE(g_deploi."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
+                    n2."KmDPSANT",
+                    n2."ID_VoieAccesDPSANTFk",
+                    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "Voie_Acces_DPS",
+                    n2."SelectNiveau_2",
+                    n1a."ID_Niveau_0_Fk" AS "ID_Niveau_0",
+                    n1a."ID_Niveau_1",
+                    n1a."FusionNiveau_1",
+                    n1a."VisibleNiveau_1",
+                    n1a."VisibleNiveau_5",
+                    n2.iso,
+                    n2."uidSNIS",
+                    ( SELECT count(*) AS count
+                           FROM geolocalisation."T_Niveau_3" child
+                          WHERE (child."ID_Niveau_2_FK" = n2."ID_Niveau_2")) AS "Nb_Niveau_3"
+                   FROM (((((((geolocalisation."T_Niveau_2" n2
+                     LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
+                     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+                     LEFT JOIN geolocalisation."T_Niveau_1_Old" n1b ON ((n1a."ID_Niveau_1_Old_Fk" = n1b."ID_Niveau_1_Old")))
+                     LEFT JOIN referentiel."T_Generique" g_type ON ((n2."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_statut ON ((n2."ID_StatutNiveau_2" = g_statut."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_deploi ON ((n2."ID_StatusDeploiFk" = g_deploi."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_voie ON ((n2."ID_VoieAccesDPSANTFk" = g_voie."ID_Generique")))) q_1
+             LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c_1 ON ((c_1."ID_Niveau_2Fk" = q_1."ID_Niveau_2")))) q
      LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_2Fk" = q."ID_Niveau_2")));
 
 --
@@ -10131,69 +10216,119 @@ CREATE VIEW geolocalisation."V_Niveau_3" AS
     q."uidSNIS",
     q."Nb_Niveau_4",
     q."Nb_Niveau_5",
-    c."AdresseTerritoire",
-    c."TelephoneTerritoire",
-    c."TelephoneSecondaireTerritoire",
-    c."EmailTerritoire",
-    c."SiteWebTerritoire",
-    c."InformationsAccueilTerritoire",
-    c."ModifieLe" AS "CoordonneesModifieLe"
-   FROM (( SELECT n3."ID_TypeNiveau_2_Fk",
-            COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_3",
-            n3."ID_Niveau_3",
-            n3."NomNiveau_3",
-            n3."Alt_Niveau_3",
-            n3."AbreNiveau_3",
-            n3."CodeNiveau_3",
-            n3."LatitudeNiveau_3",
-            n3."PopulationNiveau_3",
-            n3."LongitudeNiveau_3",
-            n3."AltitudeNiveau_3",
-            n3."EtenduNiveau_3",
-            n3."surfaceNiveau_3",
-            n3."geometryNiveau_3",
-            n3."ObsNiveau_3",
-            n3."ID_StatutNiveau_3_Fk",
-            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_3",
-            n3."ID_StatutDeploieFk",
-            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
-            n3."KmAntenneBCZS",
-            n3."ID_VoieAccesANTBCZFk",
-            COALESCE(g_voie1."AbrGenerique", ' '::character varying) AS "Voie_ANTBCZ",
-            n3."KmDPSBCZS",
-            n3."ID_VoieAccesDPSBCZFk",
-            COALESCE(g_voie2."AbrGenerique", ' '::character varying) AS "Voie_DPSBCZS",
-            n3."SelectNiveau_3",
-            n3."ID_Niveau_2_FK",
-            n0."ID_Niveau_0",
-            n0."NomNiveau_0",
-            n1a."ID_Niveau_1",
-            n1a."NomNiveau_1",
-            n2."ID_Niveau_2",
-            n2."NomNiveau_2",
-            n1a."FusionNiveau_1",
-            n1a."VisibleNiveau_1",
-            n1a."VisibleNiveau_5",
-            n3.iso,
-            n3."uidSNIS",
-            ( SELECT count(*) AS count
-                   FROM geolocalisation."T_Niveau_4" child
-                  WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) AS "Nb_Niveau_4",
-            (( SELECT count(*) AS count
-                   FROM geolocalisation."T_Niveau_5" child
-                  WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) + ( SELECT count(*) AS count
-                   FROM (geolocalisation."T_Niveau_4" area
-                     JOIN geolocalisation."T_Niveau_5" child ON ((child."ID_Niveau_4_Fk" = area."ID_Niveau_4")))
-                  WHERE ((child."ID_Niveau_3_Fk" IS NULL) AND (area."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))) AS "Nb_Niveau_5"
-           FROM ((((((((geolocalisation."T_Niveau_3" n3
-             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-             LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
-             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-             LEFT JOIN referentiel."T_Generique" g_type ON ((n3."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_statut ON ((n3."ID_StatutNiveau_3_Fk" = g_statut."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n3."ID_StatutDeploieFk" = g_deploiement."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_voie1 ON ((n3."ID_VoieAccesANTBCZFk" = g_voie1."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_voie2 ON ((n3."ID_VoieAccesDPSBCZFk" = g_voie2."ID_Generique")))) q
+    q."AdresseTerritoire",
+    q."TelephoneTerritoire",
+    q."TelephoneSecondaireTerritoire",
+    q."EmailTerritoire",
+    q."SiteWebTerritoire",
+    q."InformationsAccueilTerritoire",
+    q."CoordonneesModifieLe",
+    COALESCE(c."PublierCoordonneesAnnuaire", false) AS "PublierCoordonneesAnnuaire",
+    c."HorairesOuvertureTerritoire"
+   FROM (( SELECT q_1."ID_TypeNiveau_2_Fk",
+            q_1."Type_Niveau_3",
+            q_1."ID_Niveau_3",
+            q_1."NomNiveau_3",
+            q_1."Alt_Niveau_3",
+            q_1."AbreNiveau_3",
+            q_1."CodeNiveau_3",
+            q_1."LatitudeNiveau_3",
+            q_1."PopulationNiveau_3",
+            q_1."LongitudeNiveau_3",
+            q_1."AltitudeNiveau_3",
+            q_1."EtenduNiveau_3",
+            q_1."surfaceNiveau_3",
+            q_1."geometryNiveau_3",
+            q_1."ObsNiveau_3",
+            q_1."ID_StatutNiveau_3_Fk",
+            q_1."Statut_Niveau_3",
+            q_1."ID_StatutDeploieFk",
+            q_1."Statut_Deploiement",
+            q_1."KmAntenneBCZS",
+            q_1."ID_VoieAccesANTBCZFk",
+            q_1."Voie_ANTBCZ",
+            q_1."KmDPSBCZS",
+            q_1."ID_VoieAccesDPSBCZFk",
+            q_1."Voie_DPSBCZS",
+            q_1."SelectNiveau_3",
+            q_1."ID_Niveau_2_FK",
+            q_1."ID_Niveau_0",
+            q_1."NomNiveau_0",
+            q_1."ID_Niveau_1",
+            q_1."NomNiveau_1",
+            q_1."ID_Niveau_2",
+            q_1."NomNiveau_2",
+            q_1."FusionNiveau_1",
+            q_1."VisibleNiveau_1",
+            q_1."VisibleNiveau_5",
+            q_1.iso,
+            q_1."uidSNIS",
+            q_1."Nb_Niveau_4",
+            q_1."Nb_Niveau_5",
+            c_1."AdresseTerritoire",
+            c_1."TelephoneTerritoire",
+            c_1."TelephoneSecondaireTerritoire",
+            c_1."EmailTerritoire",
+            c_1."SiteWebTerritoire",
+            c_1."InformationsAccueilTerritoire",
+            c_1."ModifieLe" AS "CoordonneesModifieLe"
+           FROM (( SELECT n3."ID_TypeNiveau_2_Fk",
+                    COALESCE(g_type."AbrGenerique", ' '::character varying) AS "Type_Niveau_3",
+                    n3."ID_Niveau_3",
+                    n3."NomNiveau_3",
+                    n3."Alt_Niveau_3",
+                    n3."AbreNiveau_3",
+                    n3."CodeNiveau_3",
+                    n3."LatitudeNiveau_3",
+                    n3."PopulationNiveau_3",
+                    n3."LongitudeNiveau_3",
+                    n3."AltitudeNiveau_3",
+                    n3."EtenduNiveau_3",
+                    n3."surfaceNiveau_3",
+                    n3."geometryNiveau_3",
+                    n3."ObsNiveau_3",
+                    n3."ID_StatutNiveau_3_Fk",
+                    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "Statut_Niveau_3",
+                    n3."ID_StatutDeploieFk",
+                    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "Statut_Deploiement",
+                    n3."KmAntenneBCZS",
+                    n3."ID_VoieAccesANTBCZFk",
+                    COALESCE(g_voie1."AbrGenerique", ' '::character varying) AS "Voie_ANTBCZ",
+                    n3."KmDPSBCZS",
+                    n3."ID_VoieAccesDPSBCZFk",
+                    COALESCE(g_voie2."AbrGenerique", ' '::character varying) AS "Voie_DPSBCZS",
+                    n3."SelectNiveau_3",
+                    n3."ID_Niveau_2_FK",
+                    n0."ID_Niveau_0",
+                    n0."NomNiveau_0",
+                    n1a."ID_Niveau_1",
+                    n1a."NomNiveau_1",
+                    n2."ID_Niveau_2",
+                    n2."NomNiveau_2",
+                    n1a."FusionNiveau_1",
+                    n1a."VisibleNiveau_1",
+                    n1a."VisibleNiveau_5",
+                    n3.iso,
+                    n3."uidSNIS",
+                    ( SELECT count(*) AS count
+                           FROM geolocalisation."T_Niveau_4" child
+                          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) AS "Nb_Niveau_4",
+                    (( SELECT count(*) AS count
+                           FROM geolocalisation."T_Niveau_5" child
+                          WHERE (child."ID_Niveau_3_Fk" = n3."ID_Niveau_3")) + ( SELECT count(*) AS count
+                           FROM (geolocalisation."T_Niveau_4" area
+                             JOIN geolocalisation."T_Niveau_5" child ON ((child."ID_Niveau_4_Fk" = area."ID_Niveau_4")))
+                          WHERE ((child."ID_Niveau_3_Fk" IS NULL) AND (area."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))) AS "Nb_Niveau_5"
+                   FROM ((((((((geolocalisation."T_Niveau_3" n3
+                     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+                     LEFT JOIN geolocalisation."T_Niveau_1" n1a ON ((n2."ID_Niveau_1_FK" = n1a."ID_Niveau_1")))
+                     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1a."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+                     LEFT JOIN referentiel."T_Generique" g_type ON ((n3."ID_TypeNiveau_2_Fk" = g_type."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_statut ON ((n3."ID_StatutNiveau_3_Fk" = g_statut."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n3."ID_StatutDeploieFk" = g_deploiement."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_voie1 ON ((n3."ID_VoieAccesANTBCZFk" = g_voie1."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_voie2 ON ((n3."ID_VoieAccesDPSBCZFk" = g_voie2."ID_Generique")))) q_1
+             LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c_1 ON ((c_1."ID_Niveau_3Fk" = q_1."ID_Niveau_3")))) q
      LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_3Fk" = q."ID_Niveau_3")));
 
 --
@@ -10489,68 +10624,120 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
     q."uidSNIS",
     q."Nb_Niveau_5",
     q."AvecReseau",
-    c."AdresseTerritoire",
-    c."TelephoneTerritoire",
-    c."TelephoneSecondaireTerritoire",
-    c."EmailTerritoire",
-    c."SiteWebTerritoire",
-    c."InformationsAccueilTerritoire",
-    c."ModifieLe" AS "CoordonneesModifieLe"
-   FROM (( SELECT n0."ID_Niveau_0",
-            n0."NomNiveau_0",
-            n1."ID_Niveau_1",
-            n1."NomNiveau_1",
-            n2."ID_Niveau_2",
-            n2."NomNiveau_2",
-            n3."ID_Niveau_3",
-            n3."NomNiveau_3",
-            n4."ID_TypeNiveau_4_Fk",
-            COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_4",
-            n4."AbreNiveau_4",
-            (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n4."NomNiveau_4", ''::character varying))::text) AS "SITE",
-            n4."CodeNiveau_4",
-            n4."PopulationNiveau_4",
-            n4."LatitudeNiveau_4",
-            n4."LongitudeNiveau_4",
-            n4."AltitudeNiveau_4",
-            n4."geometryNiveau_4",
-            COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
-            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_ZS",
-            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_AS",
-            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
-            n3."KmAntenneBCZS",
-            n3."KmDPSBCZS",
-            n4."ObsNiveau_4",
-            n4."SelectNiveau_4",
-            n4."ID_Niveau_4",
-            n4."ID_Niveau_3_Fk",
-            n4."NomNiveau_4",
-            n4."KmZoneSanteAS",
-            n4."surfaceNiveau_4",
-            n4."ID_DispoReseauNiveau_4",
-            n4."ID_VoieAccesZsASFk",
-            n4."ID_StatutNiveau_4",
-            n4."ID_StatutDeploiementFk",
-            n1."FusionNiveau_1",
-            n1."VisibleNiveau_1",
-            n1."VisibleNiveau_5",
-            n4.iso,
-            n4."uidSNIS",
-            ( SELECT count(*) AS count
-                   FROM geolocalisation."T_Niveau_5" child
-                  WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
-            ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
-           FROM (((((((((geolocalisation."T_Niveau_4" n4
-             LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
-             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-             LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
-             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-             LEFT JOIN referentiel."T_Generique" g_type ON ((n4."ID_TypeNiveau_4_Fk" = g_type."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_reseau ON ((n4."ID_DispoReseauNiveau_4" = g_reseau."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_voie ON ((n4."ID_VoieAccesZsASFk" = g_voie."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_statut ON ((n4."ID_StatutNiveau_4" = g_statut."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n4."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
-          ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n4."NomNiveau_4") q
+    q."AdresseTerritoire",
+    q."TelephoneTerritoire",
+    q."TelephoneSecondaireTerritoire",
+    q."EmailTerritoire",
+    q."SiteWebTerritoire",
+    q."InformationsAccueilTerritoire",
+    q."CoordonneesModifieLe",
+    COALESCE(c."PublierCoordonneesAnnuaire", false) AS "PublierCoordonneesAnnuaire",
+    c."HorairesOuvertureTerritoire"
+   FROM (( SELECT q_1."ID_Niveau_0",
+            q_1."NomNiveau_0",
+            q_1."ID_Niveau_1",
+            q_1."NomNiveau_1",
+            q_1."ID_Niveau_2",
+            q_1."NomNiveau_2",
+            q_1."ID_Niveau_3",
+            q_1."NomNiveau_3",
+            q_1."ID_TypeNiveau_4_Fk",
+            q_1."Type_Niveau_4",
+            q_1."AbreNiveau_4",
+            q_1."SITE",
+            q_1."CodeNiveau_4",
+            q_1."PopulationNiveau_4",
+            q_1."LatitudeNiveau_4",
+            q_1."LongitudeNiveau_4",
+            q_1."AltitudeNiveau_4",
+            q_1."geometryNiveau_4",
+            q_1."RESEAU",
+            q_1."VOIE_AS_ZS",
+            q_1."STATUT_AS",
+            q_1."STATUT_DEPLOI",
+            q_1."KmAntenneBCZS",
+            q_1."KmDPSBCZS",
+            q_1."ObsNiveau_4",
+            q_1."SelectNiveau_4",
+            q_1."ID_Niveau_4",
+            q_1."ID_Niveau_3_Fk",
+            q_1."NomNiveau_4",
+            q_1."KmZoneSanteAS",
+            q_1."surfaceNiveau_4",
+            q_1."ID_DispoReseauNiveau_4",
+            q_1."ID_VoieAccesZsASFk",
+            q_1."ID_StatutNiveau_4",
+            q_1."ID_StatutDeploiementFk",
+            q_1."FusionNiveau_1",
+            q_1."VisibleNiveau_1",
+            q_1."VisibleNiveau_5",
+            q_1.iso,
+            q_1."uidSNIS",
+            q_1."Nb_Niveau_5",
+            q_1."AvecReseau",
+            c_1."AdresseTerritoire",
+            c_1."TelephoneTerritoire",
+            c_1."TelephoneSecondaireTerritoire",
+            c_1."EmailTerritoire",
+            c_1."SiteWebTerritoire",
+            c_1."InformationsAccueilTerritoire",
+            c_1."ModifieLe" AS "CoordonneesModifieLe"
+           FROM (( SELECT n0."ID_Niveau_0",
+                    n0."NomNiveau_0",
+                    n1."ID_Niveau_1",
+                    n1."NomNiveau_1",
+                    n2."ID_Niveau_2",
+                    n2."NomNiveau_2",
+                    n3."ID_Niveau_3",
+                    n3."NomNiveau_3",
+                    n4."ID_TypeNiveau_4_Fk",
+                    COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_4",
+                    n4."AbreNiveau_4",
+                    (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n4."NomNiveau_4", ''::character varying))::text) AS "SITE",
+                    n4."CodeNiveau_4",
+                    n4."PopulationNiveau_4",
+                    n4."LatitudeNiveau_4",
+                    n4."LongitudeNiveau_4",
+                    n4."AltitudeNiveau_4",
+                    n4."geometryNiveau_4",
+                    COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
+                    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_ZS",
+                    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_AS",
+                    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
+                    n3."KmAntenneBCZS",
+                    n3."KmDPSBCZS",
+                    n4."ObsNiveau_4",
+                    n4."SelectNiveau_4",
+                    n4."ID_Niveau_4",
+                    n4."ID_Niveau_3_Fk",
+                    n4."NomNiveau_4",
+                    n4."KmZoneSanteAS",
+                    n4."surfaceNiveau_4",
+                    n4."ID_DispoReseauNiveau_4",
+                    n4."ID_VoieAccesZsASFk",
+                    n4."ID_StatutNiveau_4",
+                    n4."ID_StatutDeploiementFk",
+                    n1."FusionNiveau_1",
+                    n1."VisibleNiveau_1",
+                    n1."VisibleNiveau_5",
+                    n4.iso,
+                    n4."uidSNIS",
+                    ( SELECT count(*) AS count
+                           FROM geolocalisation."T_Niveau_5" child
+                          WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
+                    ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
+                   FROM (((((((((geolocalisation."T_Niveau_4" n4
+                     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
+                     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+                     LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
+                     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+                     LEFT JOIN referentiel."T_Generique" g_type ON ((n4."ID_TypeNiveau_4_Fk" = g_type."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_reseau ON ((n4."ID_DispoReseauNiveau_4" = g_reseau."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_voie ON ((n4."ID_VoieAccesZsASFk" = g_voie."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_statut ON ((n4."ID_StatutNiveau_4" = g_statut."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n4."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
+                  ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n4."NomNiveau_4") q_1
+             LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c_1 ON ((c_1."ID_Niveau_4Fk" = q_1."ID_Niveau_4")))) q
      LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_4Fk" = q."ID_Niveau_4")));
 
 --
@@ -10862,73 +11049,129 @@ CREATE VIEW geolocalisation."V_Niveau_5" AS
     q.iso,
     q."uidSNIS",
     q."ID_TypeNiveau_4_Fk",
-    c."AdresseTerritoire",
-    c."TelephoneTerritoire",
-    c."TelephoneSecondaireTerritoire",
-    c."EmailTerritoire",
-    c."SiteWebTerritoire",
-    c."InformationsAccueilTerritoire",
-    c."ModifieLe" AS "CoordonneesModifieLe"
-   FROM (( SELECT n0."ID_Niveau_0",
-            n0."NomNiveau_0",
-            n1."ID_Niveau_1",
-            n1."NomNiveau_1",
-            n2."ID_Niveau_2",
-            n2."NomNiveau_2",
-            n3."ID_Niveau_3",
-            n3."NomNiveau_3",
-            n5."ID_TypeNiveau_5_Fk",
-            COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_5",
-            (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n5."NomNiveau_5", ''::character varying))::text) AS "SITE",
-            n5."AbreNiveau_5",
-            n5."CodeNiveau_5",
-            n5."PopulationNiveau_5",
-            n5."LongitudeNiveau_5",
-            n5."LatitudeNiveau_5",
-            n5."AltitudeNiveau_5",
-            n5."geometryNiveau_5",
-            COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
-            COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_Site",
-            COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_Site",
-            COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
-            n3."KmAntenneBCZS",
-            n3."KmDPSBCZS",
-            n4."ID_Niveau_4",
-            n5."ID_Niveau_5",
-            n5."ID_Niveau_4_Fk",
-            n5."ID_Niveau_3_Fk",
-            n5."NomNiveau_5",
-            n5."KmZoneSanteNiveau_5",
-            n5."surfaceNiveau_5",
-            n5."ID_DispoReseauNiveau_5",
-            n5."ID_VoieAccesZsSiteFk",
-            n5."ID_StatutNiveau_5",
-            n5."ID_StatutDeploiementFk",
-            n5."ID_TypeToitFk",
-            n5."ObsNiveau_5",
-            n5."SelectNiveau_5",
-            n4."NomNiveau_4",
-            ( SELECT roof."AbrGenerique"
-                   FROM referentiel."T_Generique" roof
-                  WHERE (roof."ID_Generique" = n5."ID_TypeToitFk")) AS "Type_Toit",
-            n1."FusionNiveau_1",
-            n1."VisibleNiveau_1",
-            n1."VisibleNiveau_5",
-            n5.iso,
-            n5."uidSNIS",
-            n4."ID_TypeNiveau_4_Fk"
-           FROM ((((((((((geolocalisation."T_Niveau_5" n5
-             LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n5."ID_Niveau_4_Fk" = n4."ID_Niveau_4")))
-             LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk") = n3."ID_Niveau_3")))
-             LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
-             LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
-             LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
-             LEFT JOIN referentiel."T_Generique" g_type ON ((n5."ID_TypeNiveau_5_Fk" = g_type."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_reseau ON ((n5."ID_DispoReseauNiveau_5" = g_reseau."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_voie ON ((n5."ID_VoieAccesZsSiteFk" = g_voie."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_statut ON ((n5."ID_StatutNiveau_5" = g_statut."ID_Generique")))
-             LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n5."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
-          ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n5."NomNiveau_5") q
+    q."AdresseTerritoire",
+    q."TelephoneTerritoire",
+    q."TelephoneSecondaireTerritoire",
+    q."EmailTerritoire",
+    q."SiteWebTerritoire",
+    q."InformationsAccueilTerritoire",
+    q."CoordonneesModifieLe",
+    COALESCE(c."PublierCoordonneesAnnuaire", false) AS "PublierCoordonneesAnnuaire",
+    c."HorairesOuvertureTerritoire"
+   FROM (( SELECT q_1."ID_Niveau_0",
+            q_1."NomNiveau_0",
+            q_1."ID_Niveau_1",
+            q_1."NomNiveau_1",
+            q_1."ID_Niveau_2",
+            q_1."NomNiveau_2",
+            q_1."ID_Niveau_3",
+            q_1."NomNiveau_3",
+            q_1."ID_TypeNiveau_5_Fk",
+            q_1."Type_Niveau_5",
+            q_1."SITE",
+            q_1."AbreNiveau_5",
+            q_1."CodeNiveau_5",
+            q_1."PopulationNiveau_5",
+            q_1."LongitudeNiveau_5",
+            q_1."LatitudeNiveau_5",
+            q_1."AltitudeNiveau_5",
+            q_1."geometryNiveau_5",
+            q_1."RESEAU",
+            q_1."VOIE_AS_Site",
+            q_1."STATUT_Site",
+            q_1."STATUT_DEPLOI",
+            q_1."KmAntenneBCZS",
+            q_1."KmDPSBCZS",
+            q_1."ID_Niveau_4",
+            q_1."ID_Niveau_5",
+            q_1."ID_Niveau_4_Fk",
+            q_1."ID_Niveau_3_Fk",
+            q_1."NomNiveau_5",
+            q_1."KmZoneSanteNiveau_5",
+            q_1."surfaceNiveau_5",
+            q_1."ID_DispoReseauNiveau_5",
+            q_1."ID_VoieAccesZsSiteFk",
+            q_1."ID_StatutNiveau_5",
+            q_1."ID_StatutDeploiementFk",
+            q_1."ID_TypeToitFk",
+            q_1."ObsNiveau_5",
+            q_1."SelectNiveau_5",
+            q_1."NomNiveau_4",
+            q_1."Type_Toit",
+            q_1."FusionNiveau_1",
+            q_1."VisibleNiveau_1",
+            q_1."VisibleNiveau_5",
+            q_1.iso,
+            q_1."uidSNIS",
+            q_1."ID_TypeNiveau_4_Fk",
+            c_1."AdresseTerritoire",
+            c_1."TelephoneTerritoire",
+            c_1."TelephoneSecondaireTerritoire",
+            c_1."EmailTerritoire",
+            c_1."SiteWebTerritoire",
+            c_1."InformationsAccueilTerritoire",
+            c_1."ModifieLe" AS "CoordonneesModifieLe"
+           FROM (( SELECT n0."ID_Niveau_0",
+                    n0."NomNiveau_0",
+                    n1."ID_Niveau_1",
+                    n1."NomNiveau_1",
+                    n2."ID_Niveau_2",
+                    n2."NomNiveau_2",
+                    n3."ID_Niveau_3",
+                    n3."NomNiveau_3",
+                    n5."ID_TypeNiveau_5_Fk",
+                    COALESCE(g_type."AbrGenerique", ''::character varying) AS "Type_Niveau_5",
+                    (((COALESCE(g_type."AbrGenerique", ''::character varying))::text || ' '::text) || (COALESCE(n5."NomNiveau_5", ''::character varying))::text) AS "SITE",
+                    n5."AbreNiveau_5",
+                    n5."CodeNiveau_5",
+                    n5."PopulationNiveau_5",
+                    n5."LongitudeNiveau_5",
+                    n5."LatitudeNiveau_5",
+                    n5."AltitudeNiveau_5",
+                    n5."geometryNiveau_5",
+                    COALESCE(g_reseau."AbrGenerique", ' '::character varying) AS "RESEAU",
+                    COALESCE(g_voie."AbrGenerique", ' '::character varying) AS "VOIE_AS_Site",
+                    COALESCE(g_statut."AbrGenerique", ' '::character varying) AS "STATUT_Site",
+                    COALESCE(g_deploiement."AbrGenerique", ' '::character varying) AS "STATUT_DEPLOI",
+                    n3."KmAntenneBCZS",
+                    n3."KmDPSBCZS",
+                    n4."ID_Niveau_4",
+                    n5."ID_Niveau_5",
+                    n5."ID_Niveau_4_Fk",
+                    n5."ID_Niveau_3_Fk",
+                    n5."NomNiveau_5",
+                    n5."KmZoneSanteNiveau_5",
+                    n5."surfaceNiveau_5",
+                    n5."ID_DispoReseauNiveau_5",
+                    n5."ID_VoieAccesZsSiteFk",
+                    n5."ID_StatutNiveau_5",
+                    n5."ID_StatutDeploiementFk",
+                    n5."ID_TypeToitFk",
+                    n5."ObsNiveau_5",
+                    n5."SelectNiveau_5",
+                    n4."NomNiveau_4",
+                    ( SELECT roof."AbrGenerique"
+                           FROM referentiel."T_Generique" roof
+                          WHERE (roof."ID_Generique" = n5."ID_TypeToitFk")) AS "Type_Toit",
+                    n1."FusionNiveau_1",
+                    n1."VisibleNiveau_1",
+                    n1."VisibleNiveau_5",
+                    n5.iso,
+                    n5."uidSNIS",
+                    n4."ID_TypeNiveau_4_Fk"
+                   FROM ((((((((((geolocalisation."T_Niveau_5" n5
+                     LEFT JOIN geolocalisation."T_Niveau_4" n4 ON ((n5."ID_Niveau_4_Fk" = n4."ID_Niveau_4")))
+                     LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((COALESCE(n5."ID_Niveau_3_Fk", n4."ID_Niveau_3_Fk") = n3."ID_Niveau_3")))
+                     LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
+                     LEFT JOIN geolocalisation."T_Niveau_1" n1 ON ((n2."ID_Niveau_1_FK" = n1."ID_Niveau_1")))
+                     LEFT JOIN geolocalisation."T_Niveau_0" n0 ON ((n1."ID_Niveau_0_Fk" = n0."ID_Niveau_0")))
+                     LEFT JOIN referentiel."T_Generique" g_type ON ((n5."ID_TypeNiveau_5_Fk" = g_type."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_reseau ON ((n5."ID_DispoReseauNiveau_5" = g_reseau."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_voie ON ((n5."ID_VoieAccesZsSiteFk" = g_voie."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_statut ON ((n5."ID_StatutNiveau_5" = g_statut."ID_Generique")))
+                     LEFT JOIN referentiel."T_Generique" g_deploiement ON ((n5."ID_StatutDeploiementFk" = g_deploiement."ID_Generique")))
+                  ORDER BY n0."NomNiveau_0", n1."NomNiveau_1", n2."NomNiveau_2", n3."NomNiveau_3", n5."NomNiveau_5") q_1
+             LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c_1 ON ((c_1."ID_Niveau_5Fk" = q_1."ID_Niveau_5")))) q
      LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON ((c."ID_Niveau_5Fk" = q."ID_Niveau_5")));
 
 --
@@ -46938,7 +47181,7 @@ SET default_table_access_method = heap;
 -- Name: TABLE "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Coordonnées professionnelles facultatives d’un territoire partagé de niveau 1 à 5, une seule fiche par territoire. Rattachement explicite et immuable, sans entreprise propriétaire ou affiliation inventée. Les coordonnées de personnes, GPS, horaires déduits et contacts importés sans provenance n’y sont pas ajoutés. L’accès reste contrôlé par les services territoriaux.';
+COMMENT ON TABLE geolocalisation."T_CoordonneesTerritoire" IS 'Fiche institutionnelle partagée facultative d’un territoire N1 à N5, une seule FK explicite et immuable par fiche, sans entreprise propriétaire. Adresse, contacts, accueil et horaires déclarés sont conservés dans l’administration territoriale. Le consentement explicite PublierCoordonneesAnnuaire contrôle leur divulgation dans la projection sanitaire N3/N4/N5 ; aucune coordonnée de parent ou de personne n’est déduite. Auteur et date techniques ne constituent pas une vérification métier.';
 
 --
 -- Name: COLUMN "T_CoordonneesTerritoire"."ID_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -47470,6 +47713,323 @@ COMMENT ON COLUMN systeme."T_ModuleApplication"."AfficherDansEspace" IS 'Affiche
 --
 
 COMMENT ON CONSTRAINT "T_ModuleApplication_AfficherDansEspace_not_null" ON systeme."T_ModuleApplication" IS 'La visibilité du lanceur est explicite pour chaque application ; elle vaut Oui par défaut sans modifier ses habilitations.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."PublierCoordonneesAnnuaire" IS 'Autorisation explicite de divulguer les coordonnées institutionnelles et horaires dans l’annuaire sanitaire authentifié. False par défaut, y compris pour les fiches antérieures ; le retrait masque immédiatement les contacts sans supprimer le territoire ou sa fiche privée. Ne publie aucune entreprise ERP.';
+
+--
+-- Name: COLUMN "T_CoordonneesTerritoire"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."T_CoordonneesTerritoire"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés en texte simple facultatif, de 1 à 1 000 caractères après retrait des espaces extérieurs ; retours à la ligne admis. NULL signifie inconnus. Ne constitue pas un calcul « ouvert maintenant », une garde ou une vérification de permanence.';
+
+--
+-- Name: CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT "T_CoordonneesTerritoire_PublierCoordonneesAnnuaire_not_null" ON geolocalisation."T_CoordonneesTerritoire" IS 'Choix explicite obligatoire, false par défaut : NULL ne vaut jamais autorisation.';
+
+--
+-- Name: CONSTRAINT ck_coordonnees_territoire_horaires ON "T_CoordonneesTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON CONSTRAINT ck_coordonnees_territoire_horaires ON geolocalisation."T_CoordonneesTerritoire" IS 'Horaires déclarés facultatifs bornés à 1 000 caractères, sans contrôles autres que les retours à la ligne et sans espaces extérieurs.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."PublierCoordonneesAnnuaire" IS 'Choix explicite de publication des coordonnées dans l’annuaire sanitaire ; false en l’absence de fiche. Lecture territoriale privée : ce champ ne masque pas les contacts dans ce registre administrateur.';
+
+--
+-- Name: COLUMN "V_Niveau_1"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_1"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés, facultatifs, conservés dans la fiche territoriale associée. Aucun héritage depuis les parents, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."PublierCoordonneesAnnuaire" IS 'Choix explicite de publication des coordonnées dans l’annuaire sanitaire ; false en l’absence de fiche. Lecture territoriale privée : ce champ ne masque pas les contacts dans ce registre administrateur.';
+
+--
+-- Name: COLUMN "V_Niveau_2"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_2"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés, facultatifs, conservés dans la fiche territoriale associée. Aucun héritage depuis les parents, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."PublierCoordonneesAnnuaire" IS 'Choix explicite de publication des coordonnées dans l’annuaire sanitaire ; false en l’absence de fiche. Lecture territoriale privée : ce champ ne masque pas les contacts dans ce registre administrateur.';
+
+--
+-- Name: COLUMN "V_Niveau_3"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_3"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés, facultatifs, conservés dans la fiche territoriale associée. Aucun héritage depuis les parents, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."PublierCoordonneesAnnuaire" IS 'Choix explicite de publication des coordonnées dans l’annuaire sanitaire ; false en l’absence de fiche. Lecture territoriale privée : ce champ ne masque pas les contacts dans ce registre administrateur.';
+
+--
+-- Name: COLUMN "V_Niveau_4"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés, facultatifs, conservés dans la fiche territoriale associée. Aucun héritage depuis les parents, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."PublierCoordonneesAnnuaire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."PublierCoordonneesAnnuaire" IS 'Choix explicite de publication des coordonnées dans l’annuaire sanitaire ; false en l’absence de fiche. Lecture territoriale privée : ce champ ne masque pas les contacts dans ce registre administrateur.';
+
+--
+-- Name: COLUMN "V_Niveau_5"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_Niveau_5"."HorairesOuvertureTerritoire" IS 'Horaires d’ouverture déclarés, facultatifs, conservés dans la fiche territoriale associée. Aucun héritage depuis les parents, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: V_StructureSanitairePublique; Type: VIEW; Schema: geolocalisation; Owner: -
+--
+
+CREATE VIEW geolocalisation."V_StructureSanitairePublique" AS
+ SELECT ('n3:'::text || (v."ID_Niveau_3")::text) AS "StructureKey",
+    3 AS "NiveauStructure",
+    v."ID_Niveau_3" AS "ID_Structure",
+    v."NomNiveau_3" AS "NomStructure",
+    v."CodeNiveau_3" AS "CodeStructure",
+    g."ID_Generique" AS "ID_TypeStructureFk",
+    COALESCE(NULLIF(btrim((g."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (g."ID_Generique")::text)) AS "TypeStructure",
+    v."ID_Niveau_1",
+    v."NomNiveau_1",
+    v."ID_Niveau_2",
+    v."NomNiveau_2",
+    v."ID_Niveau_3",
+    v."NomNiveau_3",
+    NULL::integer AS "ID_Niveau_4",
+    NULL::character varying AS "NomNiveau_4",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."HorairesOuvertureTerritoire",
+    (c."ID_CoordonneesTerritoire" IS NOT NULL) AS "CoordonneesPubliees"
+   FROM (((geolocalisation."V_Niveau_3" v
+     JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = v."ID_TypeNiveau_2_Fk") AND (g."ValideGenerique" IS TRUE) AND (g."IdEntiteFk" IS NULL) AND (g."ID_CategorieGeneriqueFk" = ANY (referentiel.fn_categories_champ('geolocalisation'::text, 'T_Niveau_3'::text, 'ID_TypeNiveau_2_Fk'::text, NULL::integer))))))
+     JOIN referentiel."T_CategorieGenerique" cat ON (((cat."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk") AND (cat."ValideCategorieGenerique" IS TRUE) AND (cat."IdEntiteFk" IS NULL))))
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON (((c."ID_Niveau_3Fk" = v."ID_Niveau_3") AND (c."PublierCoordonneesAnnuaire" IS TRUE))))
+UNION ALL
+ SELECT ('n4:'::text || (v."ID_Niveau_4")::text) AS "StructureKey",
+    4 AS "NiveauStructure",
+    v."ID_Niveau_4" AS "ID_Structure",
+    v."NomNiveau_4" AS "NomStructure",
+    v."CodeNiveau_4" AS "CodeStructure",
+    g."ID_Generique" AS "ID_TypeStructureFk",
+    COALESCE(NULLIF(btrim((g."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (g."ID_Generique")::text)) AS "TypeStructure",
+    v."ID_Niveau_1",
+    v."NomNiveau_1",
+    v."ID_Niveau_2",
+    v."NomNiveau_2",
+    v."ID_Niveau_3",
+    v."NomNiveau_3",
+    v."ID_Niveau_4",
+    v."NomNiveau_4",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."HorairesOuvertureTerritoire",
+    (c."ID_CoordonneesTerritoire" IS NOT NULL) AS "CoordonneesPubliees"
+   FROM (((geolocalisation."V_Niveau_4" v
+     JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = v."ID_TypeNiveau_4_Fk") AND (g."ValideGenerique" IS TRUE) AND (g."IdEntiteFk" IS NULL) AND (g."ID_CategorieGeneriqueFk" = ANY (referentiel.fn_categories_champ('geolocalisation'::text, 'T_Niveau_4'::text, 'ID_TypeNiveau_4_Fk'::text, NULL::integer))))))
+     JOIN referentiel."T_CategorieGenerique" cat ON (((cat."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk") AND (cat."ValideCategorieGenerique" IS TRUE) AND (cat."IdEntiteFk" IS NULL))))
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON (((c."ID_Niveau_4Fk" = v."ID_Niveau_4") AND (c."PublierCoordonneesAnnuaire" IS TRUE))))
+UNION ALL
+ SELECT ('n5:'::text || (v."ID_Niveau_5")::text) AS "StructureKey",
+    5 AS "NiveauStructure",
+    v."ID_Niveau_5" AS "ID_Structure",
+    v."NomNiveau_5" AS "NomStructure",
+    v."CodeNiveau_5" AS "CodeStructure",
+    g."ID_Generique" AS "ID_TypeStructureFk",
+    COALESCE(NULLIF(btrim((g."AbrGenerique")::text), ''::text), ('Valeur sans abréviation #'::text || (g."ID_Generique")::text)) AS "TypeStructure",
+    v."ID_Niveau_1",
+    v."NomNiveau_1",
+    v."ID_Niveau_2",
+    v."NomNiveau_2",
+    v."ID_Niveau_3",
+    v."NomNiveau_3",
+    v."ID_Niveau_4",
+    v."NomNiveau_4",
+    c."AdresseTerritoire",
+    c."TelephoneTerritoire",
+    c."TelephoneSecondaireTerritoire",
+    c."EmailTerritoire",
+    c."SiteWebTerritoire",
+    c."InformationsAccueilTerritoire",
+    c."HorairesOuvertureTerritoire",
+    (c."ID_CoordonneesTerritoire" IS NOT NULL) AS "CoordonneesPubliees"
+   FROM (((geolocalisation."V_Niveau_5" v
+     JOIN referentiel."T_Generique" g ON (((g."ID_Generique" = v."ID_TypeNiveau_5_Fk") AND (g."ValideGenerique" IS TRUE) AND (g."IdEntiteFk" IS NULL) AND (g."ID_CategorieGeneriqueFk" = ANY (referentiel.fn_categories_champ('geolocalisation'::text, 'T_Niveau_5'::text, 'ID_TypeNiveau_5_Fk'::text, NULL::integer))))))
+     JOIN referentiel."T_CategorieGenerique" cat ON (((cat."ID_CategorieGenerique" = g."ID_CategorieGeneriqueFk") AND (cat."ValideCategorieGenerique" IS TRUE) AND (cat."IdEntiteFk" IS NULL))))
+     LEFT JOIN geolocalisation."T_CoordonneesTerritoire" c ON (((c."ID_Niveau_5Fk" = v."ID_Niveau_5") AND (c."PublierCoordonneesAnnuaire" IS TRUE))));
+
+--
+-- Name: VIEW "V_StructureSanitairePublique"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON VIEW geolocalisation."V_StructureSanitairePublique" IS 'Annuaire des structures et territoires fermé au grain niveau 3/4/5 + identifiant territorial, distinct des entreprises ERP. Tous les types territoriaux communs actifs de la famille physique actuellement résolue sont admis, y compris districts, secteurs et groupements ; aucune sélection médicale implicite ni filtre sur VisibleNiveau pour masquer les affectations historiques. Les contacts et horaires déclarés sont NULL sans publication explicite de la fiche associée. Exclut GPS, comptes, observations, populations, géométries, déploiement, auteurs, logos, offres et affiliations. Les API imposent session et module Structures ; aucune permission anonyme ou messagerie n’est accordée. Ne prouve ni agrément, disponibilité ou permanence.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."StructureKey"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."StructureKey" IS 'Clé stable composite n3:<id>, n4:<id> ou n5:<id>. Ne désigne jamais une entreprise ERP ou un destinataire de discussion.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NiveauStructure"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NiveauStructure" IS 'Niveau territorial source : 3, 4 ou 5 ; composant obligatoire de l’identité.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_Structure"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_Structure" IS 'Identifiant physique du territoire dans son niveau source ; seul, il n’est pas unique entre niveaux.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NomStructure"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NomStructure" IS 'Nom territorial enregistré, éventuellement absent ; aucune dénomination d’entreprise n’est déduite.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."CodeStructure"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."CodeStructure" IS 'Code territorial facultatif déclaré, sans unicité mondiale supposée.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_TypeStructureFk"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_TypeStructureFk" IS 'Identifiant T_Generique du vrai champ de type du territoire, actif, commun et appartenant à la famille physique actuellement résolue. Aucun classement médical supplémentaire.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."TypeStructure"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."TypeStructure" IS 'AbrGenerique du type central ; si absente, libellé neutre identifié. NomGenerique ne remplace jamais l’abréviation.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_Niveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_Niveau_1" IS 'Identifiant de province issu de la hiérarchie territoriale commune, éventuellement absent.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NomNiveau_1"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NomNiveau_1" IS 'Nom de province issu de la vue territoriale commune, sans déduction de visibilité ou publication.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_Niveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_Niveau_2" IS 'Identifiant de subdivision ou antenne réellement rattachée, éventuellement absent.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NomNiveau_2"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NomNiveau_2" IS 'Nom de subdivision ou antenne issu de la hiérarchie commune.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_Niveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_Niveau_3" IS 'Identifiant du niveau 3 : propre territoire N3 ou zone effective de la vue N4/N5 ; N5 conserve COALESCE(zone directe, zone de l’aire).';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NomNiveau_3"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NomNiveau_3" IS 'Nom du niveau 3 issu de la même hiérarchie que son identifiant.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."ID_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."ID_Niveau_4" IS 'Identifiant propre du territoire N4 ou de l’aire réellement liée au N5 ; NULL pour une entrée N3.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."NomNiveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."NomNiveau_4" IS 'Nom du niveau 4 réellement lié, NULL pour une entrée N3 ou sans aire.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."AdresseTerritoire" IS 'Adresse institutionnelle déclarée pour cette seule entrée ; NULL sans consentement explicite, sans héritage de parent.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."TelephoneTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."TelephoneTerritoire" IS 'Téléphone institutionnel principal déclaré et explicitement publié ; NULL sinon.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."TelephoneSecondaireTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."TelephoneSecondaireTerritoire" IS 'Téléphone institutionnel secondaire déclaré et explicitement publié ; NULL sinon.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."EmailTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."EmailTerritoire" IS 'Adresse e-mail institutionnelle déclarée et explicitement publiée ; NULL sinon.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."SiteWebTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."SiteWebTerritoire" IS 'Site web institutionnel déclaré et explicitement publié ; NULL sinon, sans agrément implicite.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."InformationsAccueilTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."InformationsAccueilTerritoire" IS 'Informations d’accueil en texte simple explicitement publiées ; NULL sinon, sans permanence déduite.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."HorairesOuvertureTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."HorairesOuvertureTerritoire" IS 'Horaires déclarés en texte simple explicitement publiés ; NULL si absents ou non publiés, aucun calcul d’ouverture actuelle.';
+
+--
+-- Name: COLUMN "V_StructureSanitairePublique"."CoordonneesPubliees"; Type: COMMENT; Schema: geolocalisation; Owner: -
+--
+
+COMMENT ON COLUMN geolocalisation."V_StructureSanitairePublique"."CoordonneesPubliees" IS 'True seulement lorsqu’une fiche de coordonnées du territoire porte le consentement explicite. Ne garantit ni complétude ni vérification métier.';
 
 --
 -- PostgreSQL database dump complete

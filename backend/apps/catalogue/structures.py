@@ -154,6 +154,7 @@ def management(actor):
 
 
 def context(actor):
+    from .territorial_structures import can_manage_territories
     require_module(actor, 'structures')
     entity = read_entity(actor)
     rights = access_snapshot(actor)['modules']['structures']
@@ -161,6 +162,7 @@ def context(actor):
     row = db.one('SELECT "ValideEntite" active FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
     manage = bool(registry and row and row['active'] is True and not settings.DB_READ_ONLY)
     return {'entityId': entity, 'activeEntityId': entity, 'platformAdmin': actor.global_admin, 'canRead': True,
+            'canManageTerritories': can_manage_territories(actor),
             'canReadRegistry': registry, 'canManage': manage, 'readOnly': settings.DB_READ_ONLY,
             'policyReason': '' if manage else 'Choisissez une entreprise active pour modifier son profil.' if registry else 'Consultation de l’annuaire uniquement.'}
 

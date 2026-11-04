@@ -15,6 +15,7 @@ function nodes(tree,out=[]){if(!tree||typeof tree!=='object')return out;if(Array
   eq(crumbs.props['aria-label'],'Fil d’Ariane');eq(nodes(crumbs).find(n=>n.props['aria-current']==='page').props.children,title);eq(nodes(crumbs).find(n=>n.type==='Link').props.to,'/espace');
   eq(all.find(n=>n.props.className==='workspace-brand').props.to,'/espace');eq(all.filter(n=>n.type==='Scope').length,['Logistique','Caisse','Professionnels','Structures','Référentiels','Administration','Support','Paramètres','Guide utilisateur'].includes(title)?1:0);
  }
+ eq(nodes(Header({title:'Structures',showEntityScope:false})).filter(n=>n.type==='Scope').length,0);
  let tree=Header({title:'Administration'}),button=nodes(tree).find(n=>n.props.className==='module-skip-content');eq(button.props.type,'button');eq(button.props.children,'Aller au contenu');
  let focused=0,attributes=[],selector='';const content={hasAttribute:()=>false,setAttribute:(name,value)=>attributes.push([name,value]),focus:opts=>{eq(opts,{preventScroll:false});focused++;}};
  const shell={querySelector:value=>{selector=value;return content;}};

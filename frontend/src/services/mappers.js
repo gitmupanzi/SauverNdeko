@@ -92,22 +92,21 @@ export function mapArticlePublic(item, index) {
 }
 
 export function mapPharmacyPublic(item, index) {
-  const type = item?.T_Generique ? referenceLabel(item.T_Generique) : pickNested(item, [["type"], ["TypeStructure"]], "Structure");
-  const status = getFirstDefined(item?.StatutPublic, item?.statut, item?.ValideEntite);
-
+  // Une structure territoriale n'est jamais identifiée par l'ID d'une entreprise.
+  const key = String(item?.key || item?.StructureKey || "");
+  const match = /^n([345]):([1-9]\d*)$/.exec(key);
   return {
-    id: String(getFirstDefined(item?.IdEntite, item?.ID_Entite, item?.id, `entite-${index}`)),
-    name: getFirstDefined(item?.NomEntite, item?.nom, item?.name, `Structure ${index + 1}`),
-    address: getFirstDefined(item?.AdresseEntite, item?.adresse, item?.address, "Adresse non renseignee"),
-    phone: getFirstDefined(item?.PhoneEntite, item?.telephone, item?.phone, "Telephone a confirmer"),
-    type,
-    status:
-      typeof status === "boolean"
-        ? status
-          ? "Structure active"
-          : "Verification en cours"
-        : getFirstDefined(status, "Disponibilite a confirmer"),
-    hours: getFirstDefined(item?.HorairesPublics, item?.horaires, item?.hours, "Horaires a confirmer"),
+    id: match ? key : `structure-invalide-${index}`,
+    territorialKey: match ? key : null,
+    level: match ? Number(match[1]) : null,
+    name: item?.name || item?.NomStructure || "Structure sans nom",
+    address: item?.address || item?.AdresseTerritoire || "Adresse non renseignée",
+    phone: item?.phone || item?.TelephoneTerritoire || null,
+    type: item?.type || item?.TypeStructure || "Type non renseigné",
+    status: "Structure référencée",
+    hours: item?.hours || item?.HorairesOuvertureTerritoire || null,
+    province: item?.province?.name || item?.NomNiveau_1 || "",
+    zone: item?.zone?.name || item?.NomNiveau_3 || "",
   };
 }
 

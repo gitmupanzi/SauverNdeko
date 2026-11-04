@@ -57,25 +57,31 @@ class StructuresDirectoryAPI(unittest.TestCase):
         self.assertEqual(result['total'], 1)
         self.assertEqual(result['rows'][0]['type'], 'Pharmacie')
         old = self.data(self.client(local=True).get('/api/public/pharmacies', {'q': self.tag}))
-        self.assertEqual(len(old), 1)
-        self.assertEqual(set(old[0]), {'IdEntite','NomEntite','PhoneEntite','AdresseEntite','ValideEntite','T_Generique'})
+        # La compatibilité pharmacies lit désormais la pyramide sanitaire ;
+        # une entreprise publiée n'est jamais convertie en territoire.
+        self.assertEqual(old, [])
         self.connection.execute('UPDATE systeme."T_Entite" SET "ValideEntite"=false WHERE "IdEntite"=%s', [self.entities[0]])
         self.assertEqual(self.data(self.client().get(BASE+'/annuaire', {'q': self.tag}))['total'], 0)
 
     def test_13_contact_type_uses_abbreviation_with_same_reference(self):
         self.publish(IdTypeEntiteFk=self.typ)
-        self.connection.execute('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s',
-            ['Nom descriptif distinct '+self.tag, 'Type affiché '+self.tag, self.typ])
-        path='/api/public/chat/context'
-        params={'type':'structure','id':self.entities[0]}
-        target=self.data(self.client(1, local=True).get(path,params))['target']
-        self.assertEqual(target['specialty'],'Type affiché '+self.tag)
-        self.assertEqual(target['id'],self.entities[0])
-        self.connection.execute('UPDATE referentiel."T_Generique" SET "AbrGenerique"=NULL WHERE "ID_Generique"=%s',[self.typ])
-        target=self.data(self.client(1, local=True).get(path,params))['target']
-        self.assertEqual(target['specialty'],'Valeur sans abréviation #'+str(self.typ))
-        row=self.connection.execute('SELECT "IdTypeEntiteFk" FROM systeme."T_Entite" WHERE "IdEntite"=%s',[self.entities[0]]).fetchone()
-        self.assertEqual(row['IdTypeEntiteFk'],self.typ)
+        original = self.connection.execute('SELECT "NomGenerique","AbrGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [self.typ]).fetchone()
+        try:
+            self.connection.execute('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s',
+                ['Nom descriptif distinct '+self.tag, 'Type affiché '+self.tag, self.typ])
+            path='/api/public/chat/context'
+            params={'type':'structure','id':self.entities[0]}
+            target=self.data(self.client(1, local=True).get(path,params))['target']
+            self.assertEqual(target['specialty'],'Type affiché '+self.tag)
+            self.assertEqual(target['id'],self.entities[0])
+            self.connection.execute('UPDATE referentiel."T_Generique" SET "AbrGenerique"=NULL WHERE "ID_Generique"=%s',[self.typ])
+            target=self.data(self.client(1, local=True).get(path,params))['target']
+            self.assertEqual(target['specialty'],'Valeur sans abréviation #'+str(self.typ))
+            row=self.connection.execute('SELECT "IdTypeEntiteFk" FROM systeme."T_Entite" WHERE "IdEntite"=%s',[self.entities[0]]).fetchone()
+            self.assertEqual(row['IdTypeEntiteFk'],self.typ)
+        finally:
+            self.connection.execute('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s',
+                [original['NomGenerique'], original['AbrGenerique'], self.typ])
 
     def test_02_safe_projection_and_declared_locations_only(self):
         self.publish(IdTypeEntiteFk=self.typ, IdentifiantsLegauxEntite=[{'libelle':'RCCM','valeur':'SECRET-'+self.tag}],

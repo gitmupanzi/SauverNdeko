@@ -73,6 +73,7 @@ from apps.core.application_licences import OrganisationApplicationsView, Licence
 from apps.catalogue.views import PublicView
 from apps.catalogue.products import ProductReferencesView, ProductOffersView
 from apps.catalogue.structures import StructuresReadView, StructureProfileView, StructureLogoView
+from apps.catalogue.territorial_structures import TerritorialStructuresView
 from apps.communication.views import DiscussionsView, StartView, MessagesView
 from apps.communication.notifications import NotificationsView, NotificationReadView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
@@ -82,6 +83,9 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/structures/annuaire-sanitaire/references/?$", TerritorialStructuresView.as_view(), {'reference': True}),
+    re_path(r"^api/structures/annuaire-sanitaire/(?P<niveau>[0-9]+)/(?P<pk>[0-9]+)/?$", TerritorialStructuresView.as_view()),
+    re_path(r"^api/structures/annuaire-sanitaire/?$", TerritorialStructuresView.as_view()),
     re_path(r"^api/structures/(?P<kind>contexte|references|entreprises)/?$", StructuresReadView.as_view()),
     re_path(r"^api/structures/annuaire/(?P<pk>[0-9]+)/(?P<kind>offres|professionnels)/?$", StructuresReadView.as_view()),
     re_path(r"^api/structures/annuaire/(?P<pk>[0-9]+)/logo/?$", StructureLogoView.as_view()),

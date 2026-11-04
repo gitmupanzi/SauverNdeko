@@ -6,7 +6,12 @@ async function bundle(contents,plugins=[]){const result=await esbuild.build({std
 const fixture={IdEntite:7,NomEntite:'Entreprise',PartageArticlesPublicParDefaut:false,_version:'v1',Localisations:[]};
 const refs={defaultArticleVisibility:true,defaultCurrencyId:451,currencies:[{id:451,label:'USD',code:'USD'}]};
 (async()=>{
- const p=await bundle("export * from './src/utils/entityProfile';export * from './src/pages/logistique/articleForm';export * from './src/pages/logistique/logisticsBatchForm';export {mapArticlePublic} from './src/services/mappers';export {default as Fields} from './src/components/EntityProfileFields';export {renderToStaticMarkup} from 'react-dom/server';export {createElement} from 'react';");
+ const p=await bundle("export * from './src/utils/entityProfile';export * from './src/pages/logistique/articleForm';export * from './src/pages/logistique/logisticsBatchForm';export {mapArticlePublic,mapPharmacyPublic,matchesSearch} from './src/services/mappers';export {default as Fields} from './src/components/EntityProfileFields';export {renderToStaticMarkup} from 'react-dom/server';export {createElement} from 'react';");
+ // Le contrat public territorial reste composite, même si une entreprise partage son ID.
+ const district=p.mapPharmacyPublic({key:'n3:7',level:3,id:7,name:'District Exemple',type:'District',province:{name:'Province Exemple'},contactsPublished:false},0);
+ const site=p.mapPharmacyPublic({key:'n5:7',level:5,id:7,name:'Pharmacie Exemple',type:'Pharmacie',address:'Rue Exemple',hours:'Lundi : 08h–17h',contactsPublished:true},1);
+ eq(district.id,'n3:7');eq(site.id,'n5:7');eq(site.territorialKey,'n5:7');eq(site.name,'Pharmacie Exemple');eq(site.hours,'Lundi : 08h–17h');eq(district.province,'Province Exemple');eq(district.phone,null);ok(p.matchesSearch(district,'district'));
+ eq(p.mapPharmacyPublic({IdEntite:7,NomEntite:'Entreprise'},2).territorialKey,null);
  eq(p.entityProfileValues().PartageArticlesPublicParDefaut,true);
  const entity=p.entityProfileValues(fixture);eq(entity.PartageArticlesPublicParDefaut,false);
  eq(p.entityProfileValues({...fixture,PartageArticlesPublicParDefaut:true}).PartageArticlesPublicParDefaut,true);

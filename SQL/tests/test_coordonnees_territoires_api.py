@@ -5,7 +5,7 @@ import uuid
 
 import test_territoires_api as territorial
 from apps.core import db
-from apps.core.territorial_contacts import FIELDS, TABLE
+from apps.core.territorial_contacts import FIELDS, TABLE, BOOLEAN_FIELD
 from apps.core.territorial_portal import record, SOURCES
 
 BASE = territorial.BASE
@@ -72,8 +72,9 @@ class TerritorialContactsAPI(unittest.TestCase):
         row=self.chain()[2];saved=self.status(self.edit(2,row,**self.contacts()))
         changed=self.status(self.edit(2,saved,NomNiveau_2='Territoire renommé '+uuid.uuid4().hex))
         self.assertEqual(changed['EmailTerritoire'],self.contacts()['EmailTerritoire'])
-        cleared=self.status(self.edit(2,changed,**{key:'' for key in FIELDS}))
-        self.assertTrue(all(cleared[key] is None for key in FIELDS))
+        cleared=self.status(self.edit(2,changed,**{key:False if key==BOOLEAN_FIELD else '' for key in FIELDS}))
+        self.assertTrue(all(cleared[key] is None for key in FIELDS if key!=BOOLEAN_FIELD))
+        self.assertIs(cleared[BOOLEAN_FIELD],False)
         self.assertIsNone(cleared['CoordonneesModifieLe'])
         self.assertEqual(db.one('SELECT count(*) n FROM '+TABLE+' WHERE "ID_Niveau_2Fk"=%s',[row['ID_Niveau_2']])['n'],0)
 
@@ -160,6 +161,23 @@ class TerritorialContactsAPI(unittest.TestCase):
         audit_before=db.one('SELECT count(*) n FROM systeme."T_Audit_Log" WHERE "TableName"=%s',['geolocalisation.T_CoordonneesTerritoire'])['n']
         self.status(self.client().put(self.path(1,pk),body,format='json'))
         self.assertEqual(audit_before,db.one('SELECT count(*) n FROM systeme."T_Audit_Log" WHERE "TableName"=%s',['geolocalisation.T_CoordonneesTerritoire'])['n'])
+
+    def test_11_hours_and_explicit_consent_are_versioned_and_omissions_preserve(self):
+        row=self.chain()[5]
+        self.assertIs(row[BOOLEAN_FIELD],False)
+        saved=self.status(self.edit(5,row,HorairesOuvertureTerritoire='Lundi–vendredi\n08:00–17:00',PublierCoordonneesAnnuaire=True))
+        self.assertNotEqual(saved['_version'],row['_version'])
+        self.assertIs(saved[BOOLEAN_FIELD],True)
+        self.status(self.edit(5,row,PublierCoordonneesAnnuaire=False),409)
+        kept=self.status(self.edit(5,saved,InformationsAccueilTerritoire='Sur rendez-vous'))
+        self.assertIs(kept[BOOLEAN_FIELD],True)
+        self.assertEqual(kept['HorairesOuvertureTerritoire'],saved['HorairesOuvertureTerritoire'])
+        for changes in ({BOOLEAN_FIELD:'true'},{BOOLEAN_FIELD:1},{BOOLEAN_FIELD:None},
+                        {'HorairesOuvertureTerritoire':'x'*1001},{'HorairesOuvertureTerritoire':'a\x00b'}):
+            self.status(self.edit(5,kept,**changes),422)
+        unpublished=self.status(self.edit(5,kept,PublierCoordonneesAnnuaire=False))
+        self.assertIs(unpublished[BOOLEAN_FIELD],False)
+        self.assertEqual(unpublished['HorairesOuvertureTerritoire'],saved['HorairesOuvertureTerritoire'])
 
 
 if __name__ == '__main__':

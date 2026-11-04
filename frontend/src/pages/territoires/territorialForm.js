@@ -2,6 +2,13 @@ import {territoryFields} from "./territorialDefinitions";
 import {referenceOptions,retainReference} from "../../utils/referenceOptions";
 
 export const OPTIONAL_BOOLEAN=[{value:"",label:"Non renseigné"},{value:"true",label:"Oui"},{value:"false",label:"Non"}];
+export function territoryTypeReference(kind,support){
+ const field=territoryFields(kind).find(item=>/^niveau[345]Types$/.test(item.optionsSource||""));
+ if(!field||!support)return null;
+ const reference=support.fieldReferences?.[field.name],options=referenceOptions(support.options?.[field.optionsSource]||[]),declared=reference?.availableCount;
+ const availableCount=Number.isSafeInteger(declared)&&declared>=0?declared:options.filter(item=>!item.disabled).length;
+ return {field,availableCount,message:availableCount?"":reference?.choiceMessage||"Aucun type activé pour ce niveau. Vérifiez les valeurs autorisées dans Réglages des références."};
+}
 export function territoryOptions(field,support,values={},record={}){
  const source=support?.options?.[field.optionsSource]||[];
  const options=referenceOptions(source);
