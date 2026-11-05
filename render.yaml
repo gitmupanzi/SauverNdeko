@@ -5,7 +5,7 @@ services:
     name: sauverndeko
     runtime: docker
     plan: starter
-    region: frankfurt
+    region: oregon
     branch: main
     autoDeployTrigger: off
     dockerfilePath: ./deploy/render/Dockerfile

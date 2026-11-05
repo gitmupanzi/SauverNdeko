@@ -16,7 +16,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 10001 sauverndeko
+    && groupadd --gid 10001 sauverndeko \
+    && useradd --create-home --uid 10001 --gid 10001 --shell /bin/sh sauverndeko \
+    && install -d -m 0700 -o sauverndeko -g sauverndeko /home/sauverndeko/.ssh
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
