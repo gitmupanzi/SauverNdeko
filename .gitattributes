@@ -9,3 +9,6 @@ SQL/SauverNdeko_Metier_Structure.sql -text
 "SQL/4. Schema geolocalisation/geolocalisation_Tables.sql" -text
 "SQL/4. Schema geolocalisation/geolocalisation_views.sql" -text
 "SQL/8. Schema support/Support_views.sql" -text
+
+# Les scripts de déploiement sont exécutés dans le conteneur Linux.
+scripts/render-start.sh text eol=lf

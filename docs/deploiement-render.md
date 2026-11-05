@@ -4,7 +4,7 @@ Préparation du 4 novembre 2026. Les fichiers de déploiement sont livrés dans 
 
 ## Architecture retenue
 
-Un service web Docker sert React compilé et l'API Django sur la même adresse HTTPS. Caddy sert les fichiers frontend ; Waitress écoute uniquement sur `127.0.0.1:5000`. Le port public suit `PORT`, fourni par Render. Les routes API et leurs permissions restent celles de l'application.
+Un service web Docker sert React compilé et l'API Django sur la même adresse HTTPS. Caddy sert les fichiers frontend ; Waitress écoute uniquement sur `127.0.0.1:5000`. Le port public suit `PORT`, fourni par Render. Les routes API et leurs permissions restent celles de l'application. Le Dockerfile construit React et installe Python, puis démarre avec `bash scripts/render-start.sh`. Le champ **Docker Command** peut reprendre cette même commande ou rester vide pour utiliser le démarrage de l'image. [Démarrage Docker sur Render](https://render.com/docs/docker#building-from-a-dockerfile).
 
 Pour conserver les limites de connexion par adresse, Caddy reconnaît les pairs du réseau privé Render et lit uniquement `CF-Connecting-IP`, remplacé par le frontal Cloudflare. Il transmet à Waitress une seule adresse nettoyée dans `X-Forwarded-For`, jamais la chaîne fournie par le navigateur. Un pair extérieur à ces plages n'est pas cru. Vérifier sur le service réel deux adresses clientes différentes et le refus d'une usurpation d'en-tête ; tout accès privé d'un autre service de l'espace doit rester maîtrisé. Ce contrat est propre au frontal Render et doit être réexaminé pour un autre hébergeur. [Adresse cliente sur Render](https://render.com/articles/host-pocketbase-on-render), [confiance aux proxies dans Caddy](https://caddyserver.com/docs/caddyfile/options#client-ip-headers).
 

@@ -31,6 +31,7 @@ RUN python deploy/render/collect_static.py \
     && mkdir -p /var/data/media \
     && chown -R sauverndeko:sauverndeko /var/data /app/backend/staticfiles \
     && caddy validate --config /app/deploy/render/Caddyfile --adapter caddyfile
+COPY --chown=sauverndeko:sauverndeko scripts/render-start.sh /app/scripts/render-start.sh
 USER sauverndeko
 EXPOSE 10000
-CMD ["python", "deploy/render/serve.py"]
+CMD ["bash", "scripts/render-start.sh"]

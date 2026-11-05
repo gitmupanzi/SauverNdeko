@@ -3,13 +3,18 @@
 -- puis ALTER ROLE sauverndeko_runtime LOGIN. Ne jamais inscrire le secret dans ce fichier.
 BEGIN;
 DO $role$
-DECLARE marker text; owned boolean;
+DECLARE marker text; owned boolean; excessive boolean;
 BEGIN
- SELECT shobj_description(oid,'pg_authid') INTO marker FROM pg_roles WHERE rolname='sauverndeko_runtime';
+ SELECT shobj_description(oid,'pg_authid'),
+        rolsuper OR rolcreatedb OR rolcreaterole OR rolinherit OR rolreplication OR rolbypassrls
+ INTO marker, excessive FROM pg_roles WHERE rolname='sauverndeko_runtime';
  IF FOUND AND marker IS DISTINCT FROM 'SauverNdeko : service applicatif restreint, migrations exclues.' THEN
   RAISE EXCEPTION 'Rôle existant non identifié ; examen administratif requis.';
  END IF;
- IF NOT FOUND THEN
+ IF excessive THEN
+  RAISE EXCEPTION 'Le rôle applicatif possède des attributs privilégiés ou héritables ; examen administratif requis.';
+ END IF;
+ IF marker IS NULL THEN
   CREATE ROLE sauverndeko_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
   COMMENT ON ROLE sauverndeko_runtime IS 'SauverNdeko : service applicatif restreint, migrations exclues.';
  END IF;
@@ -19,7 +24,6 @@ BEGIN
   OR EXISTS(SELECT FROM pg_database WHERE datdba=(SELECT oid FROM pg_roles WHERE rolname='sauverndeko_runtime')) INTO owned;
  IF owned THEN RAISE EXCEPTION 'Le rôle applicatif possède des objets ; séparer leur propriétaire avant application.';END IF;
 END $role$;
-ALTER ROLE sauverndeko_runtime NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
 ALTER ROLE sauverndeko_runtime SET search_path=public;
 ALTER ROLE sauverndeko_runtime SET statement_timeout='15s';
 ALTER ROLE sauverndeko_runtime SET lock_timeout='3s';
