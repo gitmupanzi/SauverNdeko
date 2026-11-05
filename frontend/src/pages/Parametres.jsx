@@ -1,8 +1,6 @@
 import {useEffect,useRef,useState} from "react";
 import {useSearchParams} from "react-router-dom";
-import {useAuth} from "../contexts/AuthContext";
 import {useEntityScope} from "../contexts/EntityScopeContext";
-import {moduleRights,mayOpen} from "../services/moduleAccess";
 import {requestJson} from "../services/api";
 import ModuleSidebar from "../components/ModuleSidebar";
 import ModuleHeader from "../components/ModuleHeader";
@@ -24,7 +22,7 @@ const presentationKey=module=> "presentation-"+module.key;
 function Details({items}){return <dl className="settings-details">{items.map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value==null||value===""?"Non renseigné":value}</dd></div>)}</dl>;}
 
 export default function Parametres(){
-  const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[revision,setRevision]=useState(0),[state,setState]=useState({key:"",data:null,error:"",loading:true}),[editor,setEditor]=useState(null),[feedback,setFeedback]=useState("");
+  const scope=useEntityScope(),[params,setParams]=useSearchParams(),[revision,setRevision]=useState(0),[state,setState]=useState({key:"",data:null,error:"",loading:true}),[editor,setEditor]=useState(null),[feedback,setFeedback]=useState("");
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.settings.sidebar-collapsed")==="true";}catch{return false;}}),anchor=useRef(null),tab=settingsTab(params.get("onglet")),key=scope.scopeKey+":"+revision,current=state.key===key?state:{data:null,error:"",loading:true},profile=current.data?.profile,canManage=current.data?.canManage===true&&Boolean(scope.entityId);
   const [moduleState,setModuleState]=useState(null);
   const [moduleRevision,setModuleRevision]=useState(0);
@@ -70,7 +68,7 @@ export default function Parametres(){
   return <div className={"logistics-modern logistics-app admin-portal settings-module"+(collapsed?" is-menu-collapsed":"")}>
     <ModuleSidebar title="Paramètres" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} storageKey="sauverndeko.settings.navigation" activeKey={tab.key==="presentation"&&activeModule?presentationKey(activeModule):tab.key}
       onNavigate={value=>setParams({onglet:value})}
-      groups={[{key:"entreprise",label:"Entreprise",items:COMPANY_TABS},{key:"presentation",label:"Présentation",items:presentationItems}]} footerItems={[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique",hidden:!moduleRights(user,"logistique").canRead},{key:"referentiels",label:"Référentiels",icon:"tag",to:"/referentiels",hidden:!mayOpen(user,"/referentiels")},{key:"admin",label:"Administration",icon:"shield",to:"/admin",hidden:!moduleRights(user,"administration").canRead},{key:"applications",label:"Applications",icon:"apps",to:"/espace"}]}/>
+      groups={[{key:"entreprise",label:"Entreprise",items:COMPANY_TABS},{key:"presentation",label:"Présentation",items:presentationItems}]}/>
     <ModuleHeader title="Paramètres"/>
     <main className="admin-main settings-main">
       {tab.key==="presentation"?<PresentationSettings key={scope.scopeKey} entityId={scope.entityId}

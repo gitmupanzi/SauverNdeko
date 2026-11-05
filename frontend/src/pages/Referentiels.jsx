@@ -166,11 +166,7 @@ export default function Referentiels() {
   function navigate(next,id="") {const query=new URLSearchParams();query.set("onglet",next==="tables"?"tableaux":next==="fields"?"champs":next==="categories"?"categories":"valeurs");if(id)query.set("categorie",String(id));setParams(query);}
   const browseCategory=id=>navigate("values",id);
   return <div className={"logistics-modern logistics-app references-app"+(collapsed?" is-menu-collapsed":"")}>
-    <ModuleSidebar title="Référentiels" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={kind} onNavigate={navigate} storageKey="sauverndeko.references.navigation" groups={[{label:"Nomenclatures",items:Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{}),tables:{title:"Tableaux et exports",icon:"table"}}).map(([key,definition])=>({key,label:definition.title,icon:definition.icon}))}]} footerItems={[
-      ...(user?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
-      ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
-      {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
-    ]}/>
+    <ModuleSidebar title="Référentiels" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={kind} onNavigate={navigate} storageKey="sauverndeko.references.navigation" groups={[{label:"Nomenclatures",items:Object.entries({...DEFINITIONS,...(user?.Is_Admin===true?{fields:{title:"Référencement des champs",icon:"settings"}}:{}),tables:{title:"Tableaux et exports",icon:"table"}}).map(([key,definition])=>({key,label:definition.title,icon:definition.icon}))}]}/>
 
     <ModuleHeader title="Référentiels"/>
     <main className="references-main">{kind==="tables"?<TableReferenceRegister/>:kind==="fields"?<FieldReferencesRegister categories={categories}/>:<ReferenceRegister key={entity.scopeKey+":"+kind+":"+category} kind={kind} categories={categories} initialCategory={category} onBrowseCategory={browseCategory} refresh={refresh} onChanged={()=>setRefresh(value=>value+1)} categoryError={categoryError}/>}</main>

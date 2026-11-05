@@ -1,6 +1,8 @@
 import {useEffect,useId,useRef,useState} from "react";
 import {Link} from "react-router-dom";
 import AppIcon from "./AppIcon";
+import {useAuth} from "../contexts/AuthContext";
+import {mayOpen} from "../services/moduleAccess";
 import {lockBodyScroll,unlockBodyScroll} from "../utils/bodyScrollLock";
 import "./ModuleSidebar.css";
 
@@ -9,7 +11,12 @@ function Icon({name="apps"}){return name.startsWith("bi-")?<i className={"bi "+n
 const menuText=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr").trim();
 
 /** Navigation commune : les entrées sont déjà filtrées par les droits du module. */
-export default function ModuleSidebar({title,groups=[],activeKey,onNavigate,collapsed=false,onToggle,footerItems=[],storageKey="sauverndeko.navigation",className="",children,overlay=false,open=true,onClose}){
+export default function ModuleSidebar({title,groups=[],activeKey,onNavigate,collapsed=false,onToggle,storageKey="sauverndeko.navigation",className="",children,overlay=false,open=true,onClose}){
+ const {user,isAuthenticated}=useAuth();
+ const footerItems=isAuthenticated?[
+  {key:"/parametres",label:"Paramètres",icon:"settings",to:"/parametres"},
+  {key:"/admin",label:"Administration",icon:"shield",to:"/admin"},
+ ].filter(item=>mayOpen(user,item.to)&&(item.to!=="/admin"||user?.permissions?.canAccessAdmin)): [];
  const prefix=useId(),root=useRef(null),toggle=useRef(null),returnFocus=useRef(null),searchInput=useRef(null),scrollOwner=useRef({});
  const [folded,setFolded]=useState(()=>rememberedGroups(storageKey+".groups")),[mobileOpen,setMobileOpen]=useState(false),[query,setQuery]=useState(""),[hint,setHint]=useState(null);
  const visibleGroups=groups.map(group=>({...group,items:(group.items||[]).filter(item=>item&&item.hidden!==true)})).filter(group=>group.items.length);
@@ -52,6 +59,6 @@ export default function ModuleSidebar({title,groups=[],activeKey,onNavigate,coll
   <div className="logistics-sidebar-top"><Link to="/espace" className="logistics-brand-lockup" aria-label="SauverNdeko — Applications" onClick={closeMenu}><img className="logistics-brand-logo" src="/sauverndeko-logo.jpg" alt="" width="34" height="34"/><span className="logistics-brand-copy"><strong>SauverNdeko</strong><span>{title}</span></span></Link>{onToggle||overlay?<button ref={toggle} type="button" className="logistics-sidebar-toggle" onClick={toggleMenu} aria-label={overlay||mobileOpen?"Fermer le menu":collapsed?"Déplier le menu":"Replier ou ouvrir le menu"} aria-expanded={overlay?open:mobileOpen||!collapsed} title={overlay||mobileOpen?"Fermer":collapsed?"Déplier":"Replier"}><AppIcon name={overlay||mobileOpen?"close":"sidebar"}/></button>:null}</div>
   {searchable?<div className="module-menu-search"><div className="module-menu-search-field"><AppIcon name="search" size={16}/><input ref={searchInput} type="search" aria-label="Rechercher dans le menu" placeholder="Trouver un menu…" value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={searchKeydown}/>{query?<button type="button" aria-label="Effacer la recherche du menu" onClick={()=>{setQuery("");searchInput.current?.focus();}}><AppIcon name="close" size={14}/></button>:null}</div>{term?<span className="module-menu-result" role="status">{matchingCount} menu{matchingCount===1?"":"s"}</span>:null}</div>:null}
   <nav className="logistics-sidebar-nav" aria-label={"Menu "+title} onScroll={()=>setHint(null)}>{children? <div className="module-sidebar-extra">{children}</div>:null}{displayedGroups.map((group,index)=>{const key=group.key||group.label,id=prefix+"-group-"+index,isFolded=!term&&folded[key]===true&&(!collapsed||mobileOpen||overlay);return <section className="logistics-nav-group" key={key} aria-label={group.label}><button type="button" className={"module-nav-group-toggle logistics-nav-heading"+(key===activeGroup?" contains-active":"")} aria-expanded={!isFolded} aria-controls={id} disabled={Boolean(term)} onClick={()=>setFolded(previous=>({...previous,[key]:!isFolded}))}><span>{group.label}</span><AppIcon name="chevron-down" size={14} className={isFolded?"":"is-expanded"}/></button><div id={id} className="module-nav-items" hidden={isFolded}>{group.items.map(item=>entry(item))}</div></section>;})}{term&&!matchingCount?<p className="module-menu-empty">Aucun menu trouvé. Essayez un autre mot.</p>:null}</nav>
-  {footerItems.some(item=>item&&!item.hidden)?<div className="logistics-app-switcher">{footerItems.filter(item=>item&&!item.hidden).map(item=>entry(item,true))}</div>:null}
+  {footerItems.length?<nav className="logistics-app-switcher" aria-label="Raccourcis de gestion">{footerItems.map(item=>entry(item,true))}</nav>:null}
  </aside>{hint&&!modal?<span id={prefix+"-hint"} className="module-rail-hint" role="tooltip" style={{top:hint.top,left:hint.left}}>{hint.label}</span>:null}</>;
 }

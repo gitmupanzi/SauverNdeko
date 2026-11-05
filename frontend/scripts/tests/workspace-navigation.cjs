@@ -28,7 +28,12 @@ const mocks=[
  const legacyNavbar=page.Navbar({currentPath:'/espace',isAuthenticated:true,user:{permissions:{canAccessAdmin:true},moduleAccess:{modules:{sante:{canRead:true},produits:{canRead:true}}}}});eq(nodes(legacyNavbar).filter(node=>node.type?.name==='NavLink'&&node.props.to==='/maladies').length,0);ok(nodes(legacyNavbar).some(node=>node.type?.name==='NavLink'&&node.props.to==='/produits'));
  // Tous les retours explicites vers les applications pointent vers l’espace
  // privé ; la route / et les ancres de la présentation ne sont pas réécrites.
- for(const name of ['GuideUtilisateur.jsx','Experts.jsx','Caisse.jsx','OrganisationTerritoriale.jsx','Pharmacies.jsx','Parametres.jsx','Logistique.jsx','Referentiels.jsx','LegacyAdmin.jsx','admin/AdminPortal.jsx','support/SupportPortal.jsx','produits/ProductDirectory.jsx']){const source=fs.readFileSync(path.join(front,'src/pages',name),'utf8');ok(/label:"Applications",icon:"apps",to:"\/espace"/.test(source),name+' doit revenir à /espace');}
+ const sharedSidebar=fs.readFileSync(path.join(front,'src/components/ModuleSidebar.jsx'),'utf8');
+ ok(sharedSidebar.includes('className="logistics-brand-lockup"')&&sharedSidebar.includes('<Link to="/espace"'), 'Le logo du menu commun revient aux applications');
+ for(const name of ['GuideUtilisateur.jsx','Experts.jsx','Caisse.jsx','OrganisationTerritoriale.jsx','Pharmacies.jsx','Parametres.jsx','Logistique.jsx','Referentiels.jsx','LegacyAdmin.jsx','admin/AdminPortal.jsx','support/SupportPortal.jsx','produits/ProductDirectory.jsx']){
+  const source=fs.readFileSync(path.join(front,'src/pages',name),'utf8');
+  ok(source.includes('<ModuleSidebar')&&!source.includes('footerItems='),name+' utilise les raccourcis communs');
+ }
  for(const name of ['Applications.jsx','ApplicationLicences.jsx','WorkspaceHome.jsx'])ok(fs.readFileSync(path.join(front,'src/pages',name),'utf8').includes('to="/espace"'),name+' conserve le retour privé');
  console.log(JSON.stringify({success:true,checks,coverage:['Connexion par défaut vers /espace et URL protégées préservées','Redirections externes et boucles de connexion refusées','Titre, logos et liens Applications vers le bon espace','Menus des modules conservés','Aucune requête applicative'],limits:['Hooks et navigation contrôlés ; pas de recette navigateur']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

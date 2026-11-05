@@ -115,7 +115,7 @@ function SearchOverlay({ isOpen, search, results, onClose, onChange, onSelect, i
 }
 
 function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onLogout }) {
-  const {pathname}=useLocation(),canAccessAdmin=Boolean(user?.permissions?.canAccessAdmin);
+  const {pathname}=useLocation();
   const catalogue=[
     {key:"/produits",label:"Produits",icon:"bi-capsule"},
     {key:"/pharmacies",label:"Structures sanitaires",icon:"building"},
@@ -127,19 +127,18 @@ function SidebarDrawer({ isOpen, onClose, onNavigate, isAuthenticated, user, onL
     {key:"/caisse",label:"Caisse",icon:"wallet"},
     {key:"/territoires",label:"Organisation territoriale",icon:"globe"},
     {key:"/support",label:"Support",icon:"bi-headset"},
-    {key:"/parametres",label:"Paramètres",icon:"settings"},
     {key:"/guide",label:"Guide utilisateur",icon:"book"},
     {key:"/referentiels",label:"Référentiels",icon:"tag"},
-    ...(canAccessAdmin?[{key:"/admin",label:"Administration",icon:"shield"}]:[]),
   ].filter(item=>mayOpen(user,item.key));
   return <ModuleSidebar title="Applications" overlay open={isOpen} onClose={onClose} activeKey={pathname} onNavigate={onNavigate} storageKey="sauverndeko.catalogue.navigation" groups={[
     {label:"Votre espace",items:[{key:"/espace",label:"Applications",icon:"apps"}]},
     {label:"Catalogue",items:catalogue},
     {label:"Gestion",items:modules},
-  ]} footerItems={isAuthenticated?[
-    {key:"/profil",label:"Mon profil",icon:"user",onClick:()=>onNavigate("/profil")},
-    {key:"logout",label:"Se déconnecter",icon:"logout",onClick:onLogout},
-  ]:[{key:"/login",label:"Se connecter",icon:"lock",onClick:()=>onNavigate("/login")}]}/>;
+    {label:"Compte",items:isAuthenticated?[
+      {key:"/profil",label:"Mon profil",icon:"user",onClick:()=>onNavigate("/profil")},
+      {key:"logout",label:"Se déconnecter",icon:"logout",onClick:onLogout},
+    ]:[{key:"/login",label:"Se connecter",icon:"lock",onClick:()=>onNavigate("/login")}]},
+  ]}/>;
 }
 
 function BottomNav({ currentPath, onHome, onDiscussions, onSearch }) {

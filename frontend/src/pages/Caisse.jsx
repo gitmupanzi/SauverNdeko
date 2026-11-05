@@ -1,8 +1,6 @@
 import {useEffect,useState} from "react";
 import {useSearchParams} from "react-router-dom";
-import {useAuth} from "../contexts/AuthContext";
 import {useEntityScope} from "../contexts/EntityScopeContext";
-import {mayOpen} from "../services/moduleAccess";
 import {requestJson} from "../services/api";
 import {useModulePresentation} from "../hooks/useModulePresentation";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
@@ -28,7 +26,7 @@ const SIDEBAR_GROUPS = [
 ];
 
 export default function Caisse(){
- const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[retry,setRetry]=useState(0),[state,setState]=useState({owner:"",data:null,references:{},loading:true,error:""}),[drawer,setDrawer]=useState(null),[feedback,setFeedback]=useState(""),[collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.caisse.sidebar-collapsed")==="true";}catch{return false;}});
+ const scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[retry,setRetry]=useState(0),[state,setState]=useState({owner:"",data:null,references:{},loading:true,error:""}),[drawer,setDrawer]=useState(null),[feedback,setFeedback]=useState(""),[collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.caisse.sidebar-collapsed")==="true";}catch{return false;}});
  const active=caisseTab(params.get("onglet")),owner=scope.scopeKey,current=state.owner===owner?state:{data:null,references:{},loading:true,error:""},context=current.data,references=current.references;
  const {presentation,loading:presentationLoading,error:presentationError,retry:retryPresentation}=useModulePresentation("caisse",scope);
  const tabLabels=presentation?.tabLabels;
@@ -47,7 +45,7 @@ export default function Caisse(){
  let initial={};try{const value=JSON.parse(params.get("filters")||"{}");if(value&&typeof value==="object"&&!Array.isArray(value))initial=value;}catch{}
  const safeDrawer=drawer?.owner===owner?drawer:null;
  return <div className={"logistics-modern logistics-app admin-portal caisse-module"+(collapsed?" is-menu-collapsed":"")}>
-  <ModuleSidebar title="Caisse" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.caisse.navigation" groups={groups} footerItems={[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique",hidden:!mayOpen(user,"/logistique")},{key:"parametres",label:"Paramètres",icon:"settings",to:"/parametres",hidden:!mayOpen(user,"/parametres")},{key:"guide",label:"Guide utilisateur",icon:"book",to:"/guide?module=caisse",hidden:!mayOpen(user,"/guide")},{key:"applications",label:"Applications",icon:"apps",to:"/espace"}]}/>
+  <ModuleSidebar title="Caisse" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.caisse.navigation" groups={groups}/>
   <ModuleHeader title="Caisse"/>
   <main className="admin-main caisse-main">
    {scope.globalAdmin&&!scope.entityId?<p className="caisse-scope-note">Toutes les entreprises · Choisissez une entreprise pour effectuer une opération.</p>:null}

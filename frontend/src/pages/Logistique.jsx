@@ -5,7 +5,6 @@ import {TIERS_CHANGED} from "../services/tiers";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import {useModulePresentation} from "../hooks/useModulePresentation";
-import {moduleRights} from "../services/moduleAccess";
 import {formatDate} from "./logistique/logistiqueShared";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
@@ -441,7 +440,6 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
 }
 
 function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
-  const { user } = useAuth();
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
@@ -454,13 +452,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
     const tab=mainTabs.find(item=>item.key===key);
     return tab?{key,label:tab.label||tab.title,icon:tab.icon||"apps",active:key===activeTab||(key==="dashboard"&&dashboardActive)}:null;
   }).filter(Boolean)}));
-  const footerItems=[
-    {key:"parametres",label:"Paramètres",icon:"settings",to:"/parametres",hidden:!moduleRights(user,"parametres").canRead},
-    ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
-    {key:"references",label:"Référentiels",icon:"tag",to:"/referentiels"},
-    {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
-  ];
-  return <ModuleSidebar title="Logistique" collapsed={collapsed} onToggle={onToggle} groups={navigation} activeKey={dashboardActive?"dashboard":activeTab} onNavigate={onNavigate} footerItems={footerItems} storageKey="sauverndeko.logistique.navigation"/>;
+  return <ModuleSidebar title="Logistique" collapsed={collapsed} onToggle={onToggle} groups={navigation} activeKey={dashboardActive?"dashboard":activeTab} onNavigate={onNavigate} storageKey="sauverndeko.logistique.navigation"/>;
 }
 
 function LogistiqueShellHeader({

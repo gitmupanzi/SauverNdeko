@@ -1,7 +1,7 @@
 import {useEffect,useState} from "react";
 import {Link,useSearchParams} from "react-router-dom";
 import {useAuth} from "../contexts/AuthContext";
-import {accessSignature,mayOpen} from "../services/moduleAccess";
+import {accessSignature} from "../services/moduleAccess";
 import ModuleSidebar from "../components/ModuleSidebar";
 import ModuleHeader from "../components/ModuleHeader";
 import StructureDirectory from "./structures/StructureDirectory";
@@ -22,7 +22,7 @@ export default function Pharmacies(){
  useEffect(()=>{try{localStorage.setItem("sauverndeko.structures.sidebar-collapsed",String(collapsed));}catch{}},[collapsed]);
  function navigateTab(value){setParams(previous=>{const next=new URLSearchParams(previous);next.set("onglet",value);next.delete("structure");return next;});}
  return <div className={"logistics-modern logistics-app admin-portal structures-module"+(collapsed?" is-menu-collapsed":"")}>
-  <ModuleSidebar title="Structures" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={tab} onNavigate={navigateTab} storageKey="sauverndeko.structures.navigation" groups={[{key:"structures",label:"Structures",items:[{key:"annuaire",label:"Annuaire",icon:"building"},{key:"gestion",label:"Gestion territoriale",icon:"globe",hidden:context.data?.canManageTerritories!==true}]}]} footerItems={[{key:"guide",label:"Guide utilisateur",icon:"book",to:"/guide?module=structures",hidden:!mayOpen(user,"/guide")},{key:"settings",label:"Paramètres",icon:"settings",to:"/parametres",hidden:!mayOpen(user,"/parametres")},{key:"admin",label:"Administration",icon:"shield",to:"/admin",hidden:!mayOpen(user,"/admin")},{key:"applications",label:"Applications",icon:"apps",to:"/espace"}]}/>
+  <ModuleSidebar title="Structures" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={tab} onNavigate={navigateTab} storageKey="sauverndeko.structures.navigation" groups={[{key:"structures",label:"Structures",items:[{key:"annuaire",label:"Annuaire",icon:"building"},{key:"gestion",label:"Gestion territoriale",icon:"globe",hidden:context.data?.canManageTerritories!==true}]}]}/>
   <ModuleHeader title="Structures" showEntityScope={false}/>
   <main className="admin-main structures-main">
    {tab==="annuaire"?<StructureDirectory/>:<StructureManagement context={context} onRetry={()=>setRevision(value=>value+1)}/>}

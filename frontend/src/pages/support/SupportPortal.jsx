@@ -1,8 +1,6 @@
 import {useEffect,useState} from "react";
 import {useSearchParams} from "react-router-dom";
-import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
-import {moduleRights,mayOpen} from "../../services/moduleAccess";
 import {requestJson} from "../../services/api";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import ModuleHeader from "../../components/ModuleHeader";
@@ -16,7 +14,7 @@ import "../admin/AdminPortal.css";
 import "./Support.css";
 
 export default function SupportPortal(){
- const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[state,setState]=useState({key:"",data:null,error:"",loading:true});
+ const scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[state,setState]=useState({key:"",data:null,error:"",loading:true});
  const contextKey=scope.scopeKey+":"+refresh,current=state.key===contextKey?state:{data:null,error:"",loading:true},context=current.data,error=current.error,loading=current.loading;
  const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.support.sidebar-collapsed")==="true";}catch{return false;}});
  const active=params.get("onglet")==="tickets"?"tickets":"tableau-de-bord";
@@ -26,7 +24,7 @@ export default function SupportPortal(){
  function navigate(kind,criteria={}){setParams({onglet:kind,...(Object.keys(criteria).length?{filters:JSON.stringify(criteria)}:{})});}
  let initial={};try{const value=JSON.parse(params.get("filters")||"{}");if(value&&typeof value==="object"&&!Array.isArray(value))initial=value;}catch{}
  return <div className={"logistics-modern logistics-app admin-portal support-module"+(collapsed?" is-menu-collapsed":"")}>
-  <ModuleSidebar title="Support" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.support.navigation" groups={[{key:"pilotage",label:"Pilotage",items:[{key:"tableau-de-bord",label:"Tableau de bord",icon:"dashboard"}]},{key:"traitement",label:"Traitement",items:[{key:"tickets",label:"Tickets",icon:"help"}]}]} footerItems={[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique",hidden:!moduleRights(user,"logistique").canRead},{key:"referentiels",label:"Référentiels",icon:"tag",to:"/referentiels",hidden:!mayOpen(user,"/referentiels")},{key:"admin",label:"Administration",icon:"shield",to:"/admin",hidden:!moduleRights(user,"administration").canRead},{key:"applications",label:"Applications",icon:"apps",to:"/espace"}]}/>
+  <ModuleSidebar title="Support" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.support.navigation" groups={[{key:"pilotage",label:"Pilotage",items:[{key:"tableau-de-bord",label:"Tableau de bord",icon:"dashboard"}]},{key:"traitement",label:"Traitement",items:[{key:"tickets",label:"Tickets",icon:"help"}]}]}/>
   <ModuleHeader title="Support"/>
   <main className="admin-main support-main">
    {scope.globalAdmin&&!scope.entityId?<p className="support-scope-note"><span>Toutes les entreprises · Choisissez une entreprise pour créer un dossier.</span></p>:null}

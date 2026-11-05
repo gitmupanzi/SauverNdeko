@@ -3765,11 +3765,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
         <ModuleSidebar title={moduleTitle} collapsed={navigationCollapsed} onToggle={onToggleNavigation} activeKey={selectedViewKey} onNavigate={setSelectedViewKey} storageKey="sauverndeko.territoires.navigation" groups={schemaGroups.flatMap(group=>[
           {key:group.schema+".references",label:schemaGroups.length>1?group.title+" · Références":"Références",items:group.crudViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"globe"}))},
           {key:group.schema+".analyses",label:schemaGroups.length>1?group.title+" · Analyses":"Analyses",items:group.readOnlyViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"chart"}))},
-        ])} footerItems={[
-          ...(currentUser?.moduleAccess?.modules?.logistique?.canRead?[{key:"logistique",label:"Logistique",icon:"box",to:"/logistique"}]:[]),
-          ...(currentUser?.permissions?.canAccessAdmin?[{key:"administration",label:"Administration",icon:"shield",to:"/admin"}]:[]),
-          {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
-        ]}>{loadingViews?<p role="status">Chargement du menu…</p>:!schemaGroups.length?<p>Aucune rubrique disponible.</p>:null}</ModuleSidebar>
+        ])}>{loadingViews?<p role="status">Chargement du menu…</p>:!schemaGroups.length?<p>Aucune rubrique disponible.</p>:null}</ModuleSidebar>
 
         <div className="admin-main-column">
           <section className="page-hero-card admin-hero-card">
