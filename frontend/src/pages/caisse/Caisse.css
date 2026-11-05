@@ -1,7 +1,8 @@
 .caisse-module { color:var(--erp-text); background:var(--erp-bg); }
 .caisse-main { min-width:0; }
 .caisse-scope-note { padding:13px 16px; margin:0 0 24px; border:1px solid var(--erp-border); background:var(--erp-surface); border-radius:10px; color:var(--erp-muted); font-size:12px; }
-.caisse-dashboard .admin-page-heading { margin-bottom:24px; }
+.caisse-dashboard .admin-page-heading { margin-bottom:24px; flex-wrap:wrap; }
+.caisse-main :is(.admin-page-heading,.erp-register-heading) h1 { overflow-wrap:anywhere; }
 .caisse-dashboard h1 { margin:0 0 7px; font-size:27px; color:var(--erp-text); }
 .caisse-dashboard .admin-page-heading p { margin:0; color:var(--erp-muted); font-size:13px; }
 .caisse-dashboard-filters { display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px; padding:16px; border:1px solid var(--erp-border); border-radius:11px; background:var(--erp-surface); }

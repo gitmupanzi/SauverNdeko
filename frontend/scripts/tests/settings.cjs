@@ -33,12 +33,75 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  globalThis.__profile={...profile,canConfigure:false};const denied=new Hooks();denied.render(editor.default,ep);await denied.flush();eq(named(denied.render(editor.default,ep),'Frame').props.readOnly,true);denied.unmount();
  globalThis.__profile=profile;globalThis.__params=new URLSearchParams('onglet=fiscalite');globalThis.__contextResponse={success:true,data:{entityId:7,canManage:true,profile}};globalThis.__pending=[];globalThis.__delay=false;
  const page=await bundle("export {default,settingsTab} from './src/pages/Parametres';",[
- [/^react$/,'page-hooks',reactHooks],[/^react-router-dom$/,'router',`export const useSearchParams=()=>[globalThis.__params,value=>{globalThis.__params=new URLSearchParams(value);}];`],[/\/contexts\/AuthContext$/,'page-auth',`export const useAuth=()=>({user:{IdUser:3,moduleAccess:{modules:{parametres:{canRead:true,canManage:true}}}}});`],[/\/contexts\/EntityScopeContext$/,'page-scope',`export const useEntityScope=()=>globalThis.__scope;`],[/\/services\/api$/,'page-api',`export async function requestJson(){if(globalThis.__delay)return new Promise(resolve=>globalThis.__pending.push(resolve));return globalThis.__contextResponse;}`],[/\/components\/ModuleSidebar$/,'sidebar',`export default function Sidebar(){}`],[/\/components\/ModuleHeader$/,'header',`export default function Header(){}`],[/\/components\/AppIcon$/,'page-icon',`export default function Icon(){}`],[/\/components\/ActionButton$/,'page-button',`export default function Button(){}`],[/\/components\/EntityProfileEditor$/,'editor',`export default function Editor(){}`],[/\/components\/EntityProfileFields$/,'page-fields',`export default function Fields(){}`],
+ [/^react$/,'page-hooks',reactHooks],[/^react-router-dom$/,'router',`export const useSearchParams=()=>[globalThis.__params,value=>{globalThis.__params=new URLSearchParams(value);}];`],[/\/contexts\/AuthContext$/,'page-auth',`export const useAuth=()=>({user:{IdUser:3,moduleAccess:{modules:{parametres:{canRead:true,canManage:true}}}}});`],[/\/contexts\/EntityScopeContext$/,'page-scope',`export const useEntityScope=()=>globalThis.__scope;`],[/\/services\/api$/,'page-api',`export async function requestJson(path,options){if(path!=='/api/parametres/contexte')return globalThis.__presentationApi(path,options);if(globalThis.__delay)return new Promise(resolve=>globalThis.__pending.push(resolve));return globalThis.__contextResponse;}`],[/\/components\/ModuleSidebar$/,'sidebar',`export default function Sidebar(){}`],[/\/components\/ModuleHeader$/,'header',`export default function Header(){}`],[/\/components\/AppIcon$/,'page-icon',`export default function Icon(){}`],[/\/components\/ActionButton$/,'page-button',`export default function Button(){}`],[/\/components\/EntityProfileEditor$/,'editor',`export default function Editor(){}`],[/\/components\/EntityProfileFields$/,'page-fields',`export default function Fields(){}`],
+ [/\/components\/RecordEditorFrame$/,'presentation-frame',`export default function Frame(){}`],
  ]);
+ globalThis.__presentationApi=()=>({success:true,data:{entityId:Number(globalThis.__scope.entityId),modules:[]}});
  eq(page.settingsTab('inconnu').key,'entreprise');const ph=new Hooks(),render=()=>ph.render(page.default);render();await ph.flush();tree=render();eq(named(tree,'Fields').props.values.TauxTVAEntite,'16.0000');let modify=nodes(tree).find(node=>node.type?.name==='Button'&&node.props.children==='Modifier');eq(modify.props.disabled,false);modify.props.onClick();tree=render();eq(named(tree,'Editor').props.context,'settings');eq(named(tree,'Editor').props.initialTab,'fiscalite');named(tree,'Editor').props.onSaved();render();await ph.flush();ok(nodes(render()).some(node=>node.props?.role==='status'));
  globalThis.__scope={...globalThis.__scope,scopeKey:'user:8',entityId:'8'};tree=render();eq(named(tree,'Fields'),undefined);eq(named(tree,'Editor'),undefined);await ph.flush();tree=render();ok(nodes(tree).some(node=>node.props?.role==='alert'));eq(named(tree,'Fields'),undefined);
  globalThis.__contextResponse={success:true,data:{entityId:8,canManage:false,profile:{...profile,IdEntite:8,TauxTVAEntite:'0.0000'}}};globalThis.__scope={...globalThis.__scope,scopeKey:'read:8'};render();await ph.flush();tree=render();eq(named(tree,'Fields').props.values.TauxTVAEntite,'0.0000');eq(nodes(tree).find(node=>node.type?.name==='Button'&&node.props.children==='Modifier').props.disabled,true);
  globalThis.__delay=true;globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:8'};render();await ph.flush();globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:7',entityId:'7'};render();await ph.flush();globalThis.__pending.shift()({success:true,data:{canManage:true,profile:{...profile,IdEntite:8}}});await ph.flush();eq(named(render(),'Fields'),undefined);globalThis.__pending.shift()({success:true,data:{canManage:true,profile}});await ph.flush();eq(named(render(),'Fields').props.record.IdEntite,7);ph.unmount();
+ const presentation={entityId:7,tabDefaults:{caisses:'Caisses',clotures:'Clôtures'},dashboardBlockDefaults:{flux:'Flux quotidiens'},
+  tabLabels:{caisses:'Guichets'},hiddenDashboardBlocks:['flux'],revision:'v1',canManage:true};
+ const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'}];
+ const writes=[];
+ globalThis.__presentationApi=(path,options)=>{
+  if(path==='/api/parametres/presentation'){
+   const entityId=Number(globalThis.__scope.entityId);
+   return {success:true,data:{entityId,modules:entityId===7?modules:modules.slice(0,1)}};
+  }
+  eq(path,'/api/parametres/caisse/presentation');
+  if(options.method!=='PUT')return {success:true,data:presentation};
+  const body=JSON.parse(options.body);
+  writes.push(body);
+  return {success:true,data:{...presentation,...body,revision:'v'+(writes.length+1)}};
+ };
+ globalThis.__delay=false;
+ globalThis.__scope={...globalThis.__scope,entities:[]};
+ globalThis.__params=new URLSearchParams('onglet=presentation&module=caisse');
+ const mh=new Hooks(),renderPage=()=>mh.render(page.default);
+ const sidebar=tree=>named(tree,'Sidebar').props;
+ const presentationItems=tree=>sidebar(tree).groups.find(group=>group.key==='presentation').items;
+ renderPage();await mh.flush();const modulePage=renderPage();
+ const sidebarItems=presentationItems(modulePage);
+ eq(sidebarItems.map(({key,label})=>({key,label})),[
+  {key:'presentation-logistique',label:'Logistique'},{key:'presentation-caisse',label:'Caisse'},
+ ]);
+ eq(sidebar(modulePage).activeKey,'presentation-caisse');
+ ok(!sidebar(modulePage).groups[0].items.some(item=>item.key==='presentation'));
+ const panel=named(modulePage,'PresentationSettings');
+ eq(panel.props.module.key,'caisse');
+ const sh=new Hooks();
+ tree=sh.render(panel.type,panel.props);
+ const modulePanel=named(tree,'ModulePresentationSettings');
+ const dh=new Hooks(),renderModule=()=>dh.render(modulePanel.type,modulePanel.props);
+ const action=(tree,text)=>nodes(tree).find(node=>node.type?.name==='Button'&&node.props.children===text);
+ renderModule();await dh.flush();action(renderModule(),'Modifier').props.onClick();
+ const checkbox=tree=>nodes(tree).find(node=>node.type==='input'&&node.props['aria-label']==='Afficher dans le menu · Clôtures');
+ tree=renderModule();
+ eq(checkbox(tree).props.checked,true);
+ checkbox(tree).props.onChange({target:{checked:false}});
+ await named(renderModule(),'Frame').props.onSubmit();
+ eq(writes[0],{entityId:7,revision:'v1',tabLabels:{caisses:'Guichets'},hiddenTabs:['clotures'],hiddenDashboardBlocks:['flux']});
+ ok(nodes(renderModule()).some(node=>node.type==='span'&&node.props.children==='Masqué'));
+ action(renderModule(),'Modifier').props.onClick();
+ eq(checkbox(renderModule()).props.checked,false);
+ action(renderModule(),'Rétablir les valeurs par défaut').props.onClick();
+ await named(renderModule(),'Frame').props.onSubmit();
+ eq(writes[1],{entityId:7,revision:'v2',tabLabels:{},hiddenTabs:[],hiddenDashboardBlocks:[]});
+ globalThis.__params=new URLSearchParams(sidebarItems[0].to.split('?')[1]);
+ eq(named(renderPage(),'PresentationSettings').props.module.key,'logistique');
+ globalThis.__params=new URLSearchParams('');
+ eq(sidebar(renderPage()).activeKey,'entreprise');
+ eq(presentationItems(renderPage()).length,2);
+ globalThis.__scope={...globalThis.__scope,scopeKey:'user:8',entityId:'8'};
+ globalThis.__params=new URLSearchParams('onglet=presentation&module=caisse');
+ eq(presentationItems(renderPage()),[]);
+ await mh.flush();
+ tree=renderPage();
+ eq(presentationItems(tree).map(item=>item.key),['presentation-logistique']);
+ eq(sidebar(tree).activeKey,'presentation-logistique');
+ dh.unmount();sh.unmount();mh.unmount();
  globalThis.__invoiceResponse={success:true,data:{bonOrigine:{CodeCmd:'BS-1',DeviseCode:'USD'},totaux:{TauxTVA:'16.0000',MontantHT:'100.00',MontantTVA:'16.00',MontantTTC:'116.00',DeviseCode:'USD'},lignes:[],references:{}},meta:{available:true,canIssue:true,canEdit:true}};
  const invoice=await bundle("export {default} from './src/pages/logistique/InvoiceEditor';",[
  [/^react$/,'invoice-hooks',reactHooks],[/\/contexts\/AuthContext$/,'invoice-auth',`export const useAuth=()=>({user:{IdUser:3,IdEntiteFk:7,permissions:{canWriteData:true}}});`],[/\/services\/api$/,'invoice-api',`export async function requestJson(){return globalThis.__invoiceResponse;}`],[/\/hooks\/useReferencesRefresh$/,'invoice-refresh',`export default function refresh(){}`],[/\/RecordEditorFrame$/,'invoice-frame',`export default function Frame(){}`],[/\/SearchSelect$/,'invoice-select',`export default function Select(){}`],[/\/BusinessDocuments$/,'invoice-docs',`export default function Documents(){}`],[/\/InvoiceTaxSummary$/,'invoice-taxes',`export default function Taxes(){}`],[/\/logistiqueShared$/,'invoice-shared',`export const formatCurrency=(v,c)=>v==null?'—':String(v)+' '+c,formatNumber=v=>String(v);export function SimpleTable(){}`],
@@ -47,5 +110,5 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  globalThis.__invoiceResponse={...globalThis.__invoiceResponse,data:{...globalThis.__invoiceResponse.data,facture:{CodeFacture:'fac-1',TauxTVA:'0.0000',MontantHT:'100.00',MontantTVA:'0.00',MontantTTC:'100.00',DeviseCode:'USD'},totaux:{TauxTVA:'16.0000',MontantHT:'100.00',MontantTVA:'16.00',MontantTTC:'116.00',DeviseCode:'EUR'}}};
  const historical=new Hooks();historical.render(invoice.default,ip);await historical.flush();tree=historical.render(invoice.default,ip);eq(named(tree,'Taxes').props.record.TauxTVA,'0.0000');eq(named(tree,'Taxes').props.currency,'USD');ok(nodes(tree).some(n=>n.type==='strong'&&n.props.children==='100.00 USD'));ok(!nodes(tree).some(n=>n.type==='strong'&&n.props.children==='116.00 EUR'));historical.unmount();
  const api=await bundle("export * from './src/services/entityProfile';",[[/\.\/api$/,'api',`export const API_BASE_URL='http://local.invalid';export const requestJson=(path,options)=>({path,options});`]]);eq(api.entityProfilePath('settings'),'/api/parametres/profil');eq(api.saveEntityProfile('settings',null,'{}').options.method,'PUT');eq(api.loadEntityProfile('settings',null).path,'/api/parametres/profil');
- console.log(JSON.stringify({success:true,checks,scope:'TVA exacte, profil partagé, isolation visuelle, rejeu après incertitude et module Paramètres sans licence Logistique',limits:['API et DOM simulés ; aucune recette visuelle navigateur']}));
+ console.log(JSON.stringify({success:true,checks,scope:'TVA exacte, profil partagé, isolation visuelle, rejeu après incertitude et présentation par module avec masquage et restauration',limits:['API et DOM simulés ; aucune recette visuelle navigateur']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -5,6 +5,7 @@ import ActionButton from "../../components/ActionButton";
 import SearchSelect from "../../components/SearchSelect";
 import "./DashboardLogistique.css";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { requestJson } from "../../services/api";
 import { IndicatorDetails } from "../../components/ConsultationProvider";
 import { formatNumber, formatDate } from "./logistiqueShared";
@@ -26,7 +27,13 @@ function IndicatorBlock({ id, title, icon, scope, children }) {
   </section>;
 }
 
-export default function DashboardLogistique({ refreshKey, references }) {
+export default function DashboardLogistique({
+  refreshKey, references, hiddenDashboardBlocks, title = "Tableau de bord", canConfigurePresentation = false,
+}) {
+  const hidden = new Set(Array.isArray(hiddenDashboardBlocks) ? hiddenDashboardBlocks : []);
+  const showLeftColumn = !hidden.has("articles") || !hidden.has("commandes");
+  const showRightColumn = !hidden.has("factures") || !hidden.has("alertes");
+  const hasVisibleBlocks = showLeftColumn || showRightColumn;
   const selectPrefix = useId();
   const [periodMode, setPeriodMode] = useState("all");
   const [draft, setDraft] = useState({ q: "", dateFrom: "", dateTo: "", deviseId:"" });
@@ -42,18 +49,26 @@ export default function DashboardLogistique({ refreshKey, references }) {
   const detailReturn = useRef(null);
   const detailTrigger = useRef(null);
   const activeMetric = useRef(null), scrolledMetric = useRef(null), scrollFrame = useRef(null);
-  activeMetric.current = selectedMetric;
-  function showMetric(key, label, event, filters = {}) { detailTrigger.current = event.currentTarget; setSelectedMetric({ key, label, filters }); }
-  function closeMetric() {
+  const visibleMetric = selectedMetric && !hidden.has(selectedMetric.blockKey) ? selectedMetric : null;
+  activeMetric.current = visibleMetric;
+  function showMetric(blockKey, key, label, event, filters) {
+    detailTrigger.current = event.currentTarget;
+    setSelectedMetric({ blockKey, key, label, filters });
+  }
+  const closeMetric = useCallback(() => {
     cancelAnimationFrame(scrollFrame.current);
     activeMetric.current = null;
     scrolledMetric.current = null;
     setSelectedMetric(null);
     const origin = detailTrigger.current;
+    detailTrigger.current = null;
     if (origin?.isConnected) { const target = origin.closest("[hidden]") ? origin.closest(".erp-indicator-block")?.querySelector(".erp-block-header > button") : origin; target?.scrollIntoView({ block:"center",behavior:"auto" }); target?.focus({preventScroll:true}); }
-  }
+  }, []);
+  useEffect(() => {
+    if (selectedMetric && !visibleMetric) closeMetric();
+  }, [selectedMetric, visibleMetric, closeMetric]);
   const detailsReady = useCallback(() => {
-    const metric = selectedMetric;
+    const metric = visibleMetric;
     if (!metric || scrolledMetric.current === metric) return;
     scrolledMetric.current = metric;
     cancelAnimationFrame(scrollFrame.current);
@@ -68,9 +83,10 @@ export default function DashboardLogistique({ refreshKey, references }) {
         detailReturn.current?.focus({ preventScroll:true });
       });
     });
-  }, [selectedMetric]);
+  }, [visibleMetric]);
   useEffect(() => () => cancelAnimationFrame(scrollFrame.current), []);
   useEffect(() => {
+    if (!hasVisibleBlocks) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -82,7 +98,7 @@ export default function DashboardLogistique({ refreshKey, references }) {
       setLoading(false);
     });
     return () => controller.abort();
-  }, [criteria, refreshKey, version]);
+  }, [criteria, refreshKey, version, hasVisibleBlocks]);
   function apply(event) {
     event.preventDefault();
     if (draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo) { setFilterError("La date de fin doit suivre la date de début."); return; }
@@ -90,25 +106,40 @@ export default function DashboardLogistique({ refreshKey, references }) {
     setCriteria({ ...draft, q: draft.q.trim() });
   }
   const totals = summary?.totals || {};
-  function metric(key, label, icon = "bi-bar-chart", tone = "blue", suffix = "", options = {}) {
+  function metric(blockKey, key, label, icon = "bi-bar-chart", tone = "blue", suffix = "", options = {}) {
     const value = options.value !== undefined ? options.value : totals[key];
-    const selected = selectedMetric?.key === key && JSON.stringify(selectedMetric?.filters || {}) === JSON.stringify(options.filters || {});
+    const selected = visibleMetric?.blockKey === blockKey && visibleMetric.key === key
+      && JSON.stringify(visibleMetric.filters) === JSON.stringify(options.filters || {});
     const displayValue=options.currency !== undefined ? formatCurrency(value,options.currency) : formatNumber(value)+(value != null ? suffix : "");
     const detailLabel=options.currency !== undefined ? label+" · "+(options.currency || "Devise non renseignée") : label;
-    const open = (event) => showMetric(key, detailLabel, event, options.filters || {});
+    const open = (event) => showMetric(blockKey, key, detailLabel, event, options.filters || {});
     return <article key={options.rowKey || key} className={"erp-kpi is-" + tone}>
       <button type="button" className="erp-kpi-main" disabled={loading} aria-label={detailLabel + " : " + displayValue + ". Voir la liste"} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
         <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span><span className="erp-kpi-label" title={label}>{label}</span><strong>{displayValue}</strong><AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
       </button>
     </article>;
   }
-  function moneyMetrics(key,label,icon,tone) {
+  function moneyMetrics(blockKey,key,label,icon,tone) {
     const groups=summary?.amountsByCurrency?.[key];
     if (!Array.isArray(groups) || !groups.length) return <p key={key} className="erp-data-note">{label} : {totals[key] === "0" || totals[key] === 0 ? "0" : "—"}</p>;
-    return groups.map(group=>metric(key,label,icon,tone,"",{value:group.value,currency:group.code || "",rowKey:key+":"+(group.id??"none"),filters:{deviseId:group.id??"sans-devise"}}));
+    return groups.map(group=>metric(blockKey,key,label,icon,tone,"",{value:group.value,currency:group.code || "",rowKey:key+":"+(group.id??"none"),filters:{deviseId:group.id??"sans-devise"}}));
   }
+  const header = <div className="erp-screen-head">
+    <div className="logistics-screen-copy"><h1>{title}</h1></div>
+    {canConfigurePresentation ? <Link className="ui-action is-secondary" to="/parametres?onglet=presentation&module=logistique">
+      <AppIcon name="settings" />Paramètres d’affichage
+    </Link> : null}
+  </div>;
+  if (!hasVisibleBlocks) return <div className="erp-dashboard">
+    {header}
+    <section className="table-empty-state erp-dashboard-empty" aria-labelledby={selectPrefix+"-empty"}>
+      <h2 id={selectPrefix+"-empty"}>Aucun bloc affiché</h2>
+      <p>Les blocs du tableau de bord sont masqués pour cette entreprise.</p>
+    </section>
+  </div>;
+
   return <div className="erp-dashboard">
-    <div className="erp-screen-head"><div className="logistics-screen-copy"><h1>Tableau de bord</h1></div></div>
+    {header}
     <form className="erp-dashboard-filters" role="search" onSubmit={apply}>
       <label className="admin-form-field erp-dashboard-query"><span>Recherche</span><span className="erp-dashboard-search"><AppIcon name="search" /><input type="search" placeholder="Article, bon de stock, tiers…" value={draft.q} onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))} /></span></label>
       <label className="admin-form-field erp-dashboard-period" htmlFor={selectPrefix+"-period"}><span>Période</span><SearchSelect id={selectPrefix+"-period"} label="Période" value={periodMode} options={[{value:"all",label:"Toutes les dates"},{value:"month",label:"Ce mois"},{value:"quarter",label:"Ce trimestre"},{value:"year",label:"Cette année"},{value:"custom",label:"Personnalisée"}]} onChange={value => { setPeriodMode(value); if(value !== "custom") setDraft(current => ({...current,...periodDates(value)})); }}/></label>
@@ -121,59 +152,62 @@ export default function DashboardLogistique({ refreshKey, references }) {
     {loading ? <span role="status" className="erp-dashboard-loading">Actualisation…</span> : null}
     {error ? <div className="table-empty-state" role="alert">{error} <button type="button" onClick={() => setVersion((value) => value + 1)}>Réessayer</button></div> : null}
     {summary ? <div aria-busy={loading}>
-      <div className="erp-dashboard-sections"><div className="erp-dashboard-column">
-      <IndicatorBlock id="dashboard-articles" title="Articles" icon="bi-box-seam" scope="Stock courant">
-        <div className="erp-group-grid">
-          {metric("articles", "Nombre d’articles", "bi-box", "blue")}
-          {summary.categories?.length ? summary.categories.map((category) => metric("articlesCategorie", category.label, "bi-tag", "teal", "", { value: category.count, rowKey: "category-" + (category.id ?? "none"), filters: { categorieId: category.id ?? "sans-categorie" } })) : null}
-        </div>
-        <details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("auditTotal", "Articles contrôlés")}{metric("auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>
-      </IndicatorBlock>
-      <IndicatorBlock id="dashboard-bons" title="Bons de stock" icon="bi-receipt">
-        <div className="erp-group-grid">
-          {metric("commandes", "Nombre de bons", "bi-receipt", "purple")}
-          {metric("commandesEnAttente", "En attente", "bi-hourglass-split", "amber")}
-          {metric("commandesEnCours", "En cours", "bi-arrow-repeat", "slate")}
-          {metric("commandesEntree", "Entrées", "bi-box-arrow-in-down", "teal")}
-          {metric("commandesSortie", "Sorties", "bi-box-arrow-up", "blue")}
-          {metric("commandesSansDetails", "Sans lignes", "bi-list-check", "coral")}
-          {metric("commandesNonFacturees", "Non facturés", "bi-file-earmark", "slate")}
-          {moneyMetrics("montantBons", "Valeur des bons", "bi-cash-stack", "purple")}
-        </div>
-      </IndicatorBlock>
-      </div><div className="erp-dashboard-column">
-      <IndicatorBlock id="dashboard-factures" title="Factures" icon="bi-file-earmark-text">
-        <div className="erp-group-grid">
-          {metric("factures", "Nombre de factures", "bi-file-earmark-text", "blue")}
-          {metric("facturesSoldees", "Soldées", "bi-check2-circle", "teal")}
-          {metric("facturesPartielles", "Partiellement réglées", "bi-wallet2", "slate")}
-          {metric("facturesARegler", "À régler", "bi-hourglass-split", "amber")}
-          {metric("facturesEnRetard", "En retard", "bi-calendar-event", "coral")}
-        </div>
-        <h3 className="erp-block-subtitle">Montants</h3>
-        <div className="erp-group-grid">
-          {moneyMetrics("montantTotalFacture", "Facturé", "bi-cash-stack", "blue")}
-          {moneyMetrics("montantTotalRegle", "Réglé", "bi-check2-circle", "teal")}
-          {moneyMetrics("montantRestant", "Solde à régler", "bi-hourglass-split", "amber")}
-        </div>
-      </IndicatorBlock>
-      <IndicatorBlock id="dashboard-alertes" title="Alertes" icon="bi-bell">
-        <div className="erp-group-grid">
-          {metric("alertesStock", "Stock faible", "bi-exclamation-triangle", "amber")}
-          {metric("ruptures", "Ruptures", "bi-box-seam", "coral")}
-          {metric("peremptionProche", "Péremption proche", "bi-calendar-event", "amber")}
-          {metric("articlesPerimes", "Articles périmés", "bi-calendar-x", "coral")}
-          {metric("auditEcarts", "Écarts de stock", "bi-exclamation-circle", "rose")}
-          {metric("couvertureCritique", "Couverture courte", "bi-hourglass-split", "slate")}
-        </div>
-      </IndicatorBlock>
-      </div></div>
-      {selectedMetric ? <div ref={detailPanel} id="dashboard-indicator-details" className="erp-detail-entry">
+      <div className={"erp-dashboard-sections" + (showLeftColumn && showRightColumn ? "" : " is-single-column")}>
+        {showLeftColumn ? <div className="erp-dashboard-column">
+          {!hidden.has("articles") ? <IndicatorBlock id="dashboard-articles" title="Articles" icon="bi-box-seam" scope="Stock courant">
+            <div className="erp-group-grid">
+              {metric("articles", "articles", "Nombre d’articles", "bi-box", "blue")}
+              {summary.categories?.length ? summary.categories.map((category) => metric("articles", "articlesCategorie", category.label, "bi-tag", "teal", "", { value: category.count, rowKey: "category-" + (category.id ?? "none"), filters: { categorieId: category.id ?? "sans-categorie" } })) : null}
+            </div>
+            <details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("articles", "auditTotal", "Articles contrôlés")}{metric("articles", "auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("articles", "auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("articles", "coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>
+          </IndicatorBlock> : null}
+          {!hidden.has("commandes") ? <IndicatorBlock id="dashboard-bons" title="Bons de stock" icon="bi-receipt">
+            <div className="erp-group-grid">
+              {metric("commandes", "commandes", "Nombre de bons", "bi-receipt", "purple")}
+              {metric("commandes", "commandesEnAttente", "En attente", "bi-hourglass-split", "amber")}
+              {metric("commandes", "commandesEnCours", "En cours", "bi-arrow-repeat", "slate")}
+              {metric("commandes", "commandesEntree", "Entrées", "bi-box-arrow-in-down", "teal")}
+              {metric("commandes", "commandesSortie", "Sorties", "bi-box-arrow-up", "blue")}
+              {metric("commandes", "commandesSansDetails", "Sans lignes", "bi-list-check", "coral")}
+              {metric("commandes", "commandesNonFacturees", "Non facturés", "bi-file-earmark", "slate")}
+              {moneyMetrics("commandes", "montantBons", "Valeur des bons", "bi-cash-stack", "purple")}
+            </div>
+          </IndicatorBlock> : null}
+        </div> : null}
+        {showRightColumn ? <div className="erp-dashboard-column">
+          {!hidden.has("factures") ? <IndicatorBlock id="dashboard-factures" title="Factures" icon="bi-file-earmark-text">
+            <div className="erp-group-grid">
+              {metric("factures", "factures", "Nombre de factures", "bi-file-earmark-text", "blue")}
+              {metric("factures", "facturesSoldees", "Soldées", "bi-check2-circle", "teal")}
+              {metric("factures", "facturesPartielles", "Partiellement réglées", "bi-wallet2", "slate")}
+              {metric("factures", "facturesARegler", "À régler", "bi-hourglass-split", "amber")}
+              {metric("factures", "facturesEnRetard", "En retard", "bi-calendar-event", "coral")}
+            </div>
+            <h3 className="erp-block-subtitle">Montants</h3>
+            <div className="erp-group-grid">
+              {moneyMetrics("factures", "montantTotalFacture", "Facturé", "bi-cash-stack", "blue")}
+              {moneyMetrics("factures", "montantTotalRegle", "Réglé", "bi-check2-circle", "teal")}
+              {moneyMetrics("factures", "montantRestant", "Solde à régler", "bi-hourglass-split", "amber")}
+            </div>
+          </IndicatorBlock> : null}
+          {!hidden.has("alertes") ? <IndicatorBlock id="dashboard-alertes" title="Alertes" icon="bi-bell">
+            <div className="erp-group-grid">
+              {metric("alertes", "alertesStock", "Stock faible", "bi-exclamation-triangle", "amber")}
+              {metric("alertes", "ruptures", "Ruptures", "bi-box-seam", "coral")}
+              {metric("alertes", "peremptionProche", "Péremption proche", "bi-calendar-event", "amber")}
+              {metric("alertes", "articlesPerimes", "Articles périmés", "bi-calendar-x", "coral")}
+              {metric("alertes", "auditEcarts", "Écarts de stock", "bi-exclamation-circle", "rose")}
+              {metric("alertes", "couvertureCritique", "Couverture courte", "bi-hourglass-split", "slate")}
+            </div>
+          </IndicatorBlock> : null}
+        </div> : null}
+      </div>
+      {visibleMetric ? <div ref={detailPanel} id="dashboard-indicator-details" className="erp-detail-entry">
         <ActionButton ref={detailReturn} className="erp-detail-return" icon="arrow-up" onClick={closeMetric}>Revenir à l’indicateur</ActionButton>
         <section className="erp-panel erp-indicator-details" aria-labelledby="dashboard-detail-title">
-        <div className="erp-detail-header"><div><span>Liste détaillée</span><h2 ref={detailTitle} tabIndex="-1" id="dashboard-detail-title">{selectedMetric.label}</h2></div><button type="button" className="erp-detail-close" aria-label="Fermer la liste" onClick={closeMetric}><AppIcon name="close" /></button></div>
+        <div className="erp-detail-header"><div><span>Liste détaillée</span><h2 ref={detailTitle} tabIndex="-1" id="dashboard-detail-title">{visibleMetric.label}</h2></div><button type="button" className="erp-detail-close" aria-label="Fermer la liste" onClick={closeMetric}><AppIcon name="close" /></button></div>
         {(criteria.q || criteria.dateFrom || criteria.dateTo || criteria.deviseId) ? <p className="erp-detail-criteria">{[criteria.deviseId && "Devise : "+(references?.currencies?.find(item=>String(item.id)===String(criteria.deviseId))?.code || "Non renseignée"),criteria.q && "Recherche : " + criteria.q, criteria.dateFrom && "Du " + formatDate(criteria.dateFrom), criteria.dateTo && "au " + formatDate(criteria.dateTo)].filter(Boolean).join(" · ")}</p> : null}
-        <IndicatorDetails key={selectedMetric.key + JSON.stringify(criteria) + JSON.stringify(selectedMetric.filters)} metricKey={selectedMetric.key} criteria={{ ...criteria, ...selectedMetric.filters }} onReady={detailsReady} />
+        <IndicatorDetails key={JSON.stringify([visibleMetric.blockKey, visibleMetric.key, criteria, visibleMetric.filters])} metricKey={visibleMetric.key} criteria={{ ...criteria, ...visibleMetric.filters }} onReady={detailsReady} />
         </section>
       </div> : null}
 

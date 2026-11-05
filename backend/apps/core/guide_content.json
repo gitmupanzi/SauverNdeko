@@ -650,7 +650,8 @@
             "text": "Le responsable clique Stock faible, consulte les articles concernés, puis revient à l’indicateur pour examiner les ruptures."
           },
           "notes": [
-            "Les devises différentes ne sont pas additionnées. Un indicateur à zéro peut ouvrir une liste vide."
+            "Les devises différentes ne sont pas additionnées. Un indicateur à zéro peut ouvrir une liste vide.",
+            "Avec les droits de gestion de l’entreprise, ouvrez Paramètres → Présentation → Logistique. Renommez les onglets, choisissez ceux à afficher dans le menu et les blocs à afficher au tableau de bord."
           ],
           "links": [
             {
@@ -661,16 +662,16 @@
         },
         {
           "id": "clients-fournisseurs",
-          "title": "Créer des clients et fournisseurs",
+          "title": "Créer des tiers",
           "summary": "Préparez une ou plusieurs fiches de tiers dans le même panier.",
           "steps": [
             {
-              "title": "Ouvrir Clients et fournisseurs",
+              "title": "Ouvrir le registre des tiers",
               "text": "Cliquez Nouveau tiers et vérifiez l’entreprise active."
             },
             {
               "title": "Préparer les fiches",
-              "text": "Ajoutez les lignes, choisissez le type de client et renseignez nom, coordonnées et informations utiles. Utilisez les détails de ligne pour les autres champs."
+              "text": "Ajoutez les lignes, choisissez le type de tiers et renseignez nom, coordonnées et informations utiles. Utilisez les détails de ligne pour les autres champs."
             },
             {
               "title": "Contrôler le panier",
@@ -690,7 +691,7 @@
           ],
           "links": [
             {
-              "label": "Ouvrir Clients et fournisseurs",
+              "label": "Ouvrir le registre des tiers",
               "path": "/logistique?onglet=tiers"
             }
           ]
@@ -2140,7 +2141,8 @@
           },
           "notes": [
             "La licence Caisse et les droits de votre compte déterminent les actions disponibles.",
-            "Un brouillon ne modifie pas le solde."
+            "Un brouillon ne modifie pas le solde.",
+            "Avec les droits de gestion de l’entreprise, ouvrez Paramètres → Présentation → Caisse pour choisir les onglets du menu et les blocs du tableau de bord."
           ],
           "links": [
             {

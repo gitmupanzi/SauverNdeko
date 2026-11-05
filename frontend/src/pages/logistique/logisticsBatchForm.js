@@ -12,7 +12,7 @@ export const BATCH_KINDS={
  articles:{title:"Ajouter plusieurs articles",plural:"articles",icon:"box",name:"NomArticle",columns:["NomArticle","RefArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","ID_DeviseFk","PUArticle","PVArticle","VisibleCatalogue"],paste:["NomArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","PUArticle","PVArticle","ID_DeviseFk"]},
  immobilisations:{title:"Nouvelle immobilisation",plural:"immobilisations",icon:"building",name:"NomImmobilisation",columns:["NomImmobilisation","Reference","ID_CategorieFk","Quantite","PrixUnitaire","ID_DeviseFk","ID_ServiceFk"],paste:["NomImmobilisation","ID_CategorieFk","Reference","Quantite","PrixUnitaire","ID_DeviseFk","ID_ServiceFk","motif"]},
 };
-export const BATCH_LABELS={VisibleCatalogue:"Visible dans l’annuaire",Nom:"Nom du tiers",Nature:"Nature",ID_TypeClientFk:"Type de client",Email:"E-mail",Telephone:"Téléphone",Adresse:"Adresse",NomArticle:"Article",RefArticle:"Référence",ID_CategorieArticleFk:"Catégorie",ID_TypeArticleFk:"Type",ID_UniteFk:"Unité",QteArticle:"Stock initial",PUArticle:"Prix d’achat",PVArticle:"Prix de vente",ID_DeviseFk:"Devise",NomImmobilisation:"Nom du bien",Reference:"Référence",ID_CategorieFk:"Type de matériel",Quantite:"Quantité",PrixUnitaire:"Prix unitaire",ID_ServiceFk:"Service",motif:"Motif",CodeArticleInterne:"Code interne",CodeArticleExterne:"Code externe",QteMinArticle:"Seuil minimum",PoidsUnitaire:"Poids unitaire",ID_UnitePoidsFk:"Unité de poids",DatePeremptionArticle:"Date de péremption",NbreJoursAlerteArticle:"Jours d’alerte",InformationArticle:"Informations",ObsArticle:"Observations",Observations:"Observations",Caracteristiques:"Caractéristiques",NumeroSerie:"N° de série",DateEntree:"Date et heure d’entrée",DateAcquisition:"Date d’acquisition",SuiviIndividuel:"Suivi individuel",LocalisationComplement:"Bureau ou salle",ID_ResponsableFk:"Responsable",ID_LocalisationFk:"Localisation",ID_EtatFk:"État du matériel",Actif:"Actif",ValideArticle:"Actif",ObsClient:"Informations",IdUserFk:"Compte utilisateur",IdProfessionnelFk:"Professionnel",IdEntiteRepresenteeFk:"Entreprise représentée"};
+export const BATCH_LABELS={VisibleCatalogue:"Visible dans l’annuaire",Nom:"Nom du tiers",Nature:"Nature",ID_TypeClientFk:"Type de tiers",Email:"E-mail",Telephone:"Téléphone",Adresse:"Adresse",NomArticle:"Article",RefArticle:"Référence",ID_CategorieArticleFk:"Catégorie",ID_TypeArticleFk:"Type",ID_UniteFk:"Unité",QteArticle:"Stock initial",PUArticle:"Prix d’achat",PVArticle:"Prix de vente",ID_DeviseFk:"Devise",NomImmobilisation:"Nom du bien",Reference:"Référence",ID_CategorieFk:"Type de matériel",Quantite:"Quantité",PrixUnitaire:"Prix unitaire",ID_ServiceFk:"Service",motif:"Motif",CodeArticleInterne:"Code interne",CodeArticleExterne:"Code externe",QteMinArticle:"Seuil minimum",PoidsUnitaire:"Poids unitaire",ID_UnitePoidsFk:"Unité de poids",DatePeremptionArticle:"Date de péremption",NbreJoursAlerteArticle:"Jours d’alerte",InformationArticle:"Informations",ObsArticle:"Observations",Observations:"Observations",Caracteristiques:"Caractéristiques",NumeroSerie:"N° de série",DateEntree:"Date et heure d’entrée",DateAcquisition:"Date d’acquisition",SuiviIndividuel:"Suivi individuel",LocalisationComplement:"Bureau ou salle",ID_ResponsableFk:"Responsable",ID_LocalisationFk:"Localisation",ID_EtatFk:"État du matériel",Actif:"Actif",ValideArticle:"Actif",ObsClient:"Informations",IdUserFk:"Compte utilisateur",IdProfessionnelFk:"Professionnel",IdEntiteRepresenteeFk:"Entreprise représentée"};
 const sourceFields={tiers:{ID_TypeClientFk:"typesClients",IdUserFk:"users",IdProfessionnelFk:"professionnels",IdEntiteRepresenteeFk:"entites"},articles:{ID_CategorieArticleFk:"articleCategories",ID_TypeArticleFk:"articleTypes",ID_UniteFk:"articleUnits",ID_UnitePoidsFk:"weightUnits",ID_DeviseFk:"articleCurrencies"},immobilisations:IMMOBILISATION_REFERENCES};
 export function batchChoices(kind,field,references){
  if(field==="Nature")return [{value:"personne",label:"Personne"},{value:"entreprise",label:"Entreprise"}];
@@ -64,7 +64,19 @@ export function logisticsBatchFromExcel(kind,text,references,{hasHeaders=false}=
  const config=BATCH_KINDS[kind],base=logisticsBatchRow(kind,references),allowed=Object.keys(base.values).filter(key=>!["PhotoArticle","DatePeremptionAlerteArticle","ID_UserFK"].includes(key));
  if(kind==="immobilisations")allowed.push("motif");
  let columns=config.paste;
- if(hasHeaders){columns=matrix.shift().map(label=>{const token=normal(label),matches=allowed.filter(field=>normal(field)===token||normal(BATCH_LABELS[field]||"")===token);if(matches.length!==1)throw new Error("En-tête non reconnu ou ambigu : « "+label+" ».");return matches[0];});if(new Set(columns).size!==columns.length)throw new Error("Un même en-tête apparaît plusieurs fois.");if(!columns.includes(config.name))throw new Error("Ajoutez la colonne « "+BATCH_LABELS[config.name]+" ».");}
+ if(hasHeaders){
+  columns=matrix.shift().map(label=>{
+   const token=normal(label);
+   const matches=allowed.filter(field=>
+    normal(field)===token||normal(BATCH_LABELS[field]||"")===token
+    ||(field==="ID_TypeClientFk"&&token===normal("Type de client"))
+   );
+   if(matches.length!==1)throw new Error("En-tête non reconnu ou ambigu : « "+label+" ».");
+   return matches[0];
+  });
+  if(new Set(columns).size!==columns.length)throw new Error("Un même en-tête apparaît plusieurs fois.");
+  if(!columns.includes(config.name))throw new Error("Ajoutez la colonne « "+BATCH_LABELS[config.name]+" ».");
+ }
  if(matrix.length>LOGISTICS_BATCH_MAX)throw new Error("Limitez le collage à "+LOGISTICS_BATCH_MAX+" lignes.");
  return matrix.map((cells,index)=>{
   if(cells.length>columns.length)throw new Error("La ligne "+(index+1)+" contient trop de colonnes.");

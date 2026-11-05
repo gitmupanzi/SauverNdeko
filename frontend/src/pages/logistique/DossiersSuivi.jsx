@@ -17,7 +17,7 @@ const ARTICLE_FIELDS=["CodeArticleInterne","NomArticle","CategorieArticle","QteA
 const BON_FIELDS=["CodeCmd","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","MontantTTC","EtatPaiement"];
 const INVOICE_FIELDS=["CodeFacture","CodeCmd","DateFacture","DateEcheancePaiement","NomClientSaisi","MontantTTC","MontantRegleFacture","MontantResteFacture"];
 function normalizeSearch(value){return String(value ?? "").normalize("NFD").replace(/\p{M}/gu,"").toLocaleLowerCase("fr").trim();}
-export default function DossiersSuivi({references,folderKey,onSelect,onNavigateRecords}) {
+export default function DossiersSuivi({title = "Dossiers de suivi", references,folderKey,onSelect,onNavigateRecords}) {
   const selectPrefix=useId();
   const {version,refresh}=useFollowupFolders();
   const {user}=useAuth();
@@ -40,8 +40,8 @@ export default function DossiersSuivi({references,folderKey,onSelect,onNavigateR
   const visible=folders.filter(folder=>(objectType==="all" || folder.objectType===objectType) && (!searchText || normalizeSearch(folder.name+" "+folder.category).includes(searchText)) && (mode==="all" || (mode==="standard"?folder.system:!folder.system)) && (!category || folder.category===category));
   const categories=[...new Set(folders.map(folder=>folder.category))];
   async function toggleArchive(folder){if(!canWrite)return;setError("");const response=await folderRequest(BASE+"/"+folder.key,{method:"PATCH",body:{version:folder.version,active:!folder.active}});if(!response.success){setError(response.message || "Le dossier n’a pas été mis à jour.");return;}refresh();}
-  const title=folderKey?"Dossier de suivi":"Dossiers de suivi";
-  return <div className="article-folders-screen"><header className="article-folders-title"><div><h1>{title}</h1>{!folderKey?<p>Articles, bons de stock et factures à suivre.</p>:null}</div>{!folderKey?<div><ActionButton icon="tag" disabled={remote.loading || !data} onClick={()=>setCategoryEditor(true)}>Catégories</ActionButton><ActionButton icon="plus" variant="primary" disabled={!canWrite} title={!data?.customAvailable?"Les dossiers personnalisés ne sont pas encore activés.":!canWrite?"Accès en consultation":"Nouveau dossier"} onClick={()=>setEditor({})}>Nouveau dossier</ActionButton></div>:null}</header>
+  const heading=folderKey?"Dossier de suivi":title;
+  return <div className="article-folders-screen"><header className="article-folders-title"><div><h1>{heading}</h1>{!folderKey?<p>Articles, bons de stock et factures à suivre.</p>:null}</div>{!folderKey?<div><ActionButton icon="tag" disabled={remote.loading || !data} onClick={()=>setCategoryEditor(true)}>Catégories</ActionButton><ActionButton icon="plus" variant="primary" disabled={!canWrite} title={!data?.customAvailable?"Les dossiers personnalisés ne sont pas encore activés.":!canWrite?"Accès en consultation":"Nouveau dossier"} onClick={()=>setEditor({})}>Nouveau dossier</ActionButton></div>:null}</header>
     {error?<p className="article-folder-error" role="alert">{error}</p>:null}
     {folderKey?<FolderDetail key={folderKey} folderKey={folderKey} folder={folders.find(folder=>folder.key===folderKey)} canWrite={canWrite} onBack={()=>onSelect("")} onNavigateRecords={onNavigateRecords}/>:<>
       <RegisterCategoryFilter className="is-standalone" label="Données" value={objectType} options={[["all","Tous les dossiers"],...Object.entries(OBJECT_LABELS)].map(([value,label])=>({value,label:label+(data?" ("+folders.filter(folder=>value==="all"||folder.objectType===value).length+")":"")}))} onChange={setObjectType}/>

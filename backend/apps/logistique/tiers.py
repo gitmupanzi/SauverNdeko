@@ -55,7 +55,7 @@ def validate(actor,raw,old=None):
     effective={**(old or {'Nature':'personne','Actif':True}),**data}
     if not effective.get('Nom'):raise APIError({'Nom':'Indiquez le nom ou la raison sociale.'})
     if effective.get('Nature') not in {'personne','entreprise'}:raise APIError({'Nature':'Choisissez une nature.'})
-    if not effective.get('ID_TypeClientFk'):raise APIError({'ID_TypeClientFk':'Choisissez le type de client.'})
+    if not effective.get('ID_TypeClientFk'):raise APIError({'ID_TypeClientFk':'Choisissez le type de tiers.'})
     refs=references(actor)
     for key,collection in [('ID_TypeClientFk','typesClients'),('IdUserFk','users'),('IdProfessionnelFk','professionnels'),('IdEntiteRepresenteeFk','entites')]:
         value=effective.get(key)

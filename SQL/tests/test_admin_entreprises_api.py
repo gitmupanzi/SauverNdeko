@@ -21,6 +21,11 @@ from apps.core.registry import model
 from apps.core.repository import mutate
 from apps.logistique import entity_documents as entities
 BASE='/api/systeme/administration/'
+PRESENTATION='/api/logistique/presentation'
+PRESENTATION_SETTINGS='/api/parametres/logistique/presentation'
+PRESENTATION_MODULES='/api/parametres/presentation'
+CAISSE_PRESENTATION='/api/caisse/presentation'
+CAISSE_PRESENTATION_SETTINGS='/api/parametres/caisse/presentation'
 
 class AdminEnterpriseAPI(unittest.TestCase):
  @classmethod
@@ -31,7 +36,7 @@ class AdminEnterpriseAPI(unittest.TestCase):
  @classmethod
  def tearDownClass(cls):cls.sql.close();cls.override.disable()
  def setUp(self):
-  self.tx=None if self._testMethodName in {"test_16_concurrent_replay","test_24_common_scope_and_export_parity","test_28_legacy_location_waits_for_parent","test_29_profile_in_real_readonly_transaction"} else transaction.atomic()
+  self.tx=None if self._testMethodName in {"test_16_concurrent_replay","test_24_common_scope_and_export_parity","test_28_legacy_location_waits_for_parent","test_29_profile_in_real_readonly_transaction","test_33_presentation_in_real_readonly_transaction"} else transaction.atomic()
   if self.tx:self.tx.__enter__()
  def tearDown(self):
   if self.tx:transaction.set_rollback(True);self.tx.__exit__(None,None,None)
@@ -237,6 +242,141 @@ class AdminEnterpriseAPI(unittest.TestCase):
     self.assertEqual(admin['_version'],documentary['_version']);self.assertIsInstance(admin['Localisations'],list)
     self.assertNotIn('CollectionRevision',admin);self.assertNotIn('Localisations',documentary)
     self.assertEqual(admin['canConfigure'],not application_readonly)
+
+ def presentation_client(self,index=0,*,global_admin=False,scope=True,staff=True,logistics_read=True,settings_manage=True,cash_read=False):
+  actor=self.actor(index,global_admin=global_admin,scope=scope,staff=staff)
+  actor._module_access['modules']['logistique'].update(canRead=logistics_read,canManage=False)
+  actor._module_access['modules']['parametres']={'canRead':True,'canManage':settings_manage,'reason':'MODULE_ROLE_FORBIDDEN'}
+  actor._module_access['modules']['caisse']={'canRead':cash_read,'canManage':False,'reason':'MODULE_ROLE_FORBIDDEN'}
+  client=APIClient()
+  client.force_authenticate(actor)
+  return client
+
+ def presentation_body(self,revision=None,**changes):
+  return {'entityId':self.entities[0],'revision':revision,'tabLabels':{'articles':'Matériel'},
+          'hiddenDashboardBlocks':['alertes','factures'],**changes}
+
+ def test_30_presentation_isolation_revision_and_single_audit(self):
+  client=self.presentation_client()
+  defaults=self.assert_status(client.get(PRESENTATION_SETTINGS))
+  self.assertTrue(defaults['canManage'])
+  self.assertIsNone(defaults['revision'])
+  self.assertEqual(defaults['hiddenTabs'],[])
+  body=self.presentation_body(tabLabels={'articles':'  Matériel  '},hiddenTabs=['factures','tiers'])
+  saved=self.assert_status(client.put(PRESENTATION_SETTINGS,body,format='json'))
+  self.assertEqual(saved['tabLabels'],{'articles':'Matériel'})
+  self.assertEqual(saved['hiddenTabs'],['tiers','factures'])
+  self.assertEqual(saved['hiddenDashboardBlocks'],['factures','alertes'])
+  self.assertEqual(self.assert_status(client.get(PRESENTATION)),saved)
+  other=self.assert_status(self.presentation_client(index=1).get(PRESENTATION))
+  self.assertEqual(other['tabLabels'],{})
+  self.assertEqual(other['hiddenTabs'],[])
+  self.assertEqual(other['hiddenDashboardBlocks'],[])
+  self.assert_status(client.put(PRESENTATION_SETTINGS,body,format='json'),409)
+  unchanged=self.assert_status(client.put(PRESENTATION_SETTINGS,self.presentation_body(saved['revision']),format='json'))
+  self.assertEqual(unchanged,saved)
+  audits=db.query('''SELECT "NewData"->'_actor'->>'IdUser' AS actor FROM systeme."T_Audit_Log"
+    WHERE "IdEntiteFk"=%s AND "TableName"='T_Admin_UI_Setting' AND "NewData"->>'SettingKey'='logistique.presentation' ''',[self.entities[0]])
+  self.assertEqual(audits,[{'actor':str(self.users[0]['IdUser'])}])
+  reset=self.assert_status(client.put(PRESENTATION_SETTINGS,self.presentation_body(saved['revision'],tabLabels={},hiddenTabs=[],hiddenDashboardBlocks=[]),format='json'))
+  self.assertEqual(reset['tabLabels'],{})
+  self.assertEqual(reset['hiddenTabs'],[])
+  self.assertEqual(reset['hiddenDashboardBlocks'],[])
+  self.assertNotEqual(reset['revision'],saved['revision'])
+
+ def test_31_presentation_access_and_inactive_company(self):
+  reader=self.presentation_client(staff=False,settings_manage=False)
+  self.assertFalse(self.assert_status(reader.get(PRESENTATION))['canManage'])
+  self.assert_status(reader.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'),403)
+  no_logistics=self.presentation_client(logistics_read=False)
+  self.assert_status(no_logistics.get(PRESENTATION_SETTINGS),403)
+  self.assert_status(no_logistics.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'),403)
+  global_view=self.presentation_client(global_admin=True,scope=False)
+  unscoped=self.assert_status(global_view.get(PRESENTATION))
+  self.assertIsNone(unscoped['entityId'])
+  self.assertFalse(unscoped['canManage'])
+  self.assert_status(global_view.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'),409)
+  editor=self.presentation_client()
+  self.assert_status(editor.put(PRESENTATION_SETTINGS,self.presentation_body(entityId=self.entities[1]),format='json'),403)
+  with override_settings(DB_READ_ONLY=True):
+   self.assertFalse(self.assert_status(editor.get(PRESENTATION_SETTINGS))['canManage'])
+   self.assert_status(editor.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'),503)
+  db.query('UPDATE systeme."T_Entite" SET "ValideEntite"=false WHERE "IdEntite"=%s',[self.entities[0]])
+  self.assertFalse(self.assert_status(editor.get(PRESENTATION_SETTINGS))['canManage'])
+  self.assert_status(editor.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'),409)
+
+ def license_presentation_module(self,module,index=0):
+  status=reference_options(self.actor(),'systeme','T_Licence','IdStatutLicenceFk')[0]['id']
+  licence=db.one('''INSERT INTO systeme."T_Licence"("IdEntiteFk","DateDebut","DateFin","ValideLicence","IdStatutLicenceFk")
+    VALUES(%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+INTERVAL '1 year',true,%s) RETURNING "IdLicence"''',
+    [self.entities[index],status])['IdLicence']
+  db.query('INSERT INTO systeme."T_LicenceModule"("IdLicenceFk","CodeModule") VALUES(%s,%s)',[licence,module])
+
+ def test_32_presentation_validates_keys_and_guards_generic_crud(self):
+  self.license_presentation_module('logistique')
+  client=self.presentation_client(global_admin=True)
+  for changes in ({'tabLabels':{'inconnu':'Matériel'}},{'tabLabels':{'articles':'x'*61}},
+                  {'tabLabels':{'articles':'x\ny'}},{'hiddenDashboardBlocks':['inconnu']},
+                  {'hiddenDashboardBlocks':['alertes','alertes']},{'hiddenTabs':['inconnu']},
+                  {'hiddenTabs':['tiers','tiers']},{'hiddenTabs':['tiers',{}]},{'hiddenTabs':None},{'extra':True}):
+   with self.subTest(changes=changes):
+    self.assert_status(client.put(PRESENTATION_SETTINGS,self.presentation_body(**changes),format='json'),422)
+  self.assertIsNone(self.assert_status(client.get(PRESENTATION_SETTINGS))['revision'])
+  generic='/api/systeme/admin-ui-settings'
+  reserved=self.row('parametres',SettingKey='logistique.presentation')['data']
+  self.assert_status(client.post(generic,reserved,format='json'),405)
+  self.assert_status(self.post('parametres',self.body('parametres',n=1,SettingKey='logistique.presentation')),422)
+  normal=self.assert_status(client.post(generic,self.row('parametres')['data'],format='json'),201)
+  self.assert_status(client.patch(generic+'/'+str(normal['IdAdminUISetting']),{'SettingKey':'logistique.presentation'},format='json'),405)
+  self.assert_status(client.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'))
+  setting=db.one('''SELECT "IdAdminUISetting" FROM systeme."T_Admin_UI_Setting"
+    WHERE "SettingKey"='logistique.presentation' AND "SettingScope"='entite' AND "ScopeValue"=%s''',[str(self.entities[0])])
+  reserved_path=generic+'/'+str(setting['IdAdminUISetting'])
+  self.assert_status(client.patch(reserved_path,{'ValideSetting':False},format='json'),405)
+  self.assert_status(client.delete(reserved_path),405)
+
+ def test_33_presentation_in_real_readonly_transaction(self):
+  client=self.presentation_client()
+  with transaction.atomic():
+   db.query('SET TRANSACTION READ ONLY')
+   self.assertEqual(db.one("SELECT current_setting('transaction_read_only') AS mode")['mode'],'on')
+   self.assertEqual(self.assert_status(client.get(PRESENTATION)),self.assert_status(client.get(PRESENTATION_SETTINGS)))
+
+
+ def test_34_presentation_available_modules_and_legacy_storage(self):
+  self.license_presentation_module('logistique')
+  self.license_presentation_module('caisse',index=1)
+  global_client=self.presentation_client(global_admin=True,cash_read=True)
+  other=self.presentation_client(index=1,global_admin=True,cash_read=True)
+  self.assertEqual(self.assert_status(global_client.get(PRESENTATION_MODULES)),
+                   {'entityId':self.entities[0],'modules':[{'key':'logistique','label':'Logistique'}]})
+  self.assertEqual(self.assert_status(other.get(PRESENTATION_MODULES)),
+                   {'entityId':self.entities[1],'modules':[{'key':'caisse','label':'Caisse'}]})
+  self.assertEqual(self.assert_status(self.presentation_client(global_admin=True,scope=False).get(PRESENTATION_MODULES)),
+                   {'entityId':None,'modules':[]})
+  self.assert_status(other.get(PRESENTATION_SETTINGS),403)
+  self.assert_status(other.put(PRESENTATION_SETTINGS,self.presentation_body(entityId=self.entities[1]),format='json'),403)
+  self.assertFalse(self.assert_status(other.get(PRESENTATION))['canManage'])
+  self.assert_status(global_client.get(CAISSE_PRESENTATION_SETTINGS),403)
+
+  original=self.assert_status(global_client.put(PRESENTATION_SETTINGS,self.presentation_body(),format='json'))
+  db.query('''UPDATE systeme."T_Admin_UI_Setting" SET "SettingValueJson"="SettingValueJson"-'hiddenTabs'
+    WHERE "SettingScope"='entite' AND "ScopeValue"=%s AND "SettingKey"='logistique.presentation' ''',[str(self.entities[0])])
+  legacy=self.assert_status(global_client.get(PRESENTATION_SETTINGS))
+  self.assertEqual(legacy['tabLabels'],original['tabLabels'])
+  self.assertEqual(legacy['hiddenDashboardBlocks'],original['hiddenDashboardBlocks'])
+  self.assertEqual(legacy['hiddenTabs'],[])
+
+  cash=self.assert_status(other.get(CAISSE_PRESENTATION_SETTINGS))
+  tabs=['tableau-de-bord','caisses','ecritures','clotures']
+  self.assertCountEqual(cash['tabDefaults'],tabs)
+  updated=self.assert_status(other.put(CAISSE_PRESENTATION_SETTINGS,
+    self.presentation_body(cash['revision'],entityId=self.entities[1],tabLabels={'caisses':'Guichets'},
+                           hiddenTabs=tabs,hiddenDashboardBlocks=['flux']),format='json'))
+  self.assertEqual(updated['hiddenTabs'],tabs)
+  self.assertEqual(updated['hiddenDashboardBlocks'],['flux'])
+  self.assertEqual(self.assert_status(other.get(CAISSE_PRESENTATION)),updated)
+  self.assertEqual(self.assert_status(global_client.get(PRESENTATION_SETTINGS)),legacy)
 
 if __name__=='__main__':
  result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(AdminEnterpriseAPI))

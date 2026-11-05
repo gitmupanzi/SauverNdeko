@@ -7,8 +7,8 @@ Ce guide concerne le projet SauverNdeko installé dans C:\Users\Benjamin-mupanzi
 - Windows et PowerShell.
 - Python 3.12 et son lanceur py.exe si backend/.venv doit être créé.
 - Node.js avec node et npm accessibles dans le PATH.
-- PostgreSQL accessible avec la base applicative SauverNdeko et sa structure déjà installée.
-- backend/.env configuré : DATABASE_URL vise SauverNdeko ; JWT_SECRET et JWT_REFRESH_SECRET sont renseignés. Conserver ce fichier privé et ne pas écraser ses valeurs.
+- PostgreSQL accessible avec la base applicative `sauver_ndeko_pro` et sa structure déjà installée.
+- backend/.env configuré : DATABASE_URL vise `sauver_ndeko_pro` ; JWT_SECRET et JWT_REFRESH_SECRET sont renseignés. Conserver ce fichier privé et ne pas écraser ses valeurs.
 
 Le backend utilise uniquement backend/requirements.txt pour ses dépendances Python verrouillées. Si backend/.venv est absent, demarrer.bat le crée avec Python 3.12 et installe ce fichier ; cette installation nécessite un accès au dépôt de paquets configuré. Un environnement existant n’est pas réinstallé automatiquement.
 

@@ -481,6 +481,12 @@ def _mutate(name, actor, body=None, keys=None, operation="create", hard=False, *
             or isinstance(body, dict) and body.get('IdChampReferentielFk') is not None):
         raise APIError('Utilisez Référencement des champs pour modifier cette association.',
                        'DEDICATED_FIELD_REFERENCE_REQUIRED', 405)
+    if name == "T_Admin_UI_Setting":
+        from .module_presentation import PRESENTATION_SETTING_KEYS
+        setting_keys = ((old or {}).get("SettingKey"), (body or {}).get("SettingKey"))
+        if any(isinstance(key, str) and key.strip() in PRESENTATION_SETTING_KEYS for key in setting_keys):
+            raise APIError("Modifiez la présentation dans les paramètres de l’entreprise.",
+                           "DEDICATED_PRESENTATION_REQUIRED", 405)
     if name == "T_Admin_UI_Setting" and not old and isinstance(body, dict) and secret_key(body.get("SettingKey", "")):
         raise APIError("Ce secret se configure dans le paramétrage privé du serveur.", "SETTING_SECRET_PRIVATE", 409)
     if name == "T_Admin_UI_Setting" and old:

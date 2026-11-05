@@ -68,6 +68,7 @@ from apps.core.views import (
     MODULES,
 )
 from apps.core.ui_settings import UISettingsView
+from apps.core.module_presentation import ModulePresentationView, ModulePresentationSettingsView, PresentationModulesView
 from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.catalogue.views import PublicView
@@ -115,6 +116,9 @@ urlpatterns = [
     re_path(r"^api/caisse/ecritures(?:/(?P<pk>[0-9]+))?/?$", CashEntriesView.as_view()),
     re_path(r"^api/caisse/clotures(?:/(?P<pk>[0-9]+))?/?$", CashClosuresView.as_view()),
     re_path(r"^api/parametres/contexte/?$", EntitySettingsContextView.as_view()),
+    re_path(r"^api/parametres/presentation/?$", PresentationModulesView.as_view()),
+    re_path(r"^api/parametres/(?P<module_key>logistique|caisse)/presentation/?$", ModulePresentationSettingsView.as_view()),
+    re_path(r"^api/(?P<module_key>logistique|caisse)/presentation/?$", ModulePresentationView.as_view()),
     re_path(r"^api/guide/contexte/?$", GuideContextView.as_view()),
     re_path(r"^api/guide/entreprises/?$", GuideEntitiesView.as_view()),
     re_path(r"^api/guide/articles/(?P<module_key>[a-z][a-z0-9-]*)/(?P<article_id>[a-z][a-z0-9-]*)/?$", GuideArticleView.as_view()),

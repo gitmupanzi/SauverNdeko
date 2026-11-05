@@ -4,6 +4,8 @@ import lazyView, { ScreenPlaceholder } from "../components/LazyView";
 import {TIERS_CHANGED} from "../services/tiers";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
+import {useModulePresentation} from "../hooks/useModulePresentation";
+import {moduleRights} from "../services/moduleAccess";
 import {formatDate} from "./logistique/logistiqueShared";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
@@ -20,7 +22,6 @@ import {
 import { fetchLogistiqueReferences } from "../services/logistique";
 import { LOGISTIQUE_GENERIC_SOURCE_CONFIG, LOGISTIQUE_MODULE_SCHEMA } from "./logistique/views";
 
-const EntityDocumentIdentity=lazyView(()=>import("../components/EntityDocumentIdentity"),{label:"Chargement de l’identité…",compact:true});
 const Inventaires=lazyView(()=>import("./logistique/Inventaires"),{label:"Chargement de la vue…"});
 const Tiers=lazyView(()=>import("./logistique/Tiers"),{label:"Chargement de la vue…"});
 const ReferenceSettings=lazyView(()=>import("../components/ReferenceSettings"),{label:"Ouverture des réglages…",compact:true});
@@ -439,7 +440,7 @@ function LogistiqueCatalogueBar({ tabGroups, activeTab, activeTabConfig, onNavig
   );
 }
 
-function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle, onIdentity, identityAvailable }) {
+function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggle }) {
   const { user } = useAuth();
   const dashboardActive = activeTab === "dashboard" || ["audit", "alertes", "consommation", "couverture"].includes(activeTab);
   const groups = [
@@ -454,7 +455,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
     return tab?{key,label:tab.label||tab.title,icon:tab.icon||"apps",active:key===activeTab||(key==="dashboard"&&dashboardActive)}:null;
   }).filter(Boolean)}));
   const footerItems=[
-    ...(onIdentity?[{key:"identity",label:"Identité de l’entreprise",icon:"document",onClick:onIdentity,disabled:!identityAvailable,title:identityAvailable?"Identité de l’entreprise":"Choisissez une entreprise active."}]:[]),
+    {key:"parametres",label:"Paramètres",icon:"settings",to:"/parametres",hidden:!moduleRights(user,"parametres").canRead},
     ...(user?.permissions?.canAccessAdmin?[{key:"admin",label:"Administration",icon:"shield",to:"/admin"}]:[]),
     {key:"references",label:"Référentiels",icon:"tag",to:"/referentiels"},
     {key:"applications",label:"Applications",icon:"apps",to:"/espace"},
@@ -550,10 +551,12 @@ const MAIN_TAB_DEFINITIONS = [
 export default function Logistique() {
   const entityScope=useEntityScope();
   const { user } = useAuth();
+  const {scopeKey}=entityScope;
+  const {presentation,loading:presentationLoading,error:presentationError,retry:retryPresentation}=useModulePresentation("logistique",entityScope);
+  const tabLabels=presentation?.tabLabels;
+  const hiddenTabs=presentation?.hiddenTabs;
   const canEditReferences = user?.Is_Admin === true && user?.permissions?.canWriteData === true;
   const [settingsVersion, setSettingsVersion] = useState(0);
-  const [identityOpen,setIdentityOpen]=useState(false);
-  useEffect(()=>setIdentityOpen(false),[entityScope.scopeKey]);
   const [navigation,setNavigation]=useSearchParams();
   const requestedTab=navigation.get("onglet");
   const [activeTab, setActiveTab] = useState(()=>MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab)?requestedTab:"dashboard");
@@ -986,13 +989,15 @@ export default function Logistique() {
   }
 
   const mainTabs = useMemo(
-    () =>
-      MAIN_TAB_DEFINITIONS.map((item) => ({
+    () => presentationLoading ? [] :
+      MAIN_TAB_DEFINITIONS.filter(item=>!hiddenTabs?.includes(item.key)).map((item) => ({
         ...TABS.find((tab) => tab.key === item.key),
         ...item,
+        label: tabLabels?.[item.key] || item.label,
       })).filter((item) => item?.key),
-    []
+    [tabLabels,hiddenTabs,presentationLoading]
   );
+  const presentationTitle = tabLabels?.[activeTab];
 
   const sharedTableFeatures = useMemo(
     () =>
@@ -1017,7 +1022,6 @@ export default function Logistique() {
   return (
     <>
       <LogistiqueResponsiveStyles />
-      {identityOpen?<EntityDocumentIdentity onClose={()=>setIdentityOpen(false)} onSaved={()=>entityScope.retry()}/>:null}
       <div className={"logistics-modern logistics-app" + (sidebarCollapsed ? " is-menu-collapsed" : "")}>
         <LogistiqueSidebar
           collapsed={sidebarCollapsed}
@@ -1026,8 +1030,6 @@ export default function Logistique() {
           activeTabConfig={activeTabConfig}
           onNavigate={handleNavigate}
           onToggle={() => setSidebarCollapsed((current) => !current)}
-          onIdentity={user?.permissions?.canAccessAdmin?()=>setIdentityOpen(true):undefined}
-          identityAvailable={Boolean(entityScope.entityId)}
         />
 
         <ModuleHeader title="Logistique" />
@@ -1035,6 +1037,7 @@ export default function Logistique() {
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">
             {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
+            {presentationError ? <p className="entity-scope-note" role="status">Présentation indisponible. L’affichage standard est utilisé. <button type="button" className="erp-object-link" onClick={retryPresentation}>Réessayer</button></p> : null}
             {referencesLoading || !hasScopedReferences&&!referencesError ? <ScreenPlaceholder label="Chargement des références…"/> : null}
             {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
             {!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
@@ -1042,16 +1045,21 @@ export default function Logistique() {
             {!referencesLoading && !referencesError && sharedFkSettingsReady && hasScopedReferences ? (
               <div className="logistics-shell-view">
                 {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
-                  <ReferenceSettings title={MAIN_TAB_DEFINITIONS.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={false} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setReferenceVersion(version=>version+1)} />
+                  <ReferenceSettings title={presentationTitle || mainTabs.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={false} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setReferenceVersion(version=>version+1)} />
                 ) : null}
 
-                {activeTab === "inventaires" ? <Inventaires/> : null}
-                {activeTab === "immobilisations" ? <Immobilisations refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
-                {activeTab === "tiers" ? <Tiers refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
-                {activeTab === "dashboard" ? <DashboardLogistique refreshKey={refreshKey} onNavigate={handleNavigate} references={references} /> : null}
-                {activeTab === "dossiers" ? <DossiersSuivi references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"factures":"commandes")}/> : null}
+                {activeTab === "inventaires" ? <Inventaires title={presentationTitle}/> : null}
+                {activeTab === "immobilisations" ? <Immobilisations title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
+                {activeTab === "tiers" ? <Tiers title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
+                {activeTab === "dashboard" && (presentationLoading
+                  ? <ScreenPlaceholder label="Chargement de la présentation…" />
+                  : <DashboardLogistique key={scopeKey} title={presentationTitle} refreshKey={refreshKey}
+                      references={references} hiddenDashboardBlocks={presentation?.hiddenDashboardBlocks}
+                      canConfigurePresentation={presentation?.canManage === true} />)}
+                {activeTab === "dossiers" ? <DossiersSuivi title={presentationTitle} references={references} folderKey={navigation.get("dossier") || ""} onSelect={key=>setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet","dossiers");if(key)next.set("dossier",key);else next.delete("dossier");return next;},{replace:true})} onNavigateRecords={type=>handleNavigate(type==="article"?"articles":type==="facture"?"factures":"commandes")}/> : null}
                 {activeTab === "articles" ? (
                   <Articles
+                    title={presentationTitle}
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
@@ -1059,9 +1067,10 @@ export default function Logistique() {
                     onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />
                 ) : null}
-                {activeTab === "lots" ? <LotsStock references={references} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
+                {activeTab === "lots" ? <LotsStock title={presentationTitle} references={references} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "commandes" ? (
                   <Commandes
+                    title={presentationTitle}
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
@@ -1072,6 +1081,7 @@ export default function Logistique() {
                 ) : null}
                 {activeTab === "details" ? (
                   <CommandeDetails
+                    title={presentationTitle}
                     selectedCommande={selectedCommande}
                     onClearCommande={() => setSelectedCommande(null)}
                     references={references}
@@ -1083,6 +1093,7 @@ export default function Logistique() {
                 ) : null}
                 {activeTab === "mouvements" ? (
                   <Mouvements
+                    title={presentationTitle}
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
@@ -1098,6 +1109,7 @@ export default function Logistique() {
                 {activeTab === "couverture" ? <CouvertureStock refreshKey={refreshKey} /> : null}
                 {["factures", "reglements"].includes(activeTab) ? (
                   <Reglements
+                    title={presentationTitle}
                     section={activeTab}
                     onSectionChange={handleNavigate}
                     references={references}

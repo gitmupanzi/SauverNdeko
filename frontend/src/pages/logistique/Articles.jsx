@@ -53,7 +53,7 @@ function expiryTone(value) {
 }
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
-export default function Articles({ references:receivedReferences, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+export default function Articles({ title = "Articles", references:receivedReferences, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const preferences=useTablePreferences("logistique.articles");
   const { user: currentUser } = useAuth();
@@ -219,7 +219,7 @@ export default function Articles({ references:receivedReferences, refreshKey, on
   return (
     <div className="logistics-screen">
       <div aria-live="polite"><StatusBanner feedback={feedback} />{savedRecord?<button type="button" className="application-back" onClick={()=>openProduct(savedRecord)}>Consulter l’article<AppIcon name="arrow-up-right"/></button>:null}{savedReceipt?<button type="button" className="application-back" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée<AppIcon name="arrow-up-right"/></button>:null}</div>
-      <RegisterSurface title="Articles" subtitle="Catalogue et suivi du stock" actions={<>
+      <RegisterSurface title={title} subtitle="Catalogue et suivi du stock" actions={<>
         <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
         <ActionButton icon="list" onClick={()=>setBatchOpen(true)} disabled={!canWrite}>Ajouter plusieurs articles</ActionButton>
