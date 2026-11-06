@@ -650,6 +650,7 @@
             "text": "Le responsable clique Stock faible, consulte les articles concernés, puis revient à l’indicateur pour examiner les ruptures."
           },
           "notes": [
+            "Dans Articles, le poids du stock en kg correspond à la quantité actuellement en stock multipliée par le poids d’une unité. La mention « Partiel » signale qu’il manque des poids. Ouvrez l’indicateur pour vérifier le poids par article.",
             "Les devises différentes ne sont pas additionnées. Un indicateur à zéro peut ouvrir une liste vide.",
             "Avec les droits de gestion de l’entreprise, ouvrez Paramètres → Présentation → Logistique. Renommez les onglets, choisissez ceux à afficher dans le menu et les blocs à afficher au tableau de bord."
           ],
@@ -719,12 +720,16 @@
             },
             {
               "title": "Enregistrer puis consulter",
-              "text": "Contrôlez le résultat dans Produit 360. Pour plusieurs fiches simples, utilisez Ajouter plusieurs articles et vérifiez chaque ligne du panier."
+              "text": "Contrôlez le résultat dans Produit 360."
+            },
+            {
+              "title": "Reprendre un stock depuis Excel",
+              "text": "Choisissez l’entreprise, puis ouvrez Ajouter plusieurs articles. Téléchargez le modèle Excel ou utilisez un classeur à feuille unique avec les mêmes en-têtes en première ligne. Importer un fichier Excel charge les lignes dans le panier. Pour créer un bon d’entrée commun, activez l’option avant l’import et utilisez la même devise pour les articles avec du stock. Ce mode accepte jusqu’à 600 lignes. Vérifiez les prix, les références et les lots avant d’enregistrer l’ensemble."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Un article fictif « Lampe de bureau » est créé en pièces, avec seuil 5 et stock initial 0. Une livraison sera enregistrée séparément lors de sa réception."
+            "text": "Saisissez dans le modèle 10 lampes, 5 classeurs et des chaises en stock zéro. Avec le bon d’entrée commun, les trois articles sont créés et le bon contient deux lignes, chacune avec son mouvement d’entrée."
           },
           "notes": [
             "Après les premiers mouvements, les entrées et sorties se saisissent dans les bons, pas en remplaçant le stock courant.",

@@ -16,6 +16,14 @@ function nodes(tree,out=[]){if(!tree||typeof tree!=='object')return out;if(Array
   eq(all.find(n=>n.props.className==='workspace-brand').props.to,'/espace');eq(all.filter(n=>n.type==='Scope').length,['Logistique','Caisse','Professionnels','Structures','Référentiels','Administration','Support','Paramètres','Guide utilisateur'].includes(title)?1:0);
  }
  eq(nodes(Header({title:'Structures',showEntityScope:false})).filter(n=>n.type==='Scope').length,0);
+ const trigger={type:'button',props:{className:'module-sidebar-trigger'}};
+ const start=nodes(Header({title:'Logistique',menuToggle:trigger})).find(n=>n.props.className==='module-header-start');
+ eq(start.props.children[0],trigger);eq(start.props.children[1].type,'nav');
+ eq(nodes(Header({title:'Applications'})).includes(trigger),false);
+ const openMenu=nodes(Header({title:'Logistique',menuToggle:trigger,menuOpen:true}));
+ eq(openMenu.some(n=>n.props.className==='module-skip-content'),false);
+ eq(openMenu.find(n=>n.props.className==='module-location').props.inert,true);
+ eq(openMenu.find(n=>n.props.className==='module-header-actions').props.inert,true);
  let tree=Header({title:'Administration'}),button=nodes(tree).find(n=>n.props.className==='module-skip-content');eq(button.props.type,'button');eq(button.props.children,'Aller au contenu');
  let focused=0,attributes=[],selector='';const content={hasAttribute:()=>false,setAttribute:(name,value)=>attributes.push([name,value]),focus:opts=>{eq(opts,{preventScroll:false});focused++;}};
  const shell={querySelector:value=>{selector=value;return content;}};

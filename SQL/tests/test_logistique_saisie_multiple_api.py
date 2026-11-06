@@ -12,6 +12,7 @@ import unittest
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from time import perf_counter
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -352,6 +353,123 @@ class LogisticsBatchAPI(unittest.TestCase):
             response = self.post(kind, self.body(kind, 1, **{field: self.users[1]['IdUser']}), global_admin=False)
             self.assertEqual(response.status_code, 422, response.data)
             self.assertEqual(self.counts(), before)
+
+
+    def test_18_opening_receipt_creates_one_entry_and_replays(self):
+        body = self.body('articles', 3)
+        body['openingReceipt'] = True
+        body['rows'][0]['data']['LotsInitiaux'] = [
+            {'NumeroLot': 'LOT-A', 'Quantite': '1', 'DatePeremptionLot': '2030-01-01'},
+            {'NumeroLot': 'LOT-B', 'Quantite': '1'},
+        ]
+        body['rows'][1]['data'].update(QteArticle='3', PUArticle='0')
+        body['rows'][2]['data']['QteArticle'] = '0'
+        before = self.counts()
+        first = self.post('articles', body)
+        self.assertEqual(first.status_code, 201, first.data)
+        result = first.data['data']
+        receipt = result['openingReceipt']
+        self.assertTrue(receipt['code'].startswith('BE-'), receipt)
+        records = result['records']
+        self.assertEqual([row['QteArticle'] for row in records], [2, 3, 0])
+        article_ids = [row['ID_Article'] for row in records]
+        self.assertTrue(all(row['IdEntiteFk'] == self.entities[0] for row in records))
+        command = db.one('SELECT "IdEntiteFk","ID_DeviseFk",logistique.fn_nature_bon("ID_TypeCmdFk") AS kind '
+                         'FROM logistique."T_Commande" WHERE "ID_Commande"=%s', [receipt['id']])
+        self.assertEqual(command, {'IdEntiteFk': self.entities[0],
+            'ID_DeviseFk': self.article_refs['ID_DeviseFk'], 'kind': 'entree'})
+        movements = db.query('SELECT "ID_ArticleFk","QteMvt","PUMvt","SigneStock" '
+            'FROM logistique."V_MouvementStock" WHERE "ID_cmdFk"=%s ORDER BY "ID_ArticleFk"', [receipt['id']])
+        self.assertEqual([(row['ID_ArticleFk'], row['QteMvt'], row['PUMvt'], row['SigneStock']) for row in movements],
+                         [(article_ids[0], 2, 10, 1), (article_ids[1], 3, 0, 1)])
+        after = self.counts()
+        for table, increase in [('T_Article', 3), ('T_Commande', 1), ('T_CommandeDetail', 2),
+                                ('T_Mouvement', 2), ('T_LotArticle', 2)]:
+            self.assertEqual(after['logistique.'+table] - before['logistique.'+table], increase, table)
+        replay = self.post('articles', body)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(first.json()['data'], replay.json()['data'])
+        self.assertEqual(self.counts(), after)
+
+    def test_19_invalid_opening_receipts_roll_back_articles_and_stock(self):
+        alternate_currency = next(item['id'] for item in reference_options(
+            self.actor(), 'logistique', 'T_Article', 'ID_DeviseFk')
+            if item['id'] != self.article_refs['ID_DeviseFk'])
+        cases = [
+            ({'LotsInitiaux': [{'NumeroLot': 'LOT-A', 'Quantite': '1'}]}, 'LotsInitiaux'),
+            ({'ID_DeviseFk': alternate_currency}, 'ID_DeviseFk'),
+            ({'PUArticle': ''}, 'PUArticle'),
+            ({'QteArticle': None}, 'QteArticle'),
+        ]
+        for changes, field in cases:
+            with self.subTest(field=field):
+                body = self.body('articles')
+                body['openingReceipt'] = True
+                body['rows'][1]['data'].update(changes)
+                before = self.counts()
+                response = self.post('articles', body)
+                self.assertEqual(response.status_code, 422, response.data)
+                errors = response.data['error']['details']['rows'][body['rows'][1]['clientRowId']]
+                self.assertIn(field, errors)
+                self.assertEqual(self.counts(), before)
+        zero = {**self.body('articles', 2, QteArticle='0'), 'openingReceipt': True}
+        response = self.post('articles', zero)
+        self.assertEqual(response.status_code, 422, response.data)
+        self.assertIn('rows', response.data['error']['details']['header'])
+        self.assertEqual(self.counts(), before)
+
+    def test_20_import_limits_keep_normal_bon_creation_at_fifty_lines(self):
+        body = {**self.body('articles', 515), 'openingReceipt': True}
+        for row in body['rows'][-7:]:
+            row['data']['QteArticle'] = '0'
+        before = self.counts()
+        ordinary = self.post('articles', {'requestId': body['requestId'], 'rows': body['rows']})
+        self.assertEqual(ordinary.status_code, 422, ordinary.data)
+        self.assertEqual(self.counts(), before)
+        started = perf_counter()
+        response = self.post('articles', body)
+        self.assertEqual(response.status_code, 201, response.data)
+        result = response.data['data']
+        after = self.counts()
+        self.assertEqual(result['count'], 515)
+        self.assertEqual(after['logistique.T_Article'], before['logistique.T_Article']+515)
+        self.assertEqual(after['logistique.T_Commande'], before['logistique.T_Commande']+1)
+        self.assertEqual(after['logistique.T_CommandeDetail'], before['logistique.T_CommandeDetail']+508)
+        self.assertEqual(after['logistique.T_Mouvement'], before['logistique.T_Mouvement']+508)
+        proof = db.one('SELECT pg_column_size("NewData") AS bytes FROM systeme."T_Audit_Log" '
+            'WHERE "Operation"=%s AND jsonb_extract_path_text("NewData",%s)=%s',
+            ['LOGISTICS_BATCH_CREATE', 'requestId', body['requestId']])
+        print(f"Panier 515 articles / 508 mouvements en {perf_counter()-started:.2f}s, "
+              f"réponse {len(response.content)} octets, preuve JSONB {proof['bytes']} octets.", flush=True)
+        from apps.logistique.receipts import entry_type
+        order = self.client().post('/api/logistique/commandes/composees', {
+            'requestId': str(uuid.uuid4()),
+            'bon': {'ID_TypeCmdFk': entry_type(actor=self.actor())['id'],
+                'ID_DeviseFk': self.article_refs['ID_DeviseFk'], 'DateCmd': '2026-10-30T12:00:00+01:00'},
+            'lignes': [{'ID_ArticleFk': article['ID_Article'], 'QteCmdDetail': '1', 'PUCmdDetail': '10'}
+                       for article in result['records'][:51]],
+        }, format='json')
+        self.assertEqual(order.status_code, 400, order.data)
+        self.assertIn('50', order.data['error']['details']['lignes'])
+        self.assertEqual(self.counts(), after)
+        client = self.client()
+        url = f"/api/logistique/commandes/{result['openingReceipt']['id']}/composition"
+        read = client.get(url)
+        self.assertEqual(read.status_code, 200, read.data)
+        lines = read.data['data']['lignes']
+        self.assertEqual(len(lines), 508)
+        self.assertEqual(read.data['meta']['maxLines'], 508)
+        edited = client.put(url, {
+            'requestId': str(uuid.uuid4()),
+            '_version': read.data['meta']['revision'],
+            'bon': {'ObsCmd': 'Recette de modification du bon d’ouverture'},
+            'lignes': [{key: str(line[key]) if key in ('QteCmdDetail', 'PUCmdDetail') else line[key]
+                        for key in ('ID_ArticleFk', 'QteCmdDetail', 'PUCmdDetail')}
+                       for line in lines],
+        }, format='json')
+        self.assertEqual(edited.status_code, 200, edited.data)
+        self.assertEqual(len(edited.data['data']['lignes']), 508)
+        self.assertEqual(self.counts()['logistique.T_Mouvement'], after['logistique.T_Mouvement'])
 
 
 if __name__ == '__main__':

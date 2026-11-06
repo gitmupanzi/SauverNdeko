@@ -71,7 +71,7 @@ def write_workbook(target, columns, rows, context):
         for zebra in [False,True]:
             bg = charter["excel"]["fond_alterne"] if zebra else palette["fond"]
             common = {**base,"bg_color":bg,"bottom":1,"bottom_color":charter["excel"]["bordure"]}
-            for kind, num_fmt, align in [("text","@","left"),("number","#,##0.###","right"),("integer","#,##0","right"),("weight","#,##0.######","right"),("amount","#,##0.00","right"),("date","dd/mm/yyyy","left"),("datetime","dd/mm/yyyy hh:mm","left")]:
+            for kind, num_fmt, align in [("text","@","left"),("number","#,##0.###","right"),("integer","#,##0","right"),("weight","#,##0.######","right"),("stockWeight","#,##0.###############","right"),("amount","#,##0.00","right"),("date","dd/mm/yyyy","left"),("datetime","dd/mm/yyyy hh:mm","left")]:
                 styles[zebra,kind] = book.add_format({**common,"num_format":num_fmt,"align":align,"text_wrap":kind=="text"})
         last_column = len(columns)-1
         header_row = 0
@@ -97,7 +97,14 @@ def write_workbook(target, columns, rows, context):
                 key, typ = field["column_name"],field["data_type"]
                 value = row.get(key)
                 zebra = count % 2 == 0
-                kind = "weight" if key.startswith("Cout") else "amount" if key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")) else "number"
+                if key == "PoidsStockKg":
+                    kind = "stockWeight"
+                elif key == "PoidsUnitaire" or key.startswith("Cout"):
+                    kind = "weight"
+                elif key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")):
+                    kind = "amount"
+                else:
+                    kind = "number"
                 if value is None:
                     sheet.write_blank(line,col,None,styles[zebra,"number" if typ in NUMERIC else "text"])
                 elif typ in NUMERIC:
@@ -109,7 +116,7 @@ def write_workbook(target, columns, rows, context):
                         precise_text += 1
                     else:
                         if kind == "number":
-                            kind = "integer" if number == number.to_integral_value() else "weight" if key == "PoidsUnitaire" else "number"
+                            kind = "integer" if number == number.to_integral_value() else "number"
                         sheet.write_number(line,col,float(number),styles[zebra,kind])
                 elif isinstance(value,datetime):
                     if timezone.is_aware(value):
@@ -165,6 +172,10 @@ def write_workbook(target, columns, rows, context):
 
 def indicator_workbook(actor, key, raw):
     obj,condition,_,label,_,_,fixed = resolve_indicator(key,raw)
+    if key in {"articles", "articlesCategorie"} and not raw.get("columns"):
+        raw = {**raw, "columns": json.dumps([
+            *DEFAULT_FIELDS[obj["name"]], "PoidsUnitaire", "UnitePoids", "PoidsStockKg",
+        ])}
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed,raw.get("populationQ"))
     return scope_workbook(actor,key,obj,raw,where,values,order,sort,direction,applied,label)
 

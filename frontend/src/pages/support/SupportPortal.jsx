@@ -3,7 +3,6 @@ import {useSearchParams} from "react-router-dom";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {requestJson} from "../../services/api";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
-import ModuleHeader from "../../components/ModuleHeader";
 import ModuleSidebar from "../../components/ModuleSidebar";
 import ActionButton from "../../components/ActionButton";
 import SupportDashboard from "./SupportDashboard";
@@ -25,7 +24,6 @@ export default function SupportPortal(){
  let initial={};try{const value=JSON.parse(params.get("filters")||"{}");if(value&&typeof value==="object"&&!Array.isArray(value))initial=value;}catch{}
  return <div className={"logistics-modern logistics-app admin-portal support-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Support" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.support.navigation" groups={[{key:"pilotage",label:"Pilotage",items:[{key:"tableau-de-bord",label:"Tableau de bord",icon:"dashboard"}]},{key:"traitement",label:"Traitement",items:[{key:"tickets",label:"Tickets",icon:"help"}]}]}/>
-  <ModuleHeader title="Support"/>
   <main className="admin-main support-main">
    {scope.globalAdmin&&!scope.entityId?<p className="support-scope-note"><span>Toutes les entreprises · Choisissez une entreprise pour créer un dossier.</span></p>:null}
    {error?<div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={()=>setRefresh(value=>value+1)}>Réessayer</ActionButton></div>:null}

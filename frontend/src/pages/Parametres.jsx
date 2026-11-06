@@ -3,7 +3,6 @@ import {useSearchParams} from "react-router-dom";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import {requestJson} from "../services/api";
 import ModuleSidebar from "../components/ModuleSidebar";
-import ModuleHeader from "../components/ModuleHeader";
 import AppIcon from "../components/AppIcon";
 import ActionButton from "../components/ActionButton";
 import EntityProfileEditor from "../components/EntityProfileEditor";
@@ -69,7 +68,6 @@ export default function Parametres(){
     <ModuleSidebar title="Paramètres" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} storageKey="sauverndeko.settings.navigation" activeKey={tab.key==="presentation"&&activeModule?presentationKey(activeModule):tab.key}
       onNavigate={value=>setParams({onglet:value})}
       groups={[{key:"entreprise",label:"Entreprise",items:COMPANY_TABS},{key:"presentation",label:"Présentation",items:presentationItems}]}/>
-    <ModuleHeader title="Paramètres"/>
     <main className="admin-main settings-main">
       {tab.key==="presentation"?<PresentationSettings key={scope.scopeKey} entityId={scope.entityId}
         entityName={profile?.NomEntite||scope.entities.find(item=>String(item.id)===String(scope.entityId))?.label}

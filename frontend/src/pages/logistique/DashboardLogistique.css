@@ -20,6 +20,8 @@
 .erp-dashboard .erp-group-grid .erp-kpi-icon { display:grid; place-items:center; width:26px; height:26px; border:0; border-radius:6px; background:transparent; color:var(--metric-color); }
 .erp-dashboard .erp-group-grid .erp-kpi-label { min-width:0; color:var(--erp-text); font:400 12px/1.35 "Segoe UI",sans-serif; overflow-wrap:anywhere; }
 .erp-dashboard .erp-group-grid .erp-kpi-main strong { margin:0; color:var(--erp-text); font:600 20px/1.2 "Segoe UI",sans-serif; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.erp-dashboard .erp-kpi-copy { display:grid; min-width:0; gap:2px; }
+.erp-dashboard .erp-kpi-weight { color:var(--erp-muted); font-size:11px; line-height:1.35; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .erp-kpi-chevron { color:var(--erp-muted); opacity:.55; }
 .erp-dashboard .erp-group-grid .erp-kpi:hover { background:var(--erp-action-soft); border-color:var(--erp-action-border); }
 .erp-dashboard .erp-group-grid .erp-kpi:has(.erp-kpi-main[aria-expanded="true"]) { background:var(--erp-action-soft); border-color:var(--erp-action); box-shadow:0 0 0 1px var(--erp-action); }

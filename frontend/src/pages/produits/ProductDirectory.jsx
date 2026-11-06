@@ -6,7 +6,6 @@ import {mayOpen,accessSignature} from "../../services/moduleAccess";
 import {buildDiscussionPath} from "../../services/mappers";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import ModuleSidebar from "../../components/ModuleSidebar";
-import ModuleHeader from "../../components/ModuleHeader";
 import RegisterSurface from "../../components/RegisterSurface";
 import AppliedCriteria from "../../components/AppliedCriteria";
 import ListState from "../../components/ListState";
@@ -53,7 +52,6 @@ export default function ProductDirectory(){
  const emptyContent=<ListState role="status" icon="box" title={activeFilters?"Aucune offre ne correspond à ces critères":"Aucune offre partagée pour le moment"} description={activeFilters?"Essayez une autre désignation ou élargissez les filtres.":"Les entreprises choisissent les articles à rendre visibles dans cet annuaire."} action={activeFilters?<ActionButton icon="reset" onClick={reset}>Effacer les critères</ActionButton>:canManage?<Link className="ui-action is-primary" to="/logistique?onglet=articles">Gérer les articles de mon entreprise</Link>:null}/>;
  return <div className={"logistics-modern logistics-app admin-portal products-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Produits" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey="offres" groups={[{key:"produits",label:"Catalogue",items:[{key:"offres",label:"Offres de produits",icon:"box",to:"/produits"}]}]} storageKey="sauverndeko.produits.navigation"/>
-  <ModuleHeader title="Produits"/>
   <main className="admin-main products-main" ref={fallbackFocus} tabIndex={-1}>
    <RegisterSurface title="Offres de produits" subtitle="Les produits partagés par les entreprises participantes." actions={<div className="product-offer-display" role="group" aria-label="Affichage des offres"><ActionButton icon="apps" aria-label="Affichage en cartes" aria-pressed={display==="cards"} onClick={()=>setDisplay("cards")}/><ActionButton icon="table" aria-label="Affichage en tableau" aria-pressed={display==="table"} onClick={()=>setDisplay("table")}/></div>}>
     <div className="product-offer-directory" data-density={density} aria-busy={current.loading}>

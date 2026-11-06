@@ -3762,7 +3762,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
       ) : null}
 
       <section className="admin-workspace">
-        <ModuleSidebar title={moduleTitle} collapsed={navigationCollapsed} onToggle={onToggleNavigation} activeKey={selectedViewKey} onNavigate={setSelectedViewKey} storageKey="sauverndeko.territoires.navigation" groups={schemaGroups.flatMap(group=>[
+        <ModuleSidebar title={moduleTitle} headerProps={null} collapsed={navigationCollapsed} onToggle={onToggleNavigation} activeKey={selectedViewKey} onNavigate={setSelectedViewKey} storageKey="sauverndeko.territoires.navigation" groups={schemaGroups.flatMap(group=>[
           {key:group.schema+".references",label:schemaGroups.length>1?group.title+" · Références":"Références",items:group.crudViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"globe"}))},
           {key:group.schema+".analyses",label:schemaGroups.length>1?group.title+" · Analyses":"Analyses",items:group.readOnlyViews.map(view=>({key:normalizeViewKey(view.schema,view.name),label:view.title,icon:view.icon||"chart"}))},
         ])}>{loadingViews?<p role="status">Chargement du menu…</p>:!schemaGroups.length?<p>Aucune rubrique disponible.</p>:null}</ModuleSidebar>

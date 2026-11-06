@@ -28,6 +28,7 @@ const fixture=mocks([
  [/\/components\/RegisterSurface$/,'surface',`export default function Surface(){}`],
  [/\/components\/RegisterSettingsButton$/,'settings',`export default function Settings(){}`],
  [/\/components\/DataTableToolbar$/,'toolbar',`export default function Toolbar(){}`],
+ [/\/components\/ExportMenu$/,'export-menu',`export default function ExportMenu(){}`],
  [/\/components\/RowActionsMenu$/,'actions',`export default function Actions(){}`],
  [/\/logistique\/logistiqueShared$/,'table',`export function SimpleTable(){};export const formatDate=x=>x;`],
  [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__deferredWrite?globalThis.__deferredWrite:globalThis.__writeResults.shift()||{success:false,status:503};}if(url.includes('/references/'))return globalThis.__refsResponse||{success:true,data:globalThis.__support};if(url.endsWith('/synthese'))return globalThis.__dashboardResponse||{success:true,data:globalThis.__dashboard};if(url.includes('?'))return {success:true,data:globalThis.__rows||[globalThis.__record],meta:globalThis.__meta};return globalThis.__recordResponse||{success:true,data:globalThis.__record};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});} ${apiNames.map(name=>'export function '+name+'(){throw Error("Route historique inattendue");}').join(' ')}`],

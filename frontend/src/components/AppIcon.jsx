@@ -41,6 +41,7 @@ const paths = {
   dashboard:"M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z",
   apps:"M3 3h5v5H3V3Zm13 0h5v5h-5V3ZM3 16h5v5H3v-5Zm13 0h5v5h-5v-5ZM10 10h4v4h-4v-4Z",
   sidebar:"M4 3h16v18H4V3Zm5 0v18",
+  menu:"M4 6h16M4 12h16M4 18h16",
   alert:"m12 3 10 18H2L12 3Zm0 6v5m0 3h.01",
   clock:"M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-5v5l3 2",
   'stock-in':"M4 14v6h16v-6M12 3v12m-4-4 4 4 4-4",

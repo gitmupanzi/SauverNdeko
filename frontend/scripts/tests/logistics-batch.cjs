@@ -21,6 +21,60 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  const photo=new File(['photo'],'image.png',{type:'image/png'});row.photo={file:photo,remove:false};const fileBody=p.logisticsBatchBody('articles',ticket,[row]);eq(fileBody.get('photo_'+row.clientRowId).name,'image.png');eq(JSON.parse(fileBody.get('payload')).requestId,ticket.requestId);row.photo={file:{size:9*1024*1024,type:'image/png'}};ok(p.validateLogisticsBatch('articles',[row],refs).rows[row.clientRowId].photo);
  pasted=p.logisticsBatchFromExcel('immobilisations','Nom du bien\tType de matériel\tQuantité\tPrix unitaire\tDevise\tService\tSuivi individuel\tDate et heure d’entrée\tMotif\nBureau\tMatériel\t2\t100,50\tUSD\tInformatique\tNon\t30/10/2026 10:45\tAcquisition',refs,{hasHeaders:true});row=pasted[0];eq(row.values.ID_ServiceFk,'25');eq(row.values.SuiviIndividuel,false);eq(row.values.DateEntree,'2026-10-30T10:45:00');eq(p.validateLogisticsBatch('immobilisations',pasted,refs),{header:{},rows:{}});data=p.logisticsRowPayload('immobilisations',row);eq(data.Quantite,'2');eq(data.PrixUnitaire,'100.50');eq(data.motif,'Acquisition');ok(!('requestId'in data));eq(data.DateEntree,'2026-10-30T10:45:00+01:00');
  const articleA=p.logisticsBatchRow('articles',refs,{NomArticle:'A',ID_CategorieArticleFk:'40',ID_TypeArticleFk:'46',ID_UniteFk:'34',PUArticle:'1',PVArticle:'2',CodeArticleInterne:'SKU-A',CodeArticleExterne:'123'}),articleB={...articleA,clientRowId:'article-b',values:{...articleA.values,NomArticle:'B',CodeArticleInterne:'SKU-a'}};eq(p.validateLogisticsBatch('articles',[articleA,articleB],refs),{header:{},rows:{}});articleB.values.CodeArticleInterne=' SKU-A ';eq(Object.keys(p.validateLogisticsBatch('articles',[articleA,articleB],refs).rows).length,2);
+ const openingRefs={...refs,defaultArticleVisibility:true,articleCurrencies:[...refs.articleCurrencies,{id:450,label:'CDF',code:'CDF',active:true}]};
+ const openingHeaders='Article\tCatégorie\tType\tUnité\tStock initial\tPrix d’achat\tPrix de vente\tDevise\tDate de péremption\tVisible dans l’annuaire';
+ const openingText=openingHeaders+'\nSouris\tMatériel\tProduit\tpcs\t2\t5\t9\tUSD\t30/11/2027\tOui\nÉcran\tMatériel\tProduit\tpcs\t0\t10\t15\tCDF';
+ const openingRows=p.logisticsBatchFromExcel('articles',openingText,openingRefs,{hasHeaders:true});
+ const excelCells=Object.freeze([
+  Object.freeze([...openingHeaders.split('\t'),'Code interne','Informations','N° lot']),
+  Object.freeze(['Souris','Matériel','Produit','pcs','2','5','9','USD','2027-11-30','Oui','000123','Ligne 1\nLigne 2','0012']),
+ ]);
+ const [excelRow]=p.logisticsBatchFromMatrix('articles',excelCells,openingRefs,{hasHeaders:true});
+ eq(excelRow.values.CodeArticleInterne,'000123');eq(excelRow.values.InformationArticle,'Ligne 1\nLigne 2');
+ eq(excelRow.values.DatePeremptionArticle,'2027-11-30');eq(excelRow.values.VisibleCatalogue,false);
+ eq(excelRow.initialLots[0].NumeroLot,'0012');eq(excelCells.length,2);
+ throws(()=>p.logisticsBatchFromMatrix('articles',[['Article'],['Nom','Colonne en trop']],openingRefs,{hasHeaders:true}),/ligne 2/i);
+
+ eq(p.logisticsBatchRow('articles',openingRefs).values.VisibleCatalogue,true);
+ eq(openingRows.map(row=>row.values.VisibleCatalogue),[false,false]);
+ eq(openingRows[0].values.DatePeremptionArticle,'2027-11-30');
+ eq(p.logisticsRowPayload('articles',openingRows[0]).DatePeremptionArticle,'2027-11-30');
+ eq(p.validateLogisticsBatch('articles',openingRows,openingRefs,'',true),{header:{},rows:{}});
+ ok(!('openingReceipt'in p.logisticsBatchTicket('articles',openingRows)));
+ eq(p.logisticsBatchTicket('articles',openingRows,'',true).openingReceipt,true);
+ ok(!('openingReceipt'in p.logisticsBatchTicket('tiers',[], '',true)));
+ const zeroRow=openingRows[1];
+ ok(p.validateLogisticsBatch('articles',[zeroRow],openingRefs,'',true).header.openingReceipt.includes('positive'));
+ zeroRow.values.QteArticle='1,25';
+ ok(p.validateLogisticsBatch('articles',openingRows,openingRefs,'',true).header.openingReceipt.includes('devise'));
+ zeroRow.values.QteArticle=' ';
+ ok(p.validateLogisticsBatch('articles',openingRows,openingRefs,'',true).rows[zeroRow.clientRowId].QteArticle.includes('0'));
+ zeroRow.values.QteArticle='0';
+ const firstRow=openingRows[0];
+ firstRow.values.DatePeremptionArticle='31/02/2027';
+ firstRow.values.PUArticle='';
+ firstRow.values.ValideArticle=false;
+ const invalid=p.validateLogisticsBatch('articles',openingRows,{...openingRefs,commandeCurrencies:[]},'',true).rows[firstRow.clientRowId];
+ ok(invalid.DatePeremptionArticle);ok(invalid.PUArticle);ok(invalid.ValideArticle);ok(invalid.ID_DeviseFk);
+ const largeText=Array.from({length:600},(_,i)=>'Article '+(i+1)+'\tMatériel\tProduit\tpcs\t1\t5\t9\tUSD').join('\n');
+ const largeRows=p.logisticsBatchFromExcel('articles',largeText,openingRefs,{openingReceipt:true});
+ eq(largeRows.length,600);
+ eq(p.validateLogisticsBatch('articles',largeRows,openingRefs,'',true),{header:{},rows:{}});
+ ok(p.validateLogisticsBatch('articles',largeRows,openingRefs).header.rows.includes('100'));
+ throws(()=>p.logisticsBatchFromExcel('articles',largeText,openingRefs),/100/);
+ throws(()=>p.logisticsBatchFromExcel('articles',largeText+'\nArticle supplémentaire',openingRefs,{openingReceipt:true}),/600/);
+ throws(()=>p.logisticsBatchFromExcel('tiers',largeText,openingRefs,{openingReceipt:true}),/100/);
+ const lotPaste='Article\tCatégorie\tType\tUnité\tStock initial\tPrix d’achat\tPrix de vente\tDevise\tN° lot\tDate de péremption du lot\nSouris\tMatériel\tProduit\tpcs\t2\t5\t9\tUSD\t0012\t30/11/2027';
+ const [lotRow]=p.logisticsBatchFromExcel('articles',lotPaste,openingRefs,{hasHeaders:true,openingReceipt:true});
+ eq(lotRow.initialLots,[{NumeroLot:'0012',Quantite:'2',DatePeremptionLot:'2027-11-30'}]);
+ eq(p.logisticsBatchTicket('articles',[lotRow],'',true).rows[0].data.LotsInitiaux,lotRow.initialLots);
+ eq(p.validateLogisticsBatch('articles',[lotRow],openingRefs,'',true),{header:{},rows:{}});
+ lotRow.initialLots[0].DatePeremptionLot='';
+ eq(p.validateLogisticsBatch('articles',[lotRow],openingRefs,'',true),{header:{},rows:{}});
+ lotRow.initialLots[0].DatePeremptionLot='2027-02-31';
+ ok(p.validateLogisticsBatch('articles',[lotRow],openingRefs,'',true).rows[lotRow.clientRowId].LotsInitiaux.includes('date'));
+ lotRow.initialLots[0].DatePeremptionLot='';lotRow.values.QteArticle='3';
+ ok(p.validateLogisticsBatch('articles',[lotRow],openingRefs,'',true).rows[lotRow.clientRowId].LotsInitiaux.includes('somme'));
  const assetA=p.logisticsBatchRow('immobilisations',refs,{NomImmobilisation:'PC A',Reference:'MARQUE-A',ID_CategorieFk:'40',Quantite:'1',PrixUnitaire:'10',NumeroSerie:'123'}),assetB={...assetA,clientRowId:'asset-b',values:{...assetA.values,NomImmobilisation:'PC B',Reference:'MARQUE-B'}};eq(p.validateLogisticsBatch('immobilisations',[assetA,assetB],refs,'Acquisition'),{header:{},rows:{}});
  const unknown=p.logisticsBatchFromExcel('tiers','Nom du tiers\tType de client\nA\tAutre',refs,{hasHeaders:true})[0];ok(p.validateLogisticsBatch('tiers',[unknown],refs).rows[unknown.clientRowId].ID_TypeClientFk);const inactive={...refs,typesClients:[{id:3,label:'Client',active:false}]};ok(p.validateLogisticsBatch('tiers',[p.logisticsBatchRow('tiers',inactive,{Nom:'A'})],inactive).rows);
 
@@ -37,6 +91,7 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  [/\/components\/ActionButton$/,'button',`export default function Button(){}`],
  [/\/components\/AppIcon$/,'icon',`export default function Icon(){}`],
  [/\/components\/SearchSelect$/,'select',`export default function Select(){}`],
+ [/\/modele-import-articles\.xlsx\?url$/,'article-template',`export default "/assets/modele-import-articles.xlsx";`],
  [/\.\/logistiqueShared$/,'grid',`export function SimpleTable(){};export const buildReferenceOptions=()=>[],formatDate=x=>x,formatCurrency=x=>x;`],
  [/\.\/TiersEditor$/,'tiers-editor',`export {tiersForm,tiersFormErrors,tiersPayload} from ${JSON.stringify(absolute)};export default function TiersDraft(){}`],
  [/\.\/ArticleEditor$/,'article-editor',`export default function ArticleDraft(){}`],
@@ -49,6 +104,7 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  const ui=await bundle("export {default} from './src/pages/logistique/LogisticsBatchComposer';",[fixture]);let saved=[];
  const hooks=new Hooks(),props={kind:'tiers',onClose(){},onSaved(...args){saved.push(args);}},render=()=>hooks.render(ui.default,props);
  let tree=render();await hooks.flush();tree=render();let frame=mark(tree,'Frame'),grid=mark(tree,'SimpleTable');eq(frame.props.title,'Nouveau tiers');eq(grid.props.rows.length,1);eq(grid.props.rows[0]._pristine,true);eq(frame.props.dirty,false);
+ ok(!nodes(tree).some(node=>node.type==='a'&&node.props.download));
  const initialId=grid.props.rows[0].clientRowId;function setCell(field,value){let t=render(),g=mark(t,'SimpleTable'),r=g.props.rows.find(row=>row.clientRowId===initialId);const cell=g.props.columns.find(c=>c.key===field).render(r),control=nodes(cell).find(n=>n.type==='input'||n.type?.name==='Select');control.props.onChange(control.type==='input'?{target:{value}}:value);}
  setCell('Nom','Alice');tree=render();grid=mark(tree,'SimpleTable');eq(grid.props.rows[0]._pristine,false);eq(mark(tree,'Frame').props.dirty,true);eq(grid.props.rows[0].values.Nom,'Alice');
  await mark(tree,'Frame').props.onSubmit();tree=render();eq(globalThis.__calls.length,1);const firstCall=globalThis.__calls[0];eq(firstCall.path,'/api/logistique/saisie-multiple/tiers');const body=JSON.parse(firstCall.options.body);eq(body.rows.length,1);eq(body.rows[0].data.Nom,'Alice');eq(body.rows[0].clientRowId,initialId);eq(mark(tree,'Frame').props.submitLabel,'Vérifier l’enregistrement');ok(button(tree,'Ajouter une ligne').props.disabled);eq(mark(tree,'Frame').props.discardLabel,'Fermer la saisie');ok(mark(tree,'Frame').props.discardMessage.includes('n’annule pas'));eq(mark(tree,'Frame').props.dirty,true);
@@ -58,9 +114,154 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  // Le collage remplace seulement la première ligne vierge réellement intacte.
  async function pasteScenario(editBlank=false){globalThis.__calls=[];const h=new Hooks(),r=()=>h.render(ui.default,props);r();await h.flush();let t=r();if(editBlank){const g=mark(t,'SimpleTable'),cell=g.props.columns.find(c=>c.key==='Telephone').render(g.props.rows[0]);nodes(cell).find(n=>n.type==='input').props.onChange({target:{value:'001'}});t=r();}button(t,'Coller depuis Excel').props.onClick();t=r();nodes(t).find(n=>n.type==='textarea').props.onChange({target:{value:Array.from({length:100},(_,i)=>'Personne '+i+'\tClient\tPersonne').join('\n')}});t=r();button(t,'Ajouter au panier').props.onClick();t=r();const g=mark(t,'SimpleTable');if(editBlank){eq(g.props.rows.length,1);eq(g.props.rows[0].values.Telephone,'001');ok(nodes(t).some(n=>n.props?.children==='Le panier peut contenir 100 lignes au maximum.'));}else eq(g.props.rows.length,100);h.unmount();}
  await pasteScenario(false);await pasteScenario(true);
+ globalThis.__calls=[];
+ const openingHooks=new Hooks(),openingSaved=[];
+ const openingProps={...props,kind:'articles',references:openingRefs,onSaved(data){openingSaved.push(data);}};
+ const renderOpening=()=>openingHooks.render(ui.default,openingProps);
+ renderOpening();await openingHooks.flush();let openingTree=renderOpening();
+ const templateLink=nodes(openingTree).find(node=>node.type==='a'&&node.props.download);
+ eq(templateLink.props.href,'/assets/modele-import-articles.xlsx');
+ eq(templateLink.props.download,'modele-import-articles.xlsx');
+ eq(input(openingTree,'group-opening-stock').props.checked,false);
+ input(openingTree,'group-opening-stock').props.onChange({target:{checked:true}});
+ openingTree=renderOpening();
+ await mark(openingTree,'Frame').props.onSubmit();openingTree=renderOpening();
+ eq(globalThis.__calls.length,0);ok(input(openingTree,'group-opening-stock').props['aria-invalid']);
+ button(openingTree,'Coller depuis Excel').props.onClick();openingTree=renderOpening();
+ eq(nodes(openingTree).find(node=>node.type==='input'&&node.props.type==='checkbox'&&!node.props.id).props.checked,true);
+ nodes(openingTree).find(node=>node.type==='textarea').props.onChange({target:{value:openingText}});
+ openingTree=renderOpening();
+ button(openingTree,'Ajouter au panier').props.onClick();openingTree=renderOpening();
+ eq(mark(openingTree,'SimpleTable').props.rows.length,2);
+ await mark(openingTree,'Frame').props.onSubmit();openingTree=renderOpening();
+ const openingBody=globalThis.__calls[0].options.body,openingData=JSON.parse(openingBody);
+ eq(openingData.openingReceipt,true);eq(openingData.rows.map(row=>row.data.VisibleCatalogue),[false,false]);
+ ok(input(openingTree,'group-opening-stock').props.disabled);
+ const openingResult={requestId:openingData.requestId,count:2,records:openingData.rows.map(({clientRowId})=>({clientRowId}))};
+ globalThis.__responses.push({success:true,status:201,data:openingResult});
+ await mark(openingTree,'Frame').props.onSubmit();openingTree=renderOpening();
+ eq(openingSaved.length,0);eq(mark(openingTree,'Frame').props.submitLabel,'Vérifier l’enregistrement');
+ eq(globalThis.__calls[1].options.body,openingBody);
+ const receipt={id:'120',code:'BE-120'};
+ globalThis.__responses.push({success:true,status:200,data:{...openingResult,openingReceipt:receipt}});
+ await mark(openingTree,'Frame').props.onSubmit();eq(openingSaved[0].openingReceipt,receipt);
+ eq(globalThis.__calls[2].options.body,openingBody);
+ openingHooks.unmount();
+ globalThis.__calls=[];
+ const largeHooks=new Hooks(),renderLarge=()=>largeHooks.render(ui.default,openingProps);
+ const focusedRows=[];
+ globalThis.document={getElementById:id=>({focus(){focusedRows.push(id);}})};
+ renderLarge();await largeHooks.flush();let largeTree=renderLarge();
+ button(largeTree,'Coller depuis Excel').props.onClick();largeTree=renderLarge();
+ nodes(largeTree).find(node=>node.type==='input'&&node.props.type==='checkbox'&&!node.props.id).props.onChange({target:{checked:false}});
+ const badText=largeText.replace('Article 515\tMatériel\tProduit\tpcs\t1\t5','Article 515\tMatériel\tProduit\tpcs\t1\t');
+ nodes(largeTree).find(node=>node.type==='textarea').props.onChange({target:{value:badText}});
+ largeTree=renderLarge();
+ button(largeTree,'Ajouter au panier').props.onClick();largeTree=renderLarge();
+ eq(mark(largeTree,'SimpleTable').props.rows.length,1);
+ ok(nodes(largeTree).some(node=>node.props?.children==='Limitez le panier à 100 lignes.'));
+ input(largeTree,'group-opening-stock').props.onChange({target:{checked:true}});
+ largeTree=renderLarge();
+ button(largeTree,'Ajouter au panier').props.onClick();largeTree=renderLarge();
+ let largeGrid=mark(largeTree,'SimpleTable');
+ eq(largeGrid.props.rows.length,600);eq(largeGrid.props.defaultRowsPerPage,50);eq(largeGrid.props.page,1);
+ ok(button(largeTree,'Ajouter une ligne').props.disabled);
+ const badRow=largeGrid.props.rows[514];
+ button(largeTree,'Aller à la première ligne à corriger').props.onClick();largeTree=renderLarge();await largeHooks.flush();
+ largeGrid=mark(largeTree,'SimpleTable');eq(largeGrid.props.page,11);ok(focusedRows.at(-1).endsWith(badRow.clientRowId+'PUArticle'));
+ const editPrice=largeGrid.props.columns.find(column=>column.key==='PUArticle').render(badRow);
+ nodes(editPrice).find(node=>node.type==='input').props.onChange({target:{value:'5'}});
+ largeTree=renderLarge();largeGrid=mark(largeTree,'SimpleTable');largeGrid.props.onPageChange(1);
+ largeTree=renderLarge();eq(mark(largeTree,'SimpleTable').props.page,1);
+ input(largeTree,'group-opening-stock').props.onChange({target:{checked:false}});largeTree=renderLarge();
+ await mark(largeTree,'Frame').props.onSubmit();largeTree=renderLarge();
+ eq(globalThis.__calls.length,0);ok(nodes(largeTree).some(node=>node.props?.children==='Limitez le panier à 100 lignes.'));
+ eq(mark(largeTree,'SimpleTable').props.rows[514].values.PUArticle,'5');
+ input(largeTree,'group-opening-stock').props.onChange({target:{checked:true}});largeTree=renderLarge();
+ await mark(largeTree,'Frame').props.onSubmit();
+ const largePayload=JSON.parse(globalThis.__calls[0].options.body);
+ eq(largePayload.rows.length,600);eq(largePayload.openingReceipt,true);eq(largePayload.rows[514].data.PUArticle,'5');
+ largeHooks.unmount();
+
+ // Un classeur est lu dans le panier et reste modifiable avant l'enregistrement.
+ globalThis.__calls=[];
+ const fileHooks=new Hooks(),fileSaved=[];
+ const fileRender=()=>fileHooks.render(ui.default,{...openingProps,onSaved(data){fileSaved.push(data);}});
+ fileRender();await fileHooks.flush();let fileTree=fileRender(),fileGrid=mark(fileTree,'SimpleTable');
+ const oldDraft=fileGrid.props.rows[0];
+ nodes(fileGrid.props.columns.find(column=>column.key==='NomArticle').render(oldDraft)).find(node=>node.type==='input').props.onChange({target:{value:'Article saisi'}});
+ fileTree=fileRender();
+ const fileControl=t=>nodes(t).find(node=>node.type==='input'&&node.props.type==='file');
+ const upload=t=>(file=new File(['workbook'],'Articles.xlsx'))=>{
+  const target={files:[file],value:file.name};
+  const task=fileControl(t).props.onChange({currentTarget:target});
+  eq(target.value,'');
+  return task;
+ };
+ let pickerOpened=0;
+ fileControl(fileTree).props.ref.current={click(){pickerOpened++;}};
+ button(fileTree,'Importer un fichier Excel').props.onClick();
+ eq(pickerOpened,1);eq(button(fileTree,'Importer un fichier Excel').props.variant,'primary');
+ await upload(fileTree)(new File(['ancien format'],'articles.xls'));
+ await upload(fileTree)(new File([new Uint8Array(4*1024*1024+1)],'articles.xlsx'));
+ fileTree=fileRender();eq(globalThis.__calls.length,0);
+ ok(nodes(fileTree).some(node=>node.props?.role==='alert'&&node.props.children.includes('.xlsx')));
+ let resolvePreview;
+ globalThis.__responses.push(new Promise(resolve=>{resolvePreview=resolve;}));
+ const reading=upload(fileTree)();fileTree=fileRender();
+ eq(mark(fileTree,'Frame').props.canSubmit,false);
+ ok(button(fileTree,'Ajouter une ligne').props.disabled);ok(button(fileTree,'Coller depuis Excel').props.disabled);
+ ok(input(fileTree,'group-opening-stock').props.disabled);
+ ok(nodes(fileTree).some(node=>node.props?.role==='status'&&node.props.children==='Lecture du fichier Excel…'));
+ await mark(fileTree,'Frame').props.onSubmit();
+ eq(globalThis.__calls.length,1);
+ eq(globalThis.__calls[0].path,'/api/logistique/saisie-multiple/articles/apercu-excel');
+ eq(globalThis.__calls[0].options.method,'POST');
+ eq(globalThis.__calls[0].options.body.get('file').name,'Articles.xlsx');
+ const invalidFileRow=[...excelCells[1]];invalidFileRow[5]='';
+ resolvePreview({success:true,data:{cells:[excelCells[0],invalidFileRow]}});
+ await reading;fileTree=fileRender();await fileHooks.flush();
+ fileGrid=mark(fileTree,'SimpleTable');
+ eq(fileGrid.props.rows.length,2);eq(fileGrid.props.rows[0].clientRowId,oldDraft.clientRowId);
+ eq(fileGrid.props.rows[0].values.NomArticle,'Article saisi');
+ const fileDraft=fileGrid.props.rows[1];
+ eq(fileDraft.values.CodeArticleInterne,'000123');
+ ok(focusedRows.at(-1).endsWith(fileDraft.clientRowId+'PUArticle'));
+ const price=nodes(fileGrid.props.columns.find(column=>column.key==='PUArticle').render(fileDraft)).find(node=>node.type==='input');
+ ok(price.props['aria-invalid']);ok(!price.props.disabled);
+ eq(fileSaved.length,0);eq(globalThis.__calls.length,1);
+ ok(nodes(fileTree).some(node=>node.props?.role==='status'&&node.props.children==='1 ligne ajoutée au panier.'));
+ globalThis.__responses.push({success:false,status:422,message:'La feuille Articles est introuvable.'});
+ await upload(fileTree)();fileTree=fileRender();await fileHooks.flush();
+ eq(mark(fileTree,'SimpleTable').props.rows.length,2);
+ ok(nodes(fileTree).some(node=>node.props?.role==='alert'&&node.props.children==='La feuille Articles est introuvable.'));
+ ok(focusedRows.at(-1).endsWith('import-excel'));
+ globalThis.__responses.push({success:true,data:{cells:[['Article'],[123]]}});
+ await upload(fileTree)();fileTree=fileRender();
+ eq(mark(fileTree,'SimpleTable').props.rows.length,2);
+ ok(nodes(fileTree).some(node=>node.props?.role==='alert'&&node.props.children.includes('aperçu')));
+ const maxRows=Array.from({length:100},(_,index)=>['Classeur '+index]);
+ globalThis.__responses.push({success:true,data:{cells:[['Article'],...maxRows]}});
+ await upload(fileTree)();fileTree=fileRender();
+ eq(mark(fileTree,'SimpleTable').props.rows.length,2);
+ ok(nodes(fileTree).some(node=>node.props?.role==='alert'&&node.props.children.includes('100 lignes')));
+ input(fileTree,'group-opening-stock').props.onChange({target:{checked:true}});
+ fileTree=fileRender();
+ globalThis.__responses.push({success:true,data:{cells:[['Article'],...maxRows]}});
+ await upload(fileTree)();fileTree=fileRender();
+ eq(mark(fileTree,'SimpleTable').props.rows.length,102);
+ globalThis.__responses.push(new Promise(resolve=>{resolvePreview=resolve;}));
+ const closing=upload(fileTree)();
+ const previewSignal=globalThis.__calls.at(-1).options.signal;
+ fileHooks.unmount();
+ eq(previewSignal.aborted,true);
+ resolvePreview({success:true,data:{cells:excelCells}});
+ await closing;
+ eq(fileSaved.length,0);
+
  const h=new Hooks(),r=()=>h.render(ui.default,props);r();await h.flush();tree=r();globalThis.__scope={...globalThis.__scope,scopeKey:'B',entityId:'8'};tree=r();eq(mark(tree,'Frame').props.readOnly,true);ok(!mark(tree,'SimpleTable'));eq(mark(tree,'Frame').props.error,'L’entreprise a changé. Rouvrez la saisie dans le nouvel espace.');h.unmount();
  // Les erreurs d’en-tête reçoivent réellement le focus, sans effacer le panier.
- for(const field of ['photos','motif']){globalThis.__refs=refs;const focused=[];globalThis.document={getElementById:id=>({focus(){focused.push(id);}})};const h=new Hooks(),r=()=>h.render(ui.default,props);r();await h.flush();let t=r();const grid=mark(t,'SimpleTable'),cell=grid.props.columns.find(c=>c.key==='Nom').render(grid.props.rows[0]);nodes(cell).find(n=>n.type==='input').props.onChange({target:{value:'Test'}});globalThis.__responses.push({success:false,status:422,error:{details:{rows:{},header:{[field]:'À corriger'}}}});t=r();await mark(t,'Frame').props.onSubmit();ok(focused.some(id=>id.endsWith(field)));t=r();eq(mark(t,'SimpleTable').props.rows[0].values.Nom,'Test');h.unmount();}
+ for(const field of ['photos','motif']){globalThis.__refs=refs;const focused=[];globalThis.document={getElementById:id=>({focus(){focused.push(id);}})};const h=new Hooks(),r=()=>h.render(ui.default,props);r();await h.flush();let t=r();const grid=mark(t,'SimpleTable'),cell=grid.props.columns.find(c=>c.key==='Nom').render(grid.props.rows[0]);nodes(cell).find(n=>n.type==='input').props.onChange({target:{value:'Test'}});globalThis.__responses.push({success:false,status:422,error:{details:{rows:{},header:{[field]:'À corriger'}}}});t=r();await mark(t,'Frame').props.onSubmit();t=r();await h.flush();ok(focused.some(id=>id.endsWith(field)));eq(mark(t,'SimpleTable').props.rows[0].values.Nom,'Test');h.unmount();}
  // Les droits retournés par les références priment sur les droits généraux du compte.
  globalThis.__refs={...refs,canCreate:false};const deniedHooks=new Hooks(),deniedRender=()=>deniedHooks.render(ui.default,props);deniedRender();await deniedHooks.flush();tree=deniedRender();eq(mark(tree,'Frame').props.readOnly,true);ok(mark(tree,'Frame').props.error.includes('ne permet pas'));ok(button(tree,'Ajouter une ligne').props.disabled);const callsBefore=globalThis.__calls.length;await mark(tree,'Frame').props.onSubmit();eq(globalThis.__calls.length,callsBefore);deniedHooks.unmount();globalThis.__refs=refs;
  // Les nouveaux libellés de fermeture restent optionnels pour les éditeurs existants.

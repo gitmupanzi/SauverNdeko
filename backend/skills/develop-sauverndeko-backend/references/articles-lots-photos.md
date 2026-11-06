@@ -18,6 +18,16 @@ Le type du bon provient de la FK existante T_Commande.ID_TypeCmdFk vers le réf�
 
 Bon, ligne, lots et audit partagent une transaction : une erreur annule la réception entière. Les triggers existants restent seuls responsables de l’incrément de stock, des mouvements et des totaux ; ne pas doubler ces effets par une mise à jour de QteArticle ou un mouvement manuel dans le service du raccourci. Réutiliser les contrôles de ventilation et l’ordre des verrous décrits ci-dessous.
 
+## Panier d’articles et bon d’ouverture
+
+Le panier Articles accepte l’option booléenne `openingReceipt`. Dans ce mode, créer toutes les fiches à stock nul puis composer un seul bon d’entrée dans la même transaction. Seules les quantités positives alimentent les lignes du bon. Les lots initiaux deviennent les lots de ces lignes et les triggers produisent les mouvements. Les articles dont la quantité est nulle restent au catalogue sans mouvement.
+
+Exiger un prix d’achat explicite et une seule devise pour les lignes du bon. Le type d’entrée vient du référentiel actif de l’entreprise. La date est attribuée par le serveur et la réponse contient l’identifiant et le code du bon. L’UUID du panier et l’audit protègent le rejeu, et toute erreur annule les fiches, le bon et les mouvements.
+
+Le panier peut contenir jusqu’à 600 articles avec bon d’ouverture, et 100 articles en saisie ordinaire. La création ordinaire d’un bon reste limitée à 50 lignes. Lors de la modification d’un bon plus long, le plafond correspond au nombre de lignes déjà enregistrées.
+
+L’aperçu Excel reçoit un fichier .xlsx de 4 Mo maximum dans `POST /api/logistique/saisie-multiple/articles/apercu-excel`. Il applique les droits de gestion et la portée du panier. Il lit en mémoire la feuille Articles ou, en son absence, la seule feuille du classeur si ses en-têtes identifient un registre d’articles. Les limites sur l’archive et la feuille restent applicables. Les formules doivent être remplacées par leurs valeurs. Les identifiants saisis en texte conservent leurs zéros initiaux et un identifiant numérique garde sa valeur si Excel lui a appliqué un format date. L’aperçu renvoie les cellules au panier. La validation métier et les écritures restent dans le service de création multiple.
+
 ## Lots
 
 T_LotArticle identifie un numéro par article ; T_MouvementLot ventile un mouvement existant. V_LotArticleStock et V_MouvementLot calculent stock et traçabilité. Les tables, colonnes, vues, fonctions et triggers introduits ont des COMMENT ON.

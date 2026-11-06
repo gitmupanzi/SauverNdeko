@@ -19,6 +19,7 @@ import AppIcon from "../../components/AppIcon";
 import RegisterSurface from "../../components/RegisterSurface";
 import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
+import ExportMenu from "../../components/ExportMenu";
 import { downloadApiFile } from "../../services/api";
 import ActionButton from "../../components/ActionButton";
 import { useConsultations } from "../../components/ConsultationProvider";
@@ -118,6 +119,16 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const selectedArticle = sharedTable?.selectedRow || null;
   function handleReceipt(article){if(canWrite&&article.ValideArticle!==false)setReceipt(article.ID_Article);}
   function received(result){setReceipt(null);setSavedRecord(result.article);setSavedReceipt(result.bon);setFeedback({type:"success",message:"Réception enregistrée."});refreshFolders();onDataChanged?.();}
+  function savedBatch(result){
+    setBatchOpen(false);
+    setSavedRecord(null);
+    const receipt=result.openingReceipt;
+    setSavedReceipt(receipt?{ID_Commande:receipt.id,CodeCmd:receipt.code}:null);
+    const message=result.count===1?"1 article créé.":result.count+" articles créés.";
+    setFeedback({type:"success",message:receipt?message+" Bon d’entrée "+receipt.code+".":message});
+    refreshFolders();
+    onDataChanged?.();
+  }
   function handleNewArticle(){if(canWrite)setEditor({mode:"create"});}
   function handleEditArticle(article){if(canWrite)setEditor({mode:"edit",id:article.ID_Article});}
   function handleDisableArticle(article){if(canWrite)setAction({id:article.ID_Article,kind:article.ValideArticle===false?"enable":"disable"});}
@@ -228,7 +239,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
             {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}
             {canWrite ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
-            {canExport?<><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportArticles("xlsx",selectedRows)}>Excel · sélection</ActionButton><ActionButton icon="download" disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} onClick={()=>exportArticles("csv",selectedRows)}>CSV · sélection</ActionButton></>:null}
+            {canExport?<ExportMenu selection exportFile={()=>exportArticles("xlsx",selectedRows)} exportCsv={()=>exportArticles("csv",selectedRows)} disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} exporting={exporting}/>:null}
             {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
             <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>
           </div> : null}
@@ -251,7 +262,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
       {expiryPolicyOpen?<ExpiryPolicyEditor onClose={()=>setExpiryPolicyOpen(false)} onSaved={()=>{onDataChanged?.();refreshFolders?.();}}/>:null}
       {valuation?<StockValuation articleId={valuation.id} defaultCurrencyId={valuation.currency} onClose={()=>setValuation(null)} onSaved={()=>onDataChanged?.()}/>:null}
       {editor?<ArticleEditor key={editor.id||"new"} articleId={editor.id} references={references} onClose={()=>setEditor(null)} onSaved={saved}/>:null}
-      {batchOpen?<LogisticsBatchComposer kind="articles" references={references} onClose={()=>setBatchOpen(false)} onSaved={result=>{setBatchOpen(false);setFeedback({type:"success",message:result.count+" article(s) créé(s)."});refreshFolders();onDataChanged?.();}}/>:null}
+      {batchOpen?<LogisticsBatchComposer kind="articles" references={references} onClose={()=>setBatchOpen(false)} onSaved={savedBatch}/>:null}
       {receipt?<StockReceiptEditor key={receipt} articleId={receipt} references={references} onClose={()=>setReceipt(null)} onSaved={received}/>:null}
       {action?<ArticleActionDrawer key={action.id+action.kind} articleId={action.id} action={action.kind} onClose={()=>setAction(null)} onSaved={saved}/>:null}
     </div>

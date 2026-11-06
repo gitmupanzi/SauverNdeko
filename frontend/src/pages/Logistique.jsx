@@ -9,7 +9,6 @@ import {formatDate} from "./logistique/logistiqueShared";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
 import { Link, useSearchParams } from "react-router-dom";
-import ModuleHeader from "../components/ModuleHeader";
 import "./logistique/LogistiqueModern.css";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import {
@@ -1024,7 +1023,6 @@ export default function Logistique() {
           onToggle={() => setSidebarCollapsed((current) => !current)}
         />
 
-        <ModuleHeader title="Logistique" />
         <div className="page-shell admin-page-shell logistics-page-shell logistics-shell-layout">
         <section className="admin-workspace logistics-workspace">
           <div className="admin-main-column logistics-main-column">

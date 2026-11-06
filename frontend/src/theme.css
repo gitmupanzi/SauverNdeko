@@ -49,7 +49,7 @@ html[data-theme="contrast"] :is(.erp-kpi-icon,.workspace-app-icon) { color:var(-
 html[data-theme="contrast"] :is(button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible) { outline:3px solid #ffe36a; outline-offset:3px; }
 @media(max-width:760px) { .theme-picker { flex:none; width:34px; height:34px; padding:0; justify-content:center; }.theme-picker > i { font-size:16px; }.login-theme { top:14px; right:16px; }.login-screen { padding-top:65px; }.logistics-modern.logistics-app .erp-dashboard-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:end; }.logistics-modern.logistics-app .erp-dashboard-filters .erp-dashboard-query { grid-column:1 / -1; }.logistics-modern.logistics-app .erp-dashboard-filters .admin-form-field { width:100%; min-width:0; margin:0; }.erp-dashboard-filters input { min-width:0; max-width:100%; box-sizing:border-box; }.erp-dashboard-filters > button { min-width:0; } }
 
-html[data-theme]:not([data-theme="light"]) .logistics-modern.logistics-app > .module-header .module-header-title { color:var(--erp-text); }
+html[data-theme]:not([data-theme="light"]) .logistics-modern.logistics-app .module-header .module-header-title { color:var(--erp-text); }
 
 html[data-theme]:not([data-theme="light"]) .logistics-modern :is(.logistics-table-pager,.logistics-table-controls,.logistics-advanced-table,.logistics-table-toolbar-card,.admin-pagination) { background:var(--erp-surface); color:var(--erp-text); border-color:var(--erp-border); }
 html[data-theme]:not([data-theme="light"]) .logistics-modern .admin-table tbody td { background:var(--erp-surface); color:var(--erp-text); border-color:var(--erp-border); }

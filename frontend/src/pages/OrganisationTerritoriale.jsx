@@ -1,7 +1,6 @@
 import {useEffect,useState} from "react";
 import {useSearchParams} from "react-router-dom";
 import ModuleSidebar from "../components/ModuleSidebar";
-import ModuleHeader from "../components/ModuleHeader";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import TerritoryRegister from "./territoires/TerritoryRegister";
 import TerritoryDashboard from "./territoires/TerritoryDashboard";
@@ -21,7 +20,6 @@ export default function OrganisationTerritoriale(){
  function navigate(kind,filters={}){if(kind!=="tableau-de-bord"&&!TERRITORY_REGISTERS[kind])return;if(kind===active&&!Object.keys(filters).length&&!params.get("filters"))return;setParams({onglet:kind,...(Object.keys(filters).length?{filters:JSON.stringify(filters)}:{})});}
  return <div className={"logistics-modern logistics-app admin-portal territorial-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Organisation territoriale" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} groups={TERRITORY_NAVIGATION} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.territoires.navigation"/>
-  <ModuleHeader title="Organisation territoriale"/>
   <main className="admin-main territory-main">{active==="tableau-de-bord"?<TerritoryDashboard refresh={refresh} onNavigate={navigate}/>:<TerritoryRegister key={active+":"+(params.get("filters")||"")} kind={active} initial={initial} refresh={refresh} onChanged={()=>setRefresh(value=>value+1)} onNavigate={navigate}/>}</main>
  </div>;
 }

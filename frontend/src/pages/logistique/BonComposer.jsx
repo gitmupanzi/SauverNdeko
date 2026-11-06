@@ -46,6 +46,7 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
   const [lineDetail,setLineDetail]=useState(null);
   const [sourceBon,setSourceBon]=useState(null),[editMeta,setEditMeta]=useState(null),[editLoading,setEditLoading]=useState(!creating),[editRevision,setEditRevision]=useState(0),[editReloadable,setEditReloadable]=useState(false),[reloadWarning,setReloadWarning]=useState(false);
   const initialBasket=useRef("[]");
+  const maxLines=creating?MAX_COMPOSITION_LINES:editMeta?.maxLines??MAX_COMPOSITION_LINES;
   const canWrite=user?.permissions?.canWriteData===true&&contextKey===initialContext.current,editable=canWrite&&(creating||editMeta?.canEdit===true),disabled=busy||uncertain||editLoading||!editable;
   const direction=compositionDirection(compositionType(references,values,sourceBon)),currency=references?.currencies?.find(item=>String(item.id)===values.ID_DeviseFk)||(sourceBon&&String(sourceBon.ID_DeviseFk)===values.ID_DeviseFk?{code:sourceBon.DeviseCode}:null),currencyCode=currency?.code;
   const order=direction==="commande",typeFixedByOrder=!creating&&(isStockOrder(sourceBon)||order);
@@ -95,8 +96,8 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
   function addArticles(articles){
     if(disabled||loading||catalogueError||!direction||!currency)return;
     const eligible=articles.filter(article=>!chosenIds.has(String(article.ID_Article))&&article.ValideArticle!==false&&(direction!=="sortie"||compareDecimal(article.QteArticle,"0")===1));
-    if(basket.length+eligible.length>MAX_COMPOSITION_LINES){setError("Un bon peut contenir au maximum "+MAX_COMPOSITION_LINES+" articles distincts.");return;}
-    setBasket(current=>{const existing=new Set(current.map(line=>String(line.article.ID_Article))),added=eligible.filter(article=>{const id=String(article.ID_Article);if(existing.has(id))return false;existing.add(id);return true;});return current.length+added.length>MAX_COMPOSITION_LINES?current:[...current,...added.map(article=>compositionLine(article,values,references,sourceBon))];});setSelected([]);setSelectionReset(value=>value+1);setError("");
+    if(basket.length+eligible.length>maxLines){setError("Un bon peut contenir au maximum "+maxLines+" articles distincts.");return;}
+    setBasket(current=>{const existing=new Set(current.map(line=>String(line.article.ID_Article))),added=eligible.filter(article=>{const id=String(article.ID_Article);if(existing.has(id))return false;existing.add(id);return true;});return current.length+added.length>maxLines?current:[...current,...added.map(article=>compositionLine(article,values,references,sourceBon))];});setSelected([]);setSelectionReset(value=>value+1);setError("");
     if(direction==="sortie")for(const article of eligible)loadLots(article.ID_Article);
     if(eligible[0])requestAnimationFrame(()=>document.getElementById(prefix+"qty-"+eligible[0].ID_Article)?.focus({preventScroll:true}));
   }
@@ -145,7 +146,7 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
       for(const line of basket){const issues=compositionLineErrors(line,direction),unchanged=compositionLotsUnchanged(line),availability=availabilityFor(line),lotsIssue=order||unchanged?"":lotErrors(line.Lots,line.QteCmdDetail,{outgoing:direction==="sortie",availability});if(lotsIssue)issues.Lots=lotsIssue;if(direction==="sortie"&&!unchanged&&(!availability||knownLots[line.article.ID_Article]?.error))issues.Lots="Vérifiez les lots disponibles avant d’enregistrer.";if(Object.keys(issues).length)invalidLines[line.article.ID_Article]=issues;}
       setHeaderErrors(invalid);setLineErrors(invalidLines);setError("");
       if(Object.keys(invalid).length){setError("Vérifiez les informations du bon.");focusHeader(invalid);return;}
-      if(creating&&!basket.length||basket.length>MAX_COMPOSITION_LINES){setActive("articles");setError(creating?"Ajoutez entre 1 et "+MAX_COMPOSITION_LINES+" articles au bon.":"Un bon peut contenir au maximum "+MAX_COMPOSITION_LINES+" articles.");return;}
+      if(creating&&!basket.length||basket.length>maxLines){setActive("articles");setError(creating?"Ajoutez entre 1 et "+maxLines+" articles au bon.":"Un bon peut contenir au maximum "+maxLines+" articles.");return;}
       if(Object.keys(invalidLines).length){setError("Vérifiez les lignes indiquées.");focusLineIssue(invalidLines);return;}
       if(total==null||compareDecimal(total,"9999999999.99")===1){setActive("articles");setError("Le total du bon dépasse la limite autorisée.");return;}
       if(!user?.IdUser){setError("Votre session doit être actualisée avant de créer le bon.");return;}

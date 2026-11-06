@@ -22,6 +22,8 @@ import "./Consultation.css";
 
 import { useRead } from "./ConsultationProvider";
 const PRODUCT_INDICATORS = new Set(["articles","articlesCategorie","alertesStock","ruptures","auditTotal","auditCoherents","auditEcarts","coherenceRate","couvertureCritique","peremptionProche","articlesPerimes"]);
+const ARTICLE_WEIGHT_INDICATORS = new Set(["articles", "articlesCategorie"]);
+const WEIGHT_FIELD_LABELS = { PoidsUnitaire: "Poids unitaire", PoidsStockKg: "Poids du stock (kg)" };
 const LABELS = {lots:"Lots", identite: "Synthèse", commandes: "Bons de stock", lignes: "Lignes", mouvements: "Mouvements", consommation: "Consommation", couverture: "Couverture", controle: "Contrôle", reglements: "Règlements", facture: "Facture" };
 const FIELD_LABELS = {TauxTVA:"TVA (%)",MontantHTFacture:"Montant HT",MontantTVA:"TVA",EtatPeremptionLot:"Conservation",MotifDerogationPeremption:"Motif de dérogation",DateDerogationPeremption:"Dérogation du",MontantFacture:"Montant facturé",DeviseCode:"Devise",MontantsParDevise:"Valeurs par devise",NumeroLot:"N° de lot",StockLot:"Stock du lot",Quantite:"Quantité",QuantiteSignee:"Quantité signée",DatePeremptionLot:"Péremption du lot",QuantiteEntree:"Entrées",QuantiteSortie:"Sorties", CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur catalogue (achat)", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
 const SECTION_FIELDS = {lots:["NomArticle","NumeroLot","StockLot","Quantite","DateMvt","CodeCmd","DatePeremptionLot","EtatPeremptionLot","QuantiteEntree","QuantiteSortie","MotifDerogationPeremption","DateDerogationPeremption"],
@@ -42,6 +44,8 @@ function display(field, value, row={}) {
   if (field === "ValeurConsoMensuelle" || field === "MontantsParDevise") return formatConsumptionMoney(row);
   if (/^(PU|PV|Valeur|Montant|Marge|TotalRegle|Reste)/.test(field)) return formatCurrency(value,row.DeviseCode);
   if (value == null || value === "") return "—";
+  if (field === "PoidsUnitaire") return [formatNumber(value), row.UnitePoids].filter(Boolean).join(" ");
+  if (field === "PoidsStockKg") return formatNumber(value);
   if (field === "Mois") return formatDate(value, {withTime:false});
   if (field === "DatePeremptionLot") return formatDate(value,{withTime:false});
   if (/^Date/.test(field)) return formatDate(value);
@@ -98,7 +102,10 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     exportRequest.current?.abort(); exportRequest.current = controller;
     setExporting(true); setExportError("");
     const keys = (visibleColumns.length ? visibleColumns : shown).filter(key => shown.includes(key));
-    const params = new URLSearchParams({ ...query, timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone, columns:JSON.stringify(keys) });
+    const exportColumns = keys.flatMap(key =>
+      key === "PoidsUnitaire" && available.includes("UnitePoids") ? [key, "UnitePoids"] : [key]
+    );
+    const params = new URLSearchParams({ ...query, timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone, columns:JSON.stringify(exportColumns) });
     params.delete("take"); params.delete("skip");
     try { await downloadApiFile(exportPath + "?" + params,{ signal:controller.signal }); }
     catch(error) { if (!controller.signal.aborted && error.name !== "AbortError") setExportError(error.message || "L’export a échoué."); }
@@ -108,7 +115,7 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     const sqlType = types[field] || "";
     const numeric = /^(numeric|decimal|integer|bigint|smallint|real|double precision)$/.test(sqlType);
     const timestamp = /^timestamp/.test(sqlType) && field !== "Mois";
-    const label = FIELD_LABELS[field] || field;
+    const label = WEIGHT_FIELD_LABELS[field] || FIELD_LABELS[field] || field;
     return { key:field,label:timestamp && label === "Date" ? "Date et heure" : label,width:/^Date/.test(field) ? 180 : undefined,align:numeric ? "right" : "left",filterType:numeric ? "number" : /^(date|timestamp)/.test(sqlType) ? "date" : sqlType === "boolean" ? "boolean" : "text",
       render:(row) => {
         if (["NomArticle","CodeArticleInterne"].includes(field) && (row.ID_Article || row.ID_ArticleFk)) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("produit",row.ID_Article || row.ID_ArticleFk,row.NomArticle); }}>{display(field,row[field],row)}</button>;
@@ -243,6 +250,7 @@ export function IndicatorContent({ entry, update, open, inline = false, onReady 
   const kind = indicator?.kind || (PRODUCT_INDICATORS.has(entry.id) ? "produit" : "commande");
   const isInvoice = entry.id.startsWith("factures") || ["montantTotalFacture", "montantTotalRegle", "montantRestant"].includes(entry.id);
   const fields = kind === "produit" ? ["CodeArticleInterne", "NomArticle", "QteArticle", "QteMinArticle", "EtatStock", "StockArticle", "StockMouvements", "Ecart", "EtatAuditStock", "CouvertureMois"] : isInvoice ? ["CodeFacture", "CodeCmd", "DateFacture", "DateEcheancePaiement", "NomClientSaisi", "MontantFacture", "MontantRegleFacture", "TotalRegle", "MontantResteFacture", "Reste"] : ["CodeCmd", "DateCmd", "TypeCmd", "StatutCmd", "NomClientSaisi", "NbLignes", "MontantTTC", "EtatPaiement"];
+  if (ARTICLE_WEIGHT_INDICATORS.has(entry.id)) fields.splice(3, 0, "PoidsUnitaire", "PoidsStockKg");
   return <>{!inline && indicator ? <div className="consult-indicator"><strong>{indicator.amountsByCurrency?.length ? formatCurrencyGroups(indicator.amountsByCurrency) : formatNumber(indicator.value)}{indicator.unit ? " " + indicator.unit : ""}</strong><span>{indicator.label}</span></div> : null}
     <ResultTable remote={remote} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={fields} open={open} showControls={inline} kind={kind} onReady={onReady} exportPath={"/api/logistique/indicateurs/" + entry.id + "/export.xlsx"} />
   </>;

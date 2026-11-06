@@ -6,7 +6,6 @@ import {requestJson} from "../services/api";
 import {accessSignature} from "../services/moduleAccess";
 import {guideArticleValid,guideContextValid,guideLocation,searchGuideArticles} from "../services/userGuide";
 import ModuleSidebar from "../components/ModuleSidebar";
-import ModuleHeader from "../components/ModuleHeader";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
 import "./logistique/LogistiqueModern.css";
@@ -47,7 +46,6 @@ export default function GuideUtilisateur(){
   const reload=()=>setRevision(value=>value+1),article=detail.data?.article;
   return <div className={"logistics-modern logistics-app admin-portal guide-module"+(collapsed?" is-menu-collapsed":"")}>
     <ModuleSidebar title="Guide utilisateur" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} storageKey="sauverndeko.guide.navigation" activeKey={moduleKey||"accueil"} groups={[{key:"accueil",label:"Prise en main",items:[{key:"accueil",label:"Tous les guides",icon:"book",to:"/guide"}]},{key:"modules",label:"Par application",items:modules.map(module=>({key:module.key,label:module.label,icon:module.icon,to:guideLocation(module.key)}))}]}/>
-    <ModuleHeader title="Guide utilisateur"/>
     <main className="admin-main guide-main" id="guide-contenu">
       <header className="guide-heading"><div><p className="guide-eyebrow">PRISE EN MAIN</p><h1 ref={heading} tabIndex={-1}>{searching?"Rechercher dans les guides":articleId&&articleMeta?articleMeta.title:selected?.label||"Guide utilisateur"}</h1><p>{searching?"Retrouvez un parcours dans vos applications.":selected?.description||"Des étapes simples et des exemples pour utiliser vos applications."}</p></div>{selected&&!searching?<Link className="ui-action is-secondary" to={selected.path}><AppIcon name="arrow-up-right"/>Ouvrir {selected.label}</Link>:null}</header>
       <form className="guide-search" role="search" onSubmit={event=>event.preventDefault()}><label className="visually-hidden" htmlFor={searchId}>Rechercher dans les guides autorisés</label><AppIcon name="search" size={20}/><input id={searchId} type="search" placeholder="Rechercher : créer un article, facture, licence…" value={query} onChange={event=>setQuery(event.target.value)} disabled={current.loading||Boolean(current.error)}/>{query?<button type="button" aria-label="Effacer la recherche" onClick={()=>setQuery("")}><AppIcon name="close"/></button>:null}</form>

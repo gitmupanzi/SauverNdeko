@@ -19,6 +19,19 @@ function periodDates(key) {
   const to = new Date(year,key === "year" ? 12 : key === "quarter" ? Math.floor(month/3)*3+3 : month+1,0);
   return { dateFrom:iso(from),dateTo:iso(to) };
 }
+function describeStockWeight({ poidsStockKg, articlesSansPoids } = {}) {
+  if (poidsStockKg === undefined) return null;
+
+  const missing = Number(articlesSansPoids) || 0;
+  const hasWeight = poidsStockKg !== null;
+  const label = hasWeight ? formatNumber(poidsStockKg) + "\u00a0kg" : "Poids indisponible";
+  const missingLabel = missing === 1
+    ? "1 article en stock sans poids exploitable."
+    : formatNumber(missing) + " articles en stock sans poids exploitable.";
+  const description = hasWeight ? "Poids du stock : " + label + "." : "Poids du stock indisponible.";
+  return { label, description: missing ? description + " " + missingLabel : description, partial: hasWeight && missing > 0 };
+}
+
 function IndicatorBlock({ id, title, icon, scope, children }) {
   const [open, setOpen] = useState(true);
   return <section className="erp-indicator-block" aria-labelledby={id + "-title"}>
@@ -112,10 +125,20 @@ export default function DashboardLogistique({
       && JSON.stringify(visibleMetric.filters) === JSON.stringify(options.filters || {});
     const displayValue=options.currency !== undefined ? formatCurrency(value,options.currency) : formatNumber(value)+(value != null ? suffix : "");
     const detailLabel=options.currency !== undefined ? label+" · "+(options.currency || "Devise non renseignée") : label;
+    const stockWeight = describeStockWeight(options.stockWeight);
+    const accessibleLabel = [detailLabel + " : " + displayValue + ".", stockWeight?.description, "Voir la liste"].filter(Boolean).join(" ");
     const open = (event) => showMetric(blockKey, key, detailLabel, event, options.filters || {});
     return <article key={options.rowKey || key} className={"erp-kpi is-" + tone}>
-      <button type="button" className="erp-kpi-main" disabled={loading} aria-label={detailLabel + " : " + displayValue + ". Voir la liste"} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
-        <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span><span className="erp-kpi-label" title={label}>{label}</span><strong>{displayValue}</strong><AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
+      <button type="button" className="erp-kpi-main" disabled={loading} aria-label={accessibleLabel} aria-expanded={selected} aria-controls="dashboard-indicator-details" onClick={open}>
+        <span className="erp-kpi-icon"><AppIcon name={icon} size={17} /></span>
+        <span className="erp-kpi-copy">
+          <span className="erp-kpi-label" title={label}>{label}</span>
+          {stockWeight ? <span className="erp-kpi-weight" title={stockWeight.description}>
+            {stockWeight.label}{stockWeight.partial ? " · Partiel" : ""}
+          </span> : null}
+        </span>
+        <strong>{displayValue}</strong>
+        <AppIcon name="chevron-right" size={12} className="erp-kpi-chevron" />
       </button>
     </article>;
   }
@@ -156,8 +179,13 @@ export default function DashboardLogistique({
         {showLeftColumn ? <div className="erp-dashboard-column">
           {!hidden.has("articles") ? <IndicatorBlock id="dashboard-articles" title="Articles" icon="bi-box-seam" scope="Stock courant">
             <div className="erp-group-grid">
-              {metric("articles", "articles", "Nombre d’articles", "bi-box", "blue")}
-              {summary.categories?.length ? summary.categories.map((category) => metric("articles", "articlesCategorie", category.label, "bi-tag", "teal", "", { value: category.count, rowKey: "category-" + (category.id ?? "none"), filters: { categorieId: category.id ?? "sans-categorie" } })) : null}
+              {metric("articles", "articles", "Nombre d’articles", "bi-box", "blue", "", { stockWeight: summary.stockWeight })}
+              {summary.categories?.map((category) => metric("articles", "articlesCategorie", category.label, "bi-tag", "teal", "", {
+                value: category.count,
+                rowKey: "category-" + (category.id ?? "none"),
+                filters: { categorieId: category.id ?? "sans-categorie" },
+                stockWeight: category,
+              }))}
             </div>
             <details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("articles", "auditTotal", "Articles contrôlés")}{metric("articles", "auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("articles", "auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("articles", "coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>
           </IndicatorBlock> : null}

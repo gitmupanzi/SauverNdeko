@@ -11,6 +11,7 @@ import uuid
 from decimal import Decimal
 
 from django.db import DatabaseError, transaction
+from django.utils import timezone
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.views import APIView
 
@@ -21,8 +22,11 @@ from apps.core.repository import audit
 from apps.core.responses import APIError, ExactEncoder, ok
 from apps.core.tenancy import require_entity
 
+from .quantities import quantity
+
 TABLES = {'tiers': 'T_Client', 'articles': 'T_Article', 'immobilisations': 'T_Immobilisation'}
 MAX_ROWS = 100
+MAX_OPENING_ROWS = 600
 MAX_PAYLOAD = 4 * 1024 * 1024
 MAX_UPLOADS = 32 * 1024 * 1024
 LINE_ID = re.compile(r'[A-Za-z0-9_-]{1,100}\Z')
@@ -84,6 +88,67 @@ def create_row(actor, kind, data, request_id, photo=None, created_paths=None):
     return save_article(actor, payload, photo, _created_paths=created_paths)
 
 
+def opening_article(data):
+    stock = quantity(data.get('QteArticle'), 'QteArticle', zero=True)
+    lots = data.get('LotsInitiaux')
+    if lots is not None and (not isinstance(lots, list) or (lots and not stock)):
+        raise APIError({'LotsInitiaux': 'Les lots nécessitent une quantité d’ouverture positive.'})
+    if stock and data.get('PUArticle') in (None, ''):
+        raise APIError({'PUArticle': 'Indiquez le prix d’achat unitaire, même si sa valeur est zéro.'})
+    article = {key: value for key, value in data.items() if key != 'LotsInitiaux'}
+    return {**article, 'QteArticle': 0}, stock, lots or []
+
+
+def opening_receipt(actor, request_id, entries):
+    from .order_composer import compose_order
+    from .receipts import entry_type
+
+    if not entries:
+        raise problem(header={'rows': 'Saisissez une quantité positive pour au moins un article.'})
+    currencies = {entry[0]['ID_DeviseFk'] for entry in entries}
+    if len(currencies) != 1:
+        message = 'Tous les articles réceptionnés sur le même bon doivent utiliser la même devise.'
+        raise problem(rows={article['clientRowId']: {'ID_DeviseFk': message} for article, _, _ in entries})
+    lines = [
+        {'ID_ArticleFk': article['ID_Article'], 'QteCmdDetail': stock, 'PUCmdDetail': article['PUArticle'], 'Lots': lots}
+        for article, stock, lots in entries
+    ]
+    try:
+        kind = entry_type(lock=True, actor=actor)
+        result = compose_order(actor, {
+            'requestId': str(uuid.uuid5(uuid.UUID(request_id), 'opening-receipt')),
+            'bon': {
+                'ID_TypeCmdFk': kind['id'],
+                'ID_DeviseFk': next(iter(currencies)),
+                'DateCmd': timezone.now().isoformat(),
+                'RefCmd': 'Stock d’ouverture',
+                'ObsCmd': 'Entrée de stock issue d’un import d’articles.',
+            },
+            'lignes': lines,
+        }, max_lines=MAX_OPENING_ROWS)
+    except APIError as error:
+        if error.status_code in (401, 403) or error.status_code >= 500:
+            raise
+        fields = {'QteCmdDetail': 'QteArticle', 'PUCmdDetail': 'PUArticle', 'Lots': 'LotsInitiaux'}
+        row_errors = {}
+        header_errors = {}
+        details = error.detail if isinstance(error.detail, dict) else {'bon': str(error.detail)}
+        for key, message in details.items():
+            match = re.fullmatch(r'lignes\.(\d+)(?:\.([^.]+).*)?', key)
+            if match and int(match[1]) < len(entries):
+                identity = entries[int(match[1])][0]['clientRowId']
+                row_errors.setdefault(identity, {})[fields.get(match[2], '_line')] = message
+            else:
+                header_errors[key.removeprefix('bon.')] = message
+        raise problem(rows=row_errors, header=header_errors) from error
+
+    stock_by_article = {line['ID_ArticleFk']: line['StockActuel'] for line in result['lignes']}
+    for article, _, _ in entries:
+        article['QteArticle'] = stock_by_article[article['ID_Article']]
+    bon = result['bon']
+    return {'id': bon['ID_Commande'], 'code': bon['CodeCmd']}
+
+
 def save_batch(actor, kind, body, files=None):
     if kind not in TABLES:
         raise APIError('Ce panier est introuvable.', 'NOT_FOUND', 404)
@@ -92,16 +157,22 @@ def save_batch(actor, kind, body, files=None):
     entity = require_entity(actor)
     if not actor.admin:
         raise APIError('Accès réservé aux gestionnaires.', 'FORBIDDEN', 403)
-    if not isinstance(body, dict) or set(body) != {'requestId', 'rows'}:
+    expected = {'requestId', 'rows'}
+    allowed = expected | ({'openingReceipt'} if kind == 'articles' else set())
+    if not isinstance(body, dict) or not expected <= set(body) <= allowed:
         raise APIError('Le panier attend son identifiant et ses lignes.')
+    with_receipt = body.get('openingReceipt', False)
+    if type(with_receipt) is not bool:
+        raise problem(header={'openingReceipt': 'Choisissez si le panier crée un bon d’entrée.'})
     try:
         request_id = str(uuid.UUID(body['requestId']))
     except (TypeError, ValueError, AttributeError):
         raise APIError('Rouvrez le formulaire pour identifier le panier.', 'LOGISTICS_BATCH_REQUEST_INVALID', 400)
     rows = body['rows']
-    if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_ROWS:
-        raise problem(header={'rows': 'Ajoutez de 1 à 100 lignes.'})
-    ids = []
+    max_rows = MAX_OPENING_ROWS if with_receipt else MAX_ROWS
+    if not isinstance(rows, list) or not 1 <= len(rows) <= max_rows:
+        raise problem(header={'rows': f'Ajoutez de 1 à {max_rows} lignes.'})
+    ids = set()
     issues = {}
     for row in rows:
         if not isinstance(row, dict) or set(row) != {'clientRowId', 'data'} or not isinstance(row.get('clientRowId'), str) or not LINE_ID.fullmatch(row['clientRowId']):
@@ -109,7 +180,7 @@ def save_batch(actor, kind, body, files=None):
         identity = row['clientRowId']
         if identity in ids:
             raise APIError('Les clés des lignes doivent être distinctes.')
-        ids.append(identity)
+        ids.add(identity)
         if not isinstance(row['data'], dict):
             issues[identity] = {'_line': 'Les informations de la ligne doivent être un objet.'}
         elif {'requestId', '_version', 'IdEntiteFk', 'ID_EntiteFk'} & set(row['data']):
@@ -142,12 +213,16 @@ def save_batch(actor, kind, body, files=None):
                     raise APIError('Cette demande a déjà été enregistrée avec un autre contenu.', 'LOGISTICS_BATCH_REPLAY_CONFLICT', 409)
                 return proof['response'], True
             records = []
+            opening_entries = []
             for row in rows:
                 identity = row['clientRowId']
                 child_request = str(uuid.uuid5(uuid.UUID(request_id), kind + ':' + identity))
                 try:
                     with transaction.atomic():
-                        saved = create_row(actor, kind, row['data'], child_request,
+                        data = row['data']
+                        if with_receipt:
+                            data, stock, lots = opening_article(data)
+                        saved = create_row(actor, kind, data, child_request,
                                            files.get('photo_' + identity), created_paths)
                 except APIError as error:
                     if error.status_code in (401, 403, 503):
@@ -159,10 +234,15 @@ def save_batch(actor, kind, body, files=None):
                         raise
                     issues[identity] = {'_line': 'La ligne est incompatible avec les références, l’unicité du code ou les règles métier.'}
                 else:
-                    records.append({'clientRowId': identity, **saved})
+                    record = {'clientRowId': identity, **saved}
+                    records.append(record)
+                    if with_receipt and stock:
+                        opening_entries.append((record, stock, lots))
             if issues:
                 raise problem(rows=issues)
             result = {'requestId': request_id, 'count': len(records), 'records': records}
+            if with_receipt:
+                result['openingReceipt'] = opening_receipt(actor, request_id, opening_entries)
             audit(obj, 'LOGISTICS_BATCH_CREATE', new={'requestId': request_id, 'payloadHash': digest,
                 'IdEntiteFk': entity, 'response': result}, actor=actor)
         committed = True

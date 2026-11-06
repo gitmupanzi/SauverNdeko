@@ -5,7 +5,6 @@ import {requestJson} from "../services/api";
 import {useModulePresentation} from "../hooks/useModulePresentation";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import ModuleSidebar from "../components/ModuleSidebar";
-import ModuleHeader from "../components/ModuleHeader";
 import ActionButton from "../components/ActionButton";
 import {CAISSE_ROOT,caisseTab} from "./caisse/caisseModel";
 import CaisseDashboard from "./caisse/CaisseDashboard";
@@ -46,7 +45,6 @@ export default function Caisse(){
  const safeDrawer=drawer?.owner===owner?drawer:null;
  return <div className={"logistics-modern logistics-app admin-portal caisse-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Caisse" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.caisse.navigation" groups={groups}/>
-  <ModuleHeader title="Caisse"/>
   <main className="admin-main caisse-main">
    {scope.globalAdmin&&!scope.entityId?<p className="caisse-scope-note">Toutes les entreprises · Choisissez une entreprise pour effectuer une opération.</p>:null}
    {presentationError?<div className="admin-error" role="status"><span>Les réglages d’affichage sont indisponibles. La présentation standard est utilisée.</span><ActionButton icon="refresh" onClick={retryPresentation}>Réessayer</ActionButton></div>:null}

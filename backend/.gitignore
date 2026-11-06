@@ -55,3 +55,8 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+# Secrets et environnements locaux
+.env
+.env.*
+.venv/
+node_modules/

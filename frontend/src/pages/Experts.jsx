@@ -5,7 +5,6 @@ import {requestJson} from "../services/api";
 import {buildDiscussionPath} from "../services/mappers";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
 import ModuleSidebar from "../components/ModuleSidebar";
-import ModuleHeader from "../components/ModuleHeader";
 import ActionButton from "../components/ActionButton";
 import ExpertDirectory from "./experts/ExpertDirectory";
 import ExpertDetail from "./experts/ExpertDetail";
@@ -29,7 +28,6 @@ export default function Experts({onContact}){
  function saved(record){const id=record?.IdProfessionnel||record?.id,action=safeDrawer?.action,text=action?({publier:"Profil publié dans l’annuaire.",depublier:"Profil retiré de l’annuaire.",archiver:"Profil archivé.",reactiver:"Profil réactivé. Publiez-le pour le rendre visible dans l’annuaire."})[action]:record?.Publie===false||safeDrawer?.mode==="create"?"Brouillon enregistré. Publiez le profil pour le rendre visible dans l’annuaire.":"Profil mis à jour.";setDrawer(null);setFeedback({text:text||"Profil mis à jour.",id:id||null});setRefresh(value=>value+1);}
  return <div className={"logistics-modern logistics-app admin-portal experts-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Professionnels" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={key=>{setDrawer(null);setParams(key==="annuaire"?{}:{onglet:key});}} storageKey="sauverndeko.experts.navigation" groups={[{key:"annuaire",label:"Professionnels",items:[{key:"annuaire",label:"Annuaire",icon:"user"},...((current.context?.canReadRegistry||current.context?.platformAdmin||current.context?.canManage)?[{key:"profils",label:"Profils professionnels",icon:"document"}]:[])]}]}/>
-  <ModuleHeader title="Professionnels"/>
   <main className="admin-main experts-main">
    {current.error?<div className="admin-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
    {feedback?<div className="admin-feedback" role="status">{feedback.text}{feedback.id?<ActionButton icon="eye" onClick={()=>open({id:feedback.id,manage:true})}>Consulter le profil</ActionButton>:null}<ActionButton icon="close" aria-label="Fermer le message" onClick={()=>setFeedback(null)}/></div>:null}

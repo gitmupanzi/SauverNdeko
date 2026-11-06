@@ -28,6 +28,7 @@ const fixture=mocks([
  [/\/components\/RegisterSurface$/,'surface',`export default function Surface(){}`],
  [/\/components\/RegisterSettingsButton$/,'settings',`export default function Settings(){}`],
  [/\/components\/DataTableToolbar$/,'toolbar',`export default function Toolbar(){}`],
+ [/\/components\/ExportMenu$/,'export-menu',`export default function ExportMenu(){}`],
  [/\/components\/RowActionsMenu$/,'actions',`export default function Actions(){}`],
  [/\/logistique\/logistiqueShared$/,'table',`export function SimpleTable(){};export const formatDate=x=>x;`],
  [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__results.shift()||{success:false,status:503};}if(globalThis.__holdReads)return globalThis.__holdReads;if(url.includes('/contexte'))return {success:true,data:globalThis.__context};if(url.includes('/tableau-de-bord'))return {success:true,data:globalThis.__dashboard};if(url.includes('/kanban'))return {success:true,data:globalThis.__kanban||{columns:[{id:14,label:'Nouveau',count:45,rows:[globalThis.__record],hasMore:true}]}};if(url.includes('?'))return {success:true,data:[globalThis.__record],meta:globalThis.__meta};return {success:true,data:globalThis.__detail};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});}${apiNames.map(name=>'export function '+name+'(){throw Error("Route hors Support inattendue");}').join(' ')}`],

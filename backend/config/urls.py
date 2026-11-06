@@ -47,6 +47,7 @@ from apps.logistique.order_composer import OrderComposerView, OrderCompositionVi
 from apps.logistique.receipts import ArticleReceiptView
 from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
+from apps.logistique.article_xlsx import ArticleExcelPreviewView
 from apps.logistique.batch_creation import LogisticsBatchView
 from django.contrib import admin
 from django.urls import re_path
@@ -147,6 +148,7 @@ urlpatterns = [
     re_path(r"^api/systeme/administration/entreprises/?$", AdminEntitiesView.as_view()),
     re_path(r"^api/systeme/administration/references/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminReferencesView.as_view()),
     re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminBatchView.as_view()),
+    re_path(r"^api/logistique/saisie-multiple/articles/apercu-excel/?$", ArticleExcelPreviewView.as_view()),
     re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|articles|immobilisations)/?$", LogisticsBatchView.as_view()),
     re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/?$", ReferenceBatchView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.xlsx/?$", ReferenceTablesExcelView.as_view()),

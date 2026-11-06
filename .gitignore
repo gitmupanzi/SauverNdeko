@@ -1,9 +1,13 @@
 # Etat et journaux locaux des lanceurs
 .runtime/
 
+# .vscode
+.vscode/
+
 # Secrets et environnements locaux
 .env
 .env.*
+.env_online
 .venv/
 node_modules/
 

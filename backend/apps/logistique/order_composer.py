@@ -58,7 +58,7 @@ def typed(column,value,field,*,preserve_text=False):
     return value
 
 
-def composition_data(actor,body,old=None,old_lines=None):
+def composition_data(actor,body,old=None,old_lines=None,*,max_lines=MAX_LINES):
     expected={'requestId','bon','lignes'} | ({'_version'} if old is not None else set())
     if not isinstance(body,dict) or set(body)!=expected:
         composition_error('bon','Renseignez le bon et son panier.')
@@ -68,8 +68,8 @@ def composition_data(actor,body,old=None,old_lines=None):
     header_columns={column['column_name']:column for column in model('T_Commande')['columns'] if column['column_name'] not in HEADER_GENERATED}
     if not isinstance(raw_header,dict) or set(raw_header)-set(header_columns):
         composition_error('bon','Un champ du bon n’est pas autorisé.')
-    if not isinstance(raw_lines,list) or not (0 if old is not None else 1)<=len(raw_lines)<=MAX_LINES:
-        composition_error('lignes','Indiquez au maximum 50 articles distincts.' if old is not None else 'Ajoutez entre 1 et 50 articles distincts.')
+    if not isinstance(raw_lines,list) or not (0 if old is not None else 1)<=len(raw_lines)<=max_lines:
+        composition_error('lignes',f'Indiquez au maximum {max_lines} articles distincts.' if old is not None else f'Ajoutez entre 1 et {max_lines} articles distincts.')
     header={key:typed(column,raw_header.get(key,(old or {}).get(key)), 'bon.'+key) for key,column in header_columns.items() if key!='ID_UserFk'}
     expected_owner=old.get('ID_UserFk') if old is not None else actor.pk
     try:owner=positive(raw_header.get('ID_UserFk',expected_owner),'Responsable')
@@ -160,11 +160,11 @@ def composition_result(actor,command_id,lines,*,replayed):
     return clean({'bon':bon,'lignes':rows,'replayed':replayed})
 
 
-def compose_order(actor,body):
+def compose_order(actor,body,*,max_lines=MAX_LINES):
     db.ensure_writable()
     if not actor.admin:raise APIError('Accès réservé aux gestionnaires autorisés.','FORBIDDEN',403)
     require_module(actor,'logistique','manage')
-    data=composition_data(actor,body)
+    data=composition_data(actor,body,max_lines=max_lines)
     fingerprint=composition_hash(actor,data)
     operation_key='compose:'+str(actor.pk)+':'+data['requestId']
     with transaction.atomic():
@@ -234,21 +234,42 @@ def composition_snapshot(actor,command_id):
              if return_storage_ready() else "'[]'::jsonb")
     invoice_ready=db.one("SELECT to_regclass('logistique.\"T_Facture\"') IS NOT NULL AS ready")['ready']
     invoice=('EXISTS(SELECT 1 FROM logistique."T_Facture" f WHERE f."ID_CommandeFk"=v."ID_Commande")' if invoice_ready else 'FALSE')
-    row=db.one('''SELECT (to_jsonb(cv)||to_jsonb(v)) AS bon,
-        v."IdEntiteFk" AS owner_entity,
-        (SELECT COALESCE(jsonb_agg((COALESCE(to_jsonb(dv),'{}'::jsonb)||to_jsonb(d))||jsonb_build_object(
-            'Lots',(SELECT COALESCE(jsonb_agg(jsonb_build_object('ID_LotArticle',lot."ID_LotArticle",'NumeroLot',lot."NumeroLot",
-                        'DatePeremptionLot',lot."DatePeremptionLot",'Quantite',ml."Quantite",'MotifDerogationPeremption',ml."MotifDerogationPeremption") ORDER BY lot."NumeroLot",lot."ID_LotArticle"),'[]'::jsonb)
-                    FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
-                    JOIN logistique."T_LotArticle" lot ON lot."ID_LotArticle"=ml."ID_LotArticleFk"
-                    WHERE m."ID_cmdFk"=d."ID_CmdFk" AND m."ID_ArticleFk"=d."ID_ArticleFk"),
-            'article',(SELECT to_jsonb(a) FROM logistique."V_Article" a WHERE a."ID_Article"=d."ID_ArticleFk" AND '''+article_where+'''))
-            ORDER BY d."ID_ArticleFk"),'[]'::jsonb)
-         FROM logistique."T_CommandeDetail" d LEFT JOIN logistique."V_CommandeDetail" dv
-              ON dv."ID_CmdFk"=d."ID_CmdFk" AND dv."ID_ArticleFk"=d."ID_ArticleFk"
-         WHERE d."ID_CmdFk"=v."ID_Commande") AS lignes,'''+returns+' AS retours,'+invoice+''' AS snapshot_invoice
-        FROM logistique."T_Commande" v LEFT JOIN logistique."V_Commande" cv ON cv."ID_Commande"=v."ID_Commande"
-        WHERE '''+where,[*article_values,*values])
+    row=db.one('''WITH parent AS MATERIALIZED (
+            SELECT v.* FROM logistique."T_Commande" v WHERE '''+where+'''
+        ), details AS MATERIALIZED (
+            SELECT d.* FROM logistique."T_CommandeDetail" d
+            WHERE d."ID_CmdFk"=(SELECT "ID_Commande" FROM parent)
+        ), projected_details AS MATERIALIZED (
+            SELECT dv."ID_ArticleFk",to_jsonb(dv) AS data
+            FROM logistique."V_CommandeDetail" dv
+            WHERE dv."ID_CmdFk"=(SELECT "ID_Commande" FROM parent)
+        ), articles AS MATERIALIZED (
+            SELECT a."ID_Article",to_jsonb(a) AS data
+            FROM logistique."V_Article" a
+            WHERE a."ID_Article"=ANY(ARRAY(SELECT "ID_ArticleFk" FROM details))
+              AND '''+article_where+'''
+        ), lots AS MATERIALIZED (
+            SELECT m."ID_ArticleFk",jsonb_agg(jsonb_build_object(
+                'ID_LotArticle',lot."ID_LotArticle",'NumeroLot',lot."NumeroLot",
+                'DatePeremptionLot',lot."DatePeremptionLot",'Quantite',ml."Quantite",
+                'MotifDerogationPeremption',ml."MotifDerogationPeremption")
+                ORDER BY lot."NumeroLot",lot."ID_LotArticle") AS data
+            FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
+            JOIN logistique."T_LotArticle" lot ON lot."ID_LotArticle"=ml."ID_LotArticleFk"
+            WHERE m."ID_cmdFk"=(SELECT "ID_Commande" FROM parent)
+            GROUP BY m."ID_ArticleFk"
+        )
+        SELECT (to_jsonb(cv)||to_jsonb(v)) AS bon,v."IdEntiteFk" AS owner_entity,
+            (SELECT COALESCE(jsonb_agg((COALESCE(dv.data,'{}'::jsonb)||to_jsonb(d))||
+                jsonb_build_object('Lots',COALESCE(l.data,'[]'::jsonb),'article',a.data)
+                ORDER BY d."ID_ArticleFk"),'[]'::jsonb)
+             FROM details d
+             LEFT JOIN projected_details dv USING ("ID_ArticleFk")
+             LEFT JOIN articles a ON a."ID_Article"=d."ID_ArticleFk"
+             LEFT JOIN lots l USING ("ID_ArticleFk")) AS lignes,
+            '''+returns+' AS retours,'+invoice+''' AS snapshot_invoice
+        FROM parent v LEFT JOIN logistique."V_Commande" cv ON cv."ID_Commande"=v."ID_Commande"''',
+        [*values,*article_values])
     if not row:raise APIError('Objet introuvable dans votre périmètre.','NOT_FOUND',404)
     return row
 
@@ -263,6 +284,10 @@ def composition_revision(snapshot):
     return hashlib.sha256(json.dumps(canonical,cls=ExactEncoder,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode('utf8')).hexdigest()
 
 
+def edit_line_limit(snapshot):
+    return max(MAX_LINES,len(snapshot['lignes']))
+
+
 def composition_metadata(snapshot,actor):
     from .document_rules import stock_write_state,usage
     state=stock_write_state(snapshot['bon'])
@@ -272,7 +297,7 @@ def composition_metadata(snapshot,actor):
     reason=state['reason'] or ('Ce bon appartient à une autre organisation.' if snapshot['owner_entity']!=actor.organisation else
                               'Votre rôle ne permet pas de modifier les bons.' if not can_manage else
                               'Les écritures sont momentanément indisponibles.' if settings.DB_READ_ONLY else '')
-    return {'revision':composition_revision(snapshot),'canEdit':not reason,'reason':reason,
+    return {'revision':composition_revision(snapshot),'canEdit':not reason,'reason':reason,'maxLines':edit_line_limit(snapshot),
             'canChangeType':rights['canChangeType'] and not reason,'canChangeCurrency':rights['canChangeCurrency'] and not reason,
             **type_context(snapshot['bon'].get('ID_TypeCmdFk'),required=False)}
 
@@ -298,7 +323,8 @@ def update_composition(actor,command_id,body):
         assert_document(actor,current)
         if current['IdEntiteFk']!=actor.organisation:
             composition_error('bon','Ce bon appartient à une autre organisation.','COMPOSITION_ORGANISATION',403)
-        data=composition_data(actor,body,old=current,old_lines=snapshot['lignes'])
+        data=composition_data(actor,body,old=current,old_lines=snapshot['lignes'],
+                              max_lines=edit_line_limit(snapshot))
         fingerprint=edit_composition_hash(actor,data,command_id)
         proof=db.one('''SELECT "NewData" AS proof FROM systeme."T_Audit_Log"
             WHERE "TableName"='logistique.T_Commande' AND "Operation"='COMPOSE_UPDATE'

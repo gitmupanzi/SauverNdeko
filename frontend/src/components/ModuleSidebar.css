@@ -50,19 +50,26 @@ html .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-to
 html .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-nav { gap:15px; }
 html[data-theme] .erp-module-sidebar.is-collapsed:not(.is-mobile-open) .logistics-sidebar-link { justify-content:center; padding-inline:0; }
 .module-sidebar-backdrop { position:fixed; inset:0; z-index:79; margin:0; padding:0; border:0; border-radius:0; background:rgb(4 15 29 / 48%); box-shadow:none; }
+.module-navigation { position:sticky; top:0; z-index:30; }
+.logistics-modern .module-navigation>.module-header { position:relative; z-index:auto; }
 html .logistics-sidebar-shell.erp-module-sidebar.is-overlay { position:fixed; z-index:80; inset:0 auto 0 0; width:min(286px,calc(100vw - 44px)); height:100dvh; transform:translateX(-101%); visibility:hidden; transition:transform .18s ease,visibility .18s ease; }
 html .erp-module-sidebar.is-overlay.is-open { transform:translateX(0); visibility:visible; }
 @media(min-width:761px) and (max-width:1000px) { html .logistics-modern.logistics-app:not(.is-menu-collapsed) { --sidebar-width:226px; } }
 @media(max-width:760px) {
  html .logistics-modern.logistics-app,html .logistics-modern.logistics-app.is-menu-collapsed { --sidebar-width:60px; }
+ .module-navigation.is-menu-open { z-index:80; }
+ .module-navigation>.module-sidebar-backdrop { position:absolute; inset:100% 0 auto calc(-1 * var(--sidebar-width)); height:calc(100dvh - 100%); }
+ html .logistics-modern.logistics-app .module-navigation .erp-module-sidebar.is-mobile-open { position:absolute; inset:100% auto auto calc(-1 * var(--sidebar-width)); height:calc(100dvh - 100%); }
  html .logistics-modern.logistics-app .erp-module-sidebar.logistics-sidebar-shell { padding:0 7px; }
- html .erp-module-sidebar:not(.is-overlay) .logistics-sidebar-top { min-height:96px; flex-direction:column; justify-content:center; gap:7px; padding:10px 0; }
- html .erp-module-sidebar .logistics-sidebar-toggle { display:grid; width:28px; height:27px; }
+ html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) .logistics-sidebar-top { min-height:66px; flex-direction:row; justify-content:center; padding:10px 0; }
+ html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay):has(.logistics-sidebar-toggle) .logistics-brand-lockup { display:none; }
+ html .logistics-sidebar-shell.erp-module-sidebar .logistics-sidebar-top .logistics-sidebar-toggle { display:grid; align-self:center; width:44px; height:44px; padding:0; color:var(--erp-sidebar-text); background:var(--erp-sidebar-hover); border:1px solid var(--erp-sidebar-border); border-radius:9px; }
+ html .logistics-sidebar-shell.erp-module-sidebar .logistics-sidebar-top .logistics-sidebar-toggle:hover { background:var(--erp-sidebar-active); }
  html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) :is(.logistics-brand-copy,.logistics-sidebar-label,.module-nav-group-toggle,.module-nav-badge,.module-nav-external,.module-sidebar-extra,.module-menu-search) { display:none; }
  html .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) .logistics-sidebar-nav { gap:14px; padding-top:14px; }
  html[data-theme] .erp-module-sidebar:not(.is-mobile-open):not(.is-overlay) .logistics-sidebar-link { justify-content:center; padding:8px 0; }
  html .logistics-modern.logistics-app .erp-module-sidebar.is-mobile-open { z-index:80; width:min(286px,calc(100vw - 44px)); padding:0 14px; box-shadow:12px 0 35px rgb(0 0 0 / 18%); }
- html .erp-module-sidebar.is-mobile-open .logistics-sidebar-top { flex-direction:row; min-height:76px; padding:15px 1px; }
+ html .logistics-sidebar-shell.erp-module-sidebar.is-mobile-open .logistics-sidebar-top { flex-direction:row; justify-content:space-between; min-height:76px; padding:15px 1px; }
  html .erp-module-sidebar:is(.is-mobile-open,.is-overlay) :is(.logistics-brand-copy,.logistics-sidebar-label) { display:block; }
  html .erp-module-sidebar:is(.is-mobile-open,.is-overlay) .module-nav-group-toggle { display:flex; }
  html[data-theme] .erp-module-sidebar:is(.is-mobile-open,.is-overlay) .logistics-sidebar-link { justify-content:flex-start; padding:9px 11px; }

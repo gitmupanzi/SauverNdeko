@@ -56,6 +56,31 @@ def row_source(obj):
 
 def source_for_indicator(key, name):
     obj = view("logistique", name)
+    if key in {"articles", "articlesCategorie"}:
+        # Les abréviations de masse reconnues sont celles de verifier_article_poids.
+        return {
+            **obj,
+            "columns": [
+                *obj["columns"],
+                {"column_name": "PoidsStockKg", "data_type": "numeric", "is_nullable": "YES"},
+            ],
+            "_row_source": """
+                (SELECT article.*,
+                    CASE
+                        WHEN article."QteArticle" <= 0 THEN 0::numeric
+                        WHEN article."QteArticle" < 'Infinity'::numeric
+                            AND article."PoidsUnitaire" >= 0
+                            AND article."PoidsUnitaire" < 'Infinity'::numeric
+                            THEN article."QteArticle" * article."PoidsUnitaire" * CASE lower(btrim(article."UnitePoids"))
+                                WHEN 'mg' THEN 0.000001
+                                WHEN 'g' THEN 0.001
+                                WHEN 'kg' THEN 1
+                                WHEN 't' THEN 1000
+                            END
+                    END AS "PoidsStockKg"
+                 FROM logistique."V_Article" article) v
+            """,
+        }
     if key.startswith("factures") or key in {"montantTotalFacture", "montantTotalRegle", "montantRestant"}:
         obj = {**obj, "_date_field": "DateFacture"}
     return obj
@@ -149,10 +174,39 @@ def indicator_details(actor, key, raw):
 
     return rows, meta
 
+def article_overview(actor, raw):
+    obj = source_for_indicator("articles", "V_Article")
+    where, values = read_predicate(obj, actor, raw)
+    rows = db.query(
+        """
+        SELECT "ID_CategorieArticleFk" AS id,
+            COALESCE(NULLIF(BTRIM("CategorieArticle"), ''), 'Sans catégorie') AS label,
+            COUNT(*) AS count,
+            GROUPING("ID_CategorieArticleFk") AS total,
+            CASE WHEN COUNT(*) FILTER (WHERE "QteArticle" > 0) = 0 THEN 0::numeric
+                ELSE SUM("PoidsStockKg") FILTER (WHERE "QteArticle" > 0)
+            END AS "poidsStockKg",
+            COUNT(*) FILTER (WHERE "QteArticle" > 0 AND "PoidsStockKg" IS NULL) AS "articlesSansPoids"
+        FROM """ + row_source(obj) + " WHERE " + where + """
+        GROUP BY GROUPING SETS (("ID_CategorieArticleFk", "CategorieArticle"), ())
+        ORDER BY total DESC, label
+        """,
+        values,
+    )
+    total, *categories = rows
+    for category in categories:
+        del category["total"]
+    weight = {key: total[key] for key in ("poidsStockKg", "articlesSansPoids")}
+    return total["count"], weight, categories
+
+
 def overview(actor, raw):
     raw = params_only(raw)
-    totals, grouped = {}, {}
+    article_count, stock_weight, categories = article_overview(actor, raw)
+    totals, grouped = {"articles": article_count}, {}
     for key, rule in INDICATORS.items():
+        if key == "articles":
+            continue
         name, condition, expression, *_ = rule
         obj = source_for_indicator(key, name)
         if key in MONETARY_KEYS:
@@ -161,10 +215,7 @@ def overview(actor, raw):
             totals[key] = scalar_amount(grouped[key])
         else:
             totals[key] = metric_value(obj, actor, raw, condition, expression)
-    article_source = view("logistique", "V_Article")
-    where, values = read_predicate(article_source, actor, raw)
-    categories = db.query('SELECT "ID_CategorieArticleFk" AS id, COALESCE(NULLIF(BTRIM("CategorieArticle"),\'\'),\'Sans catégorie\') AS label, COUNT(*) AS count FROM ' + row_source(article_source) + ' WHERE ' + where + ' GROUP BY "ID_CategorieArticleFk", "CategorieArticle" ORDER BY label', values)
-    return {"totals": totals, "amountsByCurrency": grouped, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
+    return {"totals": totals, "amountsByCurrency": grouped, "stockWeight": stock_weight, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
     if kind == 'immobilisations':

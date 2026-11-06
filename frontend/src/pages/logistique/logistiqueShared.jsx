@@ -484,6 +484,8 @@ export function SimpleTable({
   defaultSortColumn = "",
   defaultRowsPerPage = DEFAULT_ROWS_PER_PAGE,
   rowsPerPageOptions = [10, 25, 50, 100],
+  page,
+  onPageChange,
   showControls = true,
   showSearch = true,
   serverMeta = null,
@@ -543,13 +545,14 @@ export function SimpleTable({
   const [localRowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
   const serverMode = typeof onServerChange === "function";
   const rowsPerPage = serverMode ? Number(serverState.take || serverMeta?.take || defaultRowsPerPage) : localRowsPerPage;
-  const currentPage = serverMode ? Math.floor(Number(serverState.skip || 0) / rowsPerPage) + 1 : localPage;
+  const currentPage = serverMode ? Math.floor(Number(serverState.skip || 0) / rowsPerPage) + 1 : (page ?? localPage);
   const sortConfig = serverMode ? { column: serverState.sortBy || serverMeta?.sortBy || "", direction: serverState.sortDir || serverMeta?.sortDir || "" } : localSortConfig;
   function setCurrentPage(next) {
     const target = typeof next === "function" ? next(currentPage) : next;
     if (target === currentPage) return;
     if (serverMode) onServerChange({ skip: (target - 1) * rowsPerPage });
-    else setLocalPage(target);
+    else if (page == null) setLocalPage(target);
+    else onPageChange?.(target);
   }
   const [localControlsOpen, setControlsOpen] = useState(false);
   const controlsOpen = columnsPanelOpen ?? localControlsOpen;
