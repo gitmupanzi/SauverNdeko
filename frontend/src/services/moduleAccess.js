@@ -4,6 +4,7 @@ export function moduleRights(user, key) { return user?.moduleAccess?.modules?.[k
 export function mayOpen(user, pathname) {
   if (pathname === "/referentiels") return Object.values(user?.moduleAccess?.modules || {}).some(item => item.canRead);
   const key = moduleForPath(pathname);
+  if (key === "territoires" && user?.moduleAccess?.platformAdmin !== true) return false;
   return !key || moduleRights(user,key).canRead;
 }
 export function accessSignature(user) { return JSON.stringify(user?.moduleAccess || null); }

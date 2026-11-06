@@ -36,6 +36,16 @@
       ],
       "description": "Enregistrer la première lecture de chaque message pour chaque destinataire.",
       "release": "2026.11.06"
+    },
+    {
+      "id": "20261106_04_offre_modules_entreprise",
+      "file": "../migrations/20261106_04_offre_modules_entreprise.sql",
+      "sha256": "073c974d3305754bc46f46e37d3d12aee68638537d7c10f3843d5f7089c9295a",
+      "dependsOn": [
+        "20261106_03_lecture_messages"
+      ],
+      "description": "Séparer les annuaires inclus, les modules sur licence et l’administration de plateforme.",
+      "release": "2026.11.06"
     }
   ]
 }

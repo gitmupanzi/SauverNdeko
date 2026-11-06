@@ -80,14 +80,9 @@
 .caisse-detail-heading h2 { margin:0; color:var(--erp-text); font-size:21px; overflow-wrap:anywhere; }
 .caisse-detail-heading p { margin:5px 0 0; color:var(--erp-muted); font-size:12px; overflow-wrap:anywhere; }
 .caisse-detail-actions { display:flex; flex-wrap:wrap; gap:10px; }
-.caisse-reference { padding:18px 0; border-bottom:1px solid var(--erp-border); font-size:12px; color:var(--erp-text); }
-.caisse-reference>p { margin:6px 0; color:var(--erp-muted); }
-.caisse-reference dl { display:flex; flex-wrap:wrap; gap:18px; margin:14px 0; }
-.caisse-reference dt { font-size:11px; font-weight:400; color:var(--erp-muted); }
-.caisse-reference dd { margin:5px 0 0; }
-.caisse-reference summary { cursor:pointer; color:var(--erp-action); }
-.caisse-reference ul { list-style:none; padding:0; margin:10px 0 0; max-height:220px; overflow:auto; }
-.caisse-reference li { padding:8px 0; border-bottom:1px solid var(--erp-border); }
-.caisse-reference-link { display:flex; flex-wrap:wrap; align-items:center; gap:9px; color:var(--erp-action); font-size:12px; margin-top:20px; }
+.caisse-batch-check { display:flex; align-items:center; gap:9px; min-height:36px; margin-bottom:8px; color:var(--erp-text); font-size:13px; }
+.caisse-batch-check input { width:16px; height:16px; accent-color:var(--erp-action); }
+.caisse-batch-balance { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px; font-variant-numeric:tabular-nums; }
+.caisse-batch-balance>small { width:100%; }
 @container(max-width:550px) { .caisse-field-grid,.caisse-summary { grid-template-columns:minmax(0,1fr); }.caisse-detail-heading { flex-wrap:wrap; } }
 @media(max-width:640px) { .caisse-kpi-grid { grid-template-columns:minmax(0,1fr); }.caisse-kpi { min-height:72px; }.caisse-dashboard-filters>button { flex:1 1 140px; }.caisse-flow-row { grid-template-columns:68px minmax(30px,1fr) minmax(96px,auto); gap:7px; }.caisse-drill-register>header { padding:16px; } }

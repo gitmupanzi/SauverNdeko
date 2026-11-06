@@ -121,11 +121,9 @@ class StructuresDirectoryAPI(unittest.TestCase):
         self.data(self.client().get(BASE+'/annuaire?q=a&q=b'), 400)
 
     def test_04_profile_management_needs_structures_only_and_owner(self):
-        # Retirer les licences Catalogue/Logistique, conserver uniquement
-        # Structures : le gestionnaire ne dépend pas des écrans Administration.
+        # Le registre Structures est inclus, même sans module commercial activé.
         licence = self.connection.execute('SELECT "IdLicence" id FROM systeme."T_Licence" WHERE "IdEntiteFk"=%s', [self.entities[1]]).fetchone()['id']
         self.connection.execute('DELETE FROM systeme."T_LicenceModule" WHERE "IdLicenceFk"=%s', [licence])
-        self.connection.execute('INSERT INTO systeme."T_LicenceModule"("IdLicenceFk","CodeModule","Actif") VALUES(%s,\'structures\',true)', [licence])
         context = self.data(self.client(1, local=True).get(BASE+'/contexte'))
         self.assertTrue(context['canReadRegistry'])
         self.assertTrue(context['canManage'])
@@ -137,7 +135,7 @@ class StructuresDirectoryAPI(unittest.TestCase):
         listing = self.data(self.client(1, local=True).get(BASE+'/profils'))
         self.assertEqual([item['id'] for item in listing['rows']], [self.entities[1]])
         self.data(self.client(1, local=True).post(BASE+'/profils', {}, format='json'), 405)
-        self.data(self.client(2, local=True).get(BASE+'/contexte'), 403)
+        self.assertTrue(self.data(self.client(2, local=True).get(BASE+'/contexte'))['canManage'])
 
     def test_05_reader_permissions_and_global_selection(self):
         self.connection.execute('UPDATE systeme."T_Utilisateurs" SET "Is_staff"=false WHERE "IdUser"=%s', [self.locals[0]])
@@ -191,13 +189,17 @@ class StructuresDirectoryAPI(unittest.TestCase):
 
     def test_08_related_module_denial_is_not_a_fake_empty_list(self):
         self.publish()
-        licence = self.connection.execute('SELECT "IdLicence" id FROM systeme."T_Licence" WHERE "IdEntiteFk"=%s', [self.entities[1]]).fetchone()['id']
-        self.connection.execute('DELETE FROM systeme."T_LicenceModule" WHERE "IdLicenceFk"=%s', [licence])
-        self.connection.execute('INSERT INTO systeme."T_LicenceModule"("IdLicenceFk","CodeModule","Actif") VALUES(%s,\'structures\',true)', [licence])
-        result = self.data(self.client(1,local=True).get(BASE+'/annuaire/'+str(self.entities[0])))
+        actor = self.actor(1, local=True)
+        from apps.core.module_access import access_snapshot
+        rights = access_snapshot(actor)['modules']
+        for key in ('produits', 'professionnels'):
+            rights[key].update(canRead=False, reason='MODULE_ROLE_FORBIDDEN')
+        client = APIClient()
+        client.force_authenticate(actor)
+        result = self.data(client.get(BASE+'/annuaire/'+str(self.entities[0])))
         self.assertFalse(result['canReadProducts']);self.assertFalse(result['canReadProfessionals'])
         for section in ('offres','professionnels'):
-            response = self.client(1,local=True).get(BASE+'/annuaire/'+str(self.entities[0])+'/'+section)
+            response = client.get(BASE+'/annuaire/'+str(self.entities[0])+'/'+section)
             self.data(response,403)
             self.assertIsNone(response.json()['data'])
 
@@ -226,6 +228,13 @@ class StructuresDirectoryAPI(unittest.TestCase):
         target = self.entities[0]
         starter = self.client(1,local=True)
         body = {'type':'structure','targetId':target}
+        self.data(starter.post('/api/discussions/start',body,format='json'),403)
+        self.connection.execute(
+            """INSERT INTO systeme."T_LicenceModule" ("IdLicenceFk","CodeModule","Actif")
+               SELECT "IdLicence",'discussions',true FROM systeme."T_Licence" WHERE "IdEntiteFk"=%s""",
+            [self.entities[1]],
+        )
+        starter = self.client(1,local=True)
         self.data(starter.post('/api/discussions/start',body,format='json'),404)
         self.publish()
         thread = self.data(starter.post('/api/discussions/start',body,format='json'),201)

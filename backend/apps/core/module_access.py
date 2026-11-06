@@ -18,7 +18,9 @@ WORKSPACE_MODULES = (
     {"key": "administration", "label": "Administration", "description": "Utilisateurs, organisations et paramètres.", "path": "/admin", "icon": "sliders", "tone": "slate", "admin": True},
 )
 MODULE_BY_KEY={item["key"]:item for item in WORKSPACE_MODULES}
-BASE_MODULES={"discussions","territoires","administration","parametres","guide"}
+PLATFORM_MODULES = {"territoires"}
+# Socle initial utilisé par les fixtures. En service, les accès viennent de PostgreSQL.
+BASE_MODULES = {"produits", "structures", "professionnels", "administration", "parametres", "guide"}
 # Les activations historiques restent conservées en base ; seules les
 # applications toujours livrées sont proposées et contrôlées par ce manifeste.
 INCLUSIONS={"catalogue":{"produits","structures","professionnels"}}
@@ -31,17 +33,19 @@ def storage_ready():
 
 def application_metadata():
     """Classification commerciale persistante ; aucun changement d’habilitation."""
-    rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","AfficherDansEspace"
+    rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","AfficherDansEspace",
+        "EstSocle","ReservePlateforme"
         FROM systeme."T_ModuleApplication" WHERE "CodeModule"=ANY(%s::text[])''',[list(MODULE_BY_KEY)])
     if len(rows)!=len(MODULE_BY_KEY):
         raise APIError('Le catalogue des applications est incomplet.','MODULE_CONFIGURATION_UNAVAILABLE',503)
     return {row['CodeModule']:{'type':row['TypeApplication'],'commercialisable':row['Commercialisable'],
                              'parentModule':row['ModuleParentCode'],
-                             'showInWorkspace':row['AfficherDansEspace']} for row in rows}
+                             'showInWorkspace':row['AfficherDansEspace'],'base':row['EstSocle'],
+                             'platformOnly':row['ReservePlateforme']} for row in rows}
 
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
-    read=not item.get("admin") or actor.admin
+    read = actor.global_admin if key in PLATFORM_MODULES else not item.get("admin") or actor.admin
     manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels","structures"} and actor.admin) or (key=="territoires" and actor.global_admin)
     return {"canRead":read,"canManage":manage and read,"canExport":read}
 
@@ -49,7 +53,12 @@ def access_snapshot(actor):
     cached=getattr(actor,"_module_access",None)
     if cached is not None:return cached
     if actor.global_admin:
-        modules={key:{**legacy_rights(actor,key),"available":True,"base":key in BASE_MODULES,"reason":"","includedBy":None} for key in MODULE_BY_KEY}
+        metadata = application_metadata()
+        modules = {
+            key: {**legacy_rights(actor, key), "available": True, "base": metadata[key]["base"],
+                  "reason": "", "includedBy": None}
+            for key in MODULE_BY_KEY
+        }
     else:
         if not storage_ready():raise APIError("La configuration des applications est indisponible.","MODULE_CONFIGURATION_UNAVAILABLE",503)
         rows=db.query('''SELECT m.*,r."IdRoleModule",r."PeutConsulter",r."PeutGerer",r."PeutExporter",r."Actif" AS "RegleActive",
@@ -59,11 +68,31 @@ def access_snapshot(actor):
         if len(rows)!=len(MODULE_BY_KEY):raise APIError("Le catalogue des applications est incomplet.","MODULE_CONFIGURATION_UNAVAILABLE",503)
         modules={}
         for row in rows:
-            key=row["CodeModule"];rights=legacy_rights(actor,key);available=row["Actif"] and row["Disponible"]
+            key = row["CodeModule"]
+            reserved = row["ReservePlateforme"] or key in PLATFORM_MODULES
+            rights = legacy_rights(actor, key)
+            available = not reserved and row["Actif"] and (
+                row["Disponible"] or (actor.organisation is None and row["AccessibleSansEntite"])
+            )
             if row["IdRoleModule"] is not None:
-                rights={"canRead":rights["canRead"] and row["RegleActive"] and row["PeutConsulter"],"canManage":rights["canManage"] and row["RegleActive"] and row["PeutGerer"],"canExport":rights["canExport"] and row["RegleActive"] and row["PeutExporter"]}
-            reason="" if available and rights["canRead"] else "ORGANISATION_REQUIRED" if not actor.organisation else "LICENCE_INACTIVE" if not available and row["LicenceConnue"] else "MODULE_NOT_INCLUDED" if not available else "MODULE_ROLE_FORBIDDEN"
-            modules[key]={**{name:bool(value and available and rights["canRead"]) for name,value in rights.items()},"available":bool(available),"base":row["EstSocle"],"reason":reason,"includedBy":row["CodeIncluant"]}
+                rights = {
+                    "canRead": rights["canRead"] and row["RegleActive"] and row["PeutConsulter"],
+                    "canManage": rights["canManage"] and row["RegleActive"] and row["PeutGerer"],
+                    "canExport": rights["canExport"] and row["RegleActive"] and row["PeutExporter"],
+                }
+            if reserved:
+                reason = "PLATFORM_ADMIN_REQUIRED"
+            elif available:
+                reason = "" if rights["canRead"] else "MODULE_ROLE_FORBIDDEN"
+            elif not actor.organisation:
+                reason = "ORGANISATION_REQUIRED"
+            else:
+                reason = "LICENCE_INACTIVE" if row["LicenceConnue"] else "MODULE_NOT_INCLUDED"
+            modules[key] = {
+                **{name: bool(value and available and rights["canRead"]) for name, value in rights.items()},
+                "available": bool(available), "base": row["EstSocle"], "reason": reason,
+                "includedBy": None if row["EstSocle"] else row["CodeIncluant"],
+            }
     result={"platformAdmin":actor.global_admin,"entityId":actor.organisation,"readOnly":settings.DB_READ_ONLY,"modules":modules}
     actor._module_access=result
     return result
@@ -85,10 +114,12 @@ def require_module(actor,key,action="read"):
                 # conservent leur contrôle global dédié.
         elif not any(item[permission] for item in values):raise APIError("Aucune application ne permet cet accès.","MODULE_ROLE_FORBIDDEN",403)
         return
+    if key in PLATFORM_MODULES and not actor.global_admin:
+        raise APIError("Accès réservé à l’administration de la plateforme.", "PLATFORM_ADMIN_REQUIRED", 403)
     item=access_snapshot(actor)["modules"].get(key)
     if not item:raise APIError("Application inconnue.","MODULE_NOT_FOUND",404)
     if not item["canRead"]:
-        messages={"ORGANISATION_REQUIRED":"Votre compte doit être rattaché à une organisation.","LICENCE_INACTIVE":"La licence de votre organisation ne permet plus cet accès.","MODULE_NOT_INCLUDED":"Cette application n’est pas comprise dans l’offre de votre organisation.","MODULE_ROLE_FORBIDDEN":"Votre rôle ne permet pas l’accès à cette application."}
+        messages={"ORGANISATION_REQUIRED":"Votre compte doit être rattaché à une organisation.","LICENCE_INACTIVE":"La licence de votre organisation ne permet plus cet accès.","MODULE_NOT_INCLUDED":"Cette application n’est pas comprise dans l’offre de votre organisation.","MODULE_ROLE_FORBIDDEN":"Votre rôle ne permet pas l’accès à cette application.","PLATFORM_ADMIN_REQUIRED":"Accès réservé à l’administration de la plateforme."}
         raise APIError(messages.get(item["reason"],"Accès à l’application refusé."),item["reason"] or "MODULE_ROLE_FORBIDDEN",403)
     permission={"read":"canRead","manage":"canManage","export":"canExport"}[action]
     if not item[permission]:raise APIError("Votre rôle ne permet pas cette opération.","MODULE_ACTION_FORBIDDEN",403)

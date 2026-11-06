@@ -13,6 +13,7 @@ from apps.core.responses import APIError, ExactJSONRenderer, ok
 from apps.core.tabular_exports import selected_scope, write_tabular
 from apps.logistique.excel import ExcelDownloadView, CSVFileRenderer, ExcelFileRenderer, MAX_EXPORT_ROWS, XLSX_MEDIA_TYPE
 from . import services as service
+from .batches import CREATE, create_batch
 
 LABELS = {
  'IdCaisse':'Identifiant caisse','CodeCaisse':'Code caisse','NomCaisse':'Caisse','NomEntite':'Entreprise',
@@ -34,6 +35,12 @@ LABELS = {
 class CashView(APIView):
     permission_classes = [HasModuleAccess]
     parser_classes = [ExactJSONParser]
+
+    def create(self, request, kind):
+        if isinstance(request.data, dict) and 'rows' in request.data:
+            result, replayed = create_batch(request.user, kind, request.data)
+            return ok(result, status=200 if replayed else 201, meta={'replayed': replayed})
+        return ok(CREATE[kind](request.user, request.data), status=201)
 
     def handle_exception(self, exc):
         if isinstance(exc,DatabaseError) and getattr(exc.__cause__,'sqlstate',None) in {'P0001','23514','23503','23505','55000','40001','40P01','55P03'}:
@@ -66,7 +73,7 @@ class CashAccountsView(CashView):
     def get(self,request,pk=None): return ok(service.detail(request.user,'caisses',pk) if pk else service.list_data(request.user,'caisses',request.query_params.dict()))
     def post(self,request,pk=None):
         if pk: raise APIError('Créez la caisse depuis le registre.','METHOD_NOT_ALLOWED',405)
-        return ok(service.create_cash(request.user,request.data),status=201)
+        return self.create(request,'caisses')
     def put(self,request,pk=None):
         if not pk: raise APIError('Identifiant caisse requis.','METHOD_NOT_ALLOWED',405)
         return ok(service.modify(request.user,'caisses',pk,request.data))
@@ -76,7 +83,7 @@ class EntriesView(CashView):
     def get(self,request,pk=None): return ok(service.detail(request.user,'ecritures',pk) if pk else service.list_data(request.user,'ecritures',request.query_params.dict()))
     def post(self,request,pk=None):
         if pk: raise APIError('Créez l’écriture depuis le journal.','METHOD_NOT_ALLOWED',405)
-        return ok(service.create_entry(request.user,request.data),status=201)
+        return self.create(request,'ecritures')
     def put(self,request,pk=None):
         if not pk: raise APIError('Identifiant écriture requis.','METHOD_NOT_ALLOWED',405)
         return ok(service.modify(request.user,'ecritures',pk,request.data))
@@ -90,7 +97,7 @@ class ClosuresView(CashView):
     def get(self,request,pk=None): return ok(service.detail(request.user,'clotures',pk) if pk else service.list_data(request.user,'clotures',request.query_params.dict()))
     def post(self,request,pk=None):
         if pk: raise APIError('Créez la clôture depuis le registre.','METHOD_NOT_ALLOWED',405)
-        return ok(service.close_cash(request.user,request.data),status=201)
+        return self.create(request,'clotures')
 
 
 class ClosurePreparationView(CashView):

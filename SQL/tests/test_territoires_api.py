@@ -83,7 +83,10 @@ class TerritorialAPI(unittest.TestCase):
   row=self.create('niveaux0');pk=row['ID_Niveau_0'];body={'requestId':str(uuid.uuid4()),'_version':row['_version']};response=self.client().delete(BASE+'registres/niveaux0/'+str(pk),body,format='json');self.status(response);self.status(self.client().delete(BASE+'registres/niveaux0/'+str(pk),body,format='json'));self.status(self.client().get(BASE+'registres/niveaux0/'+str(pk)),404)
  def test_06_rights_enforced_every_path(self):
   self.status(APIClient().get(BASE+'synthese'),401);self.status(self.client(read=False).get(BASE+'registres/niveaux0'),403)
-  local=self.client(global_admin=False);self.status(local.get(BASE+'registres/niveaux0'));self.assertFalse(self.status(local.get(BASE+'references/niveaux0'))['canCreate']);self.status(local.post(BASE+'registres/niveaux0',self.payload('niveaux0'),format='json'),403)
+  local=self.client(global_admin=False)
+  self.status(local.get(BASE+'registres/niveaux0'),403)
+  self.status(local.get(BASE+'references/niveaux0'),403)
+  self.status(local.post(BASE+'registres/niveaux0',self.payload('niveaux0'),format='json'),403)
   self.status(self.client(manage=False).post(BASE+'registres/niveaux0',self.payload('niveaux0'),format='json'),403)
   with override_settings(DB_READ_ONLY=True):self.status(self.client().post(BASE+'registres/niveaux0',self.payload('niveaux0'),format='json'),503)
  def test_07_shared_geography_no_owner_from_context(self):

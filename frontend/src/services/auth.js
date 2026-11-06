@@ -132,9 +132,22 @@ export async function restoreUserSession({isCurrent=()=>true}={}) {
 }
 
 export async function logoutUser() {
-  const accessToken=getAccessToken();
-  // Clear before the request: its delayed response must never clear a newer login.
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+  // Fermer localement avant le réseau, sans restaurer une session après déconnexion.
   clearSession();
-  if(!accessToken)return {success:true};
-  return requestJson("/SauverNdeko/auth/logout",{method:"POST",headers:{Authorization:`Bearer ${accessToken}`}});
+  const close = (token) => requestJson("/SauverNdeko/auth/logout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (accessToken) {
+    const result = await close(accessToken);
+    if (result?.status !== 401 || !refreshToken) return result;
+  }
+  if (!refreshToken) return { success: true };
+  const refreshed = await requestJson("/SauverNdeko/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken }),
+  });
+  return refreshed?.success && refreshed.accessToken ? close(refreshed.accessToken) : refreshed;
 }

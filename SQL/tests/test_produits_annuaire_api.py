@@ -96,7 +96,7 @@ class ProductsDirectoryAPI(unittest.TestCase):
         self.assertIn(self.references['ID_TypeArticleFk'], {item['id'] for item in refs['types']})
         self.assertNotIn(hidden_id, {item['id'] for item in refs['types']})
         self.assertEqual({item['id'] for item in refs['availability']}, {'positive', 'zero'})
-        self.assertTrue(refs['canContact'])
+        self.assertFalse(refs['canContact'])
         record = self.get_detail(pk)['record']
         self.assertEqual(next(item['label'] for item in refs['types'] if item['id'] == record['ID_TypeArticleFk']), record['TypeArticle'])
 
@@ -162,13 +162,8 @@ class ProductsDirectoryAPI(unittest.TestCase):
         pk = self.direct_article()
         for path in ('/api/produits/references', '/api/produits/offres', '/api/produits/offres/' + str(pk)):
             self.data(APIClient().get(path), 401)
-            self.data(self.client(2, local=True).get(path), 403)
-        # Une licence Produits seule autorise la lecture mais pas l'accès aux structures de messagerie.
-        licence = self.connection.execute('''SELECT "IdLicenceFk" id FROM systeme."T_LicenceModule"
-            WHERE "CodeModule"='catalogue' AND "IdLicenceFk" IN
-              (SELECT "IdLicence" FROM systeme."T_Licence" WHERE "IdEntiteFk"=%s)''', [self.entities[0]]).fetchone()['id']
-        self.connection.execute('DELETE FROM systeme."T_LicenceModule" WHERE "IdLicenceFk"=%s AND "CodeModule"=%s', [licence, 'catalogue'])
-        self.connection.execute('INSERT INTO systeme."T_LicenceModule" ("IdLicenceFk","CodeModule","Actif") VALUES (%s,%s,true)', [licence, 'produits'])
+            self.data(self.client(2, local=True).get(path))
+        # L’annuaire inclus ne donne pas le droit d’envoyer des messages.
         self.connection.execute('UPDATE systeme."T_Utilisateurs" SET "Is_staff"=false WHERE "IdUser"=%s', [self.locals[0]])
         self.assertFalse(self.actor(local=True).admin)
         self.assertEqual(self.get_detail(pk, local=True)['record']['ID_Article'], pk)

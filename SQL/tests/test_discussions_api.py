@@ -23,6 +23,21 @@ class DiscussionsAPI(unittest.TestCase):
         self.addCleanup(transaction.set_rollback, True)
         self.first_entity = self.entity()
         self.second_entity = self.entity()
+        for entity in (self.first_entity, self.second_entity):
+            licence = db.one(
+                '''INSERT INTO systeme."T_Licence" ("IdEntiteFk","DateDebut","DateFin","ValideLicence","IdStatutLicenceFk")
+                   SELECT %s, LOCALTIMESTAMP-interval '1 day', LOCALTIMESTAMP+interval '1 year', true, g."ID_Generique"
+                   FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
+                     ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk"
+                   WHERE lower(c."NomCategorieGenerique")='statut licence'
+                     AND lower(g."NomGenerique") IN ('active','actif') AND g."ValideGenerique" IS TRUE
+                   ORDER BY g."ID_Generique" LIMIT 1 RETURNING "IdLicence" ''',
+                [entity],
+            )["IdLicence"]
+            db.query(
+                'INSERT INTO systeme."T_LicenceModule" ("IdLicenceFk","CodeModule","Actif") VALUES (%s,%s,true)',
+                [licence, "discussions"],
+            )
         self.first = self.account("Élodie", self.first_entity)
         self.second = self.account("Éric", self.first_entity)
         self.local_admin = self.account("Gestion", self.first_entity, admin=True)

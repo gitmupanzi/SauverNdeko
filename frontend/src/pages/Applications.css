@@ -19,7 +19,7 @@
 .application-card.workspace-app {display:block;text-align:left;padding:22px;border-radius:12px;}
 .application-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .application-card .workspace-app-icon{width:48px;height:48px;font-size:24px;border-radius:12px;}
-.application-card h2{font-size:17px;font-weight:650;margin:20px 0 9px;}
+.application-card h3{font-size:17px;font-weight:650;margin:20px 0 9px;}
 .application-card p{font-size:13px;line-height:1.6;color:var(--erp-muted);min-height:42px;margin:0;}
 .application-card-bottom{border-top:1px solid var(--erp-border);margin-top:18px;padding-top:16px;font-size:12px;color:var(--erp-muted);}
 .application-open{display:flex;justify-content:space-between;align-items:center;color:var(--erp-link);font-weight:600;text-decoration:none;}
@@ -46,10 +46,23 @@
 .application-licence-groups>section+section {padding-top:22px;border-top:1px solid var(--erp-border);}
 .application-licence-groups .application-group-note {margin:0 24px 16px;font-size:12px;}
 .application-rights-table .application-rights-group th {padding:12px 20px;color:var(--erp-muted);background:var(--erp-raised);font-size:12px;font-weight:650;}
-.application-module-row{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--erp-border);border-radius:9px;min-width:0;cursor:pointer;}
-.application-module-row.is-checked{background:color-mix(in srgb,var(--erp-mint) 65%,var(--erp-surface));}
-.application-module-row>span{display:grid;gap:4px;}.application-module-row strong{font-size:13px;font-weight:600;}.application-module-row small{font-size:11px;color:var(--erp-muted);}
-.application-module-row>.app-icon{margin-left:auto;color:var(--erp-on-mint);}
+.application-module-row{position:relative;display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--erp-border);border-radius:9px;min-width:0;}
+.application-module-row.is-editable{cursor:pointer;}
+.application-module-row.is-editable:hover{border-color:var(--erp-action-border);}
+.application-module-details{display:grid;flex:1;gap:4px;min-width:0;}
+.application-module-details strong{font-size:13px;font-weight:650;}
+.application-module-details small{font-size:11px;color:var(--erp-muted);}
+.applications-page .application-module-input[type=checkbox]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.application-module-switch{width:38px;height:22px;border:1px solid var(--erp-action-border);background:var(--erp-raised);border-radius:14px;display:flex;align-items:center;padding:2px;flex:none;}
+.application-module-switch::before{content:"";width:16px;height:16px;border-radius:50%;background:var(--erp-muted);}
+.application-module-input:checked + .application-module-switch{background:var(--erp-action);border-color:var(--erp-action);justify-content:flex-end;}
+.application-module-input:checked + .application-module-switch::before{background:var(--erp-surface);}
+.application-module-input:focus-visible + .application-module-switch{outline:2px solid var(--erp-link);outline-offset:3px;}
+.application-module-input:disabled + .application-module-switch{opacity:.65;}
+.application-included-list{list-style:none;display:flex;flex-wrap:wrap;gap:10px 22px;padding:0 24px 24px;margin:0;}
+.application-included-list li{display:flex;align-items:center;gap:7px;font-size:13px;}
+.application-included-list .app-icon{color:var(--erp-action);}
+.application-offer-review{display:grid;gap:8px;padding-left:20px;margin:0 0 18px;}
 .applications-page input[type=checkbox]{appearance:auto;width:17px;height:17px;accent-color:var(--erp-primary);flex:none;cursor:pointer;}
 .applications-page input[type=checkbox]:disabled{cursor:default;opacity:.6;}
 .application-save-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;border-top:1px solid var(--erp-border);padding:18px 24px;background:var(--erp-raised);}
@@ -78,3 +91,5 @@
  .applications-page .module-header-title{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
  .applications-page .module-header .workspace-account{flex:none;margin-left:0;}
 }
+
+@media(max-width:600px){.application-included-list{padding-inline:18px;}.application-module-row{gap:8px;padding:12px;}}

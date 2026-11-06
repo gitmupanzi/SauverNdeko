@@ -73,8 +73,8 @@ export default function WorkspaceHome() {
         {!viewLoading && viewError ? <ListState role="alert" icon="alert" title="Vos applications sont indisponibles" description={viewError} action={<ActionButton icon="refresh" onClick={()=>setVersion(current=>current+1)}>Réessayer</ActionButton>} className="workspace-status"/> : null}
         {!viewLoading && !viewError ? (
           <>
-            {groups.filter(group=>group.total>0).map(group=><section className={"workspace-application-group "+(group.type==="FONCTIONNALITE"?"is-features":"")} key={group.type}>
-             <header><h2>{group.label}</h2><p role="status">{applicationGroupCount(group,query)} disponible{group.total===1?"":"s"}</p></header>
+            {groups.filter(group=>group.total>0).map(group=><section className={"workspace-application-group "+((group.key==="features"||group.key==="platform")?"is-features":"")} key={group.key}>
+             <header><h2>{group.label}</h2><p role="status">{applicationGroupCount(group,query)}</p></header>
              <nav className="workspace-modules" aria-label={group.label}>
               {group.items.map((module) => (
                 <Link className={"workspace-app is-" + module.tone} to={module.path} key={module.key}>
@@ -90,7 +90,7 @@ export default function WorkspaceHome() {
             {!visibleCount ? <ListState role="status" icon="apps" title={query?"Aucune application ne correspond à votre recherche":"Aucune application attribuée"} description={query?"Essayez un autre nom ou effacez la recherche.":"Votre administrateur peut vérifier les applications et les droits de votre compte."} action={query?<ActionButton icon="reset" type="button" onClick={()=>setSearch("")}>Effacer la recherche</ActionButton>:null} className="workspace-status"/> : null}
           </>
         ) : null}
-        {!user?.moduleAccess?.platformAdmin ? <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Applications incluses dans l’offre de votre organisation et autorisées pour votre rôle.</p> : null}
+        {!user?.moduleAccess?.platformAdmin ? <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Les accès dépendent de votre rôle et de l’offre de votre entreprise.</p> : null}
       </main>
     </div>
   );

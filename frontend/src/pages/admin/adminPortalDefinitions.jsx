@@ -63,7 +63,7 @@ export const ADMIN_REGISTERS = {
     visible: ["ChangedAt", "TableName", "Operation", "NomEntite", "actions"], sort: ["ChangedAt", "desc"], filters: [{ key: "Operation", label: "Opération", options: ["INSERT", "UPDATE", "DELETE"].map(value => ({ value, label: { INSERT: "Création", UPDATE: "Modification", DELETE: "Suppression" }[value] })) }],
   },
   connexions: {
-    title: "Historique de connexion", description: "Événements de connexion enregistrés.", icon: "clock", pk: "IdLogin", name: "NomUser", dateKey: "DateLogin", platform: true,
+    title: "Historique de connexion", description: "Connexions réussies et déconnexions confirmées par le serveur.", icon: "clock", pk: "IdLogin", name: "NomUser", dateKey: "DateLogin", platform: true,
     columns: [date("DateLogin"), person, badge("TypeLogin", "Événement", 180), text("NomEntite", "Entreprise", 240), text("EmailUser", "Adresse e-mail", 240), text("IdLogin", "Identifiant", 110)],
     visible: ["DateLogin", "NomUser", "TypeLogin", "NomEntite", "actions"], sort: ["DateLogin", "desc"], filters: [filter("IdEntite", "Entreprise", "entities")],
   },

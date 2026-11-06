@@ -1,6 +1,4 @@
-"""Classification de présentation, indépendante des droits/licences.
-Exécuter uniquement sur une recette sauverndeko_test_* après la migration08.
-"""
+"""Recette PostgreSQL de l’offre et des accès, sur une copie privée migrée."""
 import os
 import unittest
 from urllib.parse import urlsplit
@@ -28,9 +26,12 @@ class ClassificationSQL(unittest.TestCase):
                 self.c.execute(query, args)
 
     def test_catalogue_and_historical_access_are_distinct(self):
-        rows = {r[0]: r[1:] for r in self.c.execute('SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","EstSocle","CodeIncluant" FROM systeme."T_ModuleApplication"')}
-        for key in ["produits", "discussions", "structures", "professionnels", "logistique", "territoires", "support", "caisse"]:
-            self.assertEqual(rows[key][:3], ("MODULE", True, None))
+        rows = {r[0]: r[1:] for r in self.c.execute('SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","EstSocle","CodeIncluant","ReservePlateforme","AccessibleSansEntite" FROM systeme."T_ModuleApplication"')}
+        for key in ("discussions", "logistique", "support", "caisse"):
+            self.assertEqual(rows[key], ("MODULE", True, None, False, None, False, False))
+        for key in ("produits", "structures", "professionnels"):
+            self.assertEqual(rows[key], ("MODULE", False, None, True, "catalogue", False, True))
+        self.assertEqual(rows["territoires"], ("MODULE", False, None, False, None, True, False))
         for key in ["sante", "catalogue"]:
             self.assertEqual(rows[key][:3], ("FONCTIONNALITE", False, None))
         for key in ["sante"]:
@@ -38,9 +39,6 @@ class ClassificationSQL(unittest.TestCase):
         for key in ["administration", "parametres", "guide"]:
             self.assertEqual(rows[key][:3], ("FONCTIONNALITE", False, None))
             self.assertTrue(rows[key][3])  # common access preserved
-        self.assertTrue(rows["territoires"][3])
-        self.assertTrue(rows["discussions"][3])
-        self.assertEqual(rows["produits"][4],"catalogue")
         visibility=dict(self.c.execute('SELECT "CodeModule","AfficherDansEspace" FROM systeme."T_ModuleApplication"'))
         self.assertFalse(visibility['sante'])
         self.assertFalse(visibility['catalogue'])
@@ -50,6 +48,8 @@ class ClassificationSQL(unittest.TestCase):
     def test_only_modules_are_commercial(self):
         self.reject('UPDATE systeme."T_ModuleApplication" SET "Commercialisable"=true WHERE "CodeModule"=%s', ["sante"])
         self.reject('UPDATE systeme."T_ModuleApplication" SET "TypeApplication"=%s WHERE "CodeModule"=%s', ["OTHER", "produits"])
+        self.reject('UPDATE systeme."T_ModuleApplication" SET "EstSocle"=true WHERE "CodeModule"=%s', ["territoires"])
+        self.reject('UPDATE systeme."T_ModuleApplication" SET "AccessibleSansEntite"=true WHERE "CodeModule"=%s', ["discussions"])
 
     def test_hierarchy_has_only_one_module_parent(self):
         self.reject('UPDATE systeme."T_ModuleApplication" SET "ModuleParentCode"=%s WHERE "CodeModule"=%s', ["guide", "sante"])

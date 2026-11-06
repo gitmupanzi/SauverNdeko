@@ -30,7 +30,7 @@ Le GET de paramètre expose `meta.sensitive` pour conserver sa fiche en consulta
 
 ## Recette
 
-`SQL/tests/test_admin_portal.py` teste les contrats avec des mocks et sans écritures PostgreSQL. Le diagnostic privé `.runtime/verify_admin_portal_readonly.py` utilise une connexion SQL réellement en lecture seule, sans HTTP ni compte de test persistant, pour vérifier la synthèse, les registres, les identités et la parité des onze exports Excel. La présence de lignes dans `V_Login_history` ne prouve pas une session encore ouverte ni une révocation de jeton : aucun nouveau mécanisme de session n’a été ajouté par ce chantier.
+`SQL/tests/test_admin_portal.py` teste les contrats avec des mocks et sans écritures PostgreSQL. Le diagnostic privé `.runtime/verify_admin_portal_readonly.py` utilise une connexion SQL réellement en lecture seule, sans HTTP ni compte de test persistant, pour vérifier la synthèse, les registres, les identités et la parité des onze exports Excel. `V_Login_history` conserve un événement par connexion authentifiée et déconnexion explicite reçue par le serveur. Les types proviennent du référencement commun de `T_Login.IdTypeLoginFk`. Le rattachement du journal vient de l’entreprise physique du compte au moment de l’écriture. Le trigger PostgreSQL produit le seul événement d’audit. Une fermeture d’onglet, un renouvellement ou l’expiration d’un jeton ne produit aucun événement. Ce journal ne sert pas à déterminer les sessions ouvertes ou à révoquer un jeton. Une instance en lecture seule continue à authentifier. Toute écriture d’audit impossible sur une instance en écriture est signalée dans le journal du serveur, et le compte conserve l’accès.
 
 ## Contrôles PostgreSQL des réglages
 

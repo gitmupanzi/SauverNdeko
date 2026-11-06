@@ -272,12 +272,12 @@ class ArticlePublicationAPI(unittest.TestCase):
             {'VisibleCatalogue': False, '_version': revision['revision']}, format='json'), 404)
         self.data(self.client(0, local=True).put(f'/api/systeme/entites/{self.entities[1]}',
             self.company_body(1, PartageArticlesPublicParDefaut=False), format='json'), 404)
-        self.data(self.client(2, local=True).get('/api/public/articles'), 403)
+        self.data(self.client(2, local=True).get('/api/public/articles'))
         self.data(APIClient().get('/api/public/articles'), 401)
         self.data(APIClient().get('/api/public/stats'), 401)
         self.assertIs(self.get_article(article['ID_Article'], index=1)[0]['VisibleCatalogue'], True)
 
-    def test_08_public_photo_uses_same_publication_and_licence_guards(self):
+    def test_08_public_photo_uses_same_publication_and_session_guards(self):
         stream = io.BytesIO(); Image.new('RGB', (32, 24), (20, 90, 100)).save(stream, format='PNG')
         body = self.body(VisibleCatalogue=True)
         response = self.client().post('/api/logistique/articles', {'payload': json.dumps(body),
@@ -292,7 +292,9 @@ class ArticlePublicationAPI(unittest.TestCase):
         self.assertEqual(binary['X-Content-Type-Options'], 'nosniff')
         self.assertTrue(b''.join(binary.streaming_content).startswith(b'\xff\xd8'))
         self.assertEqual(APIClient().get(public['PhotoArticle'], HTTP_ACCEPT='image/jpeg').status_code, 401)
-        self.assertEqual(self.client(2, local=True).get(public['PhotoArticle'], HTTP_ACCEPT='image/jpeg').status_code, 403)
+        included = self.client(2, local=True).get(public['PhotoArticle'], HTTP_ACCEPT='image/jpeg')
+        self.assertEqual(included.status_code, 200)
+        included.close()
         _, meta = self.get_article(article['ID_Article'])
         self.data(self.client().put(f'/api/logistique/articles/{article["ID_Article"]}',
             {'VisibleCatalogue': False, '_version': meta['revision']}, format='json'))

@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand,CommandError
 from django.db import transaction
 from apps.accounts.authentication import actor_by_id
 from apps.core import db
-from apps.core.application_licences import catalogue_rows,save_license_modules
+from apps.core.application_licences import catalogue_rows, company_catalogue, license_module_codes, save_license_modules
 from apps.core.maintenance import verified_backup
 from apps.core.repository import mutate,audit
 
@@ -28,8 +28,11 @@ class Command(BaseCommand):
         if previous:
             self.stdout.write(json.dumps({'replayed':True,**previous['NewData']},ensure_ascii=False,default=str));return
         if db.one('SELECT "IdEntite" FROM systeme."T_Entite" WHERE lower(trim("NomEntite"))=lower(%s)',[name]):raise CommandError('Cette entreprise existe déjà ; sa licence doit être administrée explicitement.')
+        catalogue = company_catalogue(catalogue_rows())
+        codes = license_module_codes(catalogue)
+        expected = {row["CodeModule"] for row in catalogue if row["Actif"] and row["EstSocle"]} | set(codes)
         if not options['apply']:
-            self.stdout.write(json.dumps({'preview':True,'name':name,'years':options['ans'],'modules':[r['CodeModule'] for r in catalogue_rows()]},ensure_ascii=False));return
+            self.stdout.write(json.dumps({'preview':True,'name':name,'years':options['ans'],'modules':sorted(expected)},ensure_ascii=False));return
         db.ensure_writable()
         backup,_=verified_backup(options['backup_dir'],options['pg_bin'])
         with transaction.atomic():
@@ -40,10 +43,8 @@ class Command(BaseCommand):
             stamp=db.one("SELECT LOCALTIMESTAMP AS start,LOCALTIMESTAMP+make_interval(years=>%s) AS finish",[options['ans']])
             entity=mutate('T_Entite',actor,{'NomEntite':name,'EmailEntite':options['email'],'DateCreationEntite':stamp['start'].isoformat(),'ValideEntite':True})
             licence=mutate('T_Licence',actor,{'IdEntiteFk':entity['IdEntite'],'DateDebut':stamp['start'].isoformat(),'DateFin':stamp['finish'].isoformat(),'IdStatutLicenceFk':statuses[0]['ID_Generique'],'ValideLicence':True})
-            codes=[r['CodeModule'] for r in catalogue_rows() if not r['EstSocle']]
             result=save_license_modules(actor,licence['IdLicence'],{'enabled':codes,'versions':{code:0 for code in codes}})
             available=db.query('SELECT "CodeModule" FROM systeme."V_EntiteModuleActif" WHERE "IdEntiteFk"=%s ORDER BY "CodeModule"',[entity['IdEntite']])
-            expected={r['CodeModule'] for r in catalogue_rows() if r['Actif']}
             if {r['CodeModule'] for r in available}!=expected:raise CommandError('Les modules de la licence ne sont pas tous actifs.')
             summary={'name':name,'entityId':entity['IdEntite'],'licenceId':licence['IdLicence'],'startsAt':stamp['start'].isoformat(),'expiresAt':stamp['finish'].isoformat(),'modules':sorted(expected)}
             audit({'schema':'systeme','name':'T_Entite'},'PROVISION_ENTITY',new=summary,actor=actor)

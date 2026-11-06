@@ -83,6 +83,72 @@ class CaisseAPI(unittest.TestCase):
         data.update(changes)
         return self.post('/ecritures',{'data':data,'valider':posted,'requestId':str(uuid.uuid4()),'motif':'Recette caisse'})
 
+    def test_cash_batch_is_atomic_and_binds_entire_request(self):
+        label = 'Lot caisse '+uuid.uuid4().hex
+        rows = [{'clientRowId':key,'data':{'NomCaisse':name,'IdDeviseFk':self.usd}}
+                for key,name in [('first',label),('second','')]]
+        body = {'requestId':str(uuid.uuid4()), 'rows':rows}
+        response = self.client().post(BASE+'/caisses',body,format='json')
+        self.assertEqual(response.status_code,422,response.data)
+        self.assertIn('NomCaisse', response.data['error']['details']['rows']['second'])
+        self.assertEqual(self.client().get(BASE+'/caisses',{'q':label}).data['data']['total'],0)
+        rows[1]['data']['NomCaisse'] = label+' deuxième'
+        self.assertEqual(self.client(manage=False).post(BASE+'/caisses',body,format='json').status_code,403)
+        first = self.post('/caisses',body)
+        self.assertEqual(first['count'],2)
+        self.assertEqual(first,self.post('/caisses',body,status=200))
+        self.post('/caisses',{**body,'rows':rows[:1]},status=409)
+        self.assertEqual(self.client().get(BASE+'/caisses',{'q':label}).data['data']['total'],2)
+
+    def test_entry_batch_drafts_and_rollback_of_posted_balance(self):
+        cash = self.cash()['record']
+        date = (datetime.now(timezone.utc)-timedelta(days=1)).isoformat()
+        def line(key, amount, sense):
+            return {'clientRowId':key,'data':{'IdCaisseFk':cash['IdCaisse'],'LibellePaiement':key,
+                'DatePaiement':date,'MontantPaiement':amount,'SensMouvement':sense}}
+        rows = [line('entree','100.25',1),line('sortie','105.00',-1)]
+        body = {'requestId':str(uuid.uuid4()), 'rows':rows, 'valider':True}
+        response = self.client().post(BASE+'/ecritures',body,format='json')
+        self.assertEqual(response.status_code,422,response.data)
+        self.assertIn('sortie',response.data['error']['details']['rows'])
+        self.assertEqual(self.sql.execute('SELECT count(*) n FROM operations."T_Paiement" WHERE "IdCaisseFk"=%s',
+                                         [cash['IdCaisse']]).fetchone()['n'],0)
+        posted = self.post('/ecritures',{**body,'rows':[rows[0],line('sortie','99.75',-1)]})
+        self.assertEqual(posted['count'],2)
+        drafts = self.post('/ecritures',{'requestId':str(uuid.uuid4()),'rows':rows})
+        self.assertEqual(drafts['count'],2)
+        for item in drafts['records']:
+            detail = self.client().get(BASE+'/ecritures/'+str(item['id'])).data['data']
+            self.assertEqual(detail['record']['EtatEcriture'],'DRAFT')
+        detail = self.client().get(BASE+'/caisses/'+str(cash['IdCaisse'])).data['data']
+        self.assertEqual(Decimal(detail['record']['MontantCaisse']),Decimal('0.50'))
+
+    def test_closure_batch_keeps_snapshots_and_rolls_back_on_stale_revision(self):
+        cashboxes = [self.cash(), self.cash()]
+        date = (datetime.now(timezone.utc)-timedelta(days=1)).isoformat()
+        rows = [{'clientRowId':str(index),'_version':cash['_version'],'motif':'Comptage fictif',
+                 'data':{'IdCaisseFk':cash['record']['IdCaisse'],'ClotureLe':date,'MontantCompte':'0'}}
+                for index,cash in enumerate(cashboxes)]
+        body = {'requestId':str(uuid.uuid4()), 'rows':rows}
+        other = self.cash()
+        foreign = self.client(index=1).get(BASE+'/caisses/'+str(other['record']['IdCaisse']))
+        self.assertEqual(foreign.status_code,404)
+        refs = self.client().get(BASE+'/references').data['data']['caisses']
+        snapshot = next(cash for cash in refs if cash['IdCaisse']==rows[0]['data']['IdCaisseFk'])
+        self.assertEqual(snapshot['_version'],rows[0]['_version'])
+        self.entry(cashboxes[1],amount='12.50')
+        response = self.client().post(BASE+'/clotures',body,format='json')
+        self.assertEqual(response.status_code,422,response.data)
+        self.assertIn('_version',response.data['error']['details']['rows']['1'])
+        result = self.client().get(BASE+'/caisses/'+str(rows[0]['data']['IdCaisseFk'])).data['data']
+        self.assertIsNone(result['record']['DerniereClotureLe'])
+        fresh = self.client().get(BASE+'/clotures/preparation',{'caisseId':rows[1]['data']['IdCaisseFk']}).data['data']
+        rows[1]['_version'] = fresh['_version']
+        result = self.post('/clotures',body)
+        self.assertEqual(result,self.post('/clotures',body,status=200))
+        detail = self.client().get(BASE+'/clotures/'+str(result['records'][1]['id'])).data['data']
+        self.assertEqual(Decimal(detail['record']['Ecart']),Decimal('-12.50'))
+
     def test_01_context_and_zero_cash_no_implicit_funds(self):
         cash=self.cash()
         self.assertEqual(Decimal(cash['record']['SoldeTheorique']),0)

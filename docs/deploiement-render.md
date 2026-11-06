@@ -65,6 +65,8 @@ Le workflow **Livraison Render contrôlée**, dans `.github/workflows/livraison-
 
 Avant son lancement, disposer d'une sauvegarde DB **et médias** vérifiée, d'un retour compatible et d'une fenêtre de maintenance lorsque le changement l'exige. Le champ `backup_reference` conserve la référence de cette preuve ; **le workflow ne crée ni ne restaure cette sauvegarde et ne prouve pas sa validité**. Il exige l'attestation de l'opérateur. Aucun export de données clientes n'est téléversé vers les artefacts GitHub par ce workflow.
 
+Si le journal Render indique « Migrations métier en attente », la construction de l’image peut avoir réussi. La base doit être mise à niveau avant que le service démarre avec ce commit. Vérifier que **Auto-Deploy** est désactivé dans les réglages du service, puis lancer **Livraison Render contrôlée** dans GitHub Actions pour appliquer les migrations et déployer le commit correspondant.
+
 Parcours livré :
 
 1. Tester les contrats Render et les composants frontend, compiler React, puis construire l'image Docker sans secrets PostgreSQL de production. Cette construction valide aussi le Caddyfile et embarque la charte utilisée par les exports Excel.

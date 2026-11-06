@@ -3,7 +3,7 @@ import {useCallback,useEffect,useId,useRef,useState} from "react";
 import {Link,useLocation,useNavigate} from "react-router-dom";
 import {useAuth} from "../contexts/AuthContext";
 import {requestJson} from "../services/api";
-import {applicationClassificationValid,applicationGroups,applicationGroupCount,applicationParentLabel} from "../services/applicationCatalogue";
+import {applicationClassificationValid,applicationCommercialisable,applicationGroups,applicationType} from "../services/applicationCatalogue";
 import ModuleHeader from "../components/ModuleHeader";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
@@ -15,10 +15,52 @@ import "./Applications.css";
 const RIGHTS=[["canRead","Consulter"],["canManage","Gérer"],["canExport","Exporter"]];
 const TABS=[["licences","Offre de la licence"],["roles","Droits des rôles"]];
 function date(value) {return formatDate(value);}
-function licenseDraft(data,id) {const licence=data?.licences?.find(x=>String(x.IdLicence)===String(id));return Object.fromEntries((data?.catalogue || []).map(m=>[m.CodeModule,Boolean(licence?.activations?.find(x=>x.CodeModule===m.CodeModule)?.Actif)]));}
+function licenseDraft(data,id) {
+  const licence=data?.licences?.find(item=>String(item.IdLicence)===String(id));
+  return Object.fromEntries((data?.moduleCodes||[]).map(code=>[
+    code,licence?.activations?.some(item=>item.CodeModule===code&&item.Actif)??false,
+  ]));
+}
 function roleDraft(role,catalogue=[]) {return Object.fromEntries(catalogue.map(m=>{const stored=role?.permissions?.find(x=>x.CodeModule===m.CodeModule),base=role?.baseline?.[m.CodeModule] || {};return [m.CodeModule,Object.fromEntries(RIGHTS.map(([key],index)=>[key,Boolean(base[key]&&(!stored || (stored.Actif&&stored[["PeutConsulter","PeutGerer","PeutExporter"][index]])))]))];}));}
 function preferredEntity(rows,current,account) {return String([current,account].find(id=>id!=null&&id!==""&&rows.some(row=>String(row.IdEntite)===String(id))) ?? rows[0]?.IdEntite ?? "");}
 function tabForKey(current,key) {const index=TABS.findIndex(([id])=>id===current);if(key==="Home")return TABS[0][0];if(key==="End")return TABS[TABS.length-1][0];if(key==="ArrowLeft"||key==="ArrowRight")return TABS[(index+(key==="ArrowRight"?1:-1)+TABS.length)%TABS.length][0];return null;}
+
+function OfferModules({data,licence,draft,platform,canManage,onChange}) {
+  const offered=data.catalogue.filter(applicationCommercialisable);
+  const included=data.catalogue.filter(item=>item.EstSocle&&item.Actif&&applicationType(item)==="MODULE");
+  const original=licenseDraft(data,licence?.IdLicence);
+  const activations=new Map(licence?.activations.map(row=>[row.CodeModule,row])||[]);
+  const available=new Set(data.effectiveModules);
+  return <div className="application-licence-groups">
+    <section>
+      <header><h3>Modules sur licence</h3><span>{available.size} sur {offered.length} actuellement actifs</span></header>
+      <div className="application-module-list">
+        {offered.map(item=>{
+          const code=item.CodeModule,activation=activations.get(code);
+          const editable=Boolean(platform&&data.canManage&&licence&&data.moduleCodes.includes(code));
+          const checked=data.moduleCodes.includes(code)?Boolean(draft[code]):Boolean(activation?.Actif);
+          const changed=editable&&checked!==original[code];
+          const status=!item.Actif?"Indisponible":changed?(checked?"À activer":"À désactiver")
+            :activation?.EtatAcces || "Désactivé";
+          const otherLicence=available.has(code)&&!activation?.EstAccesActif;
+          const Tag=editable?"label":"div";
+          return <Tag className={"application-module-row"+(editable?" is-editable":"")} key={code}>
+            <span className="application-module-details"><strong>{item.Nom}</strong>{otherLicence?<small>Accès actif via une autre licence</small>:null}</span>
+            <span className={"application-badge"+(activation?.EstAccesActif&&!changed?" is-enabled":"")}>{status}</span>
+            {editable?<><input className="application-module-input" role="switch" type="checkbox" checked={checked}
+              aria-label={"Activer "+item.Nom+" sur cette licence"} disabled={!canManage}
+              onChange={event=>onChange(code,event.target.checked)}/>
+              <span className="application-module-switch" aria-hidden="true"/></>:null}
+          </Tag>;
+        })}
+      </div>
+    </section>
+    {included.length?<section>
+      <header><h3>Modules inclus</h3><span>Disponibles sans activation</span></header>
+      <ul className="application-included-list">{included.map(item=><li key={item.CodeModule}><AppIcon name="check-circle"/>{item.Nom}</li>)}</ul>
+    </section>:null}
+  </div>;
+}
 
 export default function ApplicationLicences() {
   const {user,refreshUser}=useAuth();
@@ -33,6 +75,7 @@ export default function ApplicationLicences() {
   const [draft,setDraft]=useState({}),[permissions,setPermissions]=useState({});
   const [saving,setSaving]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
   const [revision,setRevision]=useState(0),[pendingTransition,setPendingTransition]=useState(null);
+  const [confirmOffer,setConfirmOffer]=useState(false);
   const generation=useRef(0),mounted=useRef(true),saveLock=useRef(false),tabs=useRef({}),selections=useRef({entity:"",licenceId:"",roleId:""});
   const resetConfiguration=useCallback(()=>{setData(null);setRoleData(null);setDraft({});setPermissions({});setLicenceId("");setRoleId("");setConfigurationLoading(false);},[]);
   const dismissTransition=useCallback(()=>setPendingTransition(null),[]);
@@ -66,7 +109,7 @@ export default function ApplicationLicences() {
           if(!active||!mounted.current||generation.current!==id)return;
           const [offer,roles]=results.map(result=>result.status==="fulfilled"?result.value:null);
           if(!offer?.success||!roles?.success){setError(offer?.message || roles?.message || "La configuration est indisponible.");return;}
-          if(String(offer.data?.entityId)!==entity||String(roles.data?.entityId)!==entity||!Array.isArray(offer.data?.licences)||!Array.isArray(offer.data?.catalogue)||!Array.isArray(roles.data?.roles)||!Array.isArray(roles.data?.catalogue)||!offer.data.catalogue.every(applicationClassificationValid)||!roles.data.catalogue.every(applicationClassificationValid)){setError("Cette configuration n’est plus à jour. Rechargez-la.");return;}
+          if(String(offer.data?.entityId)!==entity||String(roles.data?.entityId)!==entity||!Array.isArray(offer.data?.licences)||!Array.isArray(offer.data?.catalogue)||!Array.isArray(offer.data?.moduleCodes)||!Array.isArray(offer.data?.effectiveModules)||!Array.isArray(roles.data?.roles)||!Array.isArray(roles.data?.catalogue)||!offer.data.catalogue.every(applicationClassificationValid)||!roles.data.catalogue.every(applicationClassificationValid)){setError("Cette configuration n’est plus à jour. Rechargez-la.");return;}
           const previous=selections.current.entity===entity?selections.current:{};
           const licence=String(offer.data.licences.find(x=>String(x.IdLicence)===previous.licenceId)?.IdLicence || offer.data.licences.find(x=>x.statut_licence==="Active")?.IdLicence || offer.data.licences[0]?.IdLicence || "");
           const selectedRole=roles.data.roles.find(x=>String(x.IdRoleFk)===previous.roleId) || roles.data.roles[0];
@@ -85,7 +128,9 @@ export default function ApplicationLicences() {
   const licence=data?.licences.find(x=>String(x.IdLicence)===licenceId);
   const role=roleData?.roles.find(x=>String(x.IdRoleFk)===roleId);
   const canManage=Boolean(platform&&scoped&&data?.canManage&&roleData?.canManage&&!loading&&!saving);
-  const licenceChanged=Boolean(licence&&JSON.stringify(draft)!==JSON.stringify(licenseDraft(data,licenceId)));
+  const initialOffer=licenseDraft(data,licenceId);
+  const offerChanges=(data?.catalogue||[]).filter(item=>data.moduleCodes.includes(item.CodeModule)&&draft[item.CodeModule]!==initialOffer[item.CodeModule]);
+  const licenceChanged=Boolean(licence&&offerChanges.length);
   const rightsChanged=Boolean(role&&JSON.stringify(permissions)!==JSON.stringify(roleDraft(role,roleData.catalogue)));
   const dirty=licenceChanged||rightsChanged;
   useEffect(()=>{
@@ -125,7 +170,7 @@ export default function ApplicationLicences() {
     if(saveLock.current||!canManage||!selected||!(isOffer?licenceChanged:rightsChanged))return;
     const id=generation.current;saveLock.current=true;setSaving(true);setError("");setMessage("");
     try {
-      const codes=(isOffer?data:roleData).catalogue.filter(x=>!isOffer||!x.EstSocle).map(x=>x.CodeModule);
+      const codes=isOffer?data.moduleCodes:roleData.catalogue.map(x=>x.CodeModule);
       const current=isOffer?licence.activations:role.permissions;
       const versions=Object.fromEntries(codes.map(code=>[code,current.find(x=>x.CodeModule===code)?.Version || 0]));
       const body=isOffer?{versions,enabled:codes.filter(code=>draft[code])}:{entityId:Number(entity),versions,permissions};
@@ -135,7 +180,7 @@ export default function ApplicationLicences() {
       if(String(result.data?.entityId)!==entity){setError("La configuration reçue ne correspond pas à l’organisation. Rechargez-la.");return;}
       if(isOffer){setData(result.data);setDraft(licenseDraft(result.data,licenceId));}
       else{setRoleData(result.data);setPermissions(roleDraft(result.data.roles.find(x=>String(x.IdRoleFk)===roleId),result.data.catalogue));}
-      setMessage("Modifications enregistrées.");
+      setMessage(isOffer?"Activations de la licence mises à jour.":"Droits du rôle mis à jour.");
       window.dispatchEvent(new Event("sauverndeko:applications-changed"));
       await refreshUser();
     } catch {if(mounted.current&&generation.current===id)setError("L’enregistrement a échoué. Vos modifications sont conservées.");}
@@ -156,23 +201,25 @@ export default function ApplicationLicences() {
     {!loading&&organisationsReady&&!entity&&!error?<p className="application-message">Aucune organisation disponible.</p>:null}
     {!loading&&scoped?<section className="application-settings" id={"panel-"+tab} role="tabpanel" aria-labelledby={"tab-"+tab} tabIndex={0}>
       {tab==="licences"?<>
-        <div className="application-settings-head"><div><h2>Offre de la licence</h2><p>Les modules métier et les fonctionnalités associées conservent leurs règles d’accès. Le socle reste inclus.</p></div>{data.licences.length?<label className="application-field" htmlFor={fieldId+"-licence"}><span>Licence</span><SearchSelect id={fieldId+"-licence"} label="Licence" value={licenceId} disabled={saving} onChange={chooseLicence} options={data.licences.map(x=>({value:String(x.IdLicence),label:"Licence #"+x.IdLicence+" · "+x.statut_licence}))}/></label>:null}</div>
+        <div className="application-settings-head"><div><h2>Offre de la licence</h2><p>{platform?"Choisissez les modules à activer sur la licence sélectionnée.":"Consultez les modules de la licence sélectionnée."}</p></div>{data.licences.length?<label className="application-field" htmlFor={fieldId+"-licence"}><span>Licence</span><SearchSelect id={fieldId+"-licence"} label="Licence" value={licenceId} disabled={saving} onChange={chooseLicence} options={data.licences.map(x=>({value:String(x.IdLicence),label:"Licence #"+x.IdLicence+" · "+x.statut_licence}))}/></label>:null}</div>
         {licence?<div className="application-license-meta"><span><small>Début</small><strong>{date(licence.DateDebut)}</strong></span><span><small>Échéance</small><strong>{date(licence.DateFin)}</strong></span><span className={"application-badge "+(licence.statut_licence==="Active"?"is-enabled":"")}>{licence.statut_licence}</span></div>:<p className="application-message">Aucune licence enregistrée. Seul le socle est disponible.</p>}
-        <div className="application-licence-groups">{applicationGroups(data.catalogue).filter(group=>group.total>0).map(group=><section key={group.type}><header><h3>{group.label}</h3><span>{applicationGroupCount(group)}</span></header>{group.type==="FONCTIONNALITE"?<p className="application-group-note">Configuration des accès aux fonctions associées ; ces fonctions ne constituent pas des modules à souscrire séparément.</p>:null}<div className="application-module-list">{group.items.map(m=>{
-          const inherited=Boolean(m.CodeIncluant&&draft[m.CodeIncluant]);
-          const checked=m.EstSocle||inherited||draft[m.CodeModule]||false;
-          return <label className={"application-module-row "+(checked?"is-checked":"")} key={m.CodeModule}>
-            <input type="checkbox" checked={checked} disabled={!canManage||m.EstSocle||inherited||!licence||!m.Actif} onChange={event=>{if(!saveLock.current)setDraft(current=>({...current,[m.CodeModule]:event.target.checked}));}}/>
-            <span><strong>{m.Nom}</strong><small>{m.EstSocle?"Socle inclus":inherited?"Inclus avec "+(applicationParentLabel(m,data.catalogue)||data.catalogue.find(parent=>parent.CodeModule===m.CodeIncluant)?.Nom||"le module associé"):draft[m.CodeModule]?"Accès activé":"Non activé"}</small>{applicationParentLabel(m,data.catalogue)&&!inherited?<small>Associé à {applicationParentLabel(m,data.catalogue)}</small>:null}</span>
-            {m.EstSocle?<AppIcon name="check-circle"/>:null}
-          </label>;
-        })}</div></section>)}</div>
+        <OfferModules data={data} licence={licence} draft={draft} platform={platform} canManage={canManage}
+          onChange={(code,active)=>{if(!saveLock.current)setDraft(current=>({...current,[code]:active}));}}/>
       </>:<>
         <div className="application-settings-head"><div><h2>Droits des rôles</h2><p>Les droits s’appliquent aux applications comprises dans l’offre.</p></div>{roleData.roles.length?<label className="application-field" htmlFor={fieldId+"-role"}><span>Rôle</span><SearchSelect id={fieldId+"-role"} label="Rôle" value={roleId} disabled={saving} onChange={chooseRole} options={roleData.roles.map(x=>({value:String(x.IdRoleFk),label:x.NomRole}))}/></label>:null}</div>
-        {role?<div className="erp-results application-role-table"><div className="application-table-scroll"><table className="application-rights-table"><thead><tr><th>Application</th>{RIGHTS.map(([key,label])=><th key={key}>{label}</th>)}</tr></thead>{applicationGroups(roleData.catalogue).filter(group=>group.total>0).map(group=><tbody key={group.type}><tr className="application-rights-group"><th colSpan={RIGHTS.length+1}>{group.label}</th></tr>{group.items.map(m=><tr key={m.CodeModule}><th scope="row">{m.Nom}{m.EstSocle?<small>Socle</small>:null}</th>{RIGHTS.map(([key,label])=><td key={key}><input type="checkbox" aria-label={label+" · "+m.Nom} checked={permissions[m.CodeModule]?.[key]||false} disabled={!canManage||!role.baseline[m.CodeModule]?.[key]||(key!=="canRead"&&!permissions[m.CodeModule]?.canRead)} onChange={e=>changeRight(m.CodeModule,key,e.target.checked)}/></td>)}</tr>)}</tbody>)}</table></div></div>:<p className="application-message">Aucun rôle d’entreprise à configurer.</p>}
+        {role?<div className="erp-results application-role-table"><div className="application-table-scroll"><table className="application-rights-table"><thead><tr><th>Application</th>{RIGHTS.map(([key,label])=><th key={key}>{label}</th>)}</tr></thead>{applicationGroups(roleData.catalogue).filter(group=>group.total>0).map(group=><tbody key={group.key}><tr className="application-rights-group"><th colSpan={RIGHTS.length+1}>{group.label}</th></tr>{group.items.map(m=><tr key={m.CodeModule}><th scope="row">{m.Nom}{m.EstSocle?<small>Socle</small>:null}</th>{RIGHTS.map(([key,label])=><td key={key}><input type="checkbox" aria-label={label+" · "+m.Nom} checked={permissions[m.CodeModule]?.[key]||false} disabled={!canManage||!role.baseline[m.CodeModule]?.[key]||(key!=="canRead"&&!permissions[m.CodeModule]?.canRead)} onChange={e=>changeRight(m.CodeModule,key,e.target.checked)}/></td>)}</tr>)}</tbody>)}</table></div></div>:<p className="application-message">Aucun rôle d’entreprise à configurer.</p>}
         <p className="application-footnote">Ces réglages limitent les habilitations existantes. L’administration de la plateforme conserve son accès de maintenance.</p>
       </>}
-      <footer className="application-save-bar"><span>{platform ? "Les accès seront mis à jour après l’enregistrement." : "Les activations sont gérées par l’administration de la plateforme."}</span>{platform?<div><ActionButton icon="reset" disabled={!canManage||!(tab==="licences"?licenceChanged:rightsChanged)} onClick={()=>requestTransition(()=>tab==="licences"?setDraft(licenseDraft(data,licenceId)):setPermissions(roleDraft(role,roleData.catalogue)),tab==="licences"?licenceChanged:rightsChanged)}>Annuler</ActionButton><ActionButton icon="check-circle" variant="primary" disabled={!canManage||!(tab==="licences"?licenceChanged&&licence:rightsChanged&&role)} onClick={save}>{saving?"Enregistrement…":"Enregistrer"}</ActionButton></div>:null}</footer>
+      <footer className="application-save-bar"><span>{platform
+        ? (tab==="licences"&&licenceChanged?`${offerChanges.length} modification${offerChanges.length>1?"s":""} à enregistrer`:"Les droits du rôle restent applicables.")
+        : "Les activations sont gérées par l’administration de la plateforme."}</span>{platform?<div><ActionButton icon="reset" disabled={!canManage||!(tab==="licences"?licenceChanged:rightsChanged)} onClick={()=>requestTransition(()=>tab==="licences"?setDraft(licenseDraft(data,licenceId)):setPermissions(roleDraft(role,roleData.catalogue)),tab==="licences"?licenceChanged:rightsChanged)}>Annuler</ActionButton><ActionButton icon="check-circle" variant="primary" disabled={!canManage||!(tab==="licences"?licenceChanged&&licence:rightsChanged&&role)} onClick={()=>tab==="licences"?setConfirmOffer(true):void save()}>{saving?"Enregistrement…":tab==="licences"?"Appliquer les changements":"Enregistrer"}</ActionButton></div>:null}</footer>
     </section>:null}
-  </main>{pendingTransition?<DrawerDialog title="Modifications non enregistrées" icon="alert" onClose={dismissTransition} defaultWidth={560} storageKey="sauverndeko.application-discard.width" footer={<footer className="application-save-bar"><span/><div><ActionButton onClick={dismissTransition}>Continuer la saisie</ActionButton><ActionButton variant="primary" onClick={confirmTransition}>Abandonner</ActionButton></div></footer>}><p>Continuer sans enregistrer les modifications ?</p></DrawerDialog>:null}</div>;
+  </main>{confirmOffer?<DrawerDialog title="Appliquer les changements" icon="settings"
+    subtitle={organisation?.NomEntite} onClose={()=>setConfirmOffer(false)} defaultWidth={480}
+    storageKey="sauverndeko.application-offer-confirm.width"
+    footer={<footer className="application-save-bar"><span/><div><ActionButton onClick={()=>setConfirmOffer(false)}>Annuler</ActionButton>
+      <ActionButton icon="check-circle" variant="primary" onClick={()=>{setConfirmOffer(false);void save();}}>Confirmer</ActionButton></div></footer>}>
+    <ul className="application-offer-review">{offerChanges.map(item=><li key={item.CodeModule}>{draft[item.CodeModule]?"Activer":"Désactiver"} {item.Nom}</li>)}</ul>
+    <p>Ces changements s’appliquent à la licence sélectionnée. Une autre licence active peut maintenir l’accès.</p>
+  </DrawerDialog>:null}{pendingTransition?<DrawerDialog title="Modifications non enregistrées" icon="alert" onClose={dismissTransition} defaultWidth={560} storageKey="sauverndeko.application-discard.width" footer={<footer className="application-save-bar"><span/><div><ActionButton onClick={dismissTransition}>Continuer la saisie</ActionButton><ActionButton variant="primary" onClick={confirmTransition}>Abandonner</ActionButton></div></footer>}><p>Continuer sans enregistrer les modifications ?</p></DrawerDialog>:null}</div>;
 }

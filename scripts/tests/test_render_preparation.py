@@ -98,6 +98,15 @@ class RenderPredeployTests(unittest.TestCase):
             self.assertEqual(predeploy.main(), 1)
         self.assertEqual(run.call_count, 2)
 
+    @patch.object(predeploy.sys, "stderr")
+    @patch.object(predeploy.subprocess, "run")
+    def test_schema_failure_points_to_controlled_release(self, run, stderr):
+        run.side_effect = [MagicMock(returncode=0), MagicMock(returncode=0), MagicMock(returncode=1)]
+        with patch.dict(os.environ, {"RENDER_EXTERNAL_HOSTNAME": "test.onrender.com"}, clear=True):
+            self.assertEqual(predeploy.main(), 1)
+        self.assertEqual(run.call_count, 3)
+        self.assertIn("livraison Render contrôlée", "".join(call.args[0] for call in stderr.write.call_args_list))
+
 
 class RenderReleaseTests(unittest.TestCase):
     def test_exact_commit_replaces_existing_hook_ref(self):

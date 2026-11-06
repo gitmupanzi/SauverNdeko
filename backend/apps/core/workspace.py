@@ -10,28 +10,50 @@ REFERENCE_FEATURE = {
     "description": "Catégories, valeurs et référencement des champs.",
     "path": "/referentiels", "icon": "tags", "tone": "slate",
     "type": "FONCTIONNALITE", "commercialisable": False,
-    "parentModule": None, "showInWorkspace": True, "base": True,
+    "parentModule": None, "showInWorkspace": True, "base": True, "platformOnly": False,
 }
 
+def reference_feature(actor):
+    if not actor.admin:
+        return []
+    try:
+        require_module(actor, "referentiels")
+    except APIError as error:
+        if error.status_code != 403:
+            raise
+        return []
+    return [dict(REFERENCE_FEATURE)]
+
+
+def workspace_cards(actor, *, catalogue=False):
+    rights = access_snapshot(actor)["modules"]
+    metadata = application_metadata()
+    cards = []
+    for module in WORKSPACE_MODULES:
+        key = module["key"]
+        classification = metadata[key]
+        if classification["platformOnly"] and not actor.global_admin:
+            continue
+        if catalogue:
+            if not (classification["showInWorkspace"] or classification["commercialisable"]):
+                continue
+            if not rights[key]["canRead"] and not classification["commercialisable"]:
+                continue
+        elif not (classification["showInWorkspace"] and rights[key]["canRead"]):
+            continue
+        cards.append({
+            **{key: value for key, value in module.items() if key != "admin"},
+            **classification, **rights[key],
+        })
+    references = reference_feature(actor)
+    if catalogue:
+        references = [{**item, "canRead": True, "available": True} for item in references]
+    return cards + references
+
+
 def available_modules(actor):
-    snapshot=access_snapshot(actor)
-    metadata=application_metadata()
-    modules = [
-        {**{key:value for key,value in module.items() if key!="admin"},
-         **metadata[module['key']], "base":snapshot["modules"][module["key"]]["base"]}
-        for module in WORKSPACE_MODULES
-        if snapshot["modules"][module["key"]]["canRead"]
-        and metadata[module["key"]]["showInWorkspace"]
-    ]
-    if actor.admin:
-        try:
-            require_module(actor, "referentiels")
-        except APIError as error:
-            if error.status_code != 403:
-                raise
-        else:
-            modules.append(dict(REFERENCE_FEATURE))
-    return modules
+    return workspace_cards(actor)
+
 
 class WorkspaceModulesView(APIView):
     permission_classes=[IsAuthenticated]
@@ -41,5 +63,5 @@ class WorkspaceCatalogueView(APIView):
     permission_classes=[IsAuthenticated]
     def get(self,request):
         snapshot=access_snapshot(request.user)
-        metadata=application_metadata()
-        return ok({"platformAdmin":snapshot["platformAdmin"],"entityId":snapshot["entityId"],"modules":[{**{key:value for key,value in module.items() if key!="admin"},**metadata[module['key']],**snapshot["modules"][module["key"]]} for module in WORKSPACE_MODULES]})
+        return ok({"platformAdmin": snapshot["platformAdmin"], "entityId": snapshot["entityId"],
+                   "modules": workspace_cards(request.user, catalogue=True)})

@@ -18,6 +18,7 @@ export default function ModuleGate({children}) {
     LICENCE_INACTIVE:"La licence de votre organisation ne permet plus cet accès.",
     MODULE_NOT_INCLUDED:"Cette application n’est pas comprise dans l’offre de votre organisation.",
     MODULE_ROLE_FORBIDDEN:"Votre rôle ne permet pas l’accès à cette application.",
+    PLATFORM_ADMIN_REQUIRED:"Cette application est réservée à l’administration de la plateforme.",
   };
   async function retry() { setBusy(true);setError(""); try { const result=await refreshUser();if(!result?.success)setError("Les accès n’ont pas pu être actualisés."); } finally {setBusy(false);} }
   return <div className="applications-page"><ModuleHeader title="Applications"/><main className="application-denied" role="status"><span className="application-denied-icon"><AppIcon name="alert"/></span><h1>{user?.moduleAccess ? "Accès limité" : "Accès indisponible"}</h1><p>{messages[rights.reason] || "Vos accès ne sont pas disponibles pour le moment."}</p>{error ? <p role="alert">{error}</p>:null}<div className="application-links"><Link className="ui-action is-primary" to="/espace">Mes applications</Link><Link className="ui-action is-secondary" to="/applications">Découvrir les applications</Link><ActionButton icon="refresh" disabled={busy} onClick={retry}>{busy?"Actualisation…":"Actualiser"}</ActionButton></div></main></div>;

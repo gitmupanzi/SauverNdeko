@@ -119,7 +119,9 @@ class UserGuideAPI(unittest.TestCase):
         keys = {item['key'] for item in data['modules']}
         self.assertIn('parametres', keys)
         self.assertNotIn('logistique', keys)
-        self.assertNotIn('produits', keys)
+        self.assertTrue({'produits', 'structures', 'professionnels'}.issubset(keys))
+        self.assertNotIn('discussions', keys)
+        self.assertNotIn('territoires', keys)
         self.assertNotIn('guide', keys)
         self.assertTrue(all(set(article) == {'id', 'title', 'summary'} for module in data['modules'] for article in module['articles']))
 

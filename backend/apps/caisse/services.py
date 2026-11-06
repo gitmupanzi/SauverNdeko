@@ -156,7 +156,7 @@ def revision(raw, row):
     return int(raw)
 
 
-def envelope(actor, body, operation, pk=None, require_motif=False):
+def envelope(actor, body, operation, pk=None, require_motif=False, batch_digest=None):
     if not isinstance(body, dict) or set(body)-{'data','requestId','motif','_version','valider'}:
         fail('Demande invalide.')
     try:
@@ -164,8 +164,10 @@ def envelope(actor, body, operation, pk=None, require_motif=False):
     except (ValueError, TypeError):
         fail('Identifiant de demande requis.', 'requestId')
     motif = text_value(body.get('motif'), 'motif', 1000, require_motif)
-    digest = hashlib.sha256(json.dumps({'actor': actor.pk, 'entity': read_entity(actor), 'operation': operation,
-        'id': pk, 'body': body}, sort_keys=True, ensure_ascii=False, cls=ExactEncoder).encode()).hexdigest()
+    content = {'actor': actor.pk, 'entity': read_entity(actor), 'operation': operation, 'id': pk, 'body': body}
+    if batch_digest is not None:
+        content['batch'] = batch_digest
+    digest = hashlib.sha256(json.dumps(content, sort_keys=True, ensure_ascii=False, cls=ExactEncoder).encode()).hexdigest()
     return request_id, digest, motif
 
 
@@ -277,9 +279,9 @@ def update(table, key, pk, values):
 
 
 @transaction.atomic
-def create_cash(actor, body):
+def create_cash(actor, body, *, batch_digest=None):
     entity = writable(actor)
-    request_id,digest,motif = envelope(actor,body,'create-cash')
+    request_id,digest,motif = envelope(actor,body,'create-cash',batch_digest=batch_digest)
     request_lock(actor,request_id,digest,motif)
     found = replay('caisses',request_id,digest)
     if found: return detail(actor,'caisses',found,True)
@@ -307,9 +309,9 @@ def modify(actor, kind, pk, body):
 
 
 @transaction.atomic
-def create_entry(actor, body):
+def create_entry(actor, body, *, batch_digest=None):
     entity = writable(actor)
-    request_id,digest,motif = envelope(actor,body,'create-entry')
+    request_id,digest,motif = envelope(actor,body,'create-entry',batch_digest=batch_digest)
     if type(body.get('valider',False)) is not bool: fail('Choisissez un mode d’enregistrement valide.','valider')
     request_lock(actor,request_id,digest,motif)
     found = replay('ecritures',request_id,digest)
@@ -342,9 +344,9 @@ def entry_action(actor, pk, action, body):
 
 
 @transaction.atomic
-def close_cash(actor, body):
+def close_cash(actor, body, *, batch_digest=None):
     entity = writable(actor)
-    request_id,digest,motif = envelope(actor,body,'close-cash')
+    request_id,digest,motif = envelope(actor,body,'close-cash',batch_digest=batch_digest)
     request_lock(actor,request_id,digest,motif)
     found = replay('clotures',request_id,digest)
     if found: return detail(actor,'clotures',found,True)
@@ -418,7 +420,8 @@ def references(actor):
         result[key] = reference_options(actor,'operations',table,field)
         meta[key] = reference_context(actor,'operations',table,field)
     predicate,params = scope(actor)
-    result['caisses'] = list(map(public,db.query('SELECT v.* FROM operations."V_Caisse" v WHERE '+predicate+' ORDER BY v."NomCaisse",v."IdCaisse"',params)))
+    result['caisses'] = [{**public(row), '_version': str(row['Revision'])} for row in db.query(
+        'SELECT v.* FROM operations."V_Caisse" v WHERE '+predicate+' ORDER BY v."NomCaisse",v."IdCaisse"',params)]
     result['responsables'] = db.query('SELECT "IdUser" id,concat_ws(\' \',"PrenomUser","NomUser") label FROM systeme."T_Utilisateurs" v WHERE '+predicate+' AND "ValideUser" IS TRUE ORDER BY label',params)
     result['tiers'] = db.query('SELECT "ID_Client" id,"Nom" label FROM logistique."T_Client" v WHERE '+predicate+' AND "Actif" IS TRUE ORDER BY label',params)
     result['referenceMeta'] = meta

@@ -8,6 +8,14 @@ Le module exige une licence active de l’entreprise et les droits du compte. So
 
 Le tableau de bord sépare les montants par devise. Les indicateurs ouvrent la liste concernée dans la page. Les registres **Caisses**, **Écritures** et **Clôtures** disposent de recherche, filtres, tri, pagination, consultation et exports Excel/CSV selon les droits.
 
+Le menu **Réglages → Références** indique la catégorie et son identifiant pour chaque liste. Ouvrez **Voir les valeurs** pour rechercher une abréviation ou un identifiant.
+
+## Saisir une ou plusieurs lignes
+
+Depuis **Nouvelle caisse**, **Nouvelle écriture** ou **Nouvelle clôture**, complétez la première ligne puis utilisez **Ajouter une ligne** ou **Coller depuis Excel**. Pour le collage, copiez les en-têtes et les données. Les listes reconnaissent leur libellé ou leur identifiant. Le panier accepte jusqu’à 100 lignes et indique les corrections à apporter avant l’enregistrement. Si une ligne échoue, toute la demande est annulée.
+
+Les écritures sont créées en brouillon par défaut. Vous pouvez confirmer la validation immédiate du panier. Pour les clôtures, vérifiez le solde affiché, saisissez le montant compté et le motif, puis confirmez. Si le solde change, rechargez la ligne et vérifiez de nouveau le comptage.
+
 ## Ouvrir une caisse
 
 Créer la caisse avec son nom, sa devise et, si nécessaire, son type et son responsable. Son code est automatique. Son solde commence à zéro. Pour reprendre une encaisse réellement disponible, enregistrer une entrée justifiée : saisir un solde dans la fiche ne constitue pas une écriture de trésorerie.

@@ -10,6 +10,7 @@ import {CAISSE_ROOT,caisseTab} from "./caisse/caisseModel";
 import CaisseDashboard from "./caisse/CaisseDashboard";
 import CaisseRegister from "./caisse/CaisseRegister";
 import CaisseEditor from "./caisse/CaisseEditor";
+import CaisseBatchEditor from "./caisse/CaisseBatchEditor";
 import CaisseDetail from "./caisse/CaisseDetail";
 import "./logistique/LogistiqueModern.css";
 import "./admin/AdminPortal.css";
@@ -40,7 +41,7 @@ export default function Caisse(){
  useEffect(()=>{const controller=new AbortController();setState(previous=>({...previous,owner,data:previous.owner===owner?previous.data:null,references:previous.owner===owner?previous.references:{},loading:true,error:""}));Promise.all([requestJson(CAISSE_ROOT+"/contexte",{requiresAuth:true,signal:controller.signal}),requestJson(CAISSE_ROOT+"/references",{requiresAuth:true,signal:controller.signal})]).then(([response,refs])=>{if(controller.signal.aborted)return;setState({owner,data:response?.success?response.data:null,references:refs?.success?refs.data:{},loading:false,error:!response?.success?response?.message||"Le module Caisse n’est pas disponible.":!refs?.success?refs?.message||"Les listes de référence ne sont pas disponibles.":""});});return()=>controller.abort();},[owner,refresh,retry]);
  function navigate(kind,criteria={}){setDrawer(null);setParams({onglet:kind,...(Object.keys(criteria).length?{filters:JSON.stringify(criteria)}:{})});}
  function open(next){setDrawer({...next,owner:scope.scopeKey});}
- function saved(record){setDrawer(null);setFeedback("Opération enregistrée.");setRefresh(value=>value+1);}
+ function saved(result){setDrawer(null);setFeedback(result?.count>1?result.count+" lignes enregistrées.":"Opération enregistrée.");setRefresh(value=>value+1);}
  let initial={};try{const value=JSON.parse(params.get("filters")||"{}");if(value&&typeof value==="object"&&!Array.isArray(value))initial=value;}catch{}
  const safeDrawer=drawer?.owner===owner?drawer:null;
  return <div className={"logistics-modern logistics-app admin-portal caisse-module"+(collapsed?" is-menu-collapsed":"")}>
@@ -55,6 +56,11 @@ export default function Caisse(){
       canConfigurePresentation={presentation?.canManage===true} context={context} references={references} refresh={refresh} onOpen={open}/>:
     <CaisseRegister title={tabLabels?.[active]} key={owner+":"+active+":"+(params.get("filters")||"")} kind={active} context={current.loading?null:context} references={references} refresh={refresh} initial={initial} onOpen={open} onCreate={kind=>open({kind,mode:"create"})}/>}
   </main>
-  {safeDrawer?(safeDrawer.mode?<CaisseEditor key={owner+":"+safeDrawer.kind+":"+(safeDrawer.id||"new")+":"+safeDrawer.mode} {...safeDrawer} context={context} references={references} onClose={()=>setDrawer(null)} onSaved={saved}/>:<CaisseDetail key={owner+":"+safeDrawer.kind+":"+safeDrawer.id} kind={safeDrawer.kind} id={safeDrawer.id} context={context} onClose={()=>setDrawer(null)} onOpen={open} onNavigate={navigate}/>):null}
+  {safeDrawer?.mode==="create"?<CaisseBatchEditor key={owner+":"+safeDrawer.kind+":panier"} {...safeDrawer} context={context}
+    references={references} onClose={()=>setDrawer(null)} onSaved={saved}/>:null}
+  {safeDrawer?.mode&&safeDrawer.mode!=="create"?<CaisseEditor key={owner+":"+safeDrawer.kind+":"+safeDrawer.id+":"+safeDrawer.mode}
+    {...safeDrawer} context={context} references={references} onClose={()=>setDrawer(null)} onSaved={saved}/>:null}
+  {safeDrawer&&!safeDrawer.mode?<CaisseDetail key={owner+":"+safeDrawer.kind+":"+safeDrawer.id} kind={safeDrawer.kind}
+    id={safeDrawer.id} context={context} onClose={()=>setDrawer(null)} onOpen={open} onNavigate={navigate}/>:null}
  </div>;
 }

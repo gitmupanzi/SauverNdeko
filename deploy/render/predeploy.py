@@ -25,6 +25,13 @@ def main():
             cwd=root, env=environment, check=False,
         )
         if result.returncode:
+            if arguments in (("migrer_metier", "--check"), ("migrate", "--check")):
+                print(
+                    "Vérifiez le diagnostic de la base ci-dessus. Pour des migrations en attente, "
+                    "utilisez la livraison Render contrôlée après vérification des sauvegardes "
+                    "PostgreSQL et médias (docs/deploiement-render.md).",
+                    file=sys.stderr,
+                )
             return result.returncode
     return 0
 

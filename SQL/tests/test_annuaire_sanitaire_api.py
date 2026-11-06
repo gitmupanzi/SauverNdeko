@@ -119,7 +119,7 @@ class SanitaryDirectoryAPI(unittest.TestCase):
         self.data(self.client(local=True).get(BASE + '/2/1'), 400)
         self.data(self.client(local=True).get(BASE + '/5/2147483647'), 404)
 
-    def test_04_licensed_structures_reader_without_territorial_access(self):
+    def test_04_included_structures_reader_without_territorial_access(self):
         self.chain()
         actor = self.actor(local=True)
         snapshot = access_snapshot(actor)
@@ -130,7 +130,7 @@ class SanitaryDirectoryAPI(unittest.TestCase):
         self.assertIs(self.data(client.get(BASE + '/references'))['canManageTerritories'], False)
         self.assertIs(self.data(client.get('/api/structures/contexte'))['canManageTerritories'], False)
         self.data(client.get(TERRITORIES + 'niveaux5'), 403)
-        self.data(self.client(2, local=True).get(BASE), 403)
+        self.data(self.client(2, local=True).get(BASE))
         for suffix in ('', '/references', '/5/1'):
             self.data(APIClient().get(BASE + suffix), 401)
         with override_settings(DB_READ_ONLY=True):
