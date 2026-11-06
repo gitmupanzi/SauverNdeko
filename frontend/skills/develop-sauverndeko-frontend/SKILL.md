@@ -95,6 +95,12 @@ Dans tous les modules où des créations similaires s’y prêtent, privilégier
 11. Tout filtre métier catégoriel et toute référence à choix simple réutilisent SearchSelect, comme Licence et Article. Appliquer le [contrat des sélecteurs](references/formulaires-crud.md#sélecteurs-des-filtres-métier-et-références) ; conserver les contrôles adaptés aux réglages techniques et à la multisélection.
 12. Afficher la date et l’heure des événements horodatés, sans ajouter d’heure aux dates seules ; appliquer le [contrat des dates et heures](references/contrats-interface.md#dates-et-heures).
 
+## Discussions et annonces
+
+Messages utilise une boîte à deux volets sur ordinateur. Sur téléphone, la liste cède la place au fil avec un retour explicite qui conserve la recherche. Réutiliser la navigation, les thèmes, les boutons et l’état vide communs. Conserver les liens directs vers un fil et les brouillons en mémoire, avec la même clé de rejeu si l’envoi reste incertain. Les nouveaux messages s’ajoutent sans déplacer une personne qui consulte l’historique. Les badges et le filtre Non lues utilisent les valeurs de l’API. Signaler une lecture uniquement lorsque le message reçu est visible dans le fil au premier plan.
+
+Annonces utilise une liste de notifications individuelles, un détail et une confirmation de diffusion avec l’audience. Respecter les capacités renvoyées par le serveur et synchroniser la cloche après lecture. Les messages de discussion et les annonces ont chacun leur état de lecture.
+
 ## Navigation logistique livrée
 
 Conserver la colonne de gauche sur toute la hauteur : logo, menus à icônes regroupés en Pilotage/Stocks/Finances, rubrique active visible, deux entrées Finances distinctes Factures et Règlements, retour aux applications, repli sur ordinateur et rail compact sur mobile. Le propriétaire demande le parcours Numérique–M-PESA : blocs Articles/Bons de stock/Factures/Alertes avec mini-indicateurs compacts (éviter les grandes tuiles), clic sur un KPI, détail dans une liste sous la synthèse, recherche validée, pagination serveur, puis Revenir à l’indicateur ou fermeture avec défilement/focus au déclencheur. Une fiche 360 consulte uniquement un enregistrement précis depuis ce détail ou un autre onglet.
@@ -156,6 +162,8 @@ ThemePicker affiche uniquement l’icône du choix : soleil pour Clair, lune pou
 ## Outils et relevés historiques
 
 Pour `/territoires`, suivre [le contrat Organisation territoriale](references/organisation-territoriale.md) : portail dédié, indicateurs liés aux mêmes registres, références physiques centralisées, fiches complètes et conservation des valeurs historiques. Le découpage reste partagé ; ne pas lui appliquer le blocage d’écriture propre à l’entreprise logistique. Les créations des niveaux 0 à 5 utilisent un seul bouton ouvrant une saisie multiple, avec rattachement commun en en-tête, lignes modifiables, collage Excel et transaction de lot. La consultation et la modification conservent la même fiche individuelle et sa vraie clé.
+
+Discussions utilise le shell commun et sépare Messages et Annonces. Conserver le brouillon au changement de conversation, charger les anciens messages sans déplacer la lecture et prévoir un retour à la liste sur téléphone. Les permissions d’envoi et de diffusion viennent du serveur. Vérifier le destinataire avant un message et confirmer la portée avant de publier une annonce. La cloche et Annonces partagent l’état de lecture individuel. Rejouer un envoi incertain avec le même UUID et le même texte.
 
 Les anciennes références [frontend-architecture.md](references/frontend-architecture.md), [api-and-ui-contracts.md](references/api-and-ui-contracts.md) et [validation.md](references/validation.md) conservent le relevé antérieur à la conversion Django. Les références précédentes décrivent les conventions actuelles. L’[inspecteur statique](scripts/inspect_frontend.py) peut aider à repérer composants et services ; son inventaire partiel des routes ne valide ni les ModuleGate conditionnels ni les permissions.
 

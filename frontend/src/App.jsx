@@ -338,14 +338,6 @@ function ApplicationShell() {
               }
             />
             <Route
-              path="/discussions"
-              element={
-                <ProtectedRoute>
-                  <Discussions experts={catalogue.experts} pharmacies={catalogue.pharmacies} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/admin"
               element={
                 <AdminRoute>
@@ -406,6 +398,7 @@ export default function App() {
   if (location.pathname === "/experts") return <ModuleGate><Experts key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/referentiels") return <ModuleGate><AdminRoute><Referentiels key={scopeKey} /></AdminRoute></ModuleGate>;
   if (location.pathname === "/territoires") return <ModuleGate><AdminRoute><OrganisationTerritoriale key={scopeKey} /></AdminRoute></ModuleGate>;
+  if (location.pathname === "/discussions") return <ModuleGate><Discussions key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/parametres") return <ModuleGate><Parametres key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/guide") return <ModuleGate><GuideUtilisateur key={scopeKey} /></ModuleGate>;

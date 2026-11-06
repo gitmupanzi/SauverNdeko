@@ -515,7 +515,7 @@
       "label": "Discussions",
       "path": "/discussions",
       "icon": "bi-chat-dots",
-      "description": "Ouvrir et poursuivre des conversations avec les interlocuteurs autorisés.",
+      "description": "Échanger en privé et consulter les annonces de votre entreprise.",
       "articles": [
         {
           "id": "retrouver-discussion",
@@ -606,6 +606,71 @@
           "notes": [
             "La fiche d’une structure territoriale ne désigne pas une entreprise de messagerie et ne propose pas d’action de discussion.",
             "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue. Chaque parcours vérifie aussi ses propres droits."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Discussions",
+              "path": "/discussions"
+            }
+          ]
+        },
+        {
+          "id": "message-collegue",
+          "title": "Écrire à un collègue",
+          "summary": "Trouvez un compte actif de votre entreprise.",
+          "steps": [
+            {
+              "title": "Ouvrir Messages",
+              "text": "Dans Discussions, choisissez Nouveau message."
+            },
+            {
+              "title": "Choisir le destinataire",
+              "text": "Recherchez son prénom ou son nom et sélectionnez sa fiche. Un échange existant s’ouvre automatiquement."
+            },
+            {
+              "title": "Rédiger et envoyer",
+              "text": "Vérifiez le destinataire, écrivez votre message et cliquez sur Envoyer. Sur ordinateur, Entrée envoie et Maj + Entrée insère un saut de ligne."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "« Bonjour Élodie, peux-tu confirmer la réception du matériel du service ? »"
+          },
+          "notes": [
+            "Les deux participants ont accès au fil direct tant que leur compte reste rattaché à l’entreprise du fil.",
+            "Dans la liste, sélectionnez Non lues pour retrouver les conversations avec de nouveaux messages. Sur téléphone, la flèche dans le fil ramène à la liste."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir Discussions",
+              "path": "/discussions"
+            }
+          ]
+        },
+        {
+          "id": "lire-et-diffuser-annonces",
+          "title": "Lire et diffuser une annonce",
+          "summary": "Consultez les communications internes de votre entreprise.",
+          "steps": [
+            {
+              "title": "Lire une annonce",
+              "text": "Ouvrez Annonces dans Discussions, ou cliquez sur la cloche dans l’en-tête. Ouvrez le message et marquez-le comme lu."
+            },
+            {
+              "title": "Préparer une diffusion",
+              "text": "Si vous êtes administrateur autorisé, cliquez sur Nouvelle annonce et saisissez le titre et le message. L’administration d’entreprise s’adresse à sa propre équipe. L’administration de plateforme peut sélectionner des entreprises ou choisir toutes les entreprises."
+            },
+            {
+              "title": "Confirmer la diffusion",
+              "text": "Relisez le texte et vérifiez les destinataires avant de confirmer. Retrouvez ensuite la diffusion et son suivi de lecture dans Annonces envoyées."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "La responsable d’une entreprise annonce l’heure du prochain inventaire à tous les comptes actifs de son entreprise."
+          },
+          "notes": [
+            "Les annonces arrivent dans l’application. La lecture est enregistrée individuellement et l’expéditeur voit un nombre agrégé de lectures."
           ],
           "links": [
             {

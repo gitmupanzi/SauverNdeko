@@ -76,8 +76,9 @@ from apps.catalogue.views import PublicView
 from apps.catalogue.products import ProductReferencesView, ProductOffersView
 from apps.catalogue.structures import StructuresReadView, StructureProfileView, StructureLogoView
 from apps.catalogue.territorial_structures import TerritorialStructuresView
-from apps.communication.views import DiscussionsView, StartView, MessagesView
-from apps.communication.notifications import NotificationsView, NotificationReadView
+from apps.communication.views import ContactsView, DiscussionReadView, DiscussionsView, MessagesView, StartView
+from apps.communication.announcements import AnnouncementContextView, AnnouncementsView
+from apps.communication.notifications import NotificationsView, NotificationReadView, ReceivedAnnouncementsView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
 from apps.logistique.excel import IndicatorExcelView, RegisterExcelView, FolderExcelView
@@ -253,8 +254,13 @@ urlpatterns = [
     re_path(r"^api/notifications/?$", NotificationsView.as_view()),
     re_path(r"^api/notifications/(?P<pk>[0-9]+)/read/?$", NotificationReadView.as_view()),
     re_path(r"^api/discussions/start/?$", StartView.as_view()),
+    re_path(r"^api/discussions/contacts/?$", ContactsView.as_view()),
+    re_path(r"^api/discussions/annonces/contexte/?$", AnnouncementContextView.as_view()),
+    re_path(r"^api/discussions/annonces/recues/?$", ReceivedAnnouncementsView.as_view()),
+    re_path(r"^api/discussions/annonces/?$", AnnouncementsView.as_view()),
     re_path(r"^api/discussions/?$", DiscussionsView.as_view()),
     re_path(r"^api/discussions/(?P<pk>[0-9]+)/messages/?$", MessagesView.as_view()),
+    re_path(r"^api/discussions/(?P<pk>[0-9]+)/lecture/?$", DiscussionReadView.as_view()),
     re_path(r"^api/views/?$", ViewsView.as_view()),
     re_path(
         r"^api/views/(?P<schema>[a-z_]+)/(?P<name>[A-Za-z0-9_]+)/?$",

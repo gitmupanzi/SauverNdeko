@@ -118,7 +118,8 @@ def enforce_request(actor,request,view):
     elif path.startswith('/api/discussions'):
         key='discussions'
         if path.rstrip('/').endswith('/start'):
-            target={'expert':'professionnels','structure':'structures'}.get(request.data.get('type'))
+            kind = request.data.get("type") if hasattr(request.data, "get") else None
+            target = {"expert": "professionnels", "structure": "structures"}.get(kind) if isinstance(kind, str) else None
             if target:require_module(actor,target)
     elif path.startswith('/api/logistique/') or path.startswith(('/api/articles','/api/commandes')):key='logistique'
     elif path.rstrip('/') in {'/api/views','/api/models'}:key='referentiels'

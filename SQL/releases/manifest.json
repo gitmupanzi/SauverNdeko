@@ -6,5 +6,36 @@
     "file": "baseline-20261104.json",
     "sha256": "f47a96a5faaab2520abf1147e5899c788843378c17576b9159afec3352c2f222"
   },
-  "migrations": []
+  "migrations": [
+    {
+      "id": "20261106_01_annonces_communication",
+      "file": "../migrations/20261106_01_annonces_communication.sql",
+      "sha256": "fdda6b7515c5346f6a64248672e399301cec88e6ffa69101ec25625694cb5200",
+      "dependsOn": [
+        "20261104_socle"
+      ],
+      "description": "Publier des annonces par entreprise et suivre leur lecture individuelle.",
+      "release": "2026.11.06"
+    },
+    {
+      "id": "20261106_02_discussions_directes",
+      "file": "../migrations/20261106_02_discussions_directes.sql",
+      "sha256": "440982a9225a8756f6a85efabda583484885a4100d8ff4ea823e9a2e7664d9b5",
+      "dependsOn": [
+        "20261106_01_annonces_communication"
+      ],
+      "description": "Ajouter les discussions internes et la protection contre le rejeu des messages.",
+      "release": "2026.11.06"
+    },
+    {
+      "id": "20261106_03_lecture_messages",
+      "file": "../migrations/20261106_03_lecture_messages.sql",
+      "sha256": "490712db2b5181afb01d0b022f2b53582a3eb606febc39c3df19e60b99e8ca33",
+      "dependsOn": [
+        "20261106_02_discussions_directes"
+      ],
+      "description": "Enregistrer la première lecture de chaque message pour chaque destinataire.",
+      "release": "2026.11.06"
+    }
+  ]
 }

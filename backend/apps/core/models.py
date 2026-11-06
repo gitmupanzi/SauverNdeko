@@ -43,6 +43,8 @@ class T_Chat(models.Model):
     IdDiscussionFk = models.IntegerField(null=True)
     DateChat = models.DateTimeField()
     LuChat = models.BooleanField()
+    CleRequeteChat = models.UUIDField(null=True)
+    SuiviLectureChat = models.BooleanField(default=True)
 
     class Meta:
         managed = False
@@ -58,6 +60,8 @@ class T_Communication(models.Model):
     ObsCommunication = models.TextField(null=True)
     ValideCommunication = models.BooleanField()
     LectureCommunication = models.BooleanField()
+    IdAnnonceFk = models.BigIntegerField(null=True)
+    LuLe = models.DateTimeField(null=True)
     IdEntiteFk = models.IntegerField(null=True)
 
     class Meta:
@@ -680,6 +684,7 @@ class T_Utilisateurs(models.Model):
 class T_Discussion(models.Model):
     IdDiscussion = models.AutoField(primary_key=True)
     IdUserClientFk = models.IntegerField(null=True)
+    IdUserDestinataireFk = models.IntegerField(null=True)
     IdProfessionnelFk = models.IntegerField(null=True)
     IdEntiteFk = models.IntegerField(null=True)
     TypeDiscussion = models.TextField()

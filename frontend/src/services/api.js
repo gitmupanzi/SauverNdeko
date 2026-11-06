@@ -138,24 +138,27 @@ export function startDiscussion(type, targetId) {
   });
 }
 
-export function fetchDiscussions() {
-  return requestJson("/api/discussions", {
+export function fetchDiscussions(options = {}, signal) {
+  return requestJson("/api/discussions" + buildQueryString(options), {
     requiresAuth: true,
+    signal,
   });
 }
 
-export function fetchDiscussionMessages(discussionId) {
-  return requestJson(`/api/discussions/${discussionId}/messages`, {
+export function fetchDiscussionMessages(discussionId, options = {}, signal) {
+  return requestJson(`/api/discussions/${discussionId}/messages${buildQueryString(options)}`, {
     requiresAuth: true,
+    signal,
   });
 }
 
-export function sendMessage(discussionId, message) {
+export function sendMessage(discussionId, message, requestId) {
   return requestJson(`/api/discussions/${discussionId}/messages`, {
     method: "POST",
     requiresAuth: true,
     body: JSON.stringify({
       message,
+      requestId,
     }),
   });
 }

@@ -30,3 +30,4 @@
 .account-controls button:disabled,.account-popover button:disabled,.account-notifications-all button:disabled { opacity:.55; cursor:default; }
 @media(max-width:640px){.account-controls { gap:8px; }.account-trigger { padding:0; gap:5px; }.account-trigger-name { display:none; }.account-trigger>.app-icon { display:none; }.account-icon-button { width:36px; height:36px; }.account-trigger .workspace-avatar { width:34px; height:34px; }.account-notification-list { padding-inline:14px; }.account-notification-copy p { font-size:13px; }}
 @media(forced-colors:active){.account-unread-dot,.account-notification-count{background:Highlight;color:HighlightText;}}
+.account-notification-panel .is-announcement .account-notification-copy p { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:3; }

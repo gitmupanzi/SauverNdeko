@@ -1,0 +1,588 @@
+.communications-module {
+  min-height: 100dvh;
+  color: var(--erp-text);
+  background: var(--erp-bg);
+}
+
+.communications-module .communications-main {
+  display: block;
+  min-width: 0;
+}
+
+.communications-module.is-messaging {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.communications-module.is-messaging > .module-navigation { flex: none; }
+
+.communications-module.is-messaging .communications-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px;
+}
+
+.communication-messaging:not([hidden]) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.communication-page-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.communication-page-heading h1 {
+  margin: 0;
+  color: var(--erp-text);
+  font-size: clamp(1.45rem, 1.2rem + .55vw, 1.9rem);
+  font-weight: 700;
+}
+
+.communication-page-heading p {
+  margin: 5px 0 0;
+  color: var(--erp-muted);
+  font-size: .88rem;
+}
+
+.communication-workspace, .communication-announcements {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--erp-border);
+  border-radius: 14px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+}
+
+.communication-workspace {
+  display: grid;
+  grid-template-columns: clamp(15rem, 32%, 24rem) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  --communication-chat-bg: color-mix(in srgb, var(--erp-mint) 60%, var(--erp-bg));
+  --communication-chat-dot: color-mix(in srgb, var(--erp-on-mint) 11%, transparent);
+  --communication-chat-own: color-mix(in srgb, var(--erp-mint) 84%, var(--erp-action) 16%);
+}
+
+.communication-inbox, .communication-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.communication-inbox { border-inline-end: 1px solid var(--erp-border); }
+
+.communication-search, .communication-inbox-heading, .communication-inbox-footer, .communication-inbox-footer nav,
+.communication-thread-heading, .communication-compose-row, .communication-announcement-toolbar,
+.communication-announcement-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.communication-inbox-heading, .communication-inbox-footer, .communication-thread-heading,
+.communication-compose, .communication-announcement-toolbar {
+  padding: 14px 16px;
+}
+
+.communication-thread-heading, .communication-announcement-toolbar {
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.communication-search input, .communication-compose textarea, .communication-field input,
+.communication-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  font: inherit;
+  font-size: .875rem;
+}
+
+.communication-inbox-heading {
+  justify-content: space-between;
+  min-height: 66px;
+  padding-block: 10px;
+}
+
+.communication-inbox-heading h1 {
+  margin: 0;
+  font-size: clamp(1.15rem, 1rem + .6vw, 1.55rem);
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+
+.communication-workspace :is(.communication-new-chat, .communication-thread-heading .communication-icon-action).ui-action {
+  border-color: transparent;
+  border-radius: 50%;
+}
+
+.communication-workspace :is(.communication-new-chat, .communication-thread-heading .communication-icon-action).ui-action:hover {
+  background: var(--erp-hover);
+}
+
+.communication-search {
+  margin: 0 14px;
+  gap: 0;
+  border: 1px solid var(--erp-border);
+  border-radius: 24px;
+  background: var(--erp-raised);
+}
+
+.communication-search .ui-action {
+  color: var(--erp-muted);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.communication-search input {
+  border: 0;
+  background: transparent;
+  padding-inline: 2px 12px;
+}
+
+.communication-chat-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.communication-chat-filters button {
+  min-height: 40px;
+  padding: 4px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 24px;
+  background: var(--erp-surface);
+  color: var(--erp-muted);
+  font-size: .83rem;
+  font-weight: 650;
+}
+
+.communication-chat-filters button:hover { background: var(--erp-hover); }
+.communication-chat-filters button[aria-pressed="true"] {
+  color: var(--erp-on-mint);
+  background: var(--communication-chat-own);
+  border-color: var(--erp-action);
+}
+
+.communication-search input::placeholder, .communication-compose textarea::placeholder {
+  color: var(--erp-muted);
+  opacity: 1;
+}
+
+.communication-search input:focus-visible, .communication-compose textarea:focus-visible,
+.communication-field input:focus-visible, .communication-field textarea:focus-visible,
+.communication-conversation:focus-visible, .communication-announcement-row:focus-visible,
+.communication-thread-scroll:focus-visible, .communication-thread-identity h2:focus-visible,
+.communication-announcement-preview:focus-visible {
+  outline: 2px solid var(--erp-action);
+  outline-offset: -2px;
+}
+
+.communication-search input:focus-visible, .communication-compose textarea:focus-visible,
+.communication-field input:focus-visible, .communication-field textarea:focus-visible {
+  outline-offset: 2px;
+}
+
+.communication-icon-action.ui-action {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.communication-search input:focus-visible { outline-offset: -3px; }
+
+.communication-conversation-list, .communication-thread-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.communication-conversation-list ul, .communication-announcement-list,
+.communication-messages, .communication-audience-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.communication-conversation-list li + li, .communication-announcement-list li + li {
+  border-top: 1px solid var(--erp-border);
+}
+
+.communication-conversation, .communication-announcement-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  color: var(--erp-text);
+  background: transparent;
+  text-align: start;
+}
+
+.communication-conversation {
+  min-height: 66px;
+  padding: 10px 12px;
+}
+
+.communication-conversation:hover, .communication-announcement-row:hover { background: var(--erp-hover); }
+
+.communication-conversation[aria-current="true"] {
+  box-shadow: inset 3px 0 var(--erp-action);
+  background: var(--erp-raised);
+}
+
+.communication-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  color: var(--erp-link);
+  background: var(--erp-raised);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.communication-workspace .communication-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--erp-on-mint);
+  background: var(--communication-chat-own);
+  font-size: .85rem;
+}
+
+.communication-conversation-copy {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.communication-conversation-copy > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.communication-conversation strong, .communication-conversation small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-conversation strong { font-size: .87rem; }
+
+.communication-conversation small, .communication-conversation time,
+.communication-bubble time, .communication-thread-identity p {
+  color: var(--erp-muted);
+  font-size: .75rem;
+}
+
+.communication-conversation time { flex: none; }
+.communication-conversation.is-unread time { color: var(--erp-action); font-weight: 700; }
+
+.communication-chat-unread {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  padding-inline: 5px;
+  border-radius: 15px;
+  color: var(--erp-action-text);
+  background: var(--erp-action);
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.communication-inbox-footer {
+  border-top: 1px solid var(--erp-border);
+  justify-content: center;
+  padding-block: 6px;
+  color: var(--erp-muted);
+  font-size: .85rem;
+}
+
+.communication-thread-placeholder {
+  align-items: center;
+  justify-content: center;
+  background: var(--communication-chat-bg);
+  text-align: center;
+}
+
+.communication-welcome { max-width: 24rem; padding: 24px; }
+.communication-welcome-icon {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 18px;
+  border: 1px solid var(--erp-border);
+  border-radius: 26px;
+  background: var(--communication-chat-own);
+  color: var(--erp-on-mint);
+}
+.communication-welcome h2 { font-size: 1.4rem; margin: 0; }
+.communication-welcome p { margin: 8px 0 0; color: var(--erp-muted); font-size: .9rem; }
+
+.communication-thread-heading { min-height: 66px; padding-block: 10px; }
+.communication-thread-heading .communication-back { display: none; }
+.communication-thread-identity { min-width: 0; flex: 1; }
+.communication-thread-identity h2 { font-size: 1rem; font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.communication-thread-identity p { margin: 3px 0 0; }
+
+:root[data-theme="contrast"] .communication-workspace { --communication-chat-dot: transparent; --communication-chat-own: var(--erp-active); }
+
+.communication-thread-scroll {
+  display: flex;
+  flex-direction: column;
+  overflow-anchor: none;
+  padding: 16px clamp(12px, 4%, 50px);
+  background-color: var(--communication-chat-bg);
+  background-image: radial-gradient(circle, var(--communication-chat-dot) 1px, transparent 1px);
+  background-size: 17px 17px;
+}
+
+.communication-thread-earlier { display: flex; flex: none; justify-content: center; margin: 0 0 14px; }
+
+.communication-messages { display: grid; flex: none; gap: 7px; margin-top: auto; }
+.communication-messages > li { display: flex; justify-content: flex-start; min-width: 0; }
+.communication-messages > .is-own { justify-content: flex-end; }
+.communication-messages > .communication-message-day { justify-content: center; margin: 5px 0 8px; }
+.communication-message-day > span {
+  padding: 5px 10px;
+  border: 1px solid var(--erp-border);
+  border-radius: 7px;
+  color: var(--erp-muted);
+  background: var(--erp-surface);
+  font-size: .75rem;
+  font-weight: 650;
+}
+
+.communication-bubble {
+  min-width: 0;
+  max-width: min(40rem, 82%);
+  padding: 7px 10px;
+  border: 1px solid var(--erp-border);
+  border-radius: 3px 11px 11px 11px;
+  background: var(--erp-surface);
+  color: var(--erp-text);
+}
+
+.is-own .communication-bubble {
+  border-radius: 11px 3px 11px 11px;
+  background: var(--communication-chat-own);
+}
+
+.communication-bubble > strong { color: var(--erp-link); font-size: .75rem; }
+
+.communication-bubble p, .communication-announcement-body, .communication-announcement-preview p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.communication-bubble p { font-size: .91rem; line-height: 1.45; }
+.communication-bubble time {
+  display: inline-block;
+  margin-inline-start: 9px;
+  font-size: .68rem;
+  white-space: nowrap;
+}
+
+.communication-compose {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--erp-border);
+  padding: 10px 14px;
+}
+
+.communication-compose-row { align-items: flex-end; }
+.communication-compose textarea {
+  min-height: 44px;
+  max-height: 25dvh;
+  padding-inline: 14px;
+  border-radius: 20px;
+  background: var(--erp-raised);
+  resize: none;
+  field-sizing: content;
+}
+.communication-compose .communication-send.ui-action { width: 44px; min-width: 44px; border-radius: 50%; }
+.communication-send .app-icon { width: 19px; height: 19px; }
+
+.communication-read-only {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  border-top: 1px solid var(--erp-border);
+  color: var(--erp-muted);
+  font-size: .8rem;
+}
+
+.communication-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--erp-border);
+  border-radius: 9px;
+  background: var(--erp-surface);
+  color: var(--erp-text);
+  font-size: .85rem;
+  overflow-wrap: anywhere;
+}
+
+.communication-feedback.is-success {
+  justify-content: flex-start;
+  background: var(--erp-mint);
+  color: var(--erp-on-mint);
+}
+
+.communication-feedback.is-error, .communication-field-error, .communication-compose-error { color: var(--erp-danger); }
+.communication-feedback.is-error { border-color: var(--erp-danger); }
+.communication-compose-error { font-size: .85rem; margin: 0; }
+
+.communication-announcement-toolbar { justify-content: space-between; flex-wrap: wrap; }
+.communication-announcement-toolbar h2 { margin: 0; font-size: 1rem; font-weight: 650; }
+.communication-announcement-tools > .search-select-trigger { width: max-content; min-width: min(178px, 50vw); }
+.communication-announcement-row { align-items: flex-start; }
+.communication-announcement-row.is-unread .communication-avatar { background: var(--erp-mint); color: var(--erp-on-mint); }
+.communication-announcement-row > .app-icon { flex: none; align-self: center; color: var(--erp-muted); }
+.communication-announcement-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.communication-announcement-copy strong { font-size: .97rem; overflow-wrap: anywhere; }
+
+.communication-announcement-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  overflow-wrap: anywhere;
+  color: var(--erp-muted);
+  font-size: .78rem;
+}
+
+.communication-unread {
+  padding: 3px 8px;
+  border-radius: 12px;
+  color: var(--erp-on-mint);
+  background: var(--erp-mint);
+  font-weight: 650;
+}
+
+.communication-announcement-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: var(--erp-muted);
+  font-size: .84rem;
+}
+
+.communication-announcement-delivery { color: var(--erp-muted); font-size: .78rem; }
+.communication-announcements .table-pagination { padding: 12px 16px; border-top: 1px solid var(--erp-border); margin-top: 0; }
+.communication-announcement-detail, .communication-form { display: grid; gap: 16px; color: var(--erp-text); }
+.communication-announcement-detail .communication-announcement-body { margin: 0; font-size: .96rem; line-height: 1.65; }
+
+.communication-form {
+  padding: 16px;
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  background: var(--erp-surface);
+}
+
+.communication-form > p, .communication-field small, .communication-audience p {
+  margin: 0;
+  color: var(--erp-muted);
+  font-size: .8rem;
+}
+
+.communication-field { display: grid; gap: 6px; min-width: 0; font-size: .85rem; }
+.communication-field > label, .communication-field > span:first-child { color: var(--erp-text); font-weight: 600; }
+.communication-field textarea { resize: vertical; }
+.communication-field [aria-invalid="true"] { border-color: var(--erp-danger); }
+
+.communication-audience, .communication-announcement-preview {
+  border: 1px solid var(--erp-border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--erp-raised);
+  overflow-wrap: anywhere;
+}
+
+.communication-announcement-preview h3 { margin: 0; font-size: 1rem; }
+.communication-audience { display: flex; align-items: flex-start; gap: 10px; }
+.communication-audience svg { flex: none; color: var(--erp-link); }
+.communication-audience p { margin: 4px 0 0; }
+.communication-audience-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.communication-audience-list button {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  color: var(--erp-text);
+  background: var(--erp-surface);
+  font-size: .82rem;
+}
+
+@media (max-width: 760px) {
+  html .logistics-modern.logistics-app.communications-module.is-messaging { --sidebar-width: 0px; }
+  .communications-module.is-messaging .erp-module-sidebar:not(.is-mobile-open) { display: none; }
+  .communications-module.is-messaging .communications-main { padding: 0; }
+  .communication-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    border: 0;
+    border-radius: 0;
+  }
+  .communication-inbox { border-inline-end: 0; }
+  .communication-workspace.has-thread .communication-inbox, .communication-thread-placeholder { display: none; }
+  .communication-thread-heading .communication-back { display: inline-flex; flex: none; }
+  .communication-inbox-footer, .communication-thread-heading, .communication-compose, .communication-announcement-toolbar {
+    padding: 8px 10px;
+  }
+  .communication-thread-heading { gap: 7px; }
+  .communication-bubble { max-width: 92%; }
+}
+
+@media (max-width: 390px) {
+  .communication-announcement-row { padding-inline: 10px; gap: 8px; }
+}

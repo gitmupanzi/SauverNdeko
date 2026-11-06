@@ -1,4 +1,4 @@
-"""Notifications personnelles : vues existantes, destinataire et entité imposés."""
+"""Boîte de réception privée des communications du compte connecté."""
 
 from django.conf import settings
 from django.db import transaction
@@ -6,34 +6,55 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.permissions import HasModuleAccess
 from apps.core.repository import audit, positive
 from apps.core.responses import APIError, ok
 
 MAX_PAGE_SIZE = 50
 ITEM_COLUMNS = '''n."IdCommunication", n."ContenuCommunication", n."DateCommunication",
-                  n."LectureCommunication", n."TypeCommunicationLibelle", n."TypeCommunicationAbr"'''
+                  n."LectureCommunication", n."TypeCommunicationLibelle", n."TypeCommunicationAbr",
+                  n."SujetCommunication", n."IdAnnonceFk", n."LuLe"'''
+
+
+def private_response(data, **kwargs):
+    response = ok(data, **kwargs)
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 def personal_scope(actor, *, table=False):
-    # Aucun privilège global ne retire le destinataire de ce parcours personnel.
-    if table:
-        clause = 'n."IdUserFk"=%s AND (n."IdEntiteFk" IS NULL OR n."IdEntiteFk"=%s)'
-    else:
-        clause = 'n."IdUser"=%s AND (n."IdEntite" IS NULL OR n."IdEntite"=%s)'
-    return clause, [actor.pk, actor.organisation]
+    # Le destinataire et son entreprise réelle priment sur le contexte de travail.
+    user, entity = ('IdUserFk', 'IdEntiteFk') if table else ('IdUser', 'IdEntite')
+    return (
+        f'''n."{user}"=%s AND (
+            n."{entity}"=%s OR (n."{entity}" IS NULL AND n."IdAnnonceFk" IS NULL)
+        )''',
+        [actor.pk, actor.row.get("IdEntiteFk")],
+    )
+
+
+def pagination(params):
+    page = positive(params.get("page", 1), "Page")
+    size = min(positive(params.get("pageSize", 20), "Taille de page"), MAX_PAGE_SIZE)
+    return page, size
 
 
 def list_options(params):
     read = params.get("read", "all")
     if read not in {"all", "unread"}:
         raise APIError("Le filtre de lecture doit être all ou unread.")
-    page = positive(params.get("page", 1), "Page")
-    size = min(positive(params.get("pageSize", 20), "Taille de page"), MAX_PAGE_SIZE)
-    return read, page, size
+    return read, *pagination(params)
 
 
-def personal_counts(actor):
+def notification_scope(actor, *, announcements_only=False):
     where, values = personal_scope(actor)
+    if announcements_only:
+        where += ' AND n."IdAnnonceFk" IS NOT NULL'
+    return where, values
+
+
+def personal_counts(actor, *, announcements_only=False):
+    where, values = notification_scope(actor, announcements_only=announcements_only)
     row = db.one(
         '''SELECT COUNT(*) AS total,
                   COUNT(*) FILTER (WHERE n."LectureCommunication" IS FALSE) AS unread_count
@@ -46,13 +67,16 @@ def personal_counts(actor):
 
 def item(row):
     created = row.get("DateCommunication")
-    title = row.get("TypeCommunicationLibelle") or row.get("TypeCommunicationAbr") or "Notification"
+    read_at = row.get("LuLe")
+    title = row.get("SujetCommunication") or row.get("TypeCommunicationLibelle") or row.get("TypeCommunicationAbr")
     return {
         "id": row["IdCommunication"],
-        "title": str(title).strip() or "Notification",
+        "title": str(title or "").strip() or "Notification",
         "body": row.get("ContenuCommunication") or "",
         "createdAt": created.isoformat() if hasattr(created, "isoformat") else created,
         "read": row.get("LectureCommunication") is True,
+        "readAt": read_at.isoformat() if hasattr(read_at, "isoformat") else read_at,
+        "announcementId": row.get("IdAnnonceFk"),
     }
 
 
@@ -60,13 +84,14 @@ class NotificationsView(APIView):
     # Fonction du compte connecté, indépendante des licences des modules métier.
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "head", "options"]
+    announcements_only = False
 
     def get(self, request):
         read, page, size = list_options(request.query_params)
-        all_count, unread = personal_counts(request.user)
+        all_count, unread = personal_counts(request.user, announcements_only=self.announcements_only)
         total = unread if read == "unread" else all_count
         offset = (page - 1) * size
-        where, values = personal_scope(request.user)
+        where, values = notification_scope(request.user, announcements_only=self.announcements_only)
         if read == "unread":
             where += ' AND n."LectureCommunication" IS FALSE'
         rows = db.query(
@@ -75,7 +100,7 @@ class NotificationsView(APIView):
             ORDER BY n."DateCommunication" DESC, n."IdCommunication" DESC LIMIT %s OFFSET %s''',
             [*values, size, offset],
         ) if offset < total else []
-        return ok(
+        return private_response(
             [item(row) for row in rows],
             meta={
                 "total": total, "unreadCount": unread, "page": page, "pageSize": size,
@@ -83,6 +108,11 @@ class NotificationsView(APIView):
                 "canMarkRead": not settings.DB_READ_ONLY,
             },
         )
+
+
+class ReceivedAnnouncementsView(NotificationsView):
+    permission_classes = [HasModuleAccess]
+    announcements_only = True
 
 
 class NotificationReadView(APIView):
@@ -98,7 +128,7 @@ class NotificationReadView(APIView):
         where, values = personal_scope(request.user, table=True)
         with transaction.atomic():
             current = db.one(
-                '''SELECT n."IdCommunication", n."LectureCommunication"
+                '''SELECT n."IdCommunication", n."LectureCommunication", n."LuLe"
                    FROM communication."T_Communication" n
                    WHERE n."IdCommunication"=%s AND n."ValideCommunication" IS TRUE AND '''
                 + where + " FOR UPDATE OF n",
@@ -110,7 +140,7 @@ class NotificationReadView(APIView):
                 updated = db.one(
                     '''UPDATE communication."T_Communication" n SET "LectureCommunication"=true
                        WHERE n."IdCommunication"=%s AND n."ValideCommunication" IS TRUE AND '''
-                    + where + ' RETURNING n."IdCommunication", n."LectureCommunication"',
+                    + where + ' RETURNING n."IdCommunication", n."LectureCommunication", n."LuLe"',
                     [notification_id, *values],
                 )
                 if not updated:
@@ -128,4 +158,4 @@ class NotificationReadView(APIView):
             if not row:
                 raise APIError("Notification introuvable dans votre périmètre.", "NOT_FOUND", 404)
             total, unread = personal_counts(request.user)
-        return ok(item(row), meta={"total": total, "unreadCount": unread, "canMarkRead": True})
+        return private_response(item(row), meta={"total": total, "unreadCount": unread, "canMarkRead": True})

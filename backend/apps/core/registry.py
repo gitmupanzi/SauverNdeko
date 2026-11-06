@@ -3,8 +3,9 @@ from pathlib import Path
 from .responses import APIError
 
 DATA = json.loads(Path(__file__).with_name("registry.json").read_text(encoding="utf8"))
-MODELS = DATA["models"]
-VIEWS = DATA["views"]
+# Les échanges privés et leurs destinataires passent exclusivement par leurs routes métier.
+MODELS = {key: obj for key, obj in DATA["models"].items() if obj["schema"] != "communication"}
+VIEWS = {key: obj for key, obj in DATA["views"].items() if obj["schema"] != "communication"}
 
 
 def model(name):

@@ -2,6 +2,15 @@
 
 Les sources canoniques de structure sont mises à jour par périmètre vérifié. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
+## Communications internes — 6 novembre 2026
+
+Les migrations `20261106_01_annonces_communication`, `20261106_02_discussions_directes` et `20261106_03_lecture_messages` étendent le schéma sans réécrire les échanges historiques. Les extraits du dossier `7. Schema communication` décrivent l’état après ces migrations. Les deux structures globales conservent le socle attesté, à compléter avec le manifeste des migrations selon le [parcours de mise à jour](../docs/mises-a-jour-base.md).
+
+- `T_Discussion` distingue les contacts existants (professionnel et structure) des fils directs entre deux comptes actifs d’une même entreprise. PostgreSQL valide le rattachement initial et garantit l’unicité du fil dans les deux sens. Les écritures réutilisent `T_Chat` et son trigger de dernière activité. Le serveur vérifie le participant à chaque accès et garde le fil en consultation pour le correspondant resté dans l’entreprise si l’autre compte change de rattachement.
+- `T_Annonce` porte le titre, le texte et l’audience à la date de diffusion. `T_Communication` porte une notification personnelle par destinataire et sa première lecture. Une seule transaction publie, crée les notifications et écrit l’audit sans copier le contenu. Les notifications antérieures restent consultables.
+- `T_ChatLecture` mémorise la première lecture par compte et par message reçu. Le filtre Non lues porte sur les messages suivis depuis la mise à niveau. Le champ historique `LuChat` reste conservé.
+- `V_DiscussionBoite`, `V_Chat`, `V_Annonce` et `V_Communication` alimentent les routes métier. Aucun registre générique n’expose le contenu des communications. Les diffusions apparaissent dans l’application. L’accès aux annonces locales émises suit l’entreprise physique de l’administrateur.
+
 ## Rapprochement territorial SNIS/DHIS2 et GRID3 — 4 novembre 2026
 
 Les migrations `20261104_02_rapprochement_territorial.sql` et `20261104_04_integrite_uid_snis.sql` sont installées après validation du modèle additif, sauvegarde restaurée et tests privés. Trois tables conservent les versions de source, les correspondances externes et les liens typés. La vue `V_PyramideSanitaireRapprochee` distingue les ZS, leurs bureaux BCZS et les antennes PEV, sans déplacer les parents existants ni assimiler les groupements aux AS. Les UID N1/N3/N4 reçoivent un contrôle de format et d'unicité locale ; plusieurs objets GRID3 peuvent viser une aire.

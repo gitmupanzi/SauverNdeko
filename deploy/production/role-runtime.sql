@@ -65,6 +65,9 @@ BEGIN
  IF to_regclass('public.django_migrations') IS NOT NULL THEN GRANT SELECT ON public.django_migrations TO sauverndeko_runtime;END IF;
  -- Les journaux sont append-only au niveau de ce compte ; les triggers écrivent en INSERT.
  REVOKE UPDATE,DELETE ON systeme."T_Audit_Log",systeme."T_Login",operations."T_Paiement_Archive" FROM sauverndeko_runtime;
+ IF to_regclass('communication."T_ChatLecture"') IS NOT NULL THEN
+  REVOKE UPDATE,DELETE ON communication."T_ChatLecture" FROM sauverndeko_runtime;
+ END IF;
  -- Les déploiements sont attestés par la maintenance, jamais par le serveur HTTP.
  -- Cette exception vient après les droits métier communs et doit être conservée
  -- lors de toute réapplication de ce script ou des privilèges par défaut.
