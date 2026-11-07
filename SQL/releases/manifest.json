@@ -56,6 +56,26 @@
       ],
       "description": "Suivre les demandes depuis les fiches publiées, leurs destinataires vérifiés et leurs échanges privés.",
       "release": "2026.11.07"
+    },
+    {
+      "id": "20261107_02_multi_depots",
+      "file": "../migrations/20261107_02_multi_depots.sql",
+      "sha256": "de70feb31ece22f0f80cff8884ae018e6d3ea99c384e821c5e4759e61ce86849",
+      "dependsOn": [
+        "20261107_01_demandes_suivies"
+      ],
+      "description": "Rattacher le stock physique aux dépôts des entreprises et tracer les transferts internes, réservations, transit et réceptions sans effet financier.",
+      "release": "2026.11.07"
+    },
+    {
+      "id": "20261107_03_registres_depots_tableaux",
+      "file": "../migrations/20261107_03_registres_depots_tableaux.sql",
+      "sha256": "37dffe683cd9b364403f8337404a5cc5e5bdba805fbad30fd95455122124e898",
+      "dependsOn": [
+        "20261107_02_multi_depots"
+      ],
+      "description": "Définir les colonnes et exports personnalisables des dépôts, stocks par dépôt, transferts et inventaires, sans modifier les stocks.",
+      "release": "2026.11.07"
     }
   ]
 }

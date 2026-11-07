@@ -112,6 +112,31 @@ def issued_parent_code(kind,record,parent):
                   [parent['ID_Commande'],issued_at])['code']
 
 
+def stock_location_details(parent, entity):
+    """Private document context, resolved only after the parent was authorised.
+
+    Depot names are current, like the emitter identity. The links and dates of
+    the underlying stock events remain historical and are never rewritten.
+    """
+    depot_id=parent.get('ID_DepotFk')
+    if not depot_id:return []
+    depot=db.one('SELECT "CodeDepot","NomDepot" FROM logistique."T_Depot" WHERE "ID_Depot"=%s AND "IdEntiteFk"=%s',[depot_id,entity])
+    if not depot:raise APIError('Le dépôt du document doit être vérifié.','DOCUMENT_DEPOT_CONFLICT',409)
+    details=[('Dépôt',depot['CodeDepot']+' · '+depot['NomDepot'])]
+    transfer_id=parent.get('ID_TransfertDepotFk')
+    if transfer_id:
+        transfer=db.one('''SELECT t."CodeTransfert",s."CodeDepot" AS source_code,s."NomDepot" AS source_name,
+          d."CodeDepot" AS destination_code,d."NomDepot" AS destination_name
+          FROM logistique."T_TransfertDepot" t
+          JOIN logistique."T_Depot" s ON s."ID_Depot"=t."ID_DepotSourceFk" AND s."IdEntiteFk"=t."IdEntiteFk"
+          JOIN logistique."T_Depot" d ON d."ID_Depot"=t."ID_DepotDestinationFk" AND d."IdEntiteFk"=t."IdEntiteFk"
+          WHERE t."ID_TransfertDepot"=%s AND t."IdEntiteFk"=%s''',[transfer_id,entity])
+        if not transfer:raise APIError('Le transfert du document doit être vérifié.','DOCUMENT_TRANSFER_CONFLICT',409)
+        details.extend([('Transfert interne',transfer['CodeTransfert']),('Dépôt source',transfer['source_code']+' · '+transfer['source_name']),
+          ('Dépôt destinataire',transfer['destination_code']+' · '+transfer['destination_name'])])
+    return details
+
+
 def document_data(actor,kind,object_id,document_type):
     record,parent,entity=document_parent(actor,kind,object_id)
     if document_type not in PDF_TYPES[kind]:raise APIError('Format de document introuvable.','NOT_FOUND',404)
@@ -145,6 +170,7 @@ def document_data(actor,kind,object_id,document_type):
         result['thirdParty']=None
         source=get_record(view('logistique','V_Commande'),actor,{'ID_Commande':object_id})
         result['destination']=source.get('DestinationLibelle') or result['destination']
+        result['details']=stock_location_details(parent,entity)
         if parent.get('ID_TiersFk'):
             result['thirdParty']=db.one('SELECT * FROM logistique."T_Client" WHERE "ID_Client"=%s AND "IdEntiteFk"=%s',[parent['ID_TiersFk'],entity])
         incoming=source.get('EstCommandeEntree') is True;outgoing=source.get('EstCommandeSortie') is True
@@ -158,6 +184,20 @@ def document_data(actor,kind,object_id,document_type):
           FROM logistique."T_CommandeDetail" d JOIN logistique."T_Article" a ON a."ID_Article"=d."ID_ArticleFk"
           LEFT JOIN referentiel."T_Generique" u ON u."ID_Generique"=a."ID_UniteFk" WHERE d."ID_CmdFk"=%s ORDER BY d."ID_ArticleFk"''',[object_id])
         result['lines']=[{'name':r['NomArticle'],'reference':r['RefArticle'],'quantity':r['QteCmdDetail'],'unit':r['Unite'],'price':r['PUCmdDetail'],'amount':Decimal(str(r['QteCmdDetail']))*Decimal(str(r['PUCmdDetail'])) if r['PUCmdDetail'] is not None else None} for r in rows]
+        # The PDF reports the actual allocation of the unique stock movement,
+        # never a new FEFO proposal or quantities inferred from current stock.
+        allocations=db.query('''SELECT m."ID_ArticleFk",l."NumeroLot",l."DatePeremptionLot",ml."Quantite"
+          FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
+          JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=ml."ID_LotArticleFk"
+          WHERE m."ID_cmdFk"=%s ORDER BY m."ID_ArticleFk",l."NumeroLot",l."ID_LotArticle"''',[object_id])
+        by_article={}
+        for allocation in allocations:
+            label='Lot '+allocation['NumeroLot']+' · '+numeric(allocation['Quantite'])
+            if allocation.get('DatePeremptionLot'):label+=' · Péremption '+date_label(allocation['DatePeremptionLot'])
+            by_article.setdefault(allocation['ID_ArticleFk'],[]).append(label)
+        for original,line in zip(rows,result['lines']):
+            lot_details=by_article.get(original['ID_ArticleFk'])
+            if lot_details:line['reference']='\n'.join(([line['reference']] if line['reference'] else [])+lot_details)
         result['totals']=[('Montant du bon',source.get('MontantTTC'))]
         previous=source.get('AncienCodeCmd')
         if previous and previous!=parent.get('CodeCmd'):
@@ -165,6 +205,7 @@ def document_data(actor,kind,object_id,document_type):
         if parent.get('ObsCmd'):result['notes'].append(parent['ObsCmd'])
         if document_type=='livraison':result['notes'].append('Réceptionnaire et visa à compléter lors de la remise des articles.')
         if document_type=='commande':result['notes'].append('Document préparatoire. Aucune réception, sortie de stock ou facture n’est constatée par cette commande.')
+        if parent.get('ID_TransfertDepotFk'):result['notes'].append('Transfert interne à l’entreprise. Ce bon ne constitue ni une vente ni une facture.')
     elif kind=='facture':
         result.update({'title':'Facture','code':record['CodeFacture'],'date':record['DateFacture'],'dueDate':record.get('DateEcheancePaiement')})
         rows=db.query('SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Facture']])
@@ -202,7 +243,7 @@ def render_pdf(data):
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import BaseDocTemplate,Frame,PageTemplate,Paragraph,Spacer,Table,TableStyle,Image
+    from reportlab.platypus import BaseDocTemplate,Frame,PageTemplate,Paragraph,Spacer,Table,TableStyle,Image,PageBreak
     from reportlab.pdfgen.canvas import Canvas
 
     # Polices embarquées, identiques sous Windows et sur le serveur de livraison.
@@ -313,23 +354,37 @@ def render_pdf(data):
 
     receipt=data.get('documentType')=='recu' or data.get('title')=='Reçu de règlement'
     taxable=data.get('documentType') in {'facture','avoir'}
+    numbered=data.get('documentType') in {'entree','sortie','livraison','commande'}
     labels=['Désignation','Mode de règlement','Montant'] if receipt else ['Désignation','Quantité','Unité','Prix unitaire HT' if taxable else 'Prix unitaire','Montant HT' if taxable else 'Montant']
     columns=[85*mm,43*mm,37*mm] if receipt else [62*mm,21*mm,16*mm,32*mm,34*mm]
+    if numbered:
+        labels=['N°',*labels];columns=[10*mm,52*mm,21*mm,16*mm,32*mm,34*mm]
     rows=[[p(label,'head') for label in labels]]
-    for row in data.get('lines',[]):
+    for position,row in enumerate(data.get('lines',[]),1):
         name=str(row.get('name') or '—')
         if row.get('reference') and not receipt:name+='\n'+str(row['reference'])
         if receipt:
             rows.append([p(name,'cell'),p(row.get('reference'),'cell'),p(money(row.get('amount'),currency),'right')])
         else:
-            rows.append([p(name,'cell'),p(numeric(row.get('quantity')),'right'),p(row.get('unit'),'cell'),
+            rows.append(([p(position,'cell')] if numbered else [])+[p(name,'cell'),p(numeric(row.get('quantity')),'right'),p(row.get('unit'),'cell'),
                          p(money(row.get('price'),currency) if row.get('price') is not None else '—','right'),
                          p(money(row.get('amount'),currency),'right')])
     if len(rows)==1:rows.append([p('Aucune ligne','cell')]+['']*(len(labels)-1))
-    table=Table(rows,colWidths=columns,repeatRows=1,splitInRow=1,hAlign='LEFT')
+    class DocumentLines(Table):
+        def split(self,availWidth,availHeight):
+            parts=super().split(availWidth,availHeight)
+            # ReportLab peut réessayer le fragment suivant dans le même cadre
+            # lorsque des lots allongent une ligne. Son en-tête serait alors
+            # dessiné deux fois sur une page : chaque continuation commence
+            # explicitement sur la suivante, y compris pour une ligne très longue.
+            if len(parts)==2 and all(isinstance(part,Table) for part in parts):
+                return [parts[0],PageBreak(),parts[1]]
+            return parts
+    table=DocumentLines(rows,colWidths=columns,repeatRows=1,splitInRow=1,hAlign='LEFT')
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),pale),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#FAFBFC')]),
       ('LINEBELOW',(0,0),(-1,0),.7,rule),('LINEBELOW',(0,1),(-1,-1),.3,rule),('VALIGN',(0,0),(-1,-1),'TOP'),
       ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),8),('RIGHTPADDING',(0,0),(-1,-1),8)]))
+    if numbered:table.setStyle(TableStyle([('LEFTPADDING',(0,0),(0,-1),4),('RIGHTPADDING',(0,0),(0,-1),4)]))
     story.extend([table,Spacer(1,5*mm)])
     total_rows=[(label,value) for label,value in data.get('totals',[]) if value is not None]
     if total_rows:

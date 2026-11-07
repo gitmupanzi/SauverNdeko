@@ -190,7 +190,7 @@ export default function ApplicationLicences() {
   return <div className="applications-page" onClickCapture={guardLink}><ModuleHeader title="Licences et applications" onRequestLogout={requestTransition}/><main className="applications-main">
     <div className="applications-heading"><div><Link to="/espace" className="application-back"><AppIcon name="chevron-left"/>Mes applications</Link><h1>Licences et applications</h1><p>Les applications de votre organisation, selon sa licence et les droits de ses utilisateurs.</p></div><span className="application-badge">{platform?"Administration de la plateforme":"Offre de votre organisation"}</span></div>
     <section className="application-organisation">
-      <span className="application-entity-icon"><i className="bi bi-building" aria-hidden="true"/></span>
+      <span className="application-entity-icon"><AppIcon name="building" size="1em"/></span>
       <div>{platform?<><label className="application-label" htmlFor={fieldId+"-organisation"}>Organisation</label><SearchSelect id={fieldId+"-organisation"} label="Organisation" value={entity} disabled={saving||organisationsLoading||!organisationsReady||!organisations.length} onChange={chooseEntity} options={organisations.map(x=>({value:String(x.IdEntite),label:x.NomEntite+(x.ValideEntite?"":" · inactive")}))}/></>:<><span className="application-label">Organisation</span><strong>{organisation?.NomEntite || "—"}</strong></>}</div>
       <Link to="/applications" className="ui-action is-secondary"><AppIcon name="apps"/>Catalogue des applications</Link>
     </section>

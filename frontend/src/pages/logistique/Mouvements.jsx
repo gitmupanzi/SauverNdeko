@@ -1,3 +1,4 @@
+import {useDepotScope} from "../../contexts/DepotScopeContext";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
@@ -42,7 +43,7 @@ export function movementExportColumns(keys){
 }
 export function buildMovementQuery(criteria,grid={},columns){
  const params=new URLSearchParams();
- for(const key of ["q",...Object.keys(EMPTY)])if(criteria[key]!==undefined)params.set(key,String(criteria[key]));
+ for(const key of ["q","depotId",...Object.keys(EMPTY)])if(criteria[key]!==undefined)params.set(key,String(criteria[key]));
  for(const key of ["take","skip","sortBy","sortDir"])if(grid[key]!==undefined)params.set(key,String(grid[key]));
  const columnFilters=cleanColumns(criteria.columnFilters||{});
  if(Object.keys(columnFilters).length)params.set("columnFilters",JSON.stringify(columnFilters));
@@ -80,6 +81,7 @@ function MovementRecordFilter({id,label,kind,value,selectedLabel,onChange,scopeK
 }
 
 export default function Mouvements({title = "Mouvements de stock", references,refreshKey,sharedTable,onToggleFkMappings,onDataChanged}){
+ const depotScope=useDepotScope();
  const preferences=useTablePreferences("logistique.mouvements");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
  const rights=moduleRights(user,"logistique"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
@@ -124,7 +126,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
  useEffect(()=>{
   let active=true;setLoading(true);setError("");setDenied(false);
   if(!canRead){setRows([]);setMeta(null);setError("Vous n’avez pas accès aux mouvements de stock.");setLoading(false);return()=>{active=false;};}
-  requestJson(API+"?"+buildMovementQuery(criteria,grid),{requiresAuth:true}).then(response=>{
+  requestJson(API+"?"+buildMovementQuery({...criteria,depotId:depotScope.depotId},grid),{requiresAuth:true}).then(response=>{
    if(!active)return;
    if(!response?.success){setRows([]);setMeta(null);if(response?.status===401||response?.status===403){setDenied(true);setSelected([]);setReceipt(null);setSavedReceipt(null);setFeedback(null);setSelectionReset(value=>value+1);setRecordLabels({});setAppliedLabels({});shared.current?.clearSelectedRow?.();}setError(response?.message||"Les mouvements n’ont pas pu être chargés.");setLoading(false);return;}
    setRows(asArrayPayload(response));setMeta(response.meta||null);setLoading(false);
@@ -135,7 +137,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
  async function exportData(format="xlsx",selection=null){
   if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||blocked||pending||exporting||!meta?.filteredCount||selection&&!selection.length)return;
   const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
-  const params=buildMovementQuery(criteria,{sortBy:grid.sortBy,sortDir:grid.sortDir},preferences.exportKeys);
+  const params=buildMovementQuery({...criteria,depotId:depotScope.depotId},{sortBy:grid.sortBy,sortDir:grid.sortDir},preferences.exportKeys);
   if(selection)params.set("selection",JSON.stringify(selection.map(row=>row.ID_Mvt)));
   try{await downloadApiFile(API+"/export."+format+"?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
  }

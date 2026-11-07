@@ -68,6 +68,9 @@ BEGIN
  IF to_regclass('communication."T_ChatLecture"') IS NOT NULL THEN
   REVOKE UPDATE,DELETE ON communication."T_ChatLecture" FROM sauverndeko_runtime;
  END IF;
+ IF to_regclass('logistique."T_TransfertDepotAction"') IS NOT NULL THEN
+  REVOKE UPDATE,DELETE ON logistique."T_TransfertDepotAction" FROM sauverndeko_runtime;
+ END IF;
  -- Les déploiements sont attestés par la maintenance, jamais par le serveur HTTP.
  -- Cette exception vient après les droits métier communs et doit être conservée
  -- lors de toute réapplication de ce script ou des privilèges par défaut.

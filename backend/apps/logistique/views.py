@@ -54,6 +54,7 @@ class StockView(APIView):
     permission_classes = [IsERPAdmin]
 
     def get(self, request, kind=None):
+        from .reads import read_page
         names = {
             "audit": "V_AuditStock",
             "alertes": "V_AlertStock",
@@ -65,7 +66,7 @@ class StockView(APIView):
         if kind is None:
             return ok(
                 {
-                    k: listing(
+                    k: read_page(
                         view("logistique", v), request.user, request.query_params.dict()
                     )[0]
                     for k, v in names.items()
@@ -75,7 +76,7 @@ class StockView(APIView):
         if kind not in names:
             raise APIError("Registre introuvable.", "NOT_FOUND", 404)
         obj = view("logistique", names[kind])
-        rows, meta = listing(obj, request.user, request.query_params.dict())
+        rows, meta, _ = read_page(obj, request.user, request.query_params.dict())
         return ok(rows, meta=meta)
 
 

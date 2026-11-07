@@ -8,7 +8,7 @@ import ModuleHeader from "./ModuleHeader";
 import "./ModuleSidebar.css";
 
 function rememberedGroups(key){try{const value=JSON.parse(localStorage.getItem(key)||"{}");return value&&typeof value==="object"&&!Array.isArray(value)?value:{};}catch{return {};}}
-function Icon({name="apps"}){return name.startsWith("bi-")?<i className={"bi "+name} aria-hidden="true"/>:<AppIcon name={name} size={19}/>;}
+function Icon({name="apps"}){return <AppIcon name={name} size={19}/>;}
 const menuText=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr").trim();
 const mobileQuery="(max-width:760px)";
 

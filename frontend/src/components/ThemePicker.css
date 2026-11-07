@@ -1,3 +1,4 @@
+.theme-picker > .app-icon { font-size:18px; pointer-events:none; }
 .theme-picker[aria-expanded="true"] { background:var(--erp-hover); color:var(--erp-action,var(--erp-link)); border-color:var(--erp-action-border,var(--erp-border)); }
 .theme-menu { padding:7px; border-radius:13px; }
 .theme-menu-heading { margin:0; padding:8px 10px 10px; color:var(--erp-muted); font-size:11px; font-weight:600; letter-spacing:.02em; }
@@ -11,3 +12,4 @@
 .theme-menu .theme-menu-choice:last-child { margin-top:8px; position:relative; }
 .theme-menu .theme-menu-choice:last-child::before { content:""; position:absolute; height:1px; top:-6px; left:2px; right:2px; background:var(--erp-border); }
 html[data-theme="contrast"] .theme-menu .theme-menu-choice[aria-checked="true"] { border-color:var(--erp-text); }
+@media(max-width:760px) { .theme-picker > .app-icon { font-size:16px; } }

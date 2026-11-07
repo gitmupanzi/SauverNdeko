@@ -22,6 +22,9 @@ def source_definition(actor, interface_key):
     except (ValueError, AttributeError):
         raise APIError("Interface inconnue.", "NOT_FOUND", 404)
     if module == "logistique":
+        from apps.logistique.depot_registers import KINDS, source as depot_source, LABELS as depot_labels
+        if kind in KINDS:
+            return depot_source(actor, kind), depot_labels, "logistique"
         from apps.logistique.reads import register_source
         from apps.logistique.table_queries import LABELS
         require_module(actor, "logistique")

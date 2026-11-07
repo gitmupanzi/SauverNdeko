@@ -144,7 +144,7 @@ def write_workbook(target, columns, rows, context):
         info.set_column(1,1,100)
         records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Sélection parmi les résultats filtrés" if context["raw"].get("selection") is not None else "Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
         for key, value in context["filters"].items():
-            records.append(("Filtre · "+LABELS[key],value))
+            records.append(("Filtre · "+context.get("filterLabels", {}).get(key, LABELS.get(key, key)),value))
         if context.get("folder"):
             for label,value in [("Type de dossier",context["folder"]["objectType"]),("Alimentation",context["folder"]["mode"]),("Critères du dossier",json.dumps(context["folder"]["rules"],ensure_ascii=False))]:
                 records.append((label,value))

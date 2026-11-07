@@ -27,6 +27,7 @@ const lotPath=path.join(front,'src/components/LotFields.jsx').replaceAll('\\','/
 const fixture=mocks([
  [/^react$/,'hooks',`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useId=()=>globalThis.__hooks.id(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d),useLayoutEffect=(f,d)=>globalThis.__hooks.effect(f,d),useMemo=f=>f(),useCallback=f=>f();`],
  [/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>({user:globalThis.__user});`],
+ [/\/contexts\/DepotScopeContext$/,"depotscope",`export const useDepotScope=()=>({depotId:"",defaultDepotId:"",depots:[]});export function DepotField(){}`],
  [/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],
  [/\/hooks\/useReferencesRefresh$/,'refresh',`export default function useReferencesRefresh(){}`],
  [/\/components\/RecordEditorFrame$/,'frame',`export default function Frame(){}`],

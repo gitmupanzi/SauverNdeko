@@ -78,8 +78,8 @@ export default function WorkspaceHome() {
              <nav className="workspace-modules" aria-label={group.label}>
               {group.items.map((module) => (
                 <Link className={"workspace-app is-" + module.tone} to={module.path} key={module.key}>
-                  <span className="workspace-app-open" aria-hidden="true"><i className="bi bi-arrow-up-right" /></span>
-                  <span className="workspace-app-icon"><i className={"bi bi-" + module.icon} aria-hidden="true" /></span>
+                  <span className="workspace-app-open" aria-hidden="true"><AppIcon name="arrow-up-right" size="1em"/></span>
+                  <span className="workspace-app-icon"><AppIcon name={module.icon} size="1em"/></span>
                   <strong>{module.label}</strong>
                   <span className="workspace-app-description">{module.description}</span>
                   {applicationParentLabel(module,currentModules)?<small className="workspace-app-parent">Associé à {applicationParentLabel(module,currentModules)}</small>:null}
@@ -90,7 +90,7 @@ export default function WorkspaceHome() {
             {!visibleCount ? <ListState role="status" icon="apps" title={query?"Aucune application ne correspond à votre recherche":"Aucune application attribuée"} description={query?"Essayez un autre nom ou effacez la recherche.":"Votre administrateur peut vérifier les applications et les droits de votre compte."} action={query?<ActionButton icon="reset" type="button" onClick={()=>setSearch("")}>Effacer la recherche</ActionButton>:null} className="workspace-status"/> : null}
           </>
         ) : null}
-        {!user?.moduleAccess?.platformAdmin ? <p className="workspace-access-note"><i className="bi bi-person-check" aria-hidden="true" /> Les accès dépendent de votre rôle et de l’offre de votre entreprise.</p> : null}
+        {!user?.moduleAccess?.platformAdmin ? <p className="workspace-access-note"><AppIcon name="user" size="1em"/> Les accès dépendent de votre rôle et de l’offre de votre entreprise.</p> : null}
       </main>
     </div>
   );

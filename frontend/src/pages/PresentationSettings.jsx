@@ -192,7 +192,9 @@ function ModulePresentationSettings({entityId,entityName,module}) {
         <dl className="settings-details settings-presentation-labels">
           {Object.entries(configuration.tabDefaults).map(([key,label]) => <div key={key}>
             <dt>{label}</dt><dd>{initial.tabLabels[key] || label}</dd>
-            {initial.hiddenTabs.includes(key) ? <span className="erp-status is-neutral">Masqué</span> : null}
+            <span className={"erp-status "+(initial.hiddenTabs.includes(key)?"is-neutral":"is-success")}>
+              {initial.hiddenTabs.includes(key)?"Masqué":"Visible"}
+            </span>
           </div>)}
         </dl>
       </section>

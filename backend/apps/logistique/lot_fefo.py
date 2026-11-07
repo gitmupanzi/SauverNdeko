@@ -21,8 +21,14 @@ def proposal(actor,article_id,params):
     from .expiry import policy
     rules=policy(actor)
     if include=='true' and rules['BloquerLotsPerimes'] and not actor.global_admin:raise APIError('Les lots périmés sont bloqués dans cette entreprise.','EXPIRED_LOT_BLOCKED',409)
-    rows=db.query('''SELECT * FROM logistique."V_LotDisponibilite" WHERE "ID_ArticleFk"=%s AND "Actif" IS TRUE AND "StockLot">0
-       ORDER BY "DatePeremptionLot" NULLS LAST,"NumeroLot","ID_LotArticle"''',[article_id])
+    from .depots import requested_depot
+    selected=requested_depot(actor,params)
+    if selected:
+        rows=db.query('''SELECT v.*,greatest(s."StockLot"-coalesce(r."StockReserve",0),0) AS "StockLotDepot" FROM logistique."V_LotDisponibilite" v JOIN logistique."V_StockLotDepot" s ON s."ID_LotArticleFk"=v."ID_LotArticle" AND s."ID_DepotFk"=%s LEFT JOIN logistique."V_ReservationLotDepot" r ON r."ID_LotArticleFk"=s."ID_LotArticleFk" AND r."ID_DepotFk"=s."ID_DepotFk" WHERE v."ID_ArticleFk"=%s AND v."Actif" IS TRUE AND s."StockLot">0 ORDER BY v."DatePeremptionLot" NULLS LAST,v."NumeroLot",v."ID_LotArticle"''',[selected,article_id])
+        for row in rows:row['StockLot']=row['StockLotDepot']
+    else:
+        rows=db.query('''SELECT * FROM logistique."V_LotDisponibilite" WHERE "ID_ArticleFk"=%s AND "Actif" IS TRUE AND "StockLot">0
+           ORDER BY "DatePeremptionLot" NULLS LAST,"NumeroLot","ID_LotArticle"''',[article_id])
     left=amount;selected=[]
     for row in rows:
         if left==0:break

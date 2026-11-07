@@ -108,6 +108,7 @@ export function getLogistiqueGenericSourceHint(sourceKey) {
 }
 
 const LOGISTIQUE_VIEWS = [
+  ...[{key:"depots",name:"V_Depot",title:"Dépôts"},{key:"stocks-depots",name:"V_StockDepot",title:"Stocks par dépôt"},{key:"transferts",name:"V_Transfert",title:"Transferts internes"}].map(view=>({...view,schema:SCHEMA_NAME,description:view.title,group:"stocks",accessMode:"Consultation"})),
   {
     key: "dashboard",
     schema: SCHEMA_NAME,

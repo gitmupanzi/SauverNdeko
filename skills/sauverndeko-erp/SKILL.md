@@ -118,6 +118,14 @@ La migration 20261025_04 est appliquée à SauverNdeko après sauvegarde. Le pro
 
 ## Coûts, lots et livraison logistique
 
+### Dépôts et transferts internes
+
+Le multi-dépôts utilise l’extension versionnée [Logistique MultiDépôts](../../SQL/3.%20Schema%20logistique/Logistique_MultiDepots.md) et le [plan de migration](../../docs/multi-depots-plan-migration.md). Vérifier sa présence dans le journal de chaque instance avant d’annoncer les nouveaux parcours disponibles. Le stock physique reste issu des mouvements, ventilé par dépôt de l’entreprise ; le total article conserve la somme physique. Le disponible exclut les réservations et les lots indisponibles, tandis que le transit demeure distinct. Ne pas additionner les unités hétérogènes dans un indicateur unique.
+
+Les bons, réceptions, stocks initiaux et inventaires portent leur dépôt. Un historique ne se déplace pas par modification de sa fiche. Le dépôt principal simplifie les créations et accueille la migration des historiques sans rejouer leurs mouvements. Un transfert concerne deux dépôts de la même entreprise : demande, validation/réservation, expédition, réception partielle ou complète, retour du transit ou écart motivé. Chaque action garde son identité de demande et sa révision pour empêcher un second effet lors d’un rejeu. La réception reprend le coût de la sortie source. Aucun transfert ne crée une facture, un règlement ou une écriture de caisse.
+
+Les nouveaux onglets Dépôts, Stocks par dépôt et Transferts internes suivent aussi le catalogue de présentation par entreprise : noms personnalisables, masquage et restauration des défauts, sans effacer les préférences déjà enregistrées. Un masquage visuel n’accorde ni ne retire une permission métier. Réutiliser les mêmes vues pour listes, contrôles, alertes, détails et exports. Conserver les mécanismes existants de péremption et de lots ; une quarantaine opérationnelle et les rappels ne sont pas implicitement livrés par ce modèle.
+
 La valorisation CUMP est calculée par les fonctions et vues PostgreSQL de 20261026_04, par article, propriétaire et devise. Ne pas la remplacer par prix catalogue × quantité. Un coût inconnu reste distinct de zéro ; une ouverture doit être confirmée avec motif et révision atomique. Les retours utilisent les coûts historiques prouvés. Les tables d’arrêtés et de journal portent des événements métier, elles ne sont pas des catégories à déplacer dans T_Generique. Lire [la règle CUMP](../../SQL/documentation/Valorisation_CUMP_20261026.md).
 
 Lots de stock est un registre transversal après Articles ; V_RegistreLots et V_RegistreMouvementLot servent les tableaux, la fiche Lot 360 et les exports. Chaque fiche limite son journal au lot sélectionné et à son entreprise. Les lots épuisés/archivés restent consultables, tandis que les alertes courantes ne comptent que les stocks restants. Les seuils et dérogations suivent la [règle de péremption](../../SQL/documentation/Peremption_Lots_20261026.md).

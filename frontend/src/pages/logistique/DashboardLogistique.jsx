@@ -1,3 +1,4 @@
+import {useDepotScope} from "../../contexts/DepotScopeContext";
 import CurrencySelect from "../../components/CurrencySelect";
 import { formatCurrency } from "../../utils/money";
 import AppIcon from "../../components/AppIcon";
@@ -43,6 +44,7 @@ function IndicatorBlock({ id, title, icon, scope, children }) {
 export default function DashboardLogistique({
   refreshKey, references, hiddenDashboardBlocks, title = "Tableau de bord", canConfigurePresentation = false,
 }) {
+ const depotScope=useDepotScope();
   const hidden = new Set(Array.isArray(hiddenDashboardBlocks) ? hiddenDashboardBlocks : []);
   const showLeftColumn = !hidden.has("articles") || !hidden.has("commandes");
   const showRightColumn = !hidden.has("factures") || !hidden.has("alertes");
@@ -103,7 +105,7 @@ export default function DashboardLogistique({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    const params = new URLSearchParams(Object.entries(criteria).filter(([, value]) => value));
+    const params = new URLSearchParams(Object.entries({...criteria,depotId:depotScope.depotId}).filter(([, value]) => value));
     requestJson("/api/logistique/synthese?" + params, { requiresAuth: true, signal: controller.signal }).then((payload) => {
       if (controller.signal.aborted) return;
       if (!payload?.success) { setSummary(null); setError("La synthèse n’a pas pu être chargée."); }
@@ -111,7 +113,7 @@ export default function DashboardLogistique({
       setLoading(false);
     });
     return () => controller.abort();
-  }, [criteria, refreshKey, version, hasVisibleBlocks]);
+  }, [criteria, refreshKey, version, hasVisibleBlocks,depotScope.depotId]);
   function apply(event) {
     event.preventDefault();
     if (draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo) { setFilterError("La date de fin doit suivre la date de début."); return; }
@@ -235,7 +237,7 @@ export default function DashboardLogistique({
         <section className="erp-panel erp-indicator-details" aria-labelledby="dashboard-detail-title">
         <div className="erp-detail-header"><div><span>Liste détaillée</span><h2 ref={detailTitle} tabIndex="-1" id="dashboard-detail-title">{visibleMetric.label}</h2></div><button type="button" className="erp-detail-close" aria-label="Fermer la liste" onClick={closeMetric}><AppIcon name="close" /></button></div>
         {(criteria.q || criteria.dateFrom || criteria.dateTo || criteria.deviseId) ? <p className="erp-detail-criteria">{[criteria.deviseId && "Devise : "+(references?.currencies?.find(item=>String(item.id)===String(criteria.deviseId))?.code || "Non renseignée"),criteria.q && "Recherche : " + criteria.q, criteria.dateFrom && "Du " + formatDate(criteria.dateFrom), criteria.dateTo && "au " + formatDate(criteria.dateTo)].filter(Boolean).join(" · ")}</p> : null}
-        <IndicatorDetails key={JSON.stringify([visibleMetric.blockKey, visibleMetric.key, criteria, visibleMetric.filters])} metricKey={visibleMetric.key} criteria={{ ...criteria, ...visibleMetric.filters }} onReady={detailsReady} />
+        <IndicatorDetails key={JSON.stringify([visibleMetric.blockKey, visibleMetric.key, criteria, visibleMetric.filters])} metricKey={visibleMetric.key} criteria={{ ...criteria, ...visibleMetric.filters, depotId:depotScope.depotId }} onReady={detailsReady} />
         </section>
       </div> : null}
 

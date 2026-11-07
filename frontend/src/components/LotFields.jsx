@@ -24,7 +24,7 @@ export function lotErrors(rows,total,{outgoing=false,availability=null}={}){
  return rows.length&&assigned!==quantity?"La somme des lots doit correspondre à la quantité saisie.":"";
 }
 function displayQuantity(value){const number=wholeQuantity(value);return number==null?'—':quantityString(number).replace('.',',');}
-export default function LotFields({value,onChange,total,disabled=false,known=[],outgoing=false,title="Lots reçus",error="",availability=null,loading=false,unit="",articleId=null}){
+export default function LotFields({value,onChange,total,disabled=false,known=[],outgoing=false,title="Lots reçus",error="",availability=null,loading=false,unit="",articleId=null,depotId=""}){
  const {user}=useAuth();
  const id=useId(),assigned=allocatedQuantity(value),quantity=wholeQuantity(total),remainder=quantity!=null&&assigned!=null&&quantity>=assigned?quantityString(quantity-assigned):null,minimum=requiredLotQuantity(total,availability);
  const rows=availability?.rows||known;
@@ -37,7 +37,7 @@ export default function LotFields({value,onChange,total,disabled=false,known=[],
  return <section className="record-editor-section lot-fields" aria-busy={loading}>
   <h3><AppIcon name="box"/>{title}</h3>
   {outgoing&&availability?<div className="lot-fields-stock" role="status"><span>Stock sans lot disponible <strong>{displayQuantity(availability.stockWithoutLotForLine)} {unit}</strong></span>{minimum!=null&&wholeQuantity(minimum)>0n?<span className="lot-fields-required">À ventiler au minimum <strong>{displayQuantity(minimum)} {unit}</strong></span>:<span>Ventilation facultative pour cette quantité.</span>}</div>:null}
-  {outgoing&&articleId?<FefoSuggestion articleId={articleId} total={total} disabled={disabled||loading} onApply={onChange}/>:null}
+  {outgoing&&articleId?<FefoSuggestion depotId={depotId} articleId={articleId} total={total} disabled={disabled||loading} onApply={onChange}/>:null}
   {loading?<p className="record-editor-note" role="status">Chargement des lots disponibles…</p>:null}
   {value.map((row,index)=>{const choices=options.some(option=>option.value===row.NumeroLot)||!row.NumeroLot?options:[{value:row.NumeroLot,label:row.NumeroLot+' · valeur actuelle',disabled:true},...options];return <div className="lot-fields-row" key={index}>
    <label htmlFor={id+'-number-'+index}><span>N° de lot</span>{outgoing?<SearchSelect id={id+'-number-'+index} label={'Numéro du lot '+(index+1)} value={row.NumeroLot} options={choices} disabled={disabled||loading} onChange={number=>choose(index,number)} describedBy={error?id+'-error':undefined} invalid={Boolean(error)} placeholder="Choisir un lot reçu…"/>:<input id={id+'-number-'+index} value={row.NumeroLot} maxLength={100} disabled={disabled} onChange={event=>update(index,'NumeroLot',event.target.value)} aria-label={'Numéro du lot '+(index+1)}/>}</label>

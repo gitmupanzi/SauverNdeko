@@ -149,11 +149,11 @@ function BottomNav({ currentPath, onHome, onDiscussions, onSearch }) {
         type="button"
         onClick={onDiscussions}
       >
-        <i className="bi bi-chat-dots" aria-hidden="true" />
+        <AppIcon name="chat" size="1em"/>
       </button>
 
       <button className="home-fab" type="button" onClick={onHome}>
-        <i className="bi bi-house-door" aria-hidden="true" />
+        <AppIcon name="home" size="1em"/>
       </button>
 
       <button className="bottom-icon" type="button" onClick={onSearch}>

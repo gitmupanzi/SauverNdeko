@@ -4169,6 +4169,42 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Commande",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Commande",
+          "column_name": "ID_TransfertDepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Commande",
+          "column_name": "OperationTransfert",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -4805,6 +4841,18 @@
           "column_default": null,
           "character_maximum_length": null,
           "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Mouvement",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
           "numeric_scale": 0,
           "is_identity": "NO"
         }
@@ -16200,7 +16248,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 1
         },
         {
           "table_schema": "logistique",
@@ -16212,7 +16260,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 2
         },
         {
           "table_schema": "logistique",
@@ -16224,7 +16272,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 3
         },
         {
           "table_schema": "logistique",
@@ -16236,7 +16284,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 4
         },
         {
           "table_schema": "logistique",
@@ -16248,7 +16296,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 5
         },
         {
           "table_schema": "logistique",
@@ -16260,7 +16308,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 6
         },
         {
           "table_schema": "logistique",
@@ -16272,7 +16320,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 7
         },
         {
           "table_schema": "logistique",
@@ -16284,7 +16332,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 8
         },
         {
           "table_schema": "logistique",
@@ -16296,7 +16344,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 9
         },
         {
           "table_schema": "logistique",
@@ -16308,7 +16356,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 10
         },
         {
           "table_schema": "logistique",
@@ -16320,7 +16368,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 11
         },
         {
           "table_schema": "logistique",
@@ -16332,7 +16380,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 12
         },
         {
           "table_schema": "logistique",
@@ -16344,7 +16392,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 13
         },
         {
           "table_schema": "logistique",
@@ -16356,7 +16404,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 14
         },
         {
           "table_schema": "logistique",
@@ -16368,7 +16416,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 15
         },
         {
           "table_schema": "logistique",
@@ -16380,7 +16428,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 16
         },
         {
           "table_schema": "logistique",
@@ -16392,7 +16440,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 17
         },
         {
           "table_schema": "logistique",
@@ -16404,7 +16452,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 18
         },
         {
           "table_schema": "logistique",
@@ -16416,7 +16464,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 19
         },
         {
           "table_schema": "logistique",
@@ -16428,7 +16476,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 20
         },
         {
           "table_schema": "logistique",
@@ -16440,7 +16488,7 @@
           "character_maximum_length": 243,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 21
         },
         {
           "table_schema": "logistique",
@@ -16452,7 +16500,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 22
         },
         {
           "table_schema": "logistique",
@@ -16464,7 +16512,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 23
         },
         {
           "table_schema": "logistique",
@@ -16476,7 +16524,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 24
         },
         {
           "table_schema": "logistique",
@@ -16488,7 +16536,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 25
         },
         {
           "table_schema": "logistique",
@@ -16500,7 +16548,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 26
         },
         {
           "table_schema": "logistique",
@@ -16512,7 +16560,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 27
         },
         {
           "table_schema": "logistique",
@@ -16524,7 +16572,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 28
         },
         {
           "table_schema": "logistique",
@@ -16536,7 +16584,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 29
         },
         {
           "table_schema": "logistique",
@@ -16548,7 +16596,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 30
         },
         {
           "table_schema": "logistique",
@@ -16560,7 +16608,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 31
         },
         {
           "table_schema": "logistique",
@@ -16572,7 +16620,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 32
         },
         {
           "table_schema": "logistique",
@@ -16584,7 +16632,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 33
         },
         {
           "table_schema": "logistique",
@@ -16596,7 +16644,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 34
         },
         {
           "table_schema": "logistique",
@@ -16608,7 +16656,7 @@
           "character_maximum_length": 100,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 35
         },
         {
           "table_schema": "logistique",
@@ -16620,7 +16668,7 @@
           "character_maximum_length": 100,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 36
         },
         {
           "table_schema": "logistique",
@@ -16632,7 +16680,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 37
         },
         {
           "table_schema": "logistique",
@@ -16644,7 +16692,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 38
         },
         {
           "table_schema": "logistique",
@@ -16656,7 +16704,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 39
         },
         {
           "table_schema": "logistique",
@@ -16668,7 +16716,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 40
         },
         {
           "table_schema": "logistique",
@@ -16680,7 +16728,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 41
         },
         {
           "table_schema": "logistique",
@@ -16692,7 +16740,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 42
         },
         {
           "table_schema": "logistique",
@@ -16704,7 +16752,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 43
         },
         {
           "table_schema": "logistique",
@@ -16716,7 +16764,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 44
         },
         {
           "table_schema": "logistique",
@@ -16728,7 +16776,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 45
         },
         {
           "table_schema": "logistique",
@@ -16740,7 +16788,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 46
         },
         {
           "table_schema": "logistique",
@@ -16752,7 +16800,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 47
         },
         {
           "table_schema": "logistique",
@@ -16764,7 +16812,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 48
         },
         {
           "table_schema": "logistique",
@@ -16776,7 +16824,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 49
         },
         {
           "table_schema": "logistique",
@@ -16788,7 +16836,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 50
         },
         {
           "table_schema": "logistique",
@@ -16800,7 +16848,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 51
         },
         {
           "table_schema": "logistique",
@@ -16812,7 +16860,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 52
         },
         {
           "table_schema": "logistique",
@@ -16824,7 +16872,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 53
         },
         {
           "table_schema": "logistique",
@@ -16836,7 +16884,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 54
         },
         {
           "table_schema": "logistique",
@@ -16848,7 +16896,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 3,
-          "is_identity": "NO"
+          "ordinal_position": 55
         },
         {
           "table_schema": "logistique",
@@ -16860,7 +16908,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 56
         },
         {
           "table_schema": "logistique",
@@ -16872,7 +16920,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 57
         },
         {
           "table_schema": "logistique",
@@ -16884,7 +16932,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 58
         },
         {
           "table_schema": "logistique",
@@ -16896,7 +16944,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 59
         },
         {
           "table_schema": "logistique",
@@ -16908,7 +16956,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 60
         },
         {
           "table_schema": "logistique",
@@ -16920,7 +16968,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 61
         },
         {
           "table_schema": "logistique",
@@ -16932,7 +16980,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 62
         },
         {
           "table_schema": "logistique",
@@ -16944,7 +16992,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 63
         },
         {
           "table_schema": "logistique",
@@ -16956,7 +17004,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 64
         },
         {
           "table_schema": "logistique",
@@ -16968,7 +17016,7 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 65
         },
         {
           "table_schema": "logistique",
@@ -16980,7 +17028,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 66
         },
         {
           "table_schema": "logistique",
@@ -16992,7 +17040,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 67
         },
         {
           "table_schema": "logistique",
@@ -17004,7 +17052,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 68
         },
         {
           "table_schema": "logistique",
@@ -17016,7 +17064,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 69
         },
         {
           "table_schema": "logistique",
@@ -17028,7 +17076,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 70
         },
         {
           "table_schema": "logistique",
@@ -17040,7 +17088,7 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 71
         },
         {
           "table_schema": "logistique",
@@ -17052,7 +17100,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 72
         },
         {
           "table_schema": "logistique",
@@ -17064,7 +17112,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 73
         },
         {
           "table_schema": "logistique",
@@ -17076,7 +17124,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 74
         },
         {
           "table_schema": "logistique",
@@ -17088,7 +17136,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 75
         },
         {
           "table_schema": "logistique",
@@ -17100,7 +17148,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 76
         },
         {
           "table_schema": "logistique",
@@ -17112,7 +17160,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 77
         },
         {
           "table_schema": "logistique",
@@ -17124,7 +17172,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 78
         },
         {
           "table_schema": "logistique",
@@ -17136,7 +17184,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 79
         },
         {
           "table_schema": "logistique",
@@ -17148,9 +17196,11 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 80
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
           "column_name": "TauxTVAFacture",
           "data_type": "numeric",
           "is_nullable": "YES",
@@ -17158,11 +17208,11 @@
           "character_maximum_length": null,
           "numeric_precision": 7,
           "numeric_scale": 4,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_Commande"
+          "ordinal_position": 81
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
           "column_name": "MontantTVAFacture",
           "data_type": "numeric",
           "is_nullable": "YES",
@@ -17170,11 +17220,11 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_Commande"
+          "ordinal_position": 82
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
           "column_name": "MontantHTFacture",
           "data_type": "numeric",
           "is_nullable": "YES",
@@ -17182,9 +17232,43 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO",
+          "ordinal_position": 83
+        },
+        {
           "table_schema": "logistique",
-          "table_name": "V_Commande"
+          "table_name": "V_Commande",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "ordinal_position": 84
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "ID_TransfertDepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "ordinal_position": 85
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Commande",
+          "column_name": "OperationTransfert",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "ordinal_position": 86
         }
       ]
     },
@@ -17202,7 +17286,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 1
         },
         {
           "table_schema": "logistique",
@@ -17214,7 +17298,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 2
         },
         {
           "table_schema": "logistique",
@@ -17226,7 +17310,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 3
         },
         {
           "table_schema": "logistique",
@@ -17238,7 +17322,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 4
         },
         {
           "table_schema": "logistique",
@@ -17250,7 +17334,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 5
         },
         {
           "table_schema": "logistique",
@@ -17262,7 +17346,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 6
         },
         {
           "table_schema": "logistique",
@@ -17274,7 +17358,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 7
         },
         {
           "table_schema": "logistique",
@@ -17286,7 +17370,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 8
         },
         {
           "table_schema": "logistique",
@@ -17298,7 +17382,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 9
         },
         {
           "table_schema": "logistique",
@@ -17310,7 +17394,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 10
         },
         {
           "table_schema": "logistique",
@@ -17322,7 +17406,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 11
         },
         {
           "table_schema": "logistique",
@@ -17334,7 +17418,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 12
         },
         {
           "table_schema": "logistique",
@@ -17346,7 +17430,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 13
         },
         {
           "table_schema": "logistique",
@@ -17358,7 +17442,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 14
         },
         {
           "table_schema": "logistique",
@@ -17370,7 +17454,7 @@
           "character_maximum_length": 243,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 15
         },
         {
           "table_schema": "logistique",
@@ -17382,7 +17466,7 @@
           "character_maximum_length": 100,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 16
         },
         {
           "table_schema": "logistique",
@@ -17394,7 +17478,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 17
         },
         {
           "table_schema": "logistique",
@@ -17406,7 +17490,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 18
         },
         {
           "table_schema": "logistique",
@@ -17418,7 +17502,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 3,
-          "is_identity": "NO"
+          "ordinal_position": 19
         },
         {
           "table_schema": "logistique",
@@ -17430,7 +17514,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 3,
-          "is_identity": "NO"
+          "ordinal_position": 20
         },
         {
           "table_schema": "logistique",
@@ -17442,7 +17526,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 3,
-          "is_identity": "NO"
+          "ordinal_position": 21
         },
         {
           "table_schema": "logistique",
@@ -17454,7 +17538,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 22
         },
         {
           "table_schema": "logistique",
@@ -17466,7 +17550,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 23
         },
         {
           "table_schema": "logistique",
@@ -17478,7 +17562,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 24
         },
         {
           "table_schema": "logistique",
@@ -17490,7 +17574,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 25
         },
         {
           "table_schema": "logistique",
@@ -17502,7 +17586,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 26
         },
         {
           "table_schema": "logistique",
@@ -17514,7 +17598,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 27
         },
         {
           "table_schema": "logistique",
@@ -17526,7 +17610,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 28
         },
         {
           "table_schema": "logistique",
@@ -17538,7 +17622,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 29
         },
         {
           "table_schema": "logistique",
@@ -17550,7 +17634,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 30
         },
         {
           "table_schema": "logistique",
@@ -17562,7 +17646,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 31
         },
         {
           "table_schema": "logistique",
@@ -17574,7 +17658,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 32
         },
         {
           "table_schema": "logistique",
@@ -17586,7 +17670,7 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 33
         },
         {
           "table_schema": "logistique",
@@ -17598,7 +17682,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 34
         },
         {
           "table_schema": "logistique",
@@ -17610,7 +17694,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 35
         },
         {
           "table_schema": "logistique",
@@ -17622,7 +17706,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 36
         },
         {
           "table_schema": "logistique",
@@ -17634,7 +17718,19 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 37
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_CommandeDetail",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "ordinal_position": 38
         }
       ]
     },
@@ -18552,7 +18648,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 1
         },
         {
           "table_schema": "logistique",
@@ -18564,7 +18660,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 2
         },
         {
           "table_schema": "logistique",
@@ -18576,7 +18672,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 3
         },
         {
           "table_schema": "logistique",
@@ -18588,7 +18684,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 4
         },
         {
           "table_schema": "logistique",
@@ -18600,7 +18696,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 5
         },
         {
           "table_schema": "logistique",
@@ -18612,7 +18708,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 6
         },
         {
           "table_schema": "logistique",
@@ -18624,7 +18720,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 7
         },
         {
           "table_schema": "logistique",
@@ -18636,7 +18732,7 @@
           "character_maximum_length": 243,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 8
         },
         {
           "table_schema": "logistique",
@@ -18648,7 +18744,7 @@
           "character_maximum_length": 100,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 9
         },
         {
           "table_schema": "logistique",
@@ -18660,7 +18756,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 10
         },
         {
           "table_schema": "logistique",
@@ -18672,7 +18768,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 11
         },
         {
           "table_schema": "logistique",
@@ -18684,7 +18780,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 12
         },
         {
           "table_schema": "logistique",
@@ -18694,9 +18790,9 @@
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 14,
-          "numeric_scale": 3,
-          "is_identity": "NO"
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "ordinal_position": 13
         },
         {
           "table_schema": "logistique",
@@ -18708,7 +18804,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 14
         },
         {
           "table_schema": "logistique",
@@ -18720,7 +18816,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 15
         },
         {
           "table_schema": "logistique",
@@ -18732,7 +18828,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 16
         },
         {
           "table_schema": "logistique",
@@ -18744,7 +18840,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 17
         },
         {
           "table_schema": "logistique",
@@ -18756,7 +18852,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 18
         },
         {
           "table_schema": "logistique",
@@ -18768,7 +18864,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 19
         },
         {
           "table_schema": "logistique",
@@ -18780,7 +18876,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 20
         },
         {
           "table_schema": "logistique",
@@ -18792,9 +18888,11 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 21
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
           "column_name": "IdEntiteFk",
           "data_type": "integer",
           "is_nullable": "YES",
@@ -18802,11 +18900,11 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_Mouvement"
+          "ordinal_position": 22
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
           "column_name": "ID_TiersFk",
           "data_type": "bigint",
           "is_nullable": "YES",
@@ -18814,11 +18912,11 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_Mouvement"
+          "ordinal_position": 23
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_Mouvement",
           "column_name": "TiersNom",
           "data_type": "text",
           "is_nullable": "YES",
@@ -18826,9 +18924,19 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO",
+          "ordinal_position": 24
+        },
+        {
           "table_schema": "logistique",
-          "table_name": "V_Mouvement"
+          "table_name": "V_Mouvement",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "ordinal_position": 25
         }
       ]
     },
@@ -18846,7 +18954,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 1
         },
         {
           "table_schema": "logistique",
@@ -18858,7 +18966,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 2
         },
         {
           "table_schema": "logistique",
@@ -18870,7 +18978,7 @@
           "character_maximum_length": 243,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 3
         },
         {
           "table_schema": "logistique",
@@ -18882,7 +18990,7 @@
           "character_maximum_length": 100,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 4
         },
         {
           "table_schema": "logistique",
@@ -18894,7 +19002,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 5
         },
         {
           "table_schema": "logistique",
@@ -18906,7 +19014,7 @@
           "character_maximum_length": 20,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 6
         },
         {
           "table_schema": "logistique",
@@ -18918,7 +19026,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 7
         },
         {
           "table_schema": "logistique",
@@ -18930,7 +19038,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 8
         },
         {
           "table_schema": "logistique",
@@ -18942,7 +19050,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 9
         },
         {
           "table_schema": "logistique",
@@ -18954,7 +19062,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 10
         },
         {
           "table_schema": "logistique",
@@ -18966,7 +19074,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 11
         },
         {
           "table_schema": "logistique",
@@ -18978,7 +19086,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 12
         },
         {
           "table_schema": "logistique",
@@ -18990,7 +19098,7 @@
           "character_maximum_length": 255,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 13
         },
         {
           "table_schema": "logistique",
@@ -19000,9 +19108,9 @@
           "is_nullable": "YES",
           "column_default": null,
           "character_maximum_length": null,
-          "numeric_precision": 14,
-          "numeric_scale": 3,
-          "is_identity": "NO"
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "ordinal_position": 14
         },
         {
           "table_schema": "logistique",
@@ -19014,7 +19122,7 @@
           "character_maximum_length": null,
           "numeric_precision": 12,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 15
         },
         {
           "table_schema": "logistique",
@@ -19026,7 +19134,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 16
         },
         {
           "table_schema": "logistique",
@@ -19038,7 +19146,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 17
         },
         {
           "table_schema": "logistique",
@@ -19050,7 +19158,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 18
         },
         {
           "table_schema": "logistique",
@@ -19062,7 +19170,7 @@
           "character_maximum_length": null,
           "numeric_precision": 14,
           "numeric_scale": 2,
-          "is_identity": "NO"
+          "ordinal_position": 19
         },
         {
           "table_schema": "logistique",
@@ -19074,7 +19182,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 20
         },
         {
           "table_schema": "logistique",
@@ -19086,7 +19194,7 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO"
+          "ordinal_position": 21
         },
         {
           "table_schema": "logistique",
@@ -19098,7 +19206,7 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 22
         },
         {
           "table_schema": "logistique",
@@ -19110,9 +19218,11 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO"
+          "ordinal_position": 23
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
           "column_name": "IdEntiteFk",
           "data_type": "integer",
           "is_nullable": "YES",
@@ -19120,11 +19230,11 @@
           "character_maximum_length": null,
           "numeric_precision": 32,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_MouvementStock"
+          "ordinal_position": 24
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
           "column_name": "ID_TiersFk",
           "data_type": "bigint",
           "is_nullable": "YES",
@@ -19132,11 +19242,11 @@
           "character_maximum_length": null,
           "numeric_precision": 64,
           "numeric_scale": 0,
-          "is_identity": "NO",
-          "table_schema": "logistique",
-          "table_name": "V_MouvementStock"
+          "ordinal_position": 25
         },
         {
+          "table_schema": "logistique",
+          "table_name": "V_MouvementStock",
           "column_name": "TiersNom",
           "data_type": "text",
           "is_nullable": "YES",
@@ -19144,9 +19254,19 @@
           "character_maximum_length": null,
           "numeric_precision": null,
           "numeric_scale": null,
-          "is_identity": "NO",
+          "ordinal_position": 26
+        },
+        {
           "table_schema": "logistique",
-          "table_name": "V_MouvementStock"
+          "table_name": "V_MouvementStock",
+          "column_name": "ID_DepotFk",
+          "data_type": "bigint",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 64,
+          "numeric_scale": 0,
+          "ordinal_position": 27
         }
       ]
     },

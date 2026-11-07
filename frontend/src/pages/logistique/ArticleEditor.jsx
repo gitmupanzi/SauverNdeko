@@ -1,6 +1,7 @@
 import {fieldCurrencyReferences} from "../../utils/money";
 import {REFERENCE_RETAINED_HINT,referenceLabel,retainReference,isRetainedReference} from "../../utils/referenceOptions";
 import { newCurrencyId, currencyOptions } from "../../utils/money";
+import {useDepotScope,DepotField} from "../../contexts/DepotScopeContext";
 import SearchSelect from "../../components/SearchSelect";
 import ConsultationTabs from "../../components/ConsultationTabs";
 import ActionButton from "../../components/ActionButton";
@@ -24,12 +25,13 @@ function Section({icon,title,children}) {return <section className="record-edito
 export default function ArticleEditor({articleId,onClose,onSaved,references:receivedReferences,draft=null,onDraftSave}) {
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const {user}=useAuth(),creating=!articleId;
+  const depot=useDepotScope();
   const {openProductLots}=useConsultations();
   const [active,setActive]=useState("article");
   const prefix=useId(),mounted=useRef(true),saving=useRef(false),focusRef=useRef(null);
   const creationRequestId=useRef(null),visibilityTouched=useRef(Boolean(draft?.values));
   if(!creationRequestId.current)creationRequestId.current=createReceiptRequestId();
-  const createForm=()=>draft?.values?{...draft.values}:({...articleForm(null,references),ID_DeviseFk:newCurrencyId(references)});
+  const createForm=()=>draft?.values?{...draft.values}:({...articleForm(null,references),ID_DeviseFk:newCurrencyId(references),ID_DepotFk:depot.depotId||depot.defaultDepotId||String(references?.defaultDepotId||"")});
   const [record,setRecord]=useState(null),[meta,setMeta]=useState(null),[values,setValues]=useState(createForm);
   const [initial,setInitial]=useState(()=>JSON.stringify(createForm()));
   const [loading,setLoading]=useState(!creating),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({});
@@ -38,6 +40,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
   const [reload,setReload]=useState(0),[conflict,setConflict]=useState(false);
   const canWrite=user?.permissions?.canWriteData===true;
   const dirty=JSON.stringify(values)!==initial||Boolean(photo.file||photo.remove||initialLots.length);
+  useEffect(()=>{if(creating&&!draft?.values&&!values.ID_DepotFk&&depot.defaultDepotId)setValues(current=>({...current,ID_DepotFk:depot.defaultDepotId}));},[creating,draft,depot.defaultDepotId,values.ID_DepotFk]);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   useEffect(()=>{
     if(!creating||draft?.values||visibilityTouched.current||typeof references?.defaultArticleVisibility!=="boolean")return;
@@ -99,7 +102,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
     const lotError=creating?lotErrors(initialLots,values.QteArticle):"";setLotsError(lotError);setErrors(invalid);setError("");setConflict(false);
     if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");focusInvalid(invalid);return;}
     if(lotError){setError("Vérifiez les lots du stock initial.");focusLots();return;}
-    const payload=articlePayload(values,record,meta?.revision);
+    const payload=articlePayload(values,record,meta?.revision);if(creating)payload.ID_DepotFk=values.ID_DepotFk;
     delete payload.PhotoArticle;
     if(creating&&initialLots.length)payload.LotsInitiaux=initialLots;
     if(photo.remove)payload._removePhoto=true;
@@ -139,7 +142,7 @@ export default function ArticleEditor({articleId,onClose,onSaved,references:rece
       </Section>
       </section>
       <section role="tabpanel" id={prefix+"-panel-stock"} aria-labelledby={prefix+"-tab-stock"} hidden={active!=="stock"} tabIndex={active==="stock"?0:-1}>
-      <Section title="Stock et prix" icon="box">
+      <Section title="Stock et prix" icon="box">{creating?<DepotField id={prefix+"ID_DepotFk"} value={values.ID_DepotFk} disabled={busy||!canWrite} onChange={value=>change("ID_DepotFk",value)}/>:null}
         {select("ID_UniteFk","Unité"+(creating?" *":""),references?.articleUnits,!creating&&meta?.canChangeUnit===false)}
         {creating?input("QteArticle","Stock initial",{inputMode:"decimal",hint:"Un mouvement d’entrée est créé pour un stock initial positif."}):<Field name={prefix+"stock"} label="Stock actuel" hint="Les entrées et sorties se saisissent dans les bons de stock."><input id={prefix+"stock"} value={record.QteArticle??"—"} readOnly/></Field>}
         {input("PoidsUnitaire","Poids unitaire",{inputMode:"decimal"})}

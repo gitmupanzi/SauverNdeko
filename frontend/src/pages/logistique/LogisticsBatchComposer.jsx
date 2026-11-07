@@ -1,4 +1,5 @@
 import {useEffect,useId,useRef,useState} from "react";
+import {useDepotScope,DepotField} from "../../contexts/DepotScopeContext";
 import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
@@ -22,6 +23,8 @@ const ARTICLE_EXCEL_MAX_BYTES=4*1024*1024;
 
 /** Brouillons uniquement ; toutes les écritures sont regroupées par le serveur. */
 export default function LogisticsBatchComposer({kind,references:receivedReferences,onClose,onSaved}){
+ const depotScope=useDepotScope();
+ const [depotId,setDepotId]=useState(()=>depotScope.depotId||depotScope.defaultDepotId);
  const config=BATCH_KINDS[kind],scope=useEntityScope(),{user}=useAuth(),prefix=useId();
  const identity=String(user?.IdUser)+":"+scope.scopeKey,origin=useRef(identity),current=useRef(identity),alive=useRef(true),saving=useRef(false),ticket=useRef(null),request=useRef(null);current.current=identity;
  const [references,setReferences]=useState(receivedReferences||{}),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[errors,setErrors]=useState({rows:{},header:{}}),[uncertain,setUncertain]=useState(false),[reload,setReload]=useState(0);
@@ -29,6 +32,7 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
  const [openingReceipt,setOpeningReceipt]=useState(false),[page,setPage]=useState(1),[focusTarget,setFocusTarget]=useState(null);
  const fileInput=useRef(null),previewRequest=useRef(null);
  const [importing,setImporting]=useState(false),[downloading,setDownloading]=useState(false),[importError,setImportError]=useState(""),[importMessage,setImportMessage]=useState("");
+ useEffect(()=>{if(!depotId&&depotScope.defaultDepotId)setDepotId(depotScope.defaultDepotId);},[depotId,depotScope.defaultDepotId]);
  const limit=logisticsBatchLimit(kind,openingReceipt),pageSize=kind==="articles"?50:limit;
  const pageForIndex=index=>Math.floor(index/pageSize)+1;
  const changed=origin.current!==identity,deniedByReferences=references.canCreate===false,allowed=scope.canCreate===true&&user?.permissions?.canWriteData===true&&!changed&&!deniedByReferences,disabled=!allowed||loading||busy||uncertain||importing;
@@ -151,7 +155,7 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
  }
  async function submit(){
   if(!allowed||loading||saving.current||previewRequest.current)return;
-  if(!ticket.current){const issues=validateLogisticsBatch(kind,rows,references,motif,openingReceipt);setErrors(issues);setError("");if(Object.keys(issues.header).length||Object.keys(issues.rows).length){focusIssues(issues);return;}const payload=logisticsBatchTicket(kind,rows,motif,openingReceipt);ticket.current={payload,body:logisticsBatchBody(kind,payload,rows)};}
+  if(!ticket.current){const issues=validateLogisticsBatch(kind,rows,references,motif,openingReceipt);setErrors(issues);setError("");if(Object.keys(issues.header).length||Object.keys(issues.rows).length){focusIssues(issues);return;}const payload=logisticsBatchTicket(kind,rows,motif,openingReceipt);if(kind==="articles")payload.ID_DepotFk=depotId;ticket.current={payload,body:logisticsBatchBody(kind,payload,rows)};}
   const snapshot=ticket.current,expected=identity,controller=new AbortController();request.current=controller;saving.current=true;setBusy(true);setError("");
   const response=await requestJson("/api/logistique/saisie-multiple/"+kind,{requiresAuth:true,method:"POST",body:snapshot.body,signal:controller.signal});
   if(!alive.current||changed||current.current!==expected||controller.signal.aborted)return;saving.current=false;setBusy(false);
@@ -187,6 +191,7 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
    </div>
   </div>
    <p className="record-editor-note">{scope.entities?.find(item=>String(item.id)===String(scope.entityId))?.label||"Entreprise sélectionnée"}</p>
+   {kind==="articles"?<DepotField id={prefix+"depot"} value={depotId} disabled={disabled} onChange={value=>{setDepotId(value);changedDraft();}}/>:null}
    {kind==="articles"?<div className="record-field logistics-batch-reason">
     <label className="record-editor-check" htmlFor={prefix+"group-opening-stock"}>
      <input id={prefix+"group-opening-stock"} type="checkbox" checked={openingReceipt} disabled={disabled} aria-invalid={Boolean(errors.header.openingReceipt)} aria-describedby={prefix+"opening-stock-hint"+(errors.header.openingReceipt?" "+prefix+"openingReceipt":"")} onChange={event=>{setOpeningReceipt(event.target.checked);setPasteError("");changedDraft();}}/>

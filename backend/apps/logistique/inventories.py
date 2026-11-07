@@ -69,7 +69,7 @@ def date_value(value):
 
 def parse(body,editing):
     expected={'requestId','DateInventaire','Motif','lignes'}|({'_version'} if editing else set())
-    if not isinstance(body,dict) or set(body)!=expected:failure('Motif','Renseignez l’inventaire et ses lignes.')
+    if not isinstance(body,dict) or not expected<=set(body)<=expected|{'ID_DepotFk'}:failure('Motif','Renseignez l’inventaire et ses lignes.')
     identifier=request_id(body)
     motif=body['Motif']
     if not isinstance(motif,str) or not 1<=len(motif.strip())<=1000:failure('Motif','Indiquez un motif de 1 à 1000 caractères.')
@@ -97,10 +97,10 @@ def parse(body,editing):
         if price is not None and line_amount(abs(delta),price)>Decimal('9999999999.99'):failure(prefix+'.PUCorrection','Le montant du bon d’écart dépasse la capacité autorisée.')
         lines.append({'index':index,'ID_ArticleFk':article,'QteTheorique':theory,'QteComptee':counted,'Justification':reason.strip(),
           'Lots':[{**lot,'DatePeremptionLot':lot['DatePeremptionLot'].isoformat() if lot['DatePeremptionLot'] else None} for lot in lots],'PUCorrection':price})
-    return {'requestId':identifier,'DateInventaire':date_value(body['DateInventaire']),'Motif':motif.strip(),'lignes':lines}
+    return {'requestId':identifier,'DateInventaire':date_value(body['DateInventaire']),'Motif':motif.strip(),'lignes':lines,**({'ID_DepotFk':positive(body['ID_DepotFk'],'Dépôt')} if body.get('ID_DepotFk') else {})}
 
 
-def lock_articles(actor,lines):
+def lock_articles(actor,lines,depot_id=None):
     result={}
     for line in sorted(lines,key=lambda row:row['ID_ArticleFk']):
         row=db.one('SELECT * FROM logistique."T_Article" WHERE "ID_Article"=%s FOR NO KEY UPDATE',[line['ID_ArticleFk']])
@@ -108,7 +108,9 @@ def lock_articles(actor,lines):
         assert_document(actor,row)
         if row.get('QteArticle') is None:failure('lignes.'+str(line.get('index',0)), 'Le stock de cet article est inconnu. Vérifiez son historique.','INVENTORY_UNKNOWN_STOCK',409)
         for field in ('QteTheorique','QteComptee'):for_unit(line[field],row['ID_UniteFk'],'lignes.'+str(line.get('index',0))+'.'+field,zero=True)
-        if Decimal(str(row['QteArticle']))!=line['QteTheorique']:
+        from .depots import stock
+        physical=stock(row['ID_Article'],depot_id)['StockPhysique'] if depot_id else row['QteArticle']
+        if Decimal(str(physical))!=line['QteTheorique']:
             failure('lignes.'+str(line.get('index',0))+'.QteTheorique','Le stock a changé depuis le comptage. Reprenez cette ligne depuis le catalogue et recomptez.','INVENTORY_STOCK_CHANGED',409)
         result[row['ID_Article']]=row
     return result
@@ -129,11 +131,14 @@ def save(actor,identifier,body):
         if old:
             check_version(old,body['_version'])
             if old['Etat']!='brouillon':raise APIError('Un inventaire validé est conservé. Créez un nouveau comptage.','INVENTORY_CLOSED',409)
-        lock_articles(actor,data['lignes'])
+        from .depots import depot
+        selected=depot(actor,data.get('ID_DepotFk',(old or {}).get('ID_DepotFk')),lock=True)['ID_Depot']
+        if old and selected!=old['ID_DepotFk']:failure('ID_DepotFk','Conservez le dépôt de ce comptage. Créez un autre inventaire pour un autre dépôt.','INVENTORY_DEPOT_LOCKED',409)
+        lock_articles(actor,data['lignes'],selected)
         if old:
             record=db.one('UPDATE logistique."T_Inventaire" SET "Motif"=%s,"DateInventaire"=%s WHERE "ID_Inventaire"=%s RETURNING *',[data['Motif'],data['DateInventaire'],identifier])
             db.query('DELETE FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=%s',[identifier])
-        else:record=db.one('INSERT INTO logistique."T_Inventaire" ("IdEntiteFk","ID_UserFk","Motif","DateInventaire") VALUES (%s,%s,%s,%s) RETURNING *',[entity,actor.pk,data['Motif'],data['DateInventaire']])
+        else:record=db.one('INSERT INTO logistique."T_Inventaire" ("IdEntiteFk","ID_UserFk","Motif","DateInventaire","ID_DepotFk") VALUES (%s,%s,%s,%s,%s) RETURNING *',[entity,actor.pk,data['Motif'],data['DateInventaire'],selected])
         from psycopg.types.json import Jsonb
         for line in data['lignes']:
             db.query('''INSERT INTO logistique."T_InventaireLigne" ("ID_InventaireFk","ID_ArticleFk","QteTheorique","QteComptee","Justification","Lots","PUCorrection")
@@ -156,7 +161,9 @@ def validate(actor,identifier,body):
         check_version(record,body['_version'])
         lines=db.query('SELECT * FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Inventaire']])
         if not lines:failure('lignes','Ajoutez les articles comptés.')
-        articles=lock_articles(actor,lines)
+        from .depots import depot
+        depot(actor,record['ID_DepotFk'],lock=True)
+        articles=lock_articles(actor,lines,record['ID_DepotFk'])
         from .lots import stock_document_types
         types=stock_document_types(actor,lock=True)
         corrections={}
@@ -170,7 +177,7 @@ def validate(actor,identifier,body):
             # Bons groupés par sens ET devise ; les triggers restent l'unique effet de stock.
             key=(sign,article['ID_DeviseFk'])
             if key not in corrections:
-                corrections[key]=mutate('T_Commande',actor,{'ID_TypeCmdFk':types[sign],'ID_DeviseFk':article['ID_DeviseFk'],
+                corrections[key]=mutate('T_Commande',actor,{'ID_TypeCmdFk':types[sign],'ID_DeviseFk':article['ID_DeviseFk'],'ID_DepotFk':record['ID_DepotFk'],
                     'DateCmd':record['DateInventaire'],'RefCmd':'Inventaire inv-'+str(record['ID_Inventaire']),
                     'ObsCmd':('Écart d’inventaire — '+record['Motif'])[:255]},operation='create')
             command=corrections[key]
@@ -185,17 +192,25 @@ def validate(actor,identifier,body):
 
 def catalogue(actor,params):
     entity=access(actor);q=str(params.get('q','')).strip()[:200]
+    from .depots import depot
+    selected=depot(actor,params.get('depotId'),active=False)['ID_Depot']
     try:take=min(100,max(1,int(params.get('take',25))));skip=max(0,int(params.get('skip',0)))
     except (ValueError,TypeError):raise APIError('Pagination invalide.')
     sort=params.get('sortBy','NomArticle');direction=params.get('sortDir','asc')
-    sorts={'NomArticle':'a."NomArticle"','QteArticle':'a."QteArticle"','Decimales':'COALESCE(p."DecimalesStock",0)'}
+    sorts={'NomArticle':'a."NomArticle"','QteArticle':'COALESCE(s."StockPhysique",0)','Decimales':'COALESCE(p."DecimalesStock",0)'}
     if sort not in sorts or direction not in ('asc','desc'):raise APIError('Tri invalide.')
     where='a."IdEntiteFk"=%s AND a."ValideArticle" IS TRUE';values=[entity]
     if q:where+=' AND (a."NomArticle" ILIKE %s OR a."CodeArticleInterne" ILIKE %s OR a."RefArticle" ILIKE %s)';values += ['%'+q+'%']*3
     total=db.one('SELECT count(*) n FROM logistique."T_Article" a WHERE '+where,values)['n']
-    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle",a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(p."DecimalesStock",0) AS "Decimales"
-      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk" LEFT JOIN logistique."V_PrecisionStock" p ON p."ID_UniteFk"=a."ID_UniteFk" WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[*values,take,skip])
-    return clean(rows),{'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction}
+    rows=db.query('''SELECT a."ID_Article",a."NomArticle",a."CodeArticleInterne",a."RefArticle",a."QteArticle" AS "StockEntreprise",
+      COALESCE(s."StockPhysique",0) AS "QteArticle",COALESCE(s."StockPhysique",0) AS "StockDepot",
+      COALESCE(s."StockDisponible",0) AS "StockDisponible",COALESCE(s."StockReserve",0) AS "StockReserve",%s::bigint AS "ID_DepotFk",
+      a."PUArticle",a."ID_DeviseFk",a."ID_UniteFk",g."AbrGenerique" AS "Unite",COALESCE(p."DecimalesStock",0) AS "Decimales"
+      FROM logistique."T_Article" a LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=a."ID_UniteFk"
+      LEFT JOIN logistique."V_PrecisionStock" p ON p."ID_UniteFk"=a."ID_UniteFk"
+      LEFT JOIN logistique."V_StockDepot" s ON s."ID_ArticleFk"=a."ID_Article" AND s."ID_DepotFk"=%s
+      WHERE '''+where+' ORDER BY '+sorts[sort]+' '+direction+',a."ID_Article" LIMIT %s OFFSET %s',[selected,selected,*values,take,skip])
+    return clean(rows),{'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction,'depotId':selected}
 
 
 class InventoriesView(APIView):
@@ -204,16 +219,9 @@ class InventoriesView(APIView):
         if action=='catalogue':
             data,meta=catalogue(request.user,request.query_params);return ok(data,meta=meta)
         if pk:return ok(snapshot(request.user,pk))
-        entity=access(request.user);q=str(request.query_params.get('q','')).strip()[:200]
-        try:take=min(100,max(1,int(request.query_params.get('take',25))));skip=max(0,int(request.query_params.get('skip',0)))
-        except (ValueError,TypeError):raise APIError('Pagination invalide.')
-        sort=request.query_params.get('sortBy','DateInventaire');direction=request.query_params.get('sortDir','desc')
-        if sort not in {'CodeInventaire','DateInventaire','Motif','NbArticles','NbEcarts','Etat'} or direction not in ('asc','desc'):raise APIError('Tri invalide.')
-        where='"IdEntiteFk"=%s';values=[entity]
-        if q:where+=' AND ("CodeInventaire" ILIKE %s OR "Motif" ILIKE %s)';values += ['%'+q+'%']*2
-        total=db.one('SELECT count(*) n FROM logistique."V_Inventaire" WHERE '+where,values)['n']
-        rows=db.query('SELECT * FROM logistique."V_Inventaire" WHERE '+where+' ORDER BY '+db.ident(sort)+' '+direction+',"ID_Inventaire" DESC LIMIT %s OFFSET %s',[*values,take,skip])
-        return ok(clean(rows),meta={'filteredCount':total,'take':take,'skip':skip,'sortBy':sort,'sortDir':direction})
+        from .depot_registers import listing
+        rows, meta = listing(request.user, 'inventaires', request.query_params)
+        return ok(rows, meta=meta)
     def post(self,request,pk=None,action=None):
         if action=='valider':data,replayed=validate(request.user,positive(pk),request.data)
         elif action=='annuler':

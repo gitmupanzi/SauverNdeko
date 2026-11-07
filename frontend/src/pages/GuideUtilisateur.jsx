@@ -12,7 +12,7 @@ import "./logistique/LogistiqueModern.css";
 import "./admin/AdminPortal.css";
 import "./GuideUtilisateur.css";
 
-function GuideIcon({name,size=20}){return name?.startsWith("bi-")?<i className={"bi "+name} aria-hidden="true"/>:<AppIcon name={name||"book"} size={size}/>;}
+function GuideIcon({name,size=20}){return <AppIcon name={name||"book"} size={size}/>;}
 function ArticleCard({module,article,showModule=false,onOpen}){
   return <Link className="guide-article-card" to={guideLocation(module.key,article.id)} onClick={onOpen}>{showModule?<small>{module.label}</small>:null}<span className="guide-article-title"><strong>{article.title}</strong><AppIcon name="chevron-right"/></span><p>{article.summary}</p></Link>;
 }

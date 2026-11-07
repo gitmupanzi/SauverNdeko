@@ -41,7 +41,7 @@ export default function Navbar({
     <header className="topbar">
       <div className="topbar-mobile">
         <button className="icon-button" type="button" onClick={onOpenMenu} aria-label="Ouvrir le menu">
-          <i className="bi bi-list" aria-hidden="true" />
+          <AppIcon name="menu" size="1em"/>
         </button>
         <h1 className="topbar-title">{pageTitle}</h1>
         {showSearch ? (
@@ -83,7 +83,7 @@ export default function Navbar({
             </button>
           ) : (
             <div className="desktop-search desktop-search-static">
-              <i className="bi bi-chat-dots" aria-hidden="true" />
+              <AppIcon name="chat" size={18}/>
               <span>Contact public</span>
             </div>
           )}

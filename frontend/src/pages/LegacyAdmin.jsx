@@ -1,4 +1,5 @@
 import ModuleSidebar from "../components/ModuleSidebar";
+import AppIcon from "../components/AppIcon";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import {fetchTerritorialReferences} from "../services/fieldReferences";
 import {REFERENCE_RETAINED_HINT,referenceLabel,referenceOptions,retainReference} from "../utils/referenceOptions";
@@ -1329,11 +1330,11 @@ const DEFAULT_ADMIN_VIEW_KEY =
     : ADMIN_VIEWS.map((view) => normalizeViewKey(view.schema, view.name)).find((viewKey) => Boolean(CRUD_CONFIGS[viewKey])) ||
   (ADMIN_VIEWS[0] ? normalizeViewKey(ADMIN_VIEWS[0].schema, ADMIN_VIEWS[0].name) : "");
 
-function DashboardMetricCard({ title, value, detail, tone = "primary", icon = "bi-grid-1x2" }) {
+function DashboardMetricCard({ title, value, detail, tone = "primary", icon = "dashboard" }) {
   return (
     <article className={`admin-dashboard-metric is-${tone}`}>
       <span className="admin-dashboard-metric-icon">
-        <i className={`bi ${icon}`} aria-hidden="true" />
+        <AppIcon name={icon} size="1em"/>
       </span>
       <div>
         <strong>{title}</strong>

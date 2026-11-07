@@ -1,3 +1,4 @@
+import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {moduleRights} from "../../services/moduleAccess";
@@ -30,7 +31,7 @@ import "./Commandes.css";
 
 const CONFIG=getLogistiqueViewConfig("commandes");
 const EMPTY_FILTERS={typeId:"",statutId:"",client:"",deviseId:"",payment:"all",control:"all",dateFrom:"",dateTo:""};
-const DEFAULT_COLUMNS=["CodeCmd","CodeFacture","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","QteTotale","MontantTTC","EtatPaiement","RefCmd","actions"];
+const DEFAULT_COLUMNS=["__ordre","CodeCmd","CodeFacture","DateCmd","TypeCmd","StatutCmd","NomClientSaisi","NbLignes","QteTotale","MontantTTC","EtatPaiement","RefCmd","actions"];
 const PAYMENT_OPTIONS=[{value:"non-facturee",label:"Non facturés"},{value:"non-reglee",label:"À régler"},{value:"partielle",label:"Partiellement réglés"},{value:"reglee",label:"Réglés"},{value:"retard",label:"En retard"}];
 const CONTROL_OPTIONS=[{value:"sans-details",label:"Sans lignes"},{value:"incoherente",label:"Montants à vérifier"},{value:"coherente",label:"Montants cohérents"}];
 const LABELS={q:"Recherche",typeId:"Type de bon",statutId:"Statut du bon",client:"Tiers",deviseId:"Devise",payment:"Facturation",control:"Contrôle",dateFrom:"Du",dateTo:"Au"};
@@ -44,6 +45,7 @@ export function formatBonQuantities(row){
 }
 
 export default function Commandes({title = "Bons de stock", references:receivedReferences,refreshKey,onDataChanged,onOpenDetails,sharedTable,onToggleFkMappings}) {
+ const depotScope=useDepotScope();
  const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.commandes");
   const {user}=useAuth(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
@@ -83,7 +85,7 @@ export default function Commandes({title = "Bons de stock", references:receivedR
   useEffect(()=>{if(sharedTable?.composerMode!=="create")return;if(canWrite)create();sharedTable?.setComposerMode?.("view");},[sharedTable?.composerMode,canWrite]);
   useEffect(()=>{
     let active=true;setLoading(true);setError("");
-    CONFIG.fetchRows({...criteria,...grid,timeZone:"Africa/Kinshasa"}).then(response=>{
+    CONFIG.fetchRows({...criteria,...grid,depotId:depotScope.depotId,timeZone:"Africa/Kinshasa"}).then(response=>{
       if(!active)return;
       if(!response?.success){setRows([]);setMeta(null);setError(response?.message||"Les bons de stock n’ont pas pu être chargés.");setLoading(false);return;}
       const nextRows=asArrayPayload(response);setRows(nextRows);setMeta(response.meta||null);setLoading(false);
@@ -94,10 +96,11 @@ export default function Commandes({title = "Bons de stock", references:receivedR
   async function exportExcel(format="xlsx", selection=null){
     if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||loading||pending||error||exporting||!meta?.filteredCount)return;
     const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
-    const params=new URLSearchParams({...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row.ID_Commande))}:{})});
+    const params=new URLSearchParams({depotId:depotScope.depotId,...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row.ID_Commande))}:{})});
     try{await downloadApiFile("/api/logistique/registre/commandes/export."+format+"?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export n’a pas pu être préparé.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
   }
   const columns=[
+    {key:"__ordre",label:"N°",width:60,sortable:false,exportable:false,render:(_row,index)=>grid.skip+index+1},
     {key:"CodeCmd",label:"Bon de stock",width:205,render:row=><span className="erp-product-cell"><span className="erp-product-avatar"><AppIcon name="receipt" size={19}/></span><span className="erp-product-identity"><strong>{row.CodeCmd||"Bon sans code"}</strong><small>{row.RefCmd||"Référence non renseignée"}</small></span></span>,renderText:row=>row.CodeCmd||""},
     {key:"AncienCodeCmd",label:"Ancien code",width:170,render:row=>previousStockCode(row)||"—",renderText:previousStockCode},
     {key:"CodeFacture",label:"Code facture",width:165,render:row=>row.CodeFacture||"—"},
@@ -136,7 +139,7 @@ export default function Commandes({title = "Bons de stock", references:receivedR
       <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
         {selection.length?<div className="erp-register-selection"><strong>{selection.length===1?selection[0].CodeCmd||"Bon sélectionné":selection.length+" bons sélectionnés"}</strong>{selection.length===1?<><ActionButton icon="eye" onClick={()=>openOrder(selection[0])}>Consulter</ActionButton>{canWrite?<ActionButton icon="edit" onClick={()=>edit(selection[0])} disabled={loading||closed(selection[0])}>Modifier</ActionButton>:null}</>:null}{canExport?<ExportMenu selection exportFile={()=>exportExcel("xlsx",selection)} exportCsv={()=>exportExcel("csv",selection)} disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} exporting={exporting}/>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={()=>{setSelectionResetKey(value=>value+1);sharedTable?.clearSelectedRow?.();}}/></div>:null}
         {error?<div className="erp-table-error" role="alert">{error}<ActionButton icon="refresh" onClick={()=>setLocalRevision(value=>value+1)}>Réessayer</ActionButton></div>:null}
-        <SimpleTable tablePreferences={preferences} rows={rows} columns={columns} selectedRowId={selected?.ID_Commande??null} enableSelection onSelectionChange={next=>{setSelection(next);sharedTable?.setSelectedRow?.(next.length===1?next[0]:null);}} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={openOrder} consultColumns={["CodeCmd","AncienCodeCmd","RefCmd"]} isCellConsultable={(row,key)=>key==="AncienCodeCmd"?Boolean(previousStockCode(row)):Boolean(row[key])} loading={loading} emptyMessage={error?"Les bons ne sont pas disponibles.":"Aucun bon pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} toolbar={<>
+        <SimpleTable tablePreferences={preferences.ready?{...preferences,tableKeys:["__ordre",...preferences.tableKeys.filter(key=>key!=="__ordre")]}:preferences} rows={rows} columns={columns} selectedRowId={selected?.ID_Commande??null} enableSelection onSelectionChange={next=>{setSelection(next);sharedTable?.setSelectedRow?.(next.length===1?next[0]:null);}} selectionResetKey={selectionResetKey} defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} serverMeta={meta} serverState={grid} onServerChange={changeGrid} onRowConsult={openOrder} consultColumns={["CodeCmd","AncienCodeCmd","RefCmd"]} isCellConsultable={(row,key)=>key==="AncienCodeCmd"?Boolean(previousStockCode(row)):Boolean(row[key])} loading={loading} emptyMessage={error?"Les bons ne sont pas disponibles.":"Aucun bon pour ces critères."} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} toolbar={<>
           <DataTableToolbar showSettings={false} settingsLabel="Réglages" search={search} setSearch={setSearch} onApply={applyFilters} onReset={resetFilters} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} filterControlsId={filterId} toggleFilters={()=>setFiltersOpen(value=>!value)} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="airy"?"compact":"airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={()=>setColumnsOpen(value=>!value)} loading={loading} placeholder="Rechercher un bon, une référence ou un tiers…" exportFile={canExport?()=>exportExcel():undefined} exportCsv={canExport?()=>exportExcel("csv"):undefined} exporting={exporting} exportDisabled={Boolean(error)||!meta?.filteredCount||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length} error={exportError||preferences.error}/>
           {filtersOpen?<form id={filterId} className="erp-register-filters" onSubmit={event=>{event.preventDefault();applyFilters();}}><div className="erp-register-filter-grid">{Object.entries(options).map(([key,choices])=><label key={key}><span>{LABELS[key]}</span><CategoricalSelect aria-label={LABELS[key]} value={filters[key]} onChange={event=>setFilters(current=>({...current,[key]:event.target.value}))}><option value={EMPTY_FILTERS[key]}>Tous</option>{choices.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</CategoricalSelect></label>)}{["dateFrom","dateTo"].map(key=><label key={key}><span>{LABELS[key]}</span><input type="date" value={filters[key]} onChange={event=>{setFilters(current=>({...current,[key]:event.target.value}));setFiltersError("");}} aria-invalid={Boolean(filtersError)} aria-describedby={filtersError?filterId+"-error":undefined}/></label>)}</div>{filtersError?<p id={filterId+"-error"} className="erp-table-error" role="alert">{filtersError}</p>:null}<div className="erp-register-filters-footer"><ActionButton type="submit" variant="primary" disabled={loading}>Appliquer les filtres</ActionButton></div></form>:null}
           {activeFilters?<div className="erp-register-chips">{Object.entries(criteria).filter(([key,value])=>key==="q"?Boolean(value):value!==EMPTY_FILTERS[key]).map(([key,value])=><span className="erp-register-chip" key={key}>{LABELS[key]} : {filterLabel(key,value)}<button type="button" aria-label={"Retirer le filtre "+LABELS[key]} onClick={()=>removeFilter(key)}><AppIcon name="close" size={13}/></button></span>)}</div>:null}

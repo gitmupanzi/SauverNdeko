@@ -47,6 +47,8 @@ def cancel(actor, identifier, body):
             raise APIError('Seul un inventaire validé peut être annulé.', 'INVENTORY_NOT_VALIDATED', 409)
         check_version(record, body['_version'])
         lines = db.query('SELECT * FROM logistique."T_InventaireLigne" WHERE "ID_InventaireFk"=%s ORDER BY "ID_ArticleFk"', [identifier])
+        from .depots import depot
+        depot(actor,record['ID_DepotFk'],lock=True)
         # Ordre stable des verrous ; le stock courant peut avoir évolué depuis le comptage.
         for line in lines:
             article = db.one('SELECT "ID_Article" FROM logistique."T_Article" WHERE "ID_Article"=%s AND "IdEntiteFk"=%s FOR UPDATE', [line['ID_ArticleFk'], entity])
@@ -70,7 +72,7 @@ def cancel(actor, identifier, body):
             kind = types.get(-original['SigneStock'])
             if not kind:
                 raise APIError('Configurez les types de bon Entrée et Sortie dans les références.', 'INVENTORY_TYPE_REQUIRED', 409)
-            command = mutate('T_Commande', actor, {'ID_TypeCmdFk': kind, 'ID_DeviseFk': original['ID_DeviseFk'],
+            command = mutate('T_Commande', actor, {'ID_TypeCmdFk': kind, 'ID_DeviseFk': original['ID_DeviseFk'],'ID_DepotFk':record['ID_DepotFk'],
                 'DateCmd': timezone.now(), 'RefCmd': f'Annulation inv-{identifier}', 'ObsCmd': reason[:255]}, operation='create')
             cid = command['ID_Commande']
             # Les triggers existants créent l’unique mouvement. On conserve le prix réellement utilisé,
@@ -79,7 +81,7 @@ def cancel(actor, identifier, body):
                 VALUES (%s,%s,%s,%s,%s)''', [cid, line['ID_ArticleFk'], original['QteCmdDetail'], original['PUCmdDetail'], reason[:255]])
             movement = db.one('SELECT "ID_Mvt" FROM logistique."T_Mouvement" WHERE "ID_cmdFk"=%s AND "ID_ArticleFk"=%s', [cid, line['ID_ArticleFk']])
             compensation_lots(actor,original['ID_Mvt'],movement['ID_Mvt'],original['SigneStock']==1,reason,identifier)
-            validate_stock(line['ID_ArticleFk'])
+            validate_stock(line['ID_ArticleFk'],record['ID_DepotFk'])
             db.query('UPDATE logistique."T_InventaireLigne" SET "ID_CommandeAnnulationFk"=%s WHERE "ID_InventaireFk"=%s AND "ID_ArticleFk"=%s', [cid, identifier, line['ID_ArticleFk']])
             commands.append(cid)
         # Vérifie les contraintes différées avant de construire la réponse.

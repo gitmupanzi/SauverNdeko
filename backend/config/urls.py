@@ -38,6 +38,9 @@ from apps.logistique.entity_documents import EntityDocumentIdentityView, EntityL
 from apps.logistique.valuation import ArticleValuationView, ArticleValuationExcelView
 from apps.logistique.lot_register import LotDetailView, LotMovementsView, LotMovementsExcelView
 from apps.logistique.inventories import InventoriesView, UnitPrecisionView
+from apps.logistique.depots import DepotsView, DepotStocksView
+from apps.logistique.depot_registers import DepotRegisterExportView
+from apps.logistique.transfers import TransfersView
 from apps.logistique.immobilisations import ImmobilisationsView, ImmobilisationReferencesView, ImmobilisationHistoryView, ImmobilisationExportView
 from apps.logistique.lot_fefo import LotFefoView
 from apps.logistique.destinations import DestinationsView
@@ -218,6 +221,13 @@ urlpatterns = [
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
+    re_path(r"^api/logistique/(?P<kind>depots|stocks-depots|transferts|inventaires)/export\.(?P<file_format>xlsx|csv)/?$", DepotRegisterExportView.as_view()),
+    re_path(r"^api/logistique/depots/(?P<pk>[0-9]+)/?$", DepotsView.as_view()),
+    re_path(r"^api/logistique/depots/?$", DepotsView.as_view()),
+    re_path(r"^api/logistique/stocks-depots/?$", DepotStocksView.as_view()),
+    re_path(r"^api/logistique/transferts/(?P<pk>[0-9]+)/(?P<action>valider|expedier|receptionner|annuler|traiter-ecart)/?$", TransfersView.as_view()),
+    re_path(r"^api/logistique/transferts/(?P<pk>[0-9]+)/?$", TransfersView.as_view()),
+    re_path(r"^api/logistique/transferts/?$", TransfersView.as_view()),
     re_path(r"^api/logistique/inventaires/unites/?$", UnitPrecisionView.as_view()),
     re_path(r"^api/logistique/inventaires/catalogue/?$", InventoriesView.as_view(), {"action":"catalogue"}),
     re_path(r"^api/logistique/inventaires/(?P<pk>[0-9]+)/annuler/?$", InventoriesView.as_view(), {"action":"annuler"}),

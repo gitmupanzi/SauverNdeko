@@ -26,6 +26,10 @@ Réutiliser `ListState` pour les chargements, résultats vides et indisponibilit
 
 ## Navigation commune — 30 octobre 2026
 
+### Pictogrammes Icons8 — 7 novembre 2026
+
+Utiliser `AppIcon` pour les menus, tuiles, tableaux, formulaires et actions : sa collection commune est **Icons8 Line Awesome**, intégrée localement sous licence MIT. Les tracés, la provenance et les empreintes sont dans `src/components/icons8`, la notice distribuée dans `public/licenses/icons8-line-awesome.txt`. Garder le `viewBox` d'origine et `currentColor` pour les thèmes. Ne pas mélanger de nouveaux `<i className="bi …">` ou des icônes externes : les noms Bootstrap issus des API passent par les alias d'`AppIcon`. Privilégier un pictogramme explicite pour chaque métier (dépôt, article, structure, professionnels, support) et conserver le texte ou l'`aria-label` des commandes. Ne pas remplacer les logos, photos ou avatars par ces pictogrammes. Une autre collection Icons8 peut avoir une autre licence ; vérifier ses droits avant toute reprise.
+
 `ModuleSidebar` mutualise les menus d’Administration, Logistique, Référentiels, Organisation territoriale et du catalogue. La référence [TailAdmin Form Elements](https://demo.tailadmin.com/form-elements) guide les groupes repliables, les chevrons, les icônes fines et la rubrique active ; conserver la marque et les couleurs bleu ardoise des thèmes SauverNdeko, sans recopier les données ou badges de démonstration.
 
 Les groupes vides disparaissent et les entrées sont filtrées par les droits réellement reçus. La navigation transmet la clé stable de rubrique ou la route, jamais un index. Le repli d’un groupe ne navigue pas, ne filtre pas et ne touche aucune donnée métier. Lors d’une navigation vers une rubrique repliée, son groupe s’ouvre. Le groupe de la rubrique courante garde un repère même s’il est ensuite replié manuellement. Les états locaux de repli sont des préférences visuelles uniquement.

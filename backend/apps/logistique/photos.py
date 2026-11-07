@@ -82,6 +82,8 @@ def save_article(actor,body,upload=None,pk=None,*,_created_paths=None):
     if type(remove) is not bool:raise APIError("Choix de photo invalide.")
     if remove and upload:raise APIError("Choisissez une seule action pour la photo.")
     initial=data.pop("LotsInitiaux",None)
+    depot_id=data.pop('ID_DepotFk',None)
+    if old and depot_id is not None:raise APIError('Le dépôt se modifie par un transfert de stock.','DEPOT_LOCKED',409)
     if old and initial is not None:raise APIError("Les lots se renseignent depuis les bons de stock.","LOT_INITIAL_ONLY",400)
     new_path=None
     try:
@@ -92,7 +94,7 @@ def save_article(actor,body,upload=None,pk=None,*,_created_paths=None):
                 from apps.core.tenancy import require_entity
                 entity=require_entity(actor)
                 check_global_write(model("T_Article"),actor)
-                fingerprint=hashlib.sha256(json.dumps({"body":data,"removePhoto":remove,"LotsInitiaux":initial,
+                fingerprint=hashlib.sha256(json.dumps({"body":data,"removePhoto":remove,"LotsInitiaux":initial,'depotId':depot_id,
                     "photo":hashlib.sha256(encoded).hexdigest() if encoded is not None else None},
                     cls=ExactEncoder,sort_keys=True,ensure_ascii=False,separators=(",",":")).encode("utf8")).hexdigest()
                 db.query("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",[f"article-create:{entity}:{actor.pk}:{request_id}"])
@@ -112,8 +114,18 @@ def save_article(actor,body,upload=None,pk=None,*,_created_paths=None):
                 if _created_paths is not None:_created_paths.append(new_path)
                 data["PhotoArticle"]=relative
             elif remove:data["PhotoArticle"]=None
+            opening=None
+            if pk is None and depot_id is not None:
+                from .depots import depot
+                depot_id=depot(actor,depot_id,lock=True)['ID_Depot']
+                from .batch_creation import opening_article
+                data,amount,opening_lots=opening_article({**data,'LotsInitiaux':initial or []})
+                opening=(amount,opening_lots) if amount else None
             row=mutate("T_Article",actor,data,{"ID_Article":positive(pk)} if pk else None,"update" if pk else "create",_creation_metadata=metadata)
-            if initial:
+            if opening:
+                from .batch_creation import opening_receipt
+                opening_receipt(actor,request_id,[(row,*opening)],depot_id)
+            elif initial:
                 from .lots import initial_lots
                 initial_lots(row,initial)
             return row

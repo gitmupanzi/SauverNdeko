@@ -39,7 +39,8 @@ def stock_write_state(record):
         invoice=bool(db.one('SELECT EXISTS(SELECT 1 FROM logistique."T_Facture" WHERE "ID_CommandeFk"=%s) AS present',[record['ID_Commande']])['present'])
     is_closed=closed(record)
     initial=record.get('OrigineBon') in {'stock_initial','reprise_mouvement'}
-    reason=('Ce bon documente un stock initial ou une reprise. Utilisez un nouveau bon pour corriger le stock.' if initial else
+    reason=('Ce bon appartient à un transfert interne. Utilisez la fiche du transfert.' if record.get('ID_TransfertDepotFk') else
+            'Ce bon documente un stock initial ou une reprise. Utilisez un nouveau bon pour corriger le stock.' if initial else
             'Ce bon corrige un inventaire validé. Créez un nouveau comptage pour le corriger.' if inventory else 'Ce bon est clôturé.' if is_closed else
             'Un bon de retour est conservé avec son historique.' if returns['isReturn'] else
             'Ce bon possède des retours. Son panier est conservé.' if returns['hasReturns'] else
@@ -61,7 +62,7 @@ def protect_stock_header(data,old):
     if not old:return
     state=stock_write_state(old)
     if state['canEdit']:return
-    if state['returns']['isReturn'] or state['initial']:
+    if old.get('ID_TransfertDepotFk') or state['returns']['isReturn'] or state['initial']:
         if any(value!=old.get(key) for key,value in data.items()):
             raise APIError(state['reason'],'ORDER_HISTORY_LOCKED',409)
     elif any(key not in FINANCIAL_METADATA and value!=old.get(key) for key,value in data.items()):
@@ -87,10 +88,11 @@ def usage(record, actor):
     fixed=links['lignes'] or links['mouvements'] or links['reglements'] or invoice
     from .order_types import type_context
     nature=type_context(record.get('ID_TypeCmdFk'),required=False)
-    return {'revision':revision(record),'canEdit':not is_closed and not state['initial'],'editReason':reason,
+    internal=bool(record.get('ID_TransfertDepotFk'))
+    return {'revision':revision(record),'canEdit':not internal and not is_closed and not state['initial'],'editReason':reason,
             'canDelete':not delete_reason,'deleteReason':delete_reason,
             'canChangeType':not fixed and not is_closed and nature['kind']!='commande','canChangeCurrency':not fixed and not is_closed,
-            'canChangeInvoiceCode':nature['canInvoice'] and not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
+            'canChangeInvoiceCode':not internal and nature['canInvoice'] and not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
 
 
 def line_usage(record, parent):

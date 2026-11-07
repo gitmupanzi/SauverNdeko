@@ -1,4 +1,5 @@
 import ThemePicker from "../components/ThemePicker";
+import AppIcon from "../components/AppIcon";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -175,7 +176,7 @@ export default function Login() {
 
   return (
     <main className="login-screen login-entry"><div className="login-theme"><ThemePicker /></div>
-      <Link to="/catalogue" className="login-home-link"><i className="bi bi-arrow-left" aria-hidden="true" />Retour à l’accueil</Link>
+      <Link to="/catalogue" className="login-home-link"><AppIcon name="arrow-left" size="1em"/>Retour à l’accueil</Link>
       <div className="login-layout">
       <section className="login-card" aria-labelledby="login-title">
         <LoginBrand />
@@ -184,10 +185,10 @@ export default function Login() {
           <p>Accédez à vos applications.</p>
         </header>
 
-        {location.state?.passwordChanged===true?<p className="login-success" role="status"><i className="bi bi-check-circle" aria-hidden="true"/>Votre mot de passe a été modifié. Reconnectez-vous.</p>:null}
+        {location.state?.passwordChanged===true?<p className="login-success" role="status"><AppIcon name="check-circle" size="1em"/>Votre mot de passe a été modifié. Reconnectez-vous.</p>:null}
         {redirectTarget !== "/espace" ? (
           <p className="login-destination">
-            <i className="bi bi-arrow-return-right" aria-hidden="true" />
+            <AppIcon name="arrow-right" size="1em"/>
             Après connexion : <strong>{destinationLabel(redirectTarget)}</strong>
           </p>
         ) : null}
@@ -195,7 +196,7 @@ export default function Login() {
         <form className="login-form" onSubmit={handleSubmit} noValidate aria-busy={busy}>
           {errorMessage ? (
             <div className="login-error" role="alert" tabIndex="-1" ref={alertRef}>
-              <i className="bi bi-exclamation-circle" aria-hidden="true" />
+              <AppIcon name="alert" size="1em"/>
               <span>{errorMessage}</span>
             </div>
           ) : null}
@@ -203,7 +204,7 @@ export default function Login() {
           <div className="login-field">
             <label htmlFor="login-email">Adresse e-mail</label>
             <div className="login-input-wrap">
-              <i className="bi bi-envelope" aria-hidden="true" />
+              <AppIcon name="mail" size="1em"/>
               <input
                 ref={emailRef}
                 id="login-email"
@@ -228,7 +229,7 @@ export default function Login() {
           <div className="login-field">
             <label htmlFor="login-password">Mot de passe</label>
             <div className="login-input-wrap login-password-wrap">
-              <i className="bi bi-lock" aria-hidden="true" />
+              <AppIcon name="lock" size="1em"/>
               <input
                 ref={passwordRef}
                 id="login-password"
@@ -255,7 +256,7 @@ export default function Login() {
                 onClick={() => setShowPassword((visible) => !visible)}
                 disabled={busy}
               >
-                <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"} aria-hidden="true" />
+                <AppIcon name={showPassword ? "eye-off" : "eye"} size="1em"/>
               </button>
             </div>
             {fieldErrors.password ? <p className="login-field-error" id="login-password-error">{fieldErrors.password}</p> : null}
@@ -269,7 +270,7 @@ export default function Login() {
           <button className="login-submit" type="submit" disabled={busy}>
             {busy ? <span className="login-spinner" aria-hidden="true" /> : null}
             <span>{loading ? "Vérification de la session…" : submitting || isAuthenticated ? "Connexion en cours…" : "Se connecter"}</span>
-            {!busy ? <i className="bi bi-arrow-right" aria-hidden="true" /> : null}
+            {!busy ? <AppIcon name="arrow-right" size="1em"/> : null}
           </button>
           <span className="login-status" role="status">{submitting ? "Connexion en cours. Veuillez patienter." : ""}</span>
         </form>

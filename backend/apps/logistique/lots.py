@@ -47,7 +47,8 @@ def unchanged(rows,previous,quantity):
 def sync_movement(article_id,movement_id,rows,quantity,*,actor=None):
     movement=db.one('SELECT "ID_ArticleFk","SigneStock" FROM logistique."V_MouvementStock" WHERE "ID_Mvt"=%s',[movement_id])
     if not movement or movement["ID_ArticleFk"]!=article_id:raise APIError("Mouvement de lot introuvable.","LOT_MOVEMENT_MISSING",409)
-    values=normalize(rows,quantity,allow_partial=movement["SigneStock"]==-1)
+    from .depots import is_internal_transfer
+    values=normalize(rows,quantity,allow_partial=movement["SigneStock"]==-1 or is_internal_transfer())
     current=db.one('SELECT EXISTS(SELECT 1 FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=%s) AS present',[movement_id])["present"]
     if current and not values and movement["SigneStock"]!=-1:raise APIError("Conservez la ventilation de cette ligne ou corrigez ses lots.","LOT_REQUIRED",409)
     db.query('DELETE FROM logistique."T_MouvementLot" WHERE "ID_MvtFk"=%s',[movement_id])
@@ -103,8 +104,12 @@ def stock_document_types(actor,*,lock=False):
     return result
 
 
-def stock_state(article_id):
+def stock_state(article_id,depot_id=None):
     """État exhaustif des lots, indépendant des filtres et de la pagination de consultation."""
+    if depot_id is not None:
+        from .depots import stock
+        local=stock(article_id,depot_id)
+        return {'stockTotal':local['StockPhysique'],'stockAllocated':local['StockPhysique']-local['StockSansLot'],'stockWithoutLot':local['StockSansLot'],'stockAvailable':local['StockDisponible'],'stockReserved':local['StockReserve'],'depotId':depot_id}
     row=db.one('''SELECT a."QteArticle" AS "stockTotal",COALESCE(sum(l."StockLot"),0) AS "stockAllocated"
         FROM logistique."T_Article" a LEFT JOIN logistique."V_LotArticleStock" l ON l."ID_ArticleFk"=a."ID_Article"
         WHERE a."ID_Article"=%s GROUP BY a."ID_Article",a."QteArticle"''',[article_id])
@@ -112,7 +117,7 @@ def stock_state(article_id):
     return {**row,"stockWithoutLot":row["stockTotal"]-row["stockAllocated"] if row["stockTotal"] is not None else None}
 
 
-def validate_stock(article_id):
+def validate_stock(article_id,depot_id=None):
     """Vérifie l’état final sous le verrou article, avant l’audit et le commit différé.
     Les triggers gardent les effets de stock et leur contrôle final de défense.
     """
@@ -126,3 +131,8 @@ def validate_stock(article_id):
     state=stock_state(article_id)
     if state["stockWithoutLot"] is not None and state["stockWithoutLot"]<0:
         raise APIError({"Lots":"Le stock disponible sans lot ne suffit pas. Précisez ou corrigez les lots de cette ligne."},"LOT_STOCK_CONFLICT",409)
+    if depot_id is not None:
+        from .depots import stock
+        local=stock(article_id,depot_id)
+        if local['StockPhysique']<0 or local['StockSansLot']<0:
+            raise APIError({'Lots':'Le stock disponible de ce dépôt ne suffit pas. Vérifiez la quantité et les lots.'},'DEPOT_STOCK_CONFLICT',409)

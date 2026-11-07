@@ -99,7 +99,7 @@ def opening_article(data):
     return {**article, 'QteArticle': 0}, stock, lots or []
 
 
-def opening_receipt(actor, request_id, entries):
+def opening_receipt(actor, request_id, entries,depot_id=None):
     from .order_composer import compose_order
     from .receipts import entry_type
 
@@ -108,7 +108,7 @@ def opening_receipt(actor, request_id, entries):
     currencies = {entry[0]['ID_DeviseFk'] for entry in entries}
     if len(currencies) != 1:
         message = 'Tous les articles réceptionnés sur le même bon doivent utiliser la même devise.'
-        raise problem(rows={article['clientRowId']: {'ID_DeviseFk': message} for article, _, _ in entries})
+        raise problem(rows={article.get('clientRowId',str(article['ID_Article'])): {'ID_DeviseFk': message} for article, _, _ in entries})
     lines = [
         {'ID_ArticleFk': article['ID_Article'], 'QteCmdDetail': stock, 'PUCmdDetail': article['PUArticle'], 'Lots': lots}
         for article, stock, lots in entries
@@ -118,6 +118,7 @@ def opening_receipt(actor, request_id, entries):
         result = compose_order(actor, {
             'requestId': str(uuid.uuid5(uuid.UUID(request_id), 'opening-receipt')),
             'bon': {
+                **({'ID_DepotFk':depot_id} if depot_id is not None else {}),
                 'ID_TypeCmdFk': kind['id'],
                 'ID_DeviseFk': next(iter(currencies)),
                 'DateCmd': timezone.now().isoformat(),
@@ -136,7 +137,8 @@ def opening_receipt(actor, request_id, entries):
         for key, message in details.items():
             match = re.fullmatch(r'lignes\.(\d+)(?:\.([^.]+).*)?', key)
             if match and int(match[1]) < len(entries):
-                identity = entries[int(match[1])][0]['clientRowId']
+                article = entries[int(match[1])][0]
+                identity = article.get('clientRowId',str(article['ID_Article']))
                 row_errors.setdefault(identity, {})[fields.get(match[2], '_line')] = message
             else:
                 header_errors[key.removeprefix('bon.')] = message
@@ -158,7 +160,7 @@ def save_batch(actor, kind, body, files=None):
     if not actor.admin:
         raise APIError('Accès réservé aux gestionnaires.', 'FORBIDDEN', 403)
     expected = {'requestId', 'rows'}
-    allowed = expected | ({'openingReceipt'} if kind == 'articles' else set())
+    allowed = expected | ({'openingReceipt','ID_DepotFk'} if kind == 'articles' else set())
     if not isinstance(body, dict) or not expected <= set(body) <= allowed:
         raise APIError('Le panier attend son identifiant et ses lignes.')
     with_receipt = body.get('openingReceipt', False)
@@ -222,6 +224,8 @@ def save_batch(actor, kind, body, files=None):
                         data = row['data']
                         if with_receipt:
                             data, stock, lots = opening_article(data)
+                        elif kind == 'articles' and body.get('ID_DepotFk') is not None:
+                            data={**data,'ID_DepotFk':body['ID_DepotFk']}
                         saved = create_row(actor, kind, data, child_request,
                                            files.get('photo_' + identity), created_paths)
                 except APIError as error:
@@ -242,7 +246,7 @@ def save_batch(actor, kind, body, files=None):
                 raise problem(rows=issues)
             result = {'requestId': request_id, 'count': len(records), 'records': records}
             if with_receipt:
-                result['openingReceipt'] = opening_receipt(actor, request_id, opening_entries)
+                result['openingReceipt'] = opening_receipt(actor, request_id, opening_entries,body.get('ID_DepotFk'))
             audit(obj, 'LOGISTICS_BATCH_CREATE', new={'requestId': request_id, 'payloadHash': digest,
                 'IdEntiteFk': entity, 'response': result}, actor=actor)
         committed = True

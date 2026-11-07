@@ -20,6 +20,10 @@ def validate_header(obj, data, old, actor):
         if old:assert_document(actor,old)
         else:data['IdEntiteFk']=actor.organisation
     if name=='T_Commande':
+        from .depots import resolve_header,is_internal_transfer
+        if {'ID_TransfertDepotFk','OperationTransfert'}.intersection(data) and not is_internal_transfer():
+            raise APIError('Les liens de transfert sont créés par le parcours Transferts internes.','TRANSFER_MANAGED',409)
+        resolve_header(actor,data,old)
         validate_tiers(actor,data,old)
         from .destinations import validate_destination
         validate_destination(data,old)
@@ -115,7 +119,8 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
             lots = None
         from .document_rules import assert_stock_editable
         from .stock_returns import is_historical_return_line
-        assert_stock_editable(commande)
+        from .depots import is_internal_transfer
+        if not is_internal_transfer():assert_stock_editable(commande)
         old = (
             get_record(
                 obj,
@@ -144,7 +149,9 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         next_id = positive(effective.get("ID_ArticleFk"))
         if previous_lots and operation != "delete" and lots is None and (next_id != positive(article_id) or effective.get("QteCmdDetail") != old.get("QteCmdDetail")):
             raise APIError({"Lots":"Répartissez la nouvelle quantité entre les lots de cette ligne."}, "LOT_REQUIRED", 409)
-        # Parent commande puis articles dans un ordre stable, comme les triggers existants.
+        # Parent bon, dépôt puis articles : même ordre que les transferts et inventaires.
+        from .depots import depot
+        depot(actor, commande.get("ID_DepotFk"), active=operation!="delete", lock=True, entity=commande["IdEntiteFk"])
         selected_article = None
         for current_id in sorted(
             {next_id, *([positive(article_id)] if article_id is not None else [])}
@@ -225,7 +232,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
                 raise APIError({"Lots":str(error.detail)},error.default_code,error.status_code) from error
         # Les contraintes de lots sont différées : cibler la ligne avant de quitter sa transaction.
         if order_kind != 'commande':
-            for current_id in sorted({next_id,*([positive(article_id)] if article_id is not None else [])}):validate_stock(current_id)
+            for current_id in sorted({next_id,*([positive(article_id)] if article_id is not None else [])}):validate_stock(current_id,commande.get('ID_DepotFk'))
         next_lots=line_lots(commande_id,next_id) if operation!="delete" else []
         audit(obj, operation.upper(), {**old,"Lots":previous_lots} if old else None, {**row,"Lots":next_lots}, actor)
         return clean({**row,"Lots":next_lots})
@@ -239,14 +246,15 @@ def scoped_query(sql, actor, params=None):
         obj = VIEWS.get("logistique." + name) or MODELS.get(name)
         if obj is None:
             raise APIError("Source SQL non reconnue.", "INVALID_SOURCE", 500)
-        from .reads import read_predicate
+        from .reads import read_predicate,depot_source,row_source
         if name == "V_ConsoMensuelle" and (params or {}).get("deviseId") not in (None,"","all"):
             name = "V_ConsoMensuelleDevise"
             obj = view("logistique", name)
+        obj=depot_source(obj,params or {})
         where, bind = read_predicate(obj, actor, params)
         values.extend(bind)
         return (
-            "(SELECT v.* FROM logistique." + db.ident(name) + " v WHERE " + where + ")"
+            "(SELECT v.* FROM " + row_source(obj) + " WHERE " + where + ")"
         )
 
     text = re.sub(r'logistique\."([A-Za-z0-9_]+)"', replace, sql)
@@ -341,6 +349,9 @@ def references(actor):
               "defaultCurrencyId": usd[0]["id"], "defaultCurrencyCode": "USD"}
     from apps.core.tenancy import read_entity
     entity = read_entity(actor)
+    from .depots import choices
+    result['depots']=choices(actor)
+    result['defaultDepotId']=next((row['id'] for row in result['depots'] if row['principal'] and row['active'] and row['IdEntiteFk']==entity),None)
     publication = db.one('SELECT "PartageArticlesPublicParDefaut" value FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
     result['defaultArticleVisibility'] = publication['value'] if publication else None
     result['defaultCommandeCurrencyId'] = next((item['id'] for item in result['commandeCurrencies'] if item['code'] == 'USD'), None)

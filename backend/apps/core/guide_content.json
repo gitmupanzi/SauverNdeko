@@ -861,7 +861,7 @@
             },
             {
               "title": "Renseigner la livraison",
-              "text": "Vérifiez date et heure, fournisseur ou tiers, référence de livraison, quantité et unité."
+              "text": "Choisissez le dépôt qui reçoit réellement la livraison. Vérifiez date et heure, fournisseur ou tiers, référence de livraison, quantité et unité. Le dépôt principal est proposé pour simplifier la saisie."
             },
             {
               "title": "Contrôler prix et lots",
@@ -1109,13 +1109,42 @@
           ]
         },
         {
+          "id": "depots",
+          "title": "Organiser les dépôts de votre entreprise",
+          "summary": "Distinguez les lieux de stockage et consultez leurs quantités sans mélanger les entreprises.",
+          "steps": [
+            {"title": "Choisir l’entreprise", "text": "Sélectionnez l’entreprise active. Toutes les entreprises permet la consultation globale pour un administrateur de plateforme ; les écritures exigent une entreprise précise."},
+            {"title": "Créer un dépôt", "text": "Dans Dépôts, cliquez Nouveau dépôt, saisissez son nom et son adresse. Le dépôt principal sert de choix initial aux bons et comptages ; chaque entreprise conserve ses propres dépôts."},
+            {"title": "Consulter les quantités", "text": "Dans Stocks par dépôt, recherchez un article et choisissez un dépôt. Le présent correspond aux quantités physiquement reçues, le réservé à celles engagées par des transferts validés. Le transit est suivi séparément jusqu’à réception, retour ou constat d’écart."},
+            {"title": "Désactiver un lieu inutilisé", "text": "La désactivation conserve son historique. Elle est refusée s’il reste du stock, des réservations ou des opérations en cours. Transférez ou régularisez d’abord les quantités concernées."}
+          ],
+          "example": {"title": "Exemple fictif", "text": "Une entreprise possède un dépôt Central et un dépôt Sud. Le présent d’un article est de 20 pièces au Central et 5 au Sud : le total physique de l’entreprise est de 25 pièces."},
+          "notes": ["Choisir un dépôt filtre l’espace de travail ; cela ne déplace aucun article.", "Un bon avec des lignes conserve son dépôt. Pour déplacer réellement des articles, utilisez un transfert interne.", "Les quantités d’unités différentes ne doivent pas être additionnées pour interpréter un stock."],
+          "links": [{"label": "Ouvrir Dépôts", "path": "/logistique?onglet=depots"}, {"label": "Ouvrir Stocks par dépôt", "path": "/logistique?onglet=stocks-depots"}]
+        },
+        {
+          "id": "transferts-internes",
+          "title": "Transférer des articles entre deux dépôts",
+          "summary": "Préparez, expédiez puis réceptionnez un transfert avec son historique et ses lots.",
+          "steps": [
+            {"title": "Préparer la demande", "text": "Dans Transferts, choisissez deux dépôts distincts de la même entreprise, renseignez le motif puis ajoutez les articles et les quantités. Précisez les lots lorsqu’ils sont suivis."},
+            {"title": "Valider et réserver", "text": "Après contrôle, validez la demande. Les quantités sont réservées au dépôt source ; elles ne sont pas encore sorties. Une disponibilité insuffisante empêche la validation."},
+            {"title": "Expédier les articles", "text": "Confirmez le départ effectif. Un seul bon de sortie est lié au transfert et les quantités passent en transit. Retrouvez son PDF et ses justificatifs depuis le bon lié."},
+            {"title": "Réceptionner au dépôt destinataire", "text": "Indiquez uniquement les quantités réellement reçues. Chaque réception partielle conserve son bon d’entrée, ses lots et son auteur ; le reliquat reste en transit. Répéter la même demande n’ajoute pas de mouvement."},
+            {"title": "Traiter le reliquat", "text": "Annulez une demande non expédiée pour libérer sa réservation. Après expédition, un retour du reliquat à la source nécessite un motif et produit un bon d’entrée compensateur. Un écart constaté solde tout le reliquat de chaque ligne choisie, avec un motif ; les autres lignes restent à traiter."}
+          ],
+          "example": {"title": "Exemple fictif", "text": "Le Central expédie 8 pièces au Sud. Le Sud en reçoit 5 puis 3 : le transfert possède un bon de sortie et deux bons d’entrée. Aucune vente, facture ou écriture de caisse n’est créée."},
+          "notes": ["Le coût de réception interne provient de la sortie d’origine, sans remplacer ce coût par un nouveau prix d’achat.", "Une quantité déjà reçue n’est pas effacée lors d’une annulation. Un retour physique depuis le destinataire se fait par un transfert inverse.", "Les transferts entre entreprises différentes ne sont pas proposés.", "Les règles de péremption existantes restent applicables. Le logiciel ne remplace pas les procédures de conservation, de quarantaine et de rappel de l’exploitant."],
+          "links": [{"label": "Ouvrir Transferts", "path": "/logistique?onglet=transferts"}]
+        },
+        {
           "id": "inventaire-physique",
           "title": "Compter puis valider un inventaire",
           "summary": "Justifiez les écarts avant de créer les corrections de stock.",
           "steps": [
             {
               "title": "Créer le comptage",
-              "text": "Dans Inventaires, cliquez Nouvel inventaire, renseignez date et motif puis sélectionnez les articles dans le catalogue de Comptage."
+              "text": "Dans Inventaires, cliquez Nouvel inventaire, choisissez le dépôt réellement compté, renseignez date et motif puis sélectionnez les articles dans le catalogue de Comptage. Le théorique est celui de ce dépôt."
             },
             {
               "title": "Saisir les quantités comptées",

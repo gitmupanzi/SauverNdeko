@@ -11,7 +11,12 @@ const reactHooks=`export const useState=v=>globalThis.__hooks.state(v),useRef=v=
 const profile={IdEntite:7,_version:'profile-v1',NomEntite:'Entreprise A',TauxTVAEntite:'16.0000',canConfigure:true,canManageEntity:false,Localisations:[],IdentifiantsLegauxEntite:[],references:{entityTypes:[],niveaux3:[],niveaux4:[],niveaux5:[]}};
 globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};globalThis.requestAnimationFrame=fn=>fn();globalThis.localStorage={getItem:()=>null,setItem(){}};
 (async()=>{
- const domain=await bundle("export * from './src/utils/entityProfile';export * from './src/services/moduleAccess';");
+ const domain=await bundle("export * from './src/utils/entityProfile';export * from './src/services/moduleAccess';export {moduleTabKey,presentedModuleTabs} from './src/hooks/useModulePresentation';");
+ const tabFixture=[{key:'dashboard',label:'Tableau de bord'},{key:'depots',label:'Dépôts'},{key:'stocks-depots',label:'Stocks par dépôt'},{key:'transferts',label:'Transferts internes'}];
+ eq(domain.presentedModuleTabs(tabFixture,{tabLabels:{depots:'Magasins'},hiddenTabs:['transferts']}).map(t=>[t.key,t.label]),[['dashboard','Tableau de bord'],['depots','Magasins'],['stocks-depots','Stocks par dépôt']]);
+ eq(domain.presentedModuleTabs(tabFixture,{tabLabels:{tiers:'Partenaires'},hiddenTabs:[]}).map(t=>t.key),tabFixture.map(t=>t.key));
+ for(const key of ['depots','stocks-depots','transferts'])eq(domain.moduleTabKey(tabFixture,key),key);
+ eq(domain.moduleTabKey(tabFixture,'inconnu'),'dashboard');eq(domain.moduleTabKey(tabFixture,'inconnu',null),null);
  eq(domain.entityProfileValues().TauxTVAEntite,'0');eq(domain.entityProfileValues(profile).TauxTVAEntite,'16.0000');
  for(const [input,expected]of [['0','0'],['100','100'],['0.0001','0.0001'],['100.0000','100.0000'],[' 16,1234 ','16.1234'],['016.20','16.20']])eq(domain.entityTaxRate(input),expected);
  for(const bad of ['',null,'-1','100.0001','1e2','NaN','0.00001','1.2.3','16 %','1000','Infinity','16,12,1'])eq(domain.entityTaxRate(bad),null);
@@ -45,12 +50,13 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
   tabLabels:{caisses:'Guichets'},hiddenDashboardBlocks:['flux'],revision:'v1',canManage:true};
  const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'}];
  const writes=[];
+ let presentationModule='caisse';
  globalThis.__presentationApi=(path,options)=>{
   if(path==='/api/parametres/presentation'){
    const entityId=Number(globalThis.__scope.entityId);
    return {success:true,data:{entityId,modules:entityId===7?modules:modules.slice(0,1)}};
   }
-  eq(path,'/api/parametres/caisse/presentation');
+  eq(path,'/api/parametres/'+presentationModule+'/presentation');
   if(options.method!=='PUT')return {success:true,data:presentation};
   const body=JSON.parse(options.body);
   writes.push(body);
@@ -102,6 +108,30 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  eq(presentationItems(tree).map(item=>item.key),['presentation-logistique']);
  eq(sidebar(tree).activeKey,'presentation-logistique');
  dh.unmount();sh.unmount();mh.unmount();
+ // Le même panneau reçoit les nouveaux onglets du catalogue serveur, sans réinitialiser l'entreprise.
+ const depotDefaults={dashboard:'Tableau de bord',dossiers:'Dossiers de suivi',tiers:'Clients et fournisseurs',depots:'Dépôts',articles:'Articles',lots:'Lots de stock','stocks-depots':'Stocks par dépôt',commandes:'Bons de stock',details:'Lignes des bons',transferts:'Transferts internes',mouvements:'Mouvements de stock',inventaires:'Inventaires',factures:'Factures',reglements:'Règlements',immobilisations:'Immobilisations'};
+ presentationModule='logistique';
+ Object.assign(presentation,{tabDefaults:depotDefaults,dashboardBlockDefaults:{articles:'Articles',commandes:'Bons de stock',factures:'Factures',alertes:'Alertes'},tabLabels:{tiers:'COUSP et Partenaires',articles:'Produits'},hiddenTabs:['factures'],hiddenDashboardBlocks:['factures'],revision:'log-v1',canManage:true});
+ const lh=new Hooks(),lp={entityId:7,entityName:'Entreprise A',module:modules[0]},renderLogistique=()=>lh.render(modulePanel.type,lp);
+ renderLogistique();await lh.flush();tree=renderLogistique();
+ eq(nodes(tree).filter(n=>n.type==='dt').map(n=>n.props.children),Object.values(depotDefaults));
+ eq(nodes(tree).filter(n=>n.type==='span'&&n.props.children==='Visible').length,14+3);
+ action(tree,'Modifier').props.onClick();tree=renderLogistique();
+ const visible=(tree,label)=>nodes(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Afficher dans le menu · '+label);
+ for(const label of ['Dépôts','Stocks par dépôt','Transferts internes'])eq(visible(tree,label).props.checked,true);
+ eq(visible(tree,'Factures').props.checked,false);
+ const labelInput=(tree,label)=>nodes(tree).find(n=>n.type==='input'&&n.props.placeholder===label);
+ eq(labelInput(tree,'Clients et fournisseurs').props.value,'COUSP et Partenaires');
+ labelInput(tree,'Dépôts').props.onChange({target:{value:'Magasins'}});
+ visible(renderLogistique(),'Transferts internes').props.onChange({target:{checked:false}});
+ await named(renderLogistique(),'Frame').props.onSubmit();
+ eq(writes[2],{entityId:7,revision:'log-v1',tabLabels:{tiers:'COUSP et Partenaires',depots:'Magasins',articles:'Produits'},hiddenTabs:['transferts','factures'],hiddenDashboardBlocks:['factures']});
+ tree=renderLogistique();ok(nodes(tree).some(n=>n.type==='dd'&&n.props.children==='Magasins'));
+ action(tree,'Modifier').props.onClick();tree=renderLogistique();eq(visible(tree,'Transferts internes').props.checked,false);
+ action(tree,'Rétablir les valeurs par défaut').props.onClick();tree=renderLogistique();
+ for(const label of ['Dépôts','Stocks par dépôt','Transferts internes','Factures'])eq(visible(tree,label).props.checked,true);
+ await named(tree,'Frame').props.onSubmit();eq(writes[3],{entityId:7,revision:'v4',tabLabels:{},hiddenTabs:[],hiddenDashboardBlocks:[]});lh.unmount();
+ Object.assign(presentation,{canManage:false});const readonly=new Hooks();readonly.render(modulePanel.type,lp);await readonly.flush();ok(!action(readonly.render(modulePanel.type,lp),'Modifier'));readonly.unmount();
  globalThis.__invoiceResponse={success:true,data:{bonOrigine:{CodeCmd:'BS-1',DeviseCode:'USD'},totaux:{TauxTVA:'16.0000',MontantHT:'100.00',MontantTVA:'16.00',MontantTTC:'116.00',DeviseCode:'USD'},lignes:[],references:{}},meta:{available:true,canIssue:true,canEdit:true}};
  const invoice=await bundle("export {default} from './src/pages/logistique/InvoiceEditor';",[
  [/^react$/,'invoice-hooks',reactHooks],[/\/contexts\/AuthContext$/,'invoice-auth',`export const useAuth=()=>({user:{IdUser:3,IdEntiteFk:7,permissions:{canWriteData:true}}});`],[/\/services\/api$/,'invoice-api',`export async function requestJson(){return globalThis.__invoiceResponse;}`],[/\/hooks\/useReferencesRefresh$/,'invoice-refresh',`export default function refresh(){}`],[/\/RecordEditorFrame$/,'invoice-frame',`export default function Frame(){}`],[/\/SearchSelect$/,'invoice-select',`export default function Select(){}`],[/\/BusinessDocuments$/,'invoice-docs',`export default function Documents(){}`],[/\/InvoiceTaxSummary$/,'invoice-taxes',`export default function Taxes(){}`],[/\/logistiqueShared$/,'invoice-shared',`export const formatCurrency=(v,c)=>v==null?'—':String(v)+' '+c,formatNumber=v=>String(v);export function SimpleTable(){}`],

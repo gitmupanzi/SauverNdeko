@@ -102,7 +102,11 @@ class ModuleView(APIView):
                 record = get_record(source, request.user, {obj["primaryKey"][0]: positive(pk)})
             if obj["name"] == "T_Article":
                 from apps.logistique.article_rules import usage
-                return ok(clean(record), meta=usage(record, request.user))
+                meta=usage(record, request.user)
+                from apps.logistique.depots import requested_depot,article_stock
+                selected=requested_depot(request.user,request.query_params)
+                if selected:record=article_stock(record,selected)
+                return ok(clean(record), meta=meta)
             if obj["name"] == "T_Commande":
                 from apps.logistique.document_rules import usage
                 return ok(clean(record), meta=usage(record, request.user))

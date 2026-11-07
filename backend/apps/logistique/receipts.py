@@ -23,7 +23,7 @@ from .lots import normalize as normalize_lots
 from .services import mutate_line
 
 ALLOWED = {"requestId", "QteCmdDetail", "PUCmdDetail", "ID_DeviseFk", "DateCmd", "RefCmd",
-           "ID_ClientFk", "ID_TiersFk", "NomClientSaisi", "ObsCmd", "ObsCmdDetail", "Lots", "ID_TypeCmdFk"}
+           "ID_ClientFk", "ID_TiersFk", "NomClientSaisi", "ObsCmd", "ObsCmdDetail", "Lots", "ID_TypeCmdFk", "ID_DepotFk"}
 TEXT_LIMITS = {"RefCmd":255, "NomClientSaisi":255, "ObsCmd":255, "ObsCmdDetail":255}
 
 
@@ -75,9 +75,15 @@ def article_context(actor, pk, *, active=True):
     return record
 
 
-def receipt_defaults(actor, pk):
+def receipt_defaults(actor, pk, params=None):
     require_module(actor, "logistique")
     record = article_context(actor, pk)
+    from .depots import choices, requested_depot, article_stock
+    depots=choices(actor)
+    default_depot=next((row['id'] for row in depots if row['principal'] and row['active'] and row['IdEntiteFk']==actor.organisation),None)
+    selected_depot=requested_depot(actor,params or {}) or default_depot
+    if selected_depot:
+        record=article_stock(record,selected_depot)
     types=entry_types(actor)
     selected=default_entry_type(types)
     currency=record.get('ID_DeviseFk'); price=record.get('PUArticle'); confirm=False
@@ -92,7 +98,7 @@ def receipt_defaults(actor, pk):
         confirm=True
     if confirm:
         currency=None;price=None
-    return {"article":record, "defaults":{"ID_TypeCmdFk":selected["id"] if selected else None,"ID_DeviseFk":currency,
+    return {"article":record, "depots":depots,"defaults":{"ID_DepotFk":selected_depot,"ID_TypeCmdFk":selected["id"] if selected else None,"ID_DeviseFk":currency,
             "PUCmdDetail":price,
             "DateCmd":datetime.now(ZoneInfo(settings.TIME_ZONE)).replace(tzinfo=None).isoformat(timespec="minutes")},
             "types":[{"id":row["id"],"label":row["label"]} for row in types], "type":selected, "timeZone":settings.TIME_ZONE,
@@ -110,6 +116,7 @@ def receipt_data(body):
     line_columns = {column["column_name"]:column for column in model("T_CommandeDetail")["columns"]}
     command_columns = {column["column_name"]:column for column in model("T_Commande")["columns"]}
     data = {"requestId":request_id}
+    if body.get('ID_DepotFk') not in (None,''):data['ID_DepotFk']=positive(body['ID_DepotFk'],'Dépôt')
     if "ID_TypeCmdFk" in body:
         try:data["ID_TypeCmdFk"]=positive(body["ID_TypeCmdFk"],"Type de bon")
         except APIError:field_error("ID_TypeCmdFk","Choisissez un type de bon d’entrée.")
@@ -220,7 +227,7 @@ def receive_article(actor, pk, body):
         received_type=entry_type(data.get("ID_TypeCmdFk"),lock=True,actor=actor)
         data["ID_TypeCmdFk"]=received_type["id"]
         fingerprint=payload_hash(article_id,data,actor)
-        header={key:data[key] for key in ("ID_DeviseFk","DateCmd","RefCmd","ID_ClientFk","ID_TiersFk","NomClientSaisi","ObsCmd") if key in data}
+        header={key:data[key] for key in ("ID_DeviseFk","ID_DepotFk","DateCmd","RefCmd","ID_ClientFk","ID_TiersFk","NomClientSaisi","ObsCmd") if key in data}
         header.update(ID_TypeCmdFk=received_type["id"],DateHeureAutoCmd=datetime.now(timezone.utc))
         command=mutate("T_Commande",actor,header,operation="create")
         line={"ID_ArticleFk":article_id,"QteCmdDetail":data["QteCmdDetail"],"PUCmdDetail":data["PUCmdDetail"]}
@@ -237,7 +244,7 @@ class ArticleReceiptView(APIView):
     http_method_names=["get","post","options"]
 
     def get(self, request, pk):
-        return ok(receipt_defaults(request.user,pk))
+        return ok(receipt_defaults(request.user,pk,request.query_params))
 
     def post(self, request, pk):
         result=receive_article(request.user,pk,request.data)

@@ -1,0 +1,380 @@
+{
+  "collection": "Icons8 Line Awesome",
+  "license": "MIT",
+  "commit": "124f409a1d954a6e9ec208e2993693f9cd3ffad9",
+  "source": "https://github.com/icons8/line-awesome",
+  "icons": {
+    "book": {
+      "file": "svg/book-open-solid.svg",
+      "sha256": "7a7a106c83e3398bef4374494ec5f011ea04051edbc153b8cf016cd68bda308b"
+    },
+    "warehouse": {
+      "file": "svg/warehouse-solid.svg",
+      "sha256": "f66c037ee372af9342db4f88d6485a8f2b3005e8125a82e84d73fcd562c7047a"
+    },
+    "transfer": {
+      "file": "svg/exchange-alt-solid.svg",
+      "sha256": "036d52446c7644b50626cd3918bb42227dc872eb131ad469b0d37153964c76f4"
+    },
+    "building": {
+      "file": "svg/building.svg",
+      "sha256": "ff812a5e32b4ee41e832aaf168dde2ffee42712ff3fd0b7904fdc0d4b432b7d2"
+    },
+    "chat": {
+      "file": "svg/comment-dots.svg",
+      "sha256": "9fd0f06c5577fca95f6209051693c58192c332cd3dc870f951ab17bb22b204db"
+    },
+    "send": {
+      "file": "svg/paper-plane.svg",
+      "sha256": "a0adfbc42f772cc16964e31b2c586243f15edf0d513220e93e667896bba28378"
+    },
+    "mail": {
+      "file": "svg/envelope.svg",
+      "sha256": "0c5d52bc9f57ecafc76a921f639128c987978c27943bdc16547b078c8d9c1f72"
+    },
+    "lock": {
+      "file": "svg/lock-solid.svg",
+      "sha256": "13d31de267a2bbd3b165c8f2a28bd61f1d879d07da07383ca3905998a38530f8"
+    },
+    "shield": {
+      "file": "svg/shield-alt-solid.svg",
+      "sha256": "23a2c277a57307a44ede850c18e716e23895633fbf0b1f29212d82ad935cec6b"
+    },
+    "eye-off": {
+      "file": "svg/eye-slash.svg",
+      "sha256": "1b0b211c50d60a8c5e5894fe3e9d820534b19ab009538c79f3b3738f9398dfd0"
+    },
+    "help": {
+      "file": "svg/question-circle.svg",
+      "sha256": "697284a04b1f0c562c5cbb81bc2405eabb184819503078ba7781e11b2c6cf696"
+    },
+    "globe": {
+      "file": "svg/globe-solid.svg",
+      "sha256": "dec569584b2206f304926c61500d0a0d4718bccaa43927c195a8c78eb1d8fc10"
+    },
+    "camera": {
+      "file": "svg/camera-solid.svg",
+      "sha256": "dda5d67bcda9a179d8abf1bb58e28f9cca0c66738b6486a701906c74d7b9793b"
+    },
+    "rows-compact": {
+      "file": "svg/align-justify-solid.svg",
+      "sha256": "e91ec62aebee0107859975dac61af009d9e1cb5093dbd43c88876fc7b6181f0f"
+    },
+    "table": {
+      "file": "svg/table-solid.svg",
+      "sha256": "e0644763d02e868b0bf63362dbdb2564d75efde418cba4358c0a32bef2e6530c"
+    },
+    "folder": {
+      "file": "svg/folder.svg",
+      "sha256": "c25fef4247cae357b20ac49a2b0dd7bf0ad8bb00962382fced1b64cc67cf9c02"
+    },
+    "panel-narrow": {
+      "file": "svg/step-forward-solid.svg",
+      "sha256": "c0187ba48943daef8d7eb1e4c32cfca2cd11d6b54d0386db55715d455710b853"
+    },
+    "panel-widen": {
+      "file": "svg/step-backward-solid.svg",
+      "sha256": "ac12d820a043ed605eb5f3f1348b90d11d89242031c9482a7a3c039e83414ecb"
+    },
+    "user": {
+      "file": "svg/user.svg",
+      "sha256": "fa1b10091191d365573cc7c7cecf30f65d8c53902cfe487676f857bd9f93f6f7"
+    },
+    "users": {
+      "file": "svg/users-solid.svg",
+      "sha256": "300d84135f4ab0337fba29ba9e54276e23384435646bdac784c68c4781d8bb09"
+    },
+    "user-check": {
+      "file": "svg/user-check-solid.svg",
+      "sha256": "820254a131eb76724cd9003493622d25f4f3139d18fc9bbdd210536fcd7a3b87"
+    },
+    "more": {
+      "file": "svg/ellipsis-h-solid.svg",
+      "sha256": "89aeb6bd5acd3e0f3bfd29de058c23e2749f0d674874130ff35c7dc4e1c071ff"
+    },
+    "eye": {
+      "file": "svg/eye.svg",
+      "sha256": "80360daaf1a4829b43d44f5e59f8413902c4babaa499c091c6a9322a3d4a80bb"
+    },
+    "edit": {
+      "file": "svg/pencil-alt-solid.svg",
+      "sha256": "b186465370b4e1a826f93fd13324119fbc33d08323e6dc94658104e8b9d37f06"
+    },
+    "settings": {
+      "file": "svg/cog-solid.svg",
+      "sha256": "f02a6725ddfc4848d088f9188752edbb55fb5bcaa55f5f85f62095cf82045582"
+    },
+    "trash": {
+      "file": "svg/trash-alt.svg",
+      "sha256": "11c8f785eb24193283d4d2179fbef098e27fea9e11d0709c52adfb80b9483efd"
+    },
+    "pin": {
+      "file": "svg/thumbtack-solid.svg",
+      "sha256": "a92b1dbcb6662d4eeb687e9626a00a4e583497696d5a3ac72ff0e348a6a73f78"
+    },
+    "search": {
+      "file": "svg/search-solid.svg",
+      "sha256": "1239991e297a04aa4a1f3e744b911d0dc146bb905482dc1df042643fb65ba43b"
+    },
+    "reset": {
+      "file": "svg/undo-alt-solid.svg",
+      "sha256": "7c63874346f35d96296be2affb070f1bb5a2dbae8d14e8bebb1cc36ed621660f"
+    },
+    "refresh": {
+      "file": "svg/sync-alt-solid.svg",
+      "sha256": "3fbd45ced0157e182271f4062f6af278406bc296575ad08119acebe21236ac37"
+    },
+    "download": {
+      "file": "svg/download-solid.svg",
+      "sha256": "cacc4d91633c7aa981a3a64c00635fada8aac8674242239ca343f4672f106f70"
+    },
+    "upload": {
+      "file": "svg/upload-solid.svg",
+      "sha256": "f5497fe2ca728d8670587f556e9121bdb1583f723e41367fd07ed36b11e77114"
+    },
+    "filter": {
+      "file": "svg/filter-solid.svg",
+      "sha256": "c5db8d03ab35662832c222ba50f571beeeda959bb451264999ec81eec6335e61"
+    },
+    "columns": {
+      "file": "svg/columns-solid.svg",
+      "sha256": "27fb47e3c54b68a34101c03fec6b78473c0bd9ae285a2c4996a3d1f7eda9a436"
+    },
+    "expand": {
+      "file": "svg/expand-arrows-alt-solid.svg",
+      "sha256": "585e67715682e034f744c42592488bf8d0ad00ce51a75c2d4c065bf84a5ea207"
+    },
+    "compact": {
+      "file": "svg/compress-arrows-alt-solid.svg",
+      "sha256": "c7f0ddef1bc603023d6e5776ff451a4675bdf8a0ae54f6858076aad587a18e6e"
+    },
+    "chevron-up": {
+      "file": "svg/angle-up-solid.svg",
+      "sha256": "567d42f85709e34815b60cf2e1074832e15695a2a21a3574c1ca061562aaf19e"
+    },
+    "chevron-down": {
+      "file": "svg/angle-down-solid.svg",
+      "sha256": "26f32d4a9c0bb056bc05f154ab141d4eec0323cab6d86236597a6c18690e1c04"
+    },
+    "chevron-left": {
+      "file": "svg/angle-left-solid.svg",
+      "sha256": "a1d488c4cc3b4e57d1543cf6ce4a6ce2b15ae54c58a3ba64c985dfc22d3c5759"
+    },
+    "chevron-right": {
+      "file": "svg/angle-right-solid.svg",
+      "sha256": "2c8e9f14902e5bc4f8aa752b58a43a27b37e52a391996f878cc0e144d6780b68"
+    },
+    "arrow-up": {
+      "file": "svg/arrow-up-solid.svg",
+      "sha256": "24c1fecc8f84cccd87bc8b773880c206da0521eff83f840d8d974c381d4a487f"
+    },
+    "arrow-down": {
+      "file": "svg/arrow-down-solid.svg",
+      "sha256": "af3a11f5f97e44f8aba6cfef098951c968a8cc41bf25600b8b296d758952332a"
+    },
+    "arrow-left": {
+      "file": "svg/arrow-left-solid.svg",
+      "sha256": "7cf4248fcbc8b9b18f8cf24dba73d0a710d42eba60d067c031ebfa4ff7201a64"
+    },
+    "arrow-right": {
+      "file": "svg/arrow-right-solid.svg",
+      "sha256": "e28b97705a2051f51a568385c9b102cc1fca2193a185384cc4c29f0f4a17ea72"
+    },
+    "arrow-up-right": {
+      "file": "svg/external-link-alt-solid.svg",
+      "sha256": "0b8e7668b663c25fe89b602336dfb874634adb6370af41ab7cedb9bd5b392343"
+    },
+    "close": {
+      "file": "svg/times-solid.svg",
+      "sha256": "87508e3fde8a24cc0553e9d967441d1817bfba4fc97028c62d4a62b3d823ced8"
+    },
+    "plus": {
+      "file": "svg/plus-solid.svg",
+      "sha256": "b989371f893751311d220bf693045ac7cc4cb55b212e1b0c0e0f5828347886e7"
+    },
+    "box": {
+      "file": "svg/box-solid.svg",
+      "sha256": "93913542af0d7877179b703994debbba9c2c29fefdae009652157f7962cdae4a"
+    },
+    "document": {
+      "file": "svg/file-alt.svg",
+      "sha256": "b198c8a4d4d050e0c87877e7a882f280865b040339456b636d27dfea149a65f3"
+    },
+    "receipt": {
+      "file": "svg/receipt-solid.svg",
+      "sha256": "8018d91de346f448a876a522f3f479e1cfe05c70e7e5d336993d8409b2b433ca"
+    },
+    "list": {
+      "file": "svg/list-ul-solid.svg",
+      "sha256": "30929852a9526bf7d0497a3a976ae03b31f8bedba39c743501459ee372a29cf1"
+    },
+    "movements": {
+      "file": "svg/exchange-alt-solid.svg",
+      "sha256": "036d52446c7644b50626cd3918bb42227dc872eb131ad469b0d37153964c76f4"
+    },
+    "wallet": {
+      "file": "svg/wallet-solid.svg",
+      "sha256": "cbe33ecf79c96ba8bc832c1f172d6aaf53555388fcd3952c94530d73880ecf52"
+    },
+    "dashboard": {
+      "file": "svg/tachometer-alt-solid.svg",
+      "sha256": "71262bf231538f0fc2b8ea9f3fdb10d299633eb21a220e19f3a6f5de4dfa2b1f"
+    },
+    "apps": {
+      "file": "svg/th-large-solid.svg",
+      "sha256": "5082999642aa11d74b45559cabbbee3f5ceb109465ca4406cd697f624603f6ed"
+    },
+    "sidebar": {
+      "file": "svg/columns-solid.svg",
+      "sha256": "27fb47e3c54b68a34101c03fec6b78473c0bd9ae285a2c4996a3d1f7eda9a436"
+    },
+    "menu": {
+      "file": "svg/bars-solid.svg",
+      "sha256": "4b0981805f0517f2a6ee0a44d34f1baf0006019b045247a2e369a7f2eae20a5c"
+    },
+    "alert": {
+      "file": "svg/exclamation-triangle-solid.svg",
+      "sha256": "e312d75f973f995073b500f3fcb90d481f0e9ddc454d0db00638ed818098dfb5"
+    },
+    "clock": {
+      "file": "svg/clock.svg",
+      "sha256": "cd7444c0363d37a0aceffd91d301fb29e0479463868b9d8ca9a97df948c13574"
+    },
+    "stock-in": {
+      "file": "svg/sign-in-alt-solid.svg",
+      "sha256": "e3aeac6e79d641a24ae26e49a13593292fc69f6b5c77a96b09e426005525de66"
+    },
+    "stock-out": {
+      "file": "svg/sign-out-alt-solid.svg",
+      "sha256": "b56a313bd14b1a7399def22da3588d7a21485f30daa55ef17bfc914c5041981d"
+    },
+    "cash": {
+      "file": "svg/money-bill-alt.svg",
+      "sha256": "47854e957b93a897a39f4bb746bab4f1824622a94acc4715499e09dc9b050ead"
+    },
+    "check-circle": {
+      "file": "svg/check-circle.svg",
+      "sha256": "93d3f47660d687a6d8daf43eb9aedd3822a86dadc0a8d5b22ca695a23349978c"
+    },
+    "check": {
+      "file": "svg/check-solid.svg",
+      "sha256": "4f7a99fe899b5fdbcca3dab5f78ef3bcfea81a8d70c6c0bc9aa200f0a2a4c222"
+    },
+    "calendar": {
+      "file": "svg/calendar-alt.svg",
+      "sha256": "8a56c5564ad10da390041a47b082020e452fe8d61e56d60dec7814a11c19f1a7"
+    },
+    "calendar-x": {
+      "file": "svg/calendar-times.svg",
+      "sha256": "6c4151c0d014ce87af0b6010fb43f52a85139a527de044cdd00277b3b579edbc"
+    },
+    "bell": {
+      "file": "svg/bell.svg",
+      "sha256": "c7308aaf6184381e1c83956f42b54c502c95ee645d128bdf3e0cf366c550366f"
+    },
+    "tag": {
+      "file": "svg/tag-solid.svg",
+      "sha256": "8c0a9bb4abdae1d840b1615e728e81cd87f50018318e34636ca3b24e8a95ae07"
+    },
+    "chart": {
+      "file": "svg/chart-bar.svg",
+      "sha256": "373a8af2df2c9a90d4e8055c28dbb172b86ccccab3b80889d5f1f874e9469fe9"
+    },
+    "percent": {
+      "file": "svg/percent-solid.svg",
+      "sha256": "c993e1f1e3c5cbe68726fc4afd23ed407a091984e9a3ad11ae74c90a11cf37da"
+    },
+    "logout": {
+      "file": "svg/sign-out-alt-solid.svg",
+      "sha256": "b56a313bd14b1a7399def22da3588d7a21485f30daa55ef17bfc914c5041981d"
+    },
+    "print": {
+      "file": "svg/print-solid.svg",
+      "sha256": "9bc9c6f3ac3977621309d72e923d0414da70f292181bb19373a8c61a33167881"
+    },
+    "capsule": {
+      "file": "svg/capsules-solid.svg",
+      "sha256": "aaab1413a023b54f369ba6ddae9724c5d7af3e843205219d98df626682375c38"
+    },
+    "hospital": {
+      "file": "svg/hospital.svg",
+      "sha256": "1b74172cdfa04c98dc515c3521cefdd84426589dc6e632c7cf45e2a9666ea89b"
+    },
+    "hierarchy": {
+      "file": "svg/sitemap-solid.svg",
+      "sha256": "7b5e4496b85faef568fc11a30564026447e054644f41c8e48589b10545c61051"
+    },
+    "headset": {
+      "file": "svg/headset-solid.svg",
+      "sha256": "753b62eab2b0ad30ee1dd3da0b14e8dc6c4743923ba84c709a3011765a831560"
+    },
+    "sliders": {
+      "file": "svg/sliders-h-solid.svg",
+      "sha256": "c5e96ee4f819b63f467c95ea52c57d3c7a9e3eb3d3474a09984ddf9355eecea6"
+    },
+    "sun": {
+      "file": "svg/sun.svg",
+      "sha256": "7421f3730bbc14733551bb8e20156a3e10bae1d4ba70c49990e574aab2da9d64"
+    },
+    "moon": {
+      "file": "svg/moon.svg",
+      "sha256": "dd880f43f01877c5ad975ba16b5adcb5d8e67d21ad0678bd05fd62f6f1eff637"
+    },
+    "contrast": {
+      "file": "svg/adjust-solid.svg",
+      "sha256": "2f193931dbce4af3c452cd37f4388faa3b4be4792ac544a7b210d4aa5fd30388"
+    },
+    "monitor": {
+      "file": "svg/desktop-solid.svg",
+      "sha256": "8be46fc31f78c65009c513730db8dafbc5f8d0b6903f0b3efe07049d02781d5d"
+    },
+    "home": {
+      "file": "svg/home-solid.svg",
+      "sha256": "f6cea9eb278004e91b9e5824b505dcfe9ee4c405d7be47aba69a18eb733bf54b"
+    },
+    "sort": {
+      "file": "svg/sort-solid.svg",
+      "sha256": "49de63e788fd57b3b8460240904fdb68005411a8ca6364360f037d0dc6451d11"
+    },
+    "truck": {
+      "file": "svg/truck-solid.svg",
+      "sha256": "31cf6ba12be2aaca8729f81048144ee08bd4d510c01bb06a7a2dafcce3494f18"
+    },
+    "map-pin": {
+      "file": "svg/map-marker-alt-solid.svg",
+      "sha256": "2b46f86c5d63ac3d594bb02962030a5d7e7a3e3786be6a46d121df0c1548d6b3"
+    },
+    "excel": {
+      "file": "svg/file-excel.svg",
+      "sha256": "1b752d6c609b0fe6560a9f32ecd25bcd3056e02a742d35fee5b16469f3930d9f"
+    },
+    "csv": {
+      "file": "svg/file-csv-solid.svg",
+      "sha256": "804e65733c3a672cfda04af887d09caf5ed08ea493ab6b44d824bf114d7fcc44"
+    },
+    "pdf": {
+      "file": "svg/file-pdf.svg",
+      "sha256": "a4bfd65d741fcdd09cd152bf5fe853bf4f87895c109370fcadddcedb876c681a"
+    },
+    "word": {
+      "file": "svg/file-word.svg",
+      "sha256": "3252bbf49181d4446732d81469ca0588e59293ce48bbe85017242b8a2aca7bd0"
+    },
+    "clipboard": {
+      "file": "svg/clipboard-list-solid.svg",
+      "sha256": "87d00febe8d69cf54b5b4f6ff5c078fe95d341253ebf1ea960aa044bddd76e5c"
+    },
+    "link": {
+      "file": "svg/link-solid.svg",
+      "sha256": "1dd34cabd942679ff3459b3f4552b1ab568ec28229b292b771d28dc17cf27915"
+    },
+    "badge": {
+      "file": "svg/id-badge.svg",
+      "sha256": "bda828300b635986a65c86d8a3f4fcfb25f4a2c18a5fd1b9a90d5da090b3fb61"
+    },
+    "collection": {
+      "file": "svg/layer-group-solid.svg",
+      "sha256": "c652e0ce51b2b9ad074e2b48b916f3806bc5ff5b62cc21897bcd4ac0ef7bd029"
+    }
+  }
+}

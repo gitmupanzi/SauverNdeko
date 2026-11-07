@@ -1184,7 +1184,7 @@ export function SimpleTable({
                           </div>
                           {isSortable ? (
                             <small className="admin-header-indicator" aria-hidden="true">
-                              <i className={"bi " + (sortConfig.column === column.key ? sortConfig.direction === "asc" ? "bi-arrow-up" : "bi-arrow-down" : "bi-arrow-down-up")} />
+                              <AppIcon name={sortConfig.column === column.key ? sortConfig.direction === "asc" ? "arrow-up" : "arrow-down" : "sort"} size="1em"/>
                             </small>
                           ) : null}
                         </button>

@@ -23,18 +23,18 @@ function Field({id,label,error,hint,wide=false,children}) {
 function Section({title,icon,children}) {return <section className="record-editor-section"><h3><AppIcon name={icon}/>{title}</h3><div className="record-editor-grid">{children}</div></section>;}
 
 // Chaque page est recherchée côté serveur ; aucune limite silencieuse au catalogue.
-function PagedChoice({id,label,path,idKey,labelFor,value,selected,onChange,disabled,error}) {
+function PagedChoice({id,label,path,idKey,labelFor,value,selected,onChange,disabled,error,depotId=""}) {
  const [draft,setDraft]=useState(""),[query,setQuery]=useState(""),[skip,setSkip]=useState(0),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[failure,setFailure]=useState(""),[reload,setReload]=useState(0);
  useReferencesRefresh(()=>setReload(x=>x+1),{enabled:!disabled});
  useEffect(()=>{
   let active=true;setLoading(true);setFailure("");
-  const params=new URLSearchParams({q:query,take:"25",skip:String(skip),sortBy:idKey==="ID_Article"?"NomArticle":"DateCmd",sortDir:idKey==="ID_Article"?"asc":"desc",...(idKey==="ID_Article"?{statut:"true"}:{})});
+  const params=new URLSearchParams({q:query,depotId,take:"25",skip:String(skip),sortBy:idKey==="ID_Article"?"NomArticle":"DateCmd",sortDir:idKey==="ID_Article"?"asc":"desc",...(idKey==="ID_Article"?{statut:"true"}:{})});
   read(path+"?"+params).then(response=>{
    if(!active)return;
    if(!response?.success){setFailure(response?.message||"Les choix ne sont pas disponibles.");setLoading(false);return;}
    setRows(asArrayPayload(response));setMeta(response.meta||null);setLoading(false);
   });return()=>{active=false;};
- },[path,idKey,query,skip,reload]);
+ },[path,idKey,query,skip,reload,depotId]);
  const choices=rows.map(row=>({value:String(row[idKey]),label:labelFor(row)}));
  if(value&&!choices.some(option=>option.value===String(value)))choices.unshift({value:String(value),label:selected?labelFor(selected):"Valeur sélectionnée · #"+value});
  const total=Number(meta?.filteredCount??0),next=skip+rows.length<total;
@@ -66,12 +66,12 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
  useEffect(()=>{
   if(creating)return;
   let active=true;setLoading(true);setError("");setErrors({});setConflict(false);setConfirmReload(false);
-  Promise.all([read("/commandes/"+line.ID_CmdFk),read("/commande-details/"+line.ID_CmdFk+"/"+line.ID_ArticleFk),read("/articles/"+line.ID_ArticleFk)]).then(([parent,current,product])=>{
+  Promise.all([read("/commandes/"+line.ID_CmdFk),read("/commande-details/"+line.ID_CmdFk+"/"+line.ID_ArticleFk)]).then(([parent,current])=>{
    if(!active)return;
-   if(!parent?.success||!current?.success||!product?.success){setError([parent,current,product].find(response=>!response?.success)?.message||"La ligne n’a pas pu être chargée.");setRecord(null);setMeta(null);setLoading(false);return;}
+   if(!parent?.success||!current?.success){setError([parent,current].find(response=>!response?.success)?.message||"La ligne n’a pas pu être chargée.");setRecord(null);setMeta(null);setLoading(false);return;}
    const next=lineForm(current.data),nextLots=lineLots(current.data?.Lots||[]).map(row=>({...row,Quantite:quantityString(wholeQuantity(row.Quantite))??row.Quantite}));
    next.QteCmdDetail=quantityString(wholeQuantity(next.QteCmdDetail))??next.QteCmdDetail;
-   setBon(parent.data);setBonMeta(parent.meta);setRecord(current.data);setMeta(current.meta);setArticle(product.data);setValues(next);setLots(nextLots);setInitial(JSON.stringify({values:next,lots:nextLots}));setLoading(false);
+   setBon(parent.data);setBonMeta(parent.meta);setRecord(current.data);setMeta(current.meta);setArticle(null);setValues(next);setLots(nextLots);setInitial(JSON.stringify({values:next,lots:nextLots}));setLoading(false);
   });return()=>{active=false;};
  },[creating,line?.ID_CmdFk,line?.ID_ArticleFk,reload]);
  useEffect(()=>{
@@ -84,16 +84,15 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   });return()=>{active=false;};
  },[creating,values.ID_CmdFk,reload]);
  useEffect(()=>{
-  if(!creating)return;
-  if(!values.ID_ArticleFk){setArticle(null);setArticleLoading(false);return;}
+  if(!values.ID_ArticleFk||!bon?.ID_DepotFk){setArticle(null);setArticleLoading(false);return;}
   let active=true;setArticleLoading(true);setArticleFailure("");
-  read("/articles/"+values.ID_ArticleFk).then(response=>{
+  read("/articles/"+values.ID_ArticleFk+"?depotId="+encodeURIComponent(bon.ID_DepotFk)).then(response=>{
    if(!active)return;
-   if(response?.success){setArticle(response.data);setValues(current=>({...current,PUCmdDetail:linePrice(response.data,bon)}));}
+   if(response?.success){setArticle({...response.data,QteArticle:response.data.StockDisponible??response.data.StockDepot??null});if(creating)setValues(current=>({...current,PUCmdDetail:linePrice(response.data,bon)}));}
    else{setArticle(null);setArticleFailure(response?.message||"L’article n’a pas pu être chargé.");}
    setArticleLoading(false);
   });return()=>{active=false;};
- },[creating,values.ID_ArticleFk,bon?.ID_Commande,reload]);
+ },[creating,values.ID_ArticleFk,bon?.ID_Commande,bon?.ID_DepotFk,reload]);
  useEffect(()=>{
   const retry=knownLots.retry;setKnownLots({rows:[],meta:null,retry});setLotsFailure("");
   if(!outgoing||!article?.ID_Article){setLotsLoading(false);return;}
@@ -101,7 +100,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
   async function load(){
    const available=[];let skip=0,stock=null;
    while(active){
-    const result=await read("/consultations/produit/"+article.ID_Article+"/lots?take=100&skip="+skip);
+    const result=await read("/consultations/produit/"+article.ID_Article+"/lots?depotId="+encodeURIComponent(bon.ID_DepotFk)+"&take=100&skip="+skip);
     if(!active)return;
     if(!result?.success){setLotsFailure(result?.message||"Les lots disponibles n’ont pas pu être chargés.");setLotsLoading(false);return;}
     if(result.meta?.lotStock)stock=result.meta.lotStock;
@@ -112,7 +111,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
    }
   }
   load();return()=>{active=false;};
- },[outgoing,article?.ID_Article,reload,knownLots.retry]);
+ },[outgoing,article?.ID_Article,bon?.ID_DepotFk,reload,knownLots.retry]);
  useEffect(()=>{if(!loading){const frame=requestAnimationFrame(()=>bodyRef.current?.querySelector('input:not(:disabled):not(:read-only),[role="combobox"]:not(:disabled)')?.focus({preventScroll:true}));return()=>cancelAnimationFrame(frame);}},[loading]);
  function change(name,value){setValues(current=>({...current,[name]:value}));setErrors(current=>({...current,[name]:""}));}
  function focusInvalid(fields){requestAnimationFrame(()=>{const name=Object.keys(fields)[0];bodyRef.current?.querySelector('[id="'+prefix+name+'"]')?.focus();});}
@@ -146,8 +145,8 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
     {order?<p className="record-editor-note">Bon de commande · Sans mouvement de stock.</p>:null}
     <Section title="Bon et article" icon="box">
      {creating?<><PagedChoice id={prefix+"ID_CmdFk"} label="Bon de stock *" path="/registre/commandes" idKey="ID_Commande" labelFor={bonLabel} value={values.ID_CmdFk} selected={bon} disabled={busy||!canWrite} error={errors.ID_CmdFk} onChange={value=>{if(!canWrite||value===values.ID_CmdFk)return;setBon(null);setArticle(null);setLots([]);setValues(current=>({...current,ID_CmdFk:value,ID_ArticleFk:"",PUCmdDetail:""}));setErrors({});}}/>
-     <PagedChoice id={prefix+"ID_ArticleFk"} label="Article *" path="/registre/articles" idKey="ID_Article" labelFor={articleLabel} value={values.ID_ArticleFk} selected={article} disabled={busy||!canWrite||bonLoading||!bon||bonMeta?.canEdit===false} error={errors.ID_ArticleFk} onChange={value=>{if(!canWrite||value===values.ID_ArticleFk)return;setArticle(null);setLots([]);setValues(current=>({...current,ID_ArticleFk:value,PUCmdDetail:""}));setErrors(current=>({...current,ID_ArticleFk:""}));}}/></>:<><Field id={prefix+"ID_CmdFk"} label="Bon de stock"><input id={prefix+"ID_CmdFk"} readOnly value={bon?bonLabel(bon):"—"}/></Field><Field id={prefix+"ID_ArticleFk"} label="Article"><input id={prefix+"ID_ArticleFk"} readOnly value={article?articleLabel(article):"—"}/></Field></>}
-     {article?<Field id={prefix+"stock"} label="Stock actuel"><input id={prefix+"stock"} readOnly value={formatNumber(article.QteArticle)+(article.Unite?" "+article.Unite:"")}/></Field>:null}
+     <PagedChoice id={prefix+"ID_ArticleFk"} label="Article *" depotId={bon?.ID_DepotFk||""} path="/registre/articles" idKey="ID_Article" labelFor={articleLabel} value={values.ID_ArticleFk} selected={article} disabled={busy||!canWrite||bonLoading||!bon||bonMeta?.canEdit===false} error={errors.ID_ArticleFk} onChange={value=>{if(!canWrite||value===values.ID_ArticleFk)return;setArticle(null);setLots([]);setValues(current=>({...current,ID_ArticleFk:value,PUCmdDetail:""}));setErrors(current=>({...current,ID_ArticleFk:""}));}}/></>:<><Field id={prefix+"ID_CmdFk"} label="Bon de stock"><input id={prefix+"ID_CmdFk"} readOnly value={bon?bonLabel(bon):"—"}/></Field><Field id={prefix+"ID_ArticleFk"} label="Article"><input id={prefix+"ID_ArticleFk"} readOnly value={article?articleLabel(article):"—"}/></Field></>}
+     {article?<Field id={prefix+"stock"} label="Disponible dans le dépôt"><input id={prefix+"stock"} readOnly value={formatNumber(article.QteArticle)+(article.Unite?" "+article.Unite:"")}/></Field>:null}
      <Field id={prefix+"devise"} label="Devise du bon"><input id={prefix+"devise"} readOnly value={bon?.DeviseCode||"Non renseignée"}/></Field>
     </Section>
     <Section title="Quantité et prix" icon="cash">
@@ -155,7 +154,7 @@ export default function BonLineEditor({line=null,selectedCommande=null,onClose,o
      {input("PUCmdDetail",(order?"Prix convenu *":"Prix unitaire *")+(bon?.DeviseCode?" · "+bon.DeviseCode:""),{inputMode:"decimal",hint:direction==="entree"?"Prix d’achat dans la devise du bon.":"Prix dans la devise du bon, sans conversion automatique."})}
      <Field id={prefix+"total"} label="Montant de la ligne" wide><output id={prefix+"total"} className="stock-receipt-total">{formatCurrency(roundMoney(multiplyDecimal(values.QteCmdDetail,values.PUCmdDetail)),bon?.DeviseCode)}</output></Field>
     </Section>
-    {!order?<div id={prefix+"Lots"} tabIndex={-1}><LotFields articleId={article?.ID_Article} value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>:null}
+    {!order?<div id={prefix+"Lots"} tabIndex={-1}><LotFields depotId={bon?.ID_DepotFk} articleId={article?.ID_Article} value={lots} onChange={next=>{setLots(next);setErrors(current=>({...current,Lots:""}));}} total={values.QteCmdDetail} disabled={blocked||lotsLoading||Boolean(reason)} known={knownLots.rows} availability={availability} loading={lotsLoading} unit={article?.AbrUnite||article?.Unite||""} outgoing={outgoing} title={outgoing?"Lots sortants":"Lots reçus"} error={errors.Lots||lotsFailure}/>{lotsFailure?<ActionButton icon="refresh" disabled={blocked||lotsLoading} onClick={()=>setKnownLots(current=>({...current,retry:current.retry+1}))}>Actualiser les lots</ActionButton>:null}</div>:null}
     <Section title="Informations complémentaires" icon="document">
      <Field id={prefix+"ObsCmdDetail"} label="Observation" wide><textarea id={prefix+"ObsCmdDetail"} name="ObsCmdDetail" value={values.ObsCmdDetail} onChange={e=>change("ObsCmdDetail",e.target.value)} disabled={blocked||Boolean(reason)}/></Field>
      {input("LieuCmdDetail","Identifiant du lieu",{inputMode:"numeric",hint:"Facultatif, selon le paramétrage de votre organisation."})}

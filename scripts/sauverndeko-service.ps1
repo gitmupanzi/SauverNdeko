@@ -18,6 +18,12 @@ try {
   $PythonExecutable=Join-Path $BackendRoot '.venv\Scripts\python.exe'
   $ManagePath=Join-Path $BackendRoot 'manage.py'
   Set-Location -LiteralPath $BackendRoot
+  # Ces reglages concernent seulement ce processus de developpement. Le .env
+  # peut conserver les options Render, et sa connexion PostgreSQL est preservee.
+  $env:DJANGO_SETTINGS_MODULE='config.settings'
+  $env:DJANGO_ALLOWED_HOSTS=(@('localhost','127.0.0.1') + @($NetworkHosts -split ',' | Where-Object {$_})) -join ','
+  $env:DJANGO_SECURE_SSL_REDIRECT='0'
+  $env:SAUVERNDEKO_FRONTEND_URL="http://localhost:$FrontendPort"
   # Backend accessible uniquement via le proxy Vite, meme en mode LAN.
   & $PythonExecutable $ManagePath runserver "127.0.0.1:$BackendPort" --noreload --insecure 1>> $OutLog 2>> $ErrLog
  } else {

@@ -6,6 +6,45 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 
+class T_Depot(models.Model):
+    ID_Depot = models.BigAutoField(primary_key=True)
+    IdEntiteFk = models.IntegerField()
+    CodeDepot = models.TextField()
+    NomDepot = models.TextField()
+    Principal = models.BooleanField(default=False)
+    Actif = models.BooleanField(default=True)
+    AdresseDepot = models.TextField(null=True)
+    Version = models.BigIntegerField(default=1)
+    ID_UserFk = models.IntegerField(null=True)
+    CreeLe = models.DateTimeField()
+    ModifieLe = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = '"logistique"."T_Depot"'
+
+
+class T_TransfertDepot(models.Model):
+    ID_TransfertDepot = models.BigAutoField(primary_key=True)
+    CodeTransfert = models.TextField()
+    IdEntiteFk = models.IntegerField()
+    ID_DepotSourceFk = models.BigIntegerField()
+    ID_DepotDestinationFk = models.BigIntegerField()
+    ID_DeviseFk = models.IntegerField()
+    ID_EtatFk = models.IntegerField()
+    DateTransfert = models.DateTimeField()
+    Motif = models.TextField()
+    ReferenceTransfert = models.TextField(null=True)
+    ID_UserFk = models.IntegerField()
+    Version = models.BigIntegerField(default=1)
+    CreeLe = models.DateTimeField()
+    ModifieLe = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = '"logistique"."T_TransfertDepot"'
+
+
 class T_InterfaceTableau(models.Model):
     CleInterface = models.TextField(primary_key=True)
     Module = models.TextField()
@@ -267,6 +306,9 @@ class T_Article(models.Model):
 
 
 class T_Commande(models.Model):
+    ID_DepotFk = models.BigIntegerField(null=True)
+    ID_TransfertDepotFk = models.BigIntegerField(null=True, editable=False)
+    OperationTransfert = models.TextField(null=True, editable=False)
     OrigineBon = models.TextField(null=True, editable=False)
     ID_ArticleInitialFk = models.IntegerField(null=True, editable=False)
     ID_DestinationFk = models.IntegerField(null=True)
@@ -327,6 +369,7 @@ class T_CommandeDetail(models.Model):
 
 
 class T_Mouvement(models.Model):
+    ID_DepotFk = models.BigIntegerField(null=True, editable=False)
     ID_DeviseFk = models.IntegerField()
     ID_Mvt = models.AutoField(primary_key=True)
     ID_TypeMvtFk = models.IntegerField(null=True)

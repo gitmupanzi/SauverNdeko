@@ -1,10 +1,11 @@
+import {DepotScopeProvider,DepotScopeBar,useDepotScope} from "../contexts/DepotScopeContext";
 import ModuleSidebar from "../components/ModuleSidebar";
 import {referenceLabel} from "../utils/referenceOptions";
 import lazyView, { ScreenPlaceholder } from "../components/LazyView";
 import {TIERS_CHANGED} from "../services/tiers";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import useReferencesRefresh from "../hooks/useReferencesRefresh";
-import {useModulePresentation} from "../hooks/useModulePresentation";
+import {moduleTabKey,presentedModuleTabs,useModulePresentation} from "../hooks/useModulePresentation";
 import {formatDate} from "./logistique/logistiqueShared";
 import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
@@ -20,6 +21,9 @@ import {
 import { fetchLogistiqueReferences } from "../services/logistique";
 import { LOGISTIQUE_GENERIC_SOURCE_CONFIG, LOGISTIQUE_MODULE_SCHEMA } from "./logistique/views";
 
+const Depots=lazyView(()=>import("./logistique/Depots"),{label:"Chargement des dépôts…"});
+const StocksDepots=lazyView(()=>import("./logistique/StocksDepots"),{label:"Chargement des stocks…"});
+const Transferts=lazyView(()=>import("./logistique/Transferts"),{label:"Chargement des transferts…"});
 const Inventaires=lazyView(()=>import("./logistique/Inventaires"),{label:"Chargement de la vue…"});
 const Tiers=lazyView(()=>import("./logistique/Tiers"),{label:"Chargement de la vue…"});
 const ReferenceSettings=lazyView(()=>import("../components/ReferenceSettings"),{label:"Ouverture des réglages…",compact:true});
@@ -443,7 +447,7 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
     { label: "Relations", keys: ["tiers"] },
-    { label: "Stocks", keys: ["articles", "lots", "commandes", "details", "mouvements", "inventaires"] },
+    { label: "Stocks", keys: ["depots", "articles", "lots", "stocks-depots", "commandes", "details", "transferts", "mouvements", "inventaires"] },
     { label: "Finances", keys: ["factures", "reglements"] },
     { label: "Patrimoine", keys: ["immobilisations"] },
   ];
@@ -526,20 +530,25 @@ const TAB_GROUPS = LOGISTIQUE_MODULE_SCHEMA.tabGroups;
 const TABLE_FEATURE_CONFIG = LOGISTIQUE_MODULE_SCHEMA.tableFeatures;
 const MAIN_TAB_DEFINITIONS = [
   { key: "dashboard", label: "Tableau de bord", icon: "bi-speedometer2" },
-  { key: "tiers", label: "Clients et fournisseurs", icon: "user" },
-  { key: "articles", label: "Articles", icon: "bi-box-seam" },
-  { key: "lots", label: "Lots de stock", icon: "box" },
   { key: "dossiers", label: "Dossiers de suivi", icon: "folder" },
+  { key: "tiers", label: "Clients et fournisseurs", icon: "users" },
+  {key:"depots",label:"Dépôts",icon:"warehouse"},
+  { key: "articles", label: "Articles", icon: "bi-box-seam" },
+  { key: "lots", label: "Lots de stock", icon: "tag" },
+  {key:"stocks-depots",label:"Stocks par dépôt",icon:"collection"},
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
+  {key:"transferts",label:"Transferts internes",icon:"transfer"},
   { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
-  { key: "inventaires", label: "Inventaires", icon: "list" },
+  { key: "inventaires", label: "Inventaires", icon: "clipboard" },
   { key: "factures", label: "Factures", icon: "document" },
   { key: "reglements", label: "Règlements", icon: "bi-wallet2" },
   { key: "immobilisations", label: "Immobilisations", icon: "building" },
 ];
 
-export default function Logistique() {
+export default function Logistique(){return <DepotScopeProvider><LogistiqueWorkspace/></DepotScopeProvider>;}
+function LogistiqueWorkspace() {
+  const depotScope=useDepotScope();
   const entityScope=useEntityScope();
   const { user } = useAuth();
   const {scopeKey}=entityScope;
@@ -550,8 +559,8 @@ export default function Logistique() {
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [navigation,setNavigation]=useSearchParams();
   const requestedTab=navigation.get("onglet");
-  const [activeTab, setActiveTab] = useState(()=>MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab)?requestedTab:"dashboard");
-  useEffect(()=>{if(MAIN_TAB_DEFINITIONS.some(tab=>tab.key===requestedTab))startTransition(()=>setActiveTab(requestedTab));},[requestedTab]);
+  const [activeTab, setActiveTab] = useState(()=>moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab));
+  useEffect(()=>{if(moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab,null))startTransition(()=>setActiveTab(requestedTab));},[requestedTab]);
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [activeTab]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -981,7 +990,7 @@ export default function Logistique() {
 
   const mainTabs = useMemo(
     () => presentationLoading ? [] :
-      MAIN_TAB_DEFINITIONS.filter(item=>!hiddenTabs?.includes(item.key)).map((item) => ({
+      presentedModuleTabs(MAIN_TAB_DEFINITIONS,{tabLabels,hiddenTabs}).map((item) => ({
         ...TABS.find((tab) => tab.key === item.key),
         ...item,
         label: tabLabels?.[item.key] || item.label,
@@ -1033,7 +1042,11 @@ export default function Logistique() {
             {!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
 
             {!referencesLoading && !referencesError && sharedFkSettingsReady && hasScopedReferences ? (
-              <div className="logistics-shell-view">
+              <div className="logistics-shell-view" key={scopeKey+":"+depotScope.depotId}>
+                <DepotScopeBar/>
+                {activeTab === "depots" ? <Depots title={presentationTitle}/> : null}
+                {activeTab === "stocks-depots" ? <StocksDepots title={presentationTitle}/> : null}
+                {activeTab === "transferts" ? <Transferts title={presentationTitle} references={references}/> : null}
                 {activeTabConfig.key !== "dashboard" && activeFkMappings.length > 0 && showFkMappingPanel ? (
                   <ReferenceSettings title={presentationTitle || mainTabs.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={false} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setReferenceVersion(version=>version+1)} />
                 ) : null}

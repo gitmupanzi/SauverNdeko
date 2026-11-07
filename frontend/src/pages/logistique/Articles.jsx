@@ -1,3 +1,4 @@
+import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {moduleRights} from "../../services/moduleAccess";
@@ -55,6 +56,7 @@ function expiryTone(value) {
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
 export default function Articles({ title = "Articles", references:receivedReferences, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+ const depotScope=useDepotScope();
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const preferences=useTablePreferences("logistique.articles");
   const { user: currentUser } = useAuth();
@@ -95,7 +97,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
     if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||loading||pending||exporting||error)return;
     const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;
     setExporting(true);setExportError("");
-    const params=new URLSearchParams({...criteria,sortBy:gridState.sortBy,sortDir:gridState.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row.ID_Article))}:{})});
+    const params=new URLSearchParams({depotId:depotScope.depotId,...criteria,sortBy:gridState.sortBy,sortDir:gridState.sortDir,timeZone:"Africa/Kinshasa",columns:JSON.stringify(preferences.exportKeys),...(selection?{selection:JSON.stringify(selection.map(row=>row.ID_Article))}:{})});
     try{await downloadApiFile("/api/logistique/registre/articles/export."+format+"?"+params,{signal:controller.signal});}
     catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export a échoué.");}
     finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
@@ -160,7 +162,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
     { key:"CategorieArticle", label:"Catégorie", width:160, render:row => row.CategorieArticle || categoryLabelMap.get(String(row.ID_CategorieArticleFk)) || "—" },
     { key:"TypeArticle", label:"Type", width:140, render:row => row.TypeArticle || typeLabelMap.get(String(row.ID_TypeArticleFk)) || "—" },
     { key:"Unite", label:"Unité", width:120, render:row => row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || "—" },
-    { key:"QteArticle", label:"Stock actuel", width:130, align:"right", render:row => <span className="erp-stock-quantity">{formatNumber(row.QteArticle)}<small>{row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || ""}</small></span>, renderText:row => formatNumber(row.QteArticle) },
+    { key:"QteArticle", label:depotScope.depotId?"Stock du dépôt":"Stock entreprise", width:130, align:"right", render:row => <span className="erp-stock-quantity">{formatNumber(row.QteArticle)}<small>{row.Unite || unitLabelMap.get(String(row.ID_UniteFk)) || ""}</small>{depotScope.depotId?<small>Entreprise : {formatNumber(row.StockEntreprise)}</small>:null}</span>, renderText:row => formatNumber(row.QteArticle) },
     { key:"QteMinArticle", label:"Seuil minimum", align:"right", render:row => formatNumber(row.QteMinArticle) },
     { key:"QteACommander", label:"À commander", align:"right", render:row => formatNumber(row.QteACommander) },
     { key:"EtatStock", label:"État du stock", width:150, render:row => <ArticleStatus value={row.EtatStock} tone={stockTone(row.EtatStock)}/> },
@@ -192,7 +194,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
       setLoading(true);
       setError("");
 
-      const response = await ARTICLES_VIEW_CONFIG.fetchRows({ ...criteria, ...gridState });
+      const response = await ARTICLES_VIEW_CONFIG.fetchRows({ ...criteria, ...gridState, depotId:depotScope.depotId });
 
       if (!isMounted) {
         return;

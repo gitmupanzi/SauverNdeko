@@ -320,3 +320,36 @@ Une reprise incrémentale utilise 03, puis 04, puis 05, sur un socle possédant 
 La recette générale de lecture a exécuté **553 assertions réussies** sur la base applicative : treize registres, grains des analyses, identifiants des fiches, filtres, pagination, préférences, exports XLSX/CSV, dix indicateurs, graphiques, permissions, six compteurs enfants exhaustifs et quatre analyses cliquables au vrai grain. Une contre-vérification ciblée distincte a exécuté **444 assertions**, avec **94 GET API et 336 instructions SQL de lecture** : les 41 colonnes et leurs catalogues, 6 541 comparaisons parent/compteur sans écart, vingt détails d’analyse, exports et valeurs NULL. Les assertions ne désignent pas autant de requêtes HTTP. La transaction confirme `transaction_read_only = on`, avec garde SQL et sans création de compte ou de jeton ; aucune écriture de recette ne vise les données réelles.
 
 Les créations et mutations sont vérifiées par **39 tests API PostgreSQL privés**, incluant paniers de 1 à 100 lignes, parents communs, validations, annulation globale en cas de refus SQL tardif, doublons composites, audit, révision, idempotence et concurrence. Le frontend compte **219 assertions de composants**, et le diagnostic backend **311 contrôles de lecture**. Voir [le guide du module, les preuves et la limite de recette visuelle](../docs/module-organisation-territoriale.md).
+
+## Multi-dépôts — évolution du 7 novembre 2026
+
+L’extension canonique [20261107_02_multi_depots.sql](migrations/20261107_02_multi_depots.sql)
+ajoute les dépôts de chaque entreprise et les transferts internes avec réservation,
+expédition, transit, réceptions partielles, retours et constats d’écart motivés.
+Les quatre nouvelles tables, les vues, les fonctions, les colonnes et les triggers
+sont commentés. Les deux champs de référence et les six états communs font partie
+des métadonnées fermées d’installation ; aucun identifiant de catégorie numérique
+n’est codé dans les consommateurs. Les archives du socle publié restent inchangées.
+
+Lire le [contrat des dépôts et transferts](<3. Schema logistique/Logistique_MultiDepots.md>)
+et le [plan de migration](../docs/multi-depots-plan-migration.md).
+Le [précontrôle SQL](documentation/Multi_Depots_Precontrole.sql) est en lecture seule.
+La migration refuse un propriétaire manquant ou un stock historique non rapproché.
+Le rattachement au dépôt principal ne crée aucun bon, mouvement ou paiement et
+ne modifie aucune des anciennes colonnes. Les garde-fous physiques sont différés
+et sérialisés par article ; la présence d’un lot et sa réservation sont contrôlées
+dans leur dépôt réel. Le principal actif est conservé par entreprise.
+
+Les transferts ne sont pas des ventes : consommation et couverture les excluent,
+les factures et restitutions commerciales les refusent. La Caisse reste séparée.
+Le coût exact de l’expédition est repris à réception ; le transit reste présenté
+séparément du stock disponible. Un constat d’écart solde toute la quantité encore
+en transit de l’article choisi ; les autres lignes peuvent rester en transit.
+
+`SQL/tests/test_multi_depots_sql.py` vérifie, uniquement sur copie locale explicite,
+les clés dépôt dans les cinq lectures existantes, la conservation physique,
+les péremptions locales, les métadonnées, les commentaires et les protections financières.
+`test_multi_depots_runtime.py` contrôle sous `SET ROLE` l’accès append-only aux
+preuves (lecture/insertion autorisées, modification/suppression refusées). Les opérations
+et courses concurrentes sont couvertes par la recette API dédiée. Ces vérifications
+sur copie ne constituent pas à elles seules une installation en production.

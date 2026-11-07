@@ -9,7 +9,7 @@ from .currency import amounts_by_currency
 from .table_queries import document_zone
 
 KINDS={'mouvements','factures','reglements','lots'}
-COMMON={'q','dateFrom','dateTo','take','skip','sortBy','sortDir','columnFilters','timeZone','deviseId'}
+COMMON={'q','dateFrom','dateTo','take','skip','sortBy','sortDir','columnFilters','timeZone','deviseId','depotId'}
 SPECIFIC={'lots':{'lotId','articleId','categorieId','articleTypeId','stockState','peremption','archive','articleState'},'mouvements':{'articleId','commandeId','typeId','origine','sens','categorieId','articleTypeId'},'factures':{'commandeId','client','payment','late','dueFrom','dueTo'},'reglements':{'commandeId','client','modeId','codeFacture'}}
 INVOICE=""""CodeFacture" IS NOT NULL AND BTRIM("CodeFacture")<>''"""
 
@@ -43,7 +43,8 @@ def source(kind):
 
 def register_source(kind,raw,for_export=False):
     if set(raw)-(COMMON|SPECIFIC[kind]|({'columns','selection'} if for_export else set())):raise APIError('Critère non autorisé.')
-    obj=source(kind);filters={};conditions=[obj.get('_base_condition','TRUE')]
+    from .reads import depot_source
+    obj=depot_source(source(kind),raw);filters={};conditions=[obj.get('_base_condition','TRUE')]
     mapping=({'lotId':'ID_LotArticle','articleId':'ID_ArticleFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='lots' else {'articleId':'ID_ArticleFk','commandeId':'ID_cmdFk','typeId':'ID_TypeMvtFk','categorieId':'ID_CategorieArticleFk','articleTypeId':'ID_TypeArticleFk'} if kind=='mouvements' else {'commandeId':'ID_Commande','client':'ID_TiersFk'} if kind=='factures' else {'commandeId':'ID_Commande','client':'ID_ClientFk','modeId':'ID_ModeReglementFk'})
     for key,field in mapping.items():
         if raw.get(key) not in (None,'','all'):filters[field]=positive(raw[key])

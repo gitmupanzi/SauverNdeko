@@ -108,7 +108,9 @@ def return_policy(actor,snapshot,*,writing=False):
     from .receipts import entry_types,default_entry_type
     from .currency import validate_currency
     reason='';selected=None
-    if snapshot['raw'].get('OrigineBon') in {'stock_initial','reprise_mouvement'}:
+    if snapshot['raw'].get('ID_TransfertDepotFk'):
+        reason='Ce bon appartient à un transfert interne. Réceptionnez ou retournez son transit depuis la fiche du transfert.'
+    elif snapshot['raw'].get('OrigineBon') in {'stock_initial','reprise_mouvement'}:
         reason='Un bon de stock initial ou de reprise se corrige par un nouveau bon, sans restitution commerciale.'
     elif inventory_adjustment(snapshot['raw']['ID_Commande']):
         reason='Un bon d’inventaire se corrige par le comptage ou son annulation, sans restitution commerciale.'
@@ -211,6 +213,8 @@ def record_return(actor,command_id,body):
             if not policy['canReturn']:raise APIError(policy['reason'],'RETURN_NOT_ALLOWED',409)
             if not isinstance(body['_version'],str) or not hmac.compare_digest(policy['revision'],body['_version']):
                 raise APIError('La sortie ou ses restitutions ont changé. Rechargez les quantités restantes.','RETURN_CONFLICT',409)
+            from .depots import depot
+            depot(actor,source['ID_DepotFk'],lock=True)
             from .order_composer import article_contexts,mapped_error
             article_contexts(actor,[{'index':line['index'],'data':{'ID_ArticleFk':line['ID_ArticleFk']}} for line in data['lignes']],active=False)
             budget={row['ID_ArticleFk']:row for row in snapshot['lignes']};total=Decimal('0')
@@ -227,7 +231,7 @@ def record_return(actor,command_id,body):
                     return_error(prefix+'.Lots','Précisez les lots d’origine : la part sortie sans lot est insuffisante.','RETURN_LOT_CONFLICT',409)
                 total+=line_amount(row['QteRetour'],available['PUHistorique'])
                 if total>Decimal('9999999999.99'):return_error(prefix+'.QteRetour','La valeur de cet événement dépasse la capacité du bon de retour.')
-            child=mutate('T_Commande',actor,{'ID_TypeCmdFk':policy['entryType']['id'],'ID_DeviseFk':source['ID_DeviseFk'],
+            child=mutate('T_Commande',actor,{'ID_TypeCmdFk':policy['entryType']['id'],'ID_DeviseFk':source['ID_DeviseFk'],'ID_DepotFk':source.get('ID_DepotFk'),
                  'DateCmd':data['DateCmd'],'RefCmd':'Retour de '+str(source.get('CodeCmd') or '#'+str(command_id)),
                  'ID_ClientFk':source.get('ID_ClientFk'),'ID_TiersFk':source.get('ID_TiersFk'),'NomClientSaisi':source.get('NomClientSaisi'),
                  'ObsCmd':('Retour de stock — '+data['motif'])[:255]},operation='create')
@@ -300,7 +304,8 @@ def annotate_return_context(rows,actor):
             from .currency import normalize_code
             try:currency_valid=state['currency_present'] and bool(normalize_code(state['currency_code']))
             except APIError:currency_valid=False
-            reason=('Effectuez le retour dans l’organisation du bon.' if state['organisation']!=actor.organisation else
+            reason=('Ce bon appartient à un transfert interne. Utilisez la fiche du transfert.' if row.get('ID_TransfertDepotFk') else
+                    'Effectuez le retour dans l’organisation du bon.' if state['organisation']!=actor.organisation else
                     'Un bon d’inventaire ne permet pas de restitution commerciale.' if state['inventory_adjustment'] else
                     'Ce document n’est pas une sortie originale.' if state['origin'] is not None or state['nature']!='sortie' else
                     'Rapprochez les lignes et mouvements historiques avant un retour.' if not state['coherent'] else

@@ -35,7 +35,8 @@ globalThis.__auth={isAuthenticated:true,user:{IdUser:1,Is_Admin:true,permissions
  [/\.\/AppIcon$/,'icon',`export default function Icon(){}`],
  [/^react-router-dom$/,'links',`export function Link(){}`],
  ]);
- for(const title of ['Administration','Logistique','Référentiels','Support','Paramètres']){const tree=header.default({title}),children=tree.props.children.flat().filter(Boolean);ok(children.some(node=>node.type?.name==='Picker'));}
+ const descendantPicker=node=>Array.isArray(node)?node.some(descendantPicker):Boolean(node&&(node.type?.name==='Picker'||descendantPicker(node.props?.children)));
+ for(const title of ['Administration','Logistique','Référentiels','Support','Paramètres']){ok(descendantPicker(header.default({title})));ok(!descendantPicker(header.default({title,showEntityScope:false})));}
  const transport=await compile("export * from './src/services/entityScope';",[]);
  transport.configureEntityScope({userId:'1',entityId:'7',globalAdmin:true});
  for(const route of ['/api/systeme/administration/synthese','/api/systeme/administration/registres/licences?take=2','/api/systeme/administration/saisie-multiple/utilisateurs','/api/systeme/utilisateurs','/api/systeme/entites/7','/api/systeme/licences/4','/api/systeme/fk-correspondances','/api/systeme/admin-ui-settings','/api/systeme/personnel/references','/api/logistique/articles','/api/support/tickets/12/documents','/api/tableaux/support.tickets/preferences','/api/referentiel/champs-references','/api/tableaux/admin.utilisateurs/preferences']){const snapshot=transport.captureEntityScope(route);eq(snapshot.scoped,true);eq(snapshot.headers,{'X-Entite-ID':'7'});}

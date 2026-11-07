@@ -23,6 +23,8 @@ Pop-Location
 
 Le démarrage utilise la base existante : aucune base, table ou migration SQL n’est créée automatiquement. Une base de test n’est pas nécessaire pour utiliser l’application.
 
+Le lanceur applique les hôtes locaux et l’accès HTTP uniquement au processus Django de développement, même si les options Render sont actives dans `.env`. Il ne modifie ni ce fichier ni `DATABASE_URL` : une URL distante reste une connexion à la base distante. Le niveau de débogage et les permissions d’écriture restent ceux de votre configuration.
+
 ## Démarrer et arrêter
 
 Depuis PowerShell à la racine du projet :

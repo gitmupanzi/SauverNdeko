@@ -9,7 +9,7 @@ from apps.core.repository import predicate, page, get_record, positive, clean
 from apps.core.responses import ok, APIError
 from .currency import MONETARY_KEYS, amounts_by_currency, scalar_amount, validate_currency
 
-QUERY_KEYS = {"q", "dateFrom", "dateTo", "take", "skip", "sortBy", "sortDir", "columnFilters", "timeZone", "deviseId"}
+QUERY_KEYS = {"q", "dateFrom", "dateTo", "take", "skip", "sortBy", "sortDir", "columnFilters", "timeZone", "deviseId", "depotId"}
 INDICATORS = {
     "articles": ("V_Article", "TRUE", "COUNT(*)", "Articles", "produit", "Tous les articles autorisés."),
     "commandes": ("V_Commande", "TRUE", "COUNT(*)", "Bons de stock", "commande", "Tous les bons de stock autorisés."),
@@ -54,6 +54,48 @@ def params_only(raw):
 def row_source(obj):
     return obj.get("_row_source") or db.qualified(obj["schema"], obj["name"]) + " v"
 
+def depot_source(obj,raw):
+    """Projection du stock présent local, sans remplacer le stock durable de l'article."""
+    if obj.get('_depot_scope') or raw.get('depotId') in (None,'','all'):return obj
+    selected=positive(raw['depotId'],'Dépôt')
+    if obj['name']=='V_AlertStock':
+        article=depot_source(view('logistique','V_Article'),raw)
+        fields=['(coalesce(a."QteArticle",0)-coalesce(a."QteMinArticle",0)) AS "Marge"' if c['column_name']=='Marge' else 'a.'+db.ident(c['column_name']) for c in obj['columns']]
+        return {**obj,'_depot_scope':selected,'_row_source':'(SELECT '+','.join(fields)+' FROM '+row_source(article).strip().removesuffix(' v')+' a WHERE a."EstRupture" OR a."EstAlerteStock") v'}
+    if obj['name'] in {'V_AuditStock','V_ConsoMensuelle','V_CouvertureStock','V_ConsoMensuelleDevise'}:
+        target='V_ConsoMensuelleDepot' if obj['name']=='V_ConsoMensuelleDevise' else obj['name']+'Depot'
+        return {**obj,'columns':[*obj['columns'],{'column_name':'ID_DepotFk','data_type':'bigint','is_nullable':'NO'}],
+                '_row_source':'logistique.'+db.ident(target)+' v'}
+    if obj['name']=='V_Mouvement' and any(c['column_name']=='StockActuel' for c in obj['columns']):
+        if obj.get('_local_stock_depot')==selected:return obj
+        fields=['s."StockPhysique" AS "StockActuel"' if c['column_name']=='StockActuel' else 'm.'+db.ident(c['column_name']) for c in obj['columns']]
+        return {**obj,'_local_stock_depot':selected,'_row_source':'(SELECT '+','.join(fields)+' FROM '+row_source(obj).strip().removesuffix(' v')+' m JOIN logistique."V_StockDepot" s ON s."ID_ArticleFk"=m."ID_ArticleFk" AND s."ID_DepotFk"='+str(selected)+') v'}
+    if obj['name'] in {'V_LotArticleStock','V_RegistreLots'}:
+        replaced={'StockLot','QuantiteEntree','QuantiteSortie','StockArticle','EtatStockLot'}
+        fields=['a.'+db.ident(c['column_name']) for c in obj['columns'] if c['column_name'] not in replaced]
+        fields.extend(['coalesce(s."StockLot",0) AS "StockLot"','coalesce(m.entree,0) AS "QuantiteEntree"','coalesce(m.sortie,0) AS "QuantiteSortie"'])
+        names={c['column_name'] for c in obj['columns']}
+        if 'StockArticle' in names:fields.append('st."StockPhysique" AS "StockArticle"')
+        if 'EtatStockLot' in names:fields.append('CASE WHEN coalesce(s."StockLot",0)>0 THEN \'Disponible\' WHEN coalesce(s."StockLot",0)=0 THEN \'Épuisé\' ELSE \'Incohérent\' END AS "EtatStockLot"')
+        sql='(SELECT '+','.join(fields)+' FROM '+row_source(obj).strip().removesuffix(' v')+' a LEFT JOIN logistique."V_StockLotDepot" s ON s."ID_LotArticleFk"=a."ID_LotArticle" AND s."ID_DepotFk"='+str(selected)+' JOIN logistique."V_StockDepot" st ON st."ID_ArticleFk"=a."ID_ArticleFk" AND st."ID_DepotFk"='+str(selected)+''' LEFT JOIN LATERAL (SELECT sum(ml."Quantite") FILTER(WHERE logistique.fn_effet_type_bon(m."ID_TypeMvtFk")=1) entree,sum(ml."Quantite") FILTER(WHERE logistique.fn_effet_type_bon(m."ID_TypeMvtFk")=-1) sortie FROM logistique."T_MouvementLot" ml JOIN logistique."T_Mouvement" m ON m."ID_Mvt"=ml."ID_MvtFk" WHERE ml."ID_LotArticleFk"=a."ID_LotArticle" AND m."ID_DepotFk"='''+str(selected)+') m ON true) v'
+        return {**obj,'_row_source':sql,'_depot_scope':selected}
+    if obj['name']!='V_Article':return obj
+    expiry={'StockPerime','StockProchePeremption','StockSansDatePeremption','StockSansLot','DateProchainePeremption','LotsPerimes','LotsProchesPeremption','SeuilAlerteJours','EstPerime','EstAlertePeremption','EtatPeremption','JoursAvantPeremption','PrioritePeremption'}
+    calculations={'QteACommander':'greatest(coalesce(a."QteMinArticle",0)-s."StockDisponible",0)',
+        'EtatStock':'''CASE WHEN s."StockPhysique"<=0 THEN 'Rupture' WHEN s."StockPhysique"<=a."QteMinArticle" THEN 'Stock faible' ELSE 'Disponible' END''',
+        'PrioriteStock':'CASE WHEN s."StockPhysique"<=0 THEN 1 WHEN s."StockPhysique"<=a."QteMinArticle" THEN 2 ELSE 3 END',
+        'ValeurStockAchat':'s."StockPhysique"*a."PUArticle"','ValeurStockVente':'s."StockPhysique"*a."PVArticle"',
+        'StockVentileLots':'s."StockPhysique"-s."StockSansLot"',
+        'NombreLots':'(SELECT count(*) FROM logistique."V_StockLotDepot" sl WHERE sl."ID_ArticleFk"=a."ID_Article" AND sl."ID_DepotFk"=s."ID_DepotFk" AND sl."StockLot">0)'}
+    replaced={'QteArticle','EstRupture','EstAlerteStock','PoidsStockKg'}|expiry|set(calculations)
+    fields=['a.'+db.ident(c['column_name']) for c in obj['columns'] if c['column_name'] not in replaced]
+    fields.extend('p.'+db.ident(c['column_name']) for c in obj['columns'] if c['column_name'] in expiry)
+    fields.extend(expression+' AS '+db.ident(key) for key,expression in calculations.items())
+    fields.extend(['s."StockPhysique" AS "QteArticle"','a."QteArticle" AS "StockEntreprise"','s."StockPhysique" AS "StockDepot"','s."StockDisponible" AS "StockDisponible"','s."StockReserve" AS "StockReserve"','(s."StockPhysique"<=0) AS "EstRupture"','(s."StockPhysique"<=a."QteMinArticle") AS "EstAlerteStock"'])
+    if any(c['column_name']=='PoidsStockKg' for c in obj['columns']):fields.append('s."StockPhysique"*a."PoidsUnitaire"*CASE lower(btrim(a."UnitePoids")) WHEN \'mg\' THEN 0.000001 WHEN \'g\' THEN 0.001 WHEN \'kg\' THEN 1 WHEN \'t\' THEN 1000 END AS "PoidsStockKg"')
+    columns=[*obj['columns'],*[{'column_name':key,'data_type':'numeric','is_nullable':'YES'} for key in ('StockEntreprise','StockDepot','StockDisponible','StockReserve')]]
+    return {**obj,'columns':columns,'_depot_scope':selected,'_row_source':'(SELECT '+','.join(fields)+' FROM '+row_source(obj).strip().removesuffix(' v')+' a JOIN logistique."V_StockDepot" s ON s."ID_ArticleFk"=a."ID_Article" AND s."ID_DepotFk"='+str(selected)+' JOIN logistique."V_ArticlePeremptionDepot" p ON p."ID_Article"=a."ID_Article" AND p."ID_DepotFk"=s."ID_DepotFk") v'}
+
 def source_for_indicator(key, name):
     obj = view("logistique", name)
     if key in {"articles", "articlesCategorie"}:
@@ -90,6 +132,15 @@ def read_predicate(obj, actor, raw=None, fixed_filters=None):
     period = {key: params.pop(key) for key in ["dateFrom", "dateTo"] if params.get(key)}
     params["filters"] = fixed_filters or {}
     where, values = predicate(obj, actor, params)
+    from .depots import requested_depot
+    selected=requested_depot(actor,raw or {})
+    if selected and not obj.get('_depot_scope'):
+        columns={c['column_name'] for c in obj['columns']}
+        if 'ID_DepotFk' in columns:where+=' AND v."ID_DepotFk"=%s';values.append(selected)
+        else:
+            command=next((key for key in ('ID_Commande','ID_CmdFk','ID_cmdFk','ID_CommandeFk') if key in columns),None)
+            if command:
+                where+=' AND EXISTS(SELECT FROM logistique."T_Commande" depot_cmd WHERE depot_cmd."ID_Commande"=v.'+db.ident(command)+' AND depot_cmd."ID_DepotFk"=%s)';values.append(selected)
     if obj.get("_composition_scope"):
         from apps.core.tenancy import require_entity
         where += ' AND v."IdEntiteFk"=%s'
@@ -122,6 +173,7 @@ def read_scope(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popul
     return params, where, values, order, sort, direction, applied
 
 def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, population_query=None):
+    obj=depot_source(obj,raw or {})
     params, where, values, order, sort, direction, applied = read_scope(obj, actor, raw, condition, fixed_filters, population_query)
     take, skip = page(params)
     columns = [col["column_name"] for col in obj["columns"]]
@@ -133,6 +185,7 @@ def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popula
     return clean(rows), {"columns":columns, "columnTypes":{col["column_name"]:col["data_type"] for col in obj["columns"]}, "totalCount":total, "filteredCount":count, "count":len(rows), "take":take, "skip":skip, "sortBy":sort, "sortDir":direction, "columnFilters":applied}, (where,values)
 
 def metric_value(obj, actor, raw, condition, expression, fixed_filters=None):
+    obj=depot_source(obj,raw)
     where, values = read_predicate(obj, actor, raw, fixed_filters)
     if expression.startswith("SUM("):
         return scalar_amount(amounts_by_currency(obj, row_source(obj), where + " AND (" + condition + ")", values, expression))
@@ -158,6 +211,7 @@ def resolve_indicator(key, raw):
 
 def indicator_details(actor, key, raw):
     obj, condition, expression, label, kind, definition, fixed_filters = resolve_indicator(key, raw)
+    obj=depot_source(obj,raw)
     name = obj["name"]
     population_query = raw.get("populationQ")
     metric_criteria = {**raw, "q": population_query} if population_query is not None else dict(raw)
@@ -176,6 +230,7 @@ def indicator_details(actor, key, raw):
 
 def article_overview(actor, raw):
     obj = source_for_indicator("articles", "V_Article")
+    obj=depot_source(obj,raw)
     where, values = read_predicate(obj, actor, raw)
     rows = db.query(
         """
@@ -237,6 +292,7 @@ def register_source(kind, raw, for_export=False):
         return obj,states[state],filters
     article = kind == "articles"
     obj = view("logistique", "V_Article" if article else "V_Commande")
+    if article:obj=depot_source(obj,raw)
     if not article:
         # La vue commune ne produit jamais une somme de quantités d’unités différentes.
         names=[col["column_name"] for col in obj["columns"] if col["column_name"]!="QteTotale"]
@@ -312,6 +368,12 @@ def consultation(actor, kind, pk, section, raw):
         raise APIError("Fiche introuvable.", "NOT_FOUND", 404)
     pk = positive(pk)
     header = get_record(view("logistique", "V_Article" if kind == "produit" else "V_Commande"), actor, {"ID_Article" if kind == "produit" else "ID_Commande": pk})
+    if kind=='produit':
+        from .depots import requested_depot,article_stock
+        selected=requested_depot(actor,raw)
+        if selected:
+            header=article_stock(header,selected)
+            header.update(db.one('SELECT * FROM logistique."V_ArticlePeremptionDepot" WHERE "ID_Article"=%s AND "ID_DepotFk"=%s',[pk,selected]) or {})
     if not section or section == "identite":
         data = {"record": header, "sections": ["identite", *SECTIONS[kind]]}
         from .followup_folders import record_folders
@@ -336,6 +398,7 @@ def consultation(actor, kind, pk, section, raw):
     if section == "reglements" and not value:
         return [], {"filteredCount": 0, "totalCount": 0, "count": 0, "take": 25, "skip": 0, "columns": []}
     obj = model(name) if name.startswith("T_") else view("logistique", name)
+    obj=depot_source(obj,raw)
     fixed = {field: value}
     rows, meta, _ = read_page(obj, actor, raw, fixed_filters=fixed)
     # Le total de la rubrique reste celui de cet objet, avant sa recherche locale.
@@ -343,7 +406,8 @@ def consultation(actor, kind, pk, section, raw):
     meta["totalCount"] = db.one("SELECT COUNT(*) AS n FROM " + row_source(obj) + " WHERE " + parent_where, parent_values)["n"]
     if kind=="produit" and section=="lots":
         from .lots import stock_state
-        meta["lotStock"]=clean(stock_state(pk))
+        from .depots import requested_depot
+        meta["lotStock"]=clean(stock_state(pk,requested_depot(actor,raw)))
     return rows, meta
 
 class RegisterReadView(APIView):

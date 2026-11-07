@@ -24,7 +24,7 @@ from .services import mutate_line
 
 MAX_LINES=50
 MAX_AMOUNT=Decimal('9999999999.99')
-HEADER_GENERATED={'IdEntiteFk','ID_Commande','DateHeureAutoCmd','DateHeureAutoFacture','MontantHT','MontantTTC','MontantRegleFacture','MontantResteFacture'}
+HEADER_GENERATED={'IdEntiteFk','ID_Commande','DateHeureAutoCmd','DateHeureAutoFacture','MontantHT','MontantTTC','MontantRegleFacture','MontantResteFacture','ID_TransfertDepotFk','OperationTransfert'}
 
 
 def composition_error(field,message,code='COMPOSITION_VALIDATION',status=400):
@@ -271,6 +271,10 @@ def composition_snapshot(actor,command_id):
         FROM parent v LEFT JOIN logistique."V_Commande" cv ON cv."ID_Commande"=v."ID_Commande"''',
         [*values,*article_values])
     if not row:raise APIError('Objet introuvable dans votre périmètre.','NOT_FOUND',404)
+    if row['bon'].get('ID_DepotFk'):
+        from .depots import article_stock
+        for line in row['lignes']:
+            if line.get('article'):line['article']=article_stock(line['article'],row['bon']['ID_DepotFk'])
     return row
 
 
@@ -297,9 +301,11 @@ def composition_metadata(snapshot,actor):
     reason=state['reason'] or ('Ce bon appartient à une autre organisation.' if snapshot['owner_entity']!=actor.organisation else
                               'Votre rôle ne permet pas de modifier les bons.' if not can_manage else
                               'Les écritures sont momentanément indisponibles.' if settings.DB_READ_ONLY else '')
+    nature=type_context(snapshot['bon'].get('ID_TypeCmdFk'),required=False)
+    if snapshot['bon'].get('ID_TransfertDepotFk'):nature['canInvoice']=False
     return {'revision':composition_revision(snapshot),'canEdit':not reason,'reason':reason,'maxLines':edit_line_limit(snapshot),
             'canChangeType':rights['canChangeType'] and not reason,'canChangeCurrency':rights['canChangeCurrency'] and not reason,
-            **type_context(snapshot['bon'].get('ID_TypeCmdFk'),required=False)}
+            **nature}
 
 
 def edit_composition_hash(actor,data,command_id):
@@ -346,7 +352,9 @@ def update_composition(actor,command_id,body):
         patch.pop('IdEntiteFk',None)
         existing={row['ID_ArticleFk']:row for row in snapshot['lignes']}
         requested={item['data']['ID_ArticleFk']:item for item in data['lignes']}
-        # Verrouiller tous les articles une seule fois, dans l’ordre, avant la première écriture.
+        from .depots import resolve_header
+        resolve_header(actor,dict(patch),current)
+        # Verrouiller tous les articles une seule fois, dans l’ordre, après le dépôt.
         context_lines=[{'index':requested[identifier]['index'] if identifier in requested else 0,'data':{'ID_ArticleFk':identifier}}
                        for identifier in sorted(set(existing)|set(requested))]
         article_contexts(actor,context_lines,active=False)

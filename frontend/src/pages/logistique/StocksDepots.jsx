@@ -1,0 +1,20 @@
+import useLogisticsRegisterSettings from "../../hooks/useLogisticsRegisterSettings";
+import RegisterSettingsButton from "../../components/RegisterSettingsButton";
+import {useEffect,useState} from "react";
+import {useDepotScope} from "../../contexts/DepotScopeContext";
+import {useEntityScope} from "../../contexts/EntityScopeContext";
+import {useConsultations} from "../../components/ConsultationProvider";
+import RegisterSurface from "../../components/RegisterSurface";
+import DataTableToolbar from "../../components/DataTableToolbar";
+import ActionButton from "../../components/ActionButton";
+import {SimpleTable,formatNumber} from "./logistiqueShared";
+import {depotRead,depotFailure} from "../../services/depots";
+export default function StocksDepots({title="Stocks par dépôt",articleId=null,embedded=false,selectedDepotId=null}){
+ const depot=useDepotScope(),scope=useEntityScope(),consult=useConsultations(),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[grid,setGrid]=useState({take:25,skip:0,sortBy:"NomArticle",sortDir:"asc"}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0),[density,setDensity]=useState("compact");
+ useEffect(()=>{const controller=new AbortController();setLoading(true);depotRead("/stocks-depots",{q:query,...grid,depotId:selectedDepotId??depot.depotId,articleId},controller.signal).then(response=>{if(controller.signal.aborted)return;setLoading(false);if(!response?.success){setRows([]);setMeta(null);setError(depotFailure(response,"Les stocks par dépôt ne sont pas disponibles."));return;}setRows(Array.isArray(response.data)?response.data:[]);setMeta(response.meta||null);setError("");});return()=>controller.abort();},[scope.scopeKey,depot.depotId,selectedDepotId,articleId,query,grid,revision]);
+ const tools=useLogisticsRegisterSettings("stocks-depots",{query:{q:query,depotId:selectedDepotId??depot.depotId,articleId},grid,loading,pending:search.trim()!==query,error,count:meta?.filteredCount});
+ const settings=<RegisterSettingsButton buttonRef={tools.columnsAnchorRef} expanded={tools.columnsOpen} onTableSettings={tools.open}/>;
+ const columns=[{key:"NomArticle",label:"Article",width:240},{key:"NomDepot",label:"Dépôt",width:180},...[['StockPhysique','Présent'],['StockDisponible','Disponible'],['StockReserve','Réservé'],['StockIndisponible','Indisponible'],['StockEntreprise','Total entreprise']].map(([key,label])=>({key,label,align:"right",render:row=>formatNumber(row[key])+(row.AbrUnite?" "+row.AbrUnite:"")}))];
+ const content=<div className="erp-register-table erp-results" data-density={density}>{error?<p role="alert" className="record-field-error">{error}<ActionButton icon="refresh" onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton></p>:null}<SimpleTable {...tools.tableProps} rows={rows} columns={columns} getRowId={row=>String(row.ID_DepotFk??row.ID_Depot)+":"+row.ID_ArticleFk} serverMeta={meta} serverState={grid} onServerChange={patch=>setGrid(value=>({...value,...patch}))} loading={loading} defaultPinnedColumns={[]} onRowConsult={row=>consult.openProduct({...row,ID_Article:row.ID_ArticleFk})} consultColumns={["NomArticle"]} toolbar={<DataTableToolbar {...tools.toolbarProps} showFilters={false} search={search} setSearch={setSearch} onApply={()=>{setQuery(search.trim());setGrid(value=>({...value,skip:0}));}} onReset={()=>{setSearch("");setQuery("");setGrid(value=>({...value,skip:0}));}} pending={search.trim()!==query} take={grid.take} onTake={take=>setGrid(value=>({...value,take,skip:0}))} density={density} toggleDensity={()=>setDensity(value=>value==="compact"?"airy":"compact")} loading={loading} placeholder="Rechercher un article ou un dépôt…"/>}/></div>;
+ return embedded?<><div className="inventory-line-actions">{settings}</div>{content}</>:<RegisterSurface title={title} actions={settings} subtitle="Le disponible exclut les réservations et les lots indisponibles. Le total présent exclut le transit, consultable dans les transferts.">{content}</RegisterSurface>;
+}

@@ -1,3 +1,4 @@
+import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
@@ -32,6 +33,7 @@ function fieldValue(key,value,references){
  return key==="dateFrom"||key==="dateTo"?formatDate(value):value;
 }
 export default function CommandeDetails({title = "Lignes des bons", selectedCommande,references:receivedReferences,refreshKey,onDataChanged,sharedTable,onToggleFkMappings,onClearCommande}) {
+ const depotScope=useDepotScope();
  const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.lignes");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders();
@@ -62,7 +64,7 @@ export default function CommandeDetails({title = "Lignes des bons", selectedComm
  useEffect(()=>{if(sharedTable?.composerMode==="create"){if(canWrite)setEditor({line:null});sharedTable?.setComposerMode?.("view");}},[sharedTable?.composerMode,canWrite]);
  useEffect(()=>{
   let active=true;setLoading(true);setError("");
-  const params=new URLSearchParams({...criteria,...grid,...(parentId?{commandeId:parentId}:{})});
+  const params=new URLSearchParams({depotId:depotScope.depotId,...criteria,...grid,...(parentId?{commandeId:parentId}:{})});
   requestJson("/api/logistique/registre/lignes?"+params,{requiresAuth:true}).then(response=>{
    if(!active)return;
    if(!response?.success){setRows([]);setMeta(null);setSelected([]);setError(response?.message||"Les lignes n’ont pas pu être chargées.");setLoading(false);return;}
@@ -73,7 +75,7 @@ export default function CommandeDetails({title = "Lignes des bons", selectedComm
  async function exportLines(format="xlsx", selection=null){
   if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||loading||pending||exporting||!meta?.filteredCount)return;
   const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
-  const params=new URLSearchParams({...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,...(parentId?{commandeId:parentId}:{}),columns:JSON.stringify(preferences.exportKeys),timeZone:"Africa/Kinshasa",...(selection?{selection:JSON.stringify(selection.map(row=>({ID_CmdFk:row.ID_CmdFk,ID_ArticleFk:row.ID_ArticleFk})))}:{})});
+  const params=new URLSearchParams({depotId:depotScope.depotId,...criteria,sortBy:grid.sortBy,sortDir:grid.sortDir,...(parentId?{commandeId:parentId}:{}),columns:JSON.stringify(preferences.exportKeys),timeZone:"Africa/Kinshasa",...(selection?{selection:JSON.stringify(selection.map(row=>({ID_CmdFk:row.ID_CmdFk,ID_ArticleFk:row.ID_ArticleFk})))}:{})});
   try{await downloadApiFile("/api/logistique/registre/lignes/export."+format+"?"+params,{signal:controller.signal});}catch(failure){if(!controller.signal.aborted)setExportError(failure.message||"L’export a échoué.");}finally{if(exportRequest.current===controller){exportRequest.current=null;setExporting(false);}}
  }
  const columns=useMemo(()=>[

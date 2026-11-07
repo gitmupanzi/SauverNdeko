@@ -1,6 +1,18 @@
 import {useEffect,useState} from "react";
 import {requestJson} from "../services/api";
 
+// Le masquage du menu n'altère ni l'identité d'un lien ni les contrôles d'accès.
+export function moduleTabKey(tabs, key, fallback = "dashboard") {
+  return tabs.find(tab => tab.key === key)?.key ?? fallback;
+}
+
+export function presentedModuleTabs(tabs, presentation) {
+  return tabs.filter(tab => !presentation?.hiddenTabs?.includes(tab.key)).map(tab => ({
+    ...tab,
+    label:presentation?.tabLabels?.[tab.key] || tab.label,
+  }));
+}
+
 export function useModulePresentation(moduleKey,{entityId,scopeKey}) {
   const [state,setState]=useState(null);
   const [revision,setRevision]=useState(0);
