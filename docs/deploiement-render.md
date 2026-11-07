@@ -1,6 +1,6 @@
 # Déploiement de SauverNdeko sur Render
 
-Préparation du 4 novembre 2026. Les fichiers de déploiement sont livrés dans le dépôt ; aucun service, abonnement payant ou base Render n'a été créé pendant cette préparation.
+Préparation initiale du 4 novembre 2026. Les constats de cette préparation sont historiques. L'[audit local du 7 novembre](audit-livraison-render-20261107.md) distingue désormais la construction réussie observée dans les journaux Render, les migrations manquantes et le blocage de facturation GitHub.
 
 ## Architecture retenue
 
@@ -63,6 +63,10 @@ Créer l'environnement GitHub `render-production`, limiter les branches autoris�
 
 Le workflow **Livraison Render contrôlée**, dans `.github/workflows/livraison-render.yml`, s'exécute uniquement manuellement (`workflow_dispatch`) depuis `main`. Les déploiements Render automatiques sur chaque push sont désactivés par `autoDeployTrigger: off`.
 
+Les trois jobs ciblent explicitement `ubuntu-24.04` pour éviter une transition implicite de `ubuntu-latest`. Cela ne débloque pas un compte GitHub verrouillé pour facturation. Si aucune étape n'a commencé et que l'annotation signale ce verrouillage, régulariser le compte puis vérifier qu'un job peut réellement démarrer. [Explication GitHub](https://docs.github.com/en/billing/how-tos/troubleshooting/locked-account).
+
+Un parcours alternatif est préparé dans [la maintenance depuis un poste](maintenance-render-depuis-poste.md), avec plan en lecture seule par défaut, destination explicite, copie propre du commit, construction Docker avant migrations et réapplication du script de droits partagé. Il exige un poste équipé et ne déclenche aucun déploiement. Il n'a pas été exécuté contre Render pendant l'audit. Ne pas lancer simultanément cette maintenance et le workflow GitHub.
+
 Avant son lancement, disposer d'une sauvegarde DB **et médias** vérifiée, d'un retour compatible et d'une fenêtre de maintenance lorsque le changement l'exige. Le champ `backup_reference` conserve la référence de cette preuve ; **le workflow ne crée ni ne restaure cette sauvegarde et ne prouve pas sa validité**. Il exige l'attestation de l'opérateur. Aucun export de données clientes n'est téléversé vers les artefacts GitHub par ce workflow.
 
 Si le journal Render indique « Migrations métier en attente », la construction de l’image peut avoir réussi. La base doit être mise à niveau avant que le service démarre avec ce commit. Vérifier que **Auto-Deploy** est désactivé dans les réglages du service, puis lancer **Livraison Render contrôlée** dans GitHub Actions pour appliquer les migrations et déployer le commit correspondant.
@@ -88,6 +92,8 @@ Le disque persistant conserve les fichiers entre redémarrages. Il limite le ser
 Les sauvegardes PostgreSQL et médias restent distinctes et doivent être conservées hors du seul disque actif, avec une restauration de recette. Les fonctions de sauvegarde de l'offre Render choisie doivent être vérifiées avant l'ouverture client. Cette préparation ne configure ni sauvegarde externe planifiée, ni coût commercial, ni domaine, ni serveur SMTP sur un compte réel. Une évolution vers du stockage objet privé pourra permettre plusieurs instances, avec adaptation des chemins et contrôles d'accès ; elle n'est pas nécessaire à cette première architecture et n'est pas livrée ici.
 
 ## Contrôles effectués dans le poste de développement
+
+Les résultats ci-dessous correspondent à la préparation initiale. Les tests, corrections de sauvegarde et limites constatés le 7 novembre sont consignés dans [le bilan actualisé](audit-livraison-render-20261107.md). L'option d'installation vierge doit être revalidée après les migrations du 6 novembre : le paquet de structure courant et le socle historique ne sont plus au même état. Ne pas utiliser une nouvelle attestation pour masquer cet écart.
 
 - 16 tests autonomes réussis : hôtes/origines, refus des secrets de maintenance dans le web, ports privés, contrôle de versions sans écriture, arrêt des processus, confirmations de livraison, garde du hook, commit exact, couverture des préfixes de routes backend et arguments de mise à jour des droits sans mot de passe dans la commande.
 - Compilation Python des fichiers Render et de `config.maintenance` réussie.

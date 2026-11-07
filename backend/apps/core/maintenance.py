@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -9,6 +10,56 @@ from pathlib import Path
 from django.conf import settings
 from django.db import connection, transaction
 from . import db
+
+
+CONSTRAINT_COMMENTS_FILE = 'constraint-comments.sql'
+CONSTRAINT_COMMENTS_QUERY = """SELECT format(
+    'COMMENT ON CONSTRAINT %%I ON %%I.%%I IS %%L;',
+    k.conname,n.nspname,c.relname,obj_description(k.oid,'pg_constraint')) AS command
+    FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+    AND n.nspname !~ '^pg_' AND k.contype='t'
+    AND obj_description(k.oid,'pg_constraint') IS NOT NULL
+    AND (%s::text[] IS NULL OR n.nspname=ANY(%s))
+    ORDER BY n.nspname,c.relname,k.conname"""
+
+
+def constraint_trigger_comments(schemas=None, query=None):
+    """Compléter les COMMENT ON CONSTRAINT omis par pg_dump PostgreSQL 18.
+
+    PostgreSQL cite lui-même identifiants et littéraux ; aucun commentaire
+    récupéré n'est interpolé par Python dans une commande SQL.
+    """
+    rows=(query or db.query)(CONSTRAINT_COMMENTS_QUERY,[schemas,schemas])
+    return [row['command'] for row in rows]
+
+
+def constraint_comments_text(commands):
+    return ('-- Métadonnées des contraintes-triggers omises par pg_dump.\n'
+            +''.join(command+'\n' for command in commands))
+
+
+def backup_constraint_comments(source, manifest):
+    """Valider le complément avant toute création de base de restauration."""
+    if type(manifest.get('format')) is not int or manifest['format'] not in {1,2}:
+        raise RuntimeError('Format de sauvegarde non reconnu.')
+    if manifest['format']==1:
+        return None
+    metadata=manifest.get('constraintTriggerComments')
+    if (not isinstance(metadata,dict) or set(metadata)!={'file','sha256','count'}
+            or metadata['file']!=CONSTRAINT_COMMENTS_FILE
+            or not isinstance(metadata['sha256'],str)
+            or not re.fullmatch('[0-9a-f]{64}',metadata['sha256'])
+            or type(metadata['count']) is not int or metadata['count']<0):
+        raise RuntimeError('Complément des commentaires de contraintes non conforme.')
+    base=Path(source).resolve()
+    path=base/CONSTRAINT_COMMENTS_FILE
+    if (path.is_symlink() or getattr(path,'is_junction',lambda:False)()
+            or path.resolve().parent!=base or not path.is_file()
+            or digest_file(path)!=metadata['sha256']):
+        raise RuntimeError('Complément des commentaires de contraintes absent ou différent.')
+    return path
 
 
 def pg_tool(name, directory=None):
@@ -61,6 +112,9 @@ def verified_backup(destination,pg_bin=None):
         for row in tables:db.query('LOCK TABLE '+db.qualified(row['schemaname'],row['tablename'])+' IN ACCESS SHARE MODE')
         snapshot=db.one('SELECT pg_export_snapshot() AS value')['value']
         before=fingerprints()
+        comments=constraint_trigger_comments()
+        comment_file=target/CONSTRAINT_COMMENTS_FILE
+        comment_file.write_text(constraint_comments_text(comments),encoding='utf8',newline='\n')
         result=subprocess.run([pg_tool('pg_dump',pg_bin),'--snapshot',snapshot,'--format=custom','--no-owner','--no-acl','--file',str(dump)],env=pg_environment(),capture_output=True,timeout=180)
         if result.returncode:raise RuntimeError('Échec du dump PostgreSQL ; sauvegarde non validée.')
         result=subprocess.run([pg_tool('pg_restore',pg_bin),'--list',str(dump)],capture_output=True,timeout=60)
@@ -80,6 +134,7 @@ def verified_backup(destination,pg_bin=None):
                         files.append({'path':relative,'size':file.stat().st_size,'sha256':sha})
         after=fingerprints()
         if before!=after:raise RuntimeError('La base a changé pendant sa sauvegarde.')
-        manifest={'format':1,'database':settings.DATABASES['default']['NAME'],'databaseSha256':digest_file(dump),'mediaSha256':digest_file(archive),'tables':before,'mediaFiles':files,'fingerprintTimeZone':'UTC','method':'repeatable_read_snapshot','restored':False}
+        manifest={'format':2,'database':settings.DATABASES['default']['NAME'],'databaseSha256':digest_file(dump),'mediaSha256':digest_file(archive),'tables':before,'mediaFiles':files,'fingerprintTimeZone':'UTC','method':'repeatable_read_snapshot','restored':False,
+            'constraintTriggerComments':{'file':CONSTRAINT_COMMENTS_FILE,'sha256':digest_file(comment_file),'count':len(comments)}}
         (target/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2,default=str),encoding='utf8')
     return target,manifest

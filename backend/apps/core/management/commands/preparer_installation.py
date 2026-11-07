@@ -5,7 +5,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand,CommandError
 from django.db import transaction
 from apps.core import db
-from apps.core.maintenance import pg_tool,pg_environment,digest_file
+from apps.core.maintenance import pg_tool,pg_environment,digest_file,constraint_trigger_comments
 
 SCHEMAS=['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','support','systeme']
 
@@ -115,9 +115,9 @@ class Command(BaseCommand):
             if result.returncode:raise CommandError('Export structure refusé.')
             # pg_dump omet les commentaires des contraintes associées à des
             # constraint triggers. Conserver ces métadonnées, sans données.
-            comments=db.query("SELECT format('COMMENT ON CONSTRAINT %%I ON %%I.%%I IS %%L;',k.conname,n.nspname,c.relname,obj_description(k.oid,'pg_constraint')) AS command FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND k.contype='t' AND obj_description(k.oid,'pg_constraint') IS NOT NULL ORDER BY n.nspname,c.relname,k.conname",[SCHEMAS])
+            comments=constraint_trigger_comments(SCHEMAS)
             if comments:
-                with structure.open('ab') as output:output.write(('\n'+''.join(row['command']+'\n' for row in comments)).encode('utf8'))
+                with structure.open('ab') as output:output.write(('\n'+''.join(command+'\n' for command in comments)).encode('utf8'))
             scoped=bool(db.one("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='referentiel' AND table_name='T_Generique' AND column_name='IdEntiteFk') active")['active'])
             dictionary_tables=[] if scoped else ['--table=referentiel."T_CategorieGenerique"','--table=referentiel."T_Generique"']
             result=subprocess.run([*base,'--data-only',*dictionary_tables,'--table=referentiel."T_InterfaceTableau"','--file',str(refs)],env=pg_environment(),capture_output=True,timeout=180)

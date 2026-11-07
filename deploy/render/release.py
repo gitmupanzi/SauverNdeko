@@ -46,17 +46,23 @@ def deploy_url(secret_url, commit):
 def refresh_runtime_grants():
     """Rejouer le script contrôlé avec le rôle d'administration déjà préparé."""
     validate_release()
-    parsed = urlsplit(os.environ["MAINTENANCE_DATABASE_URL"])
-    environment = os.environ.copy()
+    apply_runtime_grants(os.environ)
+
+
+def apply_runtime_grants(values):
+    """Étape SQL commune ; l'orchestrateur valide d'abord sa livraison."""
+    parsed = urlsplit(values["MAINTENANCE_DATABASE_URL"])
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("PG")}
     environment.update(
         PGHOST=parsed.hostname, PGPORT=str(parsed.port or 5432),
         PGUSER=unquote(parsed.username), PGPASSWORD=unquote(parsed.password),
         PGDATABASE=unquote(parsed.path[1:]), PGCONNECT_TIMEOUT="10",
-        PGSSLMODE=os.environ.get("SAUVERNDEKO_DB_SSLMODE", "verify-full"),
+        PGCLIENTENCODING="UTF8",
+        PGSSLMODE=values.get("SAUVERNDEKO_DB_SSLMODE", "verify-full"),
         PGOPTIONS="-c lock_timeout=5000 -c statement_timeout=120000",
     )
-    if os.environ.get("SAUVERNDEKO_DB_SSLROOTCERT"):
-        environment["PGSSLROOTCERT"] = os.environ["SAUVERNDEKO_DB_SSLROOTCERT"]
+    if values.get("SAUVERNDEKO_DB_SSLROOTCERT"):
+        environment["PGSSLROOTCERT"] = values["SAUVERNDEKO_DB_SSLROOTCERT"]
     result = subprocess.run(
         ["psql", "-X", "--set=ON_ERROR_STOP=1", "--file",
          str(Path(__file__).resolve().parents[2] / "deploy/production/role-runtime.sql")],

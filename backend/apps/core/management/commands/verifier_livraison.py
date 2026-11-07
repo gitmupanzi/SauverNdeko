@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DatabaseError, connection, transaction
 from apps.core import db
+from apps.core.maintenance import backup_constraint_comments
 
 READY, CONFIG, BLOCKED, UNVERIFIED = 'pret', 'a_configurer', 'bloquant', 'non_verifie'
 STATES = {READY:'Prêt', CONFIG:'À configurer', BLOCKED:'Bloquant', UNVERIFIED:'Non vérifié'}
@@ -280,7 +281,7 @@ def backup_checks(directory=None, max_age_hours=72):
         if manifest_path.stat().st_size>8*1024*1024:
             raise ValueError()
         data = json.loads(manifest_path.read_text(encoding='utf8'))
-        if (not isinstance(data,dict) or type(data.get('format')) is not int or data['format']!=1
+        if (not isinstance(data,dict) or type(data.get('format')) is not int or data['format'] not in {1,2}
             or data.get('database')!=settings.DATABASES['default']['NAME']
             or data.get('method')!='repeatable_read_snapshot' or data.get('fingerprintTimeZone')!='UTC'
             or not isinstance(data.get('tables'),dict) or not isinstance(data.get('mediaFiles'),list)):
@@ -299,6 +300,8 @@ def backup_checks(directory=None, max_age_hours=72):
             after = path.stat()
             return before.st_size==after.st_size and before.st_mtime_ns==after.st_mtime_ns and digest.hexdigest()==expected
 
+        comment_file=backup_constraint_comments(base,data)
+        file_count=3 if comment_file is not None else 2
         valid = matches('database.dump','databaseSha256') and matches('media.tar.gz','mediaSha256')
         age = (datetime.now(timezone.utc).timestamp()-manifest_path.stat().st_mtime)/3600
         if not math.isfinite(age) or age<(-5/60):
@@ -306,9 +309,9 @@ def backup_checks(directory=None, max_age_hours=72):
         stale = age>max_age_hours
         return [
             finding('sauvegarde_empreintes','Intégrité des fichiers de sauvegarde',READY if valid else BLOCKED,
-                'Les deux fichiers correspondent aux empreintes du manifeste.' if valid else 'Une empreinte ne correspond pas au manifeste.',
+                'Les fichiers correspondent aux empreintes du manifeste.' if valid else 'Une empreinte ne correspond pas au manifeste.',
                 'Ne pas utiliser cette sauvegarde ; en créer et vérifier une nouvelle.' if not valid else 'La correspondance des empreintes ne remplace pas une restauration.',
-                {'fichiersControles':2,'tablesInventoriees':len(data['tables']),'mediasInventories':len(data['mediaFiles'])}),
+                {'fichiersControles':file_count,'tablesInventoriees':len(data['tables']),'mediasInventories':len(data['mediaFiles'])}),
             finding('sauvegarde_anciennete','Ancienneté du manifeste',CONFIG if stale else READY,
                 'Ancienneté fondée sur la modification observée du manifeste ; ce n’est pas une preuve de restauration.',
                 'Produire une sauvegarde fraîche avant livraison.' if stale else '',
@@ -316,7 +319,7 @@ def backup_checks(directory=None, max_age_hours=72):
             finding('restauration','Restauration de contrôle',UNVERIFIED,
                 'Cette commande ne restaure rien et ne certifie pas une ancienne restauration.',
                 'Exécuter restaurer_recette sur une base privée neuve et conserver son rapport vérifié.',external=True)]
-    except (OSError,ValueError,TypeError,UnicodeError):
+    except (OSError,ValueError,TypeError,UnicodeError,RuntimeError):
         return [finding('sauvegarde','Dossier de sauvegarde',BLOCKED,
             'Dossier absent, lié, non conforme, inaccessible ou manifeste d’une autre instance.',
             'Fournir le dossier privé complet produit par sauvegarder_instance ; ne pas modifier les empreintes.')]

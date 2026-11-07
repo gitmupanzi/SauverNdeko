@@ -24,6 +24,8 @@ Sans `--apply`, la commande présente son plan. Une création requiert un compte
 
 La commande partage un instantané SQL cohérent entre le contrôle et le dump, protège la structure pendant la copie et exporte PostgreSQL en format personnalisé, contrôle son catalogue et son décodage intégral, archive le répertoire privé configuré par `SAUVERNDEKO_MEDIA_ROOT`, puis écrit les empreintes des tables et fichiers. Les écritures courantes peuvent continuer ; une fenêtre sans changement de structure ni purge des médias reste nécessaire. Les fichiers historiques des photos sont conservés et leurs empreintes sont vérifiées pendant la copie. Le compte de sauvegarde doit pouvoir lire toutes les données et les outils PostgreSQL doivent être compatibles. Les justificatifs stockés dans `T_PieceJustificative.Contenu` sont compris dans le dump ; les photos privées sur disque suivent l’archive média. Une politique de stockage chiffré hors du serveur et de rétention doit être organisée par l’exploitant.
 
+Depuis l'audit du 7 novembre 2026, les nouvelles sauvegardes utilisent le manifeste **format 2**. Elles ajoutent `constraint-comments.sql`, avec somme SHA-256 et nombre de commentaires, pour conserver les `COMMENT ON CONSTRAINT` des contraintes de triggers omis par `pg_dump` PostgreSQL 18. Garder ensemble ce fichier, `database.dump`, `media.tar.gz` et `manifest.json`. `restaurer_recette` contrôle le complément avant toute création, le rejoue uniquement dans la base privée neuve et compare les commentaires restaurés. Un format 1 reste lisible, mais son rapport ne prouve pas la conservation de ces métadonnées. Les comparaisons d'empreintes du schéma et son socle ne sont pas assouplis.
+
 Pour une restauration de contrôle, définir **uniquement dans le processus** `SAUVERNDEKO_RESTORE_TEST_DATABASE_URL` vers une base locale **neuve** nommée `sauverndeko_test_*` :
 
 ```powershell
@@ -66,6 +68,8 @@ Empreintes SHA-256 de cette livraison privée :
 Le paquet vierge et la sauvegarde complète ont des usages différents : le premier fournit un socle sans identité ni données client ; la seconde conserve l’instance existante. Les preuves restent locales et privées, exclues du dépôt.
 
 ## Installation vierge
+
+**État au 7 novembre 2026 :** les recettes ci-dessous décrivent leurs versions historiques. Un paquet exporté depuis le schéma courant contient déjà les migrations du 6 novembre, mais ne transporte pas le journal d'attestation. Il ne peut pas être attesté ensuite comme le socle du 4 novembre, dont le catalogue diffère. Ce parcours doit être complété et retesté avant une nouvelle installation client. Ne pas modifier le socle publié pour passer ce contrôle. La [mise à niveau d'une base existante](maintenance-render-depuis-poste.md) reste un parcours distinct.
 
 Les sources canoniques de SQL décrivent le socle installé ; les migrations historiques ne doivent pas être rejouées sur ce socle. Pour fournir une installation neuve à la version effectivement vérifiée, préparer un paquet depuis l’instance source validée :
 
