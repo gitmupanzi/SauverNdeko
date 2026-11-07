@@ -14,7 +14,13 @@ Le menu **Réglages → Références** indique la catégorie et son identifiant 
 
 Depuis **Nouvelle caisse**, **Nouvelle écriture** ou **Nouvelle clôture**, complétez la première ligne puis utilisez **Ajouter une ligne** ou **Coller depuis Excel**. Pour le collage, copiez les en-têtes et les données. Les listes reconnaissent leur libellé ou leur identifiant. Le panier accepte jusqu’à 100 lignes et indique les corrections à apporter avant l’enregistrement. Si une ligne échoue, toute la demande est annulée.
 
+Dans **Nouvelle caisse**, **Télécharger le modèle Excel** fournit une feuille **Caisses**, avec les en-têtes dès la première ligne, ainsi que les choix autorisés pour l’entreprise dans **Options**. Complétez le nom, la devise et les informations facultatives, puis utilisez **Importer un fichier Excel** pour ajouter les lignes au panier. Le fichier `.xlsx` doit contenir au maximum 100 lignes et peser au plus 4 Mo. Les formules ne sont pas acceptées : collez leurs valeurs dans le classeur avant de l’importer.
+
+L’import prépare la saisie sans créer de caisse. Vérifiez et corrigez les lignes signalées, puis cliquez sur **Enregistrer l’ensemble**. Une erreur de lecture conserve le panier existant. Chaque caisse créée commence avec un solde nul ; le modèle ne permet pas d’importer un solde ou des écritures financières.
+
 Les écritures sont créées en brouillon par défaut. Vous pouvez confirmer la validation immédiate du panier. Pour les clôtures, vérifiez le solde affiché, saisissez le montant compté et le motif, puis confirmez. Si le solde change, rechargez la ligne et vérifiez de nouveau le comptage.
+
+Les paniers **Écritures** et **Clôtures** proposent également leur modèle Excel et l’import `.xlsx` vers le panier (100 lignes, 4 Mo). Les références de caisse, devise, type et mode sont celles de l’entreprise active. Vérifiez et corrigez les valeurs après import avant l’enregistrement. Un fichier ne valide jamais automatiquement une écriture et ne fournit ni solde théorique ni révision de clôture : ces informations sont rechargées depuis le serveur. Le motif et les confirmations habituelles restent nécessaires.
 
 ## Ouvrir une caisse
 

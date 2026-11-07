@@ -89,6 +89,14 @@
 .expert-references-link { display:inline-flex; align-items:center; gap:9px; margin-top:20px; color:var(--erp-link); font-size:12px; text-decoration:none; }
 .experts-module button:focus-visible,.expert-fields :is(input,textarea):focus-visible,.expert-detail button:focus-visible { outline:2px solid var(--erp-action); outline-offset:3px; }
 .expert-directory[data-density=airy] .expert-directory-card { padding:28px; gap:22px; }
+.expert-batch-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.expert-batch-heading h3 { margin:0; }
+.expert-batch-heading>div { display:flex; flex-wrap:wrap; gap:8px; }
+.expert-batch-file { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.expert-batch-detail { scroll-margin-top:18px; }
+.expert-batch-fields { margin-top:20px; }
+.expert-batch-clear { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:12px; margin:14px 0; border:1px solid var(--erp-danger); border-radius:8px; color:var(--erp-text); background:var(--erp-surface); font-size:12px; }
+.expert-batch-clear>span { margin-right:auto; }
 @container(max-width:640px) { .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading h2 { font-size:20px; } }
 @media(max-width:640px) { .expert-directory { padding:14px; } .expert-directory-card { padding:18px; } .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading { align-items:flex-start; } .expert-pagination>div { width:100%; justify-content:space-between; } }
 @media(prefers-reduced-motion:reduce) { .expert-directory-card { transition:none; } }

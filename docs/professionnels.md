@@ -18,6 +18,16 @@ Le guide intégré contient cinq parcours pour ce module. Les exemples y sont fi
 
 Vérifier son statut dans **Profils professionnels** : le bouton **Enregistrer le brouillon** ne publie pas la fiche. Sélectionner l’entreprise propriétaire, compléter la présentation et ouvrir l’action de publication du profil. Les informations requises sont indiquées dans la fiche. Une fois publié et actif, le profil peut être retrouvé par son nom ou ses compétences déclarées dans l’annuaire.
 
+### Importer des profils depuis Excel
+
+Dans **Profils professionnels**, sélectionner l’entreprise puis télécharger le **modèle Excel**. La feuille **Profils** contient les en-têtes à la première ligne ; la feuille **Options** fournit les comptes et références autorisés pour l’entreprise, et **Informations** précise les consignes. Un fichier `.xlsx` de 4 Mo maximum peut contenir 100 profils. Utilisateur, secteur, profession et titre professionnel sont obligatoires. Chaque utilisateur ne peut posséder qu’un profil.
+
+**Importer un fichier Excel** prépare un panier modifiable, sans créer de fiche. Vérifier et corriger chaque ligne, ses compétences, ses services et ses structures, puis enregistrer l’ensemble. Les compétences et services multiples se séparent par un point-virgule dans le fichier, avec leurs identifiants ou les abréviations exactes proposées. Une valeur inconnue ou ambiguë reste à corriger ; elle ne crée pas de référence. Les structures se complètent dans les détails du panier ; les photos se gèrent ensuite dans la fiche individuelle.
+
+L’entreprise propriétaire provient uniquement du contexte autorisé. L’import ne crée aucun compte et ne publie pas de profil. Toutes les fiches sont enregistrées en **brouillon** dans une transaction unique ; une erreur annule aussi les autres créations et leurs audits tout en conservant la saisie dans le panier. Après une réponse réseau incertaine, vérifier la même demande avant de la modifier ou d’en créer une autre. Le formulaire individuel reste disponible pour les fiches détaillées.
+
+Les routes dédiées sont `GET /api/professionnels/profils/modele-excel`, `POST /api/professionnels/profils/import-excel` (multipart `fichier`, lecture seule) et `POST /api/professionnels/profils/batch`. Ce dernier reçoit `{requestId, rows:[{clientRowId, data, competenceIds, prestationIds, affiliations}]}` ; `data` reprend les champs du formulaire individuel. Le service individuel recontrôle comptes, références dynamiques, entreprise et affiliations lors de la confirmation. La demande du lot entier est liée à chaque preuve de rejeu. Aucune table ni migration supplémentaire n’est nécessaire.
+
 ## Photo du professionnel
 
 La fiche utilise la photo du compte associé. Le formulaire d’ajout ou de modification permet de choisir une image JPEG, PNG ou WebP, d’en voir l’aperçu, de la remplacer ou de la retirer. Sans photo, les initiales servent d’avatar. La sélection reste locale tant que le formulaire n’est pas enregistré.

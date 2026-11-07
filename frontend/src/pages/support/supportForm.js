@@ -26,7 +26,7 @@ export function supportOptions(context,field,record={}){
 }
 export function supportInputDate(value){
  if(!value)return "";
- const text=String(value);if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(text))return text;
+ const text=String(value);if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(text))return text.slice(0,16);
  const parsed=new Date(text);if(Number.isNaN(parsed.getTime()))return text.slice(0,16);
  const parts=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Kinshasa",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(parsed).map(part=>[part.type,part.value]));
  return parts.year+"-"+parts.month+"-"+parts.day+"T"+parts.hour+":"+parts.minute;

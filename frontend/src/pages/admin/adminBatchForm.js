@@ -28,11 +28,21 @@ export function validateAdminBatch(kind,rows,support={}){
  return {header,rows:issues};
 }
 export function adminBatchTicket(kind,rows,support){const config=ADMIN_BATCH[kind],fields=adminEditorFields(config.type,true);return {requestId:referenceBatchId(),rows:rows.map(row=>({clientRowId:row.clientRowId,data:buildAdminEditorPayload(config.type,fields,row.values,{}, {creating:true,roleCategoryId:support.roleCategoryId})}))};}
+export function adminBatchReceipt(kind,result,request){
+ const key={utilisateurs:"IdUser",roles:"ID_Generique",correspondances:"IdFkCorrespondance",parametres:"IdAdminUISetting"}[kind];
+ if(!key||!result||result.requestId!==request.requestId||result.count!==request.rows.length||!Array.isArray(result.records)||result.records.length!==request.rows.length)return false;
+ const expected=new Set(request.rows.map(row=>row.clientRowId)),seen=new Set(),ids=new Set();
+ return result.records.every(record=>{const id=String(record?.[key]??"");if(!expected.has(record?.clientRowId)||seen.has(record.clientRowId)||!/^[1-9]\d*$/.test(id)||ids.has(id))return false;seen.add(record.clientRowId);ids.add(id);return true;});
+}
 const normal=value=>referenceDuplicateKey(value).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
 export function adminBatchFromExcel(kind,text,support,{hasHeaders=false}={}){
- const matrix=parseExcelTsv(text),config=ADMIN_BATCH[kind],fields=adminEditorFields(config.type,true);if(!matrix.length)return [];
+ return adminBatchFromMatrix(kind,parseExcelTsv(text),support,{hasHeaders});
+}
+export function adminBatchFromMatrix(kind,source,support,{hasHeaders=true}={}){
+ if(!Array.isArray(source)||source.some(row=>!Array.isArray(row)||row.some(value=>value!=null&&typeof value!=="string"&&typeof value!=="number"&&typeof value!=="boolean")))throw Error("Les lignes du fichier ne sont pas reconnues.");
+ const matrix=source.map(row=>row.map(value=>String(value??""))),config=ADMIN_BATCH[kind],fields=adminEditorFields(config.type,true);if(!matrix.length)return [];
  let columns=config.paste;
  if(hasHeaders){columns=matrix.shift().map(label=>{const found=fields.filter(field=>normal(field.name)===normal(label)||normal(field.label)===normal(label));if(found.length!==1)throw Error("En-tête non reconnu ou ambigu : « "+label+" ».");return found[0].name;});if(new Set(columns).size!==columns.length)throw Error("Un même en-tête apparaît plusieurs fois.");if(!columns.includes(config.name))throw Error("Ajoutez la colonne « "+fields.find(field=>field.name===config.name).label+" ».");}
  if(matrix.length>ADMIN_BATCH_MAX)throw Error("Limitez le collage à 100 lignes.");
- return matrix.map((cells,index)=>{if(cells.length>columns.length)throw Error("La ligne "+(index+1)+" contient trop de colonnes.");const row=adminBatchRow(kind,support);row.pristine=false;cells.forEach((raw,i)=>{const field=fields.find(field=>field.name===columns[i]);let value=raw;if(field.type==="checkbox"){if(!raw.trim())return;value=["oui","1","true","actif"].includes(normal(raw))?true:["non","0","false","inactif"].includes(normal(raw))?false:raw;}else if(field.type==="select"||field.name==="SettingType"){const options=adminBatchOptions(kind,field,row.values,support),byId=options.filter(option=>String(option.value)===raw.trim()),found=byId.length?byId:options.filter(option=>!option.disabled&&referenceDuplicateKey(option.label)===referenceDuplicateKey(raw));if(found.length===1)value=String(found[0].value);}row.values[field.name]=value;});return row;});
+ return matrix.filter(cells=>cells.some(value=>value.trim())).map((cells,index)=>{if(cells.length>columns.length)throw Error("La ligne "+(index+1)+" contient trop de colonnes.");const row=adminBatchRow(kind,support);row.pristine=false;cells.forEach((raw,i)=>{const field=fields.find(field=>field.name===columns[i]);let value=raw;if(field.type==="checkbox"){if(!raw.trim())return;value=["oui","1","true","actif"].includes(normal(raw))?true:["non","0","false","inactif"].includes(normal(raw))?false:raw;}else if(field.type==="select"||field.name==="SettingType"){if(!raw.trim())return;const options=adminBatchOptions(kind,field,row.values,support),byId=options.filter(option=>!option.disabled&&String(option.value)===raw.trim()),found=byId.length?byId:options.filter(option=>!option.disabled&&referenceDuplicateKey(option.label)===referenceDuplicateKey(raw));if(found.length===1)value=String(found[0].value);}else if(field.type==="date"&&/^\d{4}-\d{2}-\d{2}T00:00:00$/.test(raw))value=raw.slice(0,10);row.values[field.name]=value;});return row;});
 }

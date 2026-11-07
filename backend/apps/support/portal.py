@@ -381,12 +381,14 @@ def _write_access(actor, row=None):
     return entity
 
 
-def _mutation_begin(actor, body, operation, pk=None):
+def _mutation_begin(actor, body, operation, pk=None, *, batch_digest=None):
     if not isinstance(body,dict):raise APIError('Objet JSON attendu.')
     try:request_id=str(uuid.UUID(str(body.get('requestId'))))
     except (ValueError,TypeError,AttributeError):raise APIError('Identifiant de demande obligatoire.','REQUEST_ID_REQUIRED',422)
     canonical={'entity':read_entity(actor),'operation':operation,'pk':str(pk) if pk is not None else None,
                'payload':{key:value for key,value in body.items() if key!='requestId'}}
+    if batch_digest is not None:
+        canonical['batchDigest']=batch_digest
     digest=hashlib.sha256(json.dumps(canonical,cls=ExactEncoder,sort_keys=True,separators=(',',':')).encode('utf8')).hexdigest()
     db.query("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",['support:'+str(actor.pk)+':'+request_id])
     events=db.query('''SELECT "NewData","IdEntiteFk" FROM systeme."T_Audit_Log"
@@ -423,12 +425,12 @@ def _database_error(exc):
     raise exc
 
 
-def save(actor,body,pk=None):
+def save(actor,body,pk=None,*,batch_digest=None):
     with transaction.atomic():
         _write_access(actor)
         if not isinstance(body,dict) or set(body)-EDIT_FIELDS-{'requestId','_version','motif'}:
             raise APIError('Un champ du dossier n’est pas modifiable.','SUPPORT_VALIDATION',422)
-        existing,replayed=_mutation_begin(actor,body,'update' if pk else 'create',pk)
+        existing,replayed=_mutation_begin(actor,body,'update' if pk else 'create',pk,batch_digest=batch_digest)
         if replayed:return public_record(db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[record(actor,existing)['ID_Support']])),True
         old=record(actor,pk,True) if pk else None
         if old:

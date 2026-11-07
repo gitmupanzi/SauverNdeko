@@ -6,7 +6,11 @@ Le module réunit quatre onglets pour cinq tables du schéma `referentiel`. Les 
 
 **Nouvelle catégorie** et **Nouvelle valeur** ouvrent directement le panier de saisie. Une seule ligne suffit pour un ajout individuel ; plusieurs lignes peuvent être préparées, modifiées et retirées avant un enregistrement unique. Pour les valeurs, choisir d’abord leur catégorie dans l’en-tête. Il n’y a pas de bouton de saisie multiple séparé.
 
-Pour reprendre une liste Excel, copier les cellules puis utiliser le collage du formulaire. Les colonnes proposées sont indiquées dans l’interface. Vérifier les lignes importées, leur état et leurs options de visibilité avant d’enregistrer. Une erreur ou un doublon laisse le panier ouvert avec les corrections nécessaires. Aucune ligne du lot n’est conservée si une autre ligne échoue.
+Pour reprendre une liste Excel, choisir la portée et, pour les valeurs, la catégorie dans l’en-tête. **Télécharger le modèle Excel** fournit un fichier `.xlsx` vierge adapté à l’onglet. Remplir sa feuille **Catégories** ou **Valeurs**, puis utiliser **Importer un fichier Excel**. Chaque fichier peut contenir 100 lignes au maximum et peser 4 Mo ; le panier peut contenir 200 lignes. La portée et la catégorie du formulaire s’appliquent à toutes les lignes et ne sont pas importées depuis les cellules.
+
+L’import ajoute les lignes au panier déjà préparé, sans enregistrer de données. Vérifier les libellés, codes et états, puis ouvrir les **Détails** d’une valeur pour corriger ses informations et chaque option de visibilité. Les choix acceptent **Oui** et **Non** ; une visibilité peut aussi rester **Non renseigné**. Une cellule d’état ou de visibilité vide reprend **Oui**. Les valeurs incorrectes restent visibles dans le panier pour correction. Le collage de cellules reste disponible avec les mêmes contrôles. Les formules et liens de classeur sont refusés.
+
+**Enregistrer l’ensemble** enregistre ensuite le lot en une seule transaction. Une erreur ou un doublon laisse le panier ouvert avec les corrections nécessaires. Aucune ligne du lot n’est conservée si une autre ligne échoue. Un fichier refusé ne retire aucune ligne déjà saisie.
 
 Les références **communes** restent disponibles pour les entreprises autorisées. Les références **d’entreprise** ne sont proposées que dans leur entreprise. Les données antérieures restent communes ; leur rattachement n’est pas modifié par cette évolution. Un gestionnaire local ne peut modifier que les références propres à son entreprise, selon ses droits. La propriété d’une référence créée est conservée.
 

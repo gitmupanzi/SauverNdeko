@@ -12,6 +12,8 @@ Choisir une entreprise active avant de préparer la saisie. Les permissions habi
 
 Préparer les lignes, corriger une fiche et retirer les lignes inutiles avant l’enregistrement. Le collage depuis Excel prépare un brouillon et ne crée rien immédiatement. Les renseignements complémentaires restent accessibles depuis chaque ligne. Une ligne suffit pour une création simple.
 
+Les paniers **Tiers** et **Immobilisations** proposent **Télécharger le modèle Excel** et **Importer un fichier Excel**, en complément du collage. Le modèle contient les colonnes de la fiche et les choix autorisés dans Options. Remplissez sa feuille Tiers ou Immobilisations, puis importez le `.xlsx` (4 Mo et 100 lignes maximum). Les formules sont refusées. Vérifiez et corrigez les lignes dans le panier avant l’enregistrement global ; une erreur de lecture conserve la saisie existante. L’entreprise propriétaire et les codes automatiques ne s’importent pas. Les immobilisations conservent leurs règles d’affectation, de quantité et de motif ; cet import ne crée ni stock ni amortissement.
+
 Les fiches existantes continuent à se consulter et se modifier depuis leur menu de ligne. Leur archivage et leurs historiques restent conservés.
 
 L’enregistrement porte sur l’ensemble du panier, au maximum 100 fiches. Si une ligne est refusée, aucune fiche du lot n’est conservée ; corriger les erreurs indiquées puis soumettre à nouveau. Les lignes non concernées ne sont pas effacées.

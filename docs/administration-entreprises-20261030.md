@@ -4,6 +4,10 @@
 
 Les boutons Nouvel utilisateur, Nouveau rôle, Nouvelle correspondance et Nouveau paramètre ouvrent chacun un panier utilisable pour une seule ligne ou jusqu’à 100 lignes. On peut ajouter, corriger ou retirer une ligne, coller des cellules Excel, vider le panier et annuler l’ensemble. Le détail d’une ligne réutilise le formulaire complet. L’enregistrement est unique et transactionnel : une erreur conserve le brouillon et aucune ligne du lot n’est sauvegardée partiellement. Une relance après une réponse incertaine reprend le même identifiant et le même contenu.
 
+Chaque panier propose aussi **Télécharger le modèle Excel** et **Importer un fichier Excel**. Remplissez la feuille Utilisateurs, Rôles, Correspondances ou Paramètres selon l’onglet ; les choix autorisés figurent dans Options et les consignes dans Informations. Le fichier `.xlsx` est limité à 4 Mo et 100 lignes, sans formule. L’import prépare les lignes sans les enregistrer : vérifiez les erreurs et doublons, ouvrez les détails si nécessaire, puis enregistrez l’ensemble. Un fichier refusé ne vide pas le panier.
+
+L’entreprise déjà sélectionnée reste fixée et ne se remplace pas par une colonne importée. Les privilèges administrateur ne sont pas importables. Le modèle Utilisateurs ne contient aucun compte ni mot de passe existant ; un mot de passe initial saisi dans votre fichier est confidentiel, masqué dans le panier et conservé uniquement en mémoire par l’interface. Protégez puis retirez le fichier après usage.
+
 Les mots de passe initiaux ne sont jamais stockés dans les préférences du navigateur. Ils sont hachés par le service de compte et exclus des réponses et des audits. Les validations serveur contrôlent notamment les adresses e-mail, les doublons, les références autorisées, les champs sensibles et le périmètre de l’entreprise.
 
 L’entreprise active se choisit dans l’en-tête de l’Administration pour l’administrateur de la plateforme. Le chargement des entreprises ne nécessite plus une licence Logistique. Le compte local reste rattaché à son entreprise. Un changement de contexte invalide les réponses obsolètes et ne réaffecte pas un brouillon ouvert à une autre entreprise.

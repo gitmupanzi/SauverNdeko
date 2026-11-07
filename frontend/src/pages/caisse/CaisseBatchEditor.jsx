@@ -1,7 +1,7 @@
 import {useEffect, useId, useRef, useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
-import {requestJson} from "../../services/api";
+import {downloadApiFile, requestJson} from "../../services/api";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
@@ -9,13 +9,14 @@ import SearchSelect from "../../components/SearchSelect";
 import {formatCurrency} from "../../utils/money";
 import {SimpleTable} from "../logistique/logistiqueShared";
 import "../logistique/LogisticsBatchComposer.css";
-import {CAISSE_REGISTERS, CAISSE_ROOT} from "./caisseModel";
+import {CAISSE_REGISTERS, CAISSE_ROOT, validCaisseDate} from "./caisseModel";
 import {
   CAISSE_BATCH_FIELDS, CAISSE_BATCH_LABELS, MAX_CAISSE_BATCH_ROWS, TEXT_LIMITS, caisseBatchChoices,
-  caisseBatchErrors, caisseBatchPaste, caisseBatchPayload, caisseBatchRow, closureBalance, isBatchAmount, isBatchDate,
+  caisseBatchErrors, caisseBatchFromMatrix, caisseBatchPaste, caisseBatchPayload, caisseBatchRow, closureBalance, isBatchAmount, isBatchDate,
 } from "./caisseBatch";
 
 const PAGE_SIZE = 10;
+const EXCEL_MAX_BYTES = 4 * 1024 * 1024;
 const DETAILS = ["IdTypePaiementFk", "IdTiersFk", "ReferenceExterne", "ObsPaiement", "motif"];
 const WIDTHS = {NomCaisse:220, IdCaisseFk:210, DatePaiement:188, ClotureLe:188, MontantCompte:120,
   MontantPaiement:126, LibellePaiement:200, motif:250, _version:152};
@@ -38,24 +39,61 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uncertain, setUncertain] = useState(false);
+  const [excelBusy, setExcelBusy] = useState("");
+  const [excelError, setExcelError] = useState("");
+  const [excelMessage, setExcelMessage] = useState("");
   const ticket = useRef(null);
   const currentRequest = useRef(null);
+  const excelRequest = useRef(null);
+  const fileInput = useRef(null);
+  const alive = useRef(true);
   const balanceRequests = useRef(new Map());
-  const openedScope = useRef(scope.scopeKey);
+  const identity = String(user?.IdUser) + ":" + scope.scopeKey;
+  const openedScope = useRef(identity);
+  const currentScope = useRef(identity);
+  currentScope.current = identity;
   const canWrite = Boolean(scope.entityId && context?.canManage && !context?.readOnly &&
-    user?.permissions?.canWriteData && openedScope.current === scope.scopeKey);
-  const frozen = !canWrite || busy || uncertain;
+    user?.permissions?.canWriteData && openedScope.current === identity);
+  const currentAccess = useRef(canWrite);
+  currentAccess.current = canWrite;
+  const importing = excelBusy === "import";
+  const frozen = !canWrite || busy || uncertain || importing;
   const needsConfirmation = kind === "clotures" || validate;
   const rowsById = new Map(rows.map((row, index) => [row.clientRowId, index]));
 
-  useEffect(() => () => {
-    currentRequest.current?.abort();
-    for (const request of balanceRequests.current.values()) request.abort();
-    balanceRequests.current.clear();
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      currentRequest.current?.abort();
+      excelRequest.current?.abort();
+      for (const request of balanceRequests.current.values()) request.abort();
+      balanceRequests.current.clear();
+    };
   }, []);
+  useEffect(() => {
+    if (canWrite) return;
+    excelRequest.current?.abort();
+    excelRequest.current = null;
+    setExcelBusy("");
+    setExcelError("");
+    setExcelMessage("");
+    if (balanceRequests.current.size) {
+      for (const request of balanceRequests.current.values()) request.abort();
+      balanceRequests.current.clear();
+      setRows(previous => previous.map(row => row.balance?.loading
+        ? {...row, balance:{error:"Rechargez le solde avant de confirmer la clôture."}} : row));
+      setConfirmed(false);
+    }
+  }, [identity, canWrite]);
+
+  function draftFrozen() {
+    return frozen || !alive.current || !currentAccess.current || currentScope.current !== identity ||
+      currentRequest.current || excelRequest.current?.operation === "import";
+  }
 
   function changeRow(id, field, value) {
-    if (frozen) return;
+    if (draftFrozen()) return;
     const newCashbox = kind === "clotures" && field === "IdCaisseFk";
     if (newCashbox) {
       balanceRequests.current.get(id)?.abort();
@@ -71,12 +109,14 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   }
 
   function append(next) {
+    if (draftFrozen() || next.length > MAX_CAISSE_BATCH_ROWS) return;
     setRows(next);
     setPage(Math.ceil(next.length / PAGE_SIZE));
     setConfirmed(false);
   }
 
   function remove(id) {
+    if (draftFrozen()) return;
     balanceRequests.current.get(id)?.abort();
     balanceRequests.current.delete(id);
     const next = rows.filter(row => row.clientRowId !== id);
@@ -87,6 +127,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   }
 
   function clear() {
+    if (draftFrozen()) return;
     for (const request of balanceRequests.current.values()) request.abort();
     balanceRequests.current.clear();
     setRows([caisseBatchRow(kind, references, defaults)]);
@@ -98,9 +139,12 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
     setClearAsked(false);
     setDetailId("");
     setConfirmed(false);
+    setExcelError("");
+    setExcelMessage("");
   }
 
   function paste() {
+    if (draftFrozen()) return;
     try {
       const imported = caisseBatchPaste(kind, pasteText, references, defaults);
       const existing = rows.length === 1 && rows[0].pristine ? [] : rows;
@@ -116,47 +160,142 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
     }
   }
 
-  function focusIssue(id, field) {
-    const index = rowsById.get(id);
+  function focusIssue(id, field, sourceRows = rows) {
+    const index = sourceRows.findIndex(row => row.clientRowId === id);
+    if (index < 0) return;
     setPage(Math.floor(index / PAGE_SIZE) + 1);
     if (kind === "ecritures" && DETAILS.includes(field)) setDetailId(id);
     requestAnimationFrame(() => {
+      if (!alive.current || currentScope.current !== identity) return;
       const target = document.getElementById(prefix+id+field) || document.getElementById(prefix+id+"-details");
       target?.focus({preventScroll:true});
       target?.scrollIntoView({block:"nearest", inline:"nearest"});
     });
   }
 
-  function showIssues(next) {
+  function showIssues(next, sourceRows = rows) {
     setIssues(next);
     const [id, fields] = Object.entries(next)[0] || [];
-    if (id && rowsById.has(id)) focusIssue(id, Object.keys(fields)[0]);
+    if (id) focusIssue(id, Object.keys(fields)[0], sourceRows);
+  }
+
+  function excelIsCurrent(controller) {
+    return alive.current && currentAccess.current && currentScope.current === identity &&
+      excelRequest.current === controller && !controller.signal.aborted;
+  }
+
+  async function downloadTemplate() {
+    if (draftFrozen() || excelRequest.current) return;
+    const controller = new AbortController();
+    controller.operation = "download";
+    excelRequest.current = controller;
+    setExcelBusy("download");
+    setExcelError("");
+    setExcelMessage("");
+    try {
+      await downloadApiFile(CAISSE_ROOT+"/"+kind+"/modele-excel", {
+        signal:controller.signal, filename:"modele-import-"+kind+".xlsx",
+      });
+      if (excelIsCurrent(controller)) setExcelMessage("Modèle Excel téléchargé.");
+    } catch (failure) {
+      if (excelIsCurrent(controller)) setExcelError(failure.message || "Le modèle Excel n’a pas pu être téléchargé.");
+    } finally {
+      if (excelRequest.current === controller) {
+        if (excelIsCurrent(controller)) setExcelBusy("");
+        excelRequest.current = null;
+      }
+    }
+  }
+
+  async function importFile(event) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file || draftFrozen() || excelRequest.current || rows.length >= MAX_CAISSE_BATCH_ROWS) return;
+    setExcelError("");
+    setExcelMessage("");
+    if (!/\.xlsx$/i.test(file.name) || !file.size || file.size > EXCEL_MAX_BYTES) {
+      setExcelError("Choisissez un fichier Excel .xlsx non vide de 4 Mo maximum.");
+      return;
+    }
+    const controller = new AbortController();
+    controller.operation = "import";
+    excelRequest.current = controller;
+    setExcelBusy("import");
+    try {
+      const body = new FormData();
+      body.append("fichier", file);
+      const response = await requestJson(CAISSE_ROOT+"/"+kind+"/import-excel", {
+        requiresAuth:true, method:"POST", body, signal:controller.signal,
+      });
+      if (!excelIsCurrent(controller)) return;
+      if (!response?.success) throw new Error(response?.status === 413 ? "Le fichier dépasse 4 Mo." :
+        response?.message || "Le fichier Excel n’a pas pu être lu.");
+      const imported = caisseBatchFromMatrix(kind, response.data?.cells, references, defaults);
+      const existing = rows.length === 1 && rows[0].pristine ? [] : rows;
+      if (existing.length + imported.length > MAX_CAISSE_BATCH_ROWS) {
+        throw new Error("Le panier accepte au maximum "+MAX_CAISSE_BATCH_ROWS+" lignes.");
+      }
+      const next = [...existing, ...imported];
+      const nextIssues = caisseBatchErrors(kind, next, references);
+      setRows(next);
+      setPage(Math.floor(existing.length / PAGE_SIZE) + 1);
+      setConfirmed(false);
+      setError("");
+      setIssues(nextIssues);
+      ticket.current = null;
+      const [issueId, fields] = Object.entries(nextIssues)[0] || [];
+      focusIssue(issueId || imported[0].clientRowId, issueId ? Object.keys(fields)[0] : CAISSE_BATCH_FIELDS[kind][0], next);
+      setExcelMessage((imported.length === 1 ? "1 ligne ajoutée au panier." : imported.length+" lignes ajoutées au panier.") +
+        (issueId ? " Vérifiez les champs signalés avant d’enregistrer." : ""));
+    } catch (failure) {
+      if (excelIsCurrent(controller)) {
+        setExcelError(failure.message || "Le fichier Excel n’a pas pu être lu.");
+        requestAnimationFrame(() => {
+          if (alive.current && currentAccess.current && currentScope.current === identity) {
+            document.getElementById(prefix+"import-excel")?.focus();
+          }
+        });
+      }
+    } finally {
+      if (excelRequest.current === controller) {
+        if (excelIsCurrent(controller)) setExcelBusy("");
+        excelRequest.current = null;
+      }
+    }
   }
 
   async function refreshBalance(row) {
-    if (frozen || balanceRequests.current.has(row.clientRowId)) return;
+    if (draftFrozen() || balanceRequests.current.has(row.clientRowId)) return;
     const controller = new AbortController();
     const {clientRowId:id, values:{IdCaisseFk:cashId}} = row;
     balanceRequests.current.set(id, controller);
     setConfirmed(false);
     setRows(previous => previous.map(item => item.clientRowId === id ? {...item, balance:{loading:true}} : item));
+    const isCurrent = () => alive.current && currentAccess.current && currentScope.current === identity &&
+      balanceRequests.current.get(id) === controller && !controller.signal.aborted;
     try {
       const response = await requestJson(CAISSE_ROOT+"/clotures/preparation?caisseId="+encodeURIComponent(cashId),
         {requiresAuth:true, signal:controller.signal});
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
       const data = response?.data;
-      const balance = response?.success && data?.canManage && data.record?.Actif && data._version
+      const balance = response?.success && data?.canManage && data.record?.Actif && data._version &&
+          String(data.record.IdCaisse) === String(cashId)
         ? {record:data.record, version:data._version}
         : {error:response?.message || "Le solde n’a pas pu être chargé."};
-      setRows(previous => previous.map(item => item.clientRowId === id ? {...item, balance} : item));
+      setRows(previous => previous.map(item => item.clientRowId === id && item.values.IdCaisseFk === cashId ? {...item, balance} : item));
       setIssues(previous => ({...previous, [id]:{...previous[id], _version:undefined}}));
+    } catch (failure) {
+      if (isCurrent()) setRows(previous => previous.map(item => item.clientRowId === id && item.values.IdCaisseFk === cashId
+        ? {...item, balance:{error:failure.message || "Le solde n’a pas pu être chargé."}} : item));
     } finally {
       if (balanceRequests.current.get(id) === controller) balanceRequests.current.delete(id);
     }
   }
 
   async function submit() {
-    if (!canWrite || currentRequest.current || balanceRequests.current.size) return;
+    if (!canWrite || !currentAccess.current || currentScope.current !== identity || !alive.current ||
+      currentRequest.current || balanceRequests.current.size || importing ||
+      excelRequest.current?.operation === "import") return;
     if (!ticket.current) {
       const next = caisseBatchErrors(kind, rows, references);
       if (Object.keys(next).length) {
@@ -179,9 +318,14 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
     setBusy(true);
     const response = await requestJson(CAISSE_ROOT+"/"+kind,
       {requiresAuth:true, method:"POST", body:snapshot.body, signal:controller.signal});
-    if (controller.signal.aborted) return;
+    if (!alive.current || controller.signal.aborted || currentRequest.current !== controller) return;
     currentRequest.current = null;
     setBusy(false);
+    if (currentScope.current !== identity || !currentAccess.current) {
+      setUncertain(true);
+      setError("La confirmation n’a pas été reçue. Réessayez pour vérifier le même enregistrement.");
+      return;
+    }
     const result = response?.data;
     const expected = new Set(snapshot.payload.rows.map(row => row.clientRowId));
     const received = new Set(Array.isArray(result?.records) ? result.records.map(row => row?.clientRowId) : []);
@@ -225,7 +369,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
         invalid={Boolean(issue)} describedBy={issue ? id+"-error" : undefined}
         onChange={next => changeRow(row.clientRowId, key, key === "Actif" ? next === "true" : next)}/>
         : key === "ObsPaiement" ? <textarea {...props} rows={3} maxLength={TEXT_LIMITS[key]}/>
-        : <input {...props} type={isBatchDate(key) ? "datetime-local" : "text"} step={isBatchDate(key) ? 1 : undefined}
+        : <input {...props} type={isBatchDate(key) && (!value || validCaisseDate(value)) ? "datetime-local" : "text"} step={isBatchDate(key) ? 1 : undefined}
           inputMode={isBatchAmount(key) ? "decimal" : undefined} maxLength={TEXT_LIMITS[key]} autoComplete="off"/>}
       {issue ? <small id={id+"-error"} className="record-field-error">{issue}</small> : null}
     </div>;
@@ -270,7 +414,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   const definition = CAISSE_REGISTERS[kind];
 
   return <RecordEditorFrame title={definition.create} subtitle="Une ou plusieurs lignes dans le même panier."
-    icon={definition.icon} onClose={onClose} onSubmit={submit} busy={busy} readOnly={!canWrite}
+    icon={definition.icon} onClose={onClose} onSubmit={submit} busy={busy} readOnly={!canWrite} canSubmit={!importing}
     dirty={uncertain || rows.length > 1 || rows.some(row => !row.pristine) || Boolean(pasteText.trim()) || validate}
     submitLabel={uncertain ? "Vérifier l’enregistrement" : "Enregistrer l’ensemble"} error={error}
     discardMessage={uncertain ? "L’enregistrement est peut-être terminé. Vérifiez le registre avant de refaire cette opération." : undefined}
@@ -281,6 +425,16 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
         <div className="logistics-batch-actions">
           <ActionButton icon="plus" disabled={frozen || rows.length >= MAX_CAISSE_BATCH_ROWS}
             onClick={() => append([...rows,caisseBatchRow(kind,references,kind === "clotures" ? {} : defaults)])}>Ajouter une ligne</ActionButton>
+          <>
+            <ActionButton icon="download" disabled={frozen || Boolean(excelBusy)} onClick={downloadTemplate}>
+              {excelBusy === "download" ? "Téléchargement…" : "Télécharger le modèle Excel"}
+            </ActionButton>
+            <input type="file" ref={fileInput} accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              hidden disabled={frozen || Boolean(excelBusy) || rows.length >= MAX_CAISSE_BATCH_ROWS} onChange={importFile}/>
+            <ActionButton id={prefix+"import-excel"} icon="upload" variant="primary" aria-describedby={prefix+"import-excel-hint"}
+              disabled={frozen || Boolean(excelBusy) || rows.length >= MAX_CAISSE_BATCH_ROWS}
+              onClick={() => {if (!draftFrozen() && !excelRequest.current) fileInput.current?.click();}}>Importer un fichier Excel</ActionButton>
+          </>
           <ActionButton icon="document" disabled={frozen} aria-expanded={pasteOpen} aria-controls={prefix+"paste-panel"}
             onClick={() => setPasteOpen(open => !open)}>Coller depuis Excel</ActionButton>
           <ActionButton icon="trash" disabled={frozen || rows.every(row => row.pristine) && rows.length === 1 && !pasteText}
@@ -290,6 +444,13 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
       <p className="record-editor-note">{kind === "caisses" ? "Les codes sont attribués automatiquement. Les nouvelles caisses commencent à zéro."
         : kind === "ecritures" ? "Un brouillon n’affecte pas le solde. Date et heure de Kinshasa."
         : "Une ligne par caisse. Les écarts de comptage restent dans l’historique. Date et heure de Kinshasa."}</p>
+      <>
+        <p id={prefix+"import-excel-hint"} className="record-editor-note">Importez le modèle ou un fichier .xlsx avec les mêmes en-têtes sur la première ligne (4 Mo, 100 lignes maximum). Vérifiez le panier puis choisissez Enregistrer l’ensemble.</p>
+        {excelBusy || excelMessage ? <p className="record-editor-note" role="status" aria-live="polite" aria-atomic="true">
+          {importing ? "Lecture du fichier Excel…" : excelBusy ? "Téléchargement du modèle Excel…" : excelMessage}
+        </p> : null}
+        {excelError ? <p className="record-field-error" role="alert">{excelError}</p> : null}
+      </>
       {kind === "ecritures" ? <label className="caisse-batch-check"><input type="checkbox" checked={validate} disabled={frozen}
         onChange={event => {setValidate(event.target.checked); setConfirmed(false);}}/>Valider immédiatement les écritures</label> : null}
       {clearAsked ? <div className="record-discard" role="alert"><span>Retirer toutes les lignes ?</span><div>

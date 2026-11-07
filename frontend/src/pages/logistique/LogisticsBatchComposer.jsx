@@ -8,7 +8,7 @@ import AppIcon from "../../components/AppIcon";
 import SearchSelect from "../../components/SearchSelect";
 import articleImportTemplate from "../../assets/modele-import-articles.xlsx?url";
 import {SimpleTable} from "./logistiqueShared";
-import {requestJson} from "../../services/api";
+import {downloadApiFile,requestJson} from "../../services/api";
 import {tiersRequest,tiersChanged} from "../../services/tiers";
 import {immobilisationsRequest} from "../../services/immobilisations";
 import {fetchLogistiqueReferences} from "../../services/logistique";
@@ -28,13 +28,15 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
  const [details,setDetails]=useState(null),[motif,setMotif]=useState(""),[pasteOpen,setPasteOpen]=useState(false),[pasteText,setPasteText]=useState(""),[hasHeaders,setHasHeaders]=useState(kind==="articles"),[pasteError,setPasteError]=useState(""),[clearAsked,setClearAsked]=useState(false);
  const [openingReceipt,setOpeningReceipt]=useState(false),[page,setPage]=useState(1),[focusTarget,setFocusTarget]=useState(null);
  const fileInput=useRef(null),previewRequest=useRef(null);
- const [importing,setImporting]=useState(false),[importError,setImportError]=useState(""),[importMessage,setImportMessage]=useState("");
+ const [importing,setImporting]=useState(false),[downloading,setDownloading]=useState(false),[importError,setImportError]=useState(""),[importMessage,setImportMessage]=useState("");
  const limit=logisticsBatchLimit(kind,openingReceipt),pageSize=kind==="articles"?50:limit;
  const pageForIndex=index=>Math.floor(index/pageSize)+1;
  const changed=origin.current!==identity,deniedByReferences=references.canCreate===false,allowed=scope.canCreate===true&&user?.permissions?.canWriteData===true&&!changed&&!deniedByReferences,disabled=!allowed||loading||busy||uncertain||importing;
+ const access=useRef(allowed);access.current=allowed;
  useReferencesRefresh(()=>{if(!busy&&!uncertain&&!changed&&!previewRequest.current)setReload(value=>value+1);});
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;request.current?.abort();};},[]);
  useEffect(()=>()=>previewRequest.current?.abort(),[identity]);
+ useEffect(()=>{if(allowed)return;previewRequest.current?.abort();previewRequest.current=null;setImporting(false);setDownloading(false);setImportMessage("");setImportError("");},[allowed,identity]);
  useEffect(()=>{
   if(changed)return;let active=true;setLoading(true);setError("");
   const fetchReferences=kind==="tiers"?tiersRequest("/references"):kind==="immobilisations"?immobilisationsRequest("/references"):receivedReferences?Promise.resolve({success:true,data:receivedReferences}):fetchLogistiqueReferences();
@@ -82,6 +84,16 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
    setPasteText("");setPasteError("");setPasteOpen(false);setImportError("");setImportMessage("");
   }catch(failure){setPasteError(failure.message);}
  }
+ function excelIsCurrent(controller){return alive.current&&access.current&&current.current===identity&&previewRequest.current===controller&&!controller.signal.aborted;}
+ async function downloadTemplate(){
+  if(disabled||saving.current||previewRequest.current)return;
+  const controller=new AbortController();previewRequest.current=controller;setDownloading(true);setImportMessage("");setImportError("");
+  try{
+   await downloadApiFile("/api/logistique/saisie-multiple/"+kind+"/modele-excel",{signal:controller.signal,filename:"modele-import-"+kind+".xlsx"});
+   if(excelIsCurrent(controller))setImportMessage("Modèle Excel téléchargé.");
+  }catch(failure){if(excelIsCurrent(controller))setImportError(failure.message||"Le modèle Excel n’a pas pu être téléchargé.");}
+  finally{if(previewRequest.current===controller){if(excelIsCurrent(controller))setDownloading(false);previewRequest.current=null;}}
+ }
  async function importFile(event){
   const file=event.currentTarget.files?.[0];
   event.currentTarget.value="";
@@ -97,9 +109,10 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
   setImporting(true);
   try{
    const body=new FormData();
-   body.append("file",file);
-   const response=await requestJson("/api/logistique/saisie-multiple/articles/apercu-excel",{requiresAuth:true,method:"POST",body,signal:controller.signal});
-   if(!alive.current||current.current!==identity||controller.signal.aborted)return;
+   body.append(kind==="articles"?"file":"fichier",file);
+   const endpoint=kind==="articles"?"/api/logistique/saisie-multiple/articles/apercu-excel":"/api/logistique/saisie-multiple/"+kind+"/import-excel";
+   const response=await requestJson(endpoint,{requiresAuth:true,method:"POST",body,signal:controller.signal});
+   if(!excelIsCurrent(controller))return;
    if(!response?.success)throw new Error(response?.status===413?"Le fichier dépasse 4 Mo.":response?.message||"Le fichier Excel n’a pas pu être lu.");
    const cells=response.data?.cells;
    if(!Array.isArray(cells)||!cells.every(row=>Array.isArray(row)&&row.every(cell=>typeof cell==="string")))throw new Error("L’aperçu du fichier Excel n’a pas pu être chargé.");
@@ -107,19 +120,19 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
    if(!imported.length)throw new Error("Ajoutez au moins une ligne sous les en-têtes.");
    const {next,issues,firstImportedIndex}=appendImportedRows(imported);
    if(!focusIssues(issues,next,firstImportedIndex))setFocusTarget({id:next[firstImportedIndex].clientRowId+config.name});
-   const names=imported.map(row=>row.values.NomArticle.trim().toLocaleLowerCase("fr")).filter(Boolean);
+   const names=imported.map(row=>String(row.values[config.name]??"").trim().toLocaleLowerCase("fr")).filter(Boolean);
    const count=imported.length===1?"1 ligne ajoutée au panier.":imported.length+" lignes ajoutées au panier.";
    const repeatedNames=new Set(names).size<names.length;
-   setImportMessage(repeatedNames?count+" Des noms se répètent. Vérifiez s’il s’agit de lots d’un même article.":count);
+   setImportMessage((kind==="articles"&&repeatedNames?count+" Des noms se répètent. Vérifiez s’il s’agit de lots d’un même article.":count)+(kind!=="articles"&&Object.keys(issues.rows).length?" Vérifiez les champs signalés avant d’enregistrer.":""));
   }catch(failure){
-   if(alive.current&&current.current===identity&&!controller.signal.aborted){
+   if(excelIsCurrent(controller)){
     setImportError(failure.message);
     setFocusTarget({id:"import-excel"});
    }
   }finally{
    if(previewRequest.current===controller){
     previewRequest.current=null;
-    if(alive.current&&current.current===identity&&!controller.signal.aborted)setImporting(false);
+    if(alive.current&&access.current&&current.current===identity&&!controller.signal.aborted)setImporting(false);
    }
   }
  }
@@ -165,11 +178,10 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
   {!changed&&!loading?<><section className="record-editor-section"><div className="logistics-batch-heading"><h3><AppIcon name={config.icon}/>Panier <span className="erp-count-badge">{rows.length}</span></h3>
    <div className="logistics-batch-actions">
     <ActionButton icon="plus" onClick={add} disabled={disabled||rows.length>=limit}>Ajouter une ligne</ActionButton>
-    {kind==="articles"?<>
-     <a className="ui-action is-secondary" data-action="download" href={articleImportTemplate} download="modele-import-articles.xlsx"><AppIcon name="download"/>Télécharger le modèle Excel</a>
-     <input type="file" ref={fileInput} accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden disabled={disabled||rows.length>=limit} onChange={importFile}/>
-     <ActionButton id={prefix+"import-excel"} aria-describedby={prefix+"import-excel-hint"} icon="stock-in" variant="primary" onClick={()=>fileInput.current?.click()} disabled={disabled||rows.length>=limit}>Importer un fichier Excel</ActionButton>
-    </>:null}
+    {kind==="articles"?<a className="ui-action is-secondary" data-action="download" href={articleImportTemplate} download="modele-import-articles.xlsx"><AppIcon name="download"/>Télécharger le modèle Excel</a>
+     :<ActionButton icon="download" disabled={disabled||downloading} onClick={downloadTemplate}>{downloading?"Téléchargement…":"Télécharger le modèle Excel"}</ActionButton>}
+    <input type="file" ref={fileInput} accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden disabled={disabled||downloading||rows.length>=limit} onChange={importFile}/>
+    <ActionButton id={prefix+"import-excel"} aria-describedby={prefix+"import-excel-hint"} icon="stock-in" variant="primary" onClick={()=>{if(!disabled&&!previewRequest.current)fileInput.current?.click();}} disabled={disabled||downloading||rows.length>=limit}>Importer un fichier Excel</ActionButton>
     <ActionButton icon="document" onClick={()=>setPasteOpen(value=>!value)} disabled={disabled}>Coller depuis Excel</ActionButton>
     <ActionButton icon="trash" onClick={()=>setClearAsked(true)} disabled={disabled||!rows.length}>Vider le panier</ActionButton>
    </div>
@@ -182,8 +194,8 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
     </label>
     <small id={prefix+"opening-stock-hint"}>{openingReceipt?"Saisissez les quantités et vérifiez le prix d’achat. Les lignes avec du stock doivent partager la même devise. Les articles à zéro sont créés sans mouvement.":"Par défaut, chaque article avec un stock initial a son propre bon d’entrée."} {limit} lignes maximum.</small>
    </div>:null}
-   {kind==="articles"?<p id={prefix+"import-excel-hint"} className="record-editor-note">Importez le modèle ou un fichier .xlsx avec les mêmes en-têtes sur la première ligne (4 Mo maximum).</p>:null}
-   {importing||importMessage?<p role="status" className="record-editor-note">{importing?"Lecture du fichier Excel…":importMessage}</p>:null}
+   <p id={prefix+"import-excel-hint"} className="record-editor-note">Importez le modèle ou un fichier .xlsx avec les mêmes en-têtes sur la première ligne (4 Mo maximum). Vérifiez le panier avant d’enregistrer l’ensemble.</p>
+   {importing||downloading||importMessage?<p role="status" aria-live="polite" className="record-editor-note">{importing?"Lecture du fichier Excel…":downloading?"Téléchargement du modèle Excel…":importMessage}</p>:null}
    {importError?<p role="alert" className="record-field-error">{importError}</p>:null}
    {kind==="immobilisations"?<div className="record-field logistics-batch-reason"><label htmlFor={prefix+"motif"}>Motif commun de l’enregistrement</label><input id={prefix+"motif"} value={motif} onChange={event=>{setMotif(event.target.value);changedDraft();}} disabled={disabled} maxLength={1000} placeholder="Motif appliqué aux lignes sans motif particulier"/></div>:null}
    {clearAsked?<div className="record-editor-error" role="alert"><span>Retirer toutes les lignes ?</span><ActionButton disabled={disabled} onClick={()=>setClearAsked(false)}>Conserver</ActionButton><ActionButton icon="trash" onClick={clear} disabled={disabled}>Vider le panier</ActionButton></div>:null}
@@ -198,7 +210,7 @@ export default function LogisticsBatchComposer({kind,references:receivedReferenc
     <div className="logistics-batch-actions"><ActionButton icon="plus" onClick={importRows} disabled={disabled}>Ajouter au panier</ActionButton><ActionButton onClick={()=>setPasteOpen(false)} disabled={disabled}>Fermer le collage</ActionButton></div>
    </div>:null}
    {Object.entries(errors.header||{}).map(([field,message])=><p id={prefix+field} tabIndex={-1} role="alert" className="record-field-error" key={field}>{String(message)}</p>)}
-   <SimpleTable rows={rows} columns={columns} getRowId={row=>row.clientRowId} showControls={false} defaultRowsPerPage={pageSize} page={page} onPageChange={setPage} defaultVisibleColumns={columns.map(column=>column.key)} defaultPinnedColumns={[]} emptyMessage={kind==="articles"?"Ajoutez une ligne ou importez un fichier Excel.":"Ajoutez une ligne ou collez une liste depuis Excel."}/>
+   <SimpleTable rows={rows} columns={columns} getRowId={row=>row.clientRowId} showControls={false} defaultRowsPerPage={pageSize} page={page} onPageChange={setPage} defaultVisibleColumns={columns.map(column=>column.key)} defaultPinnedColumns={[]} emptyMessage="Ajoutez une ligne ou importez un fichier Excel."/>
    {rowErrors.length>pageErrors.length?<div className="logistics-batch-actions">
     <span className="record-editor-note" role="status">{rowErrors.length} lignes à corriger dans le panier</span>
     <ActionButton onClick={()=>focusIssues(errors)} disabled={disabled}>Aller à la première ligne à corriger</ActionButton>

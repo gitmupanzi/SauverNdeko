@@ -132,11 +132,20 @@ function excelValue(field, raw, references) {
 }
 
 export function caisseBatchPaste(kind, text, references, defaults) {
-  const [head, ...data] = parseExcelTsv(text);
+  return caisseBatchFromMatrix(kind, parseExcelTsv(text), references, defaults);
+}
+
+export function caisseBatchFromMatrix(kind, cells, references, defaults) {
+  if (!Array.isArray(cells) || !cells.every(row => Array.isArray(row) && row.every(cell => typeof cell === "string"))) {
+    throw new Error("Le contenu du fichier Excel n’a pas pu être lu.");
+  }
+  const [head = [], ...data] = cells;
   if (!data.length) throw new Error("Collez les en-têtes et au moins une ligne.");
+  if (data.length > MAX_CAISSE_BATCH_ROWS) throw new Error("Le panier accepte au maximum "+MAX_CAISSE_BATCH_ROWS+" lignes.");
   const fields = CAISSE_BATCH_FIELDS[kind];
-  const columns = head.map(cell => fields.find(field => header(field) === header(cell) || header(CAISSE_BATCH_LABELS[field]) === header(cell)));
-  if (columns.some(field => !field) || new Set(columns).size !== columns.length) {
+  const aliases = new Map(kind === "caisses" ? [["caisse", "NomCaisse"], ["active", "Actif"]] : []);
+  const columns = head.map(cell => aliases.get(header(cell)) || fields.find(field => header(field) === header(cell) || header(CAISSE_BATCH_LABELS[field]) === header(cell)));
+  if (!columns.length || columns.some(field => !field) || new Set(columns).size !== columns.length) {
     throw new Error("Vérifiez les noms des colonnes et retirez les en-têtes en double.");
   }
   return data.map((cells, index) => {

@@ -6,8 +6,8 @@ import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import SearchSelect from "../../components/SearchSelect";
 import { SimpleTable } from "../logistique/logistiqueShared";
-import { requestJson } from "../../services/api";
-import { REFERENCE_BATCH_MAX, REFERENCE_VISIBILITY, referenceBatchRow, referenceBatchFromExcel, referenceBatchPayload, validateReferenceBatch } from "./referenceBatch";
+import { requestJson, downloadApiFile } from "../../services/api";
+import { REFERENCE_BATCH_MAX, REFERENCE_VISIBILITY, referenceBatchRow, referenceBatchFromExcel, referenceBatchFromMatrix, referenceBatchPayload, validateReferenceBatch } from "./referenceBatch";
 import "./ReferenceEditor.css";
 import "./ReferenceBatchEditor.css";
 
@@ -19,17 +19,20 @@ export default function ReferenceBatchEditor({ kind = "values", categories = [],
   const [rows, setRows] = useState([]), [errors, setErrors] = useState({ rows: {}, header: {} }), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [pasteOpen, setPasteOpen] = useState(false), [pasteText, setPasteText] = useState(""), [hasHeaders, setHasHeaders] = useState(false), [pasteError, setPasteError] = useState("");
   const [clearAsked, setClearAsked] = useState(false), [detailsId, setDetailsId] = useState(null);
-  const pending = useRef(null), saving = useRef(false), alive = useRef(true), detailAnchor = useRef(null);
+  const [fileBusy, setFileBusy] = useState(false), [fileError, setFileError] = useState(""), [fileNotice, setFileNotice] = useState("");
+  const pending = useRef(null), saving = useRef(false), alive = useRef(true), detailAnchor = useRef(null), fileInput = useRef(null), fileOperation = useRef(null), writable = useRef(false);
   const changedContext = origin.current !== identity;
   const readOnly = !canWrite || changedContext || user?.permissions?.canWriteData !== true;
-  const disabled = readOnly || busy || uncertain, scopeValue = scope === "entity" ? String(entity.entityId || "") : "";
+  writable.current = !readOnly;
+  const disabled = readOnly || busy || uncertain || fileBusy, scopeValue = scope === "entity" ? String(entity.entityId || "") : "";
   const compatibleCategories = categories.filter(item => item.ValideCategorieGenerique !== false && (item.IdEntiteFk == null || scope === "entity" && String(item.IdEntiteFk) === scopeValue));
   const categoryOptions = compatibleCategories.map(item => ({ value: String(item.ID_CategorieGenerique), label: item.ID_CategorieGenerique + " · " + item.NomCategorieGenerique }));
   if (categoryId && !categoryOptions.some(item => item.value === categoryId)) categoryOptions.push({ value: categoryId, label: "Catégorie à vérifier", disabled: true });
   const selectedDetails = rows.find(row => row.clientRowId === detailsId), activeField = kind === "categories" ? "ValideCategorieGenerique" : "ValideGenerique";
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  useEffect(() => () => fileOperation.current?.abort(), [identity]);
   useEffect(() => { if (detailsId) requestAnimationFrame(() => detailAnchor.current?.scrollIntoView?.({ behavior: "auto", block: "nearest" })); }, [detailsId]);
-  function resetErrors() { pending.current = null; setErrors({ rows: {}, header: {} }); setError(""); }
+  function resetErrors() { pending.current = null; setErrors({ rows: {}, header: {} }); setError(""); setFileError(""); setFileNotice(""); }
   function edit(clientRowId, field, value) {
     if (disabled) return;
     setRows(previous => previous.map(row => row.clientRowId === clientRowId ? { ...row, [field]: value } : row));
@@ -52,6 +55,44 @@ export default function ReferenceBatchEditor({ kind = "values", categories = [],
       pending.current = null; setPasteError(""); setPasteText(""); setPasteOpen(false); setError("");
     } catch (failure) { setPasteError(failure.message); }
   }
+  function excelHeader() {
+    const issues = validateReferenceBatch(kind, [], { categoryId, categories, scope, scopeValue });
+    delete issues.header.rows;
+    if (Object.keys(issues.header).length) { setErrors(previous => ({ ...previous, header: issues.header })); focusErrors(issues); return null; }
+    return { scope, ...(scope === "entity" ? { scopeValue } : {}), ...(kind === "values" ? { categoryId } : {}) };
+  }
+  async function excelFile(file = null) {
+    if (disabled || fileOperation.current) return;
+    const header = excelHeader(); if (!header) return;
+    setFileError(""); setFileNotice("");
+    if (file && (!/\.xlsx$/i.test(file.name) || !file.size || file.size > 4 * 1024 * 1024)) {
+      setFileError("Choisissez un fichier .xlsx de 4 Mo maximum."); return;
+    }
+    const controller = new AbortController(), expected = identity;
+    fileOperation.current = controller; setFileBusy(true);
+    const base = "/api/referentiel/saisie-multiple/" + (kind === "categories" ? "categories" : "valeurs");
+    try {
+      if (!file) {
+        await downloadApiFile(base + "/modele-excel?" + new URLSearchParams(header), { signal: controller.signal, filename: "SauverNdeko_Modele_Referentiels_" + kind + ".xlsx" });
+      } else {
+        const body = new FormData(); body.append("fichier", file); Object.entries(header).forEach(([key, value]) => body.append(key, value));
+        const response = await requestJson(base + "/import-excel", { requiresAuth: true, method: "POST", body, signal: controller.signal });
+        if (!alive.current || current.current !== expected || controller.signal.aborted || !writable.current) return;
+        if (!response?.success) throw new Error(response?.message || "Le fichier n’a pas pu être lu.");
+        const imported = referenceBatchFromMatrix(kind, response.data?.cells, { maxRows: 100 });
+        if (!imported.length) throw new Error("Le fichier ne contient aucune ligne à ajouter.");
+        if (rows.length + imported.length > REFERENCE_BATCH_MAX) throw new Error("Le panier peut contenir " + REFERENCE_BATCH_MAX + " lignes au maximum. Les lignes déjà saisies sont conservées.");
+        const combined = [...rows, ...imported], issues = validateReferenceBatch(kind, combined, { categoryId, categories, scope, scopeValue });
+        setRows(combined); setErrors(issues); pending.current = null; setError("");
+        setFileNotice(imported.length + " ligne(s) ajoutée(s) au panier. Vérifiez et corrigez les lignes avant d’enregistrer l’ensemble.");
+        if (Object.keys(issues.rows).length) focusErrors(issues);
+      }
+    } catch (failure) {
+      if (alive.current && current.current === expected && !controller.signal.aborted) setFileError(failure.message || "Le fichier n’a pas pu être préparé.");
+    } finally {
+      if (fileOperation.current === controller) { fileOperation.current = null; if (alive.current) setFileBusy(false); }
+    }
+  }
   function focusErrors(issues) {
     const header = Object.keys(issues.header || {})[0];
     if (header) { requestAnimationFrame(() => document.getElementById(prefix + (header === "scopeValue" ? "scope" : header))?.focus()); return; }
@@ -60,7 +101,7 @@ export default function ReferenceBatchEditor({ kind = "values", categories = [],
     requestAnimationFrame(() => document.getElementById(prefix + id + field)?.focus());
   }
   async function submit() {
-    if (readOnly || saving.current) return;
+    if (readOnly || saving.current || fileOperation.current) return;
     if (!pending.current) {
       const issues = validateReferenceBatch(kind, rows, { categoryId, categories, scope, scopeValue });
       setErrors(issues); setError("");
@@ -104,13 +145,17 @@ export default function ReferenceBatchEditor({ kind = "values", categories = [],
   ];
   const dirty = Boolean(rows.length || pasteText.trim());
   const hasErrors = Object.values(errors.rows || {}).filter(fields => Object.values(fields).some(Boolean)).length;
-  return <RecordEditorFrame title={kind === "categories" ? "Ajouter plusieurs catégories" : "Ajouter plusieurs valeurs"} subtitle="Préparez les lignes, puis enregistrez l’ensemble." icon={kind === "categories" ? "folder" : "list"} defaultWidth={1200} className="reference-editor reference-batch-editor" storageKey="sauverndeko.references.batch.width" onClose={onClose} onSubmit={submit} busy={busy} dirty={!readOnly && dirty} readOnly={readOnly} canSubmit={!readOnly} submitLabel={uncertain ? "Vérifier l’enregistrement" : "Enregistrer l’ensemble"} error={changedContext ? "Le contexte de travail a changé. Rouvrez la saisie depuis le registre." : error}>
+  return <RecordEditorFrame title={kind === "categories" ? "Ajouter plusieurs catégories" : "Ajouter plusieurs valeurs"} subtitle="Préparez les lignes, puis enregistrez l’ensemble." icon={kind === "categories" ? "folder" : "list"} defaultWidth={1200} className="reference-editor reference-batch-editor" storageKey="sauverndeko.references.batch.width" onClose={onClose} onSubmit={submit} busy={busy || fileBusy} dirty={!readOnly && dirty} readOnly={readOnly} canSubmit={!readOnly && !fileBusy} submitLabel={uncertain ? "Vérifier l’enregistrement" : "Enregistrer l’ensemble"} error={changedContext ? "Le contexte de travail a changé. Rouvrez la saisie depuis le registre." : error}>
     {!changedContext ? <>
       <section className="record-editor-section"><h3><AppIcon name="tag"/>{kind === "values" ? "Catégorie et portée" : "Portée des catégories"}</h3><div className="record-editor-grid">
         <div className="record-field"><label htmlFor={prefix + "scope"}>Portée</label><SearchSelect id={prefix + "scope"} label="Portée de la saisie" value={scope} options={[...(user?.Is_Admin === true ? [{ value: "global", label: "Commun à toutes les entreprises" }] : []), { value: "entity", label: entity.entities?.find(item => String(item.id) === String(entity.entityId))?.label || "Entreprise sélectionnée", disabled: !entity.entityId }]} disabled={disabled} invalid={Boolean(errors.header?.scopeValue)} describedBy={errors.header?.scopeValue ? prefix + "scope-error" : undefined} onChange={value => { setScope(value); resetErrors(); }}/>{errors.header?.scopeValue ? <small id={prefix + "scope-error"} role="alert" className="record-field-error">{errors.header.scopeValue}</small> : null}</div>
         {kind === "values" ? <div className="record-field"><label htmlFor={prefix + "categoryId"}>Catégorie *</label><SearchSelect id={prefix + "categoryId"} label="Catégorie des valeurs" value={categoryId} options={categoryOptions} placeholder="Choisir une catégorie…" disabled={disabled} invalid={Boolean(errors.header?.categoryId)} describedBy={errors.header?.categoryId ? prefix + "categoryId-error" : undefined} onChange={value => { setCategoryId(value); resetErrors(); }}/>{errors.header?.categoryId ? <small id={prefix + "categoryId-error"} role="alert" className="record-field-error">{errors.header.categoryId}</small> : null}</div> : null}
       </div></section>
       <section className="record-editor-section reference-batch-basket"><div className="reference-batch-heading"><h3><AppIcon name="list"/>Panier <span className="erp-count-badge">{rows.length}</span></h3><div className="reference-batch-actions"><ActionButton icon="plus" onClick={addLine} disabled={disabled || rows.length >= REFERENCE_BATCH_MAX}>Ajouter une ligne</ActionButton><ActionButton icon="document" onClick={() => setPasteOpen(value => !value)} disabled={disabled}>Coller depuis Excel</ActionButton><ActionButton icon="trash" disabled={disabled || !rows.length} onClick={() => setClearAsked(true)}>Vider le panier</ActionButton></div></div>
+        <div className="reference-batch-actions reference-batch-files"><ActionButton icon="download" onClick={() => excelFile()} disabled={disabled}>Télécharger le modèle Excel</ActionButton><ActionButton icon="document" onClick={() => fileInput.current?.click()} disabled={disabled || rows.length >= REFERENCE_BATCH_MAX}>Importer un fichier Excel</ActionButton><input ref={fileInput} id={prefix + "fichier"} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Fichier Excel à ajouter au panier" hidden disabled={disabled} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) excelFile(file); }}/></div>
+        {fileBusy ? <p className="record-editor-note" role="status">Préparation du fichier Excel…</p> : null}
+        {fileError ? <p className="record-field-error" role="alert">{fileError}</p> : null}
+        {fileNotice ? <p className="record-editor-note" role="status">{fileNotice}</p> : null}
         {clearAsked ? <div className="record-editor-error" role="alert"><span>Retirer toutes les lignes du panier ?</span><div className="reference-batch-actions"><ActionButton onClick={() => setClearAsked(false)}>Conserver</ActionButton><ActionButton icon="trash" onClick={clear}>Vider le panier</ActionButton></div></div> : null}
         {pasteOpen ? <div className="reference-batch-paste"><label htmlFor={prefix + "paste"}>Collage Excel</label><p className="record-editor-note">{kind === "categories" ? "Colonnes : Catégorie · Modules associés · État." : "Colonnes : Libellé · Abréviation ou code · Informations · État."}</p><textarea id={prefix + "paste"} value={pasteText} onChange={event => { setPasteText(event.target.value); setPasteError(""); }} rows={5} disabled={disabled} placeholder="Collez vos lignes ici…"/><label className="reference-batch-checkbox"><input type="checkbox" checked={hasHeaders} disabled={disabled} onChange={event => setHasHeaders(event.target.checked)}/>La première ligne contient les en-têtes</label>{pasteError ? <p role="alert" className="record-field-error">{pasteError}</p> : null}<div className="reference-batch-actions"><ActionButton icon="plus" onClick={importExcel} disabled={disabled}>Ajouter au panier</ActionButton><ActionButton onClick={() => setPasteOpen(false)}>Fermer le collage</ActionButton></div></div> : null}
         {errors.header?.rows ? <p role="alert" id={prefix + "rows"} tabIndex={-1} className="record-field-error">{errors.header.rows}</p> : null}{hasErrors ? <p role="alert" className="record-field-error">{hasErrors} ligne(s) à corriger.</p> : null}

@@ -10,6 +10,8 @@ Les liens facultatifs vers un article, un bon de stock et une immobilisation son
 
 La liste propose recherche, filtres, tri, pagination, colonnes personnalisées et exports Excel/CSV. Le tableau de bord ouvre les populations correspondant aux indicateurs. La vue Kanban classe les dossiers selon leur circuit ; chaque colonne indique son effectif total et permet d’ouvrir la liste complète. Consulter un numéro ou une carte ouvre la même fiche.
 
+Pour préparer plusieurs dossiers, utiliser **Télécharger le modèle Excel**, compléter la feuille **Tickets**, puis **Importer un fichier Excel**. Le fichier `.xlsx` est limité à 4 Mo et 100 dossiers. Les choix proposés dans le modèle correspondent à l’entreprise autorisée ; les listes acceptent leur identifiant ou un libellé exact non ambigu. L’import remplit seulement un panier : sélectionner chaque dossier pour vérifier les rubriques Demande, Affectation et Objets liés, corriger les erreurs ou retirer une ligne. Un autre fichier ajoute ses lignes au panier sans remplacer les corrections. **Enregistrer le panier** valide l’ensemble dans une seule transaction ; un dossier invalide annule les créations et leurs audits pour tout le lot. Les dossiers individuels restent accessibles par **Nouveau dossier**. Les pièces justificatives s’ajoutent après la création, dans la fiche du dossier.
+
 ## Traiter une demande
 
 1. **Affecter** un responsable avant de prendre en charge le dossier.

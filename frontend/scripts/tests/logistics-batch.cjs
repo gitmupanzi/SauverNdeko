@@ -96,7 +96,7 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  [/\.\/TiersEditor$/,'tiers-editor',`export {tiersForm,tiersFormErrors,tiersPayload} from ${JSON.stringify(absolute)};export default function TiersDraft(){}`],
  [/\.\/ArticleEditor$/,'article-editor',`export default function ArticleDraft(){}`],
  [/\.\/ImmobilisationEditor$/,'asset-editor',`export default function AssetDraft(){}`],
- [/\/services\/api$/,'api',`export async function requestJson(path,options={}){if(path.endsWith('/references'))return {success:true,data:globalThis.__refs};globalThis.__calls.push({path,options});return globalThis.__responses.shift()||{success:false,status:503,message:'Indisponible'};}export async function fetchViewData(){return {success:true,data:[]};}`],
+ [/\/services\/api$/,'api',`export async function requestJson(path,options={}){if(path.endsWith('/references'))return {success:true,data:globalThis.__refs};globalThis.__calls.push({path,options});return globalThis.__responses.shift()||{success:false,status:503,message:'Indisponible'};}export async function downloadApiFile(path,options={}){globalThis.__calls.push({path,options});return globalThis.__responses.shift();}export async function fetchViewData(){return {success:true,data:[]};}`],
  [/\/services\/tiers$/,'tiers-api',`export async function tiersRequest(){return {success:true,data:globalThis.__refs};}export function tiersChanged(){}export const optionalOptions=()=>[];export const tiersRecord=x=>x?.data;`],
  [/\/services\/immobilisations$/,'asset-api',`export async function immobilisationsRequest(){return {success:true,data:globalThis.__refs};}export const immobilisationRecord=x=>x?.data;`],
  [/\/services\/logistique$/,'logistique-api',serviceMock],
@@ -258,6 +258,48 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  resolvePreview({success:true,data:{cells:excelCells}});
  await closing;
  eq(fileSaved.length,0);
+
+ // Les paniers tiers et immobilisations proposent le même fichier contrôlé,
+ // sans enregistrer ni remplacer une saisie déjà commencée.
+ for(const kind of ['tiers','immobilisations']){
+  globalThis.__calls=[];globalThis.__responses=[];globalThis.__refs=refs;
+  const h=new Hooks(),r=()=>h.render(ui.default,{...props,kind});r();await h.flush();let t=r();
+  ok(button(t,'Télécharger le modèle Excel'));ok(button(t,'Importer un fichier Excel'));
+  await button(t,'Télécharger le modèle Excel').props.onClick();t=r();
+  eq(globalThis.__calls[0].path,'/api/logistique/saisie-multiple/'+kind+'/modele-excel');
+  const cells=kind==='tiers'?[['Nom','ID_TypeClientFk','Telephone','Actif'],['Alice importée','Inconnu','00123','oui']]
+    :[['NomImmobilisation','ID_CategorieFk','Quantite','SuiviIndividuel','PrixUnitaire','ID_DeviseFk','DateEntree','motif'],
+      ['Bureaux','Matériel','2','Non','100,50','USD','2026-11-07T09:10:11','Reprise']];
+  globalThis.__responses.push({success:true,data:{cells}});
+  const file=new File(['xlsx'],'panier.xlsx'),target={files:[file],value:file.name};
+  await nodes(t).find(n=>n.type==='input'&&n.props.type==='file').props.onChange({currentTarget:target});
+  t=r();let g=mark(t,'SimpleTable');eq(g.props.rows.length,1);eq(target.value,'');
+  const call=globalThis.__calls.at(-1);eq(call.path,'/api/logistique/saisie-multiple/'+kind+'/import-excel');eq(call.options.body.get('fichier').name,'panier.xlsx');
+  const line=g.props.rows[0];eq(line.values[kind==='tiers'?'Nom':'NomImmobilisation'],kind==='tiers'?'Alice importée':'Bureaux');
+  eq(globalThis.__calls.filter(c=>c.path.endsWith('/'+kind)).length,0);
+  if(kind==='tiers'){
+   eq(line.values.Telephone,'00123');eq(line.values.Actif,true);eq(line.values.ID_TypeClientFk,'Inconnu');
+   const c=g.props.columns.find(c=>c.key==='ID_TypeClientFk').render(line),select=nodes(c).find(n=>n.type?.name==='Select');
+   ok(select.props.invalid);ok(select.props.options.find(o=>o.value==='Inconnu').disabled);
+   select.props.onChange('3');t=r();eq(mark(t,'SimpleTable').props.rows[0].values.ID_TypeClientFk,'3');
+  }else{
+   eq(line.values.ID_CategorieFk,'40');eq(line.values.SuiviIndividuel,false);eq(line.values.DateEntree,'2026-11-07T09:10:11');
+   eq(p.validateLogisticsBatch(kind,g.props.rows,refs),{header:{},rows:{}});
+  }
+  // Une perte d'accès intervenue pendant la lecture ne peut appliquer sa réponse.
+  let finish;globalThis.__responses.push(new Promise(resolve=>finish=resolve));
+  const nextTarget={files:[file],value:file.name};
+  const pending=nodes(t).find(n=>n.type==='input'&&n.props.type==='file').props.onChange({currentTarget:nextTarget});
+  globalThis.__user={...globalThis.__user,permissions:{canWriteData:false}};t=r();
+  finish({success:true,data:{cells}});await pending;t=r();eq(mark(t,'SimpleTable').props.rows.length,1);eq(mark(t,'Frame').props.readOnly,true);
+  h.unmount();globalThis.__user={...globalThis.__user,permissions:{canWriteData:true}};
+ }
+ const invalidTiers=p.logisticsBatchFromMatrix('tiers',[['Nom','ID_TypeClientFk','Actif'],['A','3','incompréhensible']],refs,{hasHeaders:true});
+ ok(p.validateLogisticsBatch('tiers',invalidTiers,refs).rows[invalidTiers[0].clientRowId].Actif);
+ const dates=p.logisticsBatchFromMatrix('immobilisations',[['NomImmobilisation','DateEntree','DateAcquisition'],['Bien','2026-11-07T08:09:10Z','2026-11-07T00:00:00']],refs,{hasHeaders:true});
+ eq(dates[0].values.DateEntree,'2026-11-07T09:09:10');eq(dates[0].values.DateAcquisition,'2026-11-07');
+ const invalidDate=p.logisticsBatchFromMatrix('immobilisations',[['NomImmobilisation','DateEntree'],['Bien','2026-02-31T08:09:10Z']],refs,{hasHeaders:true});
+ eq(invalidDate[0].values.DateEntree,'2026-02-31T08:09:10Z');ok(p.validateLogisticsBatch('immobilisations',invalidDate,refs).rows[invalidDate[0].clientRowId].DateEntree);
 
  const h=new Hooks(),r=()=>h.render(ui.default,props);r();await h.flush();tree=r();globalThis.__scope={...globalThis.__scope,scopeKey:'B',entityId:'8'};tree=r();eq(mark(tree,'Frame').props.readOnly,true);ok(!mark(tree,'SimpleTable'));eq(mark(tree,'Frame').props.error,'L’entreprise a changé. Rouvrez la saisie dans le nouvel espace.');h.unmount();
  // Les erreurs d’en-tête reçoivent réellement le focus, sans effacer le panier.

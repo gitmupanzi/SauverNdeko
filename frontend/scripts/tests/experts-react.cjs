@@ -17,7 +17,7 @@ const entries=[
  [/\/components\/ProductPhotoPicker$/,"photo",`export default function Photo(p){return <photo-stub {...p}/>;}`],
  [/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],
  [/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>({user:globalThis.__user,refreshUser:globalThis.__refreshUser});`],
- [/\/services\/api$/,'api',`export const requestJson=(path,options)=>globalThis.__request(path,options);export const API_BASE_URL="";`],
+ [/\/services\/api$/,'api',`export const requestJson=(path,options)=>globalThis.__request(path,options);export const downloadApiFile=(path,options)=>globalThis.__download?.(path,options);export const API_BASE_URL="";`],
  [/\/components\/RegisterSurface$/,'surface',`export default function Surface(p){return <surface-stub actions={p.actions}>{p.actions}{p.children}</surface-stub>;}`],
  [/\/components\/DataTableToolbar$/,'toolbar',`export default function Toolbar(p){return <toolbar-stub {...p}/>;}`],
  [/\/components\/ActionButton$/,'button',`export default function Button(p){return <button-stub {...p}>{p.children}</button-stub>;}`],

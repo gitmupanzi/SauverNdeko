@@ -342,7 +342,7 @@ def text_value(raw, field, limit=255, required=False):
     return value or None
 
 
-def envelope(actor, body, operation, pk=None):
+def envelope(actor, body, operation, pk=None, *, batch_digest=None):
     allowed = {'data', 'competenceIds', 'prestationIds', 'affiliations', 'requestId', '_version', 'motif', 'photoDataUrl', 'removePhoto'} if operation in {'create', 'update'} else {'action', 'requestId', '_version', 'motif'}
     if not isinstance(body, dict) or set(body)-allowed:
         fail('Demande invalide.')
@@ -351,8 +351,14 @@ def envelope(actor, body, operation, pk=None):
     except (ValueError, TypeError):
         fail('Identifiant de demande requis.', 'requestId')
     motive = text_value(body.get('motif'), 'motif', 1000, operation != 'create')
-    digest = hashlib.sha256(json.dumps({'actor': actor.pk, 'entity': read_entity(actor), 'id': pk,
-                                       'operation': operation, 'body': body}, sort_keys=True, ensure_ascii=True, cls=ExactEncoder).encode('utf8')).hexdigest()
+    proof = {'actor': actor.pk, 'entity': read_entity(actor), 'id': pk,
+             'operation': operation, 'body': body}
+    # Réservé au service de panier : un rejeu lie chaque profil au contenu du
+    # lot entier, même si une ligne a été retirée après une réponse incertaine.
+    # Les demandes individuelles conservent exactement leur empreinte initiale.
+    if batch_digest is not None:
+        proof['batchDigest'] = batch_digest
+    digest = hashlib.sha256(json.dumps(proof, sort_keys=True, ensure_ascii=True, cls=ExactEncoder).encode('utf8')).hexdigest()
     return request_id, digest, motive
 
 
@@ -518,9 +524,9 @@ def _children(actor, pk, body):
 
 
 @photo_transaction
-def create(actor, body, *, _photo_files):
+def create(actor, body, *, _photo_files, _batch_digest=None):
     owner = writable(actor)
-    request_id, digest, motive = envelope(actor, body, 'create')
+    request_id, digest, motive = envelope(actor, body, 'create', batch_digest=_batch_digest)
     _request(actor, request_id, digest, motive, 'create')
     replayed = _replay(request_id, digest)
     if replayed:

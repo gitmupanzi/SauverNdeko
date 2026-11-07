@@ -1,4 +1,6 @@
 from apps.core.admin_operations import AdminBatchView, AdminReferencesView, AdminEntitiesView
+from apps.core.admin_excel import AdminExcelTemplateView, AdminExcelPreviewView
+from apps.professionnels.batches import ProfessionalTemplateView, ProfessionalExcelPreviewView, ProfessionalBatchView
 from apps.professionnels.views import (ContextView as ProfessionalContextView, EntitiesView as ProfessionalEntitiesView,
     ReferencesView as ProfessionalReferencesView, DirectoryView as ProfessionalDirectoryView,
     ProfilesView as ProfessionalProfilesView, ProfileActionView, PublicPhotoView as ProfessionalPublicPhotoView,
@@ -7,16 +9,21 @@ from apps.caisse.views import (ContextView as CashContextView, EntitiesView as C
     ReferencesView as CashReferencesView, SynthesisView as CashSynthesisView, RegisterView as CashRegisterView,
     CashAccountsView, EntriesView as CashEntriesView, EntryActionView as CashEntryActionView,
     ClosuresView as CashClosuresView, ClosurePreparationView, RegisterExportView as CashExportView)
+from apps.caisse.excel_import import CashExcelPreviewView, CashExcelTemplateView
+from apps.logistique.batch_excel import LogisticsExcelPreviewView, LogisticsExcelTemplateView
 from apps.core.entity_settings import (EntitySettingsContextView, EntitySettingsChoicesView,
     EntitySettingsProfileView, EntitySettingsLogoView)
 from apps.core.user_guide import GuideContextView, GuideArticleView, GuideEntitiesView
 from apps.support.portal import (SupportContextView, SupportEntitiesView, SupportDashboardView,
     SupportKanbanView, SupportTicketsView, SupportActionsView, SupportCommentsView,
     SupportDocumentsView, SupportDocumentDownloadView, SupportExcelView, SupportCSVView)
+from apps.support.batches import SupportTemplateView, SupportExcelPreviewView, SupportBatchView
 from apps.core.territorial_portal import TerritorialOverviewView,TerritorialRegisterView,TerritorialReferencesView,TerritorialExcelView,TerritorialCSVView
 from apps.core.territorial_batches import TerritorialBatchView
+from apps.core.territorial_excel import TerritorialExcelTemplateView, TerritorialExcelImportView
 from apps.core.table_preferences import TablePreferencesView
 from apps.core.reference_batches import ReferenceBatchView
+from apps.core.reference_excel import ReferenceExcelTemplateView, ReferenceExcelImportView
 from apps.core.reference_tables import ReferenceTablesView, ReferenceTablesExcelView, ReferenceTablesCSVView
 from apps.core.field_references import (FieldReferencesView, FieldReferenceRestoreView,
     FieldReferenceOptionsView, FieldReferenceHistoryView, FieldReferenceExportView)
@@ -101,6 +108,9 @@ urlpatterns = [
     re_path(r"^api/produits/references/?$", ProductReferencesView.as_view()),
     re_path(r"^api/produits/offres(?:/(?P<pk>[0-9]+))?/?$", ProductOffersView.as_view()),
     re_path(r"^api/professionnels/contexte/?$", ProfessionalContextView.as_view()),
+    re_path(r"^api/professionnels/profils/modele-excel/?$", ProfessionalTemplateView.as_view()),
+    re_path(r"^api/professionnels/profils/import-excel/?$", ProfessionalExcelPreviewView.as_view()),
+    re_path(r"^api/professionnels/profils/batch/?$", ProfessionalBatchView.as_view()),
     re_path(r"^api/professionnels/entreprises/?$", ProfessionalEntitiesView.as_view()),
     re_path(r"^api/professionnels/references/?$", ProfessionalReferencesView.as_view()),
     re_path(r"^api/professionnels/annuaire/(?P<pk>[0-9]+)/photo/?$", ProfessionalPublicPhotoView.as_view()),
@@ -115,6 +125,10 @@ urlpatterns = [
     re_path(r"^api/caisse/registres/(?P<kind>caisses|ecritures|clotures)(?:/export)?\.(?P<file_format>xlsx|csv)/?$", CashExportView.as_view()),
     re_path(r"^api/caisse/registres/(?P<kind>caisses|ecritures|clotures)/?$", CashRegisterView.as_view()),
     re_path(r"^api/caisse/clotures/preparation/?$", ClosurePreparationView.as_view()),
+    re_path(r"^api/caisse/caisses/modele-excel/?$", CashExcelTemplateView.as_view()),
+    re_path(r"^api/caisse/caisses/import-excel/?$", CashExcelPreviewView.as_view()),
+    re_path(r"^api/caisse/(?P<kind>ecritures|clotures)/modele-excel/?$", CashExcelTemplateView.as_view()),
+    re_path(r"^api/caisse/(?P<kind>ecritures|clotures)/import-excel/?$", CashExcelPreviewView.as_view()),
     re_path(r"^api/caisse/caisses(?:/(?P<pk>[0-9]+))?/?$", CashAccountsView.as_view()),
     re_path(r"^api/caisse/ecritures/(?P<pk>[0-9]+)/(?P<action>valider|contrepasser)/?$", CashEntryActionView.as_view()),
     re_path(r"^api/caisse/ecritures(?:/(?P<pk>[0-9]+))?/?$", CashEntriesView.as_view()),
@@ -135,6 +149,9 @@ urlpatterns = [
     re_path(r"^api/support/kanban/?$", SupportKanbanView.as_view()),
     re_path(r"^api/support/tickets/export\.xlsx$", SupportExcelView.as_view()),
     re_path(r"^api/support/tickets/export\.csv$", SupportCSVView.as_view()),
+    re_path(r"^api/support/tickets/modele\.xlsx/?$", SupportTemplateView.as_view()),
+    re_path(r"^api/support/tickets/import-excel/?$", SupportExcelPreviewView.as_view()),
+    re_path(r"^api/support/tickets/batch/?$", SupportBatchView.as_view()),
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/actions/?$", SupportActionsView.as_view()),
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/commentaires/?$", SupportCommentsView.as_view()),
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/documents/(?P<piece_id>[0-9]+)/download/?$", SupportDocumentDownloadView.as_view()),
@@ -142,6 +159,8 @@ urlpatterns = [
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/?$", SupportTicketsView.as_view()),
     re_path(r"^api/support/tickets/?$", SupportTicketsView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/panier/?$",TerritorialBatchView.as_view()),
+    re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/modele-excel/?$",TerritorialExcelTemplateView.as_view()),
+    re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/import-excel/?$",TerritorialExcelImportView.as_view()),
     re_path(r"^api/geolocalisation/territoires/synthese/?$",TerritorialOverviewView.as_view()),
     re_path(r"^api/geolocalisation/territoires/references/(?P<kind>[a-z0-9-]+)/?$",TerritorialReferencesView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/export\.xlsx$",TerritorialExcelView.as_view()),
@@ -151,9 +170,15 @@ urlpatterns = [
     re_path(r"^api/systeme/administration/entreprises/?$", AdminEntitiesView.as_view()),
     re_path(r"^api/systeme/administration/references/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminReferencesView.as_view()),
     re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminBatchView.as_view()),
+    re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/modele-excel/?$", AdminExcelTemplateView.as_view()),
+    re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/import-excel/?$", AdminExcelPreviewView.as_view()),
     re_path(r"^api/logistique/saisie-multiple/articles/apercu-excel/?$", ArticleExcelPreviewView.as_view()),
+    re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|immobilisations)/modele-excel/?$", LogisticsExcelTemplateView.as_view()),
+    re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|immobilisations)/import-excel/?$", LogisticsExcelPreviewView.as_view()),
     re_path(r"^api/logistique/saisie-multiple/(?P<kind>tiers|articles|immobilisations)/?$", LogisticsBatchView.as_view()),
     re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/?$", ReferenceBatchView.as_view()),
+    re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/modele-excel/?$", ReferenceExcelTemplateView.as_view()),
+    re_path(r"^api/referentiel/saisie-multiple/(?P<kind>categories|valeurs)/import-excel/?$", ReferenceExcelImportView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.xlsx/?$", ReferenceTablesExcelView.as_view()),
     re_path(r"^api/referentiel/tableaux/export\.csv/?$", ReferenceTablesCSVView.as_view()),
     re_path(r"^api/referentiel/tableaux/(?P<interface_key>[a-z]+[.][a-z-]+)/?$", ReferenceTablesView.as_view()),

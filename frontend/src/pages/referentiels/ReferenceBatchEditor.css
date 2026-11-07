@@ -1,5 +1,6 @@
 .reference-batch-editor .reference-batch-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .reference-batch-editor .reference-batch-heading h3{margin:0}.reference-batch-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.reference-batch-editor .reference-batch-files{margin-bottom:16px}
 .reference-batch-editor .reference-batch-cell{display:grid;gap:6px;min-width:0}.reference-batch-cell>input,.reference-batch-cell>textarea{width:100%;min-height:36px;margin:0;padding:8px 10px;border:1px solid var(--erp-border);border-radius:6px;background:var(--erp-input,var(--erp-surface));color:var(--erp-text);font-size:12px}
 .reference-batch-cell>input:focus,.reference-batch-cell>textarea:focus,.reference-batch-paste>textarea:focus{outline:2px solid var(--erp-focus,var(--erp-link));outline-offset:1px}
 .reference-batch-cell [aria-invalid=true]{border-color:var(--erp-danger)}.reference-batch-cell .record-field-error{white-space:normal;font-size:11px;line-height:1.45;color:var(--erp-danger)}

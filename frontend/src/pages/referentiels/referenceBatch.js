@@ -54,7 +54,12 @@ export function parseExcelTsv(text) {
   return rows.filter(cells => cells.some(value => value.trim() !== ""));
 }
 export function referenceBatchFromExcel(kind, text, { hasHeaders = false } = {}) {
-  const matrix = parseExcelTsv(text), fields = BATCH_FIELDS[kind];
+  return referenceBatchFromMatrix(kind, parseExcelTsv(text), { hasHeaders });
+}
+/** Les fichiers et le collage remplissent le même brouillon, sans écriture. */
+export function referenceBatchFromMatrix(kind, cells, { hasHeaders = true, maxRows = REFERENCE_BATCH_MAX } = {}) {
+  if (!Array.isArray(cells) || cells.some(row => !Array.isArray(row) || row.some(value => typeof value !== "string"))) throw new Error("Le fichier reçu ne contient pas un tableau valide.");
+  const matrix = cells.map(row => [...row]), fields = BATCH_FIELDS[kind];
   if (!fields) throw new Error("Ce type de saisie n’est pas disponible.");
   if (!matrix.length) return [];
   let columns = fields;
@@ -71,7 +76,7 @@ export function referenceBatchFromExcel(kind, text, { hasHeaders = false } = {})
     if (new Set(columns).size !== columns.length) throw new Error("Un même en-tête apparaît plusieurs fois.");
     if (!columns.includes(fields[0])) throw new Error("Le collage doit contenir la colonne « " + (kind === "categories" ? "Catégorie" : "Libellé") + " ».");
   }
-  if (matrix.length > REFERENCE_BATCH_MAX) throw new Error("Limitez la saisie à " + REFERENCE_BATCH_MAX + " lignes.");
+  if (matrix.length > maxRows) throw new Error("Limitez la saisie à " + maxRows + " lignes.");
   const booleanValue = (value, key) => {
     const token = referenceDuplicateKey(value);
     if (["oui", "true", "vrai", "1", "actif", "active"].includes(token)) return true;

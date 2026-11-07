@@ -27,6 +27,7 @@ const paths = {
   reset:"M3 10a9 9 0 1 1 2.4 8.1M3 4v6h6",
   refresh:"M20 7a9 9 0 0 0-15.5-2M4 3v5h5M4 17a9 9 0 0 0 15.5 2M20 21v-5h-5",
   download:"M12 3v12m-4-4 4 4 4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4",
+  upload:"M12 15V3m-4 4 4-4 4 4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4",
   filter:"M4 4h16l-6 7v7l-4 2v-9L4 4Z",
   columns:"M4 4h16v16H4V4Zm5 0v16m6-16v16",
   expand:"M8 3H3v5m0-5 6 6M16 21h5v-5m0 5-6-6",

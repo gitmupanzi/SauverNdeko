@@ -3,6 +3,7 @@ import {referenceLabel} from "../../utils/referenceOptions";
 import {articleForm,articleErrors,articlePayload} from "./articleForm";
 import {tiersForm,tiersFormErrors,tiersPayload} from "./TiersEditor";
 import {immobilisationValues,immobilisationErrors,immobilisationPayload,IMMOBILISATION_REFERENCES} from "./immobilisationForm";
+import {commandeDateInput,validCommandeDate} from "./commandeForm";
 import {lotErrors} from "../../components/LotFields";
 import {fieldCurrencyReferences,newCurrencyId} from "../../utils/money";
 import {parseExcelTsv,referenceBatchId,referenceDuplicateKey} from "../referentiels/referenceBatch";
@@ -21,7 +22,7 @@ export function batchChoices(kind,field,references){
  if(field==="Nature")return [{value:"personne",label:"Personne"},{value:"entreprise",label:"Entreprise"}];
  const items=references?.[sourceFields[kind]?.[field]]||(kind==="articles"&&field==="ID_DeviseFk"?references?.currencies:null);
  if(!items)return null;
- return items.map(item=>({value:String(item.id??item.value),label:referenceLabel(item),code:item.code,disabled:item.disabled===true||item.active===false}));
+ return items.map(item=>({value:String(item.id??item.value),label:referenceLabel(item),code:item.code,disabled:item.disabled===true||item.active===false||item.incompatible===true}));
 }
 export function logisticsBatchRow(kind,references={},overrides={},id=referenceBatchId()){
  const values=kind==="tiers"?tiersForm(null,references.defaultTypeClientId):kind==="articles"?{...articleForm(null,references),ID_DeviseFk:newCurrencyId(fieldCurrencyReferences(references,"articleCurrencies"))}:immobilisationValues(null,references);
@@ -45,6 +46,7 @@ export function validateLogisticsBatch(kind,rows,references={},motif="",openingR
  let photoBytes=0,hasOpeningStock=false;
  for(const row of rows){
   const fields=kind==="tiers"?tiersFormErrors(row.values,references):kind==="articles"?articleErrors(row.values,true):immobilisationErrors(row.values,row.motif||motif);
+  if(kind==="tiers"&&typeof row.values.Actif!=="boolean")fields.Actif="Choisissez Oui ou Non pour l’état actif.";
   if(kind==="articles"){
    const expiry=dateInput(row.values.DatePeremptionArticle);
    if(expiry&&!validArticleDate(expiry))fields.DatePeremptionArticle="Renseignez une date valide au format JJ/MM/AAAA ou AAAA-MM-JJ.";
@@ -143,7 +145,16 @@ export function logisticsBatchFromMatrix(kind,matrix,references,{hasHeaders=fals
    let value=raw;
    if(["Actif","ValideArticle","SuiviIndividuel","VisibleCatalogue"].includes(field))value=["oui","true","1","actif","vrai"].includes(token)?true:["non","false","0","inactif","faux"].includes(token)?false:raw;
    else if(field==="Nature")value=token==="entreprise"?"entreprise":token==="personne"?"personne":raw;
-   else if(field.startsWith("Date"))value=dateInput(raw);
+   else if(field.startsWith("Date")){
+    value=dateInput(raw);
+    if(kind==="immobilisations"&&field==="DateAcquisition"&&/^\d{4}-\d{2}-\d{2}T00:00:00$/.test(value))value=value.slice(0,10);
+    if(kind==="immobilisations"&&field==="DateEntree"){
+     // Convertir uniquement un instant ISO réellement valide ; une date
+     // incorrecte reste visible au lieu d’être normalisée silencieusement.
+     const match=/^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?)(Z|[+-]\d{2}:?\d{2})?$/.exec(value);
+     if(match&&validCommandeDate(match[1].replace(" ","T")))value=commandeDateInput(value);
+    }
+   }
    else {const choices=choicesByColumn[column];if(choices&&raw.trim()){const byId=choices.find(item=>item.value===raw.trim());const matches=byId?[byId]:choices.filter(item=>!item.disabled&&[item.label,item.code].some(label=>referenceDuplicateKey(label)===referenceDuplicateKey(raw)));if(matches.length===1)value=matches[0].value;}}
    row.values[field]=field==="QteArticle"?value.trim():value;
   });

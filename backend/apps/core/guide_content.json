@@ -454,6 +454,10 @@
               "text": "Sélectionnez les valeurs des listes de référence, puis complétez les structures associées. Enregistrez l’ensemble."
             },
             {
+              "title": "Importer plusieurs profils",
+              "text": "Dans Profils professionnels, téléchargez le modèle Excel puis utilisez Importer un fichier Excel. Vérifiez les comptes, références, compétences et services dans le panier ; complétez les structures dans ses détails puis enregistrez les brouillons ensemble. Les photos et la publication restent dans les fiches individuelles."
+            },
+            {
               "title": "Modifier la bonne fiche",
               "text": "Ouvrez les actions du profil et choisissez Modifier. Le formulaire reprend les valeurs enregistrées ; les modifications simultanées sont contrôlées."
             }
@@ -642,7 +646,7 @@
             "text": "Depuis une offre fictive « LAMPE-B », l’utilisateur choisit Contacter l’entreprise, vérifie le nom de l’entreprise liée à l’offre, puis rédige sa demande."
           },
           "notes": [
-        "Une structure territoriale ne désigne pas automatiquement une entreprise. Une demande n’est possible que si un destinataire explicite est configuré ; les coordonnées publiées restent disponibles.",
+            "Une structure territoriale ne désigne pas automatiquement une entreprise. Une demande n’est possible que si un destinataire explicite est configuré ; les coordonnées publiées restent disponibles.",
             "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue. Chaque parcours vérifie aussi ses propres droits."
           ],
           "links": [
@@ -779,7 +783,7 @@
             },
             {
               "title": "Contrôler le panier",
-              "text": "Corrigez ou retirez les lignes inutiles. Le collage Excel proposé alimente le brouillon ; vérifiez les colonnes avant l’enregistrement."
+              "text": "Téléchargez le modèle Tiers et importez le fichier rempli, ou utilisez le collage. Corrigez les erreurs et retirez les lignes inutiles dans le panier avant l’enregistrement. La lecture du fichier ne crée aucune fiche."
             },
             {
               "title": "Enregistrer l’ensemble",
@@ -1196,6 +1200,10 @@
               "text": "Choisissez le responsable, le service et la localisation de l’entreprise. Un bien sans affectataire reste visible."
             },
             {
+              "title": "Importer un fichier de biens",
+              "text": "Depuis Nouvelle immobilisation, téléchargez le modèle Excel puis importez la feuille Immobilisations remplie. Vérifiez les affectations, quantités, prix, dates et motifs dans le panier. Les codes sont automatiques ; aucun mouvement de stock ni amortissement ne découle de cet import."
+            },
+            {
               "title": "Contrôler acquisition et historique",
               "text": "Saisissez quantité, prix et devise, ou laissez le prix inconnu si nécessaire. Consultez la fiche et l’historique après validation."
             }
@@ -1471,6 +1479,10 @@
             {
               "title": "Enregistrer le dossier",
               "text": "Le numéro SUP est attribué automatiquement. Vérifiez la fiche créée et complétez les documents utiles."
+            },
+            {
+              "title": "Préparer plusieurs dossiers depuis Excel",
+              "text": "Téléchargez le modèle Excel de Tickets, complétez sa feuille Tickets puis cliquez Importer un fichier Excel. Le panier permet de sélectionner, vérifier, corriger ou retirer chaque dossier avant Enregistrer le panier. L’import ne crée rien ; les dossiers sont enregistrés ensemble après validation. Le fichier .xlsx accepte 100 dossiers et 4 Mo au maximum."
             }
           ],
           "example": {
@@ -1816,7 +1828,7 @@
             },
             {
               "title": "Vérifier le panier",
-              "text": "Ajoutez, corrigez ou retirez les lignes et contrôlez les informations reprises depuis Excel. Les données professionnelles utiles se trouvent dans la même fiche."
+              "text": "Téléchargez le modèle Excel, remplissez la feuille Utilisateurs puis importez le fichier pour préparer les comptes. Vérifiez et corrigez les lignes et leurs détails avant Enregistrer l’ensemble. Aucun compte ni privilège administrateur n’est créé par la lecture du fichier ; protégez le fichier contenant les mots de passe initiaux."
             },
             {
               "title": "Enregistrer l’ensemble",
@@ -1893,6 +1905,10 @@
               "text": "L’administration de plateforme peut ouvrir Nouveau rôle, préparer une ou plusieurs lignes puis enregistrer le panier."
             },
             {
+              "title": "Préparer plusieurs rôles",
+              "text": "Si vous êtes administrateur de plateforme, ouvrez Nouveau rôle, téléchargez le modèle Rôles puis importez le fichier rempli. Vérifiez et corrigez les lignes avant Enregistrer l’ensemble. La création de rôles ne leur attribue pas automatiquement des permissions."
+            },
+            {
               "title": "Contrôler l’usage",
               "text": "Vérifiez les comptes concernés et les capacités de consultation, gestion et export avant de modifier un droit."
             }
@@ -1965,7 +1981,7 @@
             },
             {
               "title": "Préparer un panier si habilité",
-              "text": "Nouvelle correspondance ou Nouveau paramètre ouvre une saisie d’une ou plusieurs lignes, avec détails et collage Excel."
+              "text": "Nouvelle correspondance ou Nouveau paramètre ouvre un panier. Téléchargez son modèle, remplissez la feuille attendue, puis importez le fichier Excel. Vérifiez la portée fixée et corrigez les lignes avant l’enregistrement ; le collage reste disponible."
             },
             {
               "title": "Enregistrer puis contrôler",
@@ -2048,7 +2064,7 @@
             },
             {
               "title": "Contrôler les doublons",
-              "text": "Ajoutez ou retirez les lignes, ou collez les cellules Excel selon les colonnes proposées. Vérifiez les libellés et codes signalés."
+              "text": "Téléchargez le modèle Excel, remplissez sa feuille Catégories puis importez le fichier .xlsx (100 lignes et 4 Mo maximum). Le collage reste disponible. Vérifiez et corrigez les lignes ajoutées au panier avant d’enregistrer."
             },
             {
               "title": "Enregistrer l’ensemble",
@@ -2057,7 +2073,7 @@
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Une entreprise fictive prépare les catégories « Familles internes » et « Priorités internes » dans une seule saisie, avec la portée entreprise autorisée."
+            "text": "Une entreprise fictive télécharge le modèle puis importe « Familles internes » et « Priorités internes ». Elle corrige un libellé dans le panier, vérifie la portée entreprise puis enregistre l’ensemble."
           },
           "notes": [
             "Les données historiques communes ne sont pas réattribuées automatiquement à une entreprise."
@@ -2084,16 +2100,16 @@
             },
             {
               "title": "Saisir les valeurs",
-              "text": "Renseignez les libellés, abréviations ou codes, l’état et les options proposées. Le collage Excel ajoute des lignes au même brouillon."
+              "text": "Téléchargez le modèle Excel puis importez la feuille Valeurs remplie, ou utilisez le collage. La portée et la catégorie sélectionnées s’appliquent à toutes les lignes ; le fichier ajoute seulement des lignes au panier."
             },
             {
               "title": "Vérifier puis enregistrer",
-              "text": "Corrigez les erreurs de ligne et doublons avant la validation unique du panier."
+              "text": "Corrigez les libellés, codes et états. Ouvrez Détails pour les informations et chaque visibilité, puis cliquez Enregistrer l’ensemble. Aucun enregistrement n’est effectué par l’import."
             }
           ],
           "example": {
             "title": "Exemple fictif",
-            "text": "Pour la catégorie fictive « Priorités internes », l’utilisateur prépare « Haute » avec le code « H » et « Normale » avec le code « N »."
+            "text": "Pour « Priorités internes », l’utilisateur importe « Haute » (H) et « Normale » (N), corrige le code d’une ligne et sa visibilité Articles dans Détails, puis enregistre les deux lignes ensemble."
           },
           "notes": [
             "Le champ métier enregistre l’identifiant de la valeur, pas le texte libre de son libellé.",
@@ -2306,6 +2322,10 @@
               "text": "Renseignez la date et l’heure, le libellé, le montant positif, ainsi que le type, le tiers ou la référence lorsqu’ils sont utiles. La devise provient de la caisse."
             },
             {
+              "title": "Préparer les écritures depuis Excel",
+              "text": "Le modèle Écritures et Importer un fichier Excel préparent les lignes du panier, sans écriture immédiate. Corrigez les erreurs puis enregistrez l’ensemble. La création reste en brouillon par défaut et la validation demande les confirmations habituelles."
+            },
+            {
               "title": "Conserver ou corriger le brouillon",
               "text": "Enregistrez le brouillon et relisez-le avant validation. Les montants comportent deux décimales au maximum. Un brouillon reste modifiable selon vos droits."
             }
@@ -2407,6 +2427,10 @@
             {
               "title": "Justifier l’écart",
               "text": "Si le comptage diffère du théorique, indiquez un motif avant de confirmer. Le comptage ne crée pas automatiquement une entrée ou une sortie de régularisation."
+            },
+            {
+              "title": "Importer les montants comptés",
+              "text": "Téléchargez le modèle Clôtures puis importez le fichier rempli dans le panier. Le serveur recharge les soldes et révisions ; vérifiez les montants comptés, les écarts et motifs avant la confirmation habituelle. Le fichier ne peut pas imposer un solde théorique ni valider une clôture."
             },
             {
               "title": "Conserver le contrôle",
