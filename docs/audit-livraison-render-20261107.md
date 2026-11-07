@@ -1,5 +1,7 @@
 # Audit local de livraison Render — 7 novembre 2026
 
+> Ce document décrit l’audit initial avant publication. La mise en œuvre autorisée ensuite, la sauvegarde de production restaurée et le déploiement réellement vérifié sont consignés dans [la livraison exécutée](livraison-render-20261107.md).
+
 ## Périmètre et état de départ
 
 Audit effectué dans `C:\Users\Benjamin-mupanzi\Documents\SauverNdeko`. Au départ, branche `main`, arbre propre, `HEAD` et `origin/main` à `bb6d5040bded9ad16d7a496d62a3534809c73480`, exactement le commit des journaux fournis. Les corrections de cet audit restent locales, non commitées et non poussées. Aucun déploiement, migration distante, reset ou suppression de production n'a été exécuté. Les seules bases créées pour les essais sont locales, isolées et ont été retirées après contrôle.

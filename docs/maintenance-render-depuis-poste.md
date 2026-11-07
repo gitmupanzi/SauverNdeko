@@ -2,6 +2,8 @@
 
 Procédure préparée le 7 novembre 2026. Aucune des opérations distantes ci-dessous n'a été exécutée pendant cet audit. Le parcours GitHub reste disponible après résolution de son blocage de facturation. Ce parcours local permet d'effectuer la même préparation avec un poste équipé, sans donner de droits de maintenance au serveur web.
 
+La [livraison exécutée ensuite le 7 novembre](livraison-render-20261107.md) documente la construction dans Render, la restauration testée et les commandes de maintenance effectivement appliquées. Elle distingue ce parcours de l’exécution du runner `apply` sur un poste équipé de Docker.
+
 ## Conditions avant application
 
 - Intégrer et publier les corrections locales, puis utiliser une copie propre de `main` exactement au commit à livrer. Le programme refuse une branche différente, un arbre modifié ou un SHA différent de `origin/main`. Faire `git fetch origin main` avant de relever le SHA. Une référence distante locale peut être ancienne ; ce contrôle ne remplace pas l'examen du commit dans Render.
