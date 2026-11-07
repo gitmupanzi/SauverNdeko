@@ -78,6 +78,8 @@ from apps.catalogue.structures import StructuresReadView, StructureProfileView, 
 from apps.catalogue.territorial_structures import TerritorialStructuresView
 from apps.communication.views import ContactsView, DiscussionReadView, DiscussionsView, MessagesView, StartView
 from apps.communication.announcements import AnnouncementContextView, AnnouncementsView
+from apps.communication.demandes import (SourceContextView as DemandeSourceView, DemandesView,
+    DemandeDetailView, DemandeTransitionView, DemandeDiscussionView, DemandeRoutingView)
 from apps.communication.notifications import NotificationsView, NotificationReadView, ReceivedAnnouncementsView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
@@ -254,6 +256,12 @@ urlpatterns = [
     re_path(r"^api/notifications/?$", NotificationsView.as_view()),
     re_path(r"^api/notifications/(?P<pk>[0-9]+)/read/?$", NotificationReadView.as_view()),
     re_path(r"^api/discussions/start/?$", StartView.as_view()),
+    re_path(r"^api/discussions/demandes/contexte-source/?$", DemandeSourceView.as_view()),
+    re_path(r"^api/discussions/demandes/routage/?$", DemandeRoutingView.as_view()),
+    re_path(r"^api/discussions/demandes/?$", DemandesView.as_view()),
+    re_path(r"^api/discussions/demandes/(?P<pk>[0-9]+)/transition/?$", DemandeTransitionView.as_view()),
+    re_path(r"^api/discussions/demandes/(?P<pk>[0-9]+)/discussion/?$", DemandeDiscussionView.as_view()),
+    re_path(r"^api/discussions/demandes/(?P<pk>[0-9]+)/?$", DemandeDetailView.as_view()),
     re_path(r"^api/discussions/contacts/?$", ContactsView.as_view()),
     re_path(r"^api/discussions/annonces/contexte/?$", AnnouncementContextView.as_view()),
     re_path(r"^api/discussions/annonces/recues/?$", ReceivedAnnouncementsView.as_view()),

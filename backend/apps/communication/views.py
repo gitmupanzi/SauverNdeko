@@ -35,6 +35,9 @@ UNREAD_PER_DISCUSSION = '''
     WHERE c."IdDiscussionFk"={discussion_id} AND
 ''' + UNREAD_CONDITION.format(author='c."AuthorIdFk"')
 MAX_READ_BATCH = 100
+_DEMAND_UNSET = object()
+DEMAND_FIELDS = '''"IdDemande", "CodeDemande", "SujetDemande", "IdDemandeurFk", "NomDemandeur",
+    "IdDestinataireUserFk", "IdEntiteDestinataireFk", "NomDestinataire"'''
 
 
 def access(actor):
@@ -49,8 +52,9 @@ def access(actor):
                 WHERE p."IdProfessionnel"=d."IdProfessionnelFk" AND p."IdUserFk"=%s
             ))
             OR (d."TypeDiscussion"='structure' AND d."IdEntiteFk"=%s)
+            OR (d."TypeDiscussion"='demande' AND communication.fn_demande_participant(%s,d."IdDemandeFk"))
         )''',
-        [entity, actor.pk, actor.pk, actor.pk, entity if actor.admin else None],
+        [entity, actor.pk, actor.pk, actor.pk, entity if actor.admin else None, actor.pk],
     )
 
 
@@ -67,9 +71,28 @@ def discussion(actor, pk, lock=False):
     return row
 
 
-def correspondent(row, actor):
+def linked_demand(row, actor, demand=_DEMAND_UNSET):
+    if row["TypeDiscussion"] != "demande":
+        return None
+    if demand is _DEMAND_UNSET:
+        demand = db.one('SELECT ' + DEMAND_FIELDS + ''' FROM communication."V_Demande"
+            WHERE "IdDemande"=%s AND communication.fn_demande_participant(%s,"IdDemande")''',
+            [row["IdDemandeFk"], actor.pk])
+    if not demand:
+        raise APIError("Discussion introuvable dans votre périmètre.", "NOT_FOUND", 404)
+    return demand
+
+
+def correspondent(row, actor, demand=_DEMAND_UNSET):
     kind = row["TypeDiscussion"]
     initiator = row["IdUserClientFk"] == actor.pk
+    if kind == "demande":
+        demand = linked_demand(row, actor, demand)
+        if not initiator:
+            return {"type": "user", "id": demand["IdDemandeurFk"], "fullName": demand["NomDemandeur"], "name": demand["NomDemandeur"]}
+        return {"type": "user" if demand["IdDestinataireUserFk"] else "structure",
+                "id": demand["IdDestinataireUserFk"] or demand["IdEntiteDestinataireFk"],
+                "name": demand["NomDestinataire"], "fullName": demand["NomDestinataire"]}
     if kind == "user":
         pk = row["IdUserDestinataireFk"] if initiator else row["IdUserClientFk"]
         name = row["NomDestinataire"] if initiator else row["NomInitiateur"]
@@ -85,13 +108,16 @@ def correspondent(row, actor):
     return {"type": kind, "id": row["IdEntiteFk"], "name": row["NomStructure"]}
 
 
-def summary(row, actor):
+def summary(row, actor, demand=_DEMAND_UNSET):
+    demand = linked_demand(row, actor, demand)
     return {
         **{field: row[field] for field in (
             "IdDiscussion", "TypeDiscussion", "SujetDiscussion", "DateCreation", "DernierMessageAt",
         )},
-        "recipient": correspondent(row, actor),
+        "recipient": correspondent(row, actor, demand),
         "lastMessage": row["DernierMessage"],
+        "demand": {"id": demand["IdDemande"], "code": demand["CodeDemande"],
+                   "subject": demand["SujetDemande"]} if demand else None,
     }
 
 
@@ -114,6 +140,9 @@ def active_members(entity, ids, *, lock=False):
 
 
 def can_reply(row, actor):
+    if row["TypeDiscussion"] == "demande":
+        return may_send(actor) and db.one('SELECT communication.fn_demande_participant(%s,%s) AS allowed',
+            [actor.pk, row["IdDemandeFk"]])["allowed"]
     return may_send(actor) and (
         row["TypeDiscussion"] != "user"
         or len(active_members(row["IdEntiteFk"], [row["IdUserClientFk"], row["IdUserDestinataireFk"]])) == 2
@@ -154,9 +183,16 @@ class DiscussionsView(APIView):
             LIMIT %s OFFSET %s''',
             [actor.pk, actor.pk, *values, take + 1, skip],
         )
+        demand_ids = [row["IdDemandeFk"] for row in rows[:take] if row.get("IdDemandeFk")]
+        demands = {row["IdDemande"]: row for row in db.query(
+            'SELECT ' + DEMAND_FIELDS + ''' FROM communication."V_Demande"
+            WHERE "IdDemande"=ANY(%s::bigint[]) AND communication.fn_demande_participant(%s,"IdDemande")''',
+            [demand_ids, actor.pk],
+        )} if demand_ids else {}
         send = may_send(actor)
         return ok(
-            [{**summary(row, actor), "unreadCount": row["UnreadCount"]} for row in rows[:take]],
+            [{**summary(row, actor, demands.get(row.get("IdDemandeFk"))),
+              "unreadCount": row["UnreadCount"]} for row in rows[:take]],
             meta={
                 "currentUserId": actor.pk, "take": take, "skip": skip, "hasNext": len(rows) > take,
                 "canSend": send, "contactsAvailable": send and bool(actor.row.get("IdEntiteFk")),

@@ -97,6 +97,10 @@ Dans tous les modules où des créations similaires s’y prêtent, privilégier
 
 ## Discussions et annonces
 
+Les **Demandes suivies** réutilisent le registre et les fenêtres communes, depuis une offre publiée ou un profil autorisé. Le formulaire affiche la source et le destinataire résolus par l’API ; ses capacités, états et transitions viennent du serveur. Une demande et sa discussion restent distinctes : envoyer la demande ne crée aucun message et ouvrir le fil exige une action explicite. Conserver la saisie et la clé de rejeu après une réponse incertaine, puis afficher le numéro et l’historique horodaté. Ne pas exposer le Produit 360 privé ni ses quantités de stock. Lire [le parcours des demandes](../../../docs/demandes-suivies.md).
+
+Pour les structures N3/N4/N5, seule une association explicite de réception des demandes autorise ce parcours. Ne jamais assimiler la clé territoriale à un compte ou à une entreprise. Sans destinataire, expliquer l’indisponibilité et conserver les coordonnées publiées ; la configuration du destinataire est réservée à la plateforme et exige un motif. Aucun rattachement ne transfère les demandes antérieures à une nouvelle entreprise.
+
 Messages utilise une boîte à deux volets sur ordinateur. Sur téléphone, la liste cède la place au fil avec un retour explicite qui conserve la recherche. Réutiliser la navigation, les thèmes, les boutons et l’état vide communs. Conserver les liens directs vers un fil et les brouillons en mémoire, avec la même clé de rejeu si l’envoi reste incertain. Les nouveaux messages s’ajoutent sans déplacer une personne qui consulte l’historique. Les badges et le filtre Non lues utilisent les valeurs de l’API. Signaler une lecture uniquement lorsque le message reçu est visible dans le fil au premier plan.
 
 Annonces utilise une liste de notifications individuelles, un détail et une confirmation de diffusion avec l’audience. Respecter les capacités renvoyées par le serveur et synchroniser la cloche après lecture. Les messages de discussion et les annonces ont chacun leur état de lecture.

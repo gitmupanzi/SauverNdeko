@@ -1,0 +1,11 @@
+import {requestJson} from "./api";
+export const DEMANDS_ROOT="/api/discussions/demandes";
+const read=(path,signal)=>requestJson(DEMANDS_ROOT+path,{requiresAuth:true,signal});
+const write=(path,body,method="POST")=>requestJson(DEMANDS_ROOT+path,{requiresAuth:true,method,body:JSON.stringify(body)});
+export const getDemandSource=(source,signal)=>read("/contexte-source?"+new URLSearchParams({sourceType:source.type,sourceId:String(source.id)}),signal);
+export const getDemands=(params,signal)=>read("?"+new URLSearchParams(Object.entries(params).filter(([,value])=>value!==""&&value!=null)),signal);
+export const getDemand=(id,signal)=>read("/"+encodeURIComponent(id),signal);
+export const createDemand=body=>write("",body);
+export const actOnDemand=(id,body)=>write("/"+encodeURIComponent(id)+"/transition",body);
+export const openDemandDiscussion=(id,body)=>write("/"+encodeURIComponent(id)+"/discussion",body);
+export const saveDemandRouting=(source,body)=>write("/routage?"+new URLSearchParams({sourceType:source.type,sourceId:String(source.id)}),body,"PUT");

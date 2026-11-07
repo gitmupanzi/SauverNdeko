@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-04",
+  "version": "2026-11-07",
   "modules": [
     {
       "key": "catalogue",
@@ -515,8 +515,46 @@
       "label": "Discussions",
       "path": "/discussions",
       "icon": "bi-chat-dots",
-      "description": "Échanger en privé et consulter les annonces de votre entreprise.",
+      "description": "Suivre vos demandes, échanger en privé et consulter les annonces de votre entreprise.",
       "articles": [
+        {
+          "id": "suivre-demande",
+          "title": "Faire et suivre une demande",
+          "summary": "Adressez un besoin à une entreprise ou à un professionnel et retrouvez son traitement.",
+          "steps": [
+            {
+              "title": "Choisir le destinataire",
+              "text": "Ouvrez une offre dans Produits ou une fiche dans Professionnels ou Structures. Si Faire une demande est proposé, vérifiez la source et le destinataire affichés. Une structure territoriale doit d’abord avoir un destinataire explicitement rattaché par l’administration de plateforme."
+            },
+            {
+              "title": "Préciser le besoin",
+              "text": "Saisissez un objet et une description utile. Pour un produit, vous pouvez préciser une quantité dans l’unité de l’offre. Indiquez uniquement les informations nécessaires, puis envoyez la demande. En cas d’erreur, gardez la saisie et réessayez la même opération."
+            },
+            {
+              "title": "Retrouver le suivi",
+              "text": "Dans Discussions, ouvrez Demandes et choisissez Envoyées ou Reçues. Ouvrez la fiche pour consulter son état et l’historique. Le destinataire peut prendre en charge la demande ; le demandeur peut confirmer son résultat ou l’annuler selon l’état courant. Chaque changement est conservé."
+            },
+            {
+              "title": "Échanger si nécessaire",
+              "text": "Depuis la fiche, ouvrez la discussion liée pour apporter une précision. L’ouverture ne rédige et n’envoie aucun message à votre place. La confirmation du résultat se fait dans la demande, même si vous avez échangé dans le fil."
+            }
+          ],
+          "example": {
+            "title": "Exemple fictif",
+            "text": "Vous demandez 2 pièces d’une lampe proposée par une entreprise. Celle-ci prend en charge la demande et répond dans la discussion liée. Après avoir obtenu la réponse attendue, vous indiquez Satisfaite. La demande reste consultable avec les dates et les étapes de son traitement."
+          },
+          "notes": [
+            "Une demande ne réserve pas de stock et ne crée ni bon, ni facture, ni paiement.",
+            "Évitez les données médicales ou personnelles inutiles. Les demandes et conversations ne constituent pas un dossier médical.",
+            "Les destinataires et les droits sont vérifiés à l’envoi. Les demandes privées ne deviennent pas visibles à toute la plateforme."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir les demandes",
+              "path": "/discussions?onglet=demandes"
+            }
+          ]
+        },
         {
           "id": "retrouver-discussion",
           "title": "Retrouver une conversation",
@@ -604,7 +642,7 @@
             "text": "Depuis une offre fictive « LAMPE-B », l’utilisateur choisit Contacter l’entreprise, vérifie le nom de l’entreprise liée à l’offre, puis rédige sa demande."
           },
           "notes": [
-            "La fiche d’une structure territoriale ne désigne pas une entreprise de messagerie et ne propose pas d’action de discussion.",
+        "Une structure territoriale ne désigne pas automatiquement une entreprise. Une demande n’est possible que si un destinataire explicite est configuré ; les coordonnées publiées restent disponibles.",
             "L’accès à Discussions ne donne pas automatiquement accès aux autres modules du catalogue. Chaque parcours vérifie aussi ses propres droits."
           ],
           "links": [

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import ListState from "../../components/ListState";
@@ -221,6 +222,11 @@ export default function ConversationThread({ id, row, visible, canSend, headingR
         <ActionButton icon="refresh" className="communication-icon-action" onClick={() => setRefresh(value => value + 1)}
           aria-label="Actualiser les messages" title="Actualiser les messages" disabled={state.loading} />
       </header>
+      {discussion?.demand && /^[1-9]\d*$/.test(String(discussion.demand.id)) && <div className="communication-demand-context">
+        <AppIcon name="document" />
+        <span>{discussion.demand.code} · {discussion.demand.subject}</span>
+        <Link to={"/discussions?onglet=demandes&demande=" + encodeURIComponent(discussion.demand.id)}>Voir la demande<AppIcon name="chevron-right" size={14} /></Link>
+      </div>}
       <div className="communication-thread-scroll" ref={scroll} aria-label="Historique des messages" tabIndex={0}>
         {state.error && <ListState role="alert" icon="alert" title={state.error}
           action={<ActionButton icon="refresh" onClick={() => setRefresh(value => value + 1)}>Réessayer</ActionButton>} />}
@@ -238,7 +244,7 @@ export default function ConversationThread({ id, row, visible, canSend, headingR
                 {date && date !== previousDate && <li className="communication-message-day"><span>{date}</span></li>}
                 <li className={mine ? "is-own" : undefined} data-unread-message={message.unread ? message.IdChat : undefined}>
                   <article className="communication-bubble">
-                    {discussion?.TypeDiscussion === "structure" && !mine && <strong>{author || "Participant"}</strong>}
+                    {["structure", "demande"].includes(discussion?.TypeDiscussion) && !mine && <strong>{author || "Participant"}</strong>}
                     <p><span className="visually-hidden">{mine ? "Vous" : author || "Participant"} : </span>
                       {message.TextChat || "Message sans texte"}
                       <time dateTime={message.DateChat} title={communicationTime(message.DateChat)}>{chatHour(message.DateChat)}</time>

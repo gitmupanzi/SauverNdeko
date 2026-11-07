@@ -15,6 +15,8 @@ Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention
 
 ## Vision et données de recherche
 
+Les [demandes suivies](../../../docs/demandes-suivies.md) sont des objets opérationnels du schéma `communication`, distincts des discussions, commandes et événements de recherche. Résoudre une source actuellement partageable et son destinataire côté serveur à la création, puis figer l’identité destinataire. Une structure N3/N4/N5 exige un routage explicite validé par la plateforme ; son ID et sa localisation ne prouvent jamais une entreprise représentante. Contrôler auteur, destinataire, licence et capacités sur chaque lecture ou transition, sans accès automatique d’un administrateur global aux échanges privés. Préserver l’historique immuable, la révision, le rejeu atomique et les valeurs centrales d’état. Aucun message, mouvement, bon ou paiement automatique ne découle de la demande ; la discussion liée s’ouvre sur action explicite.
+
 La [vision scientifique et sa feuille de route](../../../docs/vision-et-feuille-de-route-scientifique.md) décrivent les cibles futures, pas un moteur prédictif installé. Réutiliser les sources SQL et distinguer article de stock local, offre publiée, demande, vente et événement de recherche. Le socle `analytics.T_Recherche` n’autorise pas une collecte implicite de texte de recherche, GPS ou messages. Finalité, accès, minimisation, conservation, provenance et protocole d’évaluation se décident avant instrumentation. Une vitrine frontend publique n’ouvre aucune API métier anonyme ni ne modifie les licences.
 
 ## Architecture active

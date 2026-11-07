@@ -46,6 +46,16 @@
       ],
       "description": "Séparer les annuaires inclus, les modules sur licence et l’administration de plateforme.",
       "release": "2026.11.06"
+    },
+    {
+      "id": "20261107_01_demandes_suivies",
+      "file": "../migrations/20261107_01_demandes_suivies.sql",
+      "sha256": "c91700fc3380cfdf30dd13d17e4b20f55900d663a25f5fc3a6ea9b0af040297c",
+      "dependsOn": [
+        "20261106_04_offre_modules_entreprise"
+      ],
+      "description": "Suivre les demandes depuis les fiches publiées, leurs destinataires vérifiés et leurs échanges privés.",
+      "release": "2026.11.07"
     }
   ]
 }

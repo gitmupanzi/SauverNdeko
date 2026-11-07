@@ -5,6 +5,7 @@ import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import useStructureRead from "./useStructureRead";
 import {SANITARY_ROOT,structureDetail,structureName,structureWebsite,structureTarget,structureLevelLabel,structureTerritory} from "./structureModel";
+import RequestSourceAction from "../demandes/RequestSourceAction";
 
 export default function StructureDetail({structureKey,owner,onClose}){
  const [retry,setRetry]=useState(0),[tab,setTab]=useState("coordonnees"),target=structureTarget(structureKey);
@@ -16,6 +17,7 @@ export default function StructureDetail({structureKey,owner,onClose}){
    {current.loading?<div className="structure-loading" role="status"><AppIcon name="building" size={30}/><span>Chargement de la structure…</span></div>:null}
    {current.error?<div className="structure-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
    {record?<><section className="structure-identity"><span className="structure-logo" aria-hidden="true"><AppIcon name="building" size={34}/></span><div><span>{record.type||"Type non renseigné"} · {structureLevelLabel(record.level)}</span><h3>{structureName(record)}</h3>{structureTerritory(record)?<p>{structureTerritory(record)}</p>:null}</div></section>
+    <RequestSourceAction sourceType={"structure_n"+target.level} sourceId={target.id}/>
     <ConsultationTabs tabs={tabs} value={tab} onChange={setTab} label="Rubriques de la structure ou du territoire" idPrefix={prefix}/>
     <section id={prefix+"-panel-"+tab} role="tabpanel" aria-labelledby={prefix+"-tab-"+tab} tabIndex={0}>
      {tab==="coordonnees"?<div className="structure-presentation"><section className="structure-section"><h3><AppIcon name="mail"/>Coordonnées et accueil</h3>{record.contactsPublished?<><dl className="structure-terms">

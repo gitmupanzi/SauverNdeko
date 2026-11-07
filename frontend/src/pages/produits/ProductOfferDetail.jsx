@@ -6,6 +6,7 @@ import ArticlePhoto from "../../components/ArticlePhoto";
 import {requestJson} from "../../services/api";
 import {formatCurrency} from "../../utils/money";
 import {PRODUCT_OFFERS_ROOT,offerName,offerError,validOfferId} from "./productOffers";
+import RequestSourceAction from "../demandes/RequestSourceAction";
 
 export default function ProductOfferDetail({id,owner,onClose,onContact,canContact=false}){
  const [retry,setRetry]=useState(0),[state,setState]=useState({key:"",record:null,locations:[],canContact:false,loading:true,error:""});
@@ -27,6 +28,7 @@ export default function ProductOfferDetail({id,owner,onClose,onContact,canContac
    {current.loading?<div className="product-offer-loading" role="status"><AppIcon name="box" size={30}/><span>Chargement de l’offre…</span></div>:null}
    {current.error?<div className="product-offer-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
    {record?<><section className="product-offer-identity"><div className="product-offer-image"><ArticlePhoto record={record} publicCatalogue/></div><div><span className="product-offer-category">{record.CategorieArticle||"Catégorie non renseignée"}</span><h3>{offerName(record)}</h3>{record.RefArticle?<p>Réf. {record.RefArticle}</p>:null}<span className="erp-status is-neutral">{record.EtatDisponibilite||"Stock à confirmer"}</span></div></section>
+    <RequestSourceAction sourceType="product" sourceId={record.ID_Article}/>
     <section className="product-offer-section product-offer-price"><div><span>Prix de vente déclaré</span><strong>{record.PVArticle==null?"Prix à confirmer":formatCurrency(record.PVArticle,record.DeviseCode)}</strong><small>{record.Unite?"Par "+record.Unite:"Unité non renseignée"}</small></div><p>Confirmez le prix, la disponibilité et les conditions auprès de l’entreprise avant de vous déplacer.</p></section>
     <section className="product-offer-section"><h3><AppIcon name="tag"/>Le produit</h3><dl className="product-offer-terms">{term("Désignation",record.NomArticle)}{term("Référence",record.RefArticle)}{term("Catégorie",record.CategorieArticle)}{term("Type",record.TypeArticle)}{term("Unité",record.Unite)}{term("Stock déclaré",record.EtatDisponibilite)}</dl></section>
     <section className="product-offer-section"><h3><AppIcon name="building"/>L’entreprise</h3><dl className="product-offer-terms">{term("Entreprise",record.NomEntite)}{term("Adresse",record.AdresseEntite)}{term("Téléphone",record.PhoneEntite)}</dl>{!record.AdresseEntite&&!record.PhoneEntite?<p className="product-offer-note">Les coordonnées de cette entreprise ne sont pas renseignées.</p>:null}</section>

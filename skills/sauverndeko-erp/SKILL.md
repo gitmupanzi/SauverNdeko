@@ -13,6 +13,8 @@ Conserver le socle PostgreSQL et les référentiels partagés. Distinguer code p
 
 ## Références à choisir selon la tâche
 
+Pour les [demandes suivies](../../docs/demandes-suivies.md), conserver une identité de source et un destinataire explicite, les étapes de traitement et leur historique. Une demande ne réserve pas de stock et n’émet aucun document financier. Le résultat déclaré par les participants reste distinct d’une preuve de livraison, d’un diagnostic et d’une mesure scientifique. Les structures territoriales partagées ne deviennent pas entreprises : leur destinataire nécessite une association explicite et contrôlée.
+
 Le partage d’articles utilise un défaut d’entreprise pour les nouvelles créations et un choix propre à chaque article. Les articles existants ne sont pas publiés automatiquement ; leur retrait ou publication n’affecte jamais le stock. La projection d’offre et sa photo excluent les informations de gestion privées. Ce contrat reste distinct d’une ouverture des annuaires aux visiteurs anonymes.
 
 - Pour repérer un domaine et son état réel : [cartographie](references/cartographie.md), puis [inventaire technique](references/inventaire-technique.md).

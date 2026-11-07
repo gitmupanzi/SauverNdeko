@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import ModuleSidebar from "../components/ModuleSidebar";
 import DiscussionMessages from "./discussions/DiscussionMessages";
 import Announcements from "./discussions/Announcements";
+import DemandRegister from "./demandes/DemandRegister";
 import "./logistique/LogistiqueModern.css";
 import "./admin/AdminPortal.css";
 import "./discussions/Discussions.css";
@@ -13,6 +14,7 @@ const menuGroups = [{
   label: "Communication",
   items: [
     { key: "messages", label: "Messages", icon: "chat" },
+    { key: "demandes", label: "Demandes", icon: "list" },
     { key: "annonces", label: "Annonces", icon: "bell" },
   ],
 }];
@@ -23,7 +25,7 @@ export default function Discussions() {
     try { return localStorage.getItem(sidebarPreference) !== "false"; }
     catch { return true; }
   });
-  const active = params.get("onglet") === "annonces" ? "annonces" : "messages";
+  const active = ["annonces", "demandes"].includes(params.get("onglet")) ? params.get("onglet") : "messages";
 
   useEffect(() => {
     try { localStorage.setItem(sidebarPreference, String(collapsed)); }
@@ -34,6 +36,10 @@ export default function Discussions() {
     if (tab === active) return;
     const next = new URLSearchParams(params);
     next.set("onglet", tab);
+    // Une cible de messagerie ne doit pas recréer un fil après un passage
+    // par les demandes ou les annonces. Le fil choisi reste dans son URL.
+    next.delete("type");
+    next.delete("id");
     setParams(next);
   }
 
@@ -47,6 +53,7 @@ export default function Discussions() {
           <DiscussionMessages visible={active === "messages"} />
         </section>
         {active === "annonces" && <Announcements />}
+        {active === "demandes" && <DemandRegister />}
       </main>
     </div>
   );

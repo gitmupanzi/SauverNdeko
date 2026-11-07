@@ -12,6 +12,7 @@ globalThis.setTimeout=(fn,delay,...args)=>{if(delay===15000){const id='directory
 globalThis.clearTimeout=id=>{if(timers.has(id)){timers.delete(id);return;}return nativeClear(id);};
 const originalError=console.error;console.error=(...args)=>{if(!String(args[0]).includes('react-test-renderer is deprecated'))originalError(...args);};
 const entries=[
+ [/\/demandes\/RequestSourceAction$/,'request-source',`export default function RequestSourceAction(){return null;}`],
  [/\/services\/authStorage$/,"storage",`export const getAccessToken=()=>"token-fixture";`],
  [/\/components\/ProductPhotoPicker$/,"photo",`export default function Photo(p){return <photo-stub {...p}/>;}`],
  [/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],

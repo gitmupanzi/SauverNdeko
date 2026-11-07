@@ -99,6 +99,33 @@
   border-bottom: 1px solid var(--erp-border);
 }
 
+.communication-demand-context {
+  display: flex;
+  flex: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-raised);
+  color: var(--erp-text);
+  font-size: .82rem;
+}
+
+.communication-demand-context > span {
+  flex: 1 1 160px;
+  overflow-wrap: anywhere;
+}
+
+.communication-demand-context > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 32px;
+  color: var(--erp-link);
+  font-weight: 600;
+}
+
 .communication-search input, .communication-compose textarea, .communication-field input,
 .communication-field textarea {
   width: 100%;

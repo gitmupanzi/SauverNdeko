@@ -8,6 +8,7 @@ import AppIcon from "../../components/AppIcon";
 import ExpertAvatar from "./ExpertAvatar";
 import {ExpertPublication} from "./ExpertDirectory";
 import {EXPERT_ROOT,expertName,expertLabels,expertPublicationMissing} from "./expertModel";
+import RequestSourceAction from "../demandes/RequestSourceAction";
 
 export default function ExpertDetail({id,manage=false,onClose,onEdit,onAction,onContact}) {
   const scope=useEntityScope(),[tab,setTab]=useState("presentation"),[retry,setRetry]=useState(0),[state,setState]=useState({key:"",data:null,loading:true,error:""}),key=scope.scopeKey+":"+manage+":"+id+":"+retry,current=state.key===key?state:{data:null,loading:true,error:""},record=current.data?.record;
@@ -23,6 +24,7 @@ export default function ExpertDetail({id,manage=false,onClose,onEdit,onAction,on
         {scope.globalAdmin&&!scope.entityId?<p className="record-editor-note">Fermez cette fiche, puis sélectionnez l’entreprise{record.NomEntite?" « "+record.NomEntite+" »":" propriétaire"} dans la barre supérieure pour modifier ou publier ce profil.</p>:null}
         <div className="expert-detail-actions">{current.data?.canManage&&!record.Publie&&missing.length?<ActionButton icon="edit" onClick={()=>onEdit(id)}>Compléter le profil</ActionButton>:null}{current.data?.canPublish?<ActionButton icon={record.Publie?"eye-off":"globe"} disabled={!record.Publie&&missing.length>0} title={!record.Publie&&missing.length?"Complétez les informations indiquées avant de publier.":undefined} onClick={()=>onAction({id,action:record.Publie?"depublier":"publier"})}>{record.Publie?"Retirer de l’annuaire":"Publier dans l’annuaire"}</ActionButton>:null}</div>
       </section>:null}
+      {!manage?<RequestSourceAction sourceType="expert" sourceId={id}/>:null}
       <ConsultationTabs tabs={tabs} value={tab} onChange={setTab} label="Rubriques du profil" idPrefix="expert-detail"/>
       <section id={"expert-detail-panel-"+tab} role="tabpanel" aria-labelledby={"expert-detail-tab-"+tab} className="record-editor-section expert-profile-panel">
         {tab==="presentation"?<><h3><AppIcon name="user"/>Présentation</h3><p className="expert-profile-text">{record.summary || record.PresentationPublique || "La présentation de ce professionnel n’est pas encore renseignée."}</p><dl className="expert-summary">{term("Secteur",record.sector||record.Secteur)}{term("Profession",record.professionalType||record.TypeProfessionnel)}{term("Spécialité",record.specialty||record.Specialite)}{term("Expérience",(record.experience??record.ExperienceAns)!=null?`${record.experience??record.ExperienceAns} an${Number(record.experience??record.ExperienceAns)>1?"s":""}`:null)}{term("Localité",record.locality||record.LocalitePublique)}</dl></>:null}
