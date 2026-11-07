@@ -1,4 +1,4 @@
-// Brochure publique et frontière d’accès : aucun navigateur, aucune donnée métier.
+// Accueil public et frontière d’accès : aucun navigateur, aucune fiche métier.
 const path=require('node:path'),Module=require('node:module'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'../../..'),front=path.join(root,'frontend');
 const esbuild=require(path.join(front,'node_modules/esbuild')),React=require(path.join(front,'node_modules/react')),server=require(path.join(front,'node_modules/react-dom/server'));
@@ -11,7 +11,7 @@ const stubs=[
 async function bundle(contents,extra=[]){const built=await esbuild.build({stdin:{contents,loader:'jsx',resolveDir:front},bundle:true,platform:'node',format:'cjs',jsx:'automatic',write:false,external:['react','react/jsx-runtime'],loader:{'.css':'empty'},define:{'import.meta.env':'{}'},plugins:[{name:'fixtures',setup(build){build.onResolve({filter:/^\.\/pages\//},args=>args.kind==='dynamic-import'?{path:args.path.split('/').pop(),namespace:'unloaded-page'}:undefined);build.onLoad({filter:/.*/,namespace:'unloaded-page'},()=>({contents:'export default function Unloaded(){}',loader:'jsx'}));for(const[filter,name,source]of[...extra,...stubs]){build.onResolve({filter},()=>({path:name,namespace:name}));build.onLoad({filter:/.*/,namespace:name},()=>({contents:source,loader:'jsx',resolveDir:front}));}}}],logLevel:'error'});const compiled=new Module(path.join(front,'public-catalogue-proof.cjs'));compiled.filename=path.join(front,'public-catalogue-proof.cjs');compiled.paths=Module._nodeModulePaths(front);compiled._compile(built.outputFiles[0].text,compiled.filename);return compiled.exports;}
 (async()=>{
  const page=await bundle("export {default,catalogueDestination} from './src/pages/PublicCatalogue';");
- globalThis.fetch=()=>{throw Error('La brochure ne doit pas appeler une API.');};
+ globalThis.fetch=()=>{throw Error('Le rendu serveur ne doit pas déclencher une lecture.');};
  for(const path of ['/produits','/experts','/pharmacies','/logistique']){
   eq(page.catalogueDestination(path,false),'/login?redirect='+encodeURIComponent(path));eq(page.catalogueDestination(path,true),path);
  }
@@ -19,9 +19,11 @@ async function bundle(contents,extra=[]){const built=await esbuild.build({stdin:
  const html=server.renderToStaticMarkup(React.createElement(page.default));
  eq((html.match(/<h1(?:\s|>)/g)||[]).length,1);ok(html.includes('Aller au contenu'));ok(html.includes('id="catalogue-main"'));ok(html.includes('id="services"'));ok(html.includes('id="entreprises"'));ok(html.includes('id="demarche"'));eq((html.match(/<details>/g)||[]).length,3);
  for(const path of ['/produits','/experts','/pharmacies','/logistique'])ok(html.includes('href="/login?redirect='+encodeURIComponent(path)+'"'));
- ok(html.includes('Les annuaires et les échanges sont accessibles après connexion.'));ok(html.includes('Les prévisions et les effets sur la santé restent à évaluer.'));ok(html.includes('Sa publication ne constitue pas une vérification des diplômes'));ok(!html.includes('En amélioration'));ok(!html.includes('/register'));ok(!html.includes('onclick='));ok(!html.includes('data:image'));
+ ok(html.includes('Les annuaires et les échanges sont accessibles après connexion.'));ok(html.includes('Notre vision est de rapprocher les personnes'));ok(html.includes('Rapprocher les besoins des solutions.'));ok(!html.includes('Le projet de recherche étudiera'));ok(html.includes('Sa publication ne constitue pas une vérification des diplômes'));ok(!html.includes('En amélioration'));ok(!html.includes('/register'));ok(!html.includes('onclick='));ok(!html.includes('data:image'));
  for(const [,href]of html.matchAll(/href="([^"]+)"/g)){ok(href.startsWith('#')||href.startsWith('/'),'Lien local attendu');if(href.startsWith('#'))ok(html.includes('id="'+href.slice(1)+'"'),'Ancre existante');}
- globalThis.__auth={isAuthenticated:true,loading:false};const signed=server.renderToStaticMarkup(React.createElement(page.default));ok(signed.includes('Mes applications'));ok(signed.includes('Ouvrir mes applications'));ok(signed.includes('href="/experts"'));ok(signed.includes('href="/produits"'));ok(!signed.includes('/login?redirect='));eq((signed.match(/href="\/espace"/g)||[]).length,2);ok(!signed.includes('href="/"'));
+ ok(html.includes('class="catalogue-more catalogue-container"'));ok(!html.includes('class="catalogue-start '));
+ for(const image of ['/illustration-produits.svg','/illustration-experts.svg','/illustration-pharmacies.svg'])ok(html.includes('src="'+image+'"'),'Illustration préservée');
+ globalThis.__auth={isAuthenticated:true,loading:false};const signed=server.renderToStaticMarkup(React.createElement(page.default));ok(signed.includes('Mes applications'));ok(!signed.includes('Ouvrir mes applications'));ok(signed.includes('href="/experts"'));ok(signed.includes('href="/produits"'));ok(!signed.includes('/login?redirect='));eq((signed.match(/href="\/espace"/g)||[]).length,1);ok(!signed.includes('href="/"'));
  // App invoquée avec les hooks de routage contrôlés. Les lazy views ne chargent
  // aucun module métier ; usePublicCatalogue fait échouer le test s’il est appelé.
  const app=await bundle("export {default} from './src/App';",[
@@ -53,5 +55,5 @@ async function bundle(contents,extra=[]){const built=await esbuild.build({stdin:
  ok(renderGate().includes('<h1>Référentiels</h1>'));ok(!renderGate().includes('Accès limité'));
  const adminGate=await bundle("export {default} from './src/components/AdminRoute';");const contents=React.createElement('h1',null,'Référentiels');eq(adminGate.default({children:contents}),contents);globalThis.__auth={...__auth,user:{...__auth.user,permissions:{canAccessAdmin:false,canWriteData:true}}};eq(adminGate.default({children:contents}).props.to,'/profil');
  globalThis.__auth={...__auth,user:{...__auth.user,moduleAccess:{modules:{produits:{canRead:false,canManage:false}}}}};const refused=renderGate();ok(refused.includes('Accès limité'));ok(!refused.includes('<h1>Référentiels</h1>'));ok(refused.includes('href="/espace"'));
- console.log(JSON.stringify({success:true,checks,coverage:['Brochure sans fetch ni donnée métier','Liens réels et retour après connexion','Entrée ERP protégée et ModuleGate préservé','Une page accessible avant restauration de session','Structure sémantique, ancres et FAQ','Fonctions en développement et recherche présentées sans résultat inventé'],limits:['Rendu HTML serveur et hooks contrôlés ; pas de recette navigateur']}));
+ console.log(JSON.stringify({success:true,checks,coverage:['Accueil sans fiche métier ni chargement privé (agrégats dédiés testés séparément)','Liens réels et retour après connexion','Entrée ERP protégée et ModuleGate préservé','Une page accessible avant restauration de session','Structure sémantique, ancres et FAQ','Recherche présentée sans résultat inventé'],limits:['Rendu HTML serveur et hooks contrôlés ; pas de recette navigateur']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

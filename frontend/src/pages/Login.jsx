@@ -174,7 +174,9 @@ export default function Login() {
   const busy = submitting || loading || isAuthenticated;
 
   return (
-    <main className="login-screen"><div className="login-theme"><ThemePicker /></div>
+    <main className="login-screen login-entry"><div className="login-theme"><ThemePicker /></div>
+      <Link to="/catalogue" className="login-home-link"><i className="bi bi-arrow-left" aria-hidden="true" />Retour à l’accueil</Link>
+      <div className="login-layout">
       <section className="login-card" aria-labelledby="login-title">
         <LoginBrand />
         <header className="login-heading">
@@ -274,7 +276,8 @@ export default function Login() {
 
         <p className="login-register">Besoin d’un accès ? Contactez votre administrateur.</p>
       </section>
-      <aside className="login-identity" aria-label="SauverNdeko"><div><img src="/sauverndeko-logo.jpg" alt="" width="76" height="76" /><h2>SauverNdeko</h2><p className="login-project-lead">Produits, compétences et services de proximité.</p><p className="login-project-summary">Une plateforme congolaise qui rapproche les usagers des professionnels et des établissements. Le projet se développe d’abord dans la santé, l’immobilier et la construction, avec l’ambition de servir d’autres secteurs.</p><div className="login-project-sectors" aria-label="Premiers domaines du projet"><span>Santé</span><span>Immobilier</span><span>Construction</span></div></div></aside>
+      <aside className="login-identity" aria-label="SauverNdeko"><div><span className="login-identity-kicker">Une plateforme congolaise</span><img src="/sauverndeko-logo.jpg" alt="" width="64" height="64" /><h2>Des liens de proximité.</h2><p className="login-project-lead">Produits, compétences et services.</p><p className="login-project-summary">Rapprocher les personnes des ressources dont elles ont besoin, et donner aux organisations un espace pour piloter leur activité.</p><div className="login-project-sectors" aria-label="Premiers domaines du projet"><span>Santé</span><span>Immobilier</span><span>Construction</span></div></div></aside>
+      </div>
     </main>
   );
 }

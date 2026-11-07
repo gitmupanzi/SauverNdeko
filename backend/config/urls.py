@@ -80,6 +80,7 @@ from apps.core.module_presentation import ModulePresentationView, ModulePresenta
 from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.catalogue.views import PublicView
+from apps.catalogue.summary import CatalogueSummaryView
 from apps.catalogue.products import ProductReferencesView, ProductOffersView
 from apps.catalogue.structures import StructuresReadView, StructureProfileView, StructureLogoView
 from apps.catalogue.territorial_structures import TerritorialStructuresView
@@ -95,6 +96,7 @@ from apps.logistique.followup_folders import FoldersView, FolderCategoriesView, 
 from apps.logistique.reads import RegisterReadView, OverviewReadView, IndicatorReadView, ConsultationReadView
 
 urlpatterns = [
+    re_path(r"^api/public/catalogue/synthese/?$", CatalogueSummaryView.as_view()),
     re_path(r"^api/structures/annuaire-sanitaire/references/?$", TerritorialStructuresView.as_view(), {'reference': True}),
     re_path(r"^api/structures/annuaire-sanitaire/(?P<niveau>[0-9]+)/(?P<pk>[0-9]+)/?$", TerritorialStructuresView.as_view()),
     re_path(r"^api/structures/annuaire-sanitaire/?$", TerritorialStructuresView.as_view()),
