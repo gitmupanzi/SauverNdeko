@@ -90,7 +90,8 @@ En cas d’échec, lire le message du lanceur puis le journal du service concern
 
 ~~~powershell
 .\backend\.venv\Scripts\python.exe .\backend\manage.py check
-.\backend\.venv\Scripts\python.exe .\backend\manage.py verifier_backend
+# Le diagnostic impose la lecture seule uniquement dans ce sous-processus.
+& { $previousReadOnly = $env:SAUVERNDEKO_DB_READ_ONLY; try { $env:SAUVERNDEKO_DB_READ_ONLY = '1'; .\backend\.venv\Scripts\python.exe .\backend\manage.py verifier_backend } finally { $env:SAUVERNDEKO_DB_READ_ONLY = $previousReadOnly } }
 ~~~
 
 Le second contrôle utilise des requêtes GET et une identité synthétique de diagnostic ; il ne valide pas un mot de passe client. La connexion applicative PostgreSQL reste en lecture seule par défaut avec SAUVERNDEKO_DB_READ_ONLY=1. La connexion et les consultations sont disponibles ; les écritures applicatives sont refusées tant que ce mode reste actif.

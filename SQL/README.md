@@ -2,6 +2,8 @@
 
 Les sources canoniques de structure sont mises à jour par périmètre vérifié. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
+État de livraison du 7 novembre 2026 : suivre le [manifeste et le journal métier](../docs/mises-a-jour-base.md) pour une mise à jour et consulter le [bilan Render](../docs/livraison-render-20261107.md) pour les preuves et limites actuelles, notamment l’installation vierge courante. Les procédures et nombres datés ci-dessous restent historiques. Les sauvegardes privées sont exclues de Git ; aucune sauvegarde n’est fournie avec les sources.
+
 ## Communications internes — 6 novembre 2026
 
 Les migrations `20261106_01_annonces_communication`, `20261106_02_discussions_directes` et `20261106_03_lecture_messages` étendent le schéma sans réécrire les échanges historiques. Les extraits du dossier `7. Schema communication` décrivent l’état après ces migrations. Les deux structures globales conservent le socle attesté, à compléter avec le manifeste des migrations selon le [parcours de mise à jour](../docs/mises-a-jour-base.md).

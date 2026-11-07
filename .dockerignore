@@ -13,3 +13,19 @@
 **/*.dump
 **/*.backup
 frontend/dist
+**/.pytest_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+**/coverage
+frontend/.vite
+frontend/.vite-cache
+frontend/.vite-verify-*
+backend/staticfiles
+.vscode
+docs
+cahier de charge
+# Références de conception conservées dans Git, inutiles à l’exécution.
+SQL/**/Images
+SQL/**/*.pgerd
+SQL/Schema_SauverNdeko.png

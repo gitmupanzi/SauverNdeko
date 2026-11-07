@@ -1,6 +1,8 @@
 # Architecture frontend
 
-Relevé statique du 24/10/2026. Racine de travail : frontend/.
+Relevé historique du 24/10/2026. Racine de travail : frontend/.
+
+Ce document conserve l’architecture observée à cette date ; ses anciennes routes et pages ne décrivent pas la version actuelle. Pour les parcours en service, lire le [skill frontend](../SKILL.md) et `src/App.jsx`. Le nettoyage de la version 1.0.0 a retiré les anciennes pages d’accueil et d’inscription devenues inutilisées.
 
 ## Structure et routes
 
@@ -32,7 +34,6 @@ Django impose aussi l’authentification sur les projections du catalogue, malgr
 - services/auth.js et authStorage.js : authentification et stockage des jetons ; relire leurs comportements avant de toucher la session.
 - services/logistique.js : API dédiée /api/logistique avec les mêmes helpers.
 - services/mappers.js et hooks/usePublicCatalogue.js : adaptation des données publiques et catalogue.
-- data/mockData.js : données présentes dans le dépôt ; vérifier les imports effectifs avant d’affirmer leur usage dans un écran ou de les supprimer.
 
 ## Administration
 

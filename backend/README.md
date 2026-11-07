@@ -1,97 +1,75 @@
-# Backend SauverNdeko — Django
+# Backend SauverNdeko
 
-L’API active utilise Python 3.12, Django 5.2 LTS, Django REST Framework et la connexion PostgreSQL Django/psycopg. Les URL consommées par React restent sous /api et /SauverNdeko/auth. Le port Django par défaut est 5000 ; les lanceurs Windows choisissent un port libre et transmettent cette cible au proxy Vite.
+L'API utilise Django 5.2 LTS, Django REST Framework et PostgreSQL via psycopg. React/Vite consomme les routes `/api/*` et `/SauverNdeko/auth/*`. Les dépendances Python verrouillées sont réunies dans [requirements.txt](requirements.txt).
 
-## Démarrer
+## Démarrage local
 
-Depuis le dossier backend, dans PowerShell :
+Les lanceurs de la racine démarrent ensemble Django et Vite sur le port frontend fixe 5174. Ils ouvrent `/catalogue` ; après connexion, les applications autorisées sont dans `/espace`. Voir le [guide de lancement](../docs/lancement-local.md).
 
-~~~powershell
+Pour préparer uniquement le backend depuis ce dossier :
+
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\start.ps1
-~~~
+```
 
-L’environnement local est déjà installé. Ne pas écraser le .env existant : DATABASE_URL, JWT_SECRET et JWT_REFRESH_SECRET sont réutilisés. Les options Django sont lues depuis ce fichier par [config/settings.py](config/settings.py).
+`start.ps1` lance Django sur `127.0.0.1:5000` par défaut. Le lanceur complet peut choisir un port backend libre puis configurer le proxy Vite. `runserver` est réservé au développement.
 
-SAUVERNDEKO_DB_READ_ONLY vaut 1 par défaut. La connexion et les GET autorisés sont utilisables ; modification de profil et écritures métier renvoient READ_ONLY/503. L’inscription libre est fermée avec REGISTRATION_DISABLED/403. L’activation explicite de SAUVERNDEKO_DB_READ_ONLY=0 nécessite un redémarrage et permettra les écritures normales de l’application. Le réglage local a été activé en écriture le 25 octobre 2026 sur autorisation du propriétaire ; les nouvelles installations restent en lecture seule par défaut. Aucun lancement ne crée de table ni de base.
+Le fichier `backend/.env` est privé. Il contient notamment la connexion PostgreSQL et les secrets de session ; il n'est jamais transmis par un push. La base locale s'appelle `sauver_ndeko_pro`. Une connexion manquante ou invalide ne crée aucune base de secours. `SAUVERNDEKO_DB_READ_ONLY=1` est le défaut de protection ; les écritures des comptes habilités exigent `0` et le redémarrage du service. Ce réglage ne donne aucune permission supplémentaire.
 
-Le serveur runserver est destiné au développement local. Pour une installation client, prévoir un serveur WSGI/ASGI, HTTPS, les hôtes/origines autorisés, les secrets, sauvegardes, surveillance et une recette des écritures métier autorisée séparément.
+## Architecture
 
-## Vérifier sans écrire dans PostgreSQL
+| Dossier | Responsabilité |
+|---|---|
+| `config/` | Paramètres local/production/maintenance, routes et WSGI/ASGI. |
+| `apps/accounts/` | Authentification, profils, photos et récupération d'accès. |
+| `apps/core/` | Accès par entreprise, licences, référentiels, territoires, administration et maintenance. |
+| `apps/logistique/` | Articles, lots, bons, inventaires, documents, factures, règlements et immobilisations. |
+| `apps/caisse/` | Caisses, écritures et clôtures. |
+| `apps/catalogue/` | Offres de produits et annuaires de structures autorisés. |
+| `apps/professionnels/` | Profils professionnels et annuaire publié. |
+| `apps/communication/` | Discussions privées, annonces et notifications. |
+| `apps/support/` | Incidents et demandes d'assistance. |
 
-~~~powershell
+Les modèles métier sont `managed=False` ; les lectures réutilisent les vues PostgreSQL et le registre des sources autorisées. Les écritures métier contrôlent les droits, la portée, les révisions et les demandes rejouées. Leurs audits partagent la transaction. Les triggers et fonctions PostgreSQL portent les effets de stock : aucun deuxième mouvement n'est ajouté en Python.
+
+Les données métier appartiennent durablement à l'entreprise lorsqu'un propriétaire est défini dans le schéma. Le contexte sélectionné par le navigateur est vérifié par le serveur. Un compte d'entreprise reste dans son périmètre ; `Is_staff` ne confère pas les droits de l'administrateur global `Is_Admin`.
+
+Les valeurs catégorielles enregistrent `ID_Generique` et affichent `AbrGenerique`. Les associations schéma/table/colonne vers les catégories sont centralisées. Les quantités exactes respectent la précision de l'unité ; les montants et devises restent explicites, sans addition de devises différentes ni conversion implicite. Les JWT vérifient l'état actuel du compte et la version du mot de passe ; un changement de mot de passe invalide les anciennes sessions. L'inscription libre est fermée.
+
+## Contrôles sans écriture
+
+Depuis le dossier backend :
+
+```powershell
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py verifier_backend
-~~~
+```
 
-verifier_backend exécute uniquement des GET avec PostgreSQL en lecture seule, vérifie les routes globales et le refus d’une organisation fictive sans offre. Il injecte une identité interne synthétique et ne prouve pas une connexion réelle avec le mot de passe d’un client. Le dossier de tests unitaires a été retiré à la demande du propriétaire.
+Pour les diagnostics qui interrogent réellement PostgreSQL, utiliser un processus en lecture seule, sans modifier le fichier `.env` :
 
-migrate est limité aux applications natives Django dans public. makemigrations, flush, syncdb, fake et migrations vers une version antérieure sont désactivés. Les 31 modèles Django sont unmanaged ; les 48 vues existantes sont répertoriées et interrogées par SQL paramétré. Le socle auth/admin/contenttypes/sessions est installé dans public avec 18 migrations. Les trois comptes métier existants sont conservés dans systeme ; aucun compte natif Django n’a été créé ou dupliqué.
+```powershell
+$PreviousReadOnly = [Environment]::GetEnvironmentVariable('SAUVERNDEKO_DB_READ_ONLY', 'Process')
+try {
+    $env:SAUVERNDEKO_DB_READ_ONLY = '1'
+    .\.venv\Scripts\python.exe manage.py verifier_backend
+    .\.venv\Scripts\python.exe manage.py verifier_livraison
+    .\.venv\Scripts\python.exe manage.py migrer_metier --check
+    .\.venv\Scripts\python.exe manage.py migrate --check
+}
+finally {
+    [Environment]::SetEnvironmentVariable('SAUVERNDEKO_DB_READ_ONLY', $PreviousReadOnly, 'Process')
+}
+```
 
-## Organisation du code
+`verifier_backend` effectue des GET avec une identité interne de diagnostic. Il ne prouve ni connexion avec un mot de passe client, ni écriture réelle, ni délivrance Gmail. Les recettes d'écriture dans `SQL/tests/` sont réservées aux bases isolées explicitement configurées `sauverndeko_test_*` ; elles ne doivent jamais viser une base cliente.
 
-- config/ : paramètres, routes, WSGI/ASGI.
-- apps/accounts/ : JWT compatible React, mots de passe existants et profils.
-- apps/core/ : modèles unmanaged, registre de sources, permissions, SQL commun, paramétrage et réponses JSON.
-- apps/logistique/ : commandes/lignes, références, stock et dashboard.
-- apps/catalogue/ : projections publiques autorisées.
-- apps/communication/ : discussions et messages avec contrôle des participants.
-- requirements.txt : fichier unique des dépendances Python verrouillées. Le démarrage passe par start.ps1 ou les BAT de la racine.
+## Migrations et livraison
 
-Les effets de stock et les totaux restent portés par les triggers PostgreSQL. Le backend Python n’écrit jamais directement dans T_Mouvement. Les écritures métier et leur audit sont regroupés dans la même transaction.
+Les migrations natives Django concernent uniquement `admin`, `auth`, `contenttypes` et `sessions` dans `public`. Les évolutions métier suivent [SQL/releases/manifest.json](../SQL/releases/manifest.json) et leur journal par base ; les SQL publiés restent immuables. `makemigrations`, `flush`, `syncdb`, les fausses migrations et les retours arrière sont bloqués. Ni le build, ni le démarrage, ni un push ne modifient automatiquement le schéma.
 
-## Contrats et limites
+Avant une mise à jour : sauvegarder la base et les médias, vérifier leur restauration sur copie, tester les migrations, puis appliquer avec le seul compte propriétaire de maintenance. Le compte du service web reste limité. Voir [les mises à jour sans recréation](../docs/mises-a-jour-base.md), [le parcours Render](../docs/deploiement-render.md) et [la maintenance depuis un poste](../docs/maintenance-render-depuis-poste.md).
 
-- L’accès privé exige un JWT valide et un utilisateur actif relu en base. Is_Admin représente l’administration globale ; Is_staff/les rôles administratifs existants donnent accès au périmètre local autorisé.
-- Les organisations sont déduites du créateur actuel des articles/commandes, conformément aux colonnes existantes. Cette limite ne garantit pas une propriété immuable si un créateur change d’organisation. Les lignes contrôlent les deux parents. Les objets sans règle de périmètre démontrée restent réservés à l’administration globale.
-- Les mots de passe bcrypt existants sont lus sans modification. Les nouveaux mots de passe utilisent le hachage Django. Les anciens mots de passe en clair sont refusés par défaut. Les JWT restent sans révocation persistante, comme auparavant ; la déconnexion efface la session côté client.
-- La création des comptes est réservée à l’administration. Une association à une entité n’accorde aucun droit administratif ; les discussions d’une structure sont réservées à ses gestionnaires autorisés et aux participants concernés.
-- Les nombres décimaux sont reçus et renvoyés sans conversion en flottants. Les quantités de mouvement restent entières selon le schéma actuel. La base ne fournit pas une devise par commande : aucune certification multidevise n’est ajoutée.
-- L’administration utilise les écrans React existants. L’administration native Django est accessible uniquement sur le backend local, à /django-admin/. Elle utilise ses propres comptes natifs ; elle ne remplace pas l’administration ERP React.
-- analytics.T_Recherche et V_Recherche sont installées. GET /api/recherches est réservé à l’administration globale ; ce registre est consultable sans activer de suivi automatique.
-- Les écritures et les scénarios de concurrence ont été vérifiés sur une copie isolée avec données fictives. Ces résultats concernent le socle historique ; le CRUD local a été autorisé le 25 octobre 2026 et les vérifications frontend sont décrites dans les sections suivantes.
-- Les véritables générateurs Excel, Word et PDF restent un chantier distinct, soumis au skill documentaire.
+En production Render, Caddy sert React et transmet l'API à Waitress. Les médias privés résident sur le disque persistant et sont sauvegardés avec PostgreSQL. Le [bilan du 7 novembre 2026](../docs/livraison-render-20261107.md) documente la mise à niveau réellement exécutée et ses limites. La préparation d'une installation vierge conserve un décalage de socle à traiter ; cette voie ne doit pas être présentée comme validée.
 
-Voir [le bilan métier et technique](../SQL/documentation/Audit_Metier_20261024.md) pour les contrôles et les différences de comportement.
-
-
-Les quatre lanceurs BAT de la racine démarrent/arrêtent les deux services et affichent leurs adresses. Voir [le lancement local et réseau](../docs/lancement-local.md). Le script backend/start.ps1 reste disponible pour lancer uniquement Django.
-
-
-## Socle natif dans public
-
-Voir [le bilan de migration](../SQL/documentation/Django_Public_20261024.md). Les tables techniques sont dans public ; les tables métier restent qualifiées dans leurs schémas. Une sauvegarde complète a précédé la migration. Pour préparer une évolution native : python manage.py migrate --plan. Pour appliquer un plan validé ou créer un compte technique avec createsuperuser, lancer ponctuellement le processus avec SAUVERNDEKO_DB_READ_ONLY=0 ; aucun changement du .env n’a été réalisé pendant cette intervention. L’administration native écrit sessions/journal et exige aussi ce mode lors de son utilisation. Les identités métier et natives restent à rapprocher explicitement.
-
-## Audit des schémas métier
-
-Le [bilan de la migration 04](../SQL/documentation/Audit_Metier_20261024.md) décrit les contrôles de stock, licences, JSON/UUID, géographie et discussions. Les résultats historiques des 66 tests unitaires, des 36 scénarios PostgreSQL et des 19 échanges Django sur recette sont conservés dans ce bilan. Le dossier de tests unitaires a été retiré depuis ; les commandes de contrôle disponibles sont celles indiquées plus haut. Les fichiers SQL canoniques et leur usage sont décrits dans [SQL/README.md](../SQL/README.md).
-
-Le serveur local ferme les connexions PostgreSQL après chaque requête (CONN_MAX_AGE=0) et les identifie comme SauverNdeko-Django. Les anciens serveurs lancés sous une autre session Windows doivent être fermés depuis cette session ; utiliser les adresses de .runtime/services.json pour l’instance courante.
-
-## Accès ERP et applications
-
-/api/workspace/modules expose uniquement les applications effectivement autorisées : socle de l’Entité active, modules de ses licences en cours et restrictions du rôle. Le même contrôle protège les routes métier, les vues génériques, les exports officiels et les consultations 360. Les endpoints /api/public/* sont conservés pour leur contrat de projection, mais exigent maintenant un compte actif. Les réponses /api/* et /SauverNdeko/auth/* portent Cache-Control: no-store, private. Une réponse 401 sur une requête privée ramène le frontend au login. /health vérifie la connexion PostgreSQL par SELECT 1 ; aucune donnée métier anonyme n’est nécessaire au lancement.
-
-## Licences par Entité — 25 octobre 2026
-
-La migration SQL 20261025_02_modules_entites ajoute trois tables, trois vues et deux triggers commentés dans systeme. T_LicenceModule rattache un module à une licence existante ; l’Entité et les dates restent celles de T_Licence. T_RoleModule définit des restrictions par Entité/rôle/module. Les nouvelles lectures et écritures utilisent les services dédiés apps/core/module_access.py et application_licences.py ; ces tables ne sont pas exposées au CRUD générique.
-
-- Socle : Discussions, Organisation territoriale, Administration, sous réserve des habilitations existantes.
-- Modules optionnels historiques : Catalogue, Produits, Structures, Professionnels et Logistique. Le code Catalogue conserve ses inclusions de Produits, Structures et Professionnels ; la fonctionnalité Informations santé a été retirée le 4 novembre 2026, sans effacement des anciennes activations ni des valeurs du référentiel.
-- Les six activations reprises sur la licence existante portent Origine=reprise. Aucun contrat, prix, compte ou nouveau privilège administratif n’a été créé.
-- Un utilisateur d’entreprise hérite de son Entité relue en base ; une valeur d’Entité envoyée par le client ne peut pas changer son périmètre.
-- Seul Is_Admin configure les activations et restrictions. Un administrateur d’entreprise consulte son offre et ne peut pas prolonger sa licence par les anciennes routes CRUD.
-- Les règles de rôle ne dépassent jamais les habilitations antérieures. Is_staff n’accorde aucun accès global.
-- L’expiration, la désactivation et les droits sont relus à chaque requête ; aucun cache global des habilitations. Le profil frontend se synchronise au retour sur la fenêtre et toutes les minutes pendant son utilisation.
-- Les API de configuration sont /api/workspace/organisations, /licences, /licences/{id}/modules et /roles (préfixe commun /api/workspace). Les écritures sont versionnées, transactionnelles et auditées.
-
-Contrôles effectués : Django check, 144 routes GET aux statuts attendus, 107 assertions en lecture seule sur SauverNdeko, simulation isolée des enregistrements et recette navigateur sur données fictives. La sauvegarde complète avant migration est vérifiée dans .runtime/backups. Aucun article, bon, règlement, compte ni date de licence n’a été modifié par cette évolution.
-
-Le test transactionnel d’écriture sur la base réelle a été refusé par la validation automatique et n’a pas été exécuté. Les écritures ont donc été contrôlées en simulation, avec validation SQL/PLpgSQL et contrôles des objets installés ; un cycle d’enregistrement réel de configuration n’est pas attesté par cette recette.
-
-## Articles, photos et lots — 25/10/2026
-
-La migration SQL 20261025_03 est installée sur SauverNdeko. Le CRUD Articles utilise une révision optimiste et contrôle les suppressions ; le stock ne se corrige pas directement par PUT Article. Le poids unitaire, son unité de masse et InformationArticle sont disponibles. La ventilation par numéro de lot suit les mouvements existants, sans deuxième effet sur le stock. Les photos sont contrôlées par Pillow et stockées en fichiers privés ; sauvegarder backend/media avec la base.
-
-Contrats de maintenance : [Articles, photos et lots](skills/develop-sauverndeko-backend/references/articles-lots-photos.md). Recette dédiée : SQL/tests/test_articles_postgresql.py sur une base sauverndeko_test_* indépendante. La livraison passe 70 assertions de CRUD/lots/photos/concurrence, les 36 scénarios PostgreSQL et les 19 échanges API existants. Le diagnostic réel verifier_backend passe 146 routes GET en lecture seule. Ces contrôles ne remplacent pas une recette complète de tous les modules.
+Les [skills backend](skills/develop-sauverndeko-backend/SKILL.md) et les guides par domaine décrivent les contrats détaillés. Les anciens bilans datés restent des archives de recette, pas une preuve de l'état actuel de toute installation.

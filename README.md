@@ -1,322 +1,83 @@
-# SauverNdeko
+# SauverNdeko — 1.0.0
 
-## Évolution ERP — état du 28 octobre 2026
+Plateforme modulaire de gestion et de mise en relation, construite avec **Django / Django REST Framework, PostgreSQL et React / Vite**.
 
-La cible produit est désormais un ERP modulaire commercialisable. La logistique en constitue un domaine, aux côtés du catalogue santé/services, des discussions et de l’administration. Multi-organisation et multi-pays sont des objectifs à valider dans les droits, les données et la recette.
+Le numéro de livraison est conservé dans [VERSION](VERSION). La mise à niveau en ligne du 7 novembre 2026 et ses contrôles sont décrits dans le [bilan Render](docs/livraison-render-20261107.md). La version des sources et la version effectivement déployée sont deux informations distinctes.
 
-Le module Logistique comprend Articles, Lots de stock, Bons de stock, Lignes, Mouvements, Inventaires, Factures, Règlements et Patrimoine. Les immobilisations conservent les biens et leurs affectations par entreprise sans mouvement de stock ni amortissement implicite. Les preuves techniques et les validations client restantes sont distinguées dans le [suivi de livraison](docs/reste-a-faire-logistique.md).
+## Démarrer en local
 
-Le backend actif est désormais Django + Django REST Framework, connecté au PostgreSQL existant. Les schémas métier sont conservés. Sur autorisation ultérieure du propriétaire, les dix tables natives Django sont installées dans public. L’ancien backend Express/Prisma, ses dépendances et ses lanceurs npm ont été supprimés à la demande du propriétaire ; Node.js reste nécessaire au frontend Vite. Voir le [guide Django](backend/README.md), le [bilan technique actuel](SQL/documentation/Audit_Metier_20261024.md) et la [décision d’accès PostgreSQL](backend/skills/develop-sauverndeko-backend/references/decision-acces-postgresql.md).
+Prérequis : Windows/PowerShell, Python 3.12, Node.js 22 et PostgreSQL 18. La base locale existante est `sauver_ndeko_pro`.
 
-Documentation de travail :
+Depuis la racine du projet :
 
-- [Vision scientifique et feuille de route](docs/vision-et-feuille-de-route-scientifique.md) : résumé de thèse, état observé, publication des offres, données à préparer et évaluations à construire.
+```powershell
+# À la première installation des dépendances frontend.
+Push-Location frontend
+npm ci
+Pop-Location
 
-- [Module Caisse](docs/module-caisse.md) : journal par entreprise et devise, validation, contrepassation, clôtures et encaissements facultatifs des règlements Logistique.
-- [Modules métier et fonctionnalités associées](docs/modules-et-fonctionnalites.md) : classification commerciale, présentation de l’accueil et conservation des accès existants.
-- [Guide utilisateur intégré](docs/guide-utilisateur.md), disponible dans l’application à `/guide`, avec parcours et exemples selon les modules autorisés.
-- [Cartographie et écarts constatés](skills/sauverndeko-erp/references/cartographie.md).
-- [Inventaire des modèles, routes et objets SQL](skills/sauverndeko-erp/references/inventaire-technique.md).
-- [Trajectoire ERP et critères des prochains lots](skills/sauverndeko-erp/references/trajectoire-erp.md).
-- [Guide utilisateur Logistique](docs/prise-en-main-logistique.md) et [guide Patrimoine et affectations](docs/prise-en-main-patrimoine.md).
-- [Livraison et installation](docs/livraison-logistique.md), [identité documentaire et PDF](docs/identite-entreprise-pdf.md).
-- [Principes repris d’imf_BB](skills/sauverndeko-erp/references/transposition-imf-bb.md).
-- [Skill transverse ERP](skills/sauverndeko-erp/SKILL.md), [backend](backend/skills/develop-sauverndeko-backend/SKILL.md), [frontend](frontend/skills/develop-sauverndeko-frontend/SKILL.md).
-
-Les droits par module, l’isolation par entreprise, les commentaires PostgreSQL et les consultations 360 font partie du socle installé. L’acceptation des parcours par le client, les données réelles de reprise et la mise en service du serveur restent des validations distinctes des recettes techniques.
-
-
-SauverNdeko est une plateforme web modulaire orientee sante, services, orientation et administration de donnees.  
-Le projet est pense comme une base reutilisable pour plusieurs organisations, plusieurs territoires et plusieurs pays.
-
-## Vision
-
-Le produit ne doit pas etre limite a une structure unique ni a un seul contexte national.  
-Il doit pouvoir etre adapte a :
-
-- une entreprise privee
-- une ONG
-- un ministere
-- un reseau de structures de sante
-- un programme pays
-- un groupe multi-pays
-
-SauverNdeko est donc concu comme une application :
-
-- multi-organisation
-- multi-pays
-- configurable par referentiels
-- extensible par schemas metier
-- exploitable via une administration web avancee
-
-## Objectif produit
-
-Fournir une base web robuste pour :
-
-- publier des informations et services publics
-- gérer les comptes et leurs informations professionnelles dans une même interface Utilisateurs
-- ouvrir des discussions et interactions metier
-- administrer des donnees de reference et de geolocalisation
-- parametrer des comportements differents selon le contexte connecte
-
-## Structure du projet
-
-- `frontend/` : application React + Vite
-- `backend/` : API Python + Django REST Framework
-- `SQL/` : scripts SQL par schema
-
-## Capacites fonctionnelles
-
-### Présentation publique
-
-- vitrine `/catalogue`, sans lecture de données métier ;
-- connexion et récupération d’accès ;
-- présentation des parcours disponibles et de ceux en amélioration, sans données fictives.
-
-### Espace connecté
-
-- applications et annuaires selon les licences et permissions ;
-- comptes créés par l’administration, inscription libre fermée ;
-- connexion, vérification de session et déconnexion ;
-- profil utilisateur et discussions privées.
-
-La racine `/` conserve l’entrée ERP. La vitrine n’ouvre pas les API historiques `/api/public/*` aux visiteurs anonymes. Le volet prédictif et l’évaluation sanitaire restent à construire selon la feuille de route scientifique.
-
-### Administration
-
-- interface Utilisateurs commune pour le compte, les droits et les informations professionnelles ; l’ancienne source Profils reste compatible sans second onglet
-- lecture de vues PostgreSQL
-- CRUD sur certains objets metier
-- tri, filtres, export, colonnes visibles et gelees
-- parametrage des listes deroulantes
-- gestion de la portee des parametres
-
-## Portee et standardisation
-
-Le projet adopte un principe de portee pour ses reglages d'administration.  
-Les parametrages peuvent etre definis a differents niveaux :
-
-- `global`
-- `country`
-- `entity`
-
-Ce mecanisme permet :
-
-- d'avoir une base commune internationale
-- d'appliquer des adaptations locales par pays
-- de specialiser certains comportements par organisation ou entite
-
-Le panneau `Correspondances FK` de l'administration s'inscrit dans cette logique :
-
-- configuration partagee via le backend
-- historique des changements
-- portee cible determinee automatiquement selon le contexte connecte
-
-## Architecture technique
-
-### Frontend
-
-Technologies principales :
-
-- React 19
-- React Router
-- Vite
-- Bootstrap
-- Bootstrap Icons
-
-Points d'entree :
-
-- `frontend/src/main.jsx`
-- `frontend/src/App.jsx`
-
-### Backend
-
-Python 3.12, Django 5.2 LTS, Django REST Framework, psycopg, JWT et bcrypt. Points d’entrée : backend/manage.py, backend/config/urls.py et backend/start.ps1.
-
-## Base de donnees
-
-Le projet repose sur PostgreSQL avec Django/psycopg.
-
-Les tables métier sont décrites par des modèles Django unmanaged dans backend/apps/core/models.py. Le registre backend/apps/core/registry.json décrit les tables et vues autorisées. Les sources SQL canoniques conservent les définitions, contraintes et commentaires du socle installé ; les modèles et ce registre décrivent son accès applicatif. L’ancien schéma Prisma et son client généré ont été supprimés.
-
-Schemas PostgreSQL declares :
-
-- `analytics`
-- `communication`
-- `geolocalisation`
-- `logistique`
-- `operations`
-- `professionnel`
-- `referentiel`
-- `systeme`
-
-Le decoupage par schemas permet :
-
-- d'isoler les domaines metier
-- de faire evoluer un module sans casser les autres
-- de mieux adapter la plateforme a des contextes pays differents
-
-## Administration actuelle
-
-L'administration couvre deja plusieurs familles de besoins :
-
-- vues systeme
-- vues referentiel
-- vues geolocalisation
-- CRUD cible sur les tables principales
-- parametrage partage des listes et correspondances
-
-Exemples de vues exploitees :
-
-- `systeme.V_Audit_log`
-- `systeme.V_Admin_UI_Setting_Audit`
-- `systeme.V_Entite_Localisation_Detail`
-- `systeme.V_Licence_active`
-- `systeme.V_Login_history`
-- `systeme.V_User_profil`
-- `referentiel.V_Generique`
-- `referentiel.V_CategorieGenerique`
-- vues `geolocalisation.V_*`
-
-## API importante
-
-### Public
-
-- `GET /health`
-- `GET /api/public/stats`
-- `GET /api/public/articles`
-- `GET /api/public/pharmacies`
-- `GET /api/public/experts`
-- `GET /api/public/maladies`
-
-### Authentification
-
-Prefixe : `/SauverNdeko/auth`
-
-- `POST /SauverNdeko/auth/login`
-- `POST /SauverNdeko/auth/register`
-- `POST /SauverNdeko/auth/refresh`
-- `POST /SauverNdeko/auth/logout`
-- `GET /SauverNdeko/auth/me`
-- `PUT /SauverNdeko/auth/me`
-- `GET /SauverNdeko/auth/verify`
-
-### Administration
-
-- `GET /api/views`
-- `GET /api/views/:schema/:view`
-- `GET /api/models`
-- `GET /api/models/:model`
-- `GET /api/models/:model/:id`
-- `POST /api/models/:model`
-- `PUT /api/models/:model/:id`
-- `DELETE /api/models/:model/:id`
-- `GET /api/admin-ui-settings`
-- `PUT /api/admin-ui-settings`
-
-## Pages frontend
-
-- `/`
-- `/produits`
-- `/pharmacies`
-- `/experts`
-- `/maladies`
-- `/login`
-- `/register`
-- `/profil`
-- `/discussions`
-- `/admin`
-- `/logistique`
-
-## Installation
-
-### Backend Django
-
-~~~powershell
-cd backend
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\start.ps1
-~~~
-
-Conserver backend/.env existant. La connexion est en lecture seule par défaut ; les migrations métier automatiques et la création d’une base de recette ne doivent pas être exécutées. Le socle natif public utilise la commande migrate contrôlée. Voir backend/README.md pour les vérifications et l’activation ultérieure des écritures métier.
-
-### Frontend
-
-~~~powershell
-cd ../frontend
-npm install
-npm run dev
-~~~
-
-## Variables d'environnement
-
-Le backend charge ses variables depuis `backend/.env`.
-
-Exemple minimal :
-
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/sauverndeko
-DJANGO_DEBUG=0
-SAUVERNDEKO_DB_READ_ONLY=1
-JWT_SECRET=<secret_existant_long_et_aleatoire>
-JWT_REFRESH_SECRET=<autre_secret_existant_long_et_aleatoire>
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
+.\demarrer.bat
 ```
 
-## Orientation long terme
+Le lanceur démarre Django et Vite, puis ouvre **http://localhost:5174/catalogue**. L’espace connecté est `/espace`. Les liens vers les modules exigent la connexion, la licence et les permissions correspondantes.
 
-SauverNdeko doit rester un socle adaptable.  
-Les evolutions ciblees incluent notamment :
+Les autres lanceurs sont `arreter.bat`, `redemarrer.bat` et `adresse-reseau.bat`. Le [guide de lancement](docs/lancement-local.md) décrit les ports, le réseau local et les diagnostics. Le démarrage ne recrée pas la base et n’applique pas automatiquement de migration.
 
-- multi-tenant plus explicite
-- tableaux de bord et reporting
-- operations logistiques
-- paiements et facturation
-- parametrage metier par pays
-- localisation multilingue
-- gouvernance des referentiels
+`backend/.env` reste privé. Conserver ses valeurs existantes ; les secrets de production et le compte PostgreSQL propriétaire ne doivent pas être publiés dans Git. `SAUVERNDEKO_DB_READ_ONLY=0` autorise les écritures déjà permises par les rôles ; sa valeur par défaut dans une nouvelle configuration reste `1`.
 
-## Documentation complementaire
+## Modules et fonctionnalités
 
-- `cahier_charge.md`
-- `SQL/`
-- `backend/docs/`
+- **Produits, Structures et Professionnels** : offres et annuaires, fiches publiées et mise en relation selon les droits.
+- **Logistique** : tiers, articles, lots, BE/BS et commandes, inventaires, factures, règlements, avoirs et immobilisations.
+- **Caisse** : caisses par entreprise et devise, écritures, contrepassations et clôtures.
+- **Discussions et Support** : échanges privés, annonces internes et suivi des demandes.
+- **Organisation territoriale** : niveaux, coordonnées, analyses et rapprochements territoriaux, sous les habilitations de plateforme.
+- **Référentiels, Paramètres, Administration et Guide utilisateur** : nomenclatures partagées ou d’entreprise, configuration, accès et aide intégrée.
 
+Le catalogue commercial et les accès effectifs sont décrits dans [Modules et fonctionnalités](docs/modules-et-fonctionnalites.md). Masquer un onglet ou changer son intitulé ne modifie jamais une permission.
 
-## Commentaires appliqués en base — 24 octobre 2026
+## Organisation du dépôt
 
-Les huit schémas applicatifs de la base locale SauverNdeko possèdent désormais 1553 commentaires couvrant tables, vues, colonnes, fonctions/procédures, triggers, séquences, contraintes et index. Application, réexécution et retour arrière vérifiés sur une copie isolée sans données ; les textes sont vérifiés après commit dans la base locale et les définitions restent inchangées.
+| Dossier | Rôle |
+|---|---|
+| `frontend/` | Interfaces React, composants communs, tests d’interface et dépendances npm verrouillées. |
+| `backend/` | API Django, services métier, modèles non gérés par l’ORM et dépendances Python verrouillées. |
+| `SQL/` | Sources canoniques, migrations immuables, manifeste de versions, contrôles et recettes PostgreSQL. |
+| `deploy/` | Construction Docker, configuration Render, maintenance et droits du compte web. |
+| `scripts/` | Lanceurs Windows, démarrage Render et contrôles techniques. |
+| `skills/` | Conventions du projet et charte documentaire. |
+| `docs/` | Guides, décisions, résultats de tests et limites connues. |
 
-Voir le [bilan PostgreSQL et les scripts](SQL/documentation/Commentaires_PostgreSQL_20261024.md). Les écarts de sécurité, d’isolation et de calcul restent des chantiers distincts.
+Les données, médias privés, sauvegardes et preuves locales restent dans les emplacements exclus de Git. Les captures SQL historiques sont conservées comme références de conception et exclues de l’image Docker.
 
+## Principes techniques
 
-## Logistique fiabilisée — évolution 20261024_02
+PostgreSQL porte les vues, contraintes, fonctions et triggers métier commentés. Les effets sur le stock sont réalisés une seule fois par les routines existantes. Les champs catégoriels enregistrent `ID_Generique` et affichent `AbrGenerique`.
 
-Les vues et triggers logistiques ont été améliorés et appliqués en local : totaux cohérents sous concurrence, recalcul une fois par commande et instruction, clôtures protégées, alertes et couverture corrigées, audit filtré plus efficace. Données existantes inchangées. La recette PostgreSQL historique en Node a été retirée avec l’ancien backend ; ses résultats antérieurs restent documentés dans SQL/documentation. Le backend se contrôle avec manage.py check et verifier_backend en lecture seule ; les recettes métier et leurs résultats sont documentés dans SQL/documentation/Audit_Metier_20261024.md.
+Les données métier sont rattachées durablement à leur entreprise. Le backend contrôle les licences, permissions et périmètres ; une sélection dans le navigateur ne suffit pas à autoriser un accès. L’administrateur global dispose du périmètre prévu par son rôle.
 
-Voir le [bilan, les mesures et les migrations](SQL/documentation/Logistique_Fiabilisation_20261024.md).
+Les modèles métier Django restent `managed=False`. Les tables natives Django sont dans `public`. Les mises à jour métier suivent [le manifeste et le journal de migrations](docs/mises-a-jour-base.md), sans suppression ni recréation des données clientes.
 
+## Vérifications et déploiement
 
-## Documents et exports — charte SauverNdeko
+```powershell
+.\backend\.venv\Scripts\python.exe .\backend\manage.py check
 
-Le [skill de mise en forme](skills/document-mise-en-forme/SKILL.md), version 3.0 du 24 octobre 2026, définit la charte Excel/Word/PDF, le logo du projet, les modèles ERP et les contrôles de parité. Il respecte l’identité de chaque organisation utilisatrice et les données issues du backend.
+Push-Location frontend
+npm run test:ux
+npm run build
+Pop-Location
+```
 
-Les règles et contrôles du skill sont disponibles ; les helpers d’export applicatifs actuels restent à raccorder aux vrais formats natifs pour déclarer leurs fichiers conformes.
+Les tests PostgreSQL de `SQL/tests` exigent une base de recette distincte. Ne pas les exécuter sur les données clientes. Le [guide backend](backend/README.md) décrit les diagnostics en lecture seule.
 
+La livraison Render utilise `deploy/render/Dockerfile`, un compte web restreint et un disque média persistant. Les mises à jour nécessitent une sauvegarde restaurée sur copie, une maintenance séparée et la vérification du commit réellement en ligne. Un push ne transfère pas les fichiers `.env` et ne prouve pas un déploiement.
 
-## Démarrage Windows et réseau local
+- [Notes de version 1.0.0](CHANGELOG.md).
+- [Déploiement Render](docs/deploiement-render.md) et [maintenance depuis le poste](docs/maintenance-render-depuis-poste.md).
+- [Guide Logistique](docs/prise-en-main-logistique.md), [Patrimoine](docs/prise-en-main-patrimoine.md), [Caisse](docs/module-caisse.md), [Référentiels](docs/guide-referentiels.md) et [Territoires](docs/module-organisation-territoriale.md).
+- [Vision scientifique et feuille de route](docs/vision-et-feuille-de-route-scientifique.md).
 
-Les fichiers demarrer.bat, arreter.bat, redemarrer.bat et adresse-reseau.bat sont disponibles à la racine. Ils pilotent Django et Vite, ajustent les ports et conservent les processus des autres projets. Pour accéder depuis un autre PC : demarrer.bat -Reseau. Voir [les instructions de lancement](docs/lancement-local.md). PostgreSQL reste en lecture seule par défaut.
+## Limites à conserver à l’esprit
 
-
-## Tables natives Django
-
-Les tables auth/admin/contenttypes/sessions sont installées et commentées dans public ; les données des 30 tables métier sont inchangées. Voir [le bilan PostgreSQL](SQL/documentation/Django_Public_20261024.md) et [la recommandation de séparation public/systeme](SQL/documentation/Decision_Systeme_Public_20261024.md).
-
-## Applications sous licence — 25 octobre 2026
-
-Les modules sont désormais attribués à une licence d’Entité, puis filtrés selon les droits du rôle. L’accueil « Vos applications » affiche seulement les accès autorisés ; le catalogue et la gestion des licences disposent d’écrans séparés. Les contrôles sont appliqués côté Django, y compris aux vues, exports et consultations 360.
-
-La migration 20261025_02_modules_entites conserve les accès existants sans modifier les comptes ni les dates des licences. Voir les règles, la reprise et les limites de recette dans [le guide backend](backend/README.md) et [le guide SQL](SQL/README.md).
+La version 1.0.0 identifie un état livré du code ; elle ne remplace pas l’acceptation des parcours par le client. Le [bilan du 7 novembre](docs/livraison-render-20261107.md) distingue les contrôles réussis des points ouverts : automatisation GitHub Actions bloquée par la facturation, installation vierge courante à fiabiliser et délivrance Gmail à vérifier. La restauration et la mise à niveau de l’instance de production ont, elles, été vérifiées.
