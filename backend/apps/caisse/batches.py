@@ -25,7 +25,7 @@ def invalid(issues=None, header=None):
 
 @transaction.atomic
 def create_batch(actor, kind, body):
-    services.writable(actor)
+    services.writable(actor, kind)
     allowed = {'requestId', 'rows'} | ({'valider'} if kind == 'ecritures' else set())
     if set(body) - allowed or type(body.get('valider', False)) is not bool:
         invalid(header={'rows': 'Vérifiez le format du panier.'})

@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && useradd --create-home --uid 10001 --gid 10001 --shell /bin/sh sauverndeko \
     && install -d -m 0700 -o sauverndeko -g sauverndeko /home/sauverndeko/.ssh
 COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN python -m pip install --no-cache-dir --only-binary=:all: pip==26.3 \
+    && python -m pip install --no-cache-dir -r /app/requirements.txt
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 COPY --from=frontend /build/dist /app/frontend/dist
 COPY --chown=sauverndeko:sauverndeko backend/ /app/backend/

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.db import DatabaseError,transaction
 from rest_framework.views import APIView
 from apps.core import db
-from apps.core.module_access import require_module,access_snapshot
+from apps.core.module_access import require_module,access_snapshot,can_use_tab
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model
 from apps.core.repository import positive,coerce,get_record,predicate,audit,clean,set_admin_actor
@@ -68,11 +68,11 @@ def linked_cash(row,actor):
     if not found:return None
     # Le rattachement interdit les corrections isolées ; ses détails exigent
     # aussi la licence et les droits du module Caisse.
-    return found if access_snapshot(actor).get('modules',{}).get('caisse',{}).get('canRead') else {'linked':True}
+    return found if can_use_tab(actor, "caisse", "ecritures") else {"linked": True}
 
 
 def cash_choices(actor,parent):
-    if not access_snapshot(actor).get('modules',{}).get('caisse',{}).get('canManage') or not cash_ready():return []
+    if not can_use_tab(actor, "caisse", "ecritures", "manage") or not cash_ready():return []
     if parent.get('IdEntiteFk')!=actor.organisation:return []
     return db.query('''SELECT "IdCaisse" AS id,"NomCaisse" AS label,"CodeCaisse" AS code
       FROM operations."T_Caisse" WHERE "IdEntiteFk"=%s AND "IdDeviseFk"=%s AND "Actif" IS TRUE
@@ -93,7 +93,7 @@ def state(row,actor,*,creation=False):
         reason='Le montant historique de cette facture doit être vérifié.'
     elif db.one('SELECT logistique.fn_commande_cloturee(%s) AS closed',[parent.get('StatusFacture')])['closed']:
         reason='Cette facture est clôturée. Ses règlements sont conservés.'
-    elif not actor.admin or not access_snapshot(actor)['modules']['logistique']['canManage']:
+    elif not actor.admin or not can_use_tab(actor, "logistique", "reglements", "manage"):
         reason='Votre rôle ne permet pas de gérer les règlements.'
     elif settings.DB_READ_ONLY:reason='Les écritures sont momentanément indisponibles.'
     if not creation and not reason:
@@ -125,12 +125,17 @@ def modes(actor,selected=None,*,entity=None,table='T_Reglements',column='ID_Mode
 
 
 def record_data(row,actor):
-    return clean({**row['record'],'facture':row.get('facture'),'caisse':linked_cash(row,actor),'references':{'reglementModes':modes(actor,row['raw'].get('ID_ModeReglementFk'),entity=(row.get('parent') or {}).get('IdEntiteFk'))}})
+    facture=row.get('facture') if can_use_tab(actor,"logistique","factures") else None
+    return clean({**row['record'],'facture':facture,'caisse':linked_cash(row,actor),'references':{'reglementModes':modes(actor,row['raw'].get('ID_ModeReglementFk'),entity=(row.get('parent') or {}).get('IdEntiteFk'))}})
 
 
 def get_payment(actor,payment_id):
     require_module(actor,'logistique')
-    row=snapshot(actor,payment_id);meta=state(row,actor)
+    row=snapshot(actor,payment_id)
+    meta=state(row,actor) if can_use_tab(actor,"logistique","factures") else {
+        'revision': revision(row), 'canEdit':False, 'canDelete':False,
+        'reason':'La gestion d’un règlement requiert aussi l’accès à sa facture.',
+    }
     meta['createdByUserId']=int(row['creator']) if str(row.get('creator') or '').isdigit() else None
     return record_data(row,actor),meta
 

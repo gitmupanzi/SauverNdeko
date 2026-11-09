@@ -17,8 +17,10 @@ export function DepotScopeProvider({children}){
  const current=state.key===scope.scopeKey?state:null,depotId=choice.key===scope.scopeKey?choice.id:"";
  useEffect(()=>{
   const controller=new AbortController();setState({key:"",rows:[],defaultId:"",error:""});
-  (async()=>{let rows=[],skip=0,response;
-   do{response=await requestJson("/api/logistique/depots?take=500&actif=all&skip="+skip,{requiresAuth:true,signal:controller.signal});if(controller.signal.aborted)return;if(!response?.success)break;const data=response.data,part=Array.isArray(data)?data:Array.isArray(data?.rows)?data.rows:[];rows.push(...part);skip+=part.length;if(!part.length||skip>=Number(response.meta?.filteredCount??skip))break;}while(!controller.signal.aborted);
+  (async()=>{
+   const response = await requestJson("/api/logistique/depots?usage=selection",{requiresAuth:true,signal:controller.signal});
+   if(controller.signal.aborted)return;
+   const rows = Array.isArray(response?.data) ? response.data : [];
    const principal=rows.find(row=>(row.Principal===true||row.principal===true)&&row.Actif!==false&&row.active!==false);
    setState({key:scope.scopeKey,rows:response?.success?rows:[],defaultId:String(principal?.ID_Depot??principal?.id??""),error:response?.success?"":response?.message||"Les dépôts ne sont pas disponibles."});
   })();return()=>controller.abort();

@@ -1,3 +1,5 @@
+import {useAuth} from "../../contexts/AuthContext";
+import {tabRights} from "../../services/moduleAccess";
 import {useDepotScope} from "../../contexts/DepotScopeContext";
 import CurrencySelect from "../../components/CurrencySelect";
 import { formatCurrency } from "../../utils/money";
@@ -45,7 +47,12 @@ export default function DashboardLogistique({
   refreshKey, references, hiddenDashboardBlocks, title = "Tableau de bord", canConfigurePresentation = false,
 }) {
  const depotScope=useDepotScope();
+  const {user}=useAuth();
   const hidden = new Set(Array.isArray(hiddenDashboardBlocks) ? hiddenDashboardBlocks : []);
+  for (const key of ["articles","commandes","factures"]) {
+    if (!tabRights(user,"logistique",key).canRead) hidden.add(key);
+  }
+  if (hidden.has("articles") && !tabRights(user,"logistique","mouvements").canRead) hidden.add("alertes");
   const showLeftColumn = !hidden.has("articles") || !hidden.has("commandes");
   const showRightColumn = !hidden.has("factures") || !hidden.has("alertes");
   const hasVisibleBlocks = showLeftColumn || showRightColumn;
@@ -122,6 +129,7 @@ export default function DashboardLogistique({
   }
   const totals = summary?.totals || {};
   function metric(blockKey, key, label, icon = "bi-bar-chart", tone = "blue", suffix = "", options = {}) {
+    if (options.value === undefined && !Object.hasOwn(totals,key)) return null;
     const value = options.value !== undefined ? options.value : totals[key];
     const selected = visibleMetric?.blockKey === blockKey && visibleMetric.key === key
       && JSON.stringify(visibleMetric.filters) === JSON.stringify(options.filters || {});
@@ -145,6 +153,7 @@ export default function DashboardLogistique({
     </article>;
   }
   function moneyMetrics(blockKey,key,label,icon,tone) {
+    if (!Object.hasOwn(totals,key)) return null;
     const groups=summary?.amountsByCurrency?.[key];
     if (!Array.isArray(groups) || !groups.length) return <p key={key} className="erp-data-note">{label} : {totals[key] === "0" || totals[key] === 0 ? "0" : "—"}</p>;
     return groups.map(group=>metric(blockKey,key,label,icon,tone,"",{value:group.value,currency:group.code || "",rowKey:key+":"+(group.id??"none"),filters:{deviseId:group.id??"sans-devise"}}));
@@ -189,7 +198,7 @@ export default function DashboardLogistique({
                 stockWeight: category,
               }))}
             </div>
-            <details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("articles", "auditTotal", "Articles contrôlés")}{metric("articles", "auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("articles", "auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("articles", "coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>
+            {Object.hasOwn(totals,"auditTotal")?<details className="erp-stock-controls"><summary>Contrôle du stock</summary><div className="erp-group-grid">{metric("articles", "auditTotal", "Articles contrôlés")}{metric("articles", "auditCoherents", "Stocks cohérents", "bi-check2-circle", "teal")}{metric("articles", "auditEcarts", "Écarts", "bi-exclamation-circle", "coral")}{metric("articles", "coherenceRate", "Cohérence", "bi-percent", "slate", " %")}</div></details>:null}
           </IndicatorBlock> : null}
           {!hidden.has("commandes") ? <IndicatorBlock id="dashboard-bons" title="Bons de stock" icon="bi-receipt">
             <div className="erp-group-grid">

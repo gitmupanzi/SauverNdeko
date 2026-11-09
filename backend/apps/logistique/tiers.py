@@ -150,6 +150,8 @@ class TiersConsultationView(APIView):
         from .reads import read_page
         from .ledger_registers import source
         obj=source('reglements') if section=='reglements' else view('logistique','V_SuiviReglements' if section=='factures' else 'V_Commande')
+        from .reads import restrict_order_source
+        obj = restrict_order_source(obj, request.user)
         condition='"ID_TiersFk"='+str(positive(pk))
         if section=='factures':condition+=" AND \"CodeFacture\" IS NOT NULL AND btrim(\"CodeFacture\")<>''"
         rows,meta,_=read_page(obj,request.user,request.query_params.dict(),condition=condition)

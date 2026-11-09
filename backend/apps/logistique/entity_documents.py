@@ -19,6 +19,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from apps.core import db
+from apps.core.admin_tabs import can_use_admin_tab, require_admin_tab
 from apps.core.module_access import access_snapshot, require_module
 from apps.core.parsers import ExactJSONParser
 from apps.core.permissions import IsERPAdmin
@@ -67,7 +68,11 @@ def workspace_module(administration=False, workspace=None):
 
 def target(actor, entity=None, *, administration=False, writing=False, creating=False, workspace=None):
     module = workspace_module(administration, workspace)
-    require_module(actor, module, 'manage' if writing else 'read')
+    action = 'manage' if writing else 'read'
+    if administration:
+        require_admin_tab(actor, 'entites', action)
+    else:
+        require_module(actor, module, action)
     if not actor.admin and (writing or workspace != 'parametres'):
         raise APIError('Ce réglage est réservé à l’administrateur de l’entreprise.', 'FORBIDDEN', 403)
     if creating:
@@ -129,8 +134,9 @@ def profile(actor, entity=None, *, administration=False, workspace=None):
     from apps.core.entity_locations import profile_revision
     row['_version']=profile_revision(entity,row['_version'],row.pop('CollectionRevision'))
     row['documentsExistants'] = db.one('SELECT count(*) AS n FROM logistique."T_DocumentIdentite" WHERE "IdEntiteFk"=%s', [entity])['n']
-    rights = access_snapshot(actor)['modules'][workspace_module(administration, workspace)]
-    row['canConfigure'] = bool(actor.admin and not settings.DB_READ_ONLY and rights['canManage']
+    can_manage = (can_use_admin_tab(actor, 'entites', 'manage') if administration
+                  else access_snapshot(actor)['modules'][workspace_module(administration, workspace)]['canManage'])
+    row['canConfigure'] = bool(actor.admin and not settings.DB_READ_ONLY and can_manage
         and (workspace not in {'parametres', 'structures'} or row['ValideEntite'] is not False)
         and (workspace != 'structures' or read_entity(actor) == entity))
     row['canManageEntity'] = actor.global_admin and not settings.DB_READ_ONLY and workspace not in {'parametres', 'structures'}
@@ -429,7 +435,7 @@ class EntityIdentityDefaultsView(APIView):
     permission_classes = [IsERPAdmin]
 
     def get(self, request):
-        require_module(request.user, 'administration')
+        require_admin_tab(request.user, 'entites', 'manage')
         if not request.user.global_admin:
             raise APIError('La création d’une entreprise est réservée à la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
         if request.query_params:
@@ -437,7 +443,7 @@ class EntityIdentityDefaultsView(APIView):
         data = {key: None for key in FIELDS | ADMIN_FIELDS}
         data.update(IdentifiantsLegauxEntite=[], AfficherEnteteDocument=True,
             AfficherPiedDocument=True, TauxTVAEntite='0', PartageArticlesPublicParDefaut=True, VisibleAnnuaireEntite=False, ValideEntite=True, HasLogo=False,
-            canConfigure=not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],
+            canConfigure=not settings.DB_READ_ONLY and can_use_admin_tab(request.user, 'entites', 'manage'),
             canManageEntity=not settings.DB_READ_ONLY, references={'entityTypes': entity_types(None,actor=request.user)})
         from apps.core.entity_locations import geographical_references
         data['Localisations']=[]
@@ -455,7 +461,7 @@ class EntityLogoView(APIView):
         if not actor.admin:
             raise APIError('Accès réservé aux gestionnaires autorisés.', 'FORBIDDEN', 403)
         rights = access_snapshot(actor)['modules']
-        if not any(rights.get(key, {}).get('canRead') for key in ('logistique', 'administration')):
+        if not rights.get('logistique', {}).get('canRead') and not can_use_admin_tab(actor, 'entites'):
             raise APIError('Votre rôle ne permet pas cet accès.', 'MODULE_ROLE_FORBIDDEN', 403)
         if not actor.global_admin and entity != actor.row.get('IdEntiteFk'):
             raise APIError('Logo indisponible dans votre périmètre.', 'NOT_FOUND', 404)

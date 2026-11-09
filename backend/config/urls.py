@@ -41,6 +41,7 @@ from apps.logistique.inventories import InventoriesView, UnitPrecisionView
 from apps.logistique.depots import DepotsView, DepotStocksView
 from apps.logistique.depot_registers import DepotRegisterExportView
 from apps.logistique.transfers import TransfersView
+from apps.logistique.immobilisation_lifecycle import ImmobilisationCycleView, ImmobilisationValuationView
 from apps.logistique.immobilisations import ImmobilisationsView, ImmobilisationReferencesView, ImmobilisationHistoryView, ImmobilisationExportView
 from apps.logistique.lot_fefo import LotFefoView
 from apps.logistique.destinations import DestinationsView
@@ -59,6 +60,7 @@ from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
 from apps.logistique.article_xlsx import ArticleExcelPreviewView
 from apps.logistique.batch_creation import LogisticsBatchView
+from django.conf import settings
 from django.contrib import admin
 from django.urls import re_path
 from apps.accounts.views import (
@@ -82,6 +84,7 @@ from apps.core.ui_settings import UISettingsView
 from apps.core.module_presentation import ModulePresentationView, ModulePresentationSettingsView, PresentationModulesView
 from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
+from apps.core.user_module_access import UserApplicationsView
 from apps.catalogue.views import PublicView
 from apps.catalogue.summary import CatalogueSummaryView
 from apps.catalogue.products import ProductReferencesView, ProductOffersView
@@ -173,7 +176,7 @@ urlpatterns = [
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/(?P<pk>[0-9]+)/?$",TerritorialRegisterView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/?$",TerritorialRegisterView.as_view()),
     re_path(r"^api/systeme/administration/entreprises/?$", AdminEntitiesView.as_view()),
-    re_path(r"^api/systeme/administration/references/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminReferencesView.as_view()),
+    re_path(r"^api/systeme/administration/references/(?P<kind>utilisateurs|roles|correspondances|parametres|entites|licences|connexions)/?$", AdminReferencesView.as_view()),
     re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/?$", AdminBatchView.as_view()),
     re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/modele-excel/?$", AdminExcelTemplateView.as_view()),
     re_path(r"^api/systeme/administration/saisie-multiple/(?P<kind>utilisateurs|roles|correspondances|parametres)/import-excel/?$", AdminExcelPreviewView.as_view()),
@@ -197,6 +200,8 @@ urlpatterns = [
     re_path(r"^api/systeme/personnel/references/?$", PersonnelReferencesView.as_view()),
     re_path(r"^api/logistique/immobilisations/references/?$", ImmobilisationReferencesView.as_view()),
     re_path(r"^api/logistique/immobilisations/export\.(?P<file_format>xlsx|csv)/?$", ImmobilisationExportView.as_view()),
+    re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/cycle-vie/?$", ImmobilisationCycleView.as_view()),
+    re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/valorisation/?$", ImmobilisationValuationView.as_view()),
     re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/historique/?$", ImmobilisationHistoryView.as_view()),
     re_path(r"^api/logistique/immobilisations/(?P<pk>[0-9]+)/?$", ImmobilisationsView.as_view()),
     re_path(r"^api/logistique/immobilisations/?$", ImmobilisationsView.as_view()),
@@ -218,7 +223,7 @@ urlpatterns = [
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/mouvements/?$", LotMovementsView.as_view()),
     re_path(r"^api/logistique/lots/(?P<pk>[0-9]+)/?$", LotDetailView.as_view()),
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir|immobilisation)/(?P<pk>[0-9]+)/(?P<document_type>entree|sortie|livraison|commande|facture|recu|avoir|fiche)\.pdf/?$", DocumentPdfView.as_view()),
-    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
+    re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir|immobilisation)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
     re_path(r"^api/logistique/(?P<kind>depots|stocks-depots|transferts|inventaires)/export\.(?P<file_format>xlsx|csv)/?$", DepotRegisterExportView.as_view()),
@@ -254,6 +259,7 @@ urlpatterns = [
     re_path(r"^api/workspace/licences/?$", LicenceApplicationsView.as_view()),
     re_path(r"^api/workspace/licences/(?P<pk>[0-9]+)/modules/?$", LicenceModulesView.as_view()),
     re_path(r"^api/workspace/roles/?$", RoleApplicationsView.as_view()),
+    re_path(r"^api/workspace/droits-utilisateurs(?:/(?P<pk>[0-9]+))?/?$", UserApplicationsView.as_view()),
     re_path(r"^api/workspace/roles/(?P<pk>[0-9]+)/?$", RoleApplicationsView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi/apercu/?$", FolderPreviewView.as_view()),
     re_path(r"^api/logistique/dossiers-suivi/categories/?$", FolderCategoriesView.as_view()),
@@ -267,7 +273,6 @@ urlpatterns = [
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),
     re_path(r"^api/logistique/consultations/(?P<kind>produit|commande)/(?P<pk>[0-9]+)(?:/(?P<section>[a-z]+))?/?$", ConsultationReadView.as_view()),
     re_path(r"^api/workspace/modules/?$", WorkspaceModulesView.as_view()),
-    re_path(r"^django-admin/", admin.site.urls),
     re_path(r"^api/recherches(?:/(?P<pk>[0-9]+))?/?$", RecherchesView.as_view()),
     re_path(
         r"^api/systeme/admin-ui-settings/audit/?$",
@@ -372,6 +377,9 @@ urlpatterns = [
         {"schema": "systeme", "name": "V_Fk_Correspondance_Audit"},
     ),
 ]
+if settings.DJANGO_ADMIN_ENABLED:
+    urlpatterns.append(re_path(r"^django-admin/", admin.site.urls))
+
 for module in MODULES:
     if module != "systeme/admin-ui-settings":
         urlpatterns.append(

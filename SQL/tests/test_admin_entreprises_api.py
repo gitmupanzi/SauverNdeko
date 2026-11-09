@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 from apps.accounts.authentication import Actor
 from apps.core import db
 from apps.core.field_references import reference_options
+from apps.core.module_access import access_snapshot
 from apps.core.registry import model
 from apps.core.repository import mutate
 from apps.logistique import entity_documents as entities
@@ -43,7 +44,12 @@ class AdminEnterpriseAPI(unittest.TestCase):
  def actor(self,index=0,*,global_admin=True,manage=True,scope=True,staff=True):
   actor=Actor({**self.users[index],'Is_Admin':global_admin,'Is_staff':staff})
   if global_admin and scope:actor._context_entity=self.entities[index]
-  actor._module_access={'modules':{key:{'canRead':True,'canManage':manage,'canExport':True,'reason':'MODULE_ROLE_FORBIDDEN'} for key in ('administration','logistique')}};return actor
+  snapshot={'modules':{},'tabs':{'logistique':{}}} if global_admin else access_snapshot(actor)
+  actor._module_access=snapshot
+  for key in ('administration','logistique'):
+   snapshot['modules'][key]={'canRead':True,'canManage':manage,'canExport':True,'reason':'MODULE_ROLE_FORBIDDEN'}
+  snapshot['tabs']['logistique']['immobilisations']=snapshot['modules']['logistique']
+  return actor
  def client(self,**rights):c=APIClient();c.force_authenticate(self.actor(**rights));return c
  def role(self):
   from apps.core.admin_operations import privileged_user
@@ -74,12 +80,37 @@ class AdminEnterpriseAPI(unittest.TestCase):
   body=self.body('utilisateurs');result=self.assert_status(self.post('utilisateurs',body,global_admin=False),201)
   self.assertTrue(all(r['IdEntiteFk']==self.entities[0] and not r['Is_Admin'] and not r['Is_staff'] for r in result['records']))
   for field,value in [('Is_Admin',True),('Is_staff',True),('IdEntiteFk',self.entities[1])]:self.assert_status(self.post('utilisateurs',self.body('utilisateurs',**{field:value}),global_admin=False),403)
+ def test_local_user_creation_and_role_change_cannot_exceed_own_rights(self):
+  payload=self.row('utilisateurs')['data']
+  created=self.assert_status(self.client(global_admin=False).post('/api/systeme/utilisateurs',payload,format='json'),201)
+  actor=self.actor(global_admin=False)
+  actor._module_access['modules']['produits'].update(canRead=False,canManage=False,canExport=False)
+  client=APIClient();client.force_authenticate(actor)
+  denied=client.post(BASE+'saisie-multiple/utilisateurs',self.body('utilisateurs',n=1,IdRoleFk=None),format='json')
+  self.assert_status(denied,403)
+  self.assertEqual(denied.data['error']['code'],'USER_GRANT_EXCEEDS_OWN')
+  url='/api/systeme/utilisateurs/'+str(created['IdUser'])
+  denied=client.patch(url,{'IdRoleFk':None},format='json')
+  self.assert_status(denied,403)
+  self.assertEqual(denied.data['error']['code'],'USER_GRANT_EXCEEDS_OWN')
+  self.assertEqual(db.one('SELECT "IdRoleFk" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s',[created['IdUser']])['IdRoleFk'],payload['IdRoleFk'])
  def test_04_structure_reserved_to_platform(self):
   for kind in ('roles','correspondances','parametres'):self.assert_status(self.post(kind,global_admin=False),403)
  def test_05_old_user_routes_share_guards(self):
   payload=self.row('utilisateurs')['data'];client=self.client(global_admin=False)
   result=self.assert_status(client.post('/api/systeme/utilisateurs',payload,format='json'),201);identifier=result['IdUser']
-  self.assert_status(client.patch('/api/systeme/utilisateurs/'+str(identifier),{'NomUser':'Modifié'},format='json'))
+  url='/api/systeme/utilisateurs/'+str(identifier)
+  email=f'{uuid.uuid4()}@example.invalid'
+  initial_hash=db.one('SELECT "MotdepasseUser" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s',[identifier])['MotdepasseUser']
+  for change in ({'EmailUser':email},{'MotdepasseUser':'Nouveau-mot-de-passe-123456789'}):
+   refused=client.patch(url,change,format='json')
+   self.assert_status(refused,403)
+   self.assertEqual(refused.data['error']['code'],'USER_CREDENTIALS_PROTECTED')
+  updated=self.assert_status(client.put(url,{'NomUser':'Modifié','EmailUser':payload['EmailUser']},format='json'))
+  self.assertEqual(updated['NomUser'],'Modifié')
+  self.assertEqual(updated['EmailUser'],payload['EmailUser'])
+  self.assertEqual(db.one('SELECT "MotdepasseUser" FROM systeme."T_Utilisateurs" WHERE "IdUser"=%s',[identifier])['MotdepasseUser'],initial_hash)
+  self.assertEqual(self.assert_status(self.client().patch(url,{'EmailUser':email},format='json'))['EmailUser'],email)
   for field,value in [('Is_staff',True),('Is_Admin',True),('IdEntiteFk',self.entities[1])]:self.assert_status(client.patch('/api/systeme/utilisateurs/'+str(identifier),{field:value},format='json'),403)
   self.assert_status(client.delete('/api/systeme/utilisateurs/'+str(self.users[0]['IdUser'])),409)
   self.assert_status(client.delete('/api/systeme/utilisateurs/'+str(self.users[1]['IdUser'])),404)

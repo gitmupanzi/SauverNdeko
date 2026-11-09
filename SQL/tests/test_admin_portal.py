@@ -9,6 +9,7 @@ import os
 import sys
 import unittest
 import zipfile
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
@@ -24,6 +25,8 @@ from django.urls import resolve
 from rest_framework.test import APIClient
 from apps.accounts.authentication import Actor
 from apps.core import admin_portal as portal
+from apps.core.admin_tabs import ADMIN_GLOBAL_TABS
+from apps.core.module_access import PROTECTED_TABS
 from apps.core.registry import model
 from apps.core.repository import clean, secret_key
 from apps.core.responses import APIError
@@ -46,6 +49,13 @@ class AdminPortalTests(unittest.TestCase):
         self.override = override_settings(ALLOWED_HOSTS=["testserver"])
         self.override.enable()
         self.actor = Actor({"IdUser": 2147483600, "Is_Admin": True})
+        self.actor._module_access = {"modules": {"administration": {
+            "canRead": True, "canManage": True, "canExport": True,
+        }}}
+        blocked = patch("django.db.backends.base.base.BaseDatabaseWrapper.ensure_connection",
+                        side_effect=AssertionError("Connexion applicative interdite."))
+        blocked.start()
+        self.addCleanup(blocked.stop)
         self.client = APIClient()
         self.client.force_authenticate(self.actor)
         def fake_catalogue(actor, interface_key):
@@ -71,11 +81,10 @@ class AdminPortalTests(unittest.TestCase):
         anonymous = APIClient()
         self.assertIn(anonymous.get(self.url("audit")).status_code, {401, 403})
         local = Actor({"IdUser": 2147483599, "IdEntiteFk": 99, "Is_staff": True})
-        with patch("apps.core.admin_portal.require_module"):
-            for kind in portal.GLOBAL_ONLY:
-                with self.assertRaises(APIError) as error:
-                    portal.source(local, kind)
-                self.assertEqual(error.exception.status_code, 403)
+        for kind in ADMIN_GLOBAL_TABS.intersection(portal.SOURCES):
+            with self.assertRaises(APIError) as error:
+                portal.source(local, kind)
+            self.assertEqual(error.exception.status_code, 403)
 
     def test_source_allowlist_and_roles_cannot_escape_category(self):
         with self.assertRaises(APIError): portal.source(self.actor, "T_Utilisateurs")
@@ -201,10 +210,51 @@ class AdminPortalTests(unittest.TestCase):
     def test_export_refuses_bad_columns_and_honours_export_right(self):
         for raw in ({"columns": '["MotdepasseUser"]'}, {"columns": '["NomUser","NomUser"]'}, {"columns": "bad"}):
             with self.assertRaises(APIError): portal.admin_workbook(self.actor, "utilisateurs", raw)
-        with patch("apps.core.admin_portal.require_module", side_effect=APIError("Refus", "FORBIDDEN", 403)):
-            response = self.client.get(self.url("utilisateurs", "/export.xlsx"), HTTP_ACCEPT=portal.XLSX_MEDIA_TYPE)
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.accepted_media_type, "application/json")
+        actor = self.tab_limited_actor({"utilisateurs": {"canRead": True}})
+        self.client.force_authenticate(actor)
+        with patch("apps.core.admin_portal.db.one", return_value={"IdUser": 17}) as get:
+            self.assertEqual(self.client.get(self.url("utilisateurs", "/17")).status_code, 200)
+            self.assertEqual(self.client.get(self.url("entites", "/17")).status_code, 403)
+            self.assertEqual(get.call_count, 1)
+        for suffix, accept in (("/export.xlsx", portal.XLSX_MEDIA_TYPE), ("/export.csv", "text/csv")):
+            response = self.client.get(self.url("utilisateurs", suffix), HTTP_ACCEPT=accept)
+            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.accepted_media_type, "application/json")
+
+    def tab_limited_actor(self, allowed):
+        actor = Actor({"IdUser": 2147483599, "IdEntiteFk": 99, "Is_staff": True})
+        denied = {"canRead": False, "canManage": False, "canExport": False}
+        actor._module_access = {
+            "modules": {"administration": {name: True for name in denied}},
+            "tabs": {"administration": {tab: {**denied, **allowed.get(tab, {})}
+                                       for tab in PROTECTED_TABS["administration"]}},
+        }
+        return actor
+
+    def test_dashboard_only_queries_accessible_registers(self):
+        self.client.force_authenticate(self.tab_limited_actor({
+            "tableau-de-bord": {"canRead": True}, "roles": {"canRead": True},
+        }))
+        with patch("apps.core.admin_portal.transaction.atomic", side_effect=nullcontext), \
+             patch("apps.core.admin_portal.scoped_count", return_value=7) as count, \
+             patch("apps.core.admin_portal.db.query") as query:
+            response = self.client.get("/api/systeme/administration/synthese")
+        self.assertEqual(response.status_code, 200)
+        data = response.data["data"]
+        self.assertEqual(set(data["metricTargets"]), {"roles"})
+        self.assertEqual(data["metrics"]["roles"], 7)
+        self.assertIsNone(data["metrics"]["users"])
+        self.assertEqual(data["recentAudit"], [])
+        self.assertEqual(data["expiringLicences"], [])
+        self.assertEqual(count.call_args.args[1], "roles")
+        count.assert_called_once()
+        query.assert_not_called()
+
+    def test_legacy_aliases_cannot_bypass_tab_permissions(self):
+        self.client.force_authenticate(self.tab_limited_actor({"tableau-de-bord": {"canRead": True}}))
+        for url in (self.url("profils", "/17"), self.url("localisations", "/17"),
+                    "/api/systeme/utilisateurs/17", "/api/systeme/entites/17", "/api/admin-ui-settings/audit"):
+            self.assertEqual(self.client.get(url).status_code, 403, url)
 
     def test_setting_system_guards_precede_any_write(self):
         from apps.core.repository import _mutate

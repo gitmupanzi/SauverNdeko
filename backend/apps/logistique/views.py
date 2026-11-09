@@ -4,6 +4,7 @@ from apps.core.registry import model, view
 from apps.core.repository import listing, get_record, positive, clean
 from apps.core.responses import ok, APIError
 from .services import mutate_line, dashboard, references
+from .tab_access import can_read_tabs, mask_order
 
 
 class DetailView(APIView):
@@ -14,7 +15,11 @@ class DetailView(APIView):
             from .document_rules import editable_record, line_usage
             record=editable_record(model("T_CommandeDetail"),view("logistique","V_CommandeDetail"),request.user,{"ID_CmdFk":positive(commande),"ID_ArticleFk":positive(article)})
             parent=get_record(model("T_Commande"),request.user,{"ID_Commande":positive(commande)})
-            return ok(clean(record),meta=line_usage(record,parent))
+            metadata = line_usage(record,parent)
+            if record.get("Lots") and not can_read_tabs(request.user, "lots"):
+                record.pop("Lots")
+                metadata.update(canEdit=False, canDelete=False, editReason="Vous n’avez pas accès aux lots de cette ligne.")
+            return ok(clean(mask_order(request.user,record)),meta=metadata)
         params = request.query_params.dict()
         if commande:
             params["commande"] = commande
@@ -26,17 +31,21 @@ class DetailView(APIView):
         return ok(rows, meta=meta)
 
     def post(self, request, commande=None):
+        if not isinstance(request.data, dict):
+            raise APIError("Renseignez les champs de la ligne.")
         return ok(
             mutate_line(
-                request.user, commande or request.data.get("ID_CmdFk"), request.data
+                request.user, commande or request.data.get("ID_CmdFk"), request.data, direct=True
             ),
             status=201,
         )
 
     def put(self, request, commande, article):
+        if not isinstance(request.data, dict):
+            raise APIError("Renseignez les champs de la ligne.")
         return ok(
             mutate_line(
-                request.user, commande, request.data, positive(article), "update"
+                request.user, commande, request.data, positive(article), "update", direct=True
             )
         )
 
@@ -45,7 +54,7 @@ class DetailView(APIView):
     def delete(self, request, commande, article):
         return ok(
             mutate_line(
-                request.user, commande, body=request.data, article_id=positive(article), operation="delete"
+                request.user, commande, body=request.data, article_id=positive(article), operation="delete", direct=True
             )
         )
 

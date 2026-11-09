@@ -16,6 +16,7 @@ import AppIcon from "../../components/AppIcon";
 import LotFields,{lotErrors} from "../../components/LotFields";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import {requestJson} from "../../services/api";
+import {tabRights} from "../../services/moduleAccess";
 import {roundMoney} from "../../utils/quantities";
 import {compareDecimal,currencyOptions,formatCurrency,multiplyDecimal,newCurrencyId} from "../../utils/money";
 import {asArrayPayload,buildReferenceOptions,formatDate,formatNumber,SimpleTable} from "./logistiqueShared";
@@ -53,13 +54,14 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
   const maxLines=creating?MAX_COMPOSITION_LINES:editMeta?.maxLines??MAX_COMPOSITION_LINES;
   const canWrite=entityScope.canWrite&&user?.permissions?.canWriteData===true&&contextKey===initialContext.current,editable=canWrite&&(creating||editMeta?.canEdit===true),disabled=busy||uncertain||editLoading||!editable;
   const direction=compositionDirection(compositionType(references,values,sourceBon)),currency=references?.currencies?.find(item=>String(item.id)===values.ID_DeviseFk)||(sourceBon&&String(sourceBon.ID_DeviseFk)===values.ID_DeviseFk?{code:sourceBon.DeviseCode}:null),currencyCode=currency?.code;
-  const order=direction==="commande",typeFixedByOrder=!creating&&(isStockOrder(sourceBon)||order);
+  const invoiceRights=tabRights(user,"logistique","factures"),paymentRights=tabRights(user,"logistique","reglements");
+  const order=direction==="commande",showInvoice=!order&&invoiceRights.canRead,typeFixedByOrder=!creating&&(isStockOrder(sourceBon)||order);
   const dirty=JSON.stringify(values)!==JSON.stringify(firstValues.current)||compositionBasketSnapshot(basket)!==initialBasket.current,total=compositionTotal(basket);
   const typeOptions=(references?.commandeTypes||[]).filter(type=>compositionDirection(type)&&!(!creating&&sourceBon&&!isStockOrder(sourceBon)&&compositionDirection(type)==="commande")).map(type=>({value:String(type.id),label:referenceLabel(type),disabled:type.disabled===true||type.incompatible===true,incompatible:type.incompatible===true}));
   const chosenIds=new Set(basket.map(line=>String(line.article.ID_Article))),newSelected=selected.filter(article=>!chosenIds.has(String(article.ID_Article)));
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;lotsRequests.current.queue=[];lotsRequests.current.clear();};},[]);
   useEffect(()=>{if(contextKey!==initialContext.current)onClose();},[contextKey,onClose]);
-  useEffect(()=>{if(order)setActive(current=>current==="facturation"?"bon":current);},[order]);
+  useEffect(()=>{if(!showInvoice)setActive(current=>current==="facturation"?"bon":current);},[showInvoice]);
   useEffect(()=>{if(direction!=="sortie"){lotsRequests.current.clear();lotsRequests.current.queue=[];setKnownLots({});}},[direction]);
   useEffect(()=>{
     if(creating)return;
@@ -201,7 +203,7 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
       {reloadWarning?<div className="record-editor-error" role="alert"><span>Recharger le bon et abandonner les modifications ?</span><div className="bon-composer-inline-actions"><ActionButton onClick={()=>setReloadWarning(false)}>Continuer</ActionButton><ActionButton onClick={()=>setEditRevision(value=>value+1)}>Recharger</ActionButton></div></div>:null}
       {creating||sourceBon?<>
       {!creating&&sourceBon&&editMeta?.canEdit!==true?<p className="record-editor-error" role="status">{editMeta?.reason||"Ce bon est disponible en consultation."}</p>:null}
-      <ConsultationTabs tabs={[{key:"bon",label:"Bon",icon:"receipt"},{key:"articles",label:"Articles",icon:"box"},{key:"suivi",label:"Suivi bon",icon:"list"},...(!order?[{key:"facturation",label:"Facturation",icon:"document"}]:[]),{key:"tracabilite",label:"Traçabilité",icon:"user"}]} value={active} onChange={setActive} label="Préparation du bon" idPrefix={prefix}/>
+      <ConsultationTabs tabs={[{key:"bon",label:"Bon",icon:"receipt"},{key:"articles",label:"Articles",icon:"box"},{key:"suivi",label:"Suivi bon",icon:"list"},...(showInvoice?[{key:"facturation",label:"Facturation",icon:"document"}]:[]),{key:"tracabilite",label:"Traçabilité",icon:"user"}]} value={active} onChange={setActive} label="Préparation du bon" idPrefix={prefix}/>
       <div className="bon-composer-summary"><span><AppIcon name={direction==="entree"?"stock-in":direction==="sortie"?"stock-out":"receipt"}/>{compositionType(references,values,sourceBon)?.label||"Type à choisir"}</span><span>{basket.length} article{basket.length>1?"s":""}</span><strong>Total <span>{formatCurrency(total,currencyCode)}</span></strong></div>{order?<p className="record-editor-note">Sans mouvement de stock.</p>:null}
       <section role="tabpanel" id={prefix+"-panel-bon"} aria-labelledby={prefix+"-tab-bon"} hidden={active!=="bon"} tabIndex={active==="bon"?0:-1}>
         <section className="record-editor-section"><h3><AppIcon name="receipt"/>Informations du bon</h3><div className="record-editor-grid"><DepotField id={prefix+"ID_DepotFk"} value={values.ID_DepotFk} currentLabel={sourceBon?.NomDepot} error={headerErrors.ID_DepotFk} onChange={value=>change("ID_DepotFk",value)} disabled={disabled||basket.length>0||!creating}/>
@@ -227,13 +229,17 @@ export default function BonComposer({commandeId=null,references:receivedReferenc
       <section role="tabpanel" id={prefix+"-panel-suivi"} aria-labelledby={prefix+"-tab-suivi"} hidden={active!=="suivi"} tabIndex={active==="suivi"?0:-1}>
         <section className="record-editor-section"><h3><AppIcon name="list"/>Suivi bon</h3><div className="record-editor-grid">{select("ID_StatutCmdFk","Statut du bon")}{!order?input("UrlBL","Lien du bon de livraison",{maxLength:255}):null}{select("SelectCmd","Marqué pour suivi",{boolean:true})}</div></section>
       </section>
-      {!order?<section role="tabpanel" id={prefix+"-panel-facturation"} aria-labelledby={prefix+"-tab-facturation"} hidden={active!=="facturation"} tabIndex={active==="facturation"?0:-1}>
+      {showInvoice?<section role="tabpanel" id={prefix+"-panel-facturation"} aria-labelledby={prefix+"-tab-facturation"} hidden={active!=="facturation"} tabIndex={active==="facturation"?0:-1}>
         <section className="record-editor-section"><h3><AppIcon name="document"/>Facturation</h3>
           {creating?<p className="record-editor-note">{direction==="entree"?"La création d’une facture concerne les bons de sortie.":"Enregistrez le bon pour créer sa facture."}</p>:invoiceAvailable&&onInvoice&&(direction==="sortie"||sourceBon?.CodeFacture)?<div className="bon-composer-invoice-action"><ActionButton icon="document" onClick={()=>{if(!busy&&!uncertain&&!dirty&&canWrite&&!editLoading)onInvoice(commandeId);}} disabled={!canWrite||busy||uncertain||dirty||editLoading}>{sourceBon?.CodeFacture?"Modifier la facture":"Créer la facture"}</ActionButton>{dirty?<small>Enregistrez les modifications du bon avant de gérer sa facture.</small>:null}</div>:null}
           <div className="record-editor-grid">
             {readonly("CodeFacture","Numéro de facture",sourceBon?.CodeFacture)}{readonly("DateFacture","Date de facture",sourceBon?.DateFacture?formatDate(sourceBon.DateFacture):null)}{readonly("StatusFacture","Statut de facturation",sourceBon?.StatusFacture)}{readonly("UrlFacture","Lien de la facture",sourceBon?.UrlFacture)}
-            {select("ID_ConditionPaiementFk","Condition de paiement")}{select("ID_ModePaiementFk","Mode de paiement")}{input("DateEcheancePaiement","Échéance de paiement",{type:"datetime-local",step:1})}
-            {[['MontantHT','Montant hors taxes'],['MontantTTC','Montant TTC'],['MontantRegleFacture','Montant réglé'],['MontantResteFacture','Reste à régler']].map(([name,label])=><div key={name}>{readonly(name,label,creating?"Calculé à l’enregistrement":formatCurrency(sourceBon?.[name],sourceBon?.DeviseCode))}</div>)}
+            {invoiceRights.canManage?<>{select("ID_ConditionPaiementFk","Condition de paiement")}{select("ID_ModePaiementFk","Mode de paiement")}{input("DateEcheancePaiement","Échéance de paiement",{type:"datetime-local",step:1})}</>:<>
+              {readonly("ID_ConditionPaiementFk","Condition de paiement",sourceBon?.AbrConditionPaiement)}
+              {readonly("ID_ModePaiementFk","Mode de paiement",sourceBon?.AbrModePaiement)}
+              {readonly("DateEcheancePaiement","Échéance de paiement",sourceBon?.DateEcheancePaiement?formatDate(sourceBon.DateEcheancePaiement):null)}
+            </>}
+            {[['MontantHT','Montant hors taxes'],['MontantTTC','Montant TTC'],['MontantRegleFacture','Montant réglé'],['MontantResteFacture','Reste à régler']].filter(([name])=>paymentRights.canRead||name==='MontantHT'||name==='MontantTTC').map(([name,label])=><div key={name}>{readonly(name,label,creating?"Calculé à l’enregistrement":formatCurrency(sourceBon?.[name],sourceBon?.DeviseCode))}</div>)}
           </div>
         </section>
       </section>:null}

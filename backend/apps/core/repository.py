@@ -388,7 +388,7 @@ def payload(obj, body, actor, creating=False):
     return result
 
 
-def audit(obj, operation, old=None, new=None, actor=None):
+def audit(obj, operation, old=None, new=None, actor=None, *, entity_id=None):
     from psycopg.types.json import Jsonb
     from .responses import ExactEncoder
 
@@ -415,7 +415,7 @@ def audit(obj, operation, old=None, new=None, actor=None):
             operation,
             packed(old),
             packed(new),
-            actor.organisation if actor else None,
+            entity_id if entity_id is not None else (actor.organisation if actor else None),
         ],
     )
 

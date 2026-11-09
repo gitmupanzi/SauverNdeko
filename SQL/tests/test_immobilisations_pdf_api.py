@@ -53,7 +53,8 @@ def logo(color):
 entity_documents.save(actor,profile(NomEntite=old_company,AdresseEntite='Adresse antérieure fictive',logoAction='replace'),logo((201,31,21)))
 assigned=fixture.create(NomImmobilisation='BIEN AFFECTE PDF '+tag,Reference='REF-000001',NumeroSerie='SERIE-000002',
     ID_EtatFk=fixture.refs['etats'][0]['id'],ID_ServiceFk=fixture.refs['services'][0]['id'],ID_ResponsableFk=fixture.users[0]['IdUser'],
-    ID_LocalisationFk=fixture.locations[0],LocalisationComplement='Bureau test',PrixUnitaire='125.50',Caracteristiques='Équipement fictif pour recette PDF')
+    ID_LocalisationFk=fixture.locations[0],LocalisationComplement='Bureau test',PrixUnitaire='125.50',
+    DateAcquisition='2026-09-01',DateMiseEnService='2026-09-02',Caracteristiques='Équipement fictif pour recette PDF')
 unassigned=fixture.create(NomImmobilisation='BIEN NON AFFECTE PDF '+tag,PrixUnitaire='18.25',ID_EtatFk=None,ID_ResponsableFk=None,ID_ServiceFk=None)
 group=fixture.create(NomImmobilisation='LOT HOMOGENE PDF '+tag,SuiviIndividuel=False,Quantite='12',PrixUnitaire='11.25')
 unknown=fixture.create(NomImmobilisation='COUT INCONNU PDF '+tag,PrixUnitaire=None,ID_DeviseFk=None)
@@ -77,8 +78,8 @@ def commercial_state():
 
 before_asset,before_commercial=asset_state(),commercial_state()
 audit_before=digest(sql.execute('SELECT to_jsonb(t) row FROM systeme."T_Audit_Log" t WHERE "TableName"=%s AND "IdEntiteFk"=ANY(%s) ORDER BY "IdLog"',['logistique.T_Immobilisation',fixture.entities]).fetchall())
-entity_documents.save(actor,profile(NomEntite=current_company,AdresseEntite=address,PhoneEntite='+243 81 000 00 01',PhoneSecondaireEntite='+243 81 000 00 02',
-    EmailEntite='patrimoine-fictif@example.invalid',SiteWebEntite=site,MentionDocumentaireEntite=footer,
+entity_documents.save(actor,profile(NomEntite=current_company,AdresseEntite=address,PhoneEntite=f'+243{fixture.entities[0]:09d}',PhoneSecondaireEntite='+243 81 000 00 02',
+    EmailEntite='patrimoine-'+tag+'@example.invalid',SiteWebEntite=site,MentionDocumentaireEntite=footer,
     IdentifiantsLegauxEntite=[{'libelle':'RCCM','valeur':'FICTIF-RCCM-'+tag}],logoAction='replace'),logo((21,111,211)))
 paths=[];pages_count={}
 for show_head,show_foot in [(True,True),(True,False),(False,True),(False,False)]:
@@ -104,6 +105,7 @@ for show_head,show_foot in [(True,True),(True,False),(False,True),(False,False)]
         check(bool(images)==show_head,name+' logo selon option persistée')
         if images:check(any(image.convert('RGB').getpixel((0,0))==(21,111,211) for image in images),name+' logo courant remplacé')
         if name=='affecte':
+            check('Mise en service' in text and '02/09/2026' in text,'Date de mise en service dans la fiche PDF')
             for value in [assigned['CategorieMateriel'],assigned['EtatMateriel'],assigned['Service'],assigned['Responsable'],'Bureau test','SERIE-000002']:
                 check(value in text,'Affectation et références métier imprimées : '+value)
         if name=='groupe':check('Lot homogène' in text and '135,00' in text,'Groupe homogène, quantité et valeur135USD imprimés')
@@ -124,7 +126,9 @@ data(fixture.client(read=False).get(url),403)
 check(APIClient().get(url).status_code in {401,403},'Téléchargement anonyme refusé')
 data(client.get('/api/logistique/documents/immobilisation/'+str(foreign['ID_Immobilisation'])+'/fiche.pdf'),404)
 data(client.get('/api/logistique/documents/immobilisation/'+str(target)+'/facture.pdf'),404)
-check(client.get('/api/logistique/documents/immobilisation/'+str(target)+'/pieces').status_code==404,'Aucune route justificatifs incompatible avec le stockage existant')
+piece_url='/api/logistique/documents/immobilisation/'+str(target)+'/pieces'
+check(data(client.get(piece_url))==[],'La liste privée des justificatifs existe et est initialement vide')
+data(fixture.client(1,global_admin=False).get(piece_url),404)
 global_read=fixture.client(all_entities=True).get(url,HTTP_ACCEPT='application/pdf')
 check(global_read.status_code==200,'Administrateur global consulte sans changer les données ou choisir une entreprise')
 check(asset_state()==before_asset,'PDF ne modifie aucun bien ou affectation')

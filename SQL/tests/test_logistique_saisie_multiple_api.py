@@ -71,8 +71,9 @@ class LogisticsBatchAPI(unittest.TestCase):
         actor = Actor({**cls.users[entity], 'Is_Admin': global_admin, 'Is_staff': allowed})
         if global_admin:
             actor._context_entity = cls.entities[entity]
-        actor._module_access = {'modules': {'logistique': {'canRead': True, 'canManage': allowed,
-            'canExport': allowed, 'reason': 'MODULE_ROLE_FORBIDDEN'}}}
+        rights = {'canRead': True, 'canManage': allowed, 'canExport': allowed, 'reason': 'MODULE_ROLE_FORBIDDEN'}
+        actor._module_access = {'modules': {'logistique': rights},
+                                'tabs': {'logistique': {'immobilisations': rights.copy()}}}
         return actor
 
     @classmethod

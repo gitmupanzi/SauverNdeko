@@ -9,7 +9,7 @@ import EntityProfileEditor from "../../components/EntityProfileEditor";
 import { SYSTEME_ADMIN_SCHEMA } from "./systeme";
 import {
   fetchAdminEntity, createAdminEntity, updateAdminEntity,
-  fetchAdminModelItem, createAdminModelRecord, updateAdminModelRecord,
+  fetchAdminModelItem, createAdminModelRecord, updateAdminModelRecord, requestJson,
 } from "../../services/api";
 import { commandeDateInput, validCommandeDate } from "../logistique/commandeForm";
 import { formatDate } from "../logistique/logistiqueShared";
@@ -105,6 +105,7 @@ async function getRecord(type, id) {
   if (type === "users" || type === "profiles") return userConfig.fetchRecord(null, id);
   if (type === "licences") return licenceConfig.fetchRecord(null, id);
   if (type === "entities") return fetchAdminEntity(id);
+  if (type === "roles") return requestJson("/api/systeme/administration/registres/roles/" + encodeURIComponent(id), { requiresAuth: true });
   return fetchAdminModelItem(MODEL[type], id);
 }
 async function saveRecord(type, id, payload) {
@@ -298,7 +299,8 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
   function requestReload() { if (dirty) setConfirmReload(true); else setReload(value => value + 1); }
   function renderField(field) {
     const name = field.name, id = prefix + name, issue = errors[name];
-    const locked = disabled || (support.platformAdmin===false && ["Is_Admin","Is_staff","IdEntiteFk"].includes(name)) || (draft && support.entityId && name === "IdEntiteFk") || (type === "locations" && !creating && name === "IdEntiteFk") || (systemSettingIdentityLocked && SYSTEM_SETTING_IDENTITY.has(name));
+    const credentialsLocked = !creating && ["users","profiles"].includes(type) && name === "EmailUser" && support.platformAdmin !== true;
+    const locked = disabled || credentialsLocked || (support.platformAdmin===false && ["Is_Admin","Is_staff","IdEntiteFk"].includes(name)) || (draft && support.entityId && name === "IdEntiteFk") || (type === "locations" && !creating && name === "IdEntiteFk") || (systemSettingIdentityLocked && SYSTEM_SETTING_IDENTITY.has(name));
     if (field.type === "checkbox") return <label className="admin-record-check" key={name} htmlFor={id}><span><strong>{field.label}</strong>{values[name] == null ? <small>Non renseigné</small> : null}</span><input ref={element => { if (element) element.indeterminate = values[name] == null; }} id={id} type="checkbox" disabled={locked} checked={Boolean(values[name])} onChange={event => change(name, event.target.checked)}/></label>;
     const select = field.type === "select" || name === "SettingType" || (name === "ScopeValue" && ["entity", "entite"].includes(values.SettingScope));
     return <div className={"record-field" + (field.type === "textarea" || name.startsWith("Nom") ? " is-wide" : "")} key={name}>
@@ -311,6 +313,7 @@ function AdminGenericRecordEditor({ type = "users", recordId = null, mode = "cre
       {select&&isRetainedReference(optionsFor(field),values[name])?<small className="record-editor-note">{REFERENCE_RETAINED_HINT}</small>:null}
       {field.type === "datetime-local" ? <small>Heure de Kinshasa.</small> : null}
       {name === "MotdepasseUser" ? <small>Au moins 12 caractères.</small> : null}
+      {credentialsLocked && mode === "edit" ? <small>Le titulaire peut modifier cette adresse dans son profil.</small> : null}
     </div>;
   }
   const trace = record ? [["Créé le", record.DatecreationUser || record.DateCreationEntite || record.DateCreation || record.CreatedAt], ["Modifié le", record.DateModificationUser || record.UpdatedAt]].filter(([, value]) => value) : [];

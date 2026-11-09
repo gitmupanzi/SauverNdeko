@@ -1,6 +1,6 @@
 import AdminRecordEditor from "./AdminRecordEditor";
 import AdminDashboard from "./AdminDashboard";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import ModuleSidebar from "../../components/ModuleSidebar";
 import AdminBatchComposer from "./AdminBatchComposer";
 import {ADMIN_BATCH,normalizeAdminSupport} from "./adminBatchForm";
@@ -36,7 +36,7 @@ function recordName(kind, row) { return kind === "licences" ? "Licence #" + row.
 function useAdminSupport(refresh,kind) {
   const scope=useEntityScope(),identity=scope.scopeKey+":"+kind,empty={entities:[],generics:[],categories:[],referenceOptions:{},personnelServices:[],personnelFonctions:[]};
   const [loaded,setLoaded]=useState({identity:"",support:empty,error:""});
-  useEffect(()=>{const controller=new AbortController();requestJson(ADMIN_ROOT+"/references/"+(ADMIN_BATCH[kind]?kind:"utilisateurs"),{requiresAuth:true,signal:controller.signal}).then(result=>{if(controller.signal.aborted)return;setLoaded({identity,support:result?.success?normalizeAdminSupport(result.data):empty,error:result?.success?"":result?.message||"Certaines listes de référence sont indisponibles."});});return()=>controller.abort();},[refresh,identity,kind]);
+  useEffect(()=>{if(!kind)return;const controller=new AbortController();requestJson(ADMIN_ROOT+"/references/"+kind,{requiresAuth:true,signal:controller.signal}).then(result=>{if(controller.signal.aborted)return;setLoaded({identity,support:result?.success?normalizeAdminSupport(result.data):empty,error:result?.success?"":result?.message||"Certaines listes de référence sont indisponibles."});});return()=>controller.abort();},[refresh,identity,kind]);
   return loaded.identity===identity?loaded:{support:empty,error:""};
 }
 function optionsFor(field, support) {
@@ -53,7 +53,7 @@ export function serializeCriteria(criteria, grid, columns) {
   return new URLSearchParams({ q: q || "", filters: JSON.stringify(normalized), ...grid, ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}), ...(columns ? { columns: JSON.stringify(columns) } : {}) });
 }
 
-function AdminRegister({ kind, initial = {}, support, supportError, canWrite, canExport, refresh, onChanged, onNavigate }) {
+function AdminRegister({ kind, initial = {}, support, supportError, canWrite, canExport, refresh, onChanged, onNavigate, canNavigate }) {
   const definition = ADMIN_REGISTERS[kind], id = useId(),scope=useEntityScope();
   const preferences=useTablePreferences("admin."+kind);
   const base = { q: "", dateFrom: "", dateTo: "", ...Object.fromEntries(definition.filters.map(field => [field.key, ""])), ...initial };
@@ -109,7 +109,7 @@ function AdminRegister({ kind, initial = {}, support, supportError, canWrite, ca
         { label: "Consulter", icon: "eye", onSelect: () => open(row) },
         ...(definition.editor ? [{ label: "Modifier", icon: "edit", disabled: !mayEdit(row), reason: kind === "parametres" && row.IsEditable !== true ? "Ce réglage est protégé." : "Accès en consultation", onSelect: () => open(row, "edit") }] : []),
         ...(definition.active ? [{ label: "Désactiver", icon: "close", disabled: !mayDeactivate(row) || row[definition.active] === false, reason: row[definition.active] === false ? "Déjà inactif" : kind === "parametres" && row.IsSystem === true ? "Ce paramètre système doit être conservé." : "Accès en consultation", onSelect: () => setDeactivation(row) }] : []),
-        ...(kind === "roles" ? [{ label: "Voir les permissions", icon: "lock", onSelect: () => onNavigate("permissions") }] : []),
+        ...(kind === "roles" && canNavigate("permissions") ? [{ label: "Voir les permissions", icon: "lock", onSelect: () => onNavigate("permissions") }] : []),
         ...(kind === "licences" ? [{ label: "Applications de la licence", icon: "apps", onSelect: () => onNavigate("licence-applications") }] : []),
       ]}/>
     </div>,
@@ -128,7 +128,7 @@ function AdminRegister({ kind, initial = {}, support, supportError, canWrite, ca
     {feedback ? <div className="admin-feedback" role="status"><AppIcon name="check-circle"/><span>{feedback}</span><button type="button" aria-label="Fermer le message" onClick={() => setFeedback("")}><AppIcon name="close"/></button></div> : null}
     <RegisterSurface title={definition.title} subtitle={definition.description} actions={<>
       <RegisterSettingsButton buttonRef={anchor} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)}/>
-      {kind === "parametres" && scope.globalAdmin ? <ActionButton icon="clock" onClick={() => onNavigate("audit-parametres")}>Historique</ActionButton> : null}
+      {kind === "parametres" && canNavigate("audit-parametres") ? <ActionButton icon="clock" onClick={() => onNavigate("audit-parametres")}>Historique</ActionButton> : null}
       {kind === "licences" ? <Link className="ui-action is-secondary" to="/abonnements"><AppIcon name="apps"/>Applications</Link> : null}
       {definition.create ? <ActionButton icon="plus" variant="primary" disabled={!effectiveWrite || kind==="entites"&&!scope.globalAdmin || Boolean(error)} onClick={() => open(null, "create")}>{definition.create}</ActionButton> : null}
     </>}>
@@ -188,14 +188,21 @@ export default function AdminPortal() {
   const scope=useEntityScope();
   const { user } = useAuth(), [params, setParams] = useSearchParams(), navigateRoute = useNavigate();
   const platform = Boolean(user?.moduleAccess?.platformAdmin || user?.Is_Admin === true);
-  const key = adminTabKey(params.get("onglet")) || "tableau-de-bord";
+  const key = adminTabKey(params.get("onglet"));
   const allKeys = ["tableau-de-bord", "permissions", "messagerie", ...Object.keys(ADMIN_REGISTERS)];
-  const active = allKeys.includes(key) ? key : "tableau-de-bord";
-  const restricted = (ADMIN_REGISTERS[active]?.platform || ["permissions", "messagerie"].includes(active)) && !platform;
+  const isPlatformOnly = tab => ADMIN_REGISTERS[tab]?.platform || ["permissions", "messagerie"].includes(tab);
+  const canNavigate = tab => (!isPlatformOnly(tab) || platform) && tabRights(user, "administration", tab).canRead;
+  const groups = ADMIN_NAVIGATION.map(group => ({
+    ...group, items: group.items.filter(item => canNavigate(item.key)),
+  })).filter(group => group.items.length);
+  const active = allKeys.includes(key) ? key : groups[0]?.items[0]?.key || "tableau-de-bord";
+  const restricted = !canNavigate(active);
+  const rights = tabRights(user, "administration", active);
   const [collapsed, setCollapsed] = useState(() => preference("sauverndeko.admin.sidebar-collapsed", "false") === "true");
   const [refresh, setRefresh] = useState(0), [mail, setMail] = useState(false), [permissionsDirty, setPermissionsDirty] = useState(false), [permissionsBusy, setPermissionsBusy] = useState(false), [transition, setTransition] = useState(null);
   const [initial, setInitial] = useState({}), [navigationVersion, setNavigationVersion] = useState(0);
-  const { support, error: supportError } = useAdminSupport(refresh,active);
+  const needsSupport = ADMIN_BATCH[active] || ["entites", "licences", "connexions"].includes(active);
+  const { support, error: supportError } = useAdminSupport(refresh, !restricted && needsSupport ? active : null);
   useReferencesRefresh(() => setRefresh(value => value + 1));
   useEffect(() => {
     if (!["profils","localisations"].includes(params.get("onglet"))) return;
@@ -206,7 +213,11 @@ export default function AdminPortal() {
   function requestTransition(run) { if (permissionsBusy) return; if (permissionsDirty) setTransition({ run }); else run(); }
   function navigate(next, criteria = {}) {
     next = adminTabKey(next);
-    if (next === "licence-applications") { requestTransition(() => navigateRoute("/abonnements")); return; }
+    if (next === "licence-applications") {
+      if (canNavigate("licences")) requestTransition(() => navigateRoute("/abonnements"));
+      return;
+    }
+    if (!canNavigate(next)) return;
     if (next === active && !Object.keys(criteria).length) return;
     requestTransition(() => { setInitial(criteria); setNavigationVersion(value => value + 1); setParams({ onglet: next }); });
   }
@@ -218,13 +229,13 @@ export default function AdminPortal() {
     event.preventDefault(); event.stopPropagation(); requestTransition(() => navigateRoute(target.pathname + target.search + target.hash));
   }
   const definition = ADMIN_REGISTERS[active];
-  const canWrite = Boolean(user?.permissions?.canWriteData) && moduleRights(user,"administration").canManage===true && (!(definition?.platform || definition?.platformWrite) || platform);
+  const canWrite = Boolean(user?.permissions?.canWriteData) && rights.canManage === true && (!(definition?.platform || definition?.platformWrite) || platform);
   return <div className={"logistics-modern logistics-app admin-portal" + (collapsed ? " is-menu-collapsed" : "")} onClickCapture={guardLinks}>
-    <ModuleSidebar headerProps={{onRequestLogout:requestTransition}} title="Administration" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} groups={ADMIN_NAVIGATION.map(group=>({...group,items:group.items.filter(item=>!item.platform||platform)}))} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.admin.navigation"/>
+    <ModuleSidebar headerProps={{onRequestLogout:requestTransition}} title="Administration" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} groups={groups} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.admin.navigation"/>
     <main className="admin-main">
-      {restricted ? <section className="admin-error" role="alert">Cette rubrique est réservée à l’administration de la plateforme.</section> : active === "tableau-de-bord" ? <AdminDashboard key={scope.scopeKey} refresh={refresh} platform={platform} onNavigate={navigate}/> : active === "permissions" ?  <><header className="erp-register-heading"><div><h1>Permissions</h1><p>Les droits des rôles par entreprise.</p></div></header><AdminPermissions canWrite={canWrite} onChanged={() => setRefresh(value => value + 1)} onDirtyChange={setPermissionsDirty} onBusyChange={setPermissionsBusy}/></> : active === "messagerie" ? <RegisterSurface title="Messagerie" subtitle="L’expéditeur et le service d’envoi de la plateforme." actions={<ActionButton icon="settings" variant="primary" onClick={() => setMail(true)}>Ouvrir les réglages</ActionButton>}><div className="admin-mail-intro"><span className="admin-metric-icon"><AppIcon name="mail" size={26}/></span><div><h2>E-mails de l’application</h2><p>Adresse expéditrice et diagnostic de connexion.</p></div></div></RegisterSurface> : <AdminRegister key={active + ":" + navigationVersion+":"+scope.scopeKey} kind={active} initial={initial} support={support} supportError={supportError} refresh={refresh} onChanged={() => setRefresh(value => value + 1)} canWrite={canWrite} canExport={user?.permissions?.canExportData === true} onNavigate={navigate}/>}
+      {restricted ? <section className="admin-error" role="alert">Votre compte ne peut pas consulter cette rubrique.</section> : active === "tableau-de-bord" ? <AdminDashboard key={scope.scopeKey} refresh={refresh} platform={platform} onNavigate={navigate}/> : active === "permissions" ?  <><header className="erp-register-heading"><div><h1>Permissions</h1><p>Les droits par rôle et par utilisateur.</p></div></header><AdminPermissions canWrite={canWrite} onChanged={() => setRefresh(value => value + 1)} onDirtyChange={setPermissionsDirty} onBusyChange={setPermissionsBusy}/></> : active === "messagerie" ? <RegisterSurface title="Messagerie" subtitle="L’expéditeur et le service d’envoi de la plateforme." actions={<ActionButton icon="settings" variant="primary" onClick={() => setMail(true)}>Ouvrir les réglages</ActionButton>}><div className="admin-mail-intro"><span className="admin-metric-icon"><AppIcon name="mail" size={26}/></span><div><h2>E-mails de l’application</h2><p>Adresse expéditrice et diagnostic de connexion.</p></div></div></RegisterSurface> : <AdminRegister key={active + ":" + navigationVersion+":"+scope.scopeKey} kind={active} initial={initial} support={support} supportError={supportError} refresh={refresh} onChanged={() => setRefresh(value => value + 1)} canWrite={canWrite} canExport={rights.canExport === true} onNavigate={navigate} canNavigate={canNavigate}/>}
     </main>
-    {mail ? <AdminMailSettings onClose={() => setMail(false)}/> : null}
+    {active === "messagerie" && !restricted && mail ? <AdminMailSettings onClose={() => setMail(false)}/> : null}
     {transition ? <RecordEditorFrame title="Modifications non enregistrées" icon="alert" defaultWidth={560} onClose={() => setTransition(null)} onSubmit={() => { const run = transition.run; setTransition(null); setPermissionsDirty(false); run(); }} submitLabel="Abandonner les modifications" canSubmit><section className="record-editor-section"><p>Quitter sans enregistrer les permissions modifiées ?</p></section></RecordEditorFrame> : null}
   </div>;
 }

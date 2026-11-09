@@ -18,6 +18,7 @@ export default function ModuleGate({children}) {
     LICENCE_INACTIVE:"La licence de votre organisation ne permet plus cet accès.",
     MODULE_NOT_INCLUDED:"Cette application n’est pas comprise dans l’offre de votre organisation.",
     MODULE_ROLE_FORBIDDEN:"Votre rôle ne permet pas l’accès à cette application.",
+    MODULE_USER_FORBIDDEN:"Votre compte ne dispose pas de l’accès à cette application.",
     PLATFORM_ADMIN_REQUIRED:"Cette application est réservée à l’administration de la plateforme.",
   };
   async function retry() { setBusy(true);setError(""); try { const result=await refreshUser();if(!result?.success)setError("Les accès n’ont pas pu être actualisés."); } finally {setBusy(false);} }

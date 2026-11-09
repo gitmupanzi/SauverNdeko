@@ -16,7 +16,7 @@ from apps.core import db
 from apps.core.permissions import IsERPAdmin
 from apps.core.module_access import require_module
 from apps.core.responses import APIError, ExactJSONRenderer, ExactEncoder
-from .reads import resolve_indicator, register_source, read_scope, row_source
+from .reads import resolve_indicator, register_source, read_scope, restrict_order_source, row_source
 from .table_queries import LABELS, NUMERIC, DATES, document_zone
 from .currency import AMOUNT_FIELDS
 
@@ -24,7 +24,7 @@ ROOT = Path(settings.BASE_DIR).parent
 ASSETS = ROOT / "skills" / "document-mise-en-forme" / "assets"
 MAX_EXPORT_ROWS = 100000
 DEFAULT_FIELDS = {
-    "V_Immobilisation":["CodeImmobilisation","NomImmobilisation","Reference","CategorieMateriel","SuiviIndividuel","Quantite","PrixUnitaire","ValeurAcquisition","DeviseCode","EtatMateriel","Responsable","Service","Localisation","LocalisationComplement","DateEntree","DateAcquisition","NumeroSerie","Caracteristiques","Observations","Actif","NomEntite","CreeLe","ModifieLe"],
+    "V_Immobilisation":["CodeImmobilisation","NomImmobilisation","Reference","CategorieMateriel","SuiviIndividuel","Quantite","PrixUnitaire","ValeurAcquisition","DeviseCode","EtatMateriel","Responsable","Service","Localisation","LocalisationComplement","DateEntree","DateAcquisition","DateMiseEnService","StatutCycle","DateSortie","NumeroSerie","Caracteristiques","Observations","Actif","NomEntite","CreeLe","ModifieLe"],
     "V_RegistreLots":["NumeroLot","NomArticle","CodeArticleInterne","RefArticle","CategorieArticle","TypeArticle","StockLot","AbrUnite","QuantiteEntree","QuantiteSortie","DatePeremptionLot","EtatPeremptionLot","EtatStockLot","Actif","NomEntite","CreeLe"],
     "V_RegistreMouvementLot":["DateMvt","NumeroLot","NomArticle","NomTypeMvt","SensMouvement","Quantite","QuantiteSignee","AbrUnite","CodeCmd","DatePeremptionLot","MotifDerogationPeremption","DateDerogationPeremption"],
     "V_Mouvement":["DateMvt","CodeArticleInterne","NomArticle","AbrUnite","NomTypeMvt","CodeCmd","RefArticle","CategorieArticle","TypeArticle","StockActuel","QteMvt","QteMvtSigned","PUMvt","MontantMvt","MontantMvtSigned","OrigineMouvement"],
@@ -172,6 +172,7 @@ def write_workbook(target, columns, rows, context):
 
 def indicator_workbook(actor, key, raw):
     obj,condition,_,label,_,_,fixed = resolve_indicator(key,raw)
+    obj = restrict_order_source(obj, actor, action="export")
     if key in {"articles", "articlesCategorie"} and not raw.get("columns"):
         raw = {**raw, "columns": json.dumps([
             *DEFAULT_FIELDS[obj["name"]], "PoidsUnitaire", "UnitePoids", "PoidsStockKg",
@@ -203,10 +204,12 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
             raise APIError("Fiche non disponible.")
         selected_scope(raw,identities[kind])
         source,_,_=register_source(kind,raw,for_export=True)
-        raw["columns"]=json.dumps(DEFAULT_FIELDS[source["name"]])
+        available = {column["column_name"] for column in source["columns"]}
+        raw["columns"]=json.dumps([key for key in DEFAULT_FIELDS[source["name"]] if key in available])
     else:
         raw["columns"]=json.dumps(export_keys(actor,"logistique."+kind,raw))
     obj,condition,fixed = register_source(kind,raw,for_export=True)
+    obj = restrict_order_source(obj, actor, invoices=kind == "factures", action="export")
     _,where,values,order,sort,direction,applied = read_scope(obj,actor,raw,condition,fixed)
     label = {"immobilisations":"Registre des immobilisations","lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label,file_format=file_format)
@@ -298,9 +301,11 @@ class RegisterExcelView(ExcelDownloadView):
 class FolderExcelView(ExcelDownloadView):
     permission_classes = [IsERPAdmin]
     def get(self,request,key):
-        from .followup_folders import get_definition, folder_scope
+        from .followup_folders import get_definition, folder_scope, folder_tabs
         folder = get_definition(request.user,key)
-        obj,_,where,values,order,sort,direction,applied = folder_scope(request.user,folder,request.query_params.dict())
+        from .tab_access import require_tabs
+        require_tabs(request.user, *folder_tabs(folder), action="export")
+        obj,_,where,values,order,sort,direction,applied = folder_scope(request.user,folder,request.query_params.dict(),action="export")
         stream,count,filename = scope_workbook(request.user,key,obj,request.query_params.dict(),where,values,order,sort,direction,applied,{"title":folder["name"],"objectType":folder["objectType"],"mode":folder["mode"],"rules":folder["rules"]})
         response = FileResponse(stream,as_attachment=True,filename=filename,content_type=XLSX_MEDIA_TYPE)
         response["X-Export-Row-Count"] = str(count)

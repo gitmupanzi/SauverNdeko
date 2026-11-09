@@ -10,7 +10,7 @@ import { useFollowupFolders } from "../../contexts/FollowupFoldersContext";
 import FollowupFolderCollection from "../../components/FollowupFolderCollection";
 import { folderRequest, FOLDER_VIEWS, FOLDER_OBJECT_LABELS as OBJECT_LABELS } from "../../services/followupFolders";
 import { useAuth } from "../../contexts/AuthContext";
-import { moduleRights } from "../../services/moduleAccess";
+import { tabRights } from "../../services/moduleAccess";
 import "../../components/FollowupFolders.css";
 const BASE="/api/logistique/dossiers-suivi";
 const ARTICLE_FIELDS=["CodeArticleInterne","NomArticle","CategorieArticle","QteArticle","QteMinArticle","EtatStock","DatePeremptionArticle","EtatPeremption"];
@@ -21,7 +21,7 @@ export default function DossiersSuivi({title = "Dossiers de suivi", references,f
   const selectPrefix=useId();
   const {version,refresh}=useFollowupFolders();
   const {user}=useAuth();
-  const mayWrite=Boolean(user?.permissions?.canWriteData && moduleRights(user,"logistique").canManage);
+  const mayWrite=Boolean(user?.permissions?.canWriteData && tabRights(user,"logistique","dossiers").canManage);
   const onSelectRef=useRef(onSelect);
   onSelectRef.current=onSelect;
   const closeEditor=useCallback(()=>setEditor(null),[]);
@@ -67,6 +67,6 @@ function FolderDetail({folderKey,folder,canWrite,onBack,onNavigateRecords}) {
     {selectedFolder?.description?<p className="article-folder-note">{selectedFolder.description}</p>:null}
     {selection.length?<div className="erp-register-selection"><strong>{selection.length} élément(s) sélectionné(s)</strong><ActionButton icon="close" onClick={remove} disabled={busy}>Retirer du dossier</ActionButton></div>:null}
     {error?<p className="article-folder-error" role="alert">{error}</p>:null}
-    <section className="article-folder-detail-table"><ResultTable remote={remote} query={query} onQueryChange={patch=>setQuery(current=>({...current,...patch}))} fields={selectedFolder?.objectType==="article"?ARTICLE_FIELDS:selectedFolder?.objectType==="facture"?INVOICE_FIELDS:BON_FIELDS} kind={selectedFolder?.objectType==="article"?"produit":"commande"} open={(kind,id,label)=>kind==="produit"?openProduct({ID_Article:id,NomArticle:label}):openOrder({ID_Commande:id,CodeCmd:label})} exportPath={BASE+"/"+folderKey+"/export.xlsx"} onSelectionChange={selectedFolder?.mode==="manuel" && canWrite?setSelection:undefined} selectionResetKey={reset}/></section>
+    <section className="article-folder-detail-table"><ResultTable remote={remote} query={query} onQueryChange={patch=>setQuery(current=>({...current,...patch}))} fields={selectedFolder?.objectType==="article"?ARTICLE_FIELDS:selectedFolder?.objectType==="facture"?INVOICE_FIELDS:BON_FIELDS} kind={selectedFolder?.objectType==="article"?"produit":"commande"} open={(kind,id,label)=>kind==="produit"?openProduct({ID_Article:id,NomArticle:label}):openOrder({ID_Commande:id,CodeCmd:label})} exportTabs={["dossiers",selectedFolder?.objectType==="article"?"articles":selectedFolder?.objectType==="facture"?"factures":"commandes"]} exportPath={BASE+"/"+folderKey+"/export.xlsx"} onSelectionChange={selectedFolder?.mode==="manuel" && canWrite?setSelection:undefined} selectionResetKey={reset}/></section>
   </>;
 }

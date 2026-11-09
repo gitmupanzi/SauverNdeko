@@ -31,6 +31,8 @@ FIELDS = [
     ('ID_ImmobilisationFk', 'Immobilisation liée', 'immobilisations'),
 ]
 HEADERS = {alias: key for key, label, _ in FIELDS for alias in (key, label)}
+SOURCE_PERMISSION = {'requesters': 'canLinkRequester', 'articles': 'canLinkArticle',
+                     'bons': 'canLinkOrder', 'immobilisations': 'canLinkAsset'}
 
 
 def invalid(rows=None, header=None):
@@ -101,7 +103,8 @@ class SupportTemplateView(ExcelDownloadView):
         columns = [{'key': key, 'label': label, 'width': 45 if key in {'Objet', 'Description'} else 28,
                     **({'choices': [{'value': str(item['id']), 'label': item['label']}
                                     for item in options(context, source) if not item.get('disabled')]}
-                       if source else {})} for key, label, source in FIELDS]
+                       if source else {})} for key, label, source in FIELDS
+                   if context.get(SOURCE_PERMISSION.get(source)) is not False]
         stream = build_template(sheet_name=SHEET, columns=columns, notes=[
             ('Utilisation', 'Une ligne par dossier. Importez puis vérifiez le panier avant enregistrement.'),
             ('Limite', '100 dossiers par panier.'),
@@ -122,6 +125,9 @@ class SupportExcelPreviewView(ExcelPreviewMixin, APIView):
         portal._write_access(request.user)
         matrix = read_uploaded_workbook(request, sheet_name=SHEET, headers=HEADERS,
                                         required_headers=('Objet', 'Description'), max_rows=MAX_ROWS, max_cell_length=20000)
+        for index, field in enumerate(matrix[0]):
+            if not portal.link_visible(request.user, field) and any(index < len(row) and row[index] for row in matrix[1:]):
+                raise APIError('Le fichier contient des références auxquelles vous n’avez pas accès.', 'TAB_ACTION_FORBIDDEN', 403)
         return ok({'matrix': matrix})
 
 

@@ -8,7 +8,7 @@ from django.db import DatabaseError, transaction
 from rest_framework.views import APIView
 
 from apps.core import db
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import can_use_tab, require_module, require_tab
 from apps.core.permissions import HasModuleAccess
 from apps.core.repository import page, positive
 from apps.core.responses import APIError
@@ -30,6 +30,13 @@ def source_key(params):
     if not isinstance(kind, str) or kind not in SOURCES:
         raise APIError("Choisissez une fiche produit, professionnel ou structure publiée.", "SOURCE_INVALID", 422)
     return kind, positive(params.get("sourceId"), "Fiche d’origine")
+
+
+def require_source_access(actor, kind):
+    if kind == "expert":
+        require_tab(actor, "professionnels", "annuaire")
+    else:
+        require_module(actor, SOURCES[kind])
 
 
 def query_options(params, allowed):
@@ -105,7 +112,7 @@ def record(row, actor, *, labels=None, manage=None, managed_entity=None):
     actions = []
     active = row["EtatDemande"] in {"en_attente", "en_cours"}
     if manage is None:
-        manage = not settings.DB_READ_ONLY and access_snapshot(actor)["modules"]["discussions"]["canManage"]
+        manage = not settings.DB_READ_ONLY and can_use_tab(actor, "discussions", "demandes", "manage")
     if labels is None:
         labels = {s["id"]: s["label"] for s in states()}
     if active and manage:
@@ -133,8 +140,12 @@ def record(row, actor, *, labels=None, manage=None, managed_entity=None):
                       "id": row["IdDestinataireUserFk"] or row["IdEntiteDestinataireFk"], "name": row["NomDestinataire"]},
         "quantity": format(row["QuantiteSouhaitee"], "f") if row["QuantiteSouhaitee"] is not None else None,
         "unit": row["UniteSouhaitee"], "destination": row["DestinationDemande"],
-        "createdAt": row["CreeLe"], "updatedAt": row["ModifieLe"], "discussionId": row["IdDiscussion"],
-        "actions": actions, "canOpenDiscussion": bool(row["IdDiscussion"]) or manage,
+        "createdAt": row["CreeLe"], "updatedAt": row["ModifieLe"],
+        "discussionId": row["IdDiscussion"] if can_use_tab(actor, "discussions", "messages") else None,
+        "actions": actions, "canOpenDiscussion": (
+            can_use_tab(actor, "discussions", "messages")
+            if row["IdDiscussion"] else manage and can_use_tab(actor, "discussions", "messages", "manage")
+        ),
     }
 
 
@@ -158,7 +169,7 @@ class SourceContextView(APIView):
     def get(self, request):
         query_options(request.query_params, {"sourceType", "sourceId"})
         kind, pk = source_key(request.query_params)
-        require_module(request.user, SOURCES[kind])
+        require_source_access(request.user, kind)
         source = db.one('SELECT communication.fn_demande_source(%s,%s) AS source', [kind, pk])["source"]
         if not source:
             raise APIError("Cette fiche n’est plus publiée.", "SOURCE_UNAVAILABLE", 404)
@@ -171,7 +182,7 @@ class SourceContextView(APIView):
         else:
             available = bool(target) and db.one('''SELECT EXISTS(SELECT FROM systeme."T_Utilisateurs" u
               WHERE communication.fn_demande_gestionnaire(u."IdUser",%s)) AS allowed''', [target])["allowed"]
-        can_manage = access_snapshot(actor)["modules"]["discussions"]["canManage"] and not settings.DB_READ_ONLY
+        can_manage = can_use_tab(actor, "discussions", "demandes", "manage") and not settings.DB_READ_ONLY
         can_route = kind.startswith("structure_") and actor.global_admin and can_manage
         routing = db.one('''SELECT "VersionRoutage" AS version,CASE WHEN "Actif" THEN "IdEntiteFk" END AS "entityId"
           FROM communication."T_RoutageStructure" WHERE "TypeSource"=%s AND "IdSource"=%s''', [kind, pk])
@@ -226,7 +237,7 @@ class DemandesView(APIView):
             'SELECT (SELECT count(*) FROM population) AS total,coalesce((SELECT jsonb_agg(to_jsonb(s) '
             'ORDER BY s."CreeLe" DESC,s."IdDemande" DESC) FROM selection s),\'[]\'::jsonb) AS rows', [*values, take, skip])
         total, rows = population["total"], population["rows"]
-        manage = not settings.DB_READ_ONLY and access_snapshot(actor)["modules"]["discussions"]["canManage"]
+        manage = not settings.DB_READ_ONLY and can_use_tab(actor, "discussions", "demandes", "manage")
         actual_entity = actor.row.get("IdEntiteFk")
         managed_entity = actual_entity if actual_entity and db.one(
             'SELECT communication.fn_demande_gestionnaire(%s,%s) AS allowed', [actor.pk, actual_entity])["allowed"] else -1
@@ -237,7 +248,7 @@ class DemandesView(APIView):
     def post(self, request):
         data = payload(request, {"sourceType", "sourceId", "subject", "description", "quantity", "destination", "requestId"})
         kind, pk = source_key(data)
-        require_module(request.user, SOURCES[kind])
+        require_source_access(request.user, kind)
         subject = text(data.get("subject"), "Objet", 160)
         if "\n" in subject or "\r" in subject:
             raise APIError("L’objet doit tenir sur une seule ligne.", "DEMANDE_INVALID", 422)

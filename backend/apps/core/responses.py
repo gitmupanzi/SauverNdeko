@@ -6,6 +6,7 @@ from django.db import DatabaseError, IntegrityError
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException
+from .parsers import fits_fixed_decimal
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +23,8 @@ class ExactEncoder(json.JSONEncoder):
         if isinstance(value, UUID):
             return str(value)
         if isinstance(value, Decimal):
-            return format(value, "f")
+            # Un exposant extrême ne doit jamais devenir une longue suite de zéros.
+            return format(value, "f") if fits_fixed_decimal(value) else str(value)
         if isinstance(value, (datetime, date)):
             return value.isoformat()
         return super().default(value)

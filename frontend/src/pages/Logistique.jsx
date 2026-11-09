@@ -1,3 +1,4 @@
+import {accessSignature,tabRights} from "../services/moduleAccess";
 import {DepotScopeProvider,DepotScopeBar,useDepotScope} from "../contexts/DepotScopeContext";
 import ModuleSidebar from "../components/ModuleSidebar";
 import {referenceLabel} from "../utils/referenceOptions";
@@ -546,6 +547,14 @@ const MAIN_TAB_DEFINITIONS = [
   { key: "immobilisations", label: "Immobilisations", icon: "building" },
 ];
 
+const AUXILIARY_TABS = {audit:"mouvements", alertes:"articles", consommation:"mouvements", couverture:"mouvements"};
+function canReadLogisticsTab(user, key) {
+  const source = AUXILIARY_TABS[key];
+  return source
+    ? tabRights(user,"logistique","dashboard").canRead && tabRights(user,"logistique",source).canRead
+    : tabRights(user,"logistique",key).canRead;
+}
+
 export default function Logistique(){return <DepotScopeProvider><LogistiqueWorkspace/></DepotScopeProvider>;}
 function LogistiqueWorkspace() {
   const depotScope=useDepotScope();
@@ -559,8 +568,10 @@ function LogistiqueWorkspace() {
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [navigation,setNavigation]=useSearchParams();
   const requestedTab=navigation.get("onglet");
-  const [activeTab, setActiveTab] = useState(()=>moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab));
-  useEffect(()=>{if(moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab,null))startTransition(()=>setActiveTab(requestedTab));},[requestedTab]);
+  const requestedKey=moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab,null) || (Object.hasOwn(AUXILIARY_TABS,requestedTab)?requestedTab:null);
+  const defaultTab=presentedModuleTabs(MAIN_TAB_DEFINITIONS,{tabLabels,hiddenTabs}).find(item=>canReadLogisticsTab(user,item.key))?.key;
+  const activeTab=requestedKey || defaultTab || "dashboard";
+  const allowedTab=canReadLogisticsTab(user,activeTab);
   useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [activeTab]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsedPreference());
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -704,10 +715,10 @@ function LogistiqueWorkspace() {
   }
 
   function handleNavigate(tabKey, options = {}) {
+    if (!canReadLogisticsTab(user,tabKey)) return;
     startTransition(() => {
       setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet",tabKey);if(tabKey!=="dossiers")next.delete("dossier");return next;},{replace:true});
       if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
-      setActiveTab(tabKey);
     });
   }
 
@@ -994,8 +1005,8 @@ function LogistiqueWorkspace() {
         ...TABS.find((tab) => tab.key === item.key),
         ...item,
         label: tabLabels?.[item.key] || item.label,
-      })).filter((item) => item?.key),
-    [tabLabels,hiddenTabs,presentationLoading]
+      })).filter((item) => canReadLogisticsTab(user,item.key)),
+    [tabLabels,hiddenTabs,presentationLoading,user]
   );
   const presentationTitle = tabLabels?.[activeTab];
 
@@ -1037,12 +1048,13 @@ function LogistiqueWorkspace() {
           <div className="admin-main-column logistics-main-column">
             {entityScope.globalAdmin&&!entityScope.entityId?<p className="entity-scope-note"><AppIcon name="apps"/>Toutes les entreprises · Choisissez une entreprise active pour effectuer des modifications.</p>:null}
             {presentationError ? <p className="entity-scope-note" role="status">Présentation indisponible. L’affichage standard est utilisé. <button type="button" className="erp-object-link" onClick={retryPresentation}>Réessayer</button></p> : null}
-            {referencesLoading || !hasScopedReferences&&!referencesError ? <ScreenPlaceholder label="Chargement des références…"/> : null}
-            {!referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
-            {!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
+            {allowedTab && (referencesLoading || !hasScopedReferences&&!referencesError) ? <ScreenPlaceholder label="Chargement des références…"/> : null}
+            {allowedTab && !referencesLoading && referencesError ? <section className="table-empty-state">{referencesError}</section> : null}
+            {allowedTab&&!referencesLoading&&!sharedFkSettingsReady?<section className="table-empty-state" role={sharedFkSettingsError?"alert":"status"}>{sharedFkSettingsError||"Chargement des réglages…"}{sharedFkSettingsError?<button type="button" onClick={()=>setSettingsVersion(version=>version+1)}>Réessayer</button>:null}</section>:null}
 
-            {!referencesLoading && !referencesError && sharedFkSettingsReady && hasScopedReferences ? (
-              <div className="logistics-shell-view" key={scopeKey+":"+depotScope.depotId}>
+            {!allowedTab && !presentationLoading ? <section className="table-empty-state" role="alert">Vous n’avez pas accès à cet onglet.</section> : null}
+            {allowedTab && !referencesLoading && !referencesError && sharedFkSettingsReady && hasScopedReferences ? (
+              <div className="logistics-shell-view" key={scopeKey+":"+depotScope.depotId+":"+accessSignature(user)}>
                 <DepotScopeBar/>
                 {activeTab === "depots" ? <Depots title={presentationTitle}/> : null}
                 {activeTab === "stocks-depots" ? <StocksDepots title={presentationTitle}/> : null}
@@ -1052,7 +1064,9 @@ function LogistiqueWorkspace() {
                 ) : null}
 
                 {activeTab === "inventaires" ? <Inventaires title={presentationTitle}/> : null}
-                {activeTab === "immobilisations" ? <Immobilisations title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
+                {activeTab === "immobilisations" ? (
+                  <Immobilisations title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/>
+                ) : null}
                 {activeTab === "tiers" ? <Tiers title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/> : null}
                 {activeTab === "dashboard" && (presentationLoading
                   ? <ScreenPlaceholder label="Chargement de la présentation…" />

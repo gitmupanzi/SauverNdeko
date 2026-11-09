@@ -55,10 +55,18 @@ class SupportAPI(unittest.TestCase):
     def tearDownClass(cls):cls.sql.close();cls.overrides.disable()
 
     @classmethod
-    def actor(cls,index=0,*,manage=True,read=True,export=True,all_entities=False,entity_index=None):
+    def actor(cls,index=0,*,manage=True,read=True,export=True,all_entities=False,entity_index=None,asset_access=True,asset_export=True):
         actor=Actor(dict(cls.users[index]));entity=cls.entities[entity_index if entity_index is not None else 1 if index==2 else 0]
         if actor.global_admin and not all_entities:actor._context_entity=entity
-        actor._module_access={'modules':{module:{'canRead':read,'canManage':manage,'canExport':export,'reason':'MODULE_ROLE_FORBIDDEN'} for module in ('support','administration','logistique','referentiels')}}
+        rights = {'canRead': read, 'canManage': manage, 'canExport': export, 'reason': 'MODULE_ROLE_FORBIDDEN'}
+        actor._module_access = {
+            'modules': {module: rights for module in ('support', 'administration', 'logistique', 'referentiels')},
+            'tabs': {'logistique': {'immobilisations': {
+                'canRead': read and asset_access,
+                'canManage': manage and asset_access,
+                'canExport': export and asset_access and asset_export,
+            }}},
+        }
         return actor
 
     @classmethod
@@ -290,6 +298,63 @@ class SupportAPI(unittest.TestCase):
         self.status(self.client(all_entities=True).get('/api/systeme/audit-logs'))
         self.assertTrue(self.get_detail(row,1)['history']);self.assertFalse(self.get_detail(row,1,manage=False)['history'])
 
+
+    def test_asset_tab_restriction_covers_support_links(self):
+        asset_base = '/api/logistique/immobilisations'
+        references = self.status(self.client().get(asset_base + '/references'))
+        name = 'Immobilisation confidentielle ' + uuid.uuid4().hex
+        asset = self.status(self.client().post(asset_base, {
+            'NomImmobilisation': name, 'ID_CategorieFk': references['types'][0]['id'],
+            'DateEntree': '2026-10-28T13:35:00+01:00', 'Quantite': '1', 'SuiviIndividuel': True,
+            'requestId': str(uuid.uuid4()), 'motif': 'Recette de liaison',
+        }, format='json'), 201)
+        asset_id = asset['ID_Immobilisation']
+        required_fields = {
+            field: next(item['id'] for item in self.refs['references'][alias] if not item.get('disabled'))
+            for field, alias in (('ID_TypeSupportFk', 'types'), ('ID_PrioriteFk', 'priorities'),
+                                 ('ID_CanalOrigineFk', 'channels'))
+        }
+        row = self.create(ID_ImmobilisationFk=asset_id, **required_fields)
+        ticket_url = BASE + 'tickets/' + str(row['ID_Support'])
+        authorized = self.get_detail(row, 1)
+        self.assertEqual(authorized['record']['Immobilisation'], name)
+        self.assertIn(asset_id, [item['id'] for item in authorized['links']['immobilisations']])
+
+        restricted = self.client(1, asset_access=False)
+        hidden = self.status(restricted.get(ticket_url))
+        self.assertFalse(hidden['canLinkAsset'])
+        self.assertEqual(hidden['links']['immobilisations'], [])
+        for key in portal.ASSET_COLUMNS:
+            self.assertNotIn(key, hidden['record'])
+        self.assertTrue(hidden['history'])
+        for event in hidden['history']:
+            for key in portal.ASSET_COLUMNS:
+                self.assertNotIn(key, event['NouvellesValeurs'] or {})
+            self.assertNotIn(portal.ASSET_FIELD, [change['field'] for change in event['Changements']])
+
+        found = self.status(restricted.get(BASE+'tickets', {'q': row['NumeroSupport']}))
+        self.assertEqual([item['ID_Support'] for item in found], [row['ID_Support']])
+        for key in portal.ASSET_COLUMNS:
+            self.assertNotIn(key, found[0])
+        kanban = self.status(restricted.get(BASE+'kanban', {'q': row['NumeroSupport']}))
+        cards = [item for group in kanban['columns'] for item in group['rows']]
+        self.assertEqual([item['ID_Support'] for item in cards], [row['ID_Support']])
+        for key in portal.ASSET_COLUMNS:
+            self.assertNotIn(key, cards[0])
+        asset_filter = {'filters': json.dumps({portal.ASSET_FIELD: asset_id})}
+        self.status(restricted.get(BASE+'tickets', asset_filter), 403)
+        self.status(restricted.get(BASE+'tickets', {'sortBy': 'CodeImmobilisation'}), 403)
+        asset_read_only = self.client(1, asset_export=False)
+        self.status(asset_read_only.get(BASE+'tickets', asset_filter))
+        self.status(asset_read_only.get(BASE+'tickets/export.csv', asset_filter), 403)
+        self.status(restricted.get(BASE+'tickets/export.csv', {'columns': json.dumps(['CodeImmobilisation'])}), 400)
+        self.status(restricted.post(BASE+'tickets', self.body(ID_ImmobilisationFk=asset_id, **required_fields), format='json'), 403)
+        changed = self.status(restricted.patch(ticket_url, {
+            'requestId': str(uuid.uuid4()), '_version': row['_version'],
+            'Objet': 'Objet modifié depuis Support', 'ID_ImmobilisationFk': None,
+        }, format='json'))
+        self.assertNotIn(portal.ASSET_FIELD, changed)
+        self.assertEqual(self.get_detail(row)['record']['ID_ImmobilisationFk'], asset_id)
 
     def test_reference_labels_use_abbreviation_and_keep_ids_and_rules(self):
         refs=portal.references(self.actor())

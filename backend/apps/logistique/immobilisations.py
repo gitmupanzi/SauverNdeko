@@ -32,7 +32,7 @@ KEY = 'ID_Immobilisation'
 INTERFACE = 'logistique.immobilisations'
 FIELDS = {'NomImmobilisation', 'Reference', 'Caracteristiques', 'Quantite', 'SuiviIndividuel',
     'PrixUnitaire', 'ID_DeviseFk', 'ID_CategorieFk', 'ID_EtatFk', 'ID_ResponsableFk', 'ID_ServiceFk',
-    'ID_LocalisationFk', 'LocalisationComplement', 'DateEntree', 'DateAcquisition', 'NumeroSerie', 'Observations', 'Actif'}
+    'ID_LocalisationFk', 'LocalisationComplement', 'DateEntree', 'DateAcquisition', 'DateMiseEnService', 'NumeroSerie', 'Observations', 'Actif'}
 FK_FIELDS = {'ID_DeviseFk', 'ID_CategorieFk', 'ID_EtatFk', 'ID_ResponsableFk', 'ID_ServiceFk', 'ID_LocalisationFk'}
 TEXT_LIMITS = {'NomImmobilisation': 200, 'Reference': 255, 'NumeroSerie': 255,
     'Caracteristiques': 4000, 'Observations': 4000, 'LocalisationComplement': 255}
@@ -42,7 +42,7 @@ REFERENCE_RULES = {
     'services': ('ID_ServiceFk', 'logistique.immobilisations.services', 'Service'),
 }
 QUERY_KEYS = {'q', 'take', 'skip', 'sortBy', 'sortDir', 'columnFilters', 'filters', 'dateFrom', 'dateTo',
-    'timeZone', 'typeId', 'categorieId', 'etatId', 'serviceId', 'responsableId', 'localisationId', 'actif', 'deviseId', 'suiviIndividuel'}
+    'timeZone', 'typeId', 'categorieId', 'etatId', 'serviceId', 'responsableId', 'localisationId', 'actif', 'deviseId', 'suiviIndividuel', 'statutCycle'}
 
 
 def fail(message, field=None, code='IMMOBILISATION_VALIDATION', status=400):
@@ -90,6 +90,11 @@ def register_source(raw, for_export=False):
             if field in filters and filters[field] != selected:
                 fail('Deux critères contradictoires ciblent le même champ.')
             filters[field] = selected
+    status = raw.get('statutCycle')
+    if status not in (None, '', 'all'):
+        if status not in ('EN_SERVICE', 'A_METTRE_EN_SERVICE', 'SORTI') or 'StatutCycle' not in columns:
+            fail('Choisissez un état du cycle valide.', 'statutCycle')
+        filters['StatutCycle'] = status
     return obj, 'TRUE', filters
 
 
@@ -106,14 +111,14 @@ def record(actor, pk, *, lock=False):
 
 
 def rights(actor, row=None):
-    access = access_snapshot(actor)['modules']['logistique']
+    access = access_snapshot(actor)['tabs']['logistique']['immobilisations']
     writable = bool(actor.admin and access['canManage'] and not settings.DB_READ_ONLY)
     selected = read_entity(actor)
     writable = writable and selected is not None and (row is None or selected == row['IdEntiteFk'])
     if writable:
         owner = db.one('SELECT "ValideEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s', [selected])
         writable = bool(owner and owner['ValideEntite'] is not False)
-    return {'canWrite': writable, 'canEdit': writable, 'canArchive': writable and bool(row and row['Actif']),
+    return {'canWrite': writable, 'canEdit': writable and not bool((row or {}).get('TypeSortie')), 'canArchive': writable and bool(row and row['Actif']),
         'canRestore': writable and bool(row and not row['Actif']), 'canExport': access['canExport'],
         'revision': (row or {}).get('_version'), 'entityId': selected}
 
@@ -182,8 +187,8 @@ def references(actor, current=None):
         result['currencies'].append({**validate_currency(retained_currency, unchanged=True, actor=context_actor, table=TABLE), 'disabled': True})
     result['defaultCurrencyId'] = default_currency(context_actor, table=TABLE)['id']
     result['referenceMeta'] = meta
-    can_write = rights(actor)['canWrite']
-    result.update({'canCreate': can_write, 'canWrite': can_write})
+    access = rights(actor)
+    result.update({'canCreate': access['canWrite'], 'canWrite': access['canWrite']})
     return clean(result)
 
 
@@ -217,6 +222,12 @@ def validate(actor, body, old=None):
         elif field in FK_FIELDS:
             values[field] = positive(raw, 'Référence') if raw not in (None, '') else None
         else:
+            if field == 'DateMiseEnService' and not (old and field in old):
+                if raw in (None, ''):
+                    continue
+                if not db.one('SELECT to_regclass(%s) AS relation', ['logistique."T_ImmobilisationEvenement"'])['relation']:
+                    fail('La date de mise en service sera disponible après la mise à jour de la base.',
+                        field, 'PATRIMOINE_MIGRATION_REQUIRED', 503)
             values[field] = coerce(columns[field], raw)
             if field == 'DateEntree' and isinstance(values[field], datetime) and values[field].tzinfo is None:
                 values[field] = values[field].replace(tzinfo=ZoneInfo(settings.TIME_ZONE))
@@ -225,6 +236,10 @@ def validate(actor, body, old=None):
         values.setdefault('SuiviIndividuel', True)
         values.setdefault('Actif', True)
     effective = {**(old or {}), **values}
+    service_date = effective.get('DateMiseEnService')
+    acquisition_date = effective.get('DateAcquisition')
+    if service_date and acquisition_date and service_date < acquisition_date:
+        fail('La mise en service ne peut précéder l’acquisition.', 'DateMiseEnService')
     if not effective.get('NomImmobilisation'):
         fail('Indiquez la désignation du bien.', 'NomImmobilisation')
     if effective.get('ID_CategorieFk') is None:

@@ -129,7 +129,7 @@ class EnterpriseIdentityAPI(unittest.TestCase):
         admin = self.assert_status(self.client().get(f'/api/systeme/entites/{self.entities[0]}'))
         for key in service.FIELDS | {'_version', 'HasLogo', 'LogoSha256Entite'}:
             self.assertEqual(profile[key], admin[key])
-        binary = self.client().get(profile['logoUrl'])
+        binary = self.client().get(admin['logoUrl'], HTTP_ACCEPT='image/png, application/json;q=0.9')
         self.assert_status(binary)
         self.assertEqual(binary['Content-Type'], 'image/png')
         self.assertEqual(binary['Cache-Control'], 'no-store, private')

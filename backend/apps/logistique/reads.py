@@ -7,6 +7,7 @@ from apps.core.permissions import IsERPAdmin, scope_for
 from apps.core.registry import view, model
 from apps.core.repository import predicate, page, get_record, positive, clean
 from apps.core.responses import ok, APIError
+from .tab_access import CONSULTATION_TABS, FINANCE_PROJECTIONS, can_read_tabs, indicator_tabs, mask_order, restricted_fields
 from .currency import MONETARY_KEYS, amounts_by_currency, scalar_amount, validate_currency
 
 QUERY_KEYS = {"q", "dateFrom", "dateTo", "take", "skip", "sortBy", "sortDir", "columnFilters", "timeZone", "deviseId", "depotId"}
@@ -53,6 +54,21 @@ def params_only(raw):
 
 def row_source(obj):
     return obj.get("_row_source") or db.qualified(obj["schema"], obj["name"]) + " v"
+
+def restrict_order_source(obj, actor, *, invoices=False, action="read"):
+    """Masque les champs avant recherche, filtre et export pour éviter leur inférence."""
+    if obj["name"] not in FINANCE_PROJECTIONS:
+        return obj
+    denied = restricted_fields(actor, invoices=invoices or obj.get("_invoice_source", False), action=action)
+    if not denied or obj.get("_rights_projection"):
+        return obj
+    fields = [
+        ("NULL::" + column["data_type"] + " AS " if column["column_name"] in denied else "v.")
+        + db.ident(column["column_name"])
+        for column in obj["columns"]
+    ]
+    return {**obj, "_rights_projection": True, "_row_source": "(SELECT " + ",".join(fields) + " FROM " + row_source(obj) + ") v"}
+
 
 def depot_source(obj,raw):
     """Projection du stock présent local, sans remplacer le stock durable de l'article."""
@@ -124,7 +140,7 @@ def source_for_indicator(key, name):
             """,
         }
     if key.startswith("factures") or key in {"montantTotalFacture", "montantTotalRegle", "montantRestant"}:
-        obj = {**obj, "_date_field": "DateFacture"}
+        obj = {**obj, "_date_field": "DateFacture", "_invoice_source": True}
     return obj
 
 def read_predicate(obj, actor, raw=None, fixed_filters=None):
@@ -173,7 +189,7 @@ def read_scope(obj, actor, raw=None, condition="TRUE", fixed_filters=None, popul
     return params, where, values, order, sort, direction, applied
 
 def read_page(obj, actor, raw=None, condition="TRUE", fixed_filters=None, population_query=None):
-    obj=depot_source(obj,raw or {})
+    obj = restrict_order_source(depot_source(obj, raw or {}), actor)
     params, where, values, order, sort, direction, applied = read_scope(obj, actor, raw, condition, fixed_filters, population_query)
     take, skip = page(params)
     columns = [col["column_name"] for col in obj["columns"]]
@@ -211,7 +227,7 @@ def resolve_indicator(key, raw):
 
 def indicator_details(actor, key, raw):
     obj, condition, expression, label, kind, definition, fixed_filters = resolve_indicator(key, raw)
-    obj=depot_source(obj,raw)
+    obj = restrict_order_source(depot_source(obj, raw), actor)
     name = obj["name"]
     population_query = raw.get("populationQ")
     metric_criteria = {**raw, "q": population_query} if population_query is not None else dict(raw)
@@ -257,20 +273,24 @@ def article_overview(actor, raw):
 
 def overview(actor, raw):
     raw = params_only(raw)
-    article_count, stock_weight, categories = article_overview(actor, raw)
-    totals, grouped = {"articles": article_count}, {}
+    totals, grouped, definitions = {}, {}, {}
+    stock_weight, categories = {}, []
+    if can_read_tabs(actor, "articles"):
+        totals["articles"], stock_weight, categories = article_overview(actor, raw)
+        definitions["articles"] = INDICATORS["articles"][5]
     for key, rule in INDICATORS.items():
-        if key == "articles":
+        if key == "articles" or not can_read_tabs(actor, *indicator_tabs(key)):
             continue
+        definitions[key] = rule[5]
         name, condition, expression, *_ = rule
-        obj = source_for_indicator(key, name)
+        obj = restrict_order_source(source_for_indicator(key, name), actor)
         if key in MONETARY_KEYS:
             where, values = read_predicate(obj, actor, raw)
             grouped[key] = amounts_by_currency(obj, row_source(obj), where + " AND (" + condition + ")", values, expression)
             totals[key] = scalar_amount(grouped[key])
         else:
             totals[key] = metric_value(obj, actor, raw, condition, expression)
-    return {"totals": totals, "amountsByCurrency": grouped, "stockWeight": stock_weight, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": {key: rule[5] for key, rule in INDICATORS.items()}, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
+    return {"totals": totals, "amountsByCurrency": grouped, "stockWeight": stock_weight, "activeCurrency": validate_currency(raw["deviseId"],unchanged=True) if raw.get("deviseId") not in (None,"","all","sans-devise") else None, "categories": categories, "definitions": definitions, "highlights": {}, "criteria": raw, "currency": None, "generatedAt": datetime.now(timezone.utc)}
 
 def register_source(kind, raw, for_export=False):
     if kind == 'immobilisations':
@@ -342,6 +362,7 @@ def register(actor, kind, raw):
         from .immobilisations import list_data
         return list_data(actor, raw)
     obj, condition, filters = register_source(kind, raw)
+    obj = restrict_order_source(obj, actor, invoices=kind == "factures")
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
     if kind in {"mouvements","factures","reglements","lots"}:
@@ -350,8 +371,11 @@ def register(actor, kind, raw):
     if kind == "commandes":
         from .stock_returns import annotate_return_context,return_feature_ready
         from .invoices import storage_ready as invoice_storage_ready
-        rows=annotate_return_context(rows,actor)
-        meta["features"]={"returns":return_feature_ready(),"invoices":invoice_storage_ready()}
+        may_read_returns=can_read_tabs(actor, "details", "lots")
+        if may_read_returns:
+            rows=annotate_return_context(rows,actor)
+        meta["features"]={"returns":may_read_returns and return_feature_ready(),
+                          "invoices":can_read_tabs(actor, "factures") and invoice_storage_ready()}
     if kind == "lignes":
         meta["summary"] = db.one('SELECT COUNT(*) AS total,COUNT(DISTINCT "ID_CmdFk") AS bons,COUNT(DISTINCT "ID_ArticleFk") AS articles FROM '+row_source(obj)+" WHERE "+where,values)
         return rows,meta
@@ -375,7 +399,12 @@ def consultation(actor, kind, pk, section, raw):
             header=article_stock(header,selected)
             header.update(db.one('SELECT * FROM logistique."V_ArticlePeremptionDepot" WHERE "ID_Article"=%s AND "ID_DepotFk"=%s',[pk,selected]) or {})
     if not section or section == "identite":
-        data = {"record": header, "sections": ["identite", *SECTIONS[kind]]}
+        sections = [
+            name for name in SECTIONS[kind]
+            if can_read_tabs(actor, CONSULTATION_TABS[kind][name])
+            and (kind != "commande" or name != "lots" or can_read_tabs(actor, "mouvements"))
+        ]
+        data = {"record": mask_order(actor, header) if kind == "commande" else header, "sections": ["identite", *sections]}
         from .followup_folders import record_folders
         data["dossiers"] = record_folders(actor,"article" if kind=="produit" else "bon",pk)
         if kind=="commande":
@@ -385,7 +414,15 @@ def consultation(actor, kind, pk, section, raw):
         if kind=="commande":
             from .stock_returns import return_context,return_feature_ready
             from .invoices import storage_ready as invoice_storage_ready
-            meta={"features":{"returns":return_feature_ready(),"invoices":invoice_storage_ready()},"returnContext":return_context(pk)}
+            may_read_returns = can_read_tabs(actor, "details", "lots")
+            may_read_invoice = can_read_tabs(actor, "factures")
+            meta = {
+                "features": {
+                    "returns": may_read_returns and return_feature_ready(),
+                    "invoices": may_read_invoice and invoice_storage_ready(),
+                },
+                "returnContext": return_context(pk) if may_read_returns else None,
+            }
             from .order_types import type_context
             meta.update(type_context(header.get('ID_TypeCmdFk'),required=False))
         return clean(data), meta
@@ -398,7 +435,7 @@ def consultation(actor, kind, pk, section, raw):
     if section == "reglements" and not value:
         return [], {"filteredCount": 0, "totalCount": 0, "count": 0, "take": 25, "skip": 0, "columns": []}
     obj = model(name) if name.startswith("T_") else view("logistique", name)
-    obj=depot_source(obj,raw)
+    obj=restrict_order_source(depot_source(obj,raw),actor,invoices=section=="facture")
     fixed = {field: value}
     rows, meta, _ = read_page(obj, actor, raw, fixed_filters=fixed)
     # Le total de la rubrique reste celui de cet objet, avant sa recherche locale.

@@ -294,7 +294,7 @@ class CashExcelTemplateView(CashView):
     http_method_names = ['get', 'options']
 
     def get(self, request, kind='caisses'):
-        entity = services.writable(request.user)
+        entity = services.writable(request.user, kind)
         if request.query_params:
             raise APIError('Critère non autorisé.')
         stream = build_cash_template(request.user, entity) if kind == 'caisses' else build_journal_template(request.user, kind)
@@ -314,7 +314,7 @@ class CashExcelPreviewView(CashView):
         return super().initialize_request(request, *args, **kwargs)
 
     def post(self, request, kind='caisses'):
-        services.writable(request.user)
+        services.writable(request.user, kind)
         if request.query_params:
             raise APIError('Critère non autorisé.')
         if kind != 'caisses':

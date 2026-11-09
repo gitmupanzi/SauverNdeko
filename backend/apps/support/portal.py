@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 
 from apps.core import db
 from apps.core.field_references import document_reference_actor, reference_context, reference_options
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import can_read_tab, can_use_tab, require_module, require_tab
 from apps.core.permissions import HasModuleAccess
 from apps.core.repository import clean, page, set_admin_actor
 from apps.core.responses import APIError, ExactEncoder, ExactJSONRenderer, ok
@@ -51,6 +51,14 @@ LABELS = {
     'EnRetard': 'En retard',
     'CodeImmobilisation':'Code d’inventaire',
     'NbResolutions':'Résolutions proposées',
+}
+ASSET_FIELD = 'ID_ImmobilisationFk'
+ASSET_COLUMNS = {ASSET_FIELD, 'CodeImmobilisation', 'NomImmobilisation', 'Immobilisation'}
+RELATED_TABS = {
+    'tiers': {'ID_DemandeurFk', 'Demandeur'},
+    'articles': {'ID_ArticleFk', 'Article', 'NomArticle'},
+    'commandes': {'ID_CommandeFk', 'BonStock', 'CodeCmd', 'Bon'},
+    'immobilisations': ASSET_COLUMNS,
 }
 DEFAULTS = ['NumeroSupport', 'Objet', 'Demandeur', 'Responsable', 'Priorite', 'Statut',
             'DateCreation', 'DateEcheance']
@@ -83,12 +91,12 @@ def identifier(value, label='Identifiant'):
 
 
 def capabilities(actor):
-    require_module(actor, 'support')
-    rights = access_snapshot(actor)['modules']['support']
-    manage = bool(rights['canManage'] and actor.admin)
+    require_tab(actor, 'support', 'tickets')
+    manage = can_use_tab(actor, 'support', 'tickets', 'manage') and actor.admin
+    can_export = can_use_tab(actor, 'support', 'tickets', 'export')
     writable = bool(manage and not settings.DB_READ_ONLY and read_entity(actor))
     return {'canCreate': writable, 'canManage': writable, 'canVerify': writable,
-            'canReadInternal': manage, 'canExport': bool(rights['canExport']),
+            'canReadInternal': manage, 'canExport': can_export,
             'entityId': read_entity(actor), 'platformAdmin': actor.global_admin,
             'readOnly': settings.DB_READ_ONLY}
 
@@ -103,22 +111,28 @@ def scope(actor, alias='v'):
     return alias+'."IdEntiteFk"=%s', [entity]
 
 
+def link_visible(actor, field, action='read'):
+    return all(can_use_tab(actor, 'logistique', tab, action)
+               for tab, columns in RELATED_TABS.items() if field in columns)
+
+
 def table_source(actor=None):
     if actor is not None:
-        require_module(actor, 'support')
+        require_tab(actor, 'support', 'tickets')
     columns = db.query("SELECT column_name,data_type,is_nullable,character_maximum_length,"
                        "numeric_precision,numeric_scale FROM information_schema.columns "
                        "WHERE table_schema='support' AND table_name='V_Support' ORDER BY ordinal_position")
     if not columns:
         raise APIError('Le module Support doit être installé.', 'SUPPORT_NOT_INSTALLED', 503)
     # Le circuit constitue un contrôle métier, jamais une colonne exportable.
-    columns = [column for column in columns if column['column_name'] in LABELS]
+    allowed = {key for key in LABELS if actor is None or link_visible(actor, key)}
+    columns = [column for column in columns if column['column_name'] in allowed]
     return {'schema': 'support', 'name': 'V_Support', 'columns': columns,
             'primaryKey': ['ID_Support'], 'relations': []}
 
 
 def selection(actor, raw, action='read'):
-    require_module(actor, 'support', action)
+    require_tab(actor, 'support', 'tickets', action)
     if set(raw)-READ_KEYS:
         raise APIError('Critère Support non autorisé.')
     where, params = scope(actor)
@@ -128,6 +142,9 @@ def selection(actor, raw, action='read'):
         raise APIError('Filtres invalides.')
     if not isinstance(filters, dict) or set(filters)-FILTERS:
         raise APIError('Filtre Support non autorisé.')
+    for tab, fields in RELATED_TABS.items():
+        if fields.intersection(filters) or raw.get('sortBy') in fields:
+            require_tab(actor, 'logistique', tab, action)
     clauses = [where]
     if raw.get('archive') not in (None,'','all','true','false'):raise APIError('Filtre d’archive invalide.')
     if raw.get('archive') in {'true','false'}:filters['Archive']=raw['archive']=='true'
@@ -146,7 +163,9 @@ def selection(actor, raw, action='read'):
     if len(q)>300:
         raise APIError('Recherche trop longue.')
     if q:
-        fields = ['NumeroSupport', 'Objet', 'Description', 'Demandeur', 'Responsable', 'Entreprise']
+        fields = ['NumeroSupport', 'Objet', 'Description', 'Responsable', 'Entreprise']
+        if link_visible(actor, 'Demandeur', action):
+            fields.append('Demandeur')
         clauses.append('('+' OR '.join('v.'+db.ident(key)+' ILIKE %s' for key in fields)+')')
         params.extend(['%'+q+'%']*len(fields))
     for key, operator in [('dateFrom', '>='), ('dateTo', '<')]:
@@ -183,20 +202,22 @@ def list_records(actor, raw):
     count = db.one('SELECT count(*) n FROM support."V_Support" v WHERE '+where,params)['n']
     total_where,total_values=scope(actor)
     total=db.one('SELECT count(*) n FROM support."V_Support" v WHERE '+total_where+' AND NOT v."Archive"',total_values)['n']
-    rows=[public_record(row) for row in rows]
+    rows=[public_record(actor, row) for row in rows]
     return clean(rows), {'totalCount':total,'filteredCount':count,'count':len(rows),'take':take,'skip':skip,
         'sortBy':sort,'sortDir':direction,'pk':'ID_Support',
         'columns':[{'key':c['column_name'],'column_name':c['column_name'],'data_type':c['data_type'],'label':LABELS[c['column_name']]} for c in obj['columns']],**capabilities(actor)}
 
 
-def public_record(row):
+def public_record(actor, row):
     # Les comptes bruts de la vue incluent aussi les notes et pièces internes.
     # Ne pas en révéler l'existence dans une projection commune/exportable.
-    return {**{key:value for key,value in row.items() if key not in {'CircuitSnapshot','NbCommentaires','NbDocuments'}},
+    hidden = {'CircuitSnapshot', 'NbCommentaires', 'NbDocuments'}
+    return {**{key:value for key,value in row.items() if key not in hidden and link_visible(actor, key)},
             '_version':str(row['VersionEnregistrement'])}
 
 
 def record(actor, pk, lock=False):
+    require_tab(actor, 'support', 'tickets')
     where,params=scope(actor,'s'); pk=identifier(pk)
     row=db.one('SELECT s.* FROM support."T_Support" s WHERE s."ID_Support"=%s AND '+where+(' FOR UPDATE OF s' if lock else ''),[pk,*params])
     if row is None: raise APIError('Dossier introuvable.','NOT_FOUND',404)
@@ -213,7 +234,7 @@ def _option_rows(actor, table, pk, label, *, current=None, active=None):
 
 def references(actor, current=None):
     from apps.core.reference_labels import reference_label_sql
-    require_module(actor,'support')
+    require_tab(actor, 'support', 'tickets')
     selected=current or {}
     scoped=document_reference_actor(actor,selected['IdEntiteFk']) if selected else actor
     choices={};fields={}
@@ -233,15 +254,36 @@ def references(actor, current=None):
     # Le compte global qui réalise le traitement peut être affecté explicitement.
     if scoped.global_admin and not any(user['id']==actor.pk for user in users):
         users.insert(0,{'id':actor.pk,'label':' '.join(str(actor.row.get(key) or '') for key in ('PrenomUser','NomUser')).strip(),'disabled':False})
-    requesters=_option_rows(scoped,'logistique."T_Client"','ID_Client','"Nom"',current=selected.get('ID_DemandeurFk'),active='Actif')
-    links={'articles':_option_rows(scoped,'logistique."T_Article"','ID_Article','"NomArticle"',current=selected.get('ID_ArticleFk'),active='ValideArticle'),
-           'bons':_option_rows(scoped,'logistique."T_Commande"','ID_Commande','COALESCE("CodeCmd",\'Bon sans code\')'),
-           'immobilisations':_option_rows(scoped,'logistique."T_Immobilisation"','ID_Immobilisation','"CodeImmobilisation"||\' · \'||"NomImmobilisation"',current=selected.get('ID_ImmobilisationFk'),active='Actif')}
-    defaults={}
-    for field,alias,code in [('ID_TypeSupportFk','types','support.type.assistance'),('ID_PrioriteFk','priorities','support.priority.normal'),('ID_CanalOrigineFk','channels','support.channel.app'),('ID_CategorieSupportFk','categories','support.category.general')]:
-        value=next((item['id'] for item in choices[alias] if item.get('abbr')==code and not item.get('disabled')),None)
-        if value is not None:defaults[field]=value
+    can_link_requester = can_read_tab(actor, 'logistique', 'tiers')
+    can_link_article = can_read_tab(actor, 'logistique', 'articles')
+    can_link_order = can_read_tab(actor, 'logistique', 'commandes')
+    can_link_asset = can_read_tab(actor, 'logistique', 'immobilisations')
+    requesters = _option_rows(scoped, 'logistique."T_Client"', 'ID_Client', '"Nom"',
+                              current=selected.get('ID_DemandeurFk'), active='Actif') if can_link_requester else []
+    links = {
+        'articles': _option_rows(scoped, 'logistique."T_Article"', 'ID_Article', '"NomArticle"',
+                                 current=selected.get('ID_ArticleFk'), active='ValideArticle') if can_link_article else [],
+        'bons': _option_rows(scoped, 'logistique."T_Commande"', 'ID_Commande',
+                             '''COALESCE("CodeCmd",'Bon sans code')''') if can_link_order else [],
+        'immobilisations': _option_rows(scoped, 'logistique."T_Immobilisation"', 'ID_Immobilisation',
+                                        '''"CodeImmobilisation"||' · '||"NomImmobilisation"''',
+                                        current=selected.get(ASSET_FIELD), active='Actif') if can_link_asset else [],
+    }
+    defaults = {}
+    for field, alias, legacy, label in (
+        ('ID_TypeSupportFk', 'types', 'support.type.assistance', 'Demande d’assistance'),
+        ('ID_PrioriteFk', 'priorities', 'support.priority.normal', 'Normale'),
+        ('ID_CanalOrigineFk', 'channels', 'support.channel.app', 'Application'),
+        ('ID_CategorieSupportFk', 'categories', 'support.category.general', 'Général'),
+    ):
+        matches = [item['id'] for item in choices[alias] if not item.get('disabled')
+                   and (item.get('abbr') or '').strip().casefold() in {legacy, label.casefold()}]
+        if len(matches) == 1:
+            defaults[field] = matches[0]
     return {'references':choices,'fieldReferences':fields,'users':users,'requesters':requesters,'links':links,
+            'canLinkAsset':can_link_asset, 'canLinkArticle':can_link_article,
+            'canLinkOrder':can_link_order, 'canLinkRequester':can_link_requester,
+            'hiddenExportFields': [key for key in LABELS if not link_visible(actor, key, 'export')],
             'requiredFields':['Objet','Description','ID_TypeSupportFk','ID_PrioriteFk','ID_CanalOrigineFk'],
             'defaults':defaults,**capabilities(actor)}
 
@@ -278,9 +320,10 @@ def detail(actor, pk):
           WHERE a."TableName" LIKE 'support.%%' AND a."IdEntiteFk"=%s
           AND (a."NewData"->>'ID_Support'=%s OR a."NewData"->>'ID_SupportFk'=%s)
           ORDER BY a."ChangedAt" DESC,a."IdLog" DESC''',[row['IdEntiteFk'],str(row['ID_Support']),str(row['ID_Support'])])
+        hidden = {'CircuitSnapshot', 'payloadHash', 'requestId', 'operation', '_actor', '_motif'}
         for event in history:
             for field in ('AnciennesValeurs','NouvellesValeurs'):
-                if isinstance(event[field],dict):event[field]={key:value for key,value in event[field].items() if key not in {'CircuitSnapshot','payloadHash','requestId','operation','_actor','_motif'}}
+                if isinstance(event[field],dict):event[field]={key:value for key,value in event[field].items() if key not in hidden and link_visible(actor, key)}
         # Un historique lisible expose les seules données métier modifiées,
         # avec leurs libellés, sans demander au client d'interpréter le JSON.
         generic_ids=set();user_ids=set();client_ids=set()
@@ -316,7 +359,7 @@ def detail(actor, pk):
                                   and before.get(field)!=after.get(field)]
     refs=references(actor,row)
     editable=refs['canManage'] and not row['Archive'] and view['StatutCode']!='closed'
-    return clean({'record':public_record(view),'comments':comments,'resolutions':resolutions,'history':history,
+    return clean({'record':public_record(actor, view),'comments':comments,'resolutions':resolutions,'history':history,
                   'documents':documents,'transitions':transition_options(actor,row),
                   'canEdit':editable,'canComment':editable,'canUpload':editable,
                   'verificationResults':refs['references']['resultats'],
@@ -336,6 +379,11 @@ def validate_fields(actor, body, old=None):
         raise APIError('Un champ du dossier n’est pas modifiable.','SUPPORT_VALIDATION',422)
     entity=require_entity(actor);effective={**(old or {}),**body};result={}
     for field,value in body.items():
+        if not link_visible(actor, field):
+            if value not in (None, ''):
+                raise APIError({field: 'Vous ne pouvez pas sélectionner cette fiche liée.'}, 'TAB_ACTION_FORBIDDEN', 403)
+            # Une valeur facultative vide ne doit pas effacer un lien masqué.
+            continue
         if field in {'Objet','Description'}:
             result[field]=_text(value,field,200 if field=='Objet' else 20000,required=True)
         elif field=='DateEcheance':
@@ -375,7 +423,9 @@ def validate_fields(actor, body, old=None):
 
 
 def _write_access(actor, row=None):
-    require_module(actor,'support','manage');db.ensure_writable();entity=require_entity(actor)
+    require_tab(actor, 'support', 'tickets', 'manage')
+    db.ensure_writable()
+    entity=require_entity(actor)
     if not actor.admin:raise APIError('Votre rôle ne permet pas de traiter les dossiers.','SUPPORT_MANAGE_REQUIRED',403)
     if row and row['IdEntiteFk']!=entity:raise APIError('Choisissez l’entreprise du dossier avant de le modifier.','SUPPORT_ENTITY_MISMATCH',403)
     return entity
@@ -431,7 +481,7 @@ def save(actor,body,pk=None,*,batch_digest=None):
         if not isinstance(body,dict) or set(body)-EDIT_FIELDS-{'requestId','_version','motif'}:
             raise APIError('Un champ du dossier n’est pas modifiable.','SUPPORT_VALIDATION',422)
         existing,replayed=_mutation_begin(actor,body,'update' if pk else 'create',pk,batch_digest=batch_digest)
-        if replayed:return public_record(db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[record(actor,existing)['ID_Support']])),True
+        if replayed:return public_record(actor, db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[record(actor,existing)['ID_Support']])),True
         old=record(actor,pk,True) if pk else None
         if old:
             _write_access(actor,old);_revision(old,body)
@@ -448,7 +498,7 @@ def save(actor,body,pk=None,*,batch_digest=None):
                     prepared.update(IdEntiteFk=require_entity(actor),ID_CreateurFk=actor.pk)
                     identifier_=db.one('INSERT INTO support."T_Support"('+','.join(db.ident(key) for key in prepared)+') VALUES('+','.join('%s' for _ in prepared)+') RETURNING "ID_Support"',list(prepared.values()))['ID_Support']
         except DatabaseError as exc:_database_error(exc)
-        return public_record(db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[identifier_])),False
+        return public_record(actor, db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[identifier_])),False
 
 
 def perform_action(actor,pk,body):
@@ -542,6 +592,7 @@ def add_document(actor, pk, data, upload):
 
 
 def document(actor,pk,piece_id):
+    require_tab(actor, 'support', 'tickets', 'export')
     row=record(actor,pk);internal=capabilities(actor)['canReadInternal']
     value=db.one('''SELECT p."Contenu",p."NomFichier",p."MimeType",p."Sha256",p."TailleOctets"
         FROM support."T_PieceSupport" l JOIN logistique."T_PieceJustificative" p ON p."ID_Piece"=l."ID_PieceFk"
@@ -559,6 +610,11 @@ def workbook(actor,raw,file_format='xlsx'):
     from apps.core.tabular_exports import selected_scope, write_tabular
     obj,where,values,order,sort,direction=selection(actor,raw,'export')
     columns=export_keys(actor,'support.tickets',raw);available={column['column_name']:column for column in obj['columns']}
+    if 'columns' not in raw:
+        columns = [key for key in columns if link_visible(actor, key, 'export')]
+    for tab, fields in RELATED_TABS.items():
+        if fields.intersection(columns):
+            require_tab(actor, 'logistique', tab, 'export')
     if not columns or any(key not in available or key not in LABELS for key in columns):raise APIError('Colonnes non exportables.')
     selected,params=selected_scope(raw,'ID_Support');where+=selected;values.extend(params)
     fields=[{**available[key],'label':LABELS[key],**({'data_type':'text'} if key.startswith(('ID_','Id','Numero')) else {})} for key in columns]
@@ -647,7 +703,9 @@ class SupportDocumentDownloadView(DocumentDownloadView):
 class SupportDashboardView(APIView):
     permission_classes=[HasModuleAccess]
     def get(self,request):
-        actor=request.user;obj,where,values,*_=selection(actor,request.query_params.dict())
+        actor = request.user
+        require_tab(actor, 'support', 'tableau-de-bord')
+        obj,where,values,*_=selection(actor,request.query_params.dict())
         row=db.one('''SELECT count(*) AS total,
             count(*) FILTER(WHERE v."StatutCode" NOT IN ('resolved','closed')) AS ouverts,
             count(*) FILTER(WHERE v."StatutCode"='pending') AS "enAttente",
@@ -670,7 +728,7 @@ class SupportKanbanView(APIView):
             if option['id'] not in known:groups.append({'id':option['id'],'label':option['label'],'count':0})
         take=20
         for group in groups:
-            group['rows']=[public_record(row) for row in db.query('SELECT v.* FROM support."V_Support" v WHERE '+where+' AND v."ID_StatutFk"=%s ORDER BY '+order+' LIMIT %s',[*values,group['id'],take])]
+            group['rows']=[public_record(actor, row) for row in db.query('SELECT v.* FROM support."V_Support" v WHERE '+where+' AND v."ID_StatutFk"=%s ORDER BY '+order+' LIMIT %s',[*values,group['id'],take])]
             group['hasMore']=group['count']>len(group['rows'])
         return ok({'columns':groups,'take':take,**capabilities(actor)})
 

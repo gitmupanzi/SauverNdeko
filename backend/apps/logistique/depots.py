@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework.views import APIView
 from apps.core import db
-from apps.core.module_access import require_module, access_snapshot
+from apps.core.module_access import require_module, access_snapshot, can_use_tab
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit, clean, page, positive
 from apps.core.responses import APIError, ExactEncoder, ok
@@ -141,11 +141,13 @@ def save(actor, identifier, body):
 class DepotsView(APIView):
     permission_classes = [IsERPAdmin]
     def get(self, request, pk=None):
+        if pk is None and request.query_params.get("usage") == "selection":
+            return ok([{key: row[key] for key in ("id", "label", "principal", "active")} for row in choices(request.user)])
         access(request.user)
         if pk:
             requested_depot(request.user, {'depotId':pk})
             row=depot(request.user, pk, active=False)
-            return ok(row,meta={'revision':str(row['Version']),'canEdit':can_manage(request.user)})
+            return ok(row,meta={'revision':str(row['Version']),'canEdit':can_manage(request.user) and can_use_tab(request.user, "logistique", "depots", "manage")})
         from .depot_registers import listing
         rows, meta = listing(request.user, 'depots', request.query_params)
         return ok(rows, meta=meta)

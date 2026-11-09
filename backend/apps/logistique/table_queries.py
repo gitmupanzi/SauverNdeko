@@ -122,6 +122,7 @@ LABELS.update({'Actif':'Actif','ID_Immobilisation':'Identifiant du bien','CodeIm
     'NomImmobilisation':'Désignation','Reference':'Référence','Caracteristiques':'Caractéristiques',
     'SuiviIndividuel':'Suivi individuel','PrixUnitaire':'Prix unitaire','ValeurAcquisition':'Valeur d’acquisition',
     'CategorieMateriel':'Type de matériel','EtatMateriel':'État du matériel','Service':'Service',
-    'Responsable':'Responsable','Localisation':'Localisation','LocalisationComplement':'Salle ou bureau',
-    'DateEntree':'Date d’entrée','DateAcquisition':'Date d’acquisition','NumeroSerie':'N° de série',
+    'Responsable':'Responsable','Localisation':'Localisation','LocalisationComplement':'Localisation libre',
+    'DateEntree':'Date d’entrée','DateAcquisition':'Date d’acquisition','DateMiseEnService':'Mise en service',
+    'StatutCycle':'Cycle de vie','DateSortie':'Date de sortie','TypeSortie':'Motif de sortie','NumeroSerie':'N° de série',
     'Observations':'Observations','ModifieLe':'Modifié le'})

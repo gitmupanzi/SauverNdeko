@@ -10644,6 +10644,18 @@
           "numeric_precision": 32,
           "numeric_scale": 0,
           "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "T_Immobilisation",
+          "column_name": "DateMiseEnService",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
         }
       ],
       "relations": [
@@ -25726,6 +25738,54 @@
           "table_schema": "logistique",
           "table_name": "V_Immobilisation",
           "column_name": "_version",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DateMiseEnService",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "TypeSortie",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "DateSortie",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "logistique",
+          "table_name": "V_Immobilisation",
+          "column_name": "StatutCycle",
           "data_type": "text",
           "is_nullable": "YES",
           "column_default": null,

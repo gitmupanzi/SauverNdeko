@@ -52,7 +52,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   const openedScope = useRef(identity);
   const currentScope = useRef(identity);
   currentScope.current = identity;
-  const canWrite = Boolean(scope.entityId && context?.canManage && !context?.readOnly &&
+  const canWrite = Boolean(scope.entityId && context?.tabs?.[kind]?.canManage && !context?.readOnly &&
     user?.permissions?.canWriteData && openedScope.current === identity);
   const currentAccess = useRef(canWrite);
   currentAccess.current = canWrite;
@@ -476,7 +476,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
       <div className="logistics-batch-heading"><h3><AppIcon name="document"/>Détails de la ligne {rowsById.get(detailId)+1}</h3>
         <ActionButton icon="close" onClick={() => setDetailId("")}>Fermer les détails</ActionButton>
       </div>
-      <div className="caisse-field-grid">{DETAILS.map(key => <div key={key} className="record-field">
+      <div className="caisse-field-grid">{DETAILS.filter(key=>!context?.hiddenFields?.[kind]?.includes(key)).map(key => <div key={key} className="record-field">
         <label htmlFor={prefix+detailId+key}>{CAISSE_BATCH_LABELS[key]}</label>{field(selected,key)}
       </div>)}</div>
     </section> : null}

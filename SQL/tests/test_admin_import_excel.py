@@ -111,7 +111,7 @@ class AdminExcelTests(unittest.TestCase):
 
     def test_local_manager_cannot_prepare_roles_or_structural_settings(self):
         self.access.stop()
-        with patch('apps.core.admin_excel.db.ensure_writable'), patch('apps.core.admin_excel.require_module'), \
+        with patch('apps.core.admin_excel.db.ensure_writable'), patch('apps.core.admin_excel.require_admin_tab'), \
              patch('apps.core.admin_excel.management', return_value=False), \
              patch('apps.core.admin_excel.references', side_effect=AssertionError('Pas de références après refus.')):
             for kind in FIELDS:

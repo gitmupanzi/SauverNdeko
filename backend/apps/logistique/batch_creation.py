@@ -8,7 +8,6 @@ import hmac
 import json
 import re
 import uuid
-from decimal import Decimal
 
 from django.db import DatabaseError, transaction
 from django.utils import timezone
@@ -17,6 +16,7 @@ from rest_framework.views import APIView
 
 from apps.core import db
 from apps.core.module_access import require_module
+from apps.core.parsers import loads_exact_json
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit
 from apps.core.responses import APIError, ExactEncoder, ok
@@ -45,7 +45,7 @@ def parse_request(request, kind):
             raw = request.data.get('payload', '')
             if not isinstance(raw, str) or len(raw.encode('utf8')) > MAX_PAYLOAD:
                 raise ValueError()
-            body = json.loads(raw, parse_float=Decimal)
+            body = loads_exact_json(raw)
         except (ValueError, TypeError):
             raise APIError('Le panier article est invalide.')
         if len(request.data.getlist('payload')) != 1 or any(len(request.FILES.getlist(key)) != 1 for key in request.FILES):

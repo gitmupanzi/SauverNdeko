@@ -32,8 +32,9 @@ COLUMNS = {
         ('SuiviIndividuel', 'Suivi individuel', 20), ('PrixUnitaire', 'Prix unitaire', 20),
         ('ID_DeviseFk', 'Devise', 18), ('ID_EtatFk', 'État du matériel', 24),
         ('ID_ResponsableFk', 'Responsable', 28), ('ID_ServiceFk', 'Service', 24),
-        ('ID_LocalisationFk', 'Localisation', 42), ('LocalisationComplement', 'Bureau ou salle', 30),
+        ('LocalisationComplement', 'Localisation (texte libre)', 42),
         ('DateEntree', 'Date et heure d’entrée', 26), ('DateAcquisition', 'Date d’acquisition', 24),
+        ('DateMiseEnService', 'Date de mise en service', 24),
         ('NumeroSerie', 'N° de série', 28), ('Caracteristiques', 'Caractéristiques', 48),
         ('Observations', 'Observations', 48), ('motif', 'Motif', 42),
     ],
@@ -44,7 +45,7 @@ REFERENCE_FIELDS = {
               'IdProfessionnelFk': 'professionnels', 'IdEntiteRepresenteeFk': 'entites'},
     'immobilisations': {'ID_CategorieFk': 'types', 'ID_EtatFk': 'etats',
         'ID_ResponsableFk': 'responsables', 'ID_ServiceFk': 'services',
-        'ID_LocalisationFk': 'localisations', 'ID_DeviseFk': 'currencies'},
+        'ID_DeviseFk': 'currencies'},
 }
 
 
@@ -91,6 +92,7 @@ class LogisticsExcelTemplateView(ExcelDownloadView):
             notes.append('La nature vide conserve Personne et l’état vide conserve Actif. Un tiers peut rester sans compte utilisateur.')
         else:
             notes.extend([
+                'La localisation accepte du texte libre (255 caractères maximum).',
                 'Un suivi individuel ou un numéro de série exige une quantité de 1. Pour un lot homogène, indiquez Non dans Suivi individuel.',
                 'Prix non négatif, deux décimales maximum. Les dates utilisent JJ/MM/AAAA HH:MM:SS ou AAAA-MM-JJTHH:MM:SS, heure de Kinshasa.',
                 'Renseignez le motif sur chaque ligne ou le motif commun dans le panier. Aucun mouvement de stock ni amortissement ne découle de cet import.',
@@ -111,6 +113,8 @@ class LogisticsExcelPreviewView(ExcelPreviewMixin, APIView):
         headers = {label: key for key, label, _ in COLUMNS[kind]}
         if kind == 'tiers':
             headers['Type de client'] = 'ID_TypeClientFk'
+        else:
+            headers.update({'Localisation': 'ID_LocalisationFk', 'Bureau ou salle': 'LocalisationComplement'})
         cells = read_uploaded_workbook(request, sheet_name=SHEETS[kind], headers=headers,
             required_headers=('Nom',) if kind == 'tiers' else ('NomImmobilisation',))
         return ok({'cells': cells, 'count': len(cells) - 1, 'maxRows': 100})

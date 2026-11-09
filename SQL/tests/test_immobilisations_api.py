@@ -62,7 +62,11 @@ class ImmobilisationsAPI(unittest.TestCase):
         actor = Actor({**cls.users[0 if global_admin else index], 'Is_Admin': global_admin})
         if global_admin and not all_entities:
             actor._context_entity = cls.entities[index]
-        actor._module_access = {'modules': {module:{'canRead': read, 'canManage': manage, 'canExport': export, 'reason':'MODULE_ROLE_FORBIDDEN'} for module in ['logistique','administration']}}
+        rights = {'canRead': read, 'canManage': manage, 'canExport': export, 'reason': 'MODULE_ROLE_FORBIDDEN'}
+        actor._module_access = {
+            'modules': {module: rights for module in ['logistique', 'administration']},
+            'tabs': {'logistique': {'immobilisations': rights}},
+        }
         return actor
 
     @classmethod
@@ -416,6 +420,103 @@ class ImmobilisationsAPI(unittest.TestCase):
         self.assert_response(self.client(1,global_admin=False).get(path),404)
 
 
+    def test_cycle_inventory_attachments_disposal_and_tenant(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        row = self.create(DateAcquisition='2026-09-01', DateMiseEnService='2026-09-02')
+        self.assertEqual(row['StatutCycle'], 'EN_SERVICE')
+        pk = row['ID_Immobilisation']
+        url = f'{BASE}/{pk}/cycle-vie'
+        pieces = f'/api/logistique/documents/immobilisation/{pk}/pieces'
+        client = self.client()
+        outsider = self.client(1, global_admin=False)
+        self.assert_response(outsider.get(url), 404)
+        self.assert_response(outsider.get(pieces), 404)
+        self.assert_response(self.update(row, ID_LocalisationFk=self.locations[0]))
+        row = self.assert_response(client.get(f'{BASE}/{pk}'))
+        content = b'%PDF-1.7\nFixture privee\n%%EOF'
+        doc = self.assert_response(client.post(pieces, {'file': SimpleUploadedFile('inventaire.pdf', content)}, format='multipart'), 201)
+        file_url = f"{pieces}/{doc['ID_Piece']}"
+        readonly = self.client(global_admin=False, manage=False, export=False)
+        self.assertEqual(self.assert_response(readonly.get(pieces))[0]['ID_Piece'], doc['ID_Piece'])
+        denied = readonly.get(file_url, HTTP_ACCEPT='application/pdf')
+        self.assert_response(denied, 403)
+        self.assertEqual(denied.data['error']['code'], 'MODULE_ACTION_FORBIDDEN')
+        exporter = self.client(global_admin=False, manage=False, export=True)
+        self.assertEqual(exporter.get(file_url, HTTP_ACCEPT='application/pdf').content, content)
+        self.assertEqual(client.get(file_url).content, content)
+        self.assert_response(outsider.get(file_url), 404)
+        event = {'type':'INVENTAIRE','date':'2026-09-03','quantiteComptee':'0','motif':'Comptage fictif',
+            'pieceId':doc['ID_Piece'],'requestId':str(uuid.uuid4()),'_version':row['_version']}
+        self.assert_response(self.client(manage=False).post(url,event,format='json'),403)
+        data = self.assert_response(client.post(url,event,format='json'))
+        self.assertEqual(data['events'][0]['QuantiteTheorique'], 1)
+        self.assertEqual(data['events'][0]['EcartInventaire'], -1)
+        self.assertEqual(data['documents'][0]['ID_Piece'], doc['ID_Piece'])
+        self.assertEqual(len(self.assert_response(client.post(url,event,format='json'))['events']),1)
+        self.assert_response(client.post(url,{**event,'quantiteComptee':'1'},format='json'),409)
+        self.assert_response(client.delete(file_url),409)
+        disposal = {'type':'REBUT','date':'2026-09-04','motif':'Mise au rebut fictive','pieceId':doc['ID_Piece'],
+            'requestId':str(uuid.uuid4()),'_version':row['_version']}
+        self.assert_response(client.post(url,disposal,format='json'))
+        self.assert_response(client.post(url,{**disposal,'requestId':str(uuid.uuid4())},format='json'),409)
+        details = client.get(f'{BASE}/{pk}')
+        self.assertEqual(self.assert_response(details)['StatutCycle'],'SORTI')
+        self.assertFalse(details.data['meta']['canEdit'])
+        self.assert_response(self.update(row, Observations='Tentative après sortie'),409)
+        matches = self.assert_response(client.get(BASE, {'statutCycle':'SORTI','q':row['NomImmobilisation']}))
+        self.assertEqual([item['ID_Immobilisation'] for item in matches],[pk])
+
+    def test_valuation_schedule_replay_exit_and_close(self):
+        row = self.create(DateAcquisition='2026-09-01', DateMiseEnService='2026-10-01', PrixUnitaire='100.00')
+        pk = row['ID_Immobilisation']
+        url = f'{BASE}/{pk}/valorisation'
+        client = self.client()
+        outsider = self.client(1, global_admin=False)
+
+        def action(payload, status=200):
+            return self.assert_response(client.post(url,payload,format='json'),status)
+
+        plan = {'action':'CREER','usage':'COMPTABLE','referentiel':'SYSCOHADA','methode':'LINEAIRE_JOURS',
+            'cout':'100.00','residuel':'7.00','debut':'2026-10-01','duree':'1','deviseId':self.usd,
+            'motif':'Paramètres validés dans la recette fictive','requestId':str(uuid.uuid4()),'_version':row['_version']}
+        self.assert_response(outsider.post(url,plan,format='json'),404)
+        self.assert_response(self.client(manage=False).post(url,plan,format='json'),403)
+        action({**plan,'motif':''},400)
+        action({**plan,'_version':'0'},409)
+        data = action(plan)
+        accounting = data['plans'][0]
+        self.assertEqual(accounting['schedule'][0]['Montant'], Decimal('93.00'))
+        self.assertEqual(accounting['ValeurNetteComptable'], Decimal('100.00'))
+        self.assertEqual(len(action(plan)['plans']),1)
+        action({**plan,'cout':'200.00'},409)
+        fiscal = {**plan,'usage':'FISCAL','referentiel':'FISCAL','methode':'NON_AMORTISSABLE','duree':None,
+            'requestId':str(uuid.uuid4())}
+        self.assertEqual(action(fiscal)['plans'][1]['schedule'],[])
+        dotation = {'action':'EVENEMENT','planId':accounting['ID_Plan'],'type':'DOTATION','date':'2026-10-10',
+            'motif':'Dotation fictive','requestId':str(uuid.uuid4()),'_version':accounting['_version']}
+        accounting = action(dotation)['plans'][0]
+        self.assertEqual(accounting['AmortissementsCumules'], Decimal('30.00'))
+        self.assertEqual(accounting['ValeurNetteComptable'], Decimal('70.00'))
+        self.assertEqual(len(action(dotation)['plans'][0]['events']),1)
+        action({**dotation,'date':'2026-10-11','requestId':str(uuid.uuid4())},409)
+        close = {'action':'CLOTURER','usage':'COMPTABLE','date':'2026-10-10','motif':'Clôture fictive',
+            'requestId':str(uuid.uuid4())}
+        accounting = action(close)['plans'][0]
+        self.assertEqual(len(action(close)['periods']),1)
+        action({**dotation,'_version':accounting['_version'],'requestId':str(uuid.uuid4())},409)
+        physical = {'type':'CESSION','date':'2026-10-11','motif':'Cession fictive','requestId':str(uuid.uuid4()),
+            '_version':row['_version']}
+        self.assert_response(client.post(f'{BASE}/{pk}/cycle-vie',physical,format='json'))
+        accounting = self.assert_response(client.get(url))['plans'][0]
+        disposal = {**dotation,'type':'CESSION','montant':'75.00','date':'2026-10-11','_version':accounting['_version'],
+            'requestId':str(uuid.uuid4())}
+        disposed = action(disposal)['plans'][0]
+        self.assertEqual(disposed['ValeurNetteComptable'],Decimal('0'))
+        self.assertEqual(disposed['events'][0]['ValeurAvantSortie'],Decimal('70.00'))
+        self.assertEqual(len(action(disposal)['plans'][0]['events']),2)
+        self.assert_response(outsider.get(url),404)
+
+
 if __name__=='__main__':
     result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(ImmobilisationsAPI))
     paths=['backend/apps/logistique/immobilisations.py','backend/apps/logistique/reads.py','backend/apps/logistique/excel.py',
@@ -426,6 +527,6 @@ if __name__=='__main__':
     output=ROOT/'.runtime/immobilisations-api/verification.json'
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps({'passed':result.wasSuccessful(),'tests':result.testsRun,'failures':len(result.failures),'errors':len(result.errors),
-        'database':location.path[1:],'scope':'Trois entreprises fictives ; aucun appel à SauverNdeko ; aucun stock ni amortissement.',
+        'database':location.path[1:],'scope':'Trois entreprises fictives ; aucun appel à SauverNdeko ; aucune connexion à une base réelle.',
         'sha256':{path:hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in paths}},ensure_ascii=False,indent=2),encoding='utf8')
     raise SystemExit(0 if result.wasSuccessful() else 1)

@@ -4,7 +4,7 @@ from datetime import date
 from rest_framework.views import APIView
 from . import db
 from .permissions import IsERPAdmin
-from .module_access import require_module
+from .admin_tabs import require_admin_tab
 from .responses import APIError, ok
 
 FIELDS={'MatriculeUser','ID_ServiceFk','ID_FonctionFk','DateEmbauche','DateFinEmploi','ObservationProfessionnelle'}
@@ -42,7 +42,7 @@ class PersonnelReferencesView(APIView):
     permission_classes=[IsERPAdmin]
     http_method_names=['get','options']
     def get(self,request):
-        require_module(request.user,'administration','read')
+        require_admin_tab(request.user, 'utilisateurs')
         if request.query_params:raise APIError('Aucun critère n’est attendu.')
         result={}
         from .field_references import reference_options

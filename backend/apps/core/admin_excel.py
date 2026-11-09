@@ -6,7 +6,7 @@ from apps.logistique.excel import ExcelDownloadView, XLSX_MEDIA_TYPE
 from . import db
 from .admin_operations import management, references
 from .batch_excel import ExcelPreviewMixin, build_template, read_uploaded_workbook
-from .module_access import require_module
+from .admin_tabs import require_admin_tab
 from .permissions import IsERPAdmin
 from .responses import APIError, ok
 
@@ -54,8 +54,8 @@ BOOLEANS = {'ValideUser', 'ValideGenerique', 'IsDefaultMapping', 'ValideFkCorres
 def excel_support(actor, kind):
     if kind not in FIELDS:
         raise APIError('Saisie indisponible.', 'NOT_FOUND', 404)
+    require_admin_tab(actor, kind, 'manage')
     db.ensure_writable()
-    require_module(actor, 'administration', 'manage')
     if not management(actor, kind):
         raise APIError('Votre accès ne permet pas de préparer ces fiches.', 'PLATFORM_ADMIN_REQUIRED', 403)
     return references(actor, kind)

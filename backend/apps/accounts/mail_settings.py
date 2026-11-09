@@ -26,9 +26,12 @@ EMAIL_MAX_LENGTH = 254
 NAME_MAX_LENGTH = 100
 
 
-def require_platform_admin(actor):
+def require_platform_admin(actor, action="read"):
     if not actor or not getattr(actor, "is_authenticated", False) or not getattr(actor, "global_admin", False):
         raise APIError("Réglage réservé à l’administration de la plateforme.", "PLATFORM_ADMIN_REQUIRED", 403)
+    from apps.core.admin_tabs import require_admin_tab
+
+    require_admin_tab(actor, "messagerie", action)
 
 
 def validated_sender(body):
@@ -118,7 +121,7 @@ def audit_sender(row):
 
 
 def save_mail_settings(actor, body):
-    require_platform_admin(actor)
+    require_platform_admin(actor, "manage")
     db.ensure_writable()
     sender = validated_sender(body)
     with transaction.atomic():
@@ -171,7 +174,7 @@ class MailConnectionThrottle(SimpleRateThrottle):
 
 def test_mail_connection(actor):
     """Authentification du transport courant uniquement ; jamais de destinataire ni de message."""
-    require_platform_admin(actor)
+    require_platform_admin(actor, "manage")
     db.ensure_writable()
     from .password_reset import smtp_configured
     if not smtp_configured():
@@ -198,7 +201,7 @@ class MailConnectionTestView(APIView):
     throttle_classes=[MailConnectionThrottle]
     http_method_names=['post','options']
     def post(self,request):
-        require_platform_admin(request.user)
+        require_platform_admin(request.user, "manage")
         if not isinstance(request.data,dict) or request.data:
             raise APIError('Aucun paramètre attendu pour le test de connexion.')
         return ok(test_mail_connection(request.user),message='Connexion au service d’envoi réussie. Aucun e-mail envoyé.')

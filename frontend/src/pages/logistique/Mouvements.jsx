@@ -17,7 +17,7 @@ import AppIcon from "../../components/AppIcon";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {requestJson,downloadApiFile} from "../../services/api";
-import {accessSignature,moduleRights} from "../../services/moduleAccess";
+import {accessSignature,tabRights} from "../../services/moduleAccess";
 import {currencyOptions} from "../../utils/money";
 import {asArrayPayload,buildReferenceOptions,formatCurrency,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
 import StockReceiptEditor from "./StockReceiptEditor";
@@ -84,7 +84,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
  const depotScope=useDepotScope();
  const preferences=useTablePreferences("logistique.mouvements");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
- const rights=moduleRights(user,"logistique"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
+ const rights=tabRights(user,"logistique","mouvements"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
  const scopeKey=JSON.stringify([user?.IdUser,user?.IdEntiteFk,user?.permissions?.canAccessAdmin,user?.permissions?.canWriteData,user?.permissions?.canExportData,accessSignature(user)]);
  const canExport=canRead&&Boolean(user?.permissions)&&user.permissions.canExportData!==false&&rights.canExport===true;
  const canManage=useEntityScope().canWrite&&canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;

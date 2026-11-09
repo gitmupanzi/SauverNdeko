@@ -21,7 +21,7 @@ from .authentication import Actor, password_matches
 
 MIN_LENGTH=12
 MAX_LENGTH=128
-CURRENT_MAX_LENGTH=1024
+CURRENT_MAX_LENGTH=4096
 FIELDS={"currentPassword","newPassword","confirmPassword"}
 
 
@@ -105,6 +105,14 @@ class PasswordChangeThrottle(UserRateThrottle):
 
     def get_cache_key(self,request,view):
         return super().get_cache_key(request,view) if request.method=="POST" else None
+
+
+class ProfileWriteThrottle(UserRateThrottle):
+    scope = "profile_write"
+    rate = "5/min"
+
+    def get_cache_key(self, request, view):
+        return super().get_cache_key(request, view) if request.method in {"PUT", "POST"} else None
 
 
 @method_decorator(sensitive_post_parameters("currentPassword","newPassword","confirmPassword"),name="dispatch")

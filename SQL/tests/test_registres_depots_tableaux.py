@@ -85,8 +85,9 @@ class DepotRegistersAPI(BonsCommandeAPI):
         self.assertIn('Informations', book.sheetnames)
 
     def test_register_03_stock_full_export_matches_depot_and_article_search(self):
-        prefix = 'Stock de recette ' + uuid.uuid4().hex
-        depot = self.depot(prefix)
+        prefix = 'Article de recette ' + uuid.uuid4().hex
+        depot_name = 'Dépôt de recette ' + uuid.uuid4().hex
+        depot = self.depot(depot_name)
         for n in range(4):
             article = self.article()
             self.connection.execute('UPDATE logistique."T_Article" SET "NomArticle"=%s WHERE "ID_Article"=%s', [prefix + str(n), article])
@@ -97,7 +98,7 @@ class DepotRegistersAPI(BonsCommandeAPI):
         rows = self.csv_rows('stocks-depots', {**params, 'columns': json.dumps(['NomArticle', 'NomDepot', 'StockPhysique'])})
         self.assertEqual(len(rows), 5)
         self.assertEqual(rows[1][0], page.data['data'][0]['NomArticle'])
-        self.assertTrue(all(row[1] == prefix for row in rows[1:]))
+        self.assertTrue(all(row[1] == depot_name for row in rows[1:]))
         self.assertTrue(all(Decimal(row[2].replace(',', '.')) == 0 for row in rows[1:]))
         denied = self.client(1).get('/api/logistique/stocks-depots/export.csv', params, HTTP_ACCEPT='text/csv')
         self.assertEqual(denied.status_code, 404)

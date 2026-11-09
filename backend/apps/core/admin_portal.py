@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.authentication import Actor
 from apps.core import db
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.admin_tabs import ADMIN_GLOBAL_TABS, can_use_admin_tab, require_admin_tab
 from apps.core.permissions import IsERPAdmin, scope_for
 from apps.core.registry import model, view
 from apps.core.repository import clean, page, positive, predicate
@@ -38,7 +38,6 @@ SOURCES = {
     "parametres": ("systeme", "V_Admin_UI_Setting", "IdAdminUISetting", "SettingGroup", "UpdatedAt"),
     "audit-parametres": ("systeme", "V_Admin_UI_Setting_Audit", "IdLog", "ChangedAt", "ChangedAt"),
 }
-GLOBAL_ONLY = {"audit", "connexions", "audit-parametres"}
 TITLES = {
     "utilisateurs": "Utilisateurs", "profils": "Profils utilisateurs", "entites": "Entreprises",
     "roles": "Rôles", "audit": "Journaux d’audit", "correspondances": "Correspondances des références",
@@ -92,11 +91,9 @@ DEFAULTS = {
 
 
 def source(actor, kind, action="read"):
-    require_module(actor, "administration", action)
     if kind not in SOURCES:
         raise APIError("Registre non disponible.", "NOT_FOUND", 404)
-    if kind in GLOBAL_ONLY and not actor.global_admin:
-        raise APIError("Registre réservé à l’administration de la plateforme.", "PLATFORM_ADMIN_REQUIRED", 403)
+    require_admin_tab(actor, kind, action)
     schema, name, pk, default_sort, date_field = SOURCES[kind]
     obj = model(name) if name.startswith("T_") else view(schema, name)
     # Les projections se limitent aux champs documentés de cette interface.
@@ -134,7 +131,7 @@ def source_sql(obj):
 def scope_actor(actor, kind):
     # Les réglages et journaux de plateforme gardent leur portée explicite,
     # même si un administrateur global vient d’un module d’entreprise.
-    return Actor(actor.row) if actor.global_admin and kind in GLOBAL_ONLY else actor
+    return Actor(actor.row) if actor.global_admin and kind in ADMIN_GLOBAL_TABS else actor
 
 
 def parse_filters(raw):
@@ -200,10 +197,13 @@ def selection(actor, kind, raw, *, action="read", pk=None):
     return obj, where, values, order, sort, direction
 
 
-def capabilities(actor, kind=None):
-    rights = access_snapshot(actor)["modules"]["administration"]
-    return {"canManage": (actor.global_admin or kind in {"utilisateurs", "profils", "entites"}) and rights["canManage"] and not settings.DB_READ_ONLY,
-            "canExport": rights["canExport"], "platformAdmin": actor.global_admin}
+def capabilities(actor, kind):
+    return {
+        "canManage": (actor.global_admin or kind in {"utilisateurs", "profils", "entites"})
+        and not settings.DB_READ_ONLY and can_use_admin_tab(actor, kind, "manage"),
+        "canExport": can_use_admin_tab(actor, kind, "export"),
+        "platformAdmin": actor.global_admin,
+    }
 
 
 class AdminRegisterView(APIView):
@@ -238,6 +238,7 @@ class AdminRegisterView(APIView):
 def admin_workbook(actor, kind, raw, file_format="xlsx"):
     from apps.core.table_preferences import export_keys
     from apps.core.tabular_exports import selected_scope, write_tabular
+    require_admin_tab(actor, kind, "export")
     raw = {**raw,"columns":json.dumps(export_keys(actor,"admin."+kind,raw))}
     obj, where, values, order, sort, direction = selection(actor, kind, raw, action="export")
     clause,params=selected_scope(raw,SOURCES[kind][2])
@@ -298,59 +299,82 @@ class AdminOverviewView(APIView):
         if set(request.query_params) - {"timeZone"}:
             raise APIError("Critère non autorisé.")
         actor = request.user
-        require_module(actor, "administration")
+        require_admin_tab(actor, "tableau-de-bord")
         zone = document_zone(request.query_params.dict())
         now = datetime.now(zone)
-        # Une seule photographie cohérente pour les compteurs et les listes.
-        with transaction.atomic():
-            metrics = {}
-            unavailable = []
-            for key, kind, filters in [
-                ("users", "utilisateurs", {}), ("activeUsers", "utilisateurs", {"ValideUser": True}),
-                ("inactiveUsers", "utilisateurs", {"ValideUser": False}), ("roles", "roles", {}), ("entities", "entites", {}),
-                ("activeLicences", "licences", {"statut_licence": "Active"}),
-                ("expiredLicences", "licences", {"ExpireeLicence": True}),
-                ("auditEvents", "audit", {}), ("fkMappings", "correspondances", {"ValideFkCorrespondance": True}),
-                ("settings", "parametres", {"ValideSetting": True}),
-            ]:
-                if kind in GLOBAL_ONLY and not actor.global_admin:
-                    metrics[key] = None; unavailable.append(key); continue
-                metrics[key] = scoped_count(actor, kind, {"filters": filters})
-            if actor.global_admin:
-                metrics["loginsToday"] = scoped_count(actor, "connexions", {"dateFrom": now.date().isoformat(), "dateTo": now.date().isoformat(), "filters": {"TypeLogin": "Connexion"}, "timeZone": str(zone)})
+        today = now.date().isoformat()
+        metric_targets = {
+            "users": {"kind": "utilisateurs", "filters": {}},
+            "activeUsers": {"kind": "utilisateurs", "filters": {"ValideUser": True}},
+            "inactiveUsers": {"kind": "utilisateurs", "filters": {"ValideUser": False}},
+            "roles": {"kind": "roles", "filters": {}},
+            "entities": {"kind": "entites", "filters": {}},
+            "activeLicences": {"kind": "licences", "filters": {"statut_licence": "Active"}},
+            "expiredLicences": {"kind": "licences", "filters": {"ExpireeLicence": True}},
+            "auditEvents": {"kind": "audit", "filters": {}},
+            "fkMappings": {"kind": "correspondances", "filters": {"ValideFkCorrespondance": True}},
+            "settings": {"kind": "parametres", "filters": {"ValideSetting": True}},
+            "loginsToday": {"kind": "connexions", "filters": {"TypeLogin": "Connexion"},
+                            "dateFrom": today, "dateTo": today},
+        }
+        metrics, unavailable, targets = {}, [], {}
+        for key, target in metric_targets.items():
+            if can_use_admin_tab(actor, target["kind"]):
+                targets[key] = target
             else:
-                metrics["loginsToday"] = None; unavailable.append("loginsToday")
-            users = model("T_Utilisateurs")
-            scope, scope_values = scope_for(users, actor, "u")
-            roles = db.query('''SELECT u."IdRoleFk",COALESCE(g."NomGenerique",'Non renseigné') AS "Role",count(*) AS count
-              FROM systeme."T_Utilisateurs" u LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk"
-              WHERE ''' + scope + ' GROUP BY u."IdRoleFk",g."NomGenerique" ORDER BY count DESC,u."IdRoleFk"', scope_values)
-            recent = []
-            activity = []
-            if actor.global_admin:
+                metrics[key] = None
+                unavailable.append(key)
+        dates = [(now.date() - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+        start = datetime.combine(now.date() - timedelta(days=6), time.min, tzinfo=zone)
+        roles, recent, activity, user_activity, user_status, expiring = [], [], [], [], [], []
+        with transaction.atomic():
+            for key, target in targets.items():
+                criteria = {name: value for name, value in target.items() if name != "kind"}
+                metrics[key] = scoped_count(actor, target["kind"], {**criteria, "timeZone": str(zone)})
+            if "users" in targets:
+                users = model("T_Utilisateurs")
+                scope, scope_values = scope_for(users, actor, "u")
+                roles = db.query("""SELECT u."IdRoleFk",COALESCE(g."NomGenerique",'Non renseigné') AS "Role",count(*) AS count
+                  FROM systeme."T_Utilisateurs" u LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk"
+                  WHERE """ + scope + ' GROUP BY u."IdRoleFk",g."NomGenerique" ORDER BY count DESC,u."IdRoleFk"', scope_values)
+                user_source, user_where, user_args, *_ = selection(actor, "utilisateurs", {})
+                created_days = {row["day"].isoformat(): row["n"] for row in db.query(
+                    'SELECT v."DatecreationUser"::date AS day,count(*) AS n FROM ' + source_sql(user_source)
+                    + ' WHERE ' + user_where + ' AND v."DatecreationUser">=%s GROUP BY 1',
+                    [*user_args, start.replace(tzinfo=None)],
+                )}
+                user_activity = [{"date": day, "users": created_days.get(day, 0)} for day in dates]
+                user_status = [
+                    {"key": "active", "label": "Actifs", "count": metrics["activeUsers"],
+                     "filters": targets["activeUsers"]["filters"]},
+                    {"key": "inactive", "label": "Inactifs", "count": metrics["inactiveUsers"],
+                     "filters": targets["inactiveUsers"]["filters"]},
+                ]
+            if "auditEvents" in targets:
                 recent = clean(db.query('SELECT * FROM systeme."V_Audit_log" ORDER BY "ChangedAt" DESC,"IdLog" DESC LIMIT 5'))
-                start = datetime.combine(now.date() - timedelta(days=6), time.min, tzinfo=zone)
-                login_days = {row["day"].isoformat(): row["n"] for row in db.query('SELECT ("DateLogin" AT TIME ZONE %s)::date AS day,count(*) AS n FROM systeme."V_Login_history" WHERE "DateLogin">=%s AND "TypeLogin"=%s GROUP BY 1', [str(zone), start, "Connexion"])}
-                audit_days = {row["day"].isoformat(): row["n"] for row in db.query('SELECT "ChangedAt"::date AS day,count(*) AS n FROM systeme."V_Audit_log" WHERE "ChangedAt">=%s GROUP BY 1', [start.replace(tzinfo=None)])}
-                activity = [{"date": (now.date() - timedelta(days=i)).isoformat(), "logins": login_days.get((now.date() - timedelta(days=i)).isoformat(), 0), "audit": audit_days.get((now.date() - timedelta(days=i)).isoformat(), 0)} for i in range(6, -1, -1)]
-            user_source,user_where,user_args,*_=selection(actor,"utilisateurs",{})
-            start_day=now.date()-timedelta(days=6)
-            created_days={row['day'].isoformat():row['n'] for row in db.query('SELECT v."DatecreationUser"::date AS day,count(*) AS n FROM '+source_sql(user_source)+' WHERE '+user_where+' AND v."DatecreationUser">=%s GROUP BY 1',[*user_args,datetime.combine(start_day,time.min)])}
-            user_activity=[{'date':(now.date()-timedelta(days=i)).isoformat(),'users':created_days.get((now.date()-timedelta(days=i)).isoformat(),0)} for i in range(6,-1,-1)]
-            obj, where, values, *_ = selection(actor, "licences", {"filters": {"statut_licence": "Active"}})
-            expiring = clean(db.query("SELECT v.* FROM " + db.qualified(obj["schema"], obj["name"]) + ' v WHERE ' + where + ' AND v."DateFin"<%s ORDER BY v."DateFin",v."IdLicence" LIMIT 5', [*values, (now + timedelta(days=30)).replace(tzinfo=None)]))
-        return ok({"generatedAt": now.isoformat(), "scope": {"kind": "global" if read_entity(actor) is None else "entity", "id": read_entity(actor)},
+                audit_days = {row["day"].isoformat(): row["n"] for row in db.query(
+                    'SELECT "ChangedAt"::date AS day,count(*) AS n FROM systeme."V_Audit_log" WHERE "ChangedAt">=%s GROUP BY 1',
+                    [start.replace(tzinfo=None)],
+                )}
+                activity = [{"date": day, "audit": audit_days.get(day, 0)} for day in dates]
+            if "loginsToday" in targets:
+                login_days = {row["day"].isoformat(): row["n"] for row in db.query(
+                    'SELECT ("DateLogin" AT TIME ZONE %s)::date AS day,count(*) AS n FROM systeme."V_Login_history" WHERE "DateLogin">=%s AND "TypeLogin"=%s GROUP BY 1',
+                    [str(zone), start, "Connexion"],
+                )}
+                activity = [{**entry, "logins": login_days.get(entry["date"], 0)}
+                            for entry in (activity or [{"date": day} for day in dates])]
+            if "activeLicences" in targets:
+                obj, where, values, *_ = selection(actor, "licences", {"filters": targets["activeLicences"]["filters"]})
+                expiring = clean(db.query("SELECT v.* FROM " + source_sql(obj) + ' WHERE ' + where
+                    + ' AND v."DateFin"<%s ORDER BY v."DateFin",v."IdLicence" LIMIT 5',
+                    [*values, (now + timedelta(days=30)).replace(tzinfo=None)]))
+        entity = read_entity(actor)
+        return ok({"generatedAt": now.isoformat(), "scope": {"kind": "global" if entity is None else "entity", "id": entity},
             "metrics": metrics, "unavailable": unavailable, "roleDistribution": roles, "activity": activity,
-            "recentAudit": recent, "expiringLicences": expiring, "userActivity":user_activity,
-            "userStatusDistribution":[{"key":"active","label":"Actifs","count":metrics['activeUsers'],"filters":{"ValideUser":True}},{"key":"inactive","label":"Inactifs","count":metrics['inactiveUsers'],"filters":{"ValideUser":False}}],
-            "metricTargets":{
-                "users":{"kind":"utilisateurs","filters":{}},"activeUsers":{"kind":"utilisateurs","filters":{"ValideUser":True}},
-                "inactiveUsers":{"kind":"utilisateurs","filters":{"ValideUser":False}},"roles":{"kind":"roles","filters":{}},
-                "entities":{"kind":"entites","filters":{}},"activeLicences":{"kind":"licences","filters":{"statut_licence":"Active"}},
-                "expiredLicences":{"kind":"licences","filters":{"ExpireeLicence":True}},"auditEvents":{"kind":"audit","filters":{}},
-                "fkMappings":{"kind":"correspondances","filters":{"ValideFkCorrespondance":True}},"settings":{"kind":"parametres","filters":{"ValideSetting":True}},
-                "loginsToday":{"kind":"connexions","filters":{"TypeLogin":"Connexion"},"dateFrom":now.date().isoformat(),"dateTo":now.date().isoformat()}},
-            **capabilities(actor)})
+            "recentAudit": recent, "expiringLicences": expiring, "userActivity": user_activity,
+            "userStatusDistribution": user_status, "metricTargets": targets,
+            **capabilities(actor, "tableau-de-bord")})
 
 
 class AdminCSVView(ExcelDownloadView):

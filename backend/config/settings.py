@@ -20,6 +20,7 @@ if not SECRET_KEY:
         "Définir DJANGO_SECRET_KEY ou JWT_SECRET dans backend/.env."
     )
 DEBUG = flag("DJANGO_DEBUG")
+DJANGO_ADMIN_ENABLED = True
 ALLOWED_HOSTS = [
     v.strip()
     for v in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(
@@ -94,6 +95,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": ["apps.core.parsers.ExactJSONParser"],
     "EXCEPTION_HANDLER": "apps.core.responses.exception_handler",
     "DEFAULT_THROTTLE_RATES": {"login": "10/min"},
+    # Waitress normalise REMOTE_ADDR après validation du frontal de confiance.
+    "NUM_PROXIES": 0,
 }
 CORS_ALLOWED_ORIGINS = [
     v.strip()

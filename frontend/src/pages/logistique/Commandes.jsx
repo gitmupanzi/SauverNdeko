@@ -1,7 +1,7 @@
 import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
@@ -49,7 +49,13 @@ export default function Commandes({title = "Bons de stock", references:receivedR
  const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.commandes");
   const {user}=useAuth(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
-  const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+  const writable=useEntityScope().canWrite&&user?.permissions?.canWriteData===true;
+  const canWrite=writable&&tabRights(user,"logistique","commandes").canManage;
+  const canCompose=canWrite&&tabRights(user,"logistique","details").canManage&&tabRights(user,"logistique","articles").canRead;
+  const canAddLine=writable&&tabRights(user,"logistique","details").canManage;
+  const canEditInvoice=writable&&tabRights(user,"logistique","factures").canManage;
+  const canReadInvoices=tabRights(user,"logistique","factures").canRead;
+  const canExport=user?.permissions?.canExportData!==false&&tabRights(user,"logistique","commandes").canExport===true;
   const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateCmd",sortDir:"desc"}),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
   const [search,setSearch]=useState(sharedTable?.searchValue||""),[criteria,setCriteria]=useState(()=>({...EMPTY_FILTERS,q:sharedTable?.searchValue||""})),[filters,setFilters]=useState(EMPTY_FILTERS),[filtersOpen,setFiltersOpen]=useState(false),[filtersError,setFiltersError]=useState("");
   const [columnsOpen,setColumnsOpen]=useState(false),columnsAnchorRef=useRef(null),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS);
@@ -73,16 +79,16 @@ export default function Commandes({title = "Bons de stock", references:receivedR
   function preset(key){const next={payment:key==="non-facturee"?key:key==="retard"?key:"all",control:key==="sans-details"?key:"all"};setFilters(current=>({...current,...next}));setCriteria(current=>({...current,...next}));changeGrid({skip:0});}
   function openOrder(row){consultations.openOrder(row);}
   function openLines(row){if(onOpenDetails)onOpenDetails(row);else consultations.openOrderLines?.(row);}
-  function edit(row){if(canWrite)setEditor({id:row.ID_Commande});}
-  function create(){if(canWrite)setEditor({id:null});}
-  function addLine(row){if(canWrite&&!closed(row))setLineBon(row);}
+  function edit(row){if(canCompose)setEditor({id:row.ID_Commande});}
+  function create(){if(canCompose)setEditor({id:null});}
+  function addLine(row){if(canAddLine&&!closed(row))setLineBon(row);}
   function saved(record,operation){setEditor(null);setDeleting(null);setSavedRecord(operation==="deleted"?null:record);setSavedOperation(operation);setFeedback({type:"success",message:{created:"Bon de stock créé.",updated:"Bon de stock mis à jour.",deleted:"Bon de stock supprimé."}[operation]});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();if(operation==="deleted"){setSelectionResetKey(value=>value+1);sharedTable?.clearSelectedRow?.();}}
   function savedLine(){setLineBon(null);setSavedRecord(lineBon);setSavedOperation("lineCreated");setFeedback({type:"success",message:"Ligne ajoutée au bon."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
   function openInvoice(id){const row=rows.find(item=>String(item.ID_Commande)===String(id));if(meta?.features?.invoices!==true||row&&!row.CodeFacture&&!canCreateStockInvoice(row))return;setEditor(null);setInvoiceEditorId(id);}
   function savedReturn(result){setReturnEditorId(null);setSavedRecord(result.bonRetour);setSavedOperation("return");setFeedback({type:"success",message:"Restitution enregistrée."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
   function savedInvoice(record,operation){setInvoiceEditorId(null);setSavedRecord(record);setSavedOperation("invoice");setFeedback({type:"success",message:operation==="created"?"Facture créée.":"Facture mise à jour."});setLocalRevision(value=>value+1);refreshFolders();onDataChanged?.();}
   useEffect(()=>{try{localStorage.setItem("sauverndeko.table.density",density);}catch{/* Préférence facultative. */}},[density]);
-  useEffect(()=>{if(sharedTable?.composerMode!=="create")return;if(canWrite)create();sharedTable?.setComposerMode?.("view");},[sharedTable?.composerMode,canWrite]);
+  useEffect(()=>{if(sharedTable?.composerMode!=="create")return;if(canCompose)create();sharedTable?.setComposerMode?.("view");},[sharedTable?.composerMode,canCompose]);
   useEffect(()=>{
     let active=true;setLoading(true);setError("");
     CONFIG.fetchRows({...criteria,...grid,depotId:depotScope.depotId,timeZone:"Africa/Kinshasa"}).then(response=>{
@@ -125,17 +131,17 @@ export default function Commandes({title = "Bons de stock", references:receivedR
     {key:"actions",label:"Actions",width:110,sortable:false,render:row=><div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" title="Consulter le bon" aria-label={"Consulter le bon "+(row.CodeCmd||"sans code")} onClick={()=>openOrder(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[...stockDocuments(row),recordExcel('commandes',{ID_Commande:row.ID_Commande},'Bon de stock')]} label={row.CodeCmd||"Bon de stock"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openOrder(row)},
       {label:"Voir les lignes",icon:"list",onSelect:()=>openLines(row)},
-      {label:"Modifier",icon:"edit",disabled:!canWrite||closed(row),reason:!canWrite?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>edit(row)},
-      {label:"Ajouter une ligne",icon:"plus",disabled:!canWrite||closed(row),reason:!canWrite?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>addLine(row)},
+      {label:"Modifier",icon:"edit",disabled:!canCompose||closed(row),reason:!canCompose?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>edit(row)},
+      {label:"Ajouter une ligne",icon:"plus",disabled:!canAddLine||closed(row),reason:!canAddLine?"Accès en consultation":closed(row)?"Ce bon est clôturé.":"",onSelect:()=>addLine(row)},
       ...(stockDocumentKind(row)==="sortie"&&row.returnContext?.available===true&&!row.returnContext.isReturn?[{label:"Restituer des articles",icon:"stock-in",disabled:!canWrite||row.returnContext.canReturn!==true,reason:!canWrite?"Accès en consultation":row.returnContext.reason||"",onSelect:()=>{if(canWrite&&stockDocumentKind(row)==="sortie"&&row.returnContext.canReturn===true)setReturnEditorId(row.ID_Commande);}}]:[]),
-      ...(meta?.features?.invoices===true&&(row.CodeFacture||canCreateStockInvoice(row))?[{label:row.CodeFacture?"Consulter / modifier la facture":"Créer la facture",icon:"document",disabled:!canWrite&&!row.CodeFacture,reason:!canWrite&&!row.CodeFacture?"Accès en consultation":"",onSelect:()=>openInvoice(row.ID_Commande)}]:[]),
+      ...(canReadInvoices&&meta?.features?.invoices===true&&(row.CodeFacture||canCreateStockInvoice(row))?[{label:row.CodeFacture?"Consulter / modifier la facture":"Créer la facture",icon:"document",disabled:!canEditInvoice&&!row.CodeFacture,reason:!canWrite&&!row.CodeFacture?"Accès en consultation":"",onSelect:()=>openInvoice(row.ID_Commande)}]:[]),
       {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite,reason:!canWrite?"Accès en consultation":"Les conditions de suppression seront vérifiées.",onSelect:()=>{if(canWrite)setDeleting(row.ID_Commande);}},
     ]}/></div>},
   ].sort((a,b)=>(a.key==="AncienCodeCmd"?0.5:DEFAULT_COLUMNS.indexOf(a.key)<0?99:DEFAULT_COLUMNS.indexOf(a.key))-(b.key==="AncienCodeCmd"?0.5:DEFAULT_COLUMNS.indexOf(b.key)<0?99:DEFAULT_COLUMNS.indexOf(b.key)));
   function filterLabel(key,value){return options[key]?.find(option=>String(option.value)===String(value))?.label||(key==="dateFrom"||key==="dateTo"?value.split("-").reverse().join("/"):value);}
   return <div className="logistics-screen commandes-register">
     <div aria-live="polite"><StatusBanner feedback={feedback}/>{savedRecord?<div className="commandes-saved-actions"><ActionButton icon="eye" onClick={()=>openOrder(savedRecord)}>Consulter le bon</ActionButton>{savedOperation==="created"&&canWrite?<ActionButton icon="plus" onClick={()=>addLine(savedRecord)}>Ajouter des lignes</ActionButton>:null}</div>:null}</div>
-    <RegisterSurface title={title} subtitle="Entrées, sorties et suivi des bons" actions={<><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/><ActionButton icon="plus" variant="primary" onClick={create} disabled={!canWrite} title={!canWrite?"Accès en consultation":"Créer un bon de stock"}>Nouveau bon</ActionButton></>} tabs={<RegisterCategoryFilter label="Suivi des bons" value={criteria.control==="sans-details"?"sans-details":["non-facturee","retard"].includes(criteria.payment)?criteria.payment:criteria.control==="all"&&criteria.payment==="all"?"all":"custom"} options={[{value:"all",label:"Tous les bons"},{value:"sans-details",label:"Sans lignes"},{value:"non-facturee",label:"Non facturés"},{value:"retard",label:"En retard"},{value:"custom",label:"Filtres personnalisés",disabled:true}]} onChange={preset}/>}>
+    <RegisterSurface title={title} subtitle="Entrées, sorties et suivi des bons" actions={<><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/><ActionButton icon="plus" variant="primary" onClick={create} disabled={!canCompose} title={!canWrite?"Accès en consultation":"Créer un bon de stock"}>Nouveau bon</ActionButton></>} tabs={<RegisterCategoryFilter label="Suivi des bons" value={criteria.control==="sans-details"?"sans-details":["non-facturee","retard"].includes(criteria.payment)?criteria.payment:criteria.control==="all"&&criteria.payment==="all"?"all":"custom"} options={[{value:"all",label:"Tous les bons"},{value:"sans-details",label:"Sans lignes"},{value:"non-facturee",label:"Non facturés"},{value:"retard",label:"En retard"},{value:"custom",label:"Filtres personnalisés",disabled:true}]} onChange={preset}/>}>
       <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
         {selection.length?<div className="erp-register-selection"><strong>{selection.length===1?selection[0].CodeCmd||"Bon sélectionné":selection.length+" bons sélectionnés"}</strong>{selection.length===1?<><ActionButton icon="eye" onClick={()=>openOrder(selection[0])}>Consulter</ActionButton>{canWrite?<ActionButton icon="edit" onClick={()=>edit(selection[0])} disabled={loading||closed(selection[0])}>Modifier</ActionButton>:null}</>:null}{canExport?<ExportMenu selection exportFile={()=>exportExcel("xlsx",selection)} exportCsv={()=>exportExcel("csv",selection)} disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} exporting={exporting}/>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={()=>{setSelectionResetKey(value=>value+1);sharedTable?.clearSelectedRow?.();}}/></div>:null}
         {error?<div className="erp-table-error" role="alert">{error}<ActionButton icon="refresh" onClick={()=>setLocalRevision(value=>value+1)}>Réessayer</ActionButton></div>:null}

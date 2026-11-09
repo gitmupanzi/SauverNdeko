@@ -1,7 +1,7 @@
 import {referenceOptions,REFERENCE_RETAINED_HINT,isRetainedReference} from "../../utils/referenceOptions";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
-import {moduleRights,accessSignature} from "../../services/moduleAccess";
+import {tabRights,accessSignature} from "../../services/moduleAccess";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
 import ConsultationTabs from "../../components/ConsultationTabs";
 import SearchSelect from "../../components/SearchSelect";
@@ -20,7 +20,7 @@ function Field({id,label,error,hint,children}){return <div className="record-fie
 
 export default function ReglementBatchEditor({references,initialInvoices=[],onClose,onSaved}){
  const {user}=useAuth(),prefix=useId(),mounted=useRef(true),saving=useRef(false),snapshot=useRef(null),token=useRef(0),started=useRef(false),confirmRef=useRef(null);
- const context=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??"")+":"+accessSignature(user),initialContext=useRef(context),canWrite=user?.permissions?.canWriteData===true&&moduleRights(user,"logistique").canManage===true&&context===initialContext.current;
+ const context=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??"")+":"+accessSignature(user),initialContext=useRef(context),canWrite=user?.permissions?.canWriteData===true&&tabRights(user,"logistique","reglements").canManage===true&&context===initialContext.current;
  const [active,setActive]=useState("factures"),[client,setClient]=useState(""),[search,setSearch]=useState(""),[query,setQuery]=useState(""),[grid,setGrid]=useState({take:10,skip:0,sortBy:"DateFacture",sortDir:"desc"}),[rows,setRows]=useState([]),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[catalogueError,setCatalogueError]=useState(""),[reload,setReload]=useState(0),[selected,setSelected]=useState(initialInvoices),[selectionReset,setSelectionReset]=useState(0);
  const [basket,setBasket]=useState([]),[preparations,setPreparations]=useState({}),[draft,setDraft]=useState(null),[draftBaseline,setDraftBaseline]=useState(""),[editing,setEditing]=useState(null),[queue,setQueue]=useState([]),[issues,setIssues]=useState({}),[rowErrors,setRowErrors]=useState({}),[error,setError]=useState(""),[notice,setNotice]=useState(""),[pending,setPending]=useState(null);
  const [preparing,setPreparing]=useState(false),[refreshing,setRefreshing]=useState(false),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[closeWarning,setCloseWarning]=useState(false);

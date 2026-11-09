@@ -40,6 +40,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r backend/requirements.txt
       - run: python -m unittest discover -s scripts/tests -p 'test_render*.py'
+      - run: python -m unittest discover -s scripts/tests -p test_json_parser_security.py
       - run: python -m unittest discover -s scripts/tests -p test_backup_constraint_comments.py
       - run: npm ci && npm run test:ux && npm run build
         working-directory: frontend

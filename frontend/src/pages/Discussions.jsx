@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ModuleSidebar from "../components/ModuleSidebar";
+import ListState from "../components/ListState";
+import { useAuth } from "../contexts/AuthContext";
+import { tabRights } from "../services/moduleAccess";
 import DiscussionMessages from "./discussions/DiscussionMessages";
 import Announcements from "./discussions/Announcements";
 import DemandRegister from "./demandes/DemandRegister";
@@ -20,12 +23,16 @@ const menuGroups = [{
 }];
 
 export default function Discussions() {
+  const {user} = useAuth();
   const [params, setParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(sidebarPreference) !== "false"; }
     catch { return true; }
   });
-  const active = ["annonces", "demandes"].includes(params.get("onglet")) ? params.get("onglet") : "messages";
+  const items = menuGroups[0].items.filter(item => tabRights(user, "discussions", item.key).canRead);
+  const requested = params.get("onglet") || "messages";
+  const active = items.some(item => item.key === requested) ? requested : items[0]?.key;
+  const showMessages = items.some(item => item.key === "messages");
 
   useEffect(() => {
     try { localStorage.setItem(sidebarPreference, String(collapsed)); }
@@ -45,13 +52,14 @@ export default function Discussions() {
 
   return (
     <div className={"logistics-modern logistics-app admin-portal communications-module" + (active === "messages" ? " is-messaging" : "") + (collapsed ? " is-menu-collapsed" : "")}>
-      <ModuleSidebar title="Discussions" groups={menuGroups} activeKey={active}
+      <ModuleSidebar title="Discussions" groups={[{...menuGroups[0], items}]} activeKey={active}
         onNavigate={navigate} collapsed={collapsed} onToggle={() => setCollapsed(value => !value)}
         storageKey="sauverndeko.discussions.navigation" headerProps={{ showEntityScope: false }} />
       <main className="admin-main communications-main" tabIndex={-1}>
-        <section className="communication-messaging" hidden={active !== "messages"} aria-label="Messages privés">
+        {showMessages && <section className="communication-messaging" hidden={active !== "messages"} aria-label="Messages privés">
           <DiscussionMessages visible={active === "messages"} />
-        </section>
+        </section>}
+        {!active && <ListState icon="shield" title="Aucun onglet accessible" />}
         {active === "annonces" && <Announcements />}
         {active === "demandes" && <DemandRegister />}
       </main>

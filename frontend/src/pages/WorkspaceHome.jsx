@@ -1,5 +1,5 @@
 import "./Applications.css";
-import { accessSignature } from "../services/moduleAccess";
+import { accessSignature, tabRights } from "../services/moduleAccess";
 import {applicationClassificationValid,applicationGroups,applicationGroupCount,applicationParentLabel,applicationRetired} from "../services/applicationCatalogue";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
@@ -68,7 +68,7 @@ export default function WorkspaceHome() {
           </form>
         </div>
 
-        <div className="application-links workspace-offer-links"><Link to="/applications" className="ui-action is-secondary"><AppIcon name="apps"/>Découvrir les applications</Link>{user?.permissions?.canAccessAdmin ? <Link to="/abonnements" className="ui-action is-secondary"><AppIcon name="settings"/>Licences et applications</Link> : null}</div>
+        <div className="application-links workspace-offer-links"><Link to="/applications" className="ui-action is-secondary"><AppIcon name="apps"/>Découvrir les applications</Link>{user?.permissions?.canAccessAdmin && (tabRights(user, "administration", "licences").canRead || tabRights(user, "administration", "permissions").canRead) ? <Link to="/abonnements" className="ui-action is-secondary"><AppIcon name="settings"/>Licences et applications</Link> : null}</div>
         {viewLoading ? <ListState role="status" loading title="Chargement de vos applications…" className="workspace-status"/> : null}
         {!viewLoading && viewError ? <ListState role="alert" icon="alert" title="Vos applications sont indisponibles" description={viewError} action={<ActionButton icon="refresh" onClick={()=>setVersion(current=>current+1)}>Réessayer</ActionButton>} className="workspace-status"/> : null}
         {!viewLoading && !viewError ? (

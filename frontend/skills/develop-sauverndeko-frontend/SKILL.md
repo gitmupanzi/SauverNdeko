@@ -17,6 +17,8 @@ Le module Guide utilisateur réutilise la navigation, les thèmes et le contexte
 
 Lire les [consignes du projet](../../../skills/AGENTS.md) avant une intervention.
 
+Les droits par onglet viennent de `moduleAccess.tabs` et se lisent via `tabRights`. Masquer les entrées interdites, rendre un état d’accès refusé pour un lien direct et attendre l’autorisation avant de monter le contenu. Les actions de gestion et d’export restent indépendantes. Appliquer la même règle aux raccourcis, aux fiches 360 et aux liens vers les registres voisins. Le backend confirme les droits à chaque appel.
+
 ## Références
 
 **Libellés catégoriels communs :** pour les choix provenant de `referentiel.T_Generique`, afficher `AbrGenerique` et transmettre `ID_Generique`. Appliquer cette règle aux listes SearchSelect, filtres, formulaires, paniers et anciennes valeurs conservées, y compris Support. Ne pas remplacer cette abréviation par `NomGenerique` ni afficher un identifiant de catégorie à la place de la valeur choisie. Si l’abréviation manque, conserver l’identifiant et un libellé neutre explicite ; ne pas modifier les données pour corriger un simple affichage. Les listes d’entreprises, utilisateurs et catégories gardent leurs propres libellés.

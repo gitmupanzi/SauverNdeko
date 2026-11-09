@@ -24,3 +24,25 @@
 .immobilisation-editor .record-field.is-wide { grid-column:1/-1; }
 .immobilisation-editor output { display:block; font-size:13px; padding:8px 0; color:var(--erp-text); }
 @media(max-width:640px) { .immobilisation-360-body { padding:16px; }.immobilisation-identity-actions { margin-left:0; width:100%; }.immobilisation-overview { grid-template-columns:1fr; } }
+.immobilisation-identity .erp-status + .erp-status { margin-inline-start:6px; }
+.immobilisation-section-stack { display:grid; gap:14px; min-width:0; }
+.immobilisation-panel-heading { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
+.immobilisation-panel-heading h3 { margin:0 0 6px; }
+.immobilisation-panel-heading p { margin:0; }
+.immobilisation-panel-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.immobilisation-metrics,.immobilisation-plan-details { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:8px; }
+.immobilisation-metrics>div,.immobilisation-plan-details>div { min-width:0; padding:10px; }
+.immobilisation-metrics>div { border:1px solid var(--erp-border); border-radius:8px; background:var(--erp-raised); }
+.immobilisation-metrics dt,.immobilisation-plan-details dt { color:var(--erp-muted); font-size:12px; font-weight:500; }
+.immobilisation-metrics dd,.immobilisation-plan-details dd { margin:5px 0 0; color:var(--erp-text); overflow-wrap:anywhere; }
+.immobilisation-metrics dd { font-size:16px; font-weight:700; }
+.immobilisation-details { padding-top:10px; margin-top:10px; border-top:1px solid var(--erp-border); }
+.immobilisation-details>summary { color:var(--erp-text); cursor:pointer; font-size:13px; font-weight:600; }
+.immobilisation-details>summary span { color:var(--erp-muted); margin-inline-start:5px; }
+.immobilisation-details[open]>summary { margin-bottom:10px; }
+.immobilisation-history-text { white-space:pre-wrap; overflow-wrap:anywhere; }
+.immobilisation-action-editor .record-field.is-wide { grid-column:1/-1; }
+.immobilisation-action-confirm { display:grid; gap:5px; margin-top:14px; }
+.immobilisation-action-confirm label { display:flex; align-items:flex-start; gap:8px; font-size:13px; }
+.immobilisation-action-confirm input { width:16px; height:16px; flex:0 0 16px; margin:2px 0 0; }
+.immobilisation-plan-details .immobilisation-plan-justification { grid-column:1/-1; }

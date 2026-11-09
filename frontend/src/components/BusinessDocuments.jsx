@@ -9,10 +9,11 @@ import {formatDate} from "../pages/logistique/logistiqueShared";
 import "./BusinessDocuments.css";
 const LABELS={commande:"Bon de commande",entree:"Bon d’entrée",sortie:"Bon de sortie",livraison:"Bon de livraison",facture:"Facture",recu:"Reçu",avoir:"Avoir"};
 const MIME_TYPES=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
-export default function BusinessDocuments({kind,objectId,types=[],refreshKey=0}){
+export default function BusinessDocuments({kind,objectId,types=[],refreshKey=0,canWrite=true,onChanged}){
  const {user}=useAuth(),scope=useEntityScope(),input=useRef(null),mounted=useRef(true),operation=useRef(null),activeIdentity=useRef("");
  const [collection,setCollection]=useState({identity:"",rows:[]}),[error,setError]=useState(""),[failed,setFailed]=useState(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[version,setVersion]=useState(0),[removing,setRemoving]=useState(null);
- const writable=scope.canWrite&&user?.permissions?.canWriteData===true,canDownload=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+ const writable=canWrite&&scope.canWrite&&user?.permissions?.canWriteData===true,canDownload=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true
+  &&(kind!=="immobilisation"||user?.moduleAccess?.tabs?.logistique?.immobilisations?.canExport===true);
  const base="/api/logistique/documents/"+kind+"/"+objectId,identity=scope.scopeKey+":"+base;activeIdentity.current=identity;
  const pieces=collection.identity===identity?collection.rows:[];
  const current=key=>mounted.current&&activeIdentity.current===key;
@@ -30,12 +31,12 @@ export default function BusinessDocuments({kind,objectId,types=[],refreshKey=0})
   if(file.size>8*1024*1024){setError("Choisissez un fichier de 8 Mo maximum.");setFailed(null);return;}
   const key=identity,ticket={};operation.current=ticket;setBusy(true);setError("");setFailed(null);const body=new FormData();body.set("file",file);
   const result=await requestJson(base+"/pieces",{requiresAuth:true,method:"POST",body});if(!current(key))return;operation.current=null;setBusy(false);
-  if(result?.success)setVersion(v=>v+1);else{setError(!result?.status||result.status>=500?"L’ajout reste à vérifier. Actualisez les justificatifs avant de renvoyer le fichier.":result?.message||"Le justificatif n’a pas pu être ajouté.");setFailed({kind:"list"});}
+  if(result?.success){setVersion(v=>v+1);onChanged?.();}else{setError(!result?.status||result.status>=500?"L’ajout reste à vérifier. Actualisez les justificatifs avant de renvoyer le fichier.":result?.message||"Le justificatif n’a pas pu être ajouté.");setFailed({kind:"list"});}
  }
  async function remove(){
   if(operation.current||!removing||!writable)return;const key=identity,ticket={};operation.current=ticket;setBusy(true);setError("");setFailed(null);
   const result=await requestJson(base+"/pieces/"+removing.ID_Piece,{requiresAuth:true,method:"DELETE"});if(!current(key))return;operation.current=null;setBusy(false);
-  if(result?.success){setRemoving(null);setVersion(v=>v+1);}else{setError(result?.message||"Le justificatif n’a pas pu être retiré.");setFailed({kind:"list"});}
+  if(result?.success){setRemoving(null);setVersion(v=>v+1);onChanged?.();}else{setError(result?.message||"Le justificatif n’a pas pu être retiré.");setFailed({kind:"list"});}
  }
  function retry(){if(busy)return;if(failed?.kind==="download")download(failed.url,failed.options);else{setError("");setFailed(null);setVersion(v=>v+1);}}
  return <section className="business-documents record-editor-section"><div className="business-document-heading"><h3><AppIcon name="document"/>Documents</h3><div>{types.map(type=><ActionButton key={type} icon="download" disabled={busy||!canDownload} onClick={()=>download(base+"/"+type+".pdf",{contentType:"application/pdf",filename:type+"-"+objectId+".pdf"})}>{LABELS[type]||type} · PDF</ActionButton>)}</div></div>

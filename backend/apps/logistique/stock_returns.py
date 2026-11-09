@@ -1,5 +1,7 @@
 """Liaisons de retours physiques : lecture des protections, sans effet de stock."""
 from apps.core import db
+from apps.core.module_access import can_use_tab
+from .tab_access import can_read_tabs, mask_order
 
 
 def inventory_adjustment(command_id):
@@ -56,7 +58,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.db import DatabaseError,transaction
 from rest_framework.views import APIView
-from apps.core.module_access import require_module,access_snapshot
+from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model,view
 from apps.core.repository import positive,get_record,predicate,mutate,audit,clean
@@ -128,10 +130,10 @@ def return_policy(actor,snapshot,*,writing=False):
         except APIError as error:
             if writing:raise error
             reason='Vérifiez la devise et le type de bon d’entrée dans le référentiel.'
-    if not reason and not access_snapshot(actor)['modules']['logistique']['canManage']:reason='Votre rôle ne permet pas de valider un retour.'
+    if not reason and not can_use_tab(actor, 'logistique', 'commandes', 'manage'):reason='Votre rôle ne permet pas de valider un retour.'
     if not reason and settings.DB_READ_ONLY:reason='Les écritures sont momentanément indisponibles.'
     return {'available':True,'canReturn':not reason,'reason':reason,'revision':return_revision(snapshot),
-            'requiresCreditNote':bool(str(snapshot['raw'].get('CodeFacture') or '').strip()),'entryType':selected}
+            'requiresCreditNote':can_read_tabs(actor, 'factures') and bool(str(snapshot['raw'].get('CodeFacture') or '').strip()),'entryType':selected}
 
 
 def preview_returns(actor,command_id):
@@ -139,10 +141,10 @@ def preview_returns(actor,command_id):
     source_context(actor,command_id)
     defaults={'DateCmd':datetime.now(ZoneInfo(settings.TIME_ZONE)).replace(tzinfo=None).isoformat(timespec='minutes')}
     if not return_feature_ready():
-        return {'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id}),
+        return {'bonOrigine':mask_order(actor,get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id})),
                 'lignes':[],'retours':[],'defaults':defaults,'timeZone':settings.TIME_ZONE}, {'available':False,'canReturn':False,'reason':'Les retours de stock ne sont pas encore disponibles.','revision':None}
     snapshot=return_snapshot(actor,command_id)
-    return clean({'bonOrigine':snapshot['bon'],'lignes':snapshot['lignes'],'retours':snapshot['retours'],
+    return clean({'bonOrigine':mask_order(actor,snapshot['bon']),'lignes':snapshot['lignes'],'retours':snapshot['retours'],
                   'defaults':defaults,'timeZone':settings.TIME_ZONE}),return_policy(actor,snapshot)
 
 
@@ -190,8 +192,8 @@ def return_hash(actor,command_id,data):
 
 
 def return_result(actor,source_id,child_id,*,replayed):
-    return clean({'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':source_id}),
-                  'bonRetour':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':child_id}),'replayed':replayed})
+    return clean({'bonOrigine':mask_order(actor,get_record(view('logistique','V_Commande'),actor,{'ID_Commande':source_id})),
+                  'bonRetour':mask_order(actor,get_record(view('logistique','V_Commande'),actor,{'ID_Commande':child_id})),'replayed':replayed})
 
 
 def record_return(actor,command_id,body):
@@ -295,7 +297,7 @@ def annotate_return_context(rows,actor):
     from .receipts import entry_types,default_entry_type
     try:configured=default_entry_type(entry_types(actor)) is not None
     except APIError:configured=False
-    manage=access_snapshot(actor)['modules']['logistique']['canManage']
+    manage=can_use_tab(actor, 'logistique', 'commandes', 'manage')
     indexed={row['ID_Commande']:row for row in contexts};result=[]
     for row in rows:
         state=indexed.get(row['ID_Commande'])

@@ -145,7 +145,7 @@ class SupportImportTests(unittest.TestCase):
         self.assertEqual(self.counts(), (0, 0))
 
     def test_template_is_empty_native_and_uses_only_authorized_choices(self):
-        context = {'requiredFields': ['Objet', 'Description'], 'references': {}, 'users': [
+        context = {'canLinkAsset': False, 'requiredFields': ['Objet', 'Description'], 'references': {}, 'users': [
             {'id': 12, 'label': 'Agent autorisé'}, {'id': 99, 'label': 'Ancien agent', 'disabled': True}]}
         request = self.factory.get('/api/support/tickets/modele.xlsx')
         force_authenticate(request, self.actor)
@@ -153,6 +153,7 @@ class SupportImportTests(unittest.TestCase):
             response = batches.SupportTemplateView.as_view()(request)
         book = load_workbook(io.BytesIO(b''.join(response.streaming_content)))
         self.assertEqual(book['Tickets']['A1'].value, 'Objet')
+        self.assertNotIn('Immobilisation li\u00e9e', [cell.value for cell in book['Tickets'][1]])
         self.assertIsNone(book['Tickets']['A2'].value)
         self.assertEqual(book['Tickets']['A1'].fill.fgColor.rgb[-6:], 'F3F4F6')
         self.assertEqual(book['Tickets'].freeze_panes, 'A2')
@@ -162,6 +163,22 @@ class SupportImportTests(unittest.TestCase):
         self.assertTrue(book['Tickets'].data_validations.dataValidation)
         self.assertEqual(response['Cache-Control'], 'no-store, private')
         book.close()
+
+    def test_preview_checks_asset_permission_only_for_nonempty_links(self):
+        self.actor._module_access = {
+            'modules': {'logistique': {'canRead': True}},
+            'tabs': {'logistique': {'immobilisations': {'canRead': False}}},
+        }
+        for asset, expected in ((None, 200), ('12', 403)):
+            with self.subTest(asset=asset):
+                binary = workbook([['Objet', 'Description', portal.ASSET_FIELD], ['A', 'B', asset]])
+                upload = SimpleUploadedFile('tickets.xlsx', binary)
+                request = self.factory.post('/api/support/tickets/import-excel', {'fichier': upload}, format='multipart')
+                force_authenticate(request, self.actor)
+                with patch.object(portal, '_write_access'), patch.object(batches.HasModuleAccess, 'has_permission', return_value=True):
+                    response = batches.SupportExcelPreviewView.as_view()(request)
+                self.assertEqual(response.status_code, expected)
+                self.assertEqual(self.counts(), (0, 0))
 
     def test_formulas_are_rejected_before_preview(self):
         binary = workbook([['Objet', 'Description'], ['=1+2', 'Description']])

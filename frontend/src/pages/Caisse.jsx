@@ -1,5 +1,7 @@
 import {useEffect,useState} from "react";
 import {useSearchParams} from "react-router-dom";
+import {useAuth} from "../contexts/AuthContext";
+import {accessSignature,tabRights} from "../services/moduleAccess";
 import {useEntityScope} from "../contexts/EntityScopeContext";
 import {requestJson} from "../services/api";
 import {useModulePresentation} from "../hooks/useModulePresentation";
@@ -26,24 +28,28 @@ const SIDEBAR_GROUPS = [
 ];
 
 export default function Caisse(){
- const scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[retry,setRetry]=useState(0),[state,setState]=useState({owner:"",data:null,references:{},loading:true,error:""}),[drawer,setDrawer]=useState(null),[feedback,setFeedback]=useState(""),[collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.caisse.sidebar-collapsed")==="true";}catch{return false;}});
- const active=caisseTab(params.get("onglet")),owner=scope.scopeKey,current=state.owner===owner?state:{data:null,references:{},loading:true,error:""},context=current.data,references=current.references;
+ const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[retry,setRetry]=useState(0),[state,setState]=useState({owner:"",data:null,references:{},loading:true,error:""}),[drawer,setDrawer]=useState(null),[feedback,setFeedback]=useState(""),[collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("sauverndeko.caisse.sidebar-collapsed")==="true";}catch{return false;}});
+ const owner=scope.scopeKey+":"+accessSignature(user),current=state.owner===owner?state:{data:null,references:{},loading:true,error:""},context=current.data,references=current.references;
  const {presentation,loading:presentationLoading,error:presentationError,retry:retryPresentation}=useModulePresentation("caisse",scope);
  const tabLabels=presentation?.tabLabels;
  const groups=presentationLoading?[]:SIDEBAR_GROUPS.map(group=>({
   ...group,
-  items:group.items.filter(item=>!presentation?.hiddenTabs?.includes(item.key))
+  items:group.items.filter(item=>tabRights(user,"caisse",item.key).canRead&&!presentation?.hiddenTabs?.includes(item.key))
    .map(item=>({...item,label:tabLabels?.[item.key]||item.label})),
  })).filter(group=>group.items.length);
+ const requested=params.get("onglet"),active=requested?caisseTab(requested):groups[0]?.items[0]?.key;
+ const access=active?tabRights(user,"caisse",active).canRead:false;
+ const hasReadableTabs=SIDEBAR_GROUPS.some(group=>group.items.some(item=>tabRights(user,"caisse",item.key).canRead));
+ function canOpen(kind,mode){return tabRights(user,"caisse",kind)[mode?"canManage":"canRead"];}
  useReferencesRefresh(()=>setRefresh(value=>value+1));
  useEffect(()=>{setFeedback("");},[owner]);
  useEffect(()=>{try{localStorage.setItem("sauverndeko.caisse.sidebar-collapsed",String(collapsed));}catch{}},[collapsed]);
- useEffect(()=>{const controller=new AbortController();setState(previous=>({...previous,owner,data:previous.owner===owner?previous.data:null,references:previous.owner===owner?previous.references:{},loading:true,error:""}));Promise.all([requestJson(CAISSE_ROOT+"/contexte",{requiresAuth:true,signal:controller.signal}),requestJson(CAISSE_ROOT+"/references",{requiresAuth:true,signal:controller.signal})]).then(([response,refs])=>{if(controller.signal.aborted)return;setState({owner,data:response?.success?response.data:null,references:refs?.success?refs.data:{},loading:false,error:!response?.success?response?.message||"Le module Caisse n’est pas disponible.":!refs?.success?refs?.message||"Les listes de référence ne sont pas disponibles.":""});});return()=>controller.abort();},[owner,refresh,retry]);
+ useEffect(()=>{if(!hasReadableTabs)return;const controller=new AbortController();setState(previous=>({...previous,owner,data:previous.owner===owner?previous.data:null,references:previous.owner===owner?previous.references:{},loading:true,error:""}));Promise.all([requestJson(CAISSE_ROOT+"/contexte",{requiresAuth:true,signal:controller.signal}),requestJson(CAISSE_ROOT+"/references",{requiresAuth:true,signal:controller.signal})]).then(([response,refs])=>{if(controller.signal.aborted)return;setState({owner,data:response?.success?response.data:null,references:refs?.success?refs.data:{},loading:false,error:!response?.success?response?.message||"Le module Caisse n’est pas disponible.":!refs?.success?refs?.message||"Les listes de référence ne sont pas disponibles.":""});});return()=>controller.abort();},[owner,refresh,retry,hasReadableTabs]);
  function navigate(kind,criteria={}){setDrawer(null);setParams({onglet:kind,...(Object.keys(criteria).length?{filters:JSON.stringify(criteria)}:{})});}
- function open(next){setDrawer({...next,owner:scope.scopeKey});}
+ function open(next){if(canOpen(next.kind,next.mode))setDrawer({...next,owner});}
  function saved(result){setDrawer(null);setFeedback(result?.count>1?result.count+" lignes enregistrées.":"Opération enregistrée.");setRefresh(value=>value+1);}
  let initial={};try{const value=JSON.parse(params.get("filters")||"{}");if(value&&typeof value==="object"&&!Array.isArray(value))initial=value;}catch{}
- const safeDrawer=drawer?.owner===owner?drawer:null;
+ const safeDrawer=drawer?.owner===owner&&canOpen(drawer.kind,drawer.mode)?drawer:null;
  return <div className={"logistics-modern logistics-app admin-portal caisse-module"+(collapsed?" is-menu-collapsed":"")}>
   <ModuleSidebar title="Caisse" collapsed={collapsed} onToggle={()=>setCollapsed(value=>!value)} activeKey={active} onNavigate={navigate} storageKey="sauverndeko.caisse.navigation" groups={groups}/>
   <main className="admin-main caisse-main">
@@ -51,9 +57,9 @@ export default function Caisse(){
    {presentationError?<div className="admin-error" role="status"><span>Les réglages d’affichage sont indisponibles. La présentation standard est utilisée.</span><ActionButton icon="refresh" onClick={retryPresentation}>Réessayer</ActionButton></div>:null}
    {current.error?<div className="admin-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
    {feedback?<div className="admin-feedback" role="status">{feedback}<ActionButton icon="close" aria-label="Fermer le message" onClick={()=>setFeedback("")}/></div>:null}
-   {presentationLoading?<p className="record-editor-state" role="status">Chargement de la présentation…</p>:active==="tableau-de-bord"?
+   {presentationLoading?<p className="record-editor-state" role="status">Chargement de la présentation…</p>:!access?<div className="admin-error" role="alert">{requested?"Vous n’avez pas accès à cet onglet.":"Vous n’avez accès à aucun onglet de la Caisse."}</div>:active==="tableau-de-bord"?
     <CaisseDashboard key={owner} title={tabLabels?.[active]} hiddenDashboardBlocks={presentation?.hiddenDashboardBlocks}
-      canConfigurePresentation={presentation?.canManage===true} context={context} references={references} refresh={refresh} onOpen={open}/>:
+      canConfigurePresentation={presentation?.canManage===true} readCash={canOpen("caisses")} readEntries={canOpen("ecritures")} context={context} references={references} refresh={refresh} onOpen={open}/>:
     <CaisseRegister title={tabLabels?.[active]} key={owner+":"+active+":"+(params.get("filters")||"")} kind={active} context={current.loading?null:context} references={references} refresh={refresh} initial={initial} onOpen={open} onCreate={kind=>open({kind,mode:"create"})}/>}
   </main>
   {safeDrawer?.mode==="create"?<CaisseBatchEditor key={owner+":"+safeDrawer.kind+":panier"} {...safeDrawer} context={context}

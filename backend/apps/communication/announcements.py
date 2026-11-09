@@ -7,7 +7,7 @@ from django.db import DatabaseError, transaction
 from rest_framework.views import APIView
 
 from apps.core import db
-from apps.core.module_access import access_snapshot
+from apps.core.module_access import can_use_tab
 from apps.core.repository import positive
 from apps.core.responses import APIError
 
@@ -127,7 +127,7 @@ class AnnouncementContextView(APIView):
         actor = request.user
         can_view = can_view_sent(actor)
         companies = available_companies(actor)
-        can_manage = access_snapshot(actor)["modules"]["discussions"]["canManage"]
+        can_manage = can_use_tab(actor, "discussions", "annonces", "manage")
         return private_response({
             "canViewSent": can_view,
             "canPublish": can_view and can_manage and bool(companies) and not settings.DB_READ_ONLY,

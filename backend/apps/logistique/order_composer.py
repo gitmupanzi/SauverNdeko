@@ -157,7 +157,8 @@ def composition_result(actor,command_id,lines,*,replayed):
     ids=sorted(item['data']['ID_ArticleFk'] for item in lines)
     rows=db.query('SELECT v.* FROM '+db.qualified(obj['schema'],obj['name'])+' v WHERE '+where+
                   ' AND v."ID_ArticleFk"=ANY(%s) ORDER BY v."ID_ArticleFk"',[*values,ids])
-    return clean({'bon':bon,'lignes':rows,'replayed':replayed})
+    from .tab_access import mask_order
+    return clean({'bon':mask_order(actor,bon),'lignes':[mask_order(actor,row) for row in rows],'replayed':replayed})
 
 
 def compose_order(actor,body,*,max_lines=MAX_LINES):
@@ -325,6 +326,9 @@ def update_composition(actor,command_id,body):
         db.one('SELECT pg_advisory_xact_lock(hashtextextended(%s,0)) AS locked',['compose-update:'+str(actor.pk)+':'+request_id])
         current=get_record(model('T_Commande'),actor,{'ID_Commande':command_id},lock=True)
         snapshot=composition_snapshot(actor,command_id)
+        from .tab_access import require_tabs
+        if any(line.get("Lots") for line in snapshot["lignes"]):
+            require_tabs(actor, "lots")
         from apps.core.tenancy import assert_document
         assert_document(actor,current)
         if current['IdEntiteFk']!=actor.organisation:
@@ -397,7 +401,15 @@ class OrderCompositionView(APIView):
     def get(self,request,pk):
         require_module(request.user,'logistique')
         snapshot=composition_snapshot(request.user,positive(pk))
-        return ok(clean({'bon':snapshot['bon'],'lignes':snapshot['lignes']}),meta=composition_metadata(snapshot,request.user))
+        from .tab_access import can_read_tabs, mask_order
+        lines = snapshot["lignes"]
+        metadata = composition_metadata(snapshot, request.user)
+        if not can_read_tabs(request.user, "lots"):
+            if any(line.get("Lots") for line in lines):
+                metadata.update(canEdit=False, reason="Vous n’avez pas accès aux lots de ce bon.")
+            lines = [{**line, "Lots": []} for line in lines]
+        return ok(clean({"bon": mask_order(request.user, snapshot["bon"]),
+                         "lignes": [mask_order(request.user, line) for line in lines]}), meta=metadata)
 
     def put(self,request,pk):
         result=update_composition(request.user,pk,request.data)

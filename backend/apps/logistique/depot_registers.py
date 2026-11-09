@@ -179,7 +179,9 @@ def listing(actor, kind, raw):
             row['capabilities'] = capabilities(actor, row)
     if kind in ('depots', 'transferts'):
         from .depots import can_manage
-        meta.update(canManage=can_manage(actor), canCreate=can_manage(actor))
+        from apps.core.module_access import can_use_tab
+        allowed = can_manage(actor) and can_use_tab(actor, "logistique", kind, "manage")
+        meta.update(canManage=allowed, canCreate=allowed)
     return clean(rows), meta
 
 

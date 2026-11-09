@@ -21,8 +21,15 @@ export function permissionsDraft(role, catalogue = []) {
   }));
 }
 
-function validConfiguration(data, entity) {
-  return String(data?.entityId) === entity && Array.isArray(data?.roles) && Array.isArray(data?.catalogue);
+function permissionConfiguration(data, entity, individual) {
+  const entries = individual ? data?.users : data?.roles;
+  if (String(data?.entityId) !== entity || !Array.isArray(entries) || !Array.isArray(data?.catalogue)) return null;
+  const subjects = entries.map(row => ({
+    ...row,
+    id: String(individual ? row.IdUser : row.IdRoleFk),
+    label: individual ? [row.PrenomUser, row.NomUser].filter(Boolean).join(" ") || row.EmailUser : row.NomRole,
+  }));
+  return {...data, subjects};
 }
 
 /** Embedded administration screen; its host guards navigation and logout. */
@@ -37,6 +44,9 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
   const [entity, setEntity] = useState("");
   const [data, setData] = useState(null);
   const [roleId, setRoleId] = useState("");
+  const [individual, setIndividual] = useState(false);
+  const [application, setApplication] = useState("");
+  const endpoint = individual ? "/api/workspace/droits-utilisateurs" : "/api/workspace/roles";
   const [permissions, setPermissions] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +63,7 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
   const notifications = useRef({onDirtyChange, onBusyChange});
   notifications.current = {onDirtyChange, onBusyChange};
   const clearConfiguration = useCallback(() => {
-    setData(null); setRoleId(""); setPermissions({}); setConfigurationLoading(false); setUncertain(false);
+    setData(null); setRoleId(""); setPermissions({}); setConfigurationLoading(false); setUncertain(false); setApplication("");
   }, []);
   const dismissTransition = useCallback(() => setPendingTransition(null), []);
 
@@ -93,26 +103,27 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
     if (!organisationsReady || !entity || !organisations.some(row => String(row.IdEntite) === entity)) return;
     setConfigurationLoading(true); setError(""); setMessage("");
     async function load() {
-      const result = await requestJson("/api/workspace/roles?entite=" + encodeURIComponent(entity), {requiresAuth: true, signal: controller.signal});
+      const result = await requestJson(endpoint + "?entite=" + encodeURIComponent(entity), {requiresAuth: true, signal: controller.signal});
       if (!active || !mounted.current || generation.current !== id) return;
-      if (!result?.success || !validConfiguration(result.data, entity)) {
+      const configuration = result?.success ? permissionConfiguration(result.data, entity, individual) : null;
+      if (!configuration) {
         setError(result?.message || "Les permissions n’ont pas pu être chargées.");
       } else {
         const previous = selections.current.entity === entity ? selections.current.roleId : "";
-        const role = result.data.roles.find(row => String(row.IdRoleFk) === previous) || result.data.roles[0];
-        const nextRoleId = String(role?.IdRoleFk || "");
-        selections.current = {entity, roleId: nextRoleId};
-        setData(result.data); setRoleId(nextRoleId); setPermissions(permissionsDraft(role, result.data.catalogue));
+        const subject = configuration.subjects.find(row => row.id === previous) || configuration.subjects[0];
+        const nextId = subject?.id || "";
+        selections.current = {entity, roleId: nextId};
+        setData(configuration); setRoleId(nextId); setPermissions(permissionsDraft(subject, configuration.catalogue));
       }
       setConfigurationLoading(false);
     }
     void load();
     return () => { active = false; controller.abort(); if (generation.current === id) generation.current += 1; };
-  }, [entity, organisationsReady, organisations, configurationRevision, clearConfiguration]);
+  }, [entity, organisationsReady, organisations, configurationRevision, clearConfiguration, endpoint, individual]);
 
   const loading = organisationsLoading || configurationLoading;
-  const scoped = organisationsReady && Boolean(entity) && validConfiguration(data, entity);
-  const role = scoped ? data.roles.find(item => String(item.IdRoleFk) === roleId) : null;
+  const scoped = organisationsReady && Boolean(entity) && String(data?.entityId) === entity;
+  const role = scoped ? data.subjects.find(item => item.id === roleId) : null;
   const dirty = Boolean(role) && JSON.stringify(permissions) !== JSON.stringify(permissionsDraft(role, data.catalogue));
   const canManage = Boolean(canWrite && platform && scoped && role && data?.canManage === true && !loading && !saving && !uncertain);
 
@@ -134,6 +145,15 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
     const action = pendingTransition?.run;
     setPendingTransition(null); action?.();
   }
+  function chooseMode(mode) {
+    const next = mode === "user";
+    if (next === individual) return;
+    requestTransition(() => {
+      generation.current += 1;
+      selections.current = {entity, roleId: ""};
+      clearConfiguration(); setError(""); setMessage(""); setIndividual(next);
+    });
+  }
   function chooseEntity(id) {
     if (id === entity) return;
     requestTransition(() => { generation.current += 1; clearConfiguration(); setEntity(id); setError(""); setMessage(""); });
@@ -141,7 +161,7 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
   function chooseRole(id) {
     if (id === roleId || !scoped) return;
     requestTransition(() => {
-      const next = data.roles.find(item => String(item.IdRoleFk) === id);
+      const next = data.subjects.find(item => item.id === id);
       selections.current = {entity, roleId: id}; setRoleId(id);
       setPermissions(permissionsDraft(next, data.catalogue)); setError(""); setMessage(""); setUncertain(false);
     });
@@ -166,7 +186,7 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
     const body = {entityId: Number(entity), versions, permissions};
     saveLock.current = true; setSaving(true); setError(""); setMessage("");
     try {
-      const result = await requestJson("/api/workspace/roles/" + savedRoleId, {method: "PUT", requiresAuth: true, body: JSON.stringify(body)});
+      const result = await requestJson(endpoint + "/" + savedRoleId, {method: "PUT", requiresAuth: true, body: JSON.stringify(body)});
       if (!mounted.current || generation.current !== id) return;
       if (!result?.success) {
         if (!result?.status || result.status >= 500 || result.status === 409) {
@@ -175,11 +195,12 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
         } else setError(result.message || "Les permissions n’ont pas pu être enregistrées.");
         return;
       }
-      if (!validConfiguration(result.data, entity) || !result.data.roles.some(item => String(item.IdRoleFk) === savedRoleId)) {
+      const configuration = permissionConfiguration(result.data, entity, individual);
+      const savedSubject = configuration?.subjects.find(item => item.id === savedRoleId);
+      if (!savedSubject) {
         setUncertain(true); setError("La réponse reçue doit être vérifiée. Rechargez la configuration."); return;
       }
-      const savedRole = result.data.roles.find(item => String(item.IdRoleFk) === savedRoleId);
-      setData(result.data); setPermissions(permissionsDraft(savedRole, result.data.catalogue)); setUncertain(false);
+      setData(configuration); setPermissions(permissionsDraft(savedSubject, configuration.catalogue)); setUncertain(false);
       setMessage("Permissions enregistrées.");
       window.dispatchEvent(new Event("sauverndeko:applications-changed"));
       try { await refreshUser(); }
@@ -195,21 +216,32 @@ export default function AdminPermissions({canWrite = false, onChanged, onDirtyCh
     }
   }
 
+  const catalogue = data?.catalogue || [];
+  const applications = catalogue.filter(item => !item.CodeModule.includes("."));
+  const shownApplication = applications.some(item => item.CodeModule === application)
+    ? application : applications[0]?.CodeModule;
+  const visibleCatalogue = individual ? catalogue.filter(({CodeModule}) =>
+    CodeModule === shownApplication || CodeModule.startsWith(shownApplication + ".")) : catalogue;
+
   return <section className="admin-permissions" aria-busy={loading || saving}>
     <div className="admin-permissions-controls">
       <div><label htmlFor={fieldId + "-entity"}>Entreprise</label><SearchSelect id={fieldId + "-entity"} label="Entreprise" value={entity} onChange={chooseEntity} loading={organisationsLoading} disabled={saving || !organisationsReady || !organisations.length} options={organisations.map(item => ({value: String(item.IdEntite), label: item.NomEntite + (item.ValideEntite === false ? " · Inactive" : "")}))}/></div>
-      <div><label htmlFor={fieldId + "-role"}>Rôle</label><SearchSelect id={fieldId + "-role"} label="Rôle" value={roleId} onChange={chooseRole} loading={configurationLoading} disabled={saving || !scoped || !data?.roles.length} options={(data?.roles || []).map(item => ({value: String(item.IdRoleFk), label: item.NomRole}))}/></div>
+      {platform ? <div><label htmlFor={fieldId + "-mode"}>Type de droits</label><SearchSelect id={fieldId + "-mode"} label="Type de droits" value={individual ? "user" : "role"} onChange={chooseMode} disabled={saving} options={[{value: "role", label: "Par rôle"}, {value: "user", label: "Par utilisateur"}]}/></div> : null}
+      <div><label htmlFor={fieldId + "-role"}>{individual ? "Utilisateur" : "Rôle"}</label><SearchSelect id={fieldId + "-role"} label={individual ? "Utilisateur" : "Rôle"} value={roleId} onChange={chooseRole} loading={configurationLoading} disabled={saving || !scoped || !data?.subjects.length} options={(data?.subjects || []).map(item => ({value: item.id, label: item.label + (individual && item.EmailUser && item.EmailUser !== item.label ? " · " + item.EmailUser : "")}))}/></div>
       <ActionButton icon="refresh" disabled={saving || loading} onClick={reload}>Actualiser</ActionButton>
     </div>
     {error ? <div className="admin-permissions-message is-error" role="alert"><span>{error}</span><ActionButton icon="refresh" disabled={saving || loading} onClick={reload}>Recharger</ActionButton></div> : null}
     {message ? <p className="admin-permissions-message is-success" role="status"><AppIcon name="check-circle"/>{message}</p> : null}
     {loading ? <p className="admin-permissions-state" role="status">Chargement des permissions…</p> : null}
     {!loading && organisationsReady && !organisations.length ? <p className="admin-permissions-state">Aucune entreprise disponible.</p> : null}
-    {!loading && scoped && !role ? <p className="admin-permissions-state">Aucun rôle disponible pour cette entreprise.</p> : null}
+    {!loading && scoped && !role ? <p className="admin-permissions-state">{individual ? "Aucun utilisateur disponible pour cette entreprise." : "Aucun rôle disponible pour cette entreprise."}</p> : null}
     {!loading && scoped && role ? <>
-      <div className="admin-permissions-context"><span className="admin-permissions-mark"><AppIcon name="shield"/></span><div><strong>{role.NomRole}</strong><span>{organisations.find(item => String(item.IdEntite) === entity)?.NomEntite}</span></div><span className="admin-permissions-mode">{canWrite && platform && data.canManage ? "Droits par application" : "Consultation"}</span></div>
-      <div className="admin-permissions-table-wrap erp-results"><table className="admin-permissions-table"><thead><tr><th scope="col">Application</th>{RIGHTS.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}</tr></thead><tbody>{data.catalogue.map(module => <tr key={module.CodeModule}><th scope="row"><span>{module.Nom}</span>{module.EstSocle ? <small>Socle inclus</small> : null}</th>{RIGHTS.map(([key, label]) => <td key={key}><input type="checkbox" aria-label={label + " · " + module.Nom} checked={permissions[module.CodeModule]?.[key] || false} disabled={!canManage || !role.baseline?.[module.CodeModule]?.[key] || (key !== "canRead" && !permissions[module.CodeModule]?.canRead)} onChange={event => changeRight(module.CodeModule, key, event.target.checked)}/></td>)}</tr>)}{!data.catalogue.length ? <tr><td colSpan={4}>Aucune application disponible.</td></tr> : null}</tbody></table></div>
-      <p className="admin-permissions-note">Les droits restent limités aux habilitations du rôle et aux applications de l’entreprise.</p>
+      <div className="admin-permissions-context"><span className="admin-permissions-mark"><AppIcon name="shield"/></span><div><strong>{role.label}</strong><span>{organisations.find(item => String(item.IdEntite) === entity)?.NomEntite}</span></div><span className="admin-permissions-mode">{canWrite && platform && data.canManage ? (individual ? "Restrictions individuelles" : "Droits par application") : "Consultation"}</span></div>
+      {individual && applications.length ? <div className="admin-permissions-controls">
+        <div><label htmlFor={fieldId + "-application"}>Application</label><SearchSelect id={fieldId + "-application"} label="Application" value={shownApplication} onChange={setApplication} disabled={saving} options={applications.map(item => ({value: item.CodeModule, label: item.Nom}))}/></div>
+      </div> : null}
+      <div className="admin-permissions-table-wrap erp-results"><table className="admin-permissions-table"><thead><tr><th scope="col">{individual ? "Application ou onglet" : "Application"}</th>{RIGHTS.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}</tr></thead><tbody>{visibleCatalogue.map(module => <tr key={module.CodeModule}><th scope="row"><span>{module.Nom}</span>{module.EstSocle ? <small>Socle inclus</small> : null}</th>{RIGHTS.map(([key, label]) => <td key={key}><input type="checkbox" aria-label={label + " · " + module.Nom} checked={permissions[module.CodeModule]?.[key] || false} disabled={!canManage || !role.baseline?.[module.CodeModule]?.[key] || (key !== "canRead" && !permissions[module.CodeModule]?.canRead)} onChange={event => changeRight(module.CodeModule, key, event.target.checked)}/></td>)}</tr>)}{!visibleCatalogue.length ? <tr><td colSpan={4}>Aucune application disponible.</td></tr> : null}</tbody></table></div>
+      <p className="admin-permissions-note">{individual ? "Décochez les droits à retirer à ce compte. Les cases cochées laissent s’appliquer le rôle et la licence." : "Les droits restent limités aux habilitations du rôle et aux applications de l’entreprise."}</p>
       <footer className="admin-permissions-footer"><span>{dirty ? "Modifications non enregistrées" : "Les accès suivent les droits enregistrés."}</span>{canWrite && platform && data.canManage ? <div><ActionButton icon="reset" disabled={saving || !dirty || uncertain} onClick={() => requestTransition(() => {setPermissions(permissionsDraft(role, data.catalogue)); setError(""); setMessage("");})}>Annuler</ActionButton><ActionButton icon="check-circle" variant="primary" disabled={!canManage || !dirty} onClick={save}>{saving ? "Enregistrement…" : "Enregistrer"}</ActionButton></div> : null}</footer>
     </> : null}
     {pendingTransition ? <DrawerDialog title="Modifications non enregistrées" icon="alert" onClose={dismissTransition} defaultWidth={560} className="admin-permissions-confirm" storageKey="sauverndeko.admin.permissions.discard.width" footer={<footer className="admin-permissions-footer"><span/><div><ActionButton onClick={dismissTransition}>Continuer la saisie</ActionButton><ActionButton variant="primary" onClick={confirmTransition}>Abandonner</ActionButton></div></footer>}><p>Continuer sans enregistrer les modifications ?</p></DrawerDialog> : null}

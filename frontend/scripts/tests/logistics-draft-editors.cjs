@@ -74,6 +74,23 @@ async function mount(component,props){const hooks=new Hooks(),render=()=>hooks.r
  editor=await mount(ui.ImmobilisationEditor,{draft:{values:assetValues,motif:'Acquisition commune'},onDraftSave:value=>saved.push(value),onClose(){},onSaved(){throw Error('DML inattendu');}});eq(named(editor.render(),'Frame').props.canSubmit,true);editor.change('NomImmobilisation','Bien corrigé');editor.tab('affectation');editor.change('LocalisationComplement','Salle 4');editor.tab('acquisition');editor.change('PrixUnitaire','130,50');editor.tab('trace');editor.change('Observations','Observation corrigée');
  await named(editor.render(),'Frame').props.onSubmit();eq(saved.length,1);const expected={...assetValues,NomImmobilisation:'Bien corrigé',LocalisationComplement:'Salle 4',PrixUnitaire:'130,50',Observations:'Observation corrigée'};eq(saved[0].values,expected);eq(saved[0].motif,'Acquisition commune');const expectedPayload=ui.immobilisationPayload(expected,{motif:'Acquisition commune',requestId:''});delete expectedPayload.requestId;eq(saved[0].data,expectedPayload);eq(globalThis.__writes,[]);
  editor.change('motif','Motif propre à la ligne');await named(editor.render(),'Frame').props.onSubmit();eq(saved[1].data.motif,'Motif propre à la ligne');editor.change('motif','');await named(editor.render(),'Frame').props.onSubmit();eq(saved.length,2);eq(named(editor.render(),'Frame').props.error,'Vérifiez les champs indiqués.');eq(globalThis.__writes,[]);editor.hooks.unmount();
+
+ const locationRecord={...assetValues,Localisation:'Site A',ID_LocalisationFk:6};
+ const locationValues=ui.immobilisationValues(locationRecord,refs);
+ eq(locationValues.LocalisationComplement,'Site A · Salle 3');
+ const locationPayload=values=>ui.immobilisationPayload(values,{record:locationRecord,motif:'Affectation'});
+ eq(locationPayload({...locationValues,NomImmobilisation:'Autre nom'}).ID_LocalisationFk,'6');
+ eq(locationPayload(locationValues).LocalisationComplement,'Salle 3');
+ const newLocation=locationPayload({...locationValues,LocalisationComplement:'  Bâtiment B, bureau 12  '});
+ eq(newLocation.ID_LocalisationFk,null);
+ eq(newLocation.LocalisationComplement,'Bâtiment B, bureau 12');
+ const clearedLocation=locationPayload({...locationValues,LocalisationComplement:''});
+ eq(clearedLocation.ID_LocalisationFk,null);
+ eq(clearedLocation.LocalisationComplement,null);
+ const longSite={...locationRecord,Localisation:'A'.repeat(256)};
+ const longValues=ui.immobilisationValues(longSite,refs);
+ eq(ui.immobilisationErrors(longValues,'Affectation',longSite).LocalisationComplement,undefined);
+ ok(ui.immobilisationErrors({...longValues,LocalisationComplement:'B'.repeat(256)},'Affectation',longSite).LocalisationComplement);
  // Les permissions de création réellement évaluées bloquent aussi le mode brouillon.
  globalThis.__refs={...refs,canCreate:false};editor=await mount(ui.ImmobilisationEditor,{draft:{values:assetValues,motif:'Acquisition'},onDraftSave:()=>saved.push('forbidden')});eq(named(editor.render(),'Frame').props.canSubmit,false);await named(editor.render(),'Frame').props.onSubmit();ok(!saved.includes('forbidden'));editor.hooks.unmount();globalThis.__refs=refs;
  globalThis.__scope={...globalThis.__scope,canWrite:false};editor=await mount(ui.TiersEditor,{draft,onDraftSave:()=>saved.push('forbidden')});eq(named(editor.render(),'Frame').props.canSubmit,false);await named(editor.render(),'Frame').props.onSubmit();ok(!saved.includes('forbidden'));editor.hooks.unmount();globalThis.__scope={...globalThis.__scope,canWrite:true};

@@ -55,9 +55,14 @@ class RenderEnvironmentTests(unittest.TestCase):
             with self.subTest(host=host), self.assertRaises(RuntimeError):
                 environment.configure({"RENDER_EXTERNAL_HOSTNAME": host})
         for url in ("http://erp.example.org", "https://erp.example.org/subpath",
-                    "https://user:pass@erp.example.org", "https://erp.example.org?q=1"):
+                    "https://user:pass@erp.example.org", "https://@erp.example.org", "https://erp.example.org?q=1",
+                    "https://erp.example.org#", "https://erp.example.org:wrong", "https://erp.example.org:0"):
             with self.subTest(url=url), self.assertRaises(RuntimeError):
                 environment.configure({"DJANGO_ALLOWED_HOSTS": "erp.example.org", "SAUVERNDEKO_FRONTEND_URL": url})
+        for wildcard in ("*", ".example.org"):
+            with self.subTest(wildcard=wildcard), self.assertRaises(RuntimeError):
+                environment.configure({"DJANGO_ALLOWED_HOSTS": "erp.example.org," + wildcard,
+                                       "SAUVERNDEKO_FRONTEND_URL": "https://erp.example.org"})
 
     def test_maintenance_secrets_are_refused_on_web(self):
         for key in ("MAINTENANCE_DATABASE_URL", "SAUVERNDEKO_MIGRATION_DATABASE_URL",
@@ -212,6 +217,23 @@ class RenderLifecycleTests(unittest.TestCase):
         for prefix in prefixes:
             with self.subTest(prefix=prefix):
                 self.assertIn("/" + prefix, paths)
+
+    def test_spa_security_headers_and_private_routes(self):
+        for deploy in ("render", "production"):
+            with self.subTest(deploy=deploy):
+                caddy = (ROOT / "deploy" / deploy / "Caddyfile").read_text(encoding="utf8")
+                spa = caddy.split("\n    handle {", 1)[1]
+                self.assertIn('Strict-Transport-Security "max-age=31536000"', spa)
+                self.assertIn("X-Frame-Options DENY", spa)
+                csp = next(line for line in spa.splitlines() if line.strip().startswith("Content-Security-Policy "))
+                directives = csp.split('"')[1].split("; ")
+                for directive in ("script-src 'self'", "object-src 'none'", "base-uri 'none'",
+                                  "frame-ancestors 'none'", "form-action 'self'", "img-src 'self' data: blob: https:"):
+                    self.assertIn(directive, directives)
+                private_paths = next(line.strip().split()[2:] for line in caddy.splitlines()
+                                     if line.strip().startswith("@privateFiles path "))
+                for path in ("/media/*", "/.env", "/.env.*", "/.git/*", "/.runtime/*"):
+                    self.assertIn(path, private_paths)
 
 
 if __name__ == "__main__":

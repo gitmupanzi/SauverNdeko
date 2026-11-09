@@ -20,11 +20,17 @@ def configure(environment=None):
         values["DJANGO_ALLOWED_HOSTS"] = hostname
     if not values.get("SAUVERNDEKO_FRONTEND_URL") and hostname:
         values["SAUVERNDEKO_FRONTEND_URL"] = "https://" + hostname
-    origin = urlsplit(values.get("SAUVERNDEKO_FRONTEND_URL", ""))
+    frontend_url = values.get("SAUVERNDEKO_FRONTEND_URL", "")
+    try:
+        origin = urlsplit(frontend_url)
+        origin_port = origin.port
+    except ValueError:
+        raise RuntimeError("Configurer l'hôte exact et l'origine HTTPS de SauverNdeko.") from None
     hosts = [item.strip() for item in values.get("DJANGO_ALLOWED_HOSTS", "").split(",")]
     if (origin.scheme != "https" or not origin.hostname or origin.hostname not in hosts
-            or origin.username or origin.password or origin.query or origin.fragment
-            or origin.path not in {"", "/"} or "*" in hosts):
+            or origin.username is not None or origin.password is not None
+            or "?" in frontend_url or "#" in frontend_url or origin.path not in {"", "/"}
+            or origin_port == 0 or any(host.startswith(".") or "*" in host for host in hosts)):
         raise RuntimeError("Configurer l'hôte exact et l'origine HTTPS de SauverNdeko.")
     values["DJANGO_SETTINGS_MODULE"] = "config.production"
     values["SAUVERNDEKO_TRUSTED_PROXY"] = "127.0.0.1"

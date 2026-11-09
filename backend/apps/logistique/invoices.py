@@ -23,6 +23,7 @@ from apps.core.responses import APIError, ExactEncoder, ok
 from .document_rules import closed, revision as document_revision
 from .order_composer import composition_snapshot
 from .stock_returns import return_context, return_storage_ready, return_feature_ready, inventory_adjustment
+from .tab_access import MODULE, can_use_tab, mask_order
 
 CENT=Decimal('0.01')
 MAX_AMOUNT=Decimal('9999999999.99')
@@ -240,10 +241,7 @@ def context(actor,command_id):
     kind=db.one('SELECT logistique.fn_nature_bon(%s) AS nature',[parent.get('ID_TypeCmdFk')])
     outgoing=bool(kind and kind['nature']=='sortie')
     owner=bool(actor.organisation) and snapshot['owner_entity']==actor.organisation and (not issued or issued['IdEntiteFk']==actor.organisation)
-    manage=bool(actor.admin) and not settings.DB_READ_ONLY
-    if manage:
-        try:require_module(actor,'logistique','manage')
-        except APIError:manage=False
+    manage=bool(actor.admin) and not settings.DB_READ_ONLY and can_use_tab(actor,MODULE,'factures','manage')
     reason=('La facturation sera disponible après installation de son socle.' if not ready else
             'Vous ne disposez pas du droit de facturation.' if not manage else
             'Ce bon appartient à une autre organisation.' if not owner else
@@ -303,7 +301,8 @@ def context(actor,command_id):
     if defaults['DateEcheancePaiement'] is None and due_condition and due_condition['delayDays'] is not None:
         try:defaults['DateEcheancePaiement']=defaults['DateFacture']+timedelta(days=due_condition['delayDays'])
         except OverflowError:pass
-    return {'data':{'bonOrigine':parent,'facture':issued,'lignes':display_lines,'references':refs,'defaults':defaults,
+    return {'data':{'bonOrigine':mask_order(actor,parent),'facture':mask_order(actor,issued,invoices=True) if issued else None,
+        'lignes':display_lines,'references':refs,'defaults':defaults,
         'totaux':{'MontantBon':parent.get('MontantTTC'),'MontantFacture':total,**taxes,'DeviseCode':parent.get('DeviseCode')},
         'retoursApresEmission':{'required':bool(credit),'MontantAvoir':sum((line.get('MontantTTC',line['MontantLigne']) for line in credit),Decimal('0')),
                               'DeviseCode':parent.get('DeviseCode'),'lignes':credit}},
@@ -348,7 +347,9 @@ def write_invoice(actor,command_id,body,operation):
             invoice,_=snapshot_invoice(command_id)
             if not invoice or invoice['ID_Facture']!=saved.get('ID_Facture'):
                 raise APIError('La preuve de facturation doit être vérifiée.','INVOICE_REPLAY_CONFLICT',409)
-            return clean({'facture':{**invoice,'legacy':False},'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id}),'replayed':True})
+            return clean({'facture':mask_order(actor,{**invoice,'legacy':False},invoices=True),
+                          'bonOrigine':mask_order(actor,get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id})),
+                          'replayed':True})
         if operation=='issue':
             # Une mise à jour du profil ne peut pas changer le taux entre le
             # contrôle de révision et l'instantané financier PostgreSQL.
@@ -397,7 +398,9 @@ def write_invoice(actor,command_id,body,operation):
                  **{key:invoice.get(key) for key in ('TauxTVA','MontantHT','MontantTVA','MontantTTC')},
                  **{key:values[key] for key in METADATA}},actor=actor)
         issued,_=snapshot_invoice(command_id)
-        return clean({'facture':{**issued,'legacy':False},'bonOrigine':get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id}),'replayed':False})
+        return clean({'facture':mask_order(actor,{**issued,'legacy':False},invoices=True),
+                      'bonOrigine':mask_order(actor,get_record(view('logistique','V_Commande'),actor,{'ID_Commande':command_id})),
+                      'replayed':False})
 
 
 class InvoiceView(APIView):

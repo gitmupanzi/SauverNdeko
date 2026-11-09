@@ -8,6 +8,7 @@ from django.db import transaction
 from psycopg.types.json import Jsonb
 from rest_framework.views import APIView
 from apps.core import db
+from apps.core.module_access import can_use_tab
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit, clean, get_record, mutate, page, positive
 from apps.core.registry import model
@@ -45,7 +46,7 @@ def set_state(identifier, code):
 
 
 def capabilities(actor, row):
-    editable = can_manage(actor) and actor.organisation == row['IdEntiteFk']
+    editable = can_manage(actor) and can_use_tab(actor, 'logistique', 'transferts', 'manage') and actor.organisation == row['IdEntiteFk']
     code = row.get('EtatCode') or state(row['ID_TransfertDepot'])
     return {'canEdit': editable and code == 'TR_BROUILLON', 'canValidate': editable and code == 'TR_BROUILLON',
             'canDispatch': editable and code == 'TR_VALIDE', 'canReceive': editable and code in {'TR_TRANSIT', 'TR_PARTIEL'},

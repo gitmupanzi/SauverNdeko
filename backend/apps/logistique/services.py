@@ -38,6 +38,8 @@ def validate_header(obj, data, old, actor):
         from .order_types import type_context
         type_context(effective.get('ID_TypeCmdFk'))
         from .document_rules import validate_header as validate_document
+        from .tab_access import validate_invoice_changes
+        validate_invoice_changes(actor, data, old)
         validate_document(data,old,actor)
         from .currency import write_currency
         write_currency(data, old, actor=actor, table='T_Commande')
@@ -94,7 +96,7 @@ def validate_header(obj, data, old, actor):
             raise APIError("MontantRegle doit être positif.")
 
 
-def mutate_line(actor, commande_id, body=None, article_id=None, operation="create"):
+def mutate_line(actor, commande_id, body=None, article_id=None, operation="create", *, direct=False):
     db.ensure_writable()
     commande_id = positive(commande_id)
     body = dict(body or {})
@@ -140,6 +142,9 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         effective = {**(old or {}), **data}
         from .lots import line_lots, sync_movement, validate_stock, unchanged as lots_unchanged
         previous_lots = line_lots(commande_id, positive(article_id)) if old else []
+        if direct and (lots or previous_lots):
+            from .tab_access import require_tabs
+            require_tabs(actor, "lots")
         if old:
             from .document_rules import check_revision
             check_revision({**old,"Lots":previous_lots},received,"ligne")
@@ -350,7 +355,11 @@ def references(actor):
     from apps.core.tenancy import read_entity
     entity = read_entity(actor)
     from .depots import choices
-    result['depots']=choices(actor)
+    from .tab_access import can_read_tabs
+    result['depots'] = [
+        {key: row[key] for key in ('id', 'label', 'principal', 'active', 'IdEntiteFk')}
+        for row in choices(actor)
+    ]
     result['defaultDepotId']=next((row['id'] for row in result['depots'] if row['principal'] and row['active'] and row['IdEntiteFk']==entity),None)
     publication = db.one('SELECT "PartageArticlesPublicParDefaut" value FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
     result['defaultArticleVisibility'] = publication['value'] if publication else None
@@ -396,14 +405,14 @@ def references(actor):
     articles = scoped_query(
         'SELECT * FROM logistique."V_Article" ORDER BY "NomArticle","ID_Article" LIMIT 1000',
         actor,
-    )
+    ) if can_read_tabs(actor, "articles") else []
     factures = scoped_query(
         'SELECT DISTINCT "CodeFacture" AS code FROM logistique."T_Commande" WHERE "CodeFacture" IS NOT NULL AND trim("CodeFacture")<>\'\' ORDER BY "CodeFacture"',
         actor,
-    )
+    ) if can_read_tabs(actor, "factures") else []
     from .tiers import scope as tiers_scope
     tiers_where,tiers_args=tiers_scope(actor)
-    clients=db.query('SELECT t."ID_Client" AS id,t."Nom" AS label,t."ID_TypeClientFk" AS "typeId",t."TypeClient" AS "typeLabel" FROM logistique."V_Client" t WHERE '+tiers_where+' AND t."Actif" ORDER BY t."Nom",t."ID_Client"',tiers_args)
+    clients=db.query('SELECT t."ID_Client" AS id,t."Nom" AS label,t."ID_TypeClientFk" AS "typeId",t."TypeClient" AS "typeLabel" FROM logistique."V_Client" t WHERE '+tiers_where+' AND t."Actif" ORDER BY t."Nom",t."ID_Client"',tiers_args) if can_read_tabs(actor, "tiers") else []
     result.update(
         users=[
             {"id": x["IdUser"], "label": (x["NomUser"] + " " + x["PrenomUser"]).strip()}

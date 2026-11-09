@@ -2,7 +2,7 @@ import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import {useEffect,useMemo,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useConsultations} from "../../components/ConsultationProvider";
@@ -37,7 +37,7 @@ export default function CommandeDetails({title = "Lignes des bons", selectedComm
  const references=fieldCurrencyReferences(receivedReferences,"commandeCurrencies");
   const preferences=useTablePreferences("logistique.lignes");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders();
- const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true,canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+ const canWrite=useEntityScope().canWrite&&user?.permissions?.canWriteData===true&&tabRights(user,"logistique","details").canManage,canExport=user?.permissions?.canExportData!==false&&tabRights(user,"logistique","details").canExport===true;
  const [search,setSearch]=useState(sharedTable?.searchValue||""),[criteria,setCriteria]=useState(()=>({...EMPTY,q:sharedTable?.searchValue||""})),[draft,setDraft]=useState(EMPTY);
  const [grid,setGrid]=useState({take:25,skip:0,sortBy:"DateCmd",sortDir:"desc"}),[meta,setMeta]=useState(null),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
  const [filtersOpen,setFiltersOpen]=useState(false),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS),columnsAnchorRef=useRef(null);

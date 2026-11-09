@@ -138,6 +138,7 @@ def stock_location_details(parent, entity):
 
 
 def document_data(actor,kind,object_id,document_type):
+    from .tab_access import MODULE, can_use_tab
     record,parent,entity=document_parent(actor,kind,object_id)
     if document_type not in PDF_TYPES[kind]:raise APIError('Format de document introuvable.','NOT_FOUND',404)
     if kind=='immobilisation':
@@ -153,6 +154,9 @@ def document_data(actor,kind,object_id,document_type):
           'totals':[] if row.get('ValeurAcquisition') is None else [('Valeur d’acquisition',row['ValeurAcquisition'])],
           'details':[(label,value) for label,value in [('Catégorie',row.get('CategorieMateriel')),('État',row.get('EtatMateriel')),('Service',row.get('Service')),
             ('Date d’acquisition',date_label(row.get('DateAcquisition')) if row.get('DateAcquisition') else None),
+            ('Mise en service',date_label(row['DateMiseEnService']) if row.get('DateMiseEnService') else None),
+            ('Date de sortie',date_label(row['DateSortie']) if row.get('DateSortie') else None),
+            ('Sortie physique',{'CESSION':'Cession','REBUT':'Mise au rebut'}.get(row.get('TypeSortie'))),
             ('Suivi','Bien individuel' if row.get('SuiviIndividuel') else 'Lot homogène'),('Registre','Actif' if row.get('Actif') else 'Archivé')] if value],
           'notes':[str(row[key]) for key in ('Caracteristiques','Observations') if row.get(key)]}
     frozen=identity(kind,object_id,entity)
@@ -189,7 +193,9 @@ def document_data(actor,kind,object_id,document_type):
         allocations=db.query('''SELECT m."ID_ArticleFk",l."NumeroLot",l."DatePeremptionLot",ml."Quantite"
           FROM logistique."T_Mouvement" m JOIN logistique."T_MouvementLot" ml ON ml."ID_MvtFk"=m."ID_Mvt"
           JOIN logistique."T_LotArticle" l ON l."ID_LotArticle"=ml."ID_LotArticleFk"
-          WHERE m."ID_cmdFk"=%s ORDER BY m."ID_ArticleFk",l."NumeroLot",l."ID_LotArticle"''',[object_id])
+          WHERE m."ID_cmdFk"=%s ORDER BY m."ID_ArticleFk",l."NumeroLot",l."ID_LotArticle"''',[object_id]) if (
+            can_use_tab(actor,MODULE,"lots","export") and can_use_tab(actor,MODULE,"mouvements","export")
+        ) else []
         by_article={}
         for allocation in allocations:
             label='Lot '+allocation['NumeroLot']+' · '+numeric(allocation['Quantite'])
@@ -211,7 +217,9 @@ def document_data(actor,kind,object_id,document_type):
         rows=db.query('SELECT * FROM logistique."T_FactureLigne" WHERE "ID_FactureFk"=%s ORDER BY "ID_ArticleFk"',[record['ID_Facture']])
         result['lines']=[{'name':r['NomArticle'],'reference':r['CodeArticleInterne'],'quantity':r['QteFacturee'],'unit':r['Unite'],'price':r['PUFacture'],'amount':r['MontantLigne']} for r in rows]
         tax_label='TVA ('+numeric(record['TauxTVA'])+' %)' if record.get('TauxTVA') is not None else 'TVA'
-        result['totals']=[('Montant HT',record['MontantHT']),(tax_label,record.get('MontantTVA')),('Montant TTC',record['MontantTTC']),('Avoirs imputés',record.get('AvoirImpute',0)),('Réglé',record.get('TotalRegle')),('Reste à régler',record.get('Reste'))]
+        result['totals']=[('Montant HT',record['MontantHT']),(tax_label,record.get('MontantTVA')),('Montant TTC',record['MontantTTC']),('Avoirs imputés',record.get('AvoirImpute',0))]
+        if can_use_tab(actor,MODULE,"reglements","export"):
+            result['totals'].extend([('Réglé',record.get('TotalRegle')),('Reste à régler',record.get('Reste'))])
         result['notes'].append('Montants repris de la facture émise.')
     elif kind=='reglement':
         result.update({'title':'Reçu de règlement','code':'reg-'+str(record['ID_Reglement']),'date':record['DateReglement']})
@@ -471,7 +479,13 @@ class AttachmentsView(DocumentDownloadView):
     parser_classes=[MultiPartParser,FormParser]
     permission_classes=[IsERPAdmin]
     http_method_names=['get','post','delete','options']
+    def check_schema(self, kind):
+        if kind == 'immobilisation':
+            from .immobilisation_lifecycle import require_schema
+            require_schema('T_ImmobilisationEvenement')
+
     def get(self,request,kind,pk,piece_id=None):
+        self.check_schema(kind)
         _,_,entity=document_parent(request.user,kind,positive(pk))
         if piece_id is not None:
             row=db.one('SELECT "NomFichier","MimeType","Contenu" FROM logistique."T_PieceJustificative" WHERE "ID_Piece"=%s AND "TypeObjet"=%s AND "ID_Objet"=%s AND "IdEntiteFk"=%s AND NOT "Archive"',[positive(piece_id),kind,positive(pk),entity])
@@ -480,6 +494,7 @@ class AttachmentsView(DocumentDownloadView):
         rows=db.query('SELECT * FROM logistique."V_PieceJustificative" WHERE "TypeObjet"=%s AND "ID_Objet"=%s AND "IdEntiteFk"=%s AND NOT "Archive" ORDER BY "CreeLe" DESC,"ID_Piece" DESC',[kind,positive(pk),entity])
         return ok(clean(rows))
     def post(self,request,kind,pk,piece_id=None):
+        self.check_schema(kind)
         if piece_id is not None:raise APIError('Action introuvable.','NOT_FOUND',404)
         if set(request.data)-{'file'}:raise APIError('Un seul fichier est attendu.','ATTACHMENT_VALIDATION',400)
         upload=request.FILES.get('file');blob,mime,extension=validate_upload(upload)
@@ -490,9 +505,15 @@ class AttachmentsView(DocumentDownloadView):
             audit({'schema':'logistique','name':'T_PieceJustificative'},'ATTACHMENT_ADD',new={**row,'TypeObjet':kind,'ID_Objet':positive(pk),'IdEntiteFk':entity},actor=request.user)
         return ok(clean(row),status=201,message='Justificatif ajouté.')
     def delete(self,request,kind,pk,piece_id=None):
+        self.check_schema(kind)
         if piece_id is None:raise APIError('Pièce introuvable.','NOT_FOUND',404)
         with transaction.atomic():
             _,parent,entity=document_parent(request.user,kind,positive(pk),lock=True);can_manage(request.user,parent)
+            if kind == 'immobilisation' and db.one(
+                'SELECT 1 FROM logistique."T_ImmobilisationEvenement" WHERE "IdEntiteFk"=%s AND "ID_ImmobilisationFk"=%s AND "ID_PieceFk"=%s',
+                [entity, positive(pk), positive(piece_id)],
+            ):
+                raise APIError('Ce justificatif est cité dans un événement conservé au dossier.', 'PATRIMOINE_DOCUMENT_LINKED', 409)
             row=db.one('UPDATE logistique."T_PieceJustificative" SET "Archive"=true WHERE "ID_Piece"=%s AND "TypeObjet"=%s AND "ID_Objet"=%s AND "IdEntiteFk"=%s AND NOT "Archive" RETURNING "ID_Piece","NomFichier"',[positive(piece_id),kind,positive(pk),entity])
             if not row:raise APIError('Pièce introuvable.','NOT_FOUND',404)
             audit({'schema':'logistique','name':'T_PieceJustificative'},'ATTACHMENT_ARCHIVE',new={**row,'TypeObjet':kind,'ID_Objet':positive(pk),'IdEntiteFk':entity},actor=request.user)

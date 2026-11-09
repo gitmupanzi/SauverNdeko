@@ -858,6 +858,7 @@ class T_Immobilisation(models.Model):
     LocalisationComplement = models.CharField(max_length=255, null=True)
     DateEntree = models.DateTimeField()
     DateAcquisition = models.DateField(null=True)
+    DateMiseEnService = models.DateField(null=True)
     NumeroSerie = models.CharField(max_length=255, null=True)
     Observations = models.TextField(null=True)
     Actif = models.BooleanField(default=True)

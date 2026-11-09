@@ -76,6 +76,46 @@
       ],
       "description": "Définir les colonnes et exports personnalisables des dépôts, stocks par dépôt, transferts et inventaires, sans modifier les stocks.",
       "release": "2026.11.07"
+    },
+    {
+      "id": "20261109_01_immobilisations_cycle_vie",
+      "file": "../migrations/20261109_01_immobilisations_cycle_vie.sql",
+      "sha256": "14fa407308b93f27d90f800fcfed2a53ed2af76b3ee9f4e394ac1bbe7318142e",
+      "dependsOn": [
+        "20261107_03_registres_depots_tableaux"
+      ],
+      "description": "Suivre les mises en service, comptages, entretiens, justificatifs et sorties du patrimoine.",
+      "release": "2026.11.09"
+    },
+    {
+      "id": "20261109_02_immobilisations_valorisation",
+      "file": "../migrations/20261109_02_immobilisations_valorisation.sql",
+      "sha256": "845a16647c9a8075e57a772bc251339df0164ba6ab563b2ed04a3aafa52bf757",
+      "dependsOn": [
+        "20261109_01_immobilisations_cycle_vie"
+      ],
+      "description": "Suivre les plans comptables et fiscaux et verrouiller les clôtures par entreprise et usage.",
+      "release": "2026.11.09"
+    },
+    {
+      "id": "20261109_03_droits_utilisateurs",
+      "file": "../migrations/20261109_03_droits_utilisateurs.sql",
+      "sha256": "496a4c0de9db9bb179dffc31ba803e36fd5dd18279d34276bc68c50ed5e963df",
+      "dependsOn": [
+        "20261109_02_immobilisations_valorisation"
+      ],
+      "description": "Appliquer des restrictions individuelles d’accès par entreprise, module et onglet couvert.",
+      "release": "2026.11.09"
+    },
+    {
+      "id": "20261109_04_droits_onglets",
+      "file": "../migrations/20261109_04_droits_onglets.sql",
+      "sha256": "5ef0bb9661892344aa9cc77bd6cefe5480ad44ac0fc01e4abc6e664ed99d3054",
+      "dependsOn": [
+        "20261109_03_droits_utilisateurs"
+      ],
+      "description": "Étendre les restrictions individuelles aux onglets contrôlés côté serveur.",
+      "release": "2026.11.09"
     }
   ]
 }

@@ -13,9 +13,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import DatabaseError, transaction
+from django.views.decorators.debug import sensitive_variables
 from rest_framework.views import APIView
 from . import db
-from .module_access import require_module, access_snapshot
+from .module_access import RIGHT_FIELDS, access_snapshot, require_module
+from .admin_tabs import can_use_admin_tab, require_admin_tab
 from .permissions import IsERPAdmin
 from .responses import APIError, ExactEncoder, ok
 from .tenancy import read_entity, require_entity
@@ -33,11 +35,33 @@ def privileged_user(row):
         found=db.one('SELECT "NomGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[row['IdRoleFk']]);role=(found or {}).get('NomGenerique')
     return str(role or '').strip().casefold() in PRIVILEGED_ROLES
 
+def check_user_grant_ceiling(actor, entity, role_id, user_id=None):
+    from apps.accounts.authentication import Actor
+
+    target = Actor({"IdUser": user_id, "IdEntiteFk": entity, "IdRoleFk": role_id})
+    requester = access_snapshot(actor)
+    granted = access_snapshot(target)
+    for module, rights in granted["modules"].items():
+        own_rights = requester["modules"].get(module, {})
+        own_tabs = requester.get("tabs", {}).get(module, {})
+        if any(rights[key] and not own_rights.get(key) for key in RIGHT_FIELDS) or any(
+            tab_rights[key] and not own_tabs.get(tab, {}).get(key)
+            for tab, tab_rights in granted["tabs"].get(module, {}).items()
+            for key in RIGHT_FIELDS
+        ):
+            raise APIError(
+                "Le compte ne peut pas recevoir des droits que vous ne possédez pas.",
+                "USER_GRANT_EXCEEDS_OWN", 403,
+            )
+
+
+@sensitive_variables()
 def user_change(actor, body, old=None, operation='create'):
     """Appelé par le dépôt, donc également sur les anciennes routes de CRUD."""
+    from apps.accounts.authentication import email_in_use
     from .repository import positive
     from .personnel import validate_professional_fields
-    require_module(actor,'administration','manage')
+    require_admin_tab(actor, 'utilisateurs', 'manage')
     body=dict(body or {}); unknown=set(body)-USER_FIELDS
     if unknown:raise APIError({next(iter(unknown)):'Ce champ du compte ne peut pas être saisi.'},'ADMIN_USER_VALIDATION',422)
     if body.get('IdRoleFk') is not None:
@@ -52,9 +76,21 @@ def user_change(actor, body, old=None, operation='create'):
             raise APIError('Ce compte est réservé à l’administration de la plateforme.','PROTECTED_USER',403)
         if 'IdEntiteFk' in body and body['IdEntiteFk'] is not None and positive(body['IdEntiteFk'])!=entity:
             raise APIError('Le compte doit appartenir à votre entreprise.','ENTITY_MISMATCH',403)
+        if old and operation != "delete":
+            email = body.get("EmailUser")
+            if isinstance(email, str) and email.strip() == old.get("EmailUser"):
+                body.pop("EmailUser")
+            if {"EmailUser", "MotdepasseUser"} & body.keys():
+                raise APIError(
+                    "La modification des identifiants de connexion est réservée au titulaire du compte ou à la plateforme.",
+                    "USER_CREDENTIALS_PROTECTED", 403,
+                )
         for key in ('Is_Admin','Is_staff'):
             if key in body and body[key] is not False:raise APIError('La délégation de privilèges est réservée à la plateforme.','PRIVILEGE_ESCALATION',403)
         if privileged_user(effective):raise APIError('Choisissez un rôle sans privilège d’administration.','PRIVILEGE_ESCALATION',403)
+        role_id = effective.get("IdRoleFk")
+        if old is None or role_id != old.get("IdRoleFk"):
+            check_user_grant_ceiling(actor, entity, role_id, old["IdUser"] if old else None)
         body.update(IdEntiteFk=entity,Is_staff=False,Is_Admin=False)
     elif read_entity(actor) is not None and effective.get('IdEntiteFk') is not None and positive(effective['IdEntiteFk'])!=read_entity(actor):
         raise APIError('Choisissez un compte de l’entreprise active.','ENTITY_MISMATCH',403)
@@ -80,10 +116,8 @@ def user_change(actor, body, old=None, operation='create'):
                 if len(value)>150:raise ValidationError('email')
             except ValidationError:errors['EmailUser']='Renseignez une adresse e-mail valide.'
             else:
-                db.query("SELECT pg_advisory_xact_lock(hashtextextended('admin-email:'||lower(btrim(%s)),0))",[value])
-                args=[value];sql='SELECT 1 AS found FROM systeme."T_Utilisateurs" WHERE lower(btrim("EmailUser"))=lower(%s)'
-                if old:sql+=' AND "IdUser"<>%s';args.append(old['IdUser'])
-                if db.one(sql+' LIMIT 1',args):errors['EmailUser']='Cette adresse e-mail est déjà utilisée.'
+                if email_in_use(value, old["IdUser"] if old else None):
+                    errors["EmailUser"] = "Cette adresse e-mail est déjà utilisée."
                 body['EmailUser']=value
         if old is None or 'MotdepasseUser' in body:
             password=body.get('MotdepasseUser')
@@ -97,16 +131,18 @@ def user_change(actor, body, old=None, operation='create'):
     return validate_professional_fields(body)
 
 def management(actor,kind):
-    require_module(actor,'administration')
-    rights=access_snapshot(actor)['modules']['administration']
-    allowed=not settings.DB_READ_ONLY and rights['canManage'] and actor.admin
-    return bool(allowed and (kind=='utilisateurs' or actor.global_admin))
+    require_admin_tab(actor, kind)
+    return (not settings.DB_READ_ONLY and actor.admin and (kind == 'utilisateurs' or actor.global_admin)
+            and can_use_admin_tab(actor, kind, 'manage'))
 
 def references(actor,kind):
     from .field_references import reference_context,reference_options
-    if kind not in TABLES:raise APIError('Saisie indisponible.','NOT_FOUND',404)
-    require_module(actor,'administration')
-    entity=read_entity(actor); result={'entityId':entity,'canCreate':management(actor,kind),'platformAdmin':actor.global_admin}
+    if kind not in {*TABLES, 'entites', 'licences', 'connexions'}:
+        raise APIError('Saisie indisponible.','NOT_FOUND',404)
+    require_admin_tab(actor, kind)
+    entity = read_entity(actor)
+    result = {'entityId': entity, 'platformAdmin': actor.global_admin,
+              'canCreate': kind in TABLES and management(actor, kind)}
     if entity is None and not actor.global_admin:raise APIError('Votre compte doit être rattaché à une entreprise.','ORGANISATION_REQUIRED',403)
     result['entities']=db.query('SELECT "IdEntite" AS id,"NomEntite" AS label,"ValideEntite" AS active FROM systeme."T_Entite"'+(' WHERE "IdEntite"=%s' if entity is not None else '')+' ORDER BY lower("NomEntite"),"IdEntite"',[entity] if entity is not None else [])
     if kind in {'roles','utilisateurs'}:
@@ -119,7 +155,11 @@ def references(actor,kind):
         result['personnelFonctions']=reference_options(actor,'systeme','T_Utilisateurs','ID_FonctionFk')
     if kind=='correspondances':
         result['categories']=db.query('SELECT "ID_CategorieGenerique" AS id,"NomCategorieGenerique" AS label FROM referentiel."T_CategorieGenerique" WHERE "ValideCategorieGenerique" IS TRUE AND ("IdEntiteFk" IS NULL OR "IdEntiteFk"=%s) ORDER BY label',[entity])
-    result['referenceOptions']={'roles':result.get('roles',[]), 'entityTypes':reference_options(actor,'systeme','T_Entite','IdTypeEntiteFk'), 'licenseStatuses':reference_options(actor,'systeme','T_Licence','IdStatutLicenceFk')}
+    result['referenceOptions'] = {'roles': result.get('roles', [])}
+    if kind == 'entites':
+        result['referenceOptions']['entityTypes'] = reference_options(actor, 'systeme', 'T_Entite', 'IdTypeEntiteFk')
+    if kind == 'licences':
+        result['referenceOptions']['licenseStatuses'] = reference_options(actor, 'systeme', 'T_Licence', 'IdStatutLicenceFk')
     result['entities']=[{**row,'IdEntite':row['id'],'NomEntite':row['label'],'ValideEntite':row['active']} for row in result['entities']]
     if 'categories' in result:result['categories']=[{**row,'ID_CategorieGenerique':row['id'],'NomCategorieGenerique':row['label'],'ValideCategorieGenerique':True} for row in result['categories']]
     return result
@@ -160,7 +200,8 @@ def save_batch(actor,kind,body):
     from .registry import model
     from .repository import mutate,audit
     if kind not in TABLES:raise APIError('Saisie indisponible.','NOT_FOUND',404)
-    db.ensure_writable();require_module(actor,'administration','manage')
+    require_admin_tab(actor, kind, 'manage')
+    db.ensure_writable()
     if not management(actor,kind):raise APIError('Création réservée à l’administration autorisée.','PLATFORM_ADMIN_REQUIRED',403)
     if not isinstance(body,dict) or set(body)!={'requestId','rows'}:raise APIError('Le panier attend son identifiant et ses lignes.')
     try:request_id=str(uuid.UUID(body['requestId']))
@@ -219,4 +260,4 @@ class AdminEntitiesView(APIView):
         entity=read_entity(request.user)
         if entity is None and not request.user.global_admin:raise APIError('Votre compte doit être rattaché à une entreprise.','ORGANISATION_REQUIRED',403)
         rows=db.query('SELECT "IdEntite" AS id,"NomEntite" AS label,"ValideEntite" AS active FROM systeme."T_Entite"'+(' WHERE "IdEntite"=%s' if entity is not None else '')+' ORDER BY lower("NomEntite"),"IdEntite"',[entity] if entity is not None else [])
-        return ok(rows,meta={'canCreate':not settings.DB_READ_ONLY and access_snapshot(request.user)['modules']['administration']['canManage'],'entityId':entity})
+        return ok(rows,meta={'canCreate':not settings.DB_READ_ONLY and can_use_admin_tab(request.user, 'entites', 'manage'),'entityId':entity})

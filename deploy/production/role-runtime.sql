@@ -71,6 +71,17 @@ BEGIN
  IF to_regclass('logistique."T_TransfertDepotAction"') IS NOT NULL THEN
   REVOKE UPDATE,DELETE ON logistique."T_TransfertDepotAction" FROM sauverndeko_runtime;
  END IF;
+ IF to_regclass('logistique."T_ImmobilisationEvenement"') IS NOT NULL THEN
+  REVOKE UPDATE,DELETE ON logistique."T_ImmobilisationEvenement" FROM sauverndeko_runtime;
+ END IF;
+ IF to_regclass('logistique."T_ImmobilisationPlan"') IS NOT NULL THEN
+  REVOKE INSERT,UPDATE,DELETE ON logistique."T_ImmobilisationPlan",logistique."T_ImmobilisationEvenementValeur",
+    logistique."T_ImmobilisationClotureValeur" FROM sauverndeko_runtime;
+ END IF;
+ IF to_regclass('systeme."T_UtilisateurModule"') IS NOT NULL THEN
+  REVOKE ALL ON systeme."T_UtilisateurModule" FROM PUBLIC,sauverndeko_runtime;
+  GRANT SELECT,INSERT,UPDATE ON systeme."T_UtilisateurModule" TO sauverndeko_runtime;
+ END IF;
  -- Les déploiements sont attestés par la maintenance, jamais par le serveur HTTP.
  -- Cette exception vient après les droits métier communs et doit être conservée
  -- lors de toute réapplication de ce script ou des privilèges par défaut.

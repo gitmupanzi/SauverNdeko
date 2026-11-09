@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from apps.catalogue.views import recipient
 from apps.core import db
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import can_use_tab, require_tab
 from apps.core.repository import page, positive
 from apps.core.responses import APIError, ok
 
@@ -122,7 +122,7 @@ def summary(row, actor, demand=_DEMAND_UNSET):
 
 
 def may_send(actor):
-    return not settings.DB_READ_ONLY and access_snapshot(actor)["modules"]["discussions"]["canManage"]
+    return not settings.DB_READ_ONLY and can_use_tab(actor, "discussions", "messages", "manage")
 
 
 def active_members(entity, ids, *, lock=False):
@@ -389,7 +389,7 @@ class DiscussionReadView(APIView):
 
     def post(self, request, pk):
         actor = request.user
-        require_module(actor, "discussions")
+        require_tab(actor, "discussions", "messages")
         db.ensure_writable()
         pk = positive(pk)
         ids = request.data.get("messageIds") if isinstance(request.data, dict) else None

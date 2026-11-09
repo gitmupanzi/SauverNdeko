@@ -3,6 +3,7 @@ import {useCallback,useEffect,useId,useRef,useState} from "react";
 import {Link,useLocation,useNavigate} from "react-router-dom";
 import {useAuth} from "../contexts/AuthContext";
 import {requestJson} from "../services/api";
+import {tabRights} from "../services/moduleAccess";
 import {applicationClassificationValid,applicationCommercialisable,applicationGroups,applicationType} from "../services/applicationCatalogue";
 import ModuleHeader from "../components/ModuleHeader";
 import ActionButton from "../components/ActionButton";
@@ -23,7 +24,7 @@ function licenseDraft(data,id) {
 }
 function roleDraft(role,catalogue=[]) {return Object.fromEntries(catalogue.map(m=>{const stored=role?.permissions?.find(x=>x.CodeModule===m.CodeModule),base=role?.baseline?.[m.CodeModule] || {};return [m.CodeModule,Object.fromEntries(RIGHTS.map(([key],index)=>[key,Boolean(base[key]&&(!stored || (stored.Actif&&stored[["PeutConsulter","PeutGerer","PeutExporter"][index]])))]))];}));}
 function preferredEntity(rows,current,account) {return String([current,account].find(id=>id!=null&&id!==""&&rows.some(row=>String(row.IdEntite)===String(id))) ?? rows[0]?.IdEntite ?? "");}
-function tabForKey(current,key) {const index=TABS.findIndex(([id])=>id===current);if(key==="Home")return TABS[0][0];if(key==="End")return TABS[TABS.length-1][0];if(key==="ArrowLeft"||key==="ArrowRight")return TABS[(index+(key==="ArrowRight"?1:-1)+TABS.length)%TABS.length][0];return null;}
+function tabForKey(tabs,current,key) {const index=tabs.findIndex(([id])=>id===current);if(key==="Home")return tabs[0][0];if(key==="End")return tabs[tabs.length-1][0];if(key==="ArrowLeft"||key==="ArrowRight")return tabs[(index+(key==="ArrowRight"?1:-1)+tabs.length)%tabs.length][0];return null;}
 
 function OfferModules({data,licence,draft,platform,canManage,onChange}) {
   const offered=data.catalogue.filter(applicationCommercialisable);
@@ -69,7 +70,12 @@ export default function ApplicationLicences() {
   const [organisations,setOrganisations]=useState([]);
   const [organisationsReady,setOrganisationsReady]=useState(false),[organisationsLoading,setOrganisationsLoading]=useState(true),[configurationLoading,setConfigurationLoading]=useState(false);
   const [entity,setEntity]=useState("");
-  const [tab,setTab]=useState("licences");
+  const licenceRights=tabRights(user,"administration","licences");
+  const roleRights=tabRights(user,"administration","permissions");
+  const visibleTabs=TABS.filter(([id])=>id==="licences"?licenceRights.canRead:roleRights.canRead);
+  const hasVisibleTabs=visibleTabs.length>0;
+  const [requestedTab,setTab]=useState("licences");
+  const tab=visibleTabs.some(([id])=>id===requestedTab)?requestedTab:visibleTabs[0]?.[0];
   const [data,setData]=useState(null),[roleData,setRoleData]=useState(null);
   const [licenceId,setLicenceId]=useState(""),[roleId,setRoleId]=useState("");
   const [draft,setDraft]=useState({}),[permissions,setPermissions]=useState({});
@@ -83,6 +89,7 @@ export default function ApplicationLicences() {
   useEffect(()=>{
     const controller=new AbortController();let active=true;
     generation.current++;setOrganisationsReady(false);setOrganisationsLoading(true);setError("");setMessage("");resetConfiguration();
+    if(!hasVisibleTabs){setOrganisationsLoading(false);return;}
     async function loadOrganisations(){
       try {
         const result=await requestJson("/api/workspace/organisations",{requiresAuth:true,signal:controller.signal});
@@ -97,37 +104,44 @@ export default function ApplicationLicences() {
     }
     void loadOrganisations();
     return()=>{active=false;controller.abort();};
-  },[user?.IdUser,user?.IdEntiteFk,revision,resetConfiguration]);
+  },[user?.IdUser,user?.IdEntiteFk,revision,resetConfiguration,hasVisibleTabs]);
   useEffect(()=>{
     const id=++generation.current,controller=new AbortController();let active=true;
     resetConfiguration();
-    if(organisationsReady&&entity&&organisations.some(row=>String(row.IdEntite)===entity)){
+    if(hasVisibleTabs&&organisationsReady&&entity&&organisations.some(row=>String(row.IdEntite)===entity)){
       setConfigurationLoading(true);setError("");setMessage("");
       async function load(){
         try {
-          const results=await Promise.allSettled(["licences","roles"].map(kind=>requestJson("/api/workspace/"+kind+"?entite="+encodeURIComponent(entity),{requiresAuth:true,signal:controller.signal})));
+          const loadSection=(kind,allowed)=>allowed
+            ? requestJson("/api/workspace/"+kind+"?entite="+encodeURIComponent(entity),{requiresAuth:true,signal:controller.signal})
+            : null;
+          const results=await Promise.allSettled([loadSection("licences",licenceRights.canRead),loadSection("roles",roleRights.canRead)]);
           if(!active||!mounted.current||generation.current!==id)return;
           const [offer,roles]=results.map(result=>result.status==="fulfilled"?result.value:null);
-          if(!offer?.success||!roles?.success){setError(offer?.message || roles?.message || "La configuration est indisponible.");return;}
-          if(String(offer.data?.entityId)!==entity||String(roles.data?.entityId)!==entity||!Array.isArray(offer.data?.licences)||!Array.isArray(offer.data?.catalogue)||!Array.isArray(offer.data?.moduleCodes)||!Array.isArray(offer.data?.effectiveModules)||!Array.isArray(roles.data?.roles)||!Array.isArray(roles.data?.catalogue)||!offer.data.catalogue.every(applicationClassificationValid)||!roles.data.catalogue.every(applicationClassificationValid)){setError("Cette configuration n’est plus à jour. Rechargez-la.");return;}
+          if((licenceRights.canRead&&!offer?.success)||(roleRights.canRead&&!roles?.success)){setError(offer?.message || roles?.message || "La configuration est indisponible.");return;}
+          const offerData=offer?.data, permissionsData=roles?.data;
+          if((licenceRights.canRead&&(String(offerData?.entityId)!==entity||!Array.isArray(offerData.licences)||!Array.isArray(offerData.catalogue)||!Array.isArray(offerData.moduleCodes)||!Array.isArray(offerData.effectiveModules)||!offerData.catalogue.every(applicationClassificationValid)))
+            ||(roleRights.canRead&&(String(permissionsData?.entityId)!==entity||!Array.isArray(permissionsData.roles)||!Array.isArray(permissionsData.catalogue)||!permissionsData.catalogue.every(applicationClassificationValid)))){setError("Cette configuration n’est plus à jour. Rechargez-la.");return;}
           const previous=selections.current.entity===entity?selections.current:{};
-          const licence=String(offer.data.licences.find(x=>String(x.IdLicence)===previous.licenceId)?.IdLicence || offer.data.licences.find(x=>x.statut_licence==="Active")?.IdLicence || offer.data.licences[0]?.IdLicence || "");
-          const selectedRole=roles.data.roles.find(x=>String(x.IdRoleFk)===previous.roleId) || roles.data.roles[0];
+          const licences=offerData?.licences||[], availableRoles=permissionsData?.roles||[];
+          const licence=String(licences.find(x=>String(x.IdLicence)===previous.licenceId)?.IdLicence || licences.find(x=>x.statut_licence==="Active")?.IdLicence || licences[0]?.IdLicence || "");
+          const selectedRole=availableRoles.find(x=>String(x.IdRoleFk)===previous.roleId) || availableRoles[0];
           const role=String(selectedRole?.IdRoleFk || "");
           selections.current={entity,licenceId:licence,roleId:role};
-          setData(offer.data);setRoleData(roles.data);setLicenceId(licence);setDraft(licenseDraft(offer.data,licence));setRoleId(role);setPermissions(roleDraft(selectedRole,roles.data.catalogue));
+          setData(offerData||null);setRoleData(permissionsData||null);setLicenceId(licence);setDraft(licenseDraft(offerData,licence));setRoleId(role);setPermissions(roleDraft(selectedRole,permissionsData?.catalogue));
         } catch {if(active&&mounted.current&&generation.current===id)setError("La configuration est indisponible. Réessayez.");}
         finally {if(active&&mounted.current&&generation.current===id)setConfigurationLoading(false);}
       }
       void load();
     }
     return()=>{active=false;controller.abort();if(generation.current===id)generation.current++;};
-  },[entity,organisationsReady,organisations,resetConfiguration]);
+  },[entity,organisationsReady,organisations,resetConfiguration,hasVisibleTabs,licenceRights.canRead,roleRights.canRead]);
   const loading=organisationsLoading||configurationLoading;
-  const scoped=Boolean(organisationsReady&&entity&&String(data?.entityId)===entity&&String(roleData?.entityId)===entity);
+  const scoped=Boolean(organisationsReady&&entity&&tab&&String((tab==="licences"?data:roleData)?.entityId)===entity);
   const licence=data?.licences.find(x=>String(x.IdLicence)===licenceId);
   const role=roleData?.roles.find(x=>String(x.IdRoleFk)===roleId);
-  const canManage=Boolean(platform&&scoped&&data?.canManage&&roleData?.canManage&&!loading&&!saving);
+  const canManage=Boolean(platform&&scoped&&!loading&&!saving&&(tab==="licences"
+    ? licenceRights.canManage&&data?.canManage : roleRights.canManage&&roleData?.canManage));
   const initialOffer=licenseDraft(data,licenceId);
   const offerChanges=(data?.catalogue||[]).filter(item=>data.moduleCodes.includes(item.CodeModule)&&draft[item.CodeModule]!==initialOffer[item.CodeModule]);
   const licenceChanged=Boolean(licence&&offerChanges.length);
@@ -160,7 +174,7 @@ export default function ApplicationLicences() {
     event.preventDefault();event.stopPropagation();requestTransition(()=>navigate(destination));
   }
   function switchTab(id){if(saveLock.current)return;setTab(id);setError("");setMessage("");}
-  function navigateTabs(event,id){const next=tabForKey(id,event.key);if(!next||saveLock.current)return;event.preventDefault();switchTab(next);tabs.current[next]?.focus();}
+  function navigateTabs(event,id){const next=tabForKey(visibleTabs,id,event.key);if(!next||saveLock.current)return;event.preventDefault();switchTab(next);tabs.current[next]?.focus();}
   function changeRight(code,key,checked){
     if(!canManage||saveLock.current)return;
     setPermissions(current=>{const next={...current[code],[key]:checked};if(key==="canRead"&&!checked){next.canManage=false;next.canExport=false;}return {...current,[code]:next};});
@@ -189,12 +203,13 @@ export default function ApplicationLicences() {
   const organisation=organisations.find(x=>String(x.IdEntite)===entity);
   return <div className="applications-page" onClickCapture={guardLink}><ModuleHeader title="Licences et applications" onRequestLogout={requestTransition}/><main className="applications-main">
     <div className="applications-heading"><div><Link to="/espace" className="application-back"><AppIcon name="chevron-left"/>Mes applications</Link><h1>Licences et applications</h1><p>Les applications de votre organisation, selon sa licence et les droits de ses utilisateurs.</p></div><span className="application-badge">{platform?"Administration de la plateforme":"Offre de votre organisation"}</span></div>
+    {!hasVisibleTabs ? <p className="application-message" role="alert">Votre compte n’a pas accès aux licences ni aux droits des rôles.</p> : <>
     <section className="application-organisation">
       <span className="application-entity-icon"><AppIcon name="building" size="1em"/></span>
       <div>{platform?<><label className="application-label" htmlFor={fieldId+"-organisation"}>Organisation</label><SearchSelect id={fieldId+"-organisation"} label="Organisation" value={entity} disabled={saving||organisationsLoading||!organisationsReady||!organisations.length} onChange={chooseEntity} options={organisations.map(x=>({value:String(x.IdEntite),label:x.NomEntite+(x.ValideEntite?"":" · inactive")}))}/></>:<><span className="application-label">Organisation</span><strong>{organisation?.NomEntite || "—"}</strong></>}</div>
       <Link to="/applications" className="ui-action is-secondary"><AppIcon name="apps"/>Catalogue des applications</Link>
     </section>
-    <div className="application-tabs" role="tablist" aria-label="Configuration des applications">{TABS.map(([id,label])=><button ref={element=>{tabs.current[id]=element;}} id={"tab-"+id} aria-controls={"panel-"+id} role="tab" aria-selected={tab===id} tabIndex={tab===id?0:-1} key={id} disabled={saving} onKeyDown={event=>navigateTabs(event,id)} onClick={()=>switchTab(id)}>{label}</button>)}</div>
+    <div className="application-tabs" role="tablist" aria-label="Configuration des applications">{visibleTabs.map(([id,label])=><button ref={element=>{tabs.current[id]=element;}} id={"tab-"+id} aria-controls={"panel-"+id} role="tab" aria-selected={tab===id} tabIndex={tab===id?0:-1} key={id} disabled={saving} onKeyDown={event=>navigateTabs(event,id)} onClick={()=>switchTab(id)}>{label}</button>)}</div>
     {loading?<p className="application-message" role="status">Chargement de la configuration…</p>:null}
     {error?<div className="application-message is-error" role="alert"><span>{error}</span><ActionButton icon="refresh" disabled={saving||loading} onClick={reload}>Recharger</ActionButton></div>:null}
     {message?<p className="application-message is-success" role="status"><AppIcon name="check-circle"/>{message}</p>:null}
@@ -214,6 +229,7 @@ export default function ApplicationLicences() {
         ? (tab==="licences"&&licenceChanged?`${offerChanges.length} modification${offerChanges.length>1?"s":""} à enregistrer`:"Les droits du rôle restent applicables.")
         : "Les activations sont gérées par l’administration de la plateforme."}</span>{platform?<div><ActionButton icon="reset" disabled={!canManage||!(tab==="licences"?licenceChanged:rightsChanged)} onClick={()=>requestTransition(()=>tab==="licences"?setDraft(licenseDraft(data,licenceId)):setPermissions(roleDraft(role,roleData.catalogue)),tab==="licences"?licenceChanged:rightsChanged)}>Annuler</ActionButton><ActionButton icon="check-circle" variant="primary" disabled={!canManage||!(tab==="licences"?licenceChanged&&licence:rightsChanged&&role)} onClick={()=>tab==="licences"?setConfirmOffer(true):void save()}>{saving?"Enregistrement…":tab==="licences"?"Appliquer les changements":"Enregistrer"}</ActionButton></div>:null}</footer>
     </section>:null}
+    </>}
   </main>{confirmOffer?<DrawerDialog title="Appliquer les changements" icon="settings"
     subtitle={organisation?.NomEntite} onClose={()=>setConfirmOffer(false)} defaultWidth={480}
     storageKey="sauverndeko.application-offer-confirm.width"

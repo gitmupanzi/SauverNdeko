@@ -292,4 +292,125 @@ class ClassificationApplicationsLicenceAPI(unittest.TestCase):
         self.assertEqual({row['CodeModule']: row['Actif'] for row in preserved}, {'catalogue': True, 'territoires': True})
 
 
+
+    def test_04_individual_permissions_gate_routes_and_keep_company_scope(self):
+        endpoint = '/api/workspace/droits-utilisateurs'
+        platform = self.client()
+        entity = self.entities[0]
+        user = self.locals[0]
+        config = self.data(platform.get(endpoint, {'entite': entity}))
+        codes = {item['CodeModule'] for item in config['catalogue']}
+        for code in ('logistique.immobilisations', 'logistique.commandes', 'caisse.ecritures',
+                     'support.tickets', 'administration.utilisateurs', 'discussions.messages', 'professionnels.annuaire'):
+            self.assertIn(code, codes)
+        self.assertNotIn('territoires', codes)
+        self.assertEqual({row['IdUser'] for row in config['users']}, {user})
+        self.data(self.client(local=True).get(endpoint, {'entite': entity}), 403)
+
+        inherited = {'canRead': True, 'canManage': True, 'canExport': True}
+        permissions = {code: inherited.copy() for code in codes}
+        permissions['logistique.immobilisations'].update(canManage=False, canExport=False)
+        payload = {'entityId': entity, 'versions': dict.fromkeys(codes, 0), 'permissions': permissions}
+        self.data(self.client(local=True).put(f'{endpoint}/{user}', payload, format='json'), 403)
+        self.data(platform.put(f'{endpoint}/{self.locals[1]}', payload, format='json'), 404)
+        self.data(platform.put(f'{endpoint}/{self.global_user}', payload, format='json'), 404)
+        response = self.data(platform.put(f'{endpoint}/{user}', payload, format='json'))
+        rules = {row['CodeModule']: row for row in response['users'][0]['permissions']}
+        self.assertEqual(rules['logistique.immobilisations']['Version'], 1)
+        self.data(platform.put(f'{endpoint}/{user}', payload, format='json'), 409)
+
+        assets = '/api/logistique/immobilisations'
+        local = self.client(local=True)
+        listed = local.get(assets)
+        self.data(listed)
+        self.assertFalse(listed.data['meta']['canWrite'])
+        self.assertFalse(listed.data['meta']['canExport'])
+        self.data(local.post(assets, {}, format='json'), 403)
+        self.data(local.post('/api/logistique/saisie-multiple/immobilisations', {}, format='json'), 403)
+        for path in (assets + '/export.xlsx', '/api/logistique/registre/immobilisations/export.csv',
+                     '/api/logistique/documents/immobilisation/1/fiche.pdf',
+                     '/api/logistique/documents/immobilisation/1/pieces/1'):
+            with self.subTest(path=path):
+                self.data(local.get(path), 403)
+        self.data(local.get('/api/logistique/registre/articles'))
+        self.data(self.client(1, local=True).get(assets))
+        self.data(platform.get(assets))
+
+        payload['versions']['logistique.immobilisations'] = 1
+        permissions['logistique.immobilisations'] = dict.fromkeys(inherited, False)
+        response = self.data(platform.put(f'{endpoint}/{user}', payload, format='json'))
+        local = self.client(local=True)
+        for path in (assets, '/api/views/logistique/V_Immobilisation',
+                     '/api/logistique/registre/immobilisations',
+                     '/api/logistique/saisie-multiple/immobilisations/modele-excel',
+                     '/api/tableaux/logistique.immobilisations/preferences'):
+            with self.subTest(path=path):
+                self.data(local.get(path), 403)
+        self.data(local.get('/api/logistique/registre/articles'))
+
+        payload['versions']['logistique.immobilisations'] = 2
+        permissions['logistique.immobilisations'] = inherited
+        permissions['logistique'] = dict.fromkeys(inherited, False)
+        self.data(platform.put(f'{endpoint}/{user}', payload, format='json'))
+        local = self.client(local=True)
+        self.data(local.get(assets), 403)
+        self.data(local.get('/api/articles'), 403)
+        keys = {row['key'] for row in self.data(local.get('/api/workspace/modules'))}
+        self.assertNotIn('logistique', keys)
+
+        # Autoriser par défaut côté compte ne contourne jamais une licence absente.
+        self.assertFalse(access_snapshot(self.actor(local=True))['modules']['caisse']['canRead'])
+        self.assertTrue(db.one(
+            """SELECT EXISTS(SELECT FROM systeme."T_Audit_Log" WHERE "TableName"=%s
+               AND "IdEntiteFk"=%s AND "NewData"->>'userId'=%s) AS found""",
+            ['systeme.T_UtilisateurModule', entity, str(user)],
+        )['found'])
+
+    def test_05_individual_tabs_deny_direct_and_alternative_routes(self):
+        entity, user = self.entities[0], self.locals[0]
+        db.query(
+            """INSERT INTO systeme."T_LicenceModule" ("IdLicenceFk","CodeModule","Actif")
+               SELECT %s, code, true FROM unnest(ARRAY['discussions','caisse','support']) AS code""",
+            [self.licences[0]],
+        )
+        endpoint = '/api/workspace/droits-utilisateurs'
+        platform = self.client()
+        config = self.data(platform.get(endpoint, {'entite': entity}))
+        codes = {item['CodeModule'] for item in config['catalogue']}
+        inherited = {'canRead': True, 'canManage': True, 'canExport': True}
+        permissions = {code: inherited.copy() for code in codes}
+        for code in ('logistique.articles', 'caisse.ecritures', 'support.tickets',
+                     'administration.utilisateurs', 'discussions.messages', 'professionnels.annuaire'):
+            permissions[code] = dict.fromkeys(inherited, False)
+        permissions['logistique.factures']['canExport'] = False
+        self.data(platform.put(f'{endpoint}/{user}', {
+            'entityId': entity, 'versions': dict.fromkeys(codes, 0), 'permissions': permissions,
+        }, format='json'))
+        local = self.client(local=True)
+        for path in (
+            '/api/logistique/registre/articles', '/api/models/T_Article',
+            '/api/caisse/registres/ecritures', '/api/models/T_Paiement',
+            '/api/support/tickets', '/api/support/tickets/export.xlsx',
+            '/api/systeme/administration/registres/utilisateurs',
+            '/api/discussions', '/api/discussions/1/lecture',
+            '/api/professionnels/annuaire', '/api/public/experts',
+        ):
+            with self.subTest(path=path):
+                self.data(local.post(path, {'messageIds': [1]}, format='json')
+                          if path.endswith('/lecture') else local.get(path), 403)
+        for path in ('/api/logistique/registre/commandes', '/api/caisse/registres/caisses',
+                     '/api/discussions/demandes', '/api/professionnels/contexte'):
+            with self.subTest(path=path):
+                self.data(local.get(path))
+        self.data(platform.get('/api/professionnels/annuaire'))
+        self.data(self.client(1, local=True).get('/api/logistique/registre/articles'))
+        self.data(local.get('/api/logistique/registre/factures'))
+        self.data(local.get('/api/logistique/registre/factures/export.xlsx'), 403)
+        prefs = self.data(local.get('/api/tableaux/logistique.commandes/preferences'))
+        invoice_column = next(column for column in prefs['columns'] if column['id'] == 'CodeFacture')
+        self.assertFalse(invoice_column['exportable'])
+        self.data(local.get('/api/logistique/registre/commandes/export.csv', {
+            'columns': '["CodeFacture"]',
+        }), 400)
+
 if __name__=='__main__': unittest.main(verbosity=2)

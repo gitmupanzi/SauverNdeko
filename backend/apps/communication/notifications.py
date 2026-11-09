@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.module_access import individual_rules
 from apps.core.permissions import HasModuleAccess
 from apps.core.repository import audit, positive
 from apps.core.responses import APIError, ok
@@ -25,12 +26,16 @@ def private_response(data, **kwargs):
 def personal_scope(actor, *, table=False):
     # Le destinataire et son entreprise réelle priment sur le contexte de travail.
     user, entity = ('IdUserFk', 'IdEntiteFk') if table else ('IdUser', 'IdEntite')
-    return (
-        f'''n."{user}"=%s AND (
-            n."{entity}"=%s OR (n."{entity}" IS NULL AND n."IdAnnonceFk" IS NULL)
-        )''',
-        [actor.pk, actor.row.get("IdEntiteFk")],
-    )
+    entity_id = actor.row.get("IdEntiteFk")
+    where = f'''n."{user}"=%s AND (
+        n."{entity}"=%s OR (n."{entity}" IS NULL AND n."IdAnnonceFk" IS NULL)
+    )'''
+    if entity_id and not actor.global_admin:
+        rules = individual_rules(entity_id, actor.pk)
+        if any(not rules.get(("discussions", tab), {}).get("PeutConsulter", True)
+               for tab in ("", "annonces")):
+            where += ' AND n."IdAnnonceFk" IS NULL'
+    return where, [actor.pk, entity_id]
 
 
 def pagination(params):

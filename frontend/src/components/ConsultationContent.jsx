@@ -2,7 +2,7 @@ import StocksDepots from "../pages/logistique/StocksDepots";
 import BusinessDocuments from "./BusinessDocuments";
 import CreditNotes from "../pages/logistique/CreditNotes";
 import { formatConsumptionMoney, formatCurrencyGroups } from "../utils/money";
-import { moduleRights } from "../services/moduleAccess";
+import { tabRights } from "../services/moduleAccess";
 import {isStockOrder,stockDocumentKind,canCreateStockInvoice} from "../utils/stockDocumentTypes";
 import { RecordFolderLinks } from "./FollowupFolderWidgets";
 import { useFollowupFolders } from "../contexts/FollowupFoldersContext";
@@ -66,9 +66,9 @@ function ErrorState({ payload, retry }) {
 
 function parseFilters(value) { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { return {}; } }
 function compactFilters(filters) { return Object.fromEntries(Object.entries(filters).filter(([,value]) => String(value).trim()).map(([key,value]) => [key,String(value).trim()])); }
-export function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null, onSelectionChange, selectionResetKey=0, onReady }) {
+export function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null, exportTabs = [], onSelectionChange, selectionResetKey=0, onReady }) {
   const {user}=useAuth();
-  const canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+  const canExport=user?.permissions?.canExportData!==false&&exportTabs.length>0&&exportTabs.every(tab=>tabRights(user,"logistique",tab).canExport===true);
   const data = remote.payload;
   const available = data?.meta?.columns || Object.keys(data?.data?.[0] || {});
   const types = data?.meta?.columnTypes || {};
@@ -119,13 +119,13 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     const label = WEIGHT_FIELD_LABELS[field] || FIELD_LABELS[field] || field;
     return { key:field,label:timestamp && label === "Date" ? "Date et heure" : label,width:/^Date/.test(field) ? 180 : undefined,align:numeric ? "right" : "left",filterType:numeric ? "number" : /^(date|timestamp)/.test(sqlType) ? "date" : sqlType === "boolean" ? "boolean" : "text",
       render:(row) => {
-        if (["NomArticle","CodeArticleInterne"].includes(field) && (row.ID_Article || row.ID_ArticleFk)) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("produit",row.ID_Article || row.ID_ArticleFk,row.NomArticle); }}>{display(field,row[field],row)}</button>;
-        if (field === "CodeCmd" && (row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk)) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("commande",row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk,row.CodeCmd); }}>{display(field,row[field],row)}</button>;
+        if (["NomArticle","CodeArticleInterne"].includes(field) && (row.ID_Article || row.ID_ArticleFk) && tabRights(user,"logistique","articles").canRead) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("produit",row.ID_Article || row.ID_ArticleFk,row.NomArticle); }}>{display(field,row[field],row)}</button>;
+        if (field === "CodeCmd" && (row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk) && tabRights(user,"logistique","commandes").canRead) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("commande",row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk,row.CodeCmd); }}>{display(field,row[field],row)}</button>;
         if (/^(Etat|Statut)/.test(field) && row[field] != null && row[field] !== "") return <StatusValue field={field} value={row[field]} />;
         return display(field,row[field],row);
       }, renderText:(row) => display(field,row[field],row) };
   });
-  if (kind) columns.push({ key:"consultation",label:"Actions",sortable:false,searchable:false,renderText:()=>"",render:(row) => {
+  if (kind && tabRights(user,"logistique",kind==="produit"?"articles":"commandes").canRead) columns.push({ key:"consultation",label:"Actions",sortable:false,searchable:false,renderText:()=>"",render:(row) => {
     const id = kind === "produit" ? row.ID_Article || row.ID_ArticleFk : row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk;
     return id ? <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open(kind,id,row.NomArticle || row.CodeCmd || row.CodeFacture); }}>Consulter</button> : "—";
   }});
@@ -141,7 +141,9 @@ function ProductObjectContent({ entry, update, open, openFolder }) {
   const base = "/api/logistique/consultations/" + entry.kind + "/" + entry.id;
   const header = useRead(base,version);
   const queryString = new URLSearchParams(entry.query).toString();
-  const section = entry.section || "identite";
+  const {user}=useAuth();
+  const sectionKeys = [...new Set([...(header.payload?.data?.sections || ["identite"]), ...(tabRights(user,"logistique","stocks-depots").canRead?["stocks"]:[])])];
+  const section = sectionKeys.includes(entry.section) ? entry.section : "identite";
   const tabPrefix = "consultation-"+entry.kind+"-"+entry.id;
   const details = useRead(section === "identite"||section === "stocks" ? null : base + "/" + section + "?" + queryString);
   const record = header.payload?.data?.record;
@@ -150,8 +152,8 @@ function ProductObjectContent({ entry, update, open, openFolder }) {
   return <>
     <div className="consult-object-overview">{entry.kind === "produit" ? <ProductHeading record={record}/> : <div className="consult-record-heading"><h3>{record.CodeCmd || "Bon de stock"}</h3><span>{record.StatutCmd || ""}</span></div>}
     <RecordFolderLinks data={header.payload.data.dossiers} recordId={entry.id} objectType={entry.kind === "produit"?"article":"bon"} hasInvoice={entry.kind==="commande" && Boolean(record.CodeFacture?.trim())} onOpen={openFolder}/></div>
-    <ConsultationTabs tabs={[...new Set([...header.payload.data.sections,...(entry.kind==="produit"?["stocks"]:[])])].map(key=>({key,label:LABELS[key] || key,icon:({identite:"box",lots:"box",commandes:"receipt",lignes:"list",mouvements:"movements",consommation:"chart",couverture:"clock",controle:"check-circle",reglements:"wallet",facture:"document"})[key] || "list"}))} value={section} onChange={key=>update({section:key,query:{...entry.query,take:25,skip:0}})} label={entry.kind==="produit"?"Rubriques du produit":"Rubriques du bon de stock"} idPrefix={tabPrefix}/>
-    {[...new Set([...header.payload.data.sections,...(entry.kind==="produit"?["stocks"]:[])])].map(key=><section key={key} className="consultation-tabpanel" role="tabpanel" id={tabPrefix+"-panel-"+key} aria-labelledby={tabPrefix+"-tab-"+key} tabIndex={key===section?0:-1} hidden={key!==section}>
+    <ConsultationTabs tabs={sectionKeys.map(key=>({key,label:LABELS[key] || key,icon:({identite:"box",lots:"box",commandes:"receipt",lignes:"list",mouvements:"movements",consommation:"chart",couverture:"clock",controle:"check-circle",reglements:"wallet",facture:"document"})[key] || "list"}))} value={section} onChange={key=>update({section:key,query:{...entry.query,take:25,skip:0}})} label={entry.kind==="produit"?"Rubriques du produit":"Rubriques du bon de stock"} idPrefix={tabPrefix}/>
+    {sectionKeys.map(key=><section key={key} className="consultation-tabpanel" role="tabpanel" id={tabPrefix+"-panel-"+key} aria-labelledby={tabPrefix+"-tab-"+key} tabIndex={key===section?0:-1} hidden={key!==section}>
     {key===section?<>
     {section==="lots"&&entry.kind==="produit"?<p className="consult-note">{entry.query?.depotId?"Lots du dépôt sélectionné.":<>Stock identifié par lot : {formatNumber(record.StockVentileLots)} · Stock sans lot : {formatNumber(record.StockSansLot)}{record.Unite?" "+record.Unite:""}</>}</p>:null}
     {section === "stocks"?<StocksDepots embedded articleId={entry.id} selectedDepotId={entry.query?.depotId||""}/>:section === "identite" ? entry.kind === "produit" ? <ProductOverview record={record}/> : <><dl className="consult-fields">{ORDER_FIELDS.map((field) => <div key={field}><dt>{FIELD_LABELS[field]}</dt><dd>{display(field, record[field],record)}</dd></div>)}</dl></> :
@@ -165,7 +167,9 @@ function OrderObjectContent({entry,update,open,openFolder}){
   const {version,refresh}=useFollowupFolders();
   const {user}=useAuth();
   const [editor,setEditor]=useState(null),[workflowVersion,setWorkflowVersion]=useState(0);
-  const canWrite=user?.permissions?.canWriteData===true&&moduleRights(user,"logistique").canManage;
+  const writable=user?.permissions?.canWriteData===true;
+  const canWrite=writable&&tabRights(user,"logistique","commandes").canManage;
+  const canInvoice=writable&&tabRights(user,"logistique","factures").canManage;
   useEffect(()=>{setEditor(null);},[entry.id]);
   const root=useRef(null),restored=useRef(false);
   const base="/api/logistique/consultations/commande/"+entry.id;
@@ -223,7 +227,7 @@ function OrderObjectContent({entry,update,open,openFolder}){
     <div className="commande360-workflow-actions">
       {returnContext.isReturn&&returnContext.originId?<ActionButton icon="receipt" onClick={()=>openRelated("commande",returnContext.originId,"Bon d’origine")}>Voir le bon d’origine</ActionButton>:null}
       {canWrite&&features.returns===true&&outgoing&&!returnContext.isReturn?<ActionButton icon="stock-in" onClick={()=>setEditor("retour")}>Restituer des articles</ActionButton>:null}
-      {canWrite&&features.invoices===true&&canCreateStockInvoice(record)&&!returnContext.isReturn?<ActionButton icon="document" onClick={()=>setEditor("facture")}>{invoiced?"Consulter la facture":"Créer la facture"}</ActionButton>:null}
+      {canInvoice&&features.invoices===true&&canCreateStockInvoice(record)&&!returnContext.isReturn?<ActionButton icon="document" onClick={()=>setEditor("facture")}>{invoiced?"Consulter la facture":"Créer la facture"}</ActionButton>:null}
     </div>
     {!order&&record.AvoirAEtablir===true?<p className="commande360-return-notice"><AppIcon name="alert"/>Avoir à établir · {formatCurrency(record.MontantAvoirAEtablir,record.DeviseCode)}. La facture émise reste conservée.</p>:null}
     <ConsultationTabs tabs={tabs} value={section} onChange={changeSection} label="Rubriques du bon de stock" idPrefix={prefix}/>
@@ -245,6 +249,15 @@ export function ObjectContent(props){
   return props.entry.kind==="commande"?<OrderObjectContent {...props}/>:<ProductObjectContent {...props}/>;
 }
 
+function indicatorSourceTabs(key) {
+  if (key.startsWith("articles") || ["alertesStock","ruptures","peremptionProche"].includes(key)) return ["articles"];
+  if (["montantTotalRegle","montantRestant"].includes(key)) return ["factures","reglements"];
+  if (key.startsWith("factures") || key==="montantTotalFacture") return ["factures"];
+  if (key==="commandesNonFacturees") return ["commandes","factures"];
+  if (key.startsWith("commandes") || key==="montantBons") return ["commandes"];
+  return ["articles","mouvements"];
+}
+
 export function IndicatorContent({ entry, update, open, inline = false, onReady }) {
   const remote = useRead("/api/logistique/indicateurs/" + entry.id + "?" + new URLSearchParams(entry.query));
   const indicator = remote.payload?.meta?.indicator;
@@ -253,6 +266,6 @@ export function IndicatorContent({ entry, update, open, inline = false, onReady 
   const fields = kind === "produit" ? ["CodeArticleInterne", "NomArticle", "QteArticle", "QteMinArticle", "EtatStock", "StockArticle", "StockMouvements", "Ecart", "EtatAuditStock", "CouvertureMois"] : isInvoice ? ["CodeFacture", "CodeCmd", "DateFacture", "DateEcheancePaiement", "NomClientSaisi", "MontantFacture", "MontantRegleFacture", "TotalRegle", "MontantResteFacture", "Reste"] : ["CodeCmd", "DateCmd", "TypeCmd", "StatutCmd", "NomClientSaisi", "NbLignes", "MontantTTC", "EtatPaiement"];
   if (ARTICLE_WEIGHT_INDICATORS.has(entry.id)) fields.splice(3, 0, "PoidsUnitaire", "PoidsStockKg");
   return <>{!inline && indicator ? <div className="consult-indicator"><strong>{indicator.amountsByCurrency?.length ? formatCurrencyGroups(indicator.amountsByCurrency) : formatNumber(indicator.value)}{indicator.unit ? " " + indicator.unit : ""}</strong><span>{indicator.label}</span></div> : null}
-    <ResultTable remote={remote} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={fields} open={open} showControls={inline} kind={kind} onReady={onReady} exportPath={"/api/logistique/indicateurs/" + entry.id + "/export.xlsx"} />
+    <ResultTable remote={remote} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={fields} open={open} showControls={inline} kind={kind} onReady={onReady} exportTabs={["dashboard",...indicatorSourceTabs(entry.id)]} exportPath={"/api/logistique/indicateurs/" + entry.id + "/export.xlsx"} />
   </>;
 }

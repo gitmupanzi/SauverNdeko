@@ -10,7 +10,9 @@ from apps.core.permissions import IsERPAdmin
 from apps.core.registry import view
 from apps.core.repository import positive, page, get_record, audit, clean
 from apps.core.responses import APIError, ok
-from .reads import read_scope, register_source, row_source, QUERY_KEYS, INDICATORS, INVOICE
+from .tab_access import FOLDER_TABS, MODULE, can_read_tabs, require_tabs
+from apps.core.module_access import can_use_tab
+from .reads import read_scope, register_source, restrict_order_source, row_source, QUERY_KEYS, INDICATORS, INVOICE
 
 COLOURS = {"vert":"Vert", "rouge":"Rouge", "orange":"Orange", "bleu":"Bleu", "violet":"Violet", "ardoise":"Ardoise"}
 TYPES = {"article": ("V_Article", "ID_Article", "ID_ArticleFk", "NomArticle"), "bon": ("V_Commande", "ID_Commande", "ID_CommandeFk", "CodeCmd"), "facture": ("V_Commande", "ID_Commande", "ID_CommandeFk", "CodeFacture")}
@@ -60,9 +62,20 @@ def definitions(actor, archived=False):
     rows=db.query('SELECT d.* FROM logistique."V_DossierSuivi" d WHERE '+where+' AND d."Actif"=%s ORDER BY lower(d."Nom"),d."ID_DossierSuivi"',[*params,not archived])
     return [custom_definition(row) for row in rows]
 
+def folder_tabs(folder):
+    source = FOLDER_TABS[folder["objectType"]]
+    rules = folder.get("rules") or {}
+    if source == "commandes" and rules.get("etatBon") == "non-facture":
+        return (source, "factures")
+    if source == "factures" and rules.get("etatFacture"):
+        return (source, "reglements")
+    return (source,)
+
+
 def get_definition(actor,key,include_archived=False,lock=False):
     standard=next((item for item in AUTOMATIC if item["key"]==key),None)
     if standard:
+        require_tabs(actor, *folder_tabs(standard))
         if lock: raise APIError("Ce dossier standard ne peut pas être modifié.","SYSTEM_FOLDER",403)
         return {**standard,"mode":"automatique","system":True,"active":True,"version":None,"categoryId":None}
     match=re.fullmatch(r"dossier-([1-9][0-9]*)",str(key))
@@ -73,7 +86,9 @@ def get_definition(actor,key,include_archived=False,lock=False):
     row=db.one('SELECT d.* FROM '+source+' d WHERE '+where+' AND d."ID_DossierSuivi"=%s'+('' if include_archived else ' AND d."Actif"')+(' FOR UPDATE' if lock else ''),[*params,positive(match[1])])
     if not row: raise APIError("Dossier introuvable.","NOT_FOUND",404)
     if lock: row["CategorieDossier"]=""
-    return custom_definition(row)
+    definition = custom_definition(row)
+    require_tabs(actor, *folder_tabs(definition))
+    return definition
 
 def validate_rules(rules, mode, kind="article"):
     object_type(kind)
@@ -95,7 +110,7 @@ def validate_rules(rules, mode, kind="article"):
     if mode=="automatique" and not result: raise APIError("Choisissez au moins un critère pour le dossier automatique.")
     return result
 
-def folder_scope(actor,folder,raw=None):
+def folder_scope(actor,folder,raw=None,*,action="read"):
     raw=raw or {}
     if set(raw)-(QUERY_KEYS|{"columns"}): raise APIError("Critère non autorisé.")
     kind=object_type(folder["objectType"])
@@ -105,6 +120,7 @@ def folder_scope(actor,folder,raw=None):
     if kind=="facture": obj={**obj,"_date_field":"DateFacture"}; condition+=" AND ("+INVOICE+")"
     state=rules.get("etatBon" if kind=="bon" else "etatFacture") if kind!="article" else None
     if state: condition+=" AND ("+INDICATORS[STATES[kind][state]][1]+")"
+    obj = restrict_order_source(obj, actor, invoices=kind == "facture", action=action)
     params,where,values,order,sort,direction,applied=read_scope(obj,actor,raw,condition,fixed,population_query=rules.get("q"))
     if folder["mode"]=="manuel":
         field=TYPES[kind][2]
@@ -130,14 +146,17 @@ def catalogue(actor,archived=False):
     ready=storage_ready()
     folders=[] if archived else [{**item,"system":True,"mode":"automatique","active":True,"version":None,"categoryId":None} for item in AUTOMATIC]
     if ready: folders.extend(definitions(actor,archived))
+    folders = [folder for folder in folders if can_read_tabs(actor, *folder_tabs(folder))]
     numbers=counts(actor,folders)
-    return {"folders":[{**folder,"count":numbers[folder["key"]]} for folder in folders],"categories":categories(actor) if ready else [],"customAvailable":ready,"canWrite":ready and not settings.DB_READ_ONLY,"archived":archived,"colours":[{"key":key,"label":label} for key,label in COLOURS.items()]}
+    return {"folders":[{**folder,"count":numbers[folder["key"]]} for folder in folders],"categories":categories(actor) if ready else [],"customAvailable":ready,"canWrite":ready and not settings.DB_READ_ONLY and can_use_tab(actor, MODULE, "dossiers", "manage"),"archived":archived,"colours":[{"key":key,"label":label} for key,label in COLOURS.items()]}
 
 def record_folders(actor,kind,record_id):
-    object_type(kind)
+    if not can_read_tabs(actor, "dossiers", FOLDER_TABS[object_type(kind)]):
+        return {"items": [], "customAvailable": False, "canWrite": False}
     ready=storage_ready()
     folders=[{**item,"system":True,"mode":"automatique","active":True,"version":None,"categoryId":None} for item in AUTOMATIC if item["objectType"]==kind]
     if ready: folders.extend(folder for folder in definitions(actor) if folder["objectType"]==kind)
+    folders = [folder for folder in folders if can_read_tabs(actor, *folder_tabs(folder))]
     obj=view("logistique",TYPES[kind][0])
     owner_field="ID_UserFK" if kind=="article" else "ID_UserFk"
     fields,values=['v.'+db.ident(owner_field)+' IS NOT NULL AS has_owner'],[]
@@ -147,7 +166,7 @@ def record_folders(actor,kind,record_id):
     _,scope,params,*_=read_scope(obj,actor)
     row=db.one('SELECT '+','.join(fields)+' FROM '+row_source(obj)+' WHERE '+scope+' AND v.'+db.ident(TYPES[kind][1])+'=%s',[*values,*params,positive(record_id)])
     if row is None: raise APIError("Enregistrement introuvable.","NOT_FOUND",404)
-    return {"items":[{key:folder[key] for key in ("key","name","colour","category","objectType","mode","system")} for index,folder in enumerate(folders) if row['f'+str(index)]],"customAvailable":ready,"canWrite":ready and not settings.DB_READ_ONLY and row["has_owner"],"requiresOwner":not row["has_owner"]}
+    return {"items":[{key:folder[key] for key in ("key","name","colour","category","objectType","mode","system")} for index,folder in enumerate(folders) if row['f'+str(index)]],"customAvailable":ready,"canWrite":ready and not settings.DB_READ_ONLY and row["has_owner"] and can_use_tab(actor, MODULE, "dossiers", "manage"),"requiresOwner":not row["has_owner"]}
 
 def folder_rows(actor,key,raw):
     folder=get_definition(actor,key)
@@ -207,6 +226,7 @@ def save_folder(actor,body,key=None):
             lock_owner(actor)
             existing=get_definition(actor,key,include_archived=True,lock=True) if key else None
             data=validate_body(body,existing)
+            require_tabs(actor, *folder_tabs(data))
             category_exists(actor,data["categoryId"])
             if existing:
                 if not existing["active"]:raise APIError("Restaurez le dossier avant de le modifier.","ARCHIVED",409)
@@ -295,7 +315,9 @@ class FolderPreviewView(APIView):
         if not isinstance(body,dict) or set(body)!={"rules","objectType"}:raise APIError("Critères d’aperçu invalides.")
         kind=object_type(body["objectType"])
         rules=validate_rules(body["rules"],"automatique",kind)
-        obj,_,where,values,order,*_=folder_scope(request.user,{"mode":"automatique","objectType":kind,"rules":rules})
+        definition={"mode":"automatique","objectType":kind,"rules":rules}
+        require_tabs(request.user, *folder_tabs(definition))
+        obj,_,where,values,order,*_=folder_scope(request.user,definition)
         count=db.one('SELECT COUNT(*) AS n FROM '+row_source(obj)+' WHERE '+where,values)["n"]
         rows=db.query('SELECT v.'+db.ident(TYPES[kind][1])+' AS id,v.'+db.ident(TYPES[kind][3])+' AS label FROM '+row_source(obj)+' WHERE '+where+' ORDER BY '+order+' LIMIT 5',values)
         return ok({"count":count,"records":rows,"objectType":kind})

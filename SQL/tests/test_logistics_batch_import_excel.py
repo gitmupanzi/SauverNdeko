@@ -90,6 +90,18 @@ class LogisticsBatchExcelTests(unittest.TestCase):
         self.assertEqual(response.data['data']['cells'], [['NomImmobilisation', 'DateEntree', 'Quantite', 'DateAcquisition'],
             ['Bureau', '2026-11-07T12:13:14', '9007199254740993', '31/02/2026']])
 
+    def test_immobilisation_location_import_accepts_free_text_and_legacy_headers(self):
+        for headers, row, keys in [
+            (['Nom du bien', 'Localisation (texte libre)'], ['Bureau', 'Bâtiment B, bureau 12'],
+             ['NomImmobilisation', 'LocalisationComplement']),
+            (['Nom du bien', 'Localisation', 'Bureau ou salle'], ['Bureau', '6', 'Salle 3'],
+             ['NomImmobilisation', 'ID_LocalisationFk', 'LocalisationComplement']),
+        ]:
+            with self.subTest(headers=headers):
+                response = self.post('immobilisations', self.workbook('immobilisations', headers=headers, rows=[row]))
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(response.data['data']['cells'], [keys, row])
+
     def test_unknown_reference_is_returned_for_correction(self):
         response = self.post(file=self.workbook(headers=['Nom', 'Type de tiers'], rows=[['Alice', 'Référence à corriger']]))
         self.assertEqual(response.status_code, 200)

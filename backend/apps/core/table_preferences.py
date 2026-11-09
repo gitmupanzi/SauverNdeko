@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.core import db
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import access_snapshot, can_use_tab, require_module, require_tab
 from apps.core.repository import set_admin_actor
 from apps.core.responses import APIError, ok
 from apps.core.tenancy import read_entity
@@ -23,55 +23,65 @@ def source_definition(actor, interface_key):
         raise APIError("Interface inconnue.", "NOT_FOUND", 404)
     if module == "logistique":
         from apps.logistique.depot_registers import KINDS, source as depot_source, LABELS as depot_labels
+        from apps.logistique.tab_access import table_tab
+        tab = table_tab(interface_key)
+        if tab:
+            require_tab(actor, module, tab)
         if kind in KINDS:
-            return depot_source(actor, kind), depot_labels, "logistique"
+            return depot_source(actor, kind), depot_labels, module, tab
         from apps.logistique.reads import register_source
+        from apps.logistique.tab_access import FINANCE_PROJECTIONS, restricted_fields
         from apps.logistique.table_queries import LABELS
-        require_module(actor, "logistique")
         obj, _, _ = register_source(kind, {}, for_export=True)
-        return obj, LABELS, "logistique"
+        if obj["name"] in FINANCE_PROJECTIONS:
+            denied = restricted_fields(actor, invoices=kind == "factures")
+            obj = {**obj, "columns": [col for col in obj["columns"] if col["column_name"] not in denied]}
+        return obj, LABELS, module, tab
     if module == "referentiels":
         if kind == 'tableaux':
             from .reference_tables import table_source, LABELS
             require_module(actor, 'referentiels')
-            return table_source(), LABELS, 'referentiels'
+            return table_source(), LABELS, module, None
         if kind == "champs":
             from apps.core.field_references import table_source, LABELS, _admin
             _admin(actor)
-            return table_source(), LABELS, "referentiels"
+            return table_source(), LABELS, module, None
         from apps.core.reference_exports import SOURCES, LABELS
         from apps.core.registry import view
         require_module(actor, "referentiels")
         if kind not in SOURCES:
             raise APIError("Interface inconnue.", "NOT_FOUND", 404)
-        return view("referentiel", SOURCES[kind][0]), LABELS, "referentiels"
+        return view("referentiel", SOURCES[kind][0]), LABELS, module, None
     if module == "admin":
         from apps.core.admin_portal import source, LABELS
+        from apps.core.admin_tabs import require_admin_tab
+        tab = {"profils": "utilisateurs", "localisations": "entites"}.get(kind, kind)
+        require_admin_tab(actor, tab)
         obj, *_ = source(actor, kind)
-        return obj, LABELS, "administration"
+        return obj, LABELS, "administration", tab
     if module == "territoires":
         from apps.core.territorial_portal import source, LABELS, INTERFACE_KEYS
         kind = next((key for key, value in INTERFACE_KEYS.items() if value == interface_key), None)
         if kind is None:
             raise APIError("Interface inconnue.", "NOT_FOUND", 404)
         obj, *_ = source(actor, kind)
-        return obj, LABELS, "territoires"
+        return obj, LABELS, module, None
     if module == "support" and kind == "tickets":
         from apps.support.portal import table_source, LABELS
-        require_module(actor, "support")
-        return table_source(actor), LABELS, "support"
+        require_tab(actor, module, kind)
+        return table_source(actor), LABELS, module, kind
     if module == "caisse":
         from apps.caisse.services import columns, descriptor
         from apps.caisse.views import LABELS
-        require_module(actor, 'caisse')
         view_name, _, primary_key, _ = descriptor(kind)
+        require_tab(actor, module, kind)
         return {'schema':'operations', 'name':view_name, 'primaryKey':[primary_key],
-                'columns':list(columns(kind).values())}, LABELS, 'caisse'
+                'columns':list(columns(kind, actor).values())}, LABELS, module, kind
     raise APIError("Interface inconnue.", "NOT_FOUND", 404)
 
 
 def catalogue(actor, interface_key):
-    obj, labels, module = source_definition(actor, interface_key)
+    obj, labels, module, tab = source_definition(actor, interface_key)
     row = db.one('SELECT "Version", "Colonnes" FROM referentiel."T_InterfaceTableau" '
                  'WHERE "CleInterface"=%s AND "Actif"=true', [interface_key])
     if row is None:
@@ -80,8 +90,18 @@ def catalogue(actor, interface_key):
     # La permission reste la liste fermée du service, même si le catalogue SQL a
     # été enrichi manuellement par un administrateur de base de données.
     columns = [col for col in row["Colonnes"] if col["id"] == "actions" or col["id"] in available]
-    rights = access_snapshot(actor)["modules"]
-    can_export = any(item["canExport"] for item in rights.values()) if module == "referentiels" else rights[module]["canExport"]
+    if module == "logistique":
+        from apps.logistique.tab_access import FINANCE_PROJECTIONS, restricted_fields
+        if obj["name"] in FINANCE_PROJECTIONS:
+            denied = restricted_fields(actor, invoices=tab == "factures", action="export")
+            columns = [{**col, "exportable": False, "defaultExport": False} if col["id"] in denied else col
+                       for col in columns]
+    snapshot = access_snapshot(actor)
+    rights = snapshot["modules"]
+    if tab:
+        can_export = can_use_tab(actor, module, tab, "export")
+    else:
+        can_export = any(item["canExport"] for item in rights.values()) if module == "referentiels" else rights[module]["canExport"]
     return columns, row["Version"], bool(can_export)
 
 

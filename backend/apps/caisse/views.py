@@ -102,8 +102,7 @@ class ClosuresView(CashView):
 
 class ClosurePreparationView(CashView):
     def get(self,request):
-        cash = service.detail(request.user,'caisses',request.query_params.get('caisseId'))
-        return ok({'record':cash['record'],'_version':cash['_version'],'canManage':cash['canManage']})
+        return ok(service.closure_preparation(request.user, request.query_params.get('caisseId')))
 
 
 class RegisterExportView(ExcelDownloadView):
@@ -115,6 +114,9 @@ class RegisterExportView(ExcelDownloadView):
         view,key,available,where,params,order,filters = service.read_source(request.user,kind,raw,export=True)
         from apps.core.table_preferences import export_keys
         chosen = export_keys(request.user,'caisse.'+kind,raw)
+        if isinstance(chosen, list) and 'columns' not in raw:
+            hidden = service.hidden_fields(request.user, kind, 'export')
+            chosen = [field for field in chosen if field not in hidden]
         if not isinstance(chosen,list) or not chosen or len(chosen)>100 or any(not isinstance(field,str) or field not in available or field not in LABELS for field in chosen) or len(set(chosen))!=len(chosen):
             service.fail('Colonne d’export non autorisée.')
         suffix,values = selected_scope(raw,key)
@@ -122,7 +124,8 @@ class RegisterExportView(ExcelDownloadView):
         source = db.qualified('operations',view)
         count = db.one('SELECT count(*) n FROM '+source+' v WHERE '+where,params)['n']
         if count>MAX_EXPORT_ROWS: service.fail('L’export dépasse 100 000 lignes. Affinez les filtres.',code='EXPORT_TOO_LARGE',status=413)
-        rows = db.query('SELECT v.* FROM '+source+' v WHERE '+where+' ORDER BY '+order,params)
+        rows = [service.public_record(request.user, kind, row, 'export') for row in
+                db.query('SELECT v.* FROM '+source+' v WHERE '+where+' ORDER BY '+order,params)]
         columns = [{**available[field],'label':LABELS[field]} for field in chosen]
         # Le moteur commun reconnaît les montants par leur nom, sans confondre
         # cet écart monétaire avec Ecart (quantité) des inventaires physiques.

@@ -1,15 +1,20 @@
+import hashlib
 import hmac
 import logging
 
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.db import DatabaseError, transaction
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
-from rest_framework.throttling import AnonRateThrottle
+from django.utils.decorators import method_decorator
+from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from rest_framework.exceptions import AuthenticationFailed
 from apps.core import db
 from apps.core.responses import ok, APIError
-from .authentication import actor_by_id, token_actor, password_matches, tokens, profile
+from .authentication import actor_by_id, password_matches, profile, refresh_tokens, revoke_session, tokens
+from .passwords import ProfileWriteThrottle
 
 
 logger = logging.getLogger(__name__)
@@ -56,25 +61,61 @@ class LoginThrottle(AnonRateThrottle):
     scope = "login"
 
 
+class LoginAccountThrottle(SimpleRateThrottle):
+    scope = "login_account"
+    rate = "15/min"
+
+    def get_cache_key(self, request, view):
+        if request.method != "POST" or not isinstance(request.data, dict):
+            return None
+        email = request.data.get("EmailUser")
+        if not isinstance(email, str) or not email.strip() or len(email.strip()) > 150:
+            return None
+        try:
+            digest = hashlib.sha256(email.strip().casefold().encode("utf8")).hexdigest()
+        except UnicodeError:
+            return None
+        return self.cache_format % {"scope": self.scope, "ident": digest}
+
+
+@method_decorator(sensitive_post_parameters("MotdepasseUser"), name="dispatch")
 class LoginView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [LoginThrottle]
+    throttle_classes = [LoginThrottle, LoginAccountThrottle]
 
+    @sensitive_variables()
     def post(self, request):
+        if not isinstance(request.data, dict):
+            raise APIError("Renseignez votre adresse e-mail et votre mot de passe.")
         email = request.data.get("EmailUser")
         password = request.data.get("MotdepasseUser")
         if not isinstance(email, str) or not isinstance(password, str):
-            raise APIError("EmailUser et MotdepasseUser sont obligatoires.")
-        if not email.strip() or len(email.strip()) > 150 or not password or len(password) > 4096:
+            raise APIError("Renseignez votre adresse e-mail et votre mot de passe.")
+        email = email.strip()
+        if not email or len(email) > 150 or "\x00" in email or not password or len(password) > 4096:
             raise AuthenticationFailed("Identifiants incorrects.")
-        row = db.one(
-            'SELECT "IdUser","MotdepasseUser" FROM systeme."T_Utilisateurs" WHERE lower("EmailUser")=lower(%s)',
-            [email.strip()],
+        try:
+            email.encode("utf8")
+            password.encode("utf8")
+        except UnicodeError:
+            raise AuthenticationFailed("Identifiants incorrects.") from None
+        rows = db.query(
+            'SELECT "IdUser","MotdepasseUser" FROM systeme."T_Utilisateurs" '
+            'WHERE lower("EmailUser")=lower(%s) LIMIT 2',
+            [email],
         )
-        if not row or not password_matches(password, row["MotdepasseUser"]):
+        if len(rows) != 1:
+            # Exécute aussi un hachage pour une adresse absente ou ambiguë.
+            make_password(password)
             raise AuthenticationFailed("Identifiants incorrects.")
-        actor=actor_by_id(row["IdUser"])
+        row = rows[0]
+        if not password_matches(password, row["MotdepasseUser"]):
+            raise AuthenticationFailed("Identifiants incorrects.")
+        try:
+            actor = actor_by_id(row["IdUser"])
+        except AuthenticationFailed:
+            raise AuthenticationFailed("Identifiants incorrects.") from None
         # Un changement concurrent ne peut transformer un ancien secret en session à jour.
         if not hmac.compare_digest((actor.row.get("MotdepasseUser") or "").encode("utf8"),row["MotdepasseUser"].encode("utf8")):
             raise AuthenticationFailed("Identifiants incorrects.")
@@ -83,16 +124,18 @@ class LoginView(APIView):
         return ok(**payload)
 
 
+@method_decorator(sensitive_post_parameters("refreshToken"), name="dispatch")
 class RefreshView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
     throttle_classes = [LoginThrottle]
 
+    @sensitive_variables()
     def post(self, request):
-        value = request.data.get("refreshToken")
+        value = request.data.get("refreshToken") if isinstance(request.data, dict) else None
         if not isinstance(value, str):
             raise AuthenticationFailed("Refresh token requis.")
-        return ok(**tokens(token_actor(value, "refresh")))
+        return ok(**refresh_tokens(value))
 
 
 class RegisterView(APIView):
@@ -107,10 +150,14 @@ class RegisterView(APIView):
         )
 
 
+@method_decorator(sensitive_post_parameters("currentPassword"), name="dispatch")
 class MeView(APIView):
+    throttle_classes = [ProfileWriteThrottle]
+
     def get(self, request):
         return ok(profile(request.user))
 
+    @sensitive_variables()
     def put(self, request):
         from .photos import save_profile
         return ok(save_profile(request.user, request.data), message="Profil mis à jour.")
@@ -124,5 +171,10 @@ class VerifyView(APIView):
 
 class LogoutView(APIView):
     def post(self, request):
-        record_session_event(request.user.pk, "Déconnexion")
-        return ok(message="Session fermée.")
+        revoked = revoke_session(request.auth)
+        if revoked:
+            record_session_event(request.user.pk, "Déconnexion")
+        return ok(
+            {"revoked": revoked},
+            message="Session fermée." if revoked or not settings.DB_READ_ONLY else "Session fermée sur cet appareil.",
+        )

@@ -9,7 +9,7 @@ from django.conf import settings
 from rest_framework.views import APIView
 
 from apps.core import db
-from apps.core.module_access import access_snapshot
+from apps.core.module_access import access_snapshot, can_use_tab
 from apps.core.permissions import HasModuleAccess
 from apps.core.repository import positive
 from apps.core.responses import APIError, ok
@@ -73,7 +73,7 @@ def can_contact(actor, entity=None):
         from .structures import contact_available
         return contact_available(actor, entity)
     rights = access_snapshot(actor)['modules']
-    return bool(not settings.DB_READ_ONLY and rights.get('discussions', {}).get('canManage')
+    return bool(not settings.DB_READ_ONLY and can_use_tab(actor, 'discussions', 'messages', 'manage')
                 and rights.get('structures', {}).get('canRead'))
 
 

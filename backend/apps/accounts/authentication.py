@@ -1,11 +1,13 @@
 """JWT compatible React/Express ; droits relus en base à chaque requête."""
 
-import os, hmac, hashlib, re
+import hmac, hashlib, re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import bcrypt, jwt
 from django.conf import settings
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import check_password
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 from apps.core import db
@@ -41,6 +43,16 @@ class Actor:
         )
 
 
+def email_in_use(email, user_id=None):
+    """Sérialise les changements d’adresse du profil et de l’administration."""
+    db.query("SELECT pg_advisory_xact_lock(hashtextextended('admin-email:'||lower(btrim(%s)),0))", [email])
+    return db.one(
+        'SELECT 1 AS found FROM systeme."T_Utilisateurs" '
+        'WHERE lower(btrim("EmailUser"))=lower(%s) AND "IdUser" IS DISTINCT FROM %s LIMIT 1',
+        [email, user_id],
+    ) is not None
+
+
 def actor_by_id(user_id):
     row = db.one(
         'SELECT u.*,g."NomGenerique" AS "RoleName",g."AbrGenerique" AS "RoleAbr",e."ValideEntite" AS "EntityActive" FROM systeme."T_Utilisateurs" u LEFT JOIN referentiel."T_Generique" g ON g."ID_Generique"=u."IdRoleFk" LEFT JOIN systeme."T_Entite" e ON e."IdEntite"=u."IdEntiteFk" WHERE u."IdUser"=%s',
@@ -52,23 +64,33 @@ def actor_by_id(user_id):
 
 
 def decode_claims(value, kind="access"):
-    if kind not in {"access","refresh"}:
+    if kind not in {"access", "refresh"}:
         raise AuthenticationFailed("Type de session invalide.")
     secret = settings.JWT_SECRET if kind == "access" else settings.JWT_REFRESH_SECRET
     if not secret:
         raise AuthenticationFailed("Configuration de session incomplète.")
     try:
-        claims = jwt.decode(
-            value, secret, algorithms=["HS256"], options={"require": ["exp", "userId"]}
-        )
-        if type(claims["userId"]) is not int or claims["userId"] <= 0:
+        if not isinstance(value, str) or len(value) > 4096:
             raise ValueError()
-        # Les anciens JWT n’avaient pas de token_type. Les nouveaux le portent.
-        if claims.get("token_type", kind) != kind:
+        claims = jwt.decode(
+            value, secret, algorithms=["HS256"],
+            options={"require": ["exp", "iat", "userId", "token_type", "pwdv", "session_bound"]},
+        )
+        if type(claims["userId"]) is not int or claims["userId"] <= 0 or claims["token_type"] != kind:
+            raise ValueError()
+        if type(claims["exp"]) is not int or type(claims["iat"]) is not int:
+            raise ValueError()
+        if type(claims["session_bound"]) is not bool:
+            raise ValueError()
+        session_key = claims.get("sid")
+        if claims["session_bound"]:
+            if not isinstance(session_key, str) or not re.fullmatch(r"[a-z0-9]{32}", session_key):
+                raise ValueError()
+        elif session_key is not None or not settings.DB_READ_ONLY:
             raise ValueError()
         return claims
     except (jwt.PyJWTError, ValueError, TypeError):
-        raise AuthenticationFailed("Token invalide ou expiré.")
+        raise AuthenticationFailed("Token invalide ou expiré.") from None
 
 
 def password_version(actor):
@@ -82,55 +104,77 @@ def password_version(actor):
     return hmac.new(secret.encode("utf8"),message,hashlib.sha256).hexdigest()
 
 
-def token_actor(value,kind="access"):
-    claims=decode_claims(value,kind)
-    actor=actor_by_id(claims["userId"])
-    if "pwdv" in claims:
-        version=claims["pwdv"]
-        if not isinstance(version,str) or not re.fullmatch(r"[a-f0-9]{64}",version) or not hmac.compare_digest(version,password_version(actor)):
+def session_context(value, kind="access"):
+    claims = decode_claims(value, kind)
+    session = None
+    if claims["session_bound"]:
+        session = Session.objects.filter(session_key=claims["sid"], expire_date__gt=datetime.now(timezone.utc)).first()
+        if session is None or session.get_decoded().get("sauverndeko_user_id") != claims["userId"]:
             raise AuthenticationFailed("Votre session a expiré. Reconnectez-vous.")
-    else:
-        # Compatibilité au déploiement ; un changement révoque ensuite tous les anciens JWT du compte.
-        changed=db.one('''SELECT EXISTS(SELECT 1 FROM systeme."T_Audit_Log"
-            WHERE "TableName"=%s AND "Operation"=%s AND "NewData"->>'IdUser'=%s) AS changed''',
-            ["systeme.T_Utilisateurs","PASSWORD_CHANGE",str(actor.pk)])
-        if not changed or "changed" not in changed:
-            raise APIError("La vérification de session est indisponible.","SESSION_UNAVAILABLE",503)
-        if changed["changed"]:
-            raise AuthenticationFailed("Votre session a expiré. Reconnectez-vous.")
-    return actor
+    actor = actor_by_id(claims["userId"])
+    version = claims["pwdv"]
+    if not isinstance(version, str) or not re.fullmatch(r"[a-f0-9]{64}", version) or not hmac.compare_digest(version, password_version(actor)):
+        raise AuthenticationFailed("Votre session a expiré. Reconnectez-vous.")
+    return actor, session, claims
 
 
-def decode_token(value,kind="access"):
-    # Conserve le retour historique tout en imposant la révocation sur ce chemin aussi.
-    return token_actor(value,kind).pk
+def token_actor(value, kind="access"):
+    return session_context(value, kind)[0]
+
+
+def decode_token(value, kind="access"):
+    return token_actor(value, kind).pk
 
 
 def tokens(actor):
-    if not settings.JWT_REFRESH_SECRET:
-        raise APIError("JWT_REFRESH_SECRET est obligatoire.", "AUTH_CONFIGURATION", 503)
+    if not settings.JWT_SECRET or not settings.JWT_REFRESH_SECRET:
+        raise APIError("Configuration de session incomplète.", "AUTH_CONFIGURATION", 503)
     now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=settings.REFRESH_TOKEN_DAYS)
+    user = profile(actor)
     version = password_version(actor)
+    session_key = None
+    if not settings.DB_READ_ONLY:
+        store = SessionStore()
+        store["sauverndeko_user_id"] = actor.pk
+        store.set_expiry(expires)
+        store.create()
+        session_key = store.session_key
+    return issue_tokens(actor, user, version, session_key, now, expires)
 
-    def issue(kind, secret, delta):
-        return jwt.encode(
-            {"userId": actor.pk, "token_type": kind, "iat": now, "exp": now + delta, "pwdv": version},
-            secret,
-            algorithm="HS256",
-        )
 
+def refresh_tokens(value):
+    actor, session, claims = session_context(value, "refresh")
+    now = datetime.now(timezone.utc)
+    # Le rafraîchissement conserve la même session et sa date limite initiale.
+    expires = session.expire_date if session else datetime.fromtimestamp(claims["exp"], timezone.utc)
+    return issue_tokens(actor, profile(actor), password_version(actor), claims.get("sid"), now, expires)
+
+
+def revoke_session(value):
+    if settings.DB_READ_ONLY:
+        return False
+    claims = decode_claims(value)
+    deleted, _ = Session.objects.filter(session_key=claims["sid"]).delete()
+    return deleted > 0
+
+
+def issue_tokens(actor, user, version, session_key, now, expires):
+    shared = {
+        "userId": actor.pk, "iat": now, "pwdv": version,
+        "session_bound": session_key is not None, "sid": session_key,
+    }
+    access_expiry = min(now + timedelta(minutes=settings.ACCESS_TOKEN_MINUTES), expires)
     return {
-        "accessToken": issue(
-            "access",
-            settings.JWT_SECRET,
-            timedelta(minutes=settings.ACCESS_TOKEN_MINUTES),
+        "accessToken": jwt.encode(
+            {**shared, "token_type": "access", "exp": access_expiry},
+            settings.JWT_SECRET, algorithm="HS256",
         ),
-        "refreshToken": issue(
-            "refresh",
-            settings.JWT_REFRESH_SECRET,
-            timedelta(days=settings.REFRESH_TOKEN_DAYS),
+        "refreshToken": jwt.encode(
+            {**shared, "token_type": "refresh", "exp": expires},
+            settings.JWT_REFRESH_SECRET, algorithm="HS256",
         ),
-        "user": profile(actor),
+        "user": user,
     }
 
 

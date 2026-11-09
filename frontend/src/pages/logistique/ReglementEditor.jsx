@@ -2,7 +2,7 @@ import {referenceOptions,REFERENCE_RETAINED_HINT,isRetainedReference} from "../.
 import BusinessDocuments from "../../components/BusinessDocuments";
 import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
 import DrawerDialog from "../../components/DrawerDialog";
 import SearchSelect from "../../components/SearchSelect";
@@ -32,7 +32,7 @@ export function InvoiceChoice({id,value,selected,onChange,disabled,error,onAcces
 export default function ReglementEditor({reglementId=null,commandeId=null,readOnly=false,onClose,onSaved}){
  const {user}=useAuth(),id=useId(),creating=reglementId==null,mounted=useRef(true),saving=useRef(false),snapshot=useRef(null),baseline=useRef(null),loadKey=useRef(null);
  const initialContext=useRef(String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??"")),context=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??"");
- const mayWrite=user?.permissions?.canWriteData===true&&moduleRights(user,"logistique").canManage===true&&initialContext.current===context;
+ const mayWrite=user?.permissions?.canWriteData===true&&tabRights(user,"logistique","reglements").canManage===true&&initialContext.current===context;
  const [selectedId,setSelectedId]=useState(commandeId==null?"":String(commandeId)),[record,setRecord]=useState(null),[invoice,setInvoice]=useState(null),[meta,setMeta]=useState(null),[references,setReferences]=useState({}),[values,setValues]=useState(()=>reglementForm()),[loading,setLoading]=useState(!creating||Boolean(commandeId)),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0),[issues,setIssues]=useState({}),[error,setError]=useState(""),[uncertain,setUncertain]=useState(false),[closeWarning,setCloseWarning]=useState(false),[reloadWarning,setReloadWarning]=useState(false),[pendingInvoice,setPendingInvoice]=useState(null),[selectionTouched,setSelectionTouched]=useState(false),[referenceError,setReferenceError]=useState("");
  const key=creating?"new:"+selectedId:"edit:"+reglementId,ready=loadKey.current===key,allowed=mayWrite&&!readOnly&&ready&&Boolean(meta?.revision)&&(creating?meta?.canCreate===true:meta?.canEdit===true),disabled=busy||uncertain||loading||!allowed,dirty=Boolean(baseline.current)&&(JSON.stringify(values)!==baseline.current||selectionTouched);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -88,7 +88,7 @@ export default function ReglementEditor({reglementId=null,commandeId=null,readOn
 
 export function ReglementDeleteDialog({reglementId,onClose,onSaved}){
  const {user}=useAuth(),mounted=useRef(true),saving=useRef(false),request=useRef(null),[record,setRecord]=useState(null),[meta,setMeta]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[uncertain,setUncertain]=useState(false),[closeWarning,setCloseWarning]=useState(false),[revision,setRevision]=useState(0);
- const context=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??""),initialContext=useRef(context),mayWrite=user?.permissions?.canWriteData===true&&moduleRights(user,"logistique").canManage===true&&context===initialContext.current,enabled=mayWrite&&!loading&&!busy&&Boolean(meta?.revision)&&(uncertain||meta?.canDelete===true);
+ const context=String(user?.IdUser??"")+":"+String(user?.IdEntiteFk??""),initialContext=useRef(context),mayWrite=user?.permissions?.canWriteData===true&&tabRights(user,"logistique","reglements").canManage===true&&context===initialContext.current,enabled=mayWrite&&!loading&&!busy&&Boolean(meta?.revision)&&(uncertain||meta?.canDelete===true);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);useEffect(()=>{if(context!==initialContext.current)onClose();},[context,onClose]);
  useEffect(()=>{let live=true;setLoading(true);setError("");read("/reglements/"+reglementId).then(response=>{if(!live)return;if(!response?.success){setRecord(null);setMeta(null);setError(response?.message||"Le règlement n’a pas pu être chargé.");setLoading(false);return;}setRecord(response.data);setMeta(response.meta||null);setLoading(false);});return()=>{live=false;};},[reglementId,revision]);
  async function remove(){if(!enabled||saving.current)return;if(!request.current)request.current={_version:meta.revision,requestId:createReceiptRequestId()};saving.current=true;setBusy(true);setError("");const response=await requestJson("/api/logistique/reglements/"+reglementId,{method:"DELETE",requiresAuth:true,body:JSON.stringify(request.current)});if(!mounted.current)return;saving.current=false;setBusy(false);if(!response?.success||response.data?.deleted!==true){if(!response||!response.status||response.status>=500||response.success===true){setUncertain(true);setError("La réponse du serveur n’est pas parvenue. Réessayez sans changer le règlement.");}else{setUncertain(false);if([401,403].includes(response.status)){setRecord(null);setMeta(null);}setError(response.message||"Le règlement n’a pas pu être supprimé.");request.current=null;}return;}onSaved(record,"deleted");}

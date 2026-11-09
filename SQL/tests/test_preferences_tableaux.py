@@ -11,24 +11,21 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import psycopg
-from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 DSN = os.environ.get("SAUVERNDEKO_TEST_DATABASE_URL")
 if not DSN:
     raise RuntimeError("Base de recette explicite obligatoire.")
-params = conninfo_to_dict(DSN)
 with psycopg.connect(DSN) as guard:
     name = guard.execute("SELECT current_database()").fetchone()[0]
     if not name.startswith("sauverndeko_test_"):
         raise RuntimeError("Recette refusée hors base privée sauverndeko_test_*.")
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
-os.environ["DATABASE_URL"] = "postgresql://" + quote(params["user"], safe="") + "@" + params["host"] + ":" + params["port"] + "/" + name
+os.environ["DATABASE_URL"] = DSN
 os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
 os.environ["SAUVERNDEKO_DB_READ_ONLY"] = "0"
 import django
@@ -69,6 +66,11 @@ class PreferencesTableaux(unittest.TestCase):
         if entity is not None:
             actor._context_entity = self.entities[entity]
         return actor
+
+    def reference(self, category, code):
+        return self.c.execute('''SELECT "ID_Generique" FROM referentiel."T_Generique"
+            WHERE "ID_CategorieGeneriqueFk"=%s AND "AbrGenerique"=%s AND "ValideGenerique" IS TRUE
+            ORDER BY "ID_Generique" LIMIT 1''', [category, code]).fetchone()["ID_Generique"]
 
     def client(self, user=0, entity=None):
         client = APIClient()
@@ -197,7 +199,8 @@ class PreferencesTableaux(unittest.TestCase):
         self.assertGreaterEqual(len(keys),20)
         for item in keys:
             with self.subTest(key=item["CleInterface"]):
-                data=self.snapshot(key=item["CleInterface"])
+                data=self.snapshot(entity=0 if item["CleInterface"] == "logistique.inventaires" else None,
+                                   key=item["CleInterface"])
                 self.assertNotIn("actions",data["export"]["columns"])
                 self.assertTrue(data["columns"])
 
@@ -230,18 +233,16 @@ class PreferencesTableaux(unittest.TestCase):
         self.assertEqual(response.status_code,403)
 
     def test_18_quantities_are_grouped_by_actual_unit(self):
-        for key,label in ((34,"Unités"),(42,"Devise"),(64,"Type de commande")):
-            self.c.execute('INSERT INTO referentiel."T_CategorieGenerique" ("ID_CategorieGenerique","NomCategorieGenerique") OVERRIDING SYSTEM VALUE VALUES (%s,%s) ON CONFLICT DO NOTHING',[key,label])
-        for key,category,label,code in ((950001,34,"Pièce fictive","pcs"),(950002,34,"Kilogramme fictif","kg"),(950003,42,"USD","USD"),(950004,64,"Entrée","Entree")):
-            self.c.execute('INSERT INTO referentiel."T_Generique" ("ID_Generique","ID_CategorieGeneriqueFk","NomGenerique","AbrGenerique") OVERRIDING SYSTEM VALUE VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING',[key,category,label,code])
+        currency = self.reference(42, "USD")
         articles=[]
-        for unit in (950001,950002):
+        for unit in (self.reference(34, "pcs"), self.reference(34, "kg")):
             articles.append(self.c.execute('''INSERT INTO logistique."T_Article"
                 ("NomArticle","QteArticle","PUArticle","PVArticle","ID_UniteFk","ID_DeviseFk","ID_UserFK","IdEntiteFk")
-                VALUES (%s,0,2,3,%s,950003,%s,%s) RETURNING "ID_Article"''',
-                ["Article fictif "+uuid.uuid4().hex,unit,self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Article"])
+                VALUES (%s,0,2,3,%s,%s,%s,%s) RETURNING "ID_Article"''',
+                ["Article fictif "+uuid.uuid4().hex,unit,currency,self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Article"])
         cmd=self.c.execute('''INSERT INTO logistique."T_Commande" ("ID_TypeCmdFk","DateCmd","ID_DeviseFk","ID_UserFk","IdEntiteFk")
-            VALUES (950004,now(),950003,%s,%s) RETURNING "ID_Commande"''',[self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Commande"]
+            VALUES (%s,now(),%s,%s,%s) RETURNING "ID_Commande"''',
+            [self.reference(64, "Entrée"),currency,self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Commande"]
         def line(article,qty):
             self.c.execute('INSERT INTO logistique."T_CommandeDetail" ("ID_CmdFk","ID_ArticleFk","QteCmdDetail","PUCmdDetail") VALUES (%s,%s,%s,2)',[cmd,article,qty])
         line(articles[0],2)
@@ -262,8 +263,8 @@ class PreferencesTableaux(unittest.TestCase):
         code="00"+uuid.uuid4().hex[:8]
         article=self.c.execute('''INSERT INTO logistique."T_Article"
             ("NomArticle","CodeArticleInterne","RefArticle","QteArticle","PUArticle","PVArticle","ID_UniteFk","ID_DeviseFk","ID_UserFK","IdEntiteFk")
-            VALUES ('Écran de recette',%s,'000123',0,2.25,3,950001,950003,%s,%s) RETURNING "ID_Article"''',
-            [code,self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Article"]
+            VALUES ('Écran de recette',%s,'000123',0,2.25,3,%s,%s,%s,%s) RETURNING "ID_Article"''',
+            [code,self.reference(34, "pcs"),self.reference(42, "USD"),self.users[0]["IdUser"],self.entities[0]]).fetchone()["ID_Article"]
         params={"columns":json.dumps(["RefArticle","NomArticle","CodeArticleInterne","PUArticle"]),"selection":json.dumps([article]),"take":1,"skip":100}
         response=self.client().get('/api/logistique/registre/articles/export.xlsx',params,HTTP_ACCEPT='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         self.assertEqual(response.status_code,200,response.data if not response.streaming else None)

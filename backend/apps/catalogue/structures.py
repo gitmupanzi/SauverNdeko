@@ -12,7 +12,7 @@ from rest_framework.renderers import BaseRenderer
 from rest_framework.views import APIView
 
 from apps.core import db
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import access_snapshot, can_use_tab, require_module, require_tab
 from apps.core.parsers import ExactJSONParser
 from apps.core.permissions import HasModuleAccess
 from apps.core.repository import positive
@@ -72,7 +72,8 @@ def public_record(pk):
 
 def contact_available(actor, entity=None):
     rights = access_snapshot(actor)['modules']
-    available = bool(not settings.DB_READ_ONLY and rights['discussions']['canManage'] and rights['structures']['canRead'])
+    available = bool(not settings.DB_READ_ONLY and can_use_tab(actor, 'discussions', 'messages', 'manage')
+                     and rights['structures']['canRead'])
     if not available or entity is None:
         return available
     # L'offre est une publication volontaire indépendante de l'annuaire de
@@ -87,7 +88,7 @@ def contact_available(actor, entity=None):
 def capabilities(actor):
     rights = access_snapshot(actor)['modules']
     return {'canContact': contact_available(actor), 'canReadProducts': bool(rights['produits']['canRead']),
-            'canReadProfessionals': bool(rights['professionnels']['canRead'])}
+            'canReadProfessionals': can_use_tab(actor, 'professionnels', 'annuaire')}
 
 
 def listing(params):
@@ -128,7 +129,7 @@ def detail(actor, pk):
 
 
 def affiliated_professionals(actor, pk, params):
-    require_module(actor, 'professionnels')
+    require_tab(actor, 'professionnels', 'annuaire')
     public_record(pk)
     from apps.professionnels.services import _query, public_profile
     conditions, values, order, order_values, take, skip = _query(params)

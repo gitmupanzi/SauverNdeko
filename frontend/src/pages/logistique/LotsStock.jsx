@@ -3,7 +3,7 @@ import {useEffect,useId,useRef,useState} from "react";
 import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useConsultations} from "../../components/ConsultationProvider";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import {requestJson,downloadApiFile} from "../../services/api";
 import RegisterSurface from "../../components/RegisterSurface";
 import RegisterSettingsButton from "../../components/RegisterSettingsButton";
@@ -32,7 +32,7 @@ export default function LotsStock({title = "Lots de stock", references,refreshKe
  const depotScope=useDepotScope();
  const preferences=useTablePreferences("logistique.lots");
  const {user}=useAuth(),scope=useEntityScope(),consult=useConsultations(),filterId=useId(),columnsRef=useRef(null),exportRequest=useRef(null);
- const canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+ const canExport=user?.permissions?.canExportData!==false&&tabRights(user,"logistique","lots").canExport===true;
  const [search,setSearch]=useState(""),[filters,setFilters]=useState(INITIAL),[criteria,setCriteria]=useState({...INITIAL,q:""}),[grid,setGrid]=useState({take:25,skip:0,sortBy:"NumeroLot",sortDir:"asc"});
  const [snapshot,setSnapshot]=useState({scopeKey:null,rows:[],meta:null}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0),[filterError,setFilterError]=useState(""),[columnDraft,setColumnDraft]=useState({}),[columnApplied,setColumnApplied]=useState({});
  const [filtersOpen,setFiltersOpen]=useState(false),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(DEFAULT_COLUMNS),[density,setDensity]=useState("compact"),[lot,setLot]=useState(null),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");

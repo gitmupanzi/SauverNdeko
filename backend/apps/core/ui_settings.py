@@ -5,6 +5,7 @@ from pathlib import Path
 from django.db import transaction
 from rest_framework.views import APIView
 from . import db
+from .admin_tabs import require_admin_tab
 from .repository import positive, set_admin_actor
 from .permissions import IsERPAdmin
 from .responses import ok, APIError
@@ -105,6 +106,7 @@ class UISettingsView(APIView):
         return ok(format_rows(rows_for(scope, value), scope, value))
 
     def put(self, request):
+        require_admin_tab(request.user, "correspondances", "manage")
         db.ensure_writable()
         scope, value = normalize_scope(request.data, request.user, True)
         generic = request.data.get("genericCategoryOverrides", {})
@@ -208,6 +210,7 @@ class UISettingsView(APIView):
         )
 
     def post(self, request):
+        require_admin_tab(request.user, "parametres", "manage")
         from .repository import mutate
 
         return ok(mutate("T_Admin_UI_Setting", request.user, request.data), status=201)

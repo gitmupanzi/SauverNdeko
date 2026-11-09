@@ -454,7 +454,7 @@ class ProfessionalsAPI(unittest.TestCase):
         self.assertEqual(saved.status_code, 200, saved.data)
         self.assertEqual(saved.data['data']['record']['affiliations'][0]['IdEntiteFk'], target)
 
-    def test_18_global_represents_only_self_and_runtime_license_enforced(self):
+    def test_18_global_represents_only_self_and_directory_is_included(self):
         client = self.client(global_admin=True)
         body = {'data': {'IdUserFk': self.global_user['IdUser'], 'IdTypeProfessionnelFk': self.typ}, 'requestId': str(uuid.uuid4())}
         created = client.post(BASE+'/profils', body, format='json')
@@ -470,9 +470,10 @@ class ProfessionalsAPI(unittest.TestCase):
         self.assertFalse(caps.data['data']['canManage'])
         actual_unlicensed = APIClient()
         actual_unlicensed.force_authenticate(Actor(self.reader))
-        refused = actual_unlicensed.get(BASE+'/annuaire')
+        directory = actual_unlicensed.get(BASE+'/annuaire')
+        self.assertEqual(directory.status_code, 200, directory.data)
+        refused = actual_unlicensed.get(BASE+'/profils')
         self.assertEqual(refused.status_code, 403, refused.data)
-        self.assertIn(refused.data['error']['code'], {'MODULE_NOT_INCLUDED', 'LICENCE_INACTIVE'})
 
     def test_19_direct_child_revision_rejects_stale_form_and_replays_final_version(self):
         profile, creation = self.create()

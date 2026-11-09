@@ -8,13 +8,21 @@ from django.db import transaction
 from . import db
 from .registry import MODELS, VIEWS, model, view
 from .permissions import IsERPAdmin, scope_for
-from .module_access import module_for_object, require_module
+from .module_access import enforce_object
 from .repository import listing, get_record, mutate, positive, clean, secret_key
 from .responses import ok, APIError
 
 MODULES = json.loads(
     Path(__file__).with_name("modules.json").read_text(encoding="utf8")
 )
+
+
+def mutation_response(actor, obj, result, *, status=200):
+    if obj["name"] == "T_Commande":
+        from apps.logistique.tab_access import mask_order
+
+        result = mask_order(actor, result)
+    return ok(result, status=status)
 
 
 class HealthView(APIView):
@@ -109,7 +117,8 @@ class ModuleView(APIView):
                 return ok(clean(record), meta=meta)
             if obj["name"] == "T_Commande":
                 from apps.logistique.document_rules import usage
-                return ok(clean(record), meta=usage(record, request.user))
+                from apps.logistique.tab_access import mask_order
+                return ok(clean(mask_order(request.user, record)), meta=usage(record, request.user))
             if obj["name"] == "T_Admin_UI_Setting":
                 return ok(clean(record), meta={"sensitive": secret_key(record.get("SettingKey", ""))})
             return ok(clean(record))
@@ -132,7 +141,8 @@ class ModuleView(APIView):
             from .personnel import validate_professional_fields
             body=validate_professional_fields(body)
         result=mutate(obj["name"],request.user,body)
-        return ok(result,status=200 if obj["name"]=="T_Reglements" and result.get("replayed") else 201)
+        status = 200 if obj["name"] == "T_Reglements" and result.get("replayed") else 201
+        return mutation_response(request.user, obj, result, status=status)
 
     def put(self, request, module=None, model_name=None, pk=None):
         obj, _ = self.objects(module, model_name)
@@ -151,15 +161,10 @@ class ModuleView(APIView):
         if obj['name']=='T_Utilisateurs':
             from .personnel import validate_professional_fields
             body=validate_professional_fields(body)
-        return ok(
-            mutate(
-                obj["name"],
-                request.user,
-                body,
-                {obj["primaryKey"][0]: positive(pk)},
-                "update",
-            )
+        result = mutate(
+            obj["name"], request.user, body, {obj["primaryKey"][0]: positive(pk)}, "update"
         )
+        return mutation_response(request.user, obj, result)
 
     patch = put
 
@@ -169,16 +174,15 @@ class ModuleView(APIView):
             raise APIError("Identifiant requis.")
         if obj['name'] == 'T_Entite' and not request.user.global_admin:
             raise APIError('L’état de l’entreprise est géré par la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
-        return ok(
-            mutate(
-                obj["name"],
-                request.user,
-                body=request.data if obj["name"] in {"T_Article","T_Commande","T_Reglements"} else None,
-                keys={obj["primaryKey"][0]: positive(pk)},
-                operation="delete",
-                hard=request.query_params.get("mode") == "hard",
-            )
+        result = mutate(
+            obj["name"],
+            request.user,
+            body=request.data if obj["name"] in {"T_Article","T_Commande","T_Reglements"} else None,
+            keys={obj["primaryKey"][0]: positive(pk)},
+            operation="delete",
+            hard=request.query_params.get("mode") == "hard",
         )
+        return mutation_response(request.user, obj, result)
 
 
 class ModelListView(APIView):
@@ -222,7 +226,7 @@ class ViewsView(APIView):
                 continue
             try:
                 scope_for(obj, request.user)
-                require_module(request.user,module_for_object(obj))
+                enforce_object(request.user, obj)
             except APIError:
                 continue
             result.append(

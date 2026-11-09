@@ -133,7 +133,8 @@ globalThis.window={addEventListener(){},removeEventListener(){},dispatchEvent(){
     if(options.method){__writes.push({path,options});return {success:true,data:offer};}
     return {success:true,data:path.includes('/organisations')?[{IdEntite:7,NomEntite:'Entreprise A',ValideEntite:true}]:path.includes('/licences')?offer:roleData};
   };
-  globalThis.__user={...__user,moduleAccess:{platformAdmin:true}};
+  const administration={canRead:true,canManage:true,canExport:true};
+  globalThis.__user={...__user,moduleAccess:{platformAdmin:true,modules:{administration}}};
   const lh=new Hooks(),lr=()=>lh.render(licence.default);
   for(let i=0;i<4;i++){lr(); await lh.flush();} tree=lr();
   eq(nodes(tree).filter(node=>node.type==='h3').map(text),['Modules sur licence','Modules inclus']);
@@ -159,12 +160,22 @@ globalThis.window={addEventListener(){},removeEventListener(){},dispatchEvent(){
   });
   lh.unmount();
 
-  globalThis.__user={...__user,moduleAccess:{platformAdmin:false}};
+  const denied={canRead:false,canManage:false,canExport:false};
+  globalThis.__user={...__user,moduleAccess:{platformAdmin:false,modules:{administration},tabs:{administration:{permissions:denied}}}};
+  const requested=[];
+  globalThis.__request=async path=>{
+    requested.push(path);
+    if(path.includes('/roles'))return {success:false,message:'Accès refusé.'};
+    return {success:true,data:path.includes('/organisations')?[{IdEntite:7,NomEntite:'Entreprise A',ValideEntite:true}]:offer};
+  };
   const rh=new Hooks(),rr=()=>rh.render(licence.default);
   for(let i=0;i<4;i++){rr(); await rh.flush();} tree=rr();
   eq(nodes(tree).filter(node=>node.type==='input'&&node.props.role==='switch').length,0);
   ok(text(tree).includes('Les activations sont gérées par l’administration de la plateforme.'));
   eq(action(tree,'Appliquer les changements'),undefined);
+  eq(nodes(tree).filter(node=>node.props.role==='tab').map(text),['Offre de la licence']);
+  ok(requested.some(path=>path.includes('/licences')));
+  ok(!requested.some(path=>path.includes('/roles')));
   rh.unmount();
   console.log(JSON.stringify({success:true,checks,coverage:['Quatre groupes et recherche','Accès par entreprise et affichage licence','Activation et désactivation confirmées','Modifications interdites à un administrateur d’entreprise'],limits:['API et DOM simulés']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

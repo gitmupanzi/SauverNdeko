@@ -1,7 +1,7 @@
 import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
-import {moduleRights} from "../../services/moduleAccess";
+import {tabRights} from "../../services/moduleAccess";
 import lazyView from "../../components/LazyView";
 const StockValuation=lazyView(()=>import("../../components/StockValuation"),{label:"Chargement de la valorisation…",compact:true});
 import ExpiryPolicyEditor from "./ExpiryPolicyEditor";
@@ -66,8 +66,11 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const [serverMeta, setServerMeta] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
-  const canWrite = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
-  const canExport = currentUser?.permissions?.canExportData !== false && moduleRights(currentUser,"logistique").canExport === true;
+  const writable = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
+  const canWrite = writable && tabRights(currentUser,"logistique","articles").canManage;
+  const canReceive = canWrite && tabRights(currentUser,"logistique","commandes").canManage && tabRights(currentUser,"logistique","details").canManage;
+  const canClassify = writable && tabRights(currentUser,"logistique","dossiers").canManage;
+  const canExport = currentUser?.permissions?.canExportData !== false && tabRights(currentUser,"logistique","articles").canExport === true;
   const [search, setSearch] = useState(sharedTable?.searchValue || "");
   const [criteria, setCriteria] = useState(() => ({ ...EMPTY_FILTERS, q:sharedTable?.searchValue || "" }));
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
@@ -119,7 +122,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const [valuation,setValuation]=useState(null);
   const [savedRecord,setSavedRecord]=useState(null);
   const selectedArticle = sharedTable?.selectedRow || null;
-  function handleReceipt(article){if(canWrite&&article.ValideArticle!==false)setReceipt(article.ID_Article);}
+  function handleReceipt(article){if(canReceive&&article.ValideArticle!==false)setReceipt(article.ID_Article);}
   function received(result){setReceipt(null);setSavedRecord(result.article);setSavedReceipt(result.bon);setFeedback({type:"success",message:"Réception enregistrée."});refreshFolders();onDataChanged?.();}
   function savedBatch(result){
     setBatchOpen(false);
@@ -180,12 +183,12 @@ export default function Articles({ title = "Articles", references:receivedRefere
     { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[recordExcel('articles',{ID_Article:row.ID_Article},'Fiche article')]} label={row.NomArticle || "Article"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openProduct(row)},
       {label:"Valorisation CUMP",icon:"cash",onSelect:()=>setValuation({id:row.ID_Article,currency:row.ID_DeviseFk})},
-      {label:"Réceptionner du stock",icon:"stock-in",disabled:!canWrite||row.ValideArticle===false,reason:!canWrite?"Accès en consultation":row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>handleReceipt(row)},
+      {label:"Réceptionner du stock",icon:"stock-in",disabled:!canReceive||row.ValideArticle===false,reason:!canReceive?"Accès en consultation":row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>handleReceipt(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleEditArticle(row)},
       {label:row.ValideArticle===false?"Réactiver":"Désactiver",icon:row.ValideArticle===false?"check-circle":"close",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleDisableArticle(row)},
       {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite || !currentUser?.Is_Admin || row.ValideArticle !== false,reason:!canWrite?"Accès en consultation":!currentUser?.Is_Admin?"Réservé à l’administration de la plateforme":row.ValideArticle !== false?"Désactivez d’abord l’article.":"",onSelect:()=>handleDeleteArticle(row)},
     ]}/></div> },
-  ],[categoryLabelMap,typeLabelMap,unitLabelMap,openProduct,openProductLots,canWrite,currentUser?.Is_Admin,openOrder]);
+  ],[categoryLabelMap,typeLabelMap,unitLabelMap,openProduct,openProductLots,canWrite,canReceive,currentUser?.Is_Admin,openOrder]);
 
   useEffect(() => {
     let isMounted = true;
@@ -240,7 +243,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
         <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
             {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}
-            {canWrite ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
+            {canClassify ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
             {canExport?<ExportMenu selection exportFile={()=>exportArticles("xlsx",selectedRows)} exportCsv={()=>exportArticles("csv",selectedRows)} disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} exporting={exporting}/>:null}
             {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
             <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>

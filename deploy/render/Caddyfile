@@ -29,7 +29,7 @@ http://:{$PORT:10000} {
         }
     }
     # Les médias privés passent exclusivement par les routes Django autorisées.
-    @privateFiles path /media /media/* /backend/* /SQL/* /deploy/* /.env /.env.* /.git/*
+    @privateFiles path /media /media/* /backend /backend/* /SQL /SQL/* /deploy /deploy/* /.env /.env.* /.git /.git/* /.runtime /.runtime/*
     handle @privateFiles {
         respond 404
     }
@@ -44,7 +44,13 @@ http://:{$PORT:10000} {
     }
     handle {
         root * /app/frontend/dist
-        header Cache-Control no-cache
+        # La page React est servie directement, sans les protections de Django.
+        header {
+            Cache-Control no-cache
+            Strict-Transport-Security "max-age=31536000"
+            X-Frame-Options DENY
+            Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        }
         try_files {path} /index.html
         file_server
     }

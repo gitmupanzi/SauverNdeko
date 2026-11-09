@@ -17,6 +17,10 @@ export const SUPPORT_FIELDS=[
  {key:"ID_ImmobilisationFk",label:"Immobilisation liée",source:"immobilisations"},
 ];
 export const SUPPORT_LABELS={NumeroSupport:"N° de dossier",Objet:"Objet",Description:"Description",Entreprise:"Entreprise",Demandeur:"Demandeur",Responsable:"Responsable",TypeSupport:"Type",CategorieSupport:"Catégorie",Priorite:"Priorité",Statut:"Statut",CanalOrigine:"Canal d’origine",DateCreation:"Créé le",DateModification:"Modifié le",DateEcheance:"Échéance",DateResolution:"Résolu le",DateCloture:"Clôturé le",Archive:"Archivé",ServiceConcerne:"Service concerné",actions:"Actions"};
+const LINK_PERMISSIONS={ID_DemandeurFk:"canLinkRequester",ID_ArticleFk:"canLinkArticle",ID_CommandeFk:"canLinkOrder",ID_ImmobilisationFk:"canLinkAsset"};
+export function supportFieldVisible(context,key){return context?.[LINK_PERMISSIONS[key]]!==false;}
+const FIELD_GROUPS=[{key:"demande",label:"Demande",icon:"help",fields:["Objet","Description","ID_TypeSupportFk","ID_CategorieSupportFk","ID_PrioriteFk","ID_CanalOrigineFk"]},{key:"affectation",label:"Affectation",icon:"user",fields:["ID_DemandeurFk","ID_ResponsableFk","ID_ServiceConcerneFk","DateEcheance"]},{key:"liens",label:"Objets liés",icon:"folder",fields:["ID_ArticleFk","ID_CommandeFk","ID_ImmobilisationFk"]}];
+export function supportFieldGroups(context){return FIELD_GROUPS.map(group=>({...group,fields:group.fields.filter(key=>supportFieldVisible(context,key))})).filter(group=>group.fields.length);}
 const oldLabels={ID_DemandeurFk:"Demandeur",ID_ResponsableFk:"Responsable",ID_TypeSupportFk:"TypeSupport",ID_CategorieSupportFk:"CategorieSupport",ID_PrioriteFk:"Priorite",ID_CanalOrigineFk:"CanalOrigine",ID_ServiceConcerneFk:"ServiceConcerne",ID_ArticleFk:"Article",ID_CommandeFk:"Bon",ID_ImmobilisationFk:"Immobilisation"};
 export function supportOptions(context,field,record={}){
  const raw=context?.references?.[field.source]||context?.[field.source]||context?.links?.[field.source]||[];

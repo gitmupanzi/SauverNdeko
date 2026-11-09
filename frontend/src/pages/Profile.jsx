@@ -17,7 +17,7 @@ function buildProfileForm(user){return Object.fromEntries(PROFILE_FIELDS.map(key
 function normalizedProfile(values){return Object.fromEntries(PROFILE_FIELDS.map(key=>[key,key==="PhoneUser"?String(values[key]||"").replace(/\D/g,""):String(values[key]??"").trim()]));}
 function profilePayload(values,initial){const next=normalizedProfile(values),before=normalizedProfile(initial);return Object.fromEntries(PROFILE_FIELDS.filter(key=>next[key]!==before[key]).map(key=>[key,next[key]]));}
 function photoFileError(file){if(!file)return "";if(!file.size)return "Ce fichier est vide.";if(file.size>MAX_PHOTO_BYTES)return "La photo ne doit pas dépasser 8 Mo.";if(!["image/jpeg","image/png","image/webp"].includes(file.type)&&!(file.type===""&&/\.(jpe?g|png|webp)$/i.test(file.name)))return "Choisissez une image JPEG, PNG ou WebP.";return "";}
-function profileRequest(values,initial,file,removePhoto=false){const fields=profilePayload(values,initial);if(!file&&!removePhoto)return fields;const body=new FormData();body.append("payload",JSON.stringify({...fields,...(removePhoto&&!file?{_removePhoto:true}:{})}));if(file)body.append("photo",file,file.name);return body;}
+function profileRequest(values,initial,file,removePhoto=false,currentPassword=""){const fields=profilePayload(values,initial);if(fields.EmailUser)fields.currentPassword=currentPassword;if(!file&&!removePhoto)return fields;const body=new FormData();body.append("payload",JSON.stringify({...fields,...(removePhoto&&!file?{_removePhoto:true}:{})}));if(file)body.append("photo",file,file.name);return body;}
 function profileErrors(values,initial){
   const next=normalizedProfile(values),errors={};
   for(const [key,label] of [["PrenomUser","Le prénom"],["NomUser","Le nom"]]){if(!next[key])errors[key]=label+" est obligatoire.";else if(next[key].length>100)errors[key]="Utilisez au maximum 100 caractères.";}
@@ -36,11 +36,14 @@ function ProfileEditor({user,section,canWrite,updateProfile,onClose,onSaved}){
   const prefix=useId(),initial=useRef(buildProfileForm(user)),mounted=useRef(true),saving=useRef(false),fileInput=useRef(null),previewUrl=useRef("");
   const [values,setValues]=useState(()=>initial.current),[busy,setBusy]=useState(false),[errors,setErrors]=useState({}),[error,setError]=useState("");
   const [photoFile,setPhotoFile]=useState(null),[removePhoto,setRemovePhoto]=useState(false),[photoError,setPhotoError]=useState(""),[preview,setPreview]=useState("");
-  const dirty=Object.keys(profilePayload(values,initial.current)).length>0||Boolean(photoFile||removePhoto);
+  const [currentPassword,setCurrentPassword]=useState("");
+  const changedFields=profilePayload(values,initial.current);
+  const emailChanged=Object.hasOwn(changedFields,"EmailUser");
+  const dirty=Object.keys(changedFields).length>0||Boolean(photoFile||removePhoto);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;if(previewUrl.current)URL.revokeObjectURL(previewUrl.current);};},[]);
   useEffect(()=>{const frame=requestAnimationFrame(()=>document.getElementById(prefix+(section==="photo"?"Photo":"PrenomUser"))?.focus({preventScroll:true}));return()=>cancelAnimationFrame(frame);},[prefix,section]);
   useEffect(()=>{if(!dirty&&!busy)return;const preventLeave=event=>{event.preventDefault();event.returnValue="";};window.addEventListener("beforeunload",preventLeave);return()=>window.removeEventListener("beforeunload",preventLeave);},[dirty,busy]);
-  function change(key,value){if(saving.current||!canWrite)return;setValues(current=>({...current,[key]:value}));setErrors(current=>({...current,[key]:""}));setError("");}
+  function change(key,value){if(saving.current||!canWrite)return;if(key==="EmailUser"&&value.trim()===initial.current.EmailUser.trim())setCurrentPassword("");setValues(current=>({...current,[key]:value}));setErrors(current=>({...current,[key]:""}));setError("");}
   function replacePreview(file){const previous=previewUrl.current,next=file?URL.createObjectURL(file):"";previewUrl.current=next;setPreview(next);if(previous)URL.revokeObjectURL(previous);}
   function choosePhoto(event){const file=event.target.files?.[0];event.target.value="";if(!file||saving.current||!canWrite)return;const message=photoFileError(file);setPhotoError(message);if(message)return;setPhotoFile(file);setRemovePhoto(false);replacePreview(file);setError("");}
   function resetPhoto(remove=false){if(saving.current||!canWrite)return;setPhotoFile(null);setRemovePhoto(remove&&Boolean(user.UrlPhoto));setPhotoError("");setError("");replacePreview(null);if(fileInput.current)fileInput.current.value="";}
@@ -51,12 +54,14 @@ function ProfileEditor({user,section,canWrite,updateProfile,onClose,onSaved}){
   async function submit(){
     if(saving.current||!canWrite)return;
     if(photoError){setError("Vérifiez la photo sélectionnée.");document.getElementById(prefix+"Photo")?.focus();return;}
-    const invalid=profileErrors(values,initial.current);setErrors(invalid);setError("");
+    const invalid=profileErrors(values,initial.current);
+    if(emailChanged&&!currentPassword)invalid.currentPassword="Renseignez votre mot de passe actuel.";
+    setErrors(invalid);setError("");
     if(Object.keys(invalid).length){setError("Vérifiez les champs indiqués.");requestAnimationFrame(()=>document.getElementById(prefix+Object.keys(invalid)[0])?.focus());return;}
     if(!dirty)return;
     saving.current=true;setBusy(true);
     try{
-      const result=await updateProfile(profileRequest(values,initial.current,photoFile,removePhoto));
+      const result=await updateProfile(profileRequest(values,initial.current,photoFile,removePhoto,currentPassword));
       if(!mounted.current)return;
       if(!result?.success||!result.data){setError(result?.message||"Le profil n’a pas pu être enregistré. Réessayez.");return;}
       onSaved("Profil mis à jour.");
@@ -69,6 +74,7 @@ function ProfileEditor({user,section,canWrite,updateProfile,onClose,onSaved}){
     {field("PrenomUser","Prénom",{required:true,maxLength:100,autoComplete:"given-name"})}
     {field("NomUser","Nom",{required:true,maxLength:100,autoComplete:"family-name"})}
     {field("EmailUser","Adresse e-mail",{type:"email",required:true,maxLength:150,autoComplete:"email",inputMode:"email"})}
+    {emailChanged?<div className="account-profile-editor-field"><label htmlFor={prefix+"currentPassword"}>Mot de passe actuel</label><input id={prefix+"currentPassword"} type="password" name="currentPassword" autoComplete="current-password" maxLength={4096} required value={currentPassword} onChange={event=>{setCurrentPassword(event.target.value);setErrors(current=>({...current,currentPassword:""}));setError("");}} aria-invalid={Boolean(errors.currentPassword)} aria-describedby={prefix+"currentPassword-hint"}/><small className={errors.currentPassword?"account-profile-field-error":"account-profile-field-hint"} id={prefix+"currentPassword-hint"}>{errors.currentPassword||"Confirmez votre mot de passe pour modifier votre adresse e-mail."}</small></div>:null}
     {field("PhoneUser","Téléphone",{type:"tel",maxLength:40,autoComplete:"tel",placeholder:"+243…"})}
     <div className="account-profile-editor-field"><label htmlFor={prefix+"SexeUser"}>Sexe</label><SearchSelect id={prefix+"SexeUser"} label="Sexe" value={values.SexeUser} options={sexOptions} onChange={value=>change("SexeUser",value)} disabled={busy||!canWrite} invalid={Boolean(errors.SexeUser)} describedBy={errors.SexeUser?prefix+"SexeUser-error":undefined}/>{errors.SexeUser?<small className="account-profile-field-error" id={prefix+"SexeUser-error"}>{errors.SexeUser}</small>:null}</div>
   </div></section>;

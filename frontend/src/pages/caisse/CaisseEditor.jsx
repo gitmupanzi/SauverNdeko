@@ -16,7 +16,7 @@ export default function CaisseEditor({kind,id=null,mode="create",defaults={},con
  const {user}=useAuth(),scope=useEntityScope(),prefix=useId(),mounted=useRef(true),activeScope=useRef(scope.scopeKey),attempt=useRef(null),saving=useRef(false),initial=useRef(null);
  if(!initial.current)initial.current=caisseValues(kind,null,references,defaults);
  const [loaded,setLoaded]=useState({record:null,version:null,canManage:false,canValidate:false,canReverse:false,loading:Boolean(id),error:""}),[values,setValues]=useState(()=>initial.current),[baseline,setBaseline]=useState(()=>JSON.stringify(initial.current)),[errors,setErrors]=useState({}),[error,setError]=useState(""),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false),[tab,setTab]=useState("operation"),[reload,setReload]=useState(0),[preparation,setPreparation]=useState({key:"",record:null,version:null,loading:false,error:""});
- const action=mode==="valider"||mode==="contrepasser",permitted=context?.canManage===true&&!context?.readOnly&&user?.permissions?.canWriteData===true&&Boolean(scope.entityId)&&activeScope.current===scope.scopeKey;
+ const action=mode==="valider"||mode==="contrepasser",permitted=context?.tabs?.[kind]?.canManage===true&&!context?.readOnly&&user?.permissions?.canWriteData===true&&Boolean(scope.entityId)&&activeScope.current===scope.scopeKey;
  const recordPermission=!id||(mode==="valider"?loaded.canValidate:mode==="contrepasser"?loaded.canReverse:loaded.canManage),readOnly=!permitted||!recordPermission;
  const frozen=readOnly||busy||uncertain||loaded.loading,prepKey=scope.scopeKey+":"+values.IdCaisseFk,prep=preparation.key===prepKey?preparation:{record:null,version:null,loading:Boolean(values.IdCaisseFk),error:""};
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -95,7 +95,7 @@ export default function CaisseEditor({kind,id=null,mode="create",defaults={},con
       {field("LibellePaiement","Libellé",{required:true,wide:true})}
       {field("MontantPaiement","Montant"+(currency?" · "+currency:""),{required:true,type:"decimal"})}
       {field("IdTypePaiementFk","Type d’opération",{options:caisseOptions(references.typesPaiements,"Non renseigné")})}
-      {field("IdTiersFk","Tiers",{options:caisseOptions(references.tiers,"Non renseigné")})}
+      {!context?.hiddenFields?.[kind]?.includes("IdTiersFk")?field("IdTiersFk","Tiers",{options:caisseOptions(references.tiers,"Non renseigné")}):null}
       {field("ReferenceExterne","Référence")}
       {field("ObsPaiement","Observations",{type:"textarea",wide:true})}
       {!id?<label className="caisse-check is-wide"><input type="checkbox" checked={values.valider} disabled={frozen} onChange={event=>change("valider",event.target.checked)}/><span>Valider immédiatement et mettre à jour le solde</span></label>:null}

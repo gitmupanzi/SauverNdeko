@@ -7,7 +7,6 @@ import re
 import unicodedata
 import uuid
 import warnings
-from decimal import Decimal
 from pathlib import Path
 from PIL import Image, ImageOps, UnidentifiedImageError
 from django.conf import settings
@@ -16,6 +15,7 @@ from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.renderers import BaseRenderer
 from apps.core import db
+from apps.core.parsers import loads_exact_json
 from apps.core.permissions import IsERPAdmin, HasModuleAccess
 from apps.core.registry import model
 from apps.core.repository import get_record, mutate, positive, check_global_write, clean
@@ -58,7 +58,7 @@ def request_data(request):
         try:
             raw=request.data.get("payload","")
             if not isinstance(raw,str) or len(raw)>262144:raise ValueError()
-            body=json.loads(raw,parse_float=Decimal)
+            body=loads_exact_json(raw)
         except (ValueError,TypeError):
             raise APIError("Formulaire article invalide.")
         return body,request.FILES.get("photo")

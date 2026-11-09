@@ -16,7 +16,7 @@ from django.db import transaction
 
 from apps.core import db
 from apps.core.field_references import reference_context, reference_options
-from apps.core.module_access import access_snapshot, require_module
+from apps.core.module_access import access_snapshot, can_use_tab, require_module, require_tab
 from apps.core.reference_integration import entity_actor
 from apps.core.repository import positive, set_admin_actor
 from apps.core.responses import APIError, ExactEncoder
@@ -51,15 +51,17 @@ def capabilities(actor):
     rights = access_snapshot(actor)['modules']['professionnels']
     entity = read_entity(actor)
     owner = db.one('SELECT "ValideEntite" active FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
-    manage = bool(actor.admin and rights['canManage'] and entity and owner and owner['active'] is not False and not settings.DB_READ_ONLY)
+    manage = bool(actor.admin and can_use_tab(actor, 'professionnels', 'profils', 'manage')
+                  and entity and owner and owner['active'] is not False and not settings.DB_READ_ONLY)
     return {'entityId': entity, 'activeEntityId': entity, 'platformAdmin': actor.global_admin,
-            'canRead': True, 'canReadRegistry': bool(actor.admin and rights['canManage']),
+            'canRead': can_use_tab(actor, 'professionnels', 'annuaire'),
+            'canReadRegistry': bool(actor.admin and rights['canManage'] and can_use_tab(actor, 'professionnels', 'profils')),
             'canManage': manage, 'canPublish': manage, 'readOnly': settings.DB_READ_ONLY,
             'policyReason': '' if manage else 'Choisissez une entreprise active pour gérer ses profils.' if actor.global_admin and not entity else 'Consultation uniquement.'}
 
 
 def writable(actor):
-    require_module(actor, 'professionnels', 'manage')
+    require_tab(actor, 'professionnels', 'profils', 'manage')
     db.ensure_writable()
     if not actor.admin:
         fail('Votre rôle ne permet pas de gérer les profils professionnels.', code='PROFESSIONAL_FORBIDDEN', status=403)
@@ -77,6 +79,7 @@ def scope(actor, alias='v'):
 
 def record(actor, pk, *, lock=False):
     require_module(actor, 'professionnels', 'manage')
+    require_tab(actor, 'professionnels', 'profils', 'manage' if lock else 'read')
     if not actor.admin:
         fail('La gestion des profils est réservée aux administrateurs autorisés.', code='PROFESSIONAL_FORBIDDEN', status=403)
     predicate, values = scope(actor)
@@ -134,7 +137,7 @@ def public_profile(row, actor=None):
               'services': [_reference(v) for v in row.get('Prestations') or []], 'structures': structures,
               'structure': structures[0]['name'] if structures else '',
               'canContact': bool(not settings.DB_READ_ONLY and row.get('ContactAutorise') and (actor is None or owner_user != actor.pk
-                  and access_snapshot(actor)['modules'].get('discussions', {}).get('canManage')))}
+                  and can_use_tab(actor, 'discussions', 'messages', 'manage')))}
     result['availability'] = 'Contact disponible' if result['canContact'] else 'Contact indisponible'
     return result
 
@@ -225,7 +228,7 @@ def page_values(raw):
 
 
 def directory(actor, raw):
-    require_module(actor, 'professionnels')
+    require_tab(actor, 'professionnels', 'annuaire')
     conditions, values, order, order_values, take, skip = _query(raw)
     where = ' AND '.join(conditions) or 'TRUE'
     source = 'professionnel."V_Professionnel_Public" v'
@@ -235,7 +238,7 @@ def directory(actor, raw):
 
 
 def directory_detail(actor, pk):
-    require_module(actor, 'professionnels')
+    require_tab(actor, 'professionnels', 'annuaire')
     row = public_record(pk, actor=actor)
     projected = public_profile(row, actor)
     return {'record': projected, 'canContact': projected['canContact'], 'canEdit': False, 'canPublish': False}
@@ -312,6 +315,7 @@ def detail(actor, pk, replayed=False):
 
 def register(actor, raw):
     require_module(actor, 'professionnels', 'manage')
+    require_tab(actor, 'professionnels', 'profils')
     if not actor.admin:
         fail('La gestion des profils est réservée aux administrateurs autorisés.', code='PROFESSIONAL_FORBIDDEN', status=403)
     conditions, values, order, order_values, take, skip = _query(raw, management=True)
