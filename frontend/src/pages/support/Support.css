@@ -136,6 +136,26 @@ html[data-theme="dark"] .support-badge.is-progress { background:#34294f; color:#
 @media(max-width:640px) { .support-metrics { grid-template-columns:minmax(0,1fr); }.support-info-grid { grid-template-columns:minmax(0,1fr); }.support-detail-heading h3 { font-size:19px; }.support-comment-form>div { align-items:stretch; flex-direction:column; }.support-comment-form>div>.search-select-trigger { width:100%; }.support-register-view { padding:12px; } }
 
 .support-module [role="tabpanel"][hidden] { display:none; }
+.support-stage-grid .erp-data-grid > .logistics-table-controls {
+  padding-bottom:18px;
+}
+.support-stage-grid .erp-register-filters {
+  margin-top:12px;
+}
+@media(min-width:641px) {
+  .support-stage-grid .erp-data-grid table.admin-table thead tr:first-child th[data-column-key="actions"]:not(.is-pinned) {
+    position:sticky;
+    top:0;
+    right:0;
+    z-index:8;
+  }
+  .support-stage-grid .erp-data-grid table.admin-table tbody td.admin-actions-cell:not(.is-pinned) {
+    position:sticky;
+    right:0;
+    z-index:3;
+    background:var(--erp-surface);
+  }
+}
 .support-process-actions,.support-process-stage-heading,.support-process-summary>header,.support-process-feedback { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .support-process-stage-heading { justify-content:space-between; margin-bottom:16px; }
 .support-process-stage-heading h3 { margin:0; overflow-wrap:anywhere; }

@@ -472,6 +472,7 @@ export function SimpleTable({
   rows,
   rowClassName,
   emptyMessage,
+  emptyState,
   exportFilename = "logistique-tableau",
   selectedRowId = null,
   onRowSelect,
@@ -1127,6 +1128,7 @@ export function SimpleTable({
         </section>
       ) : null}
 
+      {emptyState && !loading && !paginatedRowEntries.length ? emptyState : <>
       <div
         ref={tableWrapRef}
         inert={loading ? true : undefined}
@@ -1164,6 +1166,7 @@ export function SimpleTable({
                   <th
                     key={column.key}
                     scope="col"
+                    data-column-key={column.key}
                     aria-sort={isSortable ? sortConfig.column === column.key ? (sortConfig.direction === "asc" ? "ascending" : "descending") : "none" : undefined}
                     className={`admin-table-head-cell ${isPinned ? "is-pinned" : ""} ${column.align === "right" ? "is-numeric" : ""}`}
                     style={getCellStyle(column)}
@@ -1276,6 +1279,7 @@ export function SimpleTable({
 
       {scrollState.overflow ? <div className="erp-table-scroll-help"><AppIcon name="movements"/><span>Faites défiler le tableau pour voir les autres colonnes.</span></div> : null}
       <TablePagination total={serverMode ? serverMeta?.filteredCount : sortedRows.length} take={rowsPerPage} page={currentPage} onPage={setCurrentPage} loading={loading} />
+      </>}
     </div>
   );
 }
