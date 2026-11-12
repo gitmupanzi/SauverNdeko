@@ -1,6 +1,7 @@
 import {retainReference,referenceLabel,referenceOptions} from "../../utils/referenceOptions";
 
 export const SUPPORT_ROOT="/api/support";
+export const SUPPORT_DETAIL_DRAWER={defaultWidth:1100,storageKey:"sauverndeko.support.detail.width"};
 export const SUPPORT_FIELDS=[
  {key:"Objet",label:"Objet",required:true,max:200},
  {key:"Description",label:"Description",required:true,type:"textarea",max:20000},
@@ -20,7 +21,19 @@ export const SUPPORT_LABELS={NumeroSupport:"N° de dossier",Objet:"Objet",Descri
 const LINK_PERMISSIONS={ID_DemandeurFk:"canLinkRequester",ID_ArticleFk:"canLinkArticle",ID_CommandeFk:"canLinkOrder",ID_ImmobilisationFk:"canLinkAsset"};
 export function supportFieldVisible(context,key){return context?.[LINK_PERMISSIONS[key]]!==false;}
 const FIELD_GROUPS=[{key:"demande",label:"Demande",icon:"help",fields:["Objet","Description","ID_TypeSupportFk","ID_CategorieSupportFk","ID_PrioriteFk","ID_CanalOrigineFk"]},{key:"affectation",label:"Affectation",icon:"user",fields:["ID_DemandeurFk","ID_ResponsableFk","ID_ServiceConcerneFk","DateEcheance"]},{key:"liens",label:"Objets liés",icon:"folder",fields:["ID_ArticleFk","ID_CommandeFk","ID_ImmobilisationFk"]}];
-export function supportFieldGroups(context){return FIELD_GROUPS.map(group=>({...group,fields:group.fields.filter(key=>supportFieldVisible(context,key))})).filter(group=>group.fields.length);}
+export const SUPPORT_EDIT_MODES={
+ ticket:{label:"Modifier le ticket",icon:"edit"},
+ suivi:{label:"Modifier le suivi",icon:"user"},
+};
+export function supportFieldGroups(context,mode){
+ const groups=mode==="ticket"?[
+  {...FIELD_GROUPS[0],fields:[...FIELD_GROUPS[0].fields.filter(key=>key!=="ID_PrioriteFk"),"ID_DemandeurFk"]},
+  FIELD_GROUPS[2],
+ ]:mode==="suivi"?[
+  {...FIELD_GROUPS[1],fields:[...FIELD_GROUPS[1].fields.filter(key=>key!=="ID_DemandeurFk"),"ID_PrioriteFk"]},
+ ]:FIELD_GROUPS;
+ return groups.map(group=>({...group,fields:group.fields.filter(key=>supportFieldVisible(context,key))})).filter(group=>group.fields.length);
+}
 const oldLabels={ID_DemandeurFk:"Demandeur",ID_ResponsableFk:"Responsable",ID_TypeSupportFk:"TypeSupport",ID_CategorieSupportFk:"CategorieSupport",ID_PrioriteFk:"Priorite",ID_CanalOrigineFk:"CanalOrigine",ID_ServiceConcerneFk:"ServiceConcerne",ID_ArticleFk:"Article",ID_CommandeFk:"Bon",ID_ImmobilisationFk:"Immobilisation"};
 export function supportOptions(context,field,record={}){
  const raw=context?.references?.[field.source]||context?.[field.source]||context?.links?.[field.source]||[];
@@ -36,8 +49,8 @@ export function supportInputDate(value){
  return parts.year+"-"+parts.month+"-"+parts.day+"T"+parts.hour+":"+parts.minute;
 }
 export function supportInitial(record={}){return Object.fromEntries(SUPPORT_FIELDS.map(field=>[field.key,field.type==="datetime-local"?supportInputDate(record[field.key]):String(record[field.key]??"")]));}
-export function supportValidation(values,requiredFields=[]){const errors={};for(const field of SUPPORT_FIELDS){const value=String(values[field.key]??"");if((field.required||requiredFields.includes(field.key))&&!value.trim())errors[field.key]="Ce champ est obligatoire.";if(field.max&&value.length>field.max)errors[field.key]="Limite : "+field.max+" caractères.";if(field.source&&value&&!/^[1-9]\d*$/.test(value))errors[field.key]="Sélectionnez une valeur dans la liste.";}if(values.DateEcheance&&!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(values.DateEcheance))errors.DateEcheance="Vérifiez la date et l’heure.";return errors;}
-export function supportPayload(values,version,requestId){const output={requestId,...(version?{_version:version}:{})};for(const field of SUPPORT_FIELDS){const value=String(values[field.key]??"");output[field.key]=field.source?(value||null):field.type==="datetime-local"?(value?value+":00+01:00":null):value.trim();}return output;}
+export function supportValidation(values,requiredFields=[],fields=SUPPORT_FIELDS){const errors={};for(const field of fields){const value=String(values[field.key]??"");if((field.required||requiredFields.includes(field.key))&&!value.trim())errors[field.key]="Ce champ est obligatoire.";if(field.max&&value.length>field.max)errors[field.key]="Limite : "+field.max+" caractères.";if(field.source&&value&&!/^[1-9]\d*$/.test(value))errors[field.key]="Sélectionnez une valeur dans la liste.";}if(fields.some(field=>field.key==="DateEcheance")&&values.DateEcheance&&!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(values.DateEcheance))errors.DateEcheance="Vérifiez la date et l’heure.";return errors;}
+export function supportPayload(values,version,requestId,fields=SUPPORT_FIELDS){const output={requestId,...(version?{_version:version}:{})};for(const field of fields){const value=String(values[field.key]??"");output[field.key]=field.source?(value||null):field.type==="datetime-local"?(value?value+":00+01:00":null):value.trim();}return output;}
 export function supportQuery(criteria={},grid={}){const query=new URLSearchParams();for(const key of ["q","dateFrom","dateTo","indicator","archive"])if(criteria[key]!==""&&criteria[key]!=null)query.set(key,String(criteria[key]));const filters=Object.fromEntries(Object.entries(criteria.filters||{}).filter(([,value])=>value!==""&&value!=null).map(([key,value])=>[key,value==="__null__"?null:value]));if(Object.keys(filters).length)query.set("filters",JSON.stringify(filters));for(const key of ["take","skip","sortBy","sortDir"])if(grid[key]!=null)query.set(key,String(grid[key]));return query;}
 export const supportCount=value=>value==null?"—":new Intl.NumberFormat("fr-FR").format(Number(value));
 export function supportActionValidation(action,values){const errors={};if(action.requiresReason&&!String(values.motif||"").trim())errors.motif="Précisez le motif.";if(action.requiresResolution){if(!String(values.CauseIdentifiee||"").trim())errors.CauseIdentifiee="Précisez la cause identifiée.";if(!String(values.SolutionAppliquee||"").trim())errors.SolutionAppliquee="Décrivez la solution appliquée.";}if(action.requiresVerification){if(!/^[1-9]\d*$/.test(String(values.ID_ResultatVerificationFk||"")))errors.ID_ResultatVerificationFk="Sélectionnez le résultat de vérification.";if(!String(values.CommentaireVerification||"").trim())errors.CommentaireVerification="Précisez le contrôle effectué.";}return errors;}

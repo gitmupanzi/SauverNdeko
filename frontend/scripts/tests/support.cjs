@@ -7,7 +7,7 @@ function nodes(node,out=[]){if(!node||typeof node!=='object')return out;if(Array
 const mark=(tree,name)=>nodes(tree).find(n=>n.type?.name===name),field=(tree,key)=>nodes(tree).find(n=>String(n.props?.id||'').endsWith(key)),button=(tree,label)=>nodes(tree).find(n=>n.type?.name==='Button'&&n.props.children===label);
 function mocks(entries){return{name:'fixtures',setup(build){entries.forEach(([filter,name,contents])=>{build.onResolve({filter},()=>({path:name,namespace:name}));build.onLoad({filter:/.*/,namespace:name},()=>({contents,loader:'jsx',resolveDir:front}));});}};}
 async function bundle(contents,plugins=[]){const built=await esbuild.build({stdin:{contents,resolveDir:front,loader:'jsx'},bundle:true,jsx:'automatic',external:['react','react/jsx-runtime'],platform:'node',format:'cjs',write:false,define:{'import.meta.env':'{}'},loader:{'.css':'empty'},plugins,logLevel:'error'});const compiled=new Module(path.join(front,'support-proof.cjs'),module);compiled.filename=path.join(front,'support-proof.cjs');compiled.paths=Module._nodeModulePaths(front);compiled._compile(built.outputFiles[0].text,compiled.filename);return compiled.exports;}
-globalThis.requestAnimationFrame=fn=>fn();globalThis.document={getElementById:()=>({focus(){}})};globalThis.localStorage={getItem(){return null;},setItem(){}};
+globalThis.requestAnimationFrame=fn=>fn();globalThis.cancelAnimationFrame=()=>{};globalThis.document={getElementById:()=>({focus(){}})};globalThis.localStorage={getItem(){return null;},setItem(){}};
 globalThis.__scope={scopeKey:'A',entityId:'7'};globalThis.__user={IdUser:1,permissions:{canWriteData:true,canExportData:true},moduleAccess:{modules:{support:{canRead:true,canManage:true,canExport:true}}}};
 globalThis.__context={canCreate:true,canManage:true,canVerify:true,canExport:true,canReadProcessModels:true,users:[{id:1,label:'Agent habilité'}],requesters:[{id:2,label:'Demandeur externe'}],references:{types:[{id:11,label:'Incident'}],categories:[{id:12,label:'Technique'}],priorities:[{id:13,label:'Normale'}],statuses:[{id:14,label:'Nouveau'}],channels:[{id:15,label:'Téléphone'}],services:[{id:16,label:'Informatique'}],resultats:[{id:17,label:'Conforme'}]},links:{articles:[{id:3,label:'Article'}],bons:[{id:4,label:'BE-4'}],immobilisations:[{id:5,label:'IMMO-5'}]}};
 globalThis.__record={ID_Support:42,NumeroSupport:'SUP-42',Objet:'Demande fictive',Description:'Description conservée',ID_DemandeurFk:2,ID_ResponsableFk:1,ID_TypeSupportFk:11,_version:'v1'};
@@ -54,9 +54,48 @@ const fixture=mocks([
  const denied=new Hooks();globalThis.__user.permissions.canWriteData=false;tree=denied.render(p.Editor,props);ok(mark(tree,'Frame').props.readOnly);let before=globalThis.__writes.length;await mark(tree,'Frame').props.onSubmit();eq(globalThis.__writes.length,before);denied.unmount();globalThis.__user.permissions.canWriteData=true;
  const mismatch=new Hooks(),mr=()=>mismatch.render(p.Editor,props);tree=mr();await mismatch.flush();field(tree,'Objet').props.onChange({target:{value:'Brouillon conservé'}});globalThis.__scope={scopeKey:'B',entityId:'8'};tree=mr();ok(mark(tree,'Frame').props.readOnly);eq(field(tree,'Objet').props.value,'Brouillon conservé');before=globalThis.__writes.length;await mark(tree,'Frame').props.onSubmit();eq(globalThis.__writes.length,before);mismatch.unmount();globalThis.__scope={scopeKey:'A',entityId:'7'};
  const create=new Hooks(),cp={context:globalThis.__context,onClose(){},onSaved(){}},cr=()=>create.render(p.Editor,cp);tree=cr();await create.flush();await mark(tree,'Frame').props.onSubmit();tree=cr();ok(field(tree,'Objet').props['aria-invalid']);eq(mark(tree,'Tabs').props.value,'demande');before=globalThis.__writes.length;await mark(tree,'Frame').props.onSubmit();eq(globalThis.__writes.length,before);field(tree,'Objet').props.onChange({target:{value:'Nouvelle demande'}});field(tree,'Description').props.onChange({target:{value:'Détail de la demande'}});tree=cr();globalThis.__results.push({success:false,status:422,message:'Vérifiez la catégorie'});await mark(tree,'Frame').props.onSubmit();tree=cr();eq(field(tree,'Objet').props.value,'Nouvelle demande');ok(!field(tree,'Objet').props.disabled);create.unmount();
+ const modelEditor=new Hooks(),modelSaved=[];
+ const modelContext={...globalThis.__context,canStartJourneyOnCreate:true,journeyModels:[
+  {id:21,typeId:11,name:'Traitement d’un incident',version:1,stageCount:2},
+  {id:22,typeId:12,name:'Suivi d’une réclamation',version:1,stageCount:1},
+ ]};
+ const renderModel=()=>modelEditor.render(p.Editor,{context:modelContext,onClose(){},onSaved:(row,meta)=>modelSaved.push([row,meta])});
+ tree=renderModel();await modelEditor.flush();tree=renderModel();ok(field(tree,'modelId').props.disabled);
+ field(tree,'Objet').props.onChange({target:{value:'Dossier avec suivi'}});
+ field(tree,'Description').props.onChange({target:{value:'Description du dossier'}});
+ field(tree,'ID_TypeSupportFk').props.onChange('11');
+ tree=renderModel();eq(field(tree,'modelId').props.options.map(option=>option.value),['','21']);
+ field(tree,'modelId').props.onChange('21');
+ tree=renderModel();field(tree,'ID_TypeSupportFk').props.onChange('12');
+ tree=renderModel();eq(field(tree,'modelId').props.value,'');eq(field(tree,'modelId').props.options.map(option=>option.value),['','22']);
+ field(tree,'modelId').props.onChange('22');
+ tree=renderModel();globalThis.__results.push({success:false,status:422,error:{details:{modelId:'Modèle indisponible'}}});
+ await mark(tree,'Frame').props.onSubmit();
+ tree=renderModel();ok(field(tree,'modelId').props.invalid);eq(field(tree,'Objet').props.value,'Dossier avec suivi');
+ eq(JSON.parse(globalThis.__writes.at(-1).options.body).modelId,22);
+ field(tree,'modelId').props.onChange('');tree=renderModel();
+ globalThis.__results.push({success:true,data:{record:globalThis.__record}});
+ await mark(tree,'Frame').props.onSubmit();
+ ok(!('modelId' in JSON.parse(globalThis.__writes.at(-1).options.body)));eq(modelSaved[0][1],{startedJourney:false});
+ tree=renderModel();field(tree,'modelId').props.onChange('22');tree=renderModel();
+ globalThis.__results.push({success:false,status:503});
+ await mark(tree,'Frame').props.onSubmit();tree=renderModel();ok(field(tree,'modelId').props.disabled);
+ const modelAttempt=globalThis.__writes.at(-1).options.body;
+ globalThis.__results.push({success:true,data:{record:globalThis.__record}});
+ await mark(tree,'Frame').props.onSubmit();
+ eq(globalThis.__writes.at(-1).options.body,modelAttempt);eq(modelSaved[1][1],{startedJourney:true});
+ modelEditor.unmount();
  const action=new Hooks(),ap={action:{key:'attendre',label:'Mettre en attente',requiresReason:true},record:globalThis.__record,context:globalThis.__context,onClose(){},onSaved:r=>saved.push(r)},ar=()=>action.render(p.Action,ap);tree=ar();await action.flush();before=globalThis.__writes.length;await mark(tree,'Frame').props.onSubmit();tree=ar();eq(globalThis.__writes.length,before);ok(field(tree,'motif').props['aria-invalid']);field(tree,'motif').props.onChange({target:{value:'Pièce attendue'}});tree=ar();globalThis.__results.push({success:false,status:503});await mark(tree,'Frame').props.onSubmit();tree=ar();const actionAttempt=globalThis.__writes.at(-1);eq(JSON.parse(actionAttempt.options.body).action,'attendre');eq(JSON.parse(actionAttempt.options.body).motif,'Pièce attendue');globalThis.__results.push({success:true,data:globalThis.__detail});await mark(tree,'Frame').props.onSubmit();eq(globalThis.__writes.at(-1).options.body,actionAttempt.options.body);action.unmount();
  const register=new Hooks(),rp={context:globalThis.__context,contextLoading:false,initial:{filters:{ID_StatutFk:'14'}},refresh:0,onChanged(){}},rr=()=>register.render(p.Register,rp);tree=rr();await register.flush();tree=rr();let table=mark(tree,'SimpleTable');eq(table.props.getRowId(globalThis.__record),42);table.props.onRowConsult(globalThis.__record);tree=rr();eq(mark(tree,'SupportDetail').props.id,42);table.props.onServerChange({skip:25});rr();await register.flush();const latest=globalThis.__calls.filter(c=>c.url.includes('/tickets?')).at(-1);eq(new URL(latest.url,'http://test').searchParams.get('skip'),'25');
  tree=rr();table=mark(tree,'SimpleTable');const toolbar=mark(table.props.toolbar,'Toolbar');toolbar.props.setSearch('texte');tree=rr();table=mark(tree,'SimpleTable');ok(mark(table.props.toolbar,'Toolbar').props.pending);mark(table.props.toolbar,'Toolbar').props.onApply();rr();await register.flush();tree=rr();table=mark(tree,'SimpleTable');await mark(table.props.toolbar,'Toolbar').props.exportFile();eq(globalThis.__downloads.length,1);let exported=new URL(globalThis.__downloads.at(-1).url,'http://test');eq(exported.searchParams.get('q'),'texte');eq(JSON.parse(exported.searchParams.get('filters')),{ID_StatutFk:'14'});eq(JSON.parse(exported.searchParams.get('columns')),['NumeroSupport','Objet']);
+ const newTicketRegister=new Hooks(),ntr=()=>newTicketRegister.render(p.Register,{...rp,initialCreate:true});
+ let newTree=ntr();ok(mark(newTree,'SupportEditor'));
+ mark(newTree,'SupportEditor').props.onSaved(globalThis.__record,{startedJourney:true});
+ newTree=ntr();eq(mark(newTree,'SupportDetail').props.id,42);eq(mark(newTree,'SupportDetail').props.initialTab,undefined);
+ newTicketRegister.unmount();
+ const journeyRegister=new Hooks(),jr=()=>journeyRegister.render(p.Register,{...rp,initialCreate:true,canReadJourney:true});
+ newTree=jr();mark(newTree,'SupportEditor').props.onSaved(globalThis.__record,{startedJourney:true});
+ newTree=jr();eq(mark(newTree,'SupportDetail').props.initialTab,'parcours');journeyRegister.unmount();
  const viewTabs=mark(tree,'Tabs');viewTabs.props.onChange('kanban');rr();await register.flush();tree=rr();ok(nodes(tree).some(node=>node.props?.className==='support-kanban-card'));let see=nodes(tree).find(node=>node.type?.name==='Button'&&Array.isArray(node.props.children)&&node.props.children[0]==='Voir les ');ok(see);eq(see.props.children[1],'45');see.props.onClick();rr();await register.flush();tree=rr();ok(mark(tree,'SimpleTable'));eq(mark(tree,'Tabs').props.value,'table');register.unmount();
  // Le Kanban vide propose une vraie action, selon les critères et le droit de création.
  globalThis.__kanban={columns:[{id:14,label:'Nouveau',count:0,rows:[],hasMore:false}]};const blank=new Hooks(),br=()=>blank.render(p.Register,{...rp,initial:{}});br();await blank.flush();tree=br();mark(tree,'Tabs').props.onChange('kanban');br();await blank.flush();tree=br();eq(mark(tree,'ListState').props.title,'Aucun dossier pour le moment');ok(button(tree,'Nouveau dossier'));button(tree,'Nouveau dossier').props.onClick();tree=br();ok(mark(tree,'SupportEditor'));blank.unmount();
@@ -250,18 +289,40 @@ const fixture=mocks([
   const follow=mark(tree,'SupportStageRegister'),stage=new Hooks(),sr=()=>stage.render(p.SupportStageRegister,follow.props);
   ok(follow);eq(follow.props.context,globalThis.__context);
   tree=sr();eq(mark(tree,'Surface').props.title,'Suivi des étapes');
+  const stageActions=mark(tree,'Surface').props.actions;
+  button(stageActions,'Modèles de suivi').props.onClick();eq(globalThis.__navigation.at(-1),[{onglet:'modeles'}]);
+  button(stageActions,'Voir les tickets').props.onClick();eq(globalThis.__navigation.at(-1),[{onglet:'tickets'}]);
   const monitorProps=mark(tree,'ProcessMonitor').props,monitor=new Hooks(),mor=()=>monitor.render(p.ProcessMonitor,monitorProps);
   globalThis.__monitor={available:true,count:0,items:[]};
   mor();await monitor.flush();tree=mor();
   eq(mark(tree,'ListState').props.title,'Aucun parcours démarré');
-  button(tree,'Voir les tickets').props.onClick();eq(globalThis.__navigation.at(-1),[{onglet:'tickets'}]);
+  eq(mark(tree,'ListState').props.action,null);
+  let newTickets=0;
+  tree=stage.render(p.SupportStageRegister,{...follow.props,context:{...follow.props.context,canStartJourneyOnCreate:true},
+   onNewTicket:()=>newTickets++});
+  const createProps=mark(tree,'ProcessMonitor').props;
+  const creation=new Hooks(),cr=()=>creation.render(p.ProcessMonitor,createProps);
+  cr();await creation.flush();tree=cr();
+  button(tree,'Nouveau dossier').props.onClick();eq(newTickets,1);
+  creation.render(p.ProcessMonitor,{...createProps,indicator:'late'});
+  await creation.flush();tree=creation.render(p.ProcessMonitor,{...createProps,indicator:'late'});
+  ok(!button(tree,'Nouveau dossier'));eq(mark(tree,'SimpleTable').props.emptyMessage,'Aucun parcours pour ces critères.');
+  creation.unmount();
   globalThis.__monitor={available:true,count:1,items:[{ticketId:42,number:'SUP-42',stageName:'Diagnostic'}]};
   const populated=new Hooks(),pop=()=>populated.render(p.ProcessMonitor,monitorProps);
   pop();await populated.flush();tree=pop();
   const monitorTable=mark(tree,'SimpleTable');
   eq(monitorTable.props.rows[0].stageName,'Diagnostic');
+  ok(monitorTable.props.consultColumns.includes('stageName'));
+  const openJourney=button(monitorTable.props.columns.find(column=>column.key==='actions').render(monitorTable.props.rows[0]),'Ouvrir le parcours');
+  eq(openJourney.props['aria-label'],'Ouvrir le parcours de SUP-42');
+  openJourney.props.onClick();eq(mark(sr(),'SupportDetail').props.id,42);
   monitorTable.props.onRowConsult(monitorTable.props.rows[0]);tree=sr();
   eq(mark(tree,'SupportDetail').props.id,42);eq(mark(tree,'SupportDetail').props.initialTab,'parcours');
+  tree=populated.render(p.ProcessMonitor,{...monitorProps,refresh:1});
+  eq(mark(tree,'SimpleTable').props.loading,true);
+  eq(mark(tree,'SimpleTable').props.rows,monitorTable.props.rows);
+  await populated.flush();
   ok(globalThis.__calls.slice(beforeStages).some(call=>call.url.includes('/processus/suivi?')));
   ok(!globalThis.__calls.slice(beforeStages).some(call=>call.url.includes('/tickets?')));
   populated.unmount();monitor.unmount();stage.unmount();portal.unmount();
@@ -285,12 +346,61 @@ const fixture=mocks([
  tree=er();embeddedToolbar=mark(mark(tree,'SimpleTable').props.toolbar,'Toolbar');await embeddedToolbar.props.exportFile();
  exported=new URL(globalThis.__downloads.at(-1).url,'http://test');eq(exported.searchParams.get('indicator'),'retard');eq(exported.searchParams.get('q'),'Incident');eq(JSON.parse(exported.searchParams.get('filters')),{ID_StatutFk:'14'});
  embeddedToolbar.props.onReset();er();await embeddedHooks.flush();const resetUrl=new URL(globalThis.__calls.at(-1).url,'http://test');eq(resetUrl.searchParams.get('indicator'),'retard');eq(resetUrl.searchParams.get('q'),null);embeddedHooks.unmount();
- const detail=new Hooks(),ddp={id:42,context:globalThis.__context,onClose(){},onChanged(){}},ddr=()=>detail.render(p.Detail,ddp);ddr();await detail.flush();tree=ddr();eq(mark(tree,'Frame').props.title,'Support · SUP-42');eq(mark(tree,'Tabs').props.tabs.length,5);ok(mark(tree,'SupportComments'));ok(mark(tree,'SupportDocuments'));const commentComponent=mark(tree,'SupportComments'),documentComponent=mark(tree,'SupportDocuments');mark(tree,'SupportComments').props.onDraftChange(true);tree=ddr();ok(mark(tree,'Frame').props.dirty);ok(button(tree,'Modifier').props.disabled);mark(tree,'SupportComments').props.onBusyChange(true);tree=ddr();ok(mark(tree,'Frame').props.busy);detail.unmount();eq(p.supportHistoryLabel('COMMENT'),'Message ajouté');
+ const detail=new Hooks(),ddp={id:42,context:globalThis.__context,onClose(){},onChanged(){}},ddr=()=>detail.render(p.Detail,ddp);ddr();await detail.flush();tree=ddr();eq(mark(tree,'Frame').props.title,'Support · SUP-42');eq(mark(tree,'Tabs').props.tabs.length,5);ok(mark(tree,'SupportComments'));ok(mark(tree,'SupportDocuments'));const commentComponent=mark(tree,'SupportComments'),documentComponent=mark(tree,'SupportDocuments');mark(tree,'SupportComments').props.onDraftChange(true);tree=ddr();ok(mark(tree,'Frame').props.dirty);ok(button(tree,'Modifier le ticket').props.disabled);ok(button(tree,'Modifier le suivi').props.disabled);mark(tree,'SupportComments').props.onBusyChange(true);tree=ddr();ok(mark(tree,'Frame').props.busy);detail.unmount();eq(p.supportHistoryLabel('COMMENT'),'Message ajouté');
+ const editableDetail=new Hooks();
+ let editChanges=0,detailCloses=0;
+ const editDetailProps={...ddp,initialTab:'parcours',canReadJourney:true,onChanged:()=>editChanges++,onClose:()=>detailCloses++};
+ const renderEditableDetail=()=>editableDetail.render(p.Detail,editDetailProps);
+ renderEditableDetail();await editableDetail.flush();tree=renderEditableDetail();
+ const frame=mark(tree,'Frame');
+ let focusRestored=0;
+ button(tree,'Modifier le ticket').props.ref({focus:()=>focusRestored++});
+ button(tree,'Modifier le ticket').props.onClick();tree=renderEditableDetail();
+ eq(nodes(tree).filter(node=>node.type===frame.type).length,1);eq(mark(tree,'Frame').props.title,'Modifier le ticket');
+ eq(field(tree,'Objet').props.value,globalThis.__record.Objet);ok(!field(tree,'ID_ResponsableFk'));
+ eq(mark(tree,'Frame').props.canSubmit,false);
+ field(tree,'Objet').props.onChange({target:{value:'Modification à abandonner'}});tree=renderEditableDetail();
+ ok(mark(tree,'Frame').props.dirty);
+ mark(tree,'Frame').props.onClose();tree=renderEditableDetail();await editableDetail.flush();
+ eq(mark(tree,'Tabs').props.value,'parcours');eq(focusRestored,1);eq(detailCloses,0);
+ button(tree,'Modifier le suivi').props.onClick();tree=renderEditableDetail();
+ eq(mark(tree,'Frame').props.title,'Modifier le suivi');ok(!field(tree,'Objet'));ok(field(tree,'ID_PrioriteFk'));
+ eq(field(tree,'ID_ResponsableFk').props.value,'1');
+ field(tree,'DateEcheance').props.onChange({target:{value:'2026-11-18T10:20'}});
+ tree=renderEditableDetail();
+ const previousDetail=globalThis.__detail;
+ globalThis.__detail={...previousDetail,record:{...previousDetail.record,DateEcheance:'2026-11-18T10:20:00+01:00',_version:'v2'}};
+ globalThis.__results.push({success:true,data:globalThis.__detail.record});
+ await mark(tree,'Frame').props.onSubmit();tree=renderEditableDetail();
+ const patch=JSON.parse(globalThis.__writes.at(-1).options.body);
+ eq(patch.DateEcheance,'2026-11-18T10:20:00+01:00');eq(patch._version,'v1');
+ eq(Object.keys(patch).sort(),['DateEcheance','_version','requestId']);
+ eq(mark(tree,'Frame').props.title,'Support · SUP-42');ok(!mark(tree,'Frame').props.loading);
+ eq(mark(tree,'Tabs').props.value,'parcours');eq(editChanges,1);eq(detailCloses,0);
+ await editableDetail.flush();editableDetail.unmount();globalThis.__detail=previousDetail;
+ for(const canEdit of [true,false]){
+  globalThis.__detail={...previousDetail,canEdit};
+  const direct=new Hooks(),renderDirect=()=>direct.render(p.Detail,{...ddp,initialEdit:'suivi'});
+  tree=renderDirect();eq(mark(tree,'Frame').props.title,'Modifier le suivi');ok(mark(tree,'Frame').props.loading);
+  await direct.flush();tree=renderDirect();
+  eq(mark(tree,'Frame').props.title,canEdit?'Modifier le suivi':'Support · SUP-42');
+  eq(Boolean(field(tree,'DateEcheance')),canEdit);
+  direct.unmount();
+ }
+ globalThis.__detail=previousDetail;
+ const rowEditor=new Hooks(),re=()=>rowEditor.render(p.Register,rp);
+ re();await rowEditor.flush();tree=re();
+ const menu=mark(mark(tree,'SimpleTable').props.columns.find(column=>column.key==='actions').render(globalThis.__record),'Actions');
+ for(const [label,mode] of [['Modifier le ticket','ticket'],['Modifier le suivi','suivi']]){
+  menu.props.items.find(item=>item.label===label).onSelect();
+  eq(mark(re(),'SupportDetail').props.initialEdit,mode);
+ }
+ rowEditor.unmount();
  const comments=new Hooks(),commentSaved=[],commentDirty=[],commentProps={...commentComponent.props,onSaved:value=>commentSaved.push(value),onDraftChange:value=>commentDirty.push(value),onBusyChange(){}},co=()=>comments.render(commentComponent.type,commentProps);tree=co();await comments.flush();before=globalThis.__writes.length;await button(tree,'Ajouter le message').props.onClick();eq(globalThis.__writes.length,before);tree=co();ok(nodes(tree).some(node=>node.props?.role==='alert'));nodes(tree).find(node=>node.type==='textarea').props.onChange({target:{value:' Message de suivi '}});tree=co();await comments.flush();ok(commentDirty.at(-1));mark(tree,'Select').props.onChange('interne');tree=co();globalThis.__results.push({success:false,status:503});await button(tree,'Ajouter le message').props.onClick();tree=co();const commentAttempt=globalThis.__writes.at(-1);eq(commentAttempt.url,'/api/support/tickets/42/commentaires');eq(JSON.parse(commentAttempt.options.body).Contenu,'Message de suivi');eq(JSON.parse(commentAttempt.options.body).Visibilite,'interne');eq(JSON.parse(commentAttempt.options.body)._version,'v1');ok(nodes(tree).find(node=>node.type==='textarea').props.disabled);globalThis.__results.push({success:true,data:globalThis.__detail});await button(tree,'Vérifier l’enregistrement').props.onClick();eq(globalThis.__writes.at(-1).options.body,commentAttempt.options.body);eq(commentSaved.length,1);tree=co();await comments.flush();eq(nodes(tree).find(node=>node.type==='textarea').props.value,'');ok(!commentDirty.at(-1));comments.unmount();
  const documents=new Hooks(),docSaved=[],docProps={...documentComponent.props,onSaved:value=>docSaved.push(value),onDraftChange(){},onBusyChange(){}},du=()=>documents.render(documentComponent.type,docProps);tree=du();await documents.flush();before=globalThis.__writes.length;await button(tree,'Ajouter le justificatif').props.onClick();eq(globalThis.__writes.length,before);tree=du();let picker=nodes(tree).find(node=>node.type==='input'&&node.props.type==='file');picker.props.onChange({target:{files:[{type:'text/html',size:10}]}});tree=du();ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('PDF')));const sample=new File([new Uint8Array([1,2,3])],'preuve.pdf',{type:'application/pdf'});picker=nodes(tree).find(node=>node.type==='input'&&node.props.type==='file');picker.props.onChange({target:{files:[sample]}});tree=du();globalThis.__results.push({success:false,status:503});await button(tree,'Ajouter le justificatif').props.onClick();tree=du();const docAttempt=globalThis.__writes.at(-1);eq(docAttempt.url,'/api/support/tickets/42/documents');ok(docAttempt.options.body instanceof FormData);eq(docAttempt.options.body.get('_version'),'v1');eq(docAttempt.options.body.get('file').name,'preuve.pdf');ok(nodes(tree).find(node=>node.type==='input'&&node.props.type==='file').props.disabled);globalThis.__results.push({success:true,data:globalThis.__detail});await button(tree,'Vérifier l’enregistrement').props.onClick();eq(globalThis.__writes.at(-1).options.body,docAttempt.options.body);eq(docSaved.length,1);documents.unmount();
  const downloads=new Hooks(),downloadProps={...docProps,rows:[{ID_PieceFk:81,NomFichier:'preuve.pdf',MimeType:'application/pdf'}],canManage:false},dl=()=>downloads.render(documentComponent.type,downloadProps);tree=dl();await downloads.flush();const docsTable=mark(tree,'SimpleTable');eq(docsTable.props.getRowId(downloadProps.rows[0]),81);await docsTable.props.columns.find(column=>column.key==='actions').render(downloadProps.rows[0]).props.onClick();eq(globalThis.__downloads.at(-1).url,'/api/support/tickets/42/documents/81/download');eq(globalThis.__downloads.at(-1).options.contentType,'application/pdf');ok(!nodes(tree).some(node=>node.type==='input'&&node.props.type==='file'));downloads.unmount();
  ok(p.supportValidation(initial,['ID_PrioriteFk']).ID_PrioriteFk);ok(p.supportValidation({...initial,Objet:'a'.repeat(201)}).Objet);globalThis.__detail={...globalThis.__detail,record:{...globalThis.__record,ID_Support:99}};const wrong=new Hooks();wrong.render(p.Detail,ddp);await wrong.flush();tree=wrong.render(p.Detail,ddp);ok(mark(tree,'Frame').props.error.includes('ne correspond'));ok(!mark(tree,'SupportComments'));wrong.unmount();globalThis.__detail={...globalThis.__detail,record:globalThis.__record};
- for(const closed of [{Archive:false,StatutCode:'closed'},{Archive:true,StatutCode:'closed'}]){globalThis.__detail={...globalThis.__detail,record:{...globalThis.__record,...closed},canManage:true,canEdit:false,canComment:false,canUpload:false,transitions:[{key:closed.Archive?'restore':'reopen',label:closed.Archive?'Restaurer':'Rouvrir le dossier',requiresReason:true}]};const frozen=new Hooks();frozen.render(p.Detail,ddp);await frozen.flush();tree=frozen.render(p.Detail,ddp);ok(!button(tree,'Modifier'));ok(button(tree,closed.Archive?'Restaurer':'Rouvrir le dossier'));eq(mark(tree,'SupportComments').props.canManage,false);eq(mark(tree,'SupportDocuments').props.canManage,false);frozen.unmount();}
+ for(const closed of [{Archive:false,StatutCode:'closed'},{Archive:true,StatutCode:'closed'}]){globalThis.__detail={...globalThis.__detail,record:{...globalThis.__record,...closed},canManage:true,canEdit:false,canComment:false,canUpload:false,transitions:[{key:closed.Archive?'restore':'reopen',label:closed.Archive?'Restaurer':'Rouvrir le dossier',requiresReason:true}]};const frozen=new Hooks();frozen.render(p.Detail,ddp);await frozen.flush();tree=frozen.render(p.Detail,ddp);ok(!button(tree,'Modifier le ticket'));ok(!button(tree,'Modifier le suivi'));ok(button(tree,closed.Archive?'Restaurer':'Rouvrir le dossier'));eq(mark(tree,'SupportComments').props.canManage,false);eq(mark(tree,'SupportDocuments').props.canManage,false);frozen.unmount();}
  globalThis.__detail={...globalThis.__detail,record:globalThis.__record};eq(p.supportHistoryLabel('start'),'Prise en charge');eq(p.supportHistoryLabel('verify'),'Vérification de la résolution');
  const isolated=new Hooks(),ir=()=>isolated.render(p.Register,rp);ir();await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows[0].ID_Support,42);let release;globalThis.__holdReads=new Promise(resolve=>release=resolve);globalThis.__scope={scopeKey:'B',entityId:'8'};tree=ir();eq(mark(tree,'SimpleTable').props.rows,[]);await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows,[]);ok(mark(tree,'SimpleTable').props.loading);release({success:true,data:[{...globalThis.__record,ID_Support:43,Objet:'Autre entreprise'}],meta:globalThis.__meta});await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows[0].ID_Support,43);isolated.unmount();delete globalThis.__holdReads;globalThis.__scope={scopeKey:'A',entityId:'7'};
  const catalogueSource=fs.readFileSync(path.join(root,'backend/database/migrations/20261030_06_support.sql'),'utf8').split('FOR item IN SELECT * FROM (VALUES').at(-1).split('AS c(id,label,type,visible)')[0];const catalogue=[...catalogueSource.matchAll(/\('([^']+)','[^']+','[^']+',(?:true|false)\)/g)].map(match=>match[1]);eq(catalogue.length,17);

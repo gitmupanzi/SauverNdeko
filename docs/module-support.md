@@ -5,7 +5,7 @@ Le module est accessible à `/support` depuis Vos applications lorsque la licenc
 ## Configurer et suivre un parcours
 
 1. Dans **Pilotage → Modèles de suivi**, choisissez une entreprise puis créez un modèle. Renseignez ses étapes dans l’ordre de traitement, les affectations, les validations et les pièces ou informations attendues. Le registre propose la recherche, les filtres par type et état, les réglages de colonnes et les exports Excel et CSV. Pour créer plusieurs modèles, téléchargez le modèle Excel, puis importez le fichier et vérifiez les lignes dans le panier avant de les enregistrer.
-2. Ouvrez un dossier et choisissez un modèle actif dans **Parcours**. Les conditions applicables sont celles de la version au démarrage. La désactivation d’un modèle empêche les nouveaux démarrages et laisse les parcours engagés utilisables.
+2. Dans **Tickets → Nouveau dossier**, choisissez le type de demande puis, si nécessaire, un **Modèle de suivi** actif pour ce type. Le ticket et sa première étape sont enregistrés ensemble. Pour un dossier existant encore ouvert, utilisez **Parcours → Associer un modèle de suivi**. Le dossier conserve la version du modèle utilisée au démarrage.
 3. Utilisez les actions proposées dans la fiche pour réceptionner ou transmettre le dossier, le bloquer avec un motif, demander un retour ou le valider. L’historique conserve chaque passage, y compris après un retour. L’état du ticket et la vérification de sa clôture suivent le circuit Support.
 4. Dans **Traitement → Suivi des étapes**, la recherche et les filtres permettent de retrouver les dossiers par étape, service, responsable, état ou retard. Les pièces restent accessibles dans **Documents** selon leur visibilité.
 
@@ -37,7 +37,7 @@ Les migrations des parcours ont été vérifiées sur des bases isolées. L’in
 
 Choisir l’entreprise dans l’en-tête, puis **Nouveau dossier** dans Tickets. Renseigner la demande, son objet et sa description, ses références et, si nécessaire, un responsable, un service et une échéance. Les rubriques Affectation et Objets liés permettent de compléter le contexte. Le demandeur est un tiers de l’entreprise ; il peut ne pas avoir de compte de connexion.
 
-Les liens facultatifs vers un article, un bon de stock et une immobilisation sont contrôlés dans l’entreprise du dossier. Le numéro `SUP-…` est attribué automatiquement et ne peut pas être modifié. L’ajout et la modification utilisent le même formulaire.
+Les liens facultatifs vers un article, un bon de stock et une immobilisation sont contrôlés dans l’entreprise du dossier. Le numéro `SUP-…` est attribué automatiquement et ne peut pas être modifié. Depuis le menu ⋯ ou la fiche, **Modifier le ticket** permet de corriger la demande et les objets liés. **Modifier le suivi** permet de changer le responsable, le service, la priorité ou l’échéance. Les étapes se traitent dans **Parcours**.
 
 La liste propose recherche, filtres, tri, pagination, colonnes personnalisées et exports Excel/CSV. Dans le tableau de bord, les indicateurs **Tickets** et **Suivi des étapes** ouvrent leur liste sous la synthèse. Les graphiques par statut et priorité ouvrent également leurs dossiers. **Revenir à l’indicateur** ramène à la carte ou à la ligne du graphique. Les listes de parcours ouvrent directement l’onglet **Parcours** du dossier. La vue Kanban classe les dossiers selon leur circuit et chaque colonne permet d’ouvrir sa liste complète.
 

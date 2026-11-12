@@ -8,6 +8,7 @@ import SearchSelect from "../../components/SearchSelect";
 import {SimpleTable,formatDate} from "../logistique/logistiqueShared";
 import {PROCESS_URL,processOptions,processQuery,useProcessQuery} from "./supportProcess";
 import SupportDetail from "./SupportDetail";
+import {SupportBadge,SupportStatus} from "./SupportBadge";
 
 const TIMELINE=[
   {key:"enteredAt",label:"Entrée dans l’étape"},
@@ -31,18 +32,23 @@ function Retry({error,onClick}){
   return error?<div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={onClick}>Réessayer</ActionButton></div>:null;
 }
 
-export function SupportStageRegister({context,refresh,onShowTickets,onChanged}){
+export function SupportStageRegister({context,refresh,onShowTickets,onShowModels,onNewTicket,onChanged}){
   const [ticketId,setTicketId]=useState(null);
-  return <RegisterSurface title="Suivi des étapes" subtitle="Étapes en cours, échéances et blocages des tickets.">
+  const canStartJourney=context?.canCreate===true&&context?.canStartJourneyOnCreate===true;
+  return <RegisterSurface title="Suivi des étapes" subtitle="Étapes, échéances et blocages des tickets associés à un modèle de suivi."
+    actions={<>
+      {onShowModels?<ActionButton icon="folder" onClick={onShowModels}>Modèles de suivi</ActionButton>:null}
+      {onShowTickets?<ActionButton icon="list" onClick={onShowTickets}>Voir les tickets</ActionButton>:null}
+    </>}>
     <div className="erp-register-table">
-      <ProcessMonitor refresh={refresh} onOpenTicket={setTicketId} onShowTickets={onShowTickets}/>
+      <ProcessMonitor refresh={refresh} onOpenTicket={setTicketId} onNewTicket={canStartJourney?onNewTicket:undefined}/>
     </div>
     {ticketId!==null?<SupportDetail key={ticketId} id={ticketId} initialTab="parcours" context={context} canReadJourney
       onClose={()=>setTicketId(null)} onChanged={onChanged}/>:null}
   </RegisterSurface>;
 }
 
-export function ProcessMonitor({refresh,onOpenTicket,onShowTickets,indicator,onReady}){
+export function ProcessMonitor({refresh,onOpenTicket,onNewTicket,indicator,onReady}){
   const scope=useEntityScope();
   const [draft,setDraft]=useState(EMPTY_CRITERIA);
   const [criteria,setCriteria]=useState(EMPTY_CRITERIA);
@@ -64,26 +70,28 @@ export function ProcessMonitor({refresh,onOpenTicket,onShowTickets,indicator,onR
   const columns=[
     {key:"number",label:"Dossier",sortable:false,render:row=><strong className="support-record-code">{row.number}</strong>},
     {key:"subject",label:"Objet",sortable:false},
-    {key:"status",label:"État du dossier",sortable:false},
-    {key:"modelName",label:"Modèle",sortable:false},
     {key:"stageName",label:"Étape",sortable:false},
-    {key:"entity",label:"Entreprise",sortable:false},
-    {key:"service",label:"Service",sortable:false},
+    {key:"modelName",label:"Modèle de suivi",sortable:false},
     {key:"responsible",label:"Responsable",sortable:false},
-    ...TIMELINE.map(({key,label})=>({key,label,sortable:false,render:row=>row[key]?formatDate(row[key]):"—"})),
     {key:"late",label:"Suivi",sortable:false,render:row=><div className="support-badges">
-      {row.late?<span className="erp-status is-neutral">En retard</span>:null}
-      {row.blockage?<span className="erp-status is-neutral">Bloqué</span>:null}
+      {row.late?<SupportBadge value="En retard" tone="warning"/>:null}
+      {row.blockage?<SupportBadge value="Bloqué" tone="danger"/>:null}
       {!row.late&&!row.blockage?"—":null}
     </div>},
-    {key:"actions",label:"Actions",sortable:false,render:row=><ActionButton icon="eye" onClick={()=>onOpenTicket(row.ticketId)}>Consulter</ActionButton>},
+    ...TIMELINE.map(({key,label})=>({key,label,sortable:false,render:row=>row[key]?formatDate(row[key]):"—"})),
+    {key:"status",label:"État du dossier",sortable:false,
+      render:row=><SupportStatus value={row.status} id={row.statusId} options={references.statuses}/>},
+    {key:"entity",label:"Entreprise",sortable:false},
+    {key:"service",label:"Service",sortable:false},
+    {key:"actions",label:"Actions",sortable:false,render:row=><ActionButton icon="eye" aria-label={`Ouvrir le parcours de ${row.number}`}
+      onClick={()=>onOpenTicket(row.ticketId)}>Ouvrir le parcours</ActionButton>},
   ];
 
   if(state.data?.available===false)return <ListState title="Le suivi des étapes est indisponible" description="La base de données doit être mise à jour pour activer le suivi."
     action={<ActionButton icon="refresh" onClick={state.reload}>Réessayer</ActionButton>}/>;
   if(count===0&&!indicator&&!Object.values(criteria).some(Boolean))return <ListState title="Aucun parcours démarré" icon="movements"
-    description="Ouvrez la fiche d’un ticket ouvert, puis choisissez Parcours pour démarrer son suivi."
-    action={onShowTickets?<ActionButton icon="list" onClick={onShowTickets}>Voir les tickets</ActionButton>:null}/>;
+    description={onNewTicket?"Choisissez un modèle de suivi à la création d’un ticket ou dans l’onglet Parcours de sa fiche.":"Les tickets associés à un modèle de suivi s’affichent ici."}
+    action={onNewTicket?<ActionButton icon="plus" variant="primary" onClick={onNewTicket}>Nouveau dossier</ActionButton>:null}/>;
   return <>
     <DataTableToolbar showSettings={false} search={draft.q} setSearch={value=>set("q",value)} onApply={apply} onReset={reset}
       pending={pending} take={take} onTake={value=>{setTake(value);setPage(1);}} filtersOpen={filtersOpen} toggleFilters={()=>setFiltersOpen(value=>!value)}
@@ -106,9 +114,9 @@ export function ProcessMonitor({refresh,onOpenTicket,onShowTickets,indicator,onR
     </form>:null}
     <Retry error={state.error} onClick={state.reload}/>
     <div className="erp-results" data-density={density}>
-      <SimpleTable rows={state.data?.items||[]} columns={columns} getRowId={row=>row.ticketId} defaultVisibleColumns={columns.map(column=>column.key)}
+      <SimpleTable rows={display?.items||[]} columns={columns} getRowId={row=>row.ticketId} defaultVisibleColumns={columns.map(column=>column.key)}
         defaultPinnedColumns={[]} showControls={false} showSearch={false} loading={state.loading} onRowConsult={row=>onOpenTicket(row.ticketId)}
-        consultColumns={["number","subject"]} serverMeta={count==null?null:{filteredCount:count,take}}
+        tableLabel="Suivi des étapes des tickets" consultColumns={["number","subject","stageName"]} serverMeta={count==null?null:{filteredCount:count,take}}
         serverState={{take,skip:(page-1)*take}} onServerChange={patch=>setPage(Math.floor((patch.skip??0)/take)+1)}
         emptyMessage={state.error?"Les données ne sont pas disponibles.":"Aucun parcours pour ces critères."}/>
     </div>

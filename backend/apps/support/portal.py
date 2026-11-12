@@ -505,7 +505,10 @@ def _database_error(exc):
 def save(actor,body,pk=None,*,batch_digest=None):
     with transaction.atomic():
         _write_access(actor)
-        if not isinstance(body,dict) or set(body)-EDIT_FIELDS-{'requestId','_version','motif'}:
+        allowed = EDIT_FIELDS | {'requestId', '_version', 'motif'}
+        if pk is None and batch_digest is None:
+            allowed = allowed | {'modelId'}
+        if not isinstance(body, dict) or set(body) - allowed:
             raise APIError('Un champ du dossier n’est pas modifiable.','SUPPORT_VALIDATION',422)
         existing,replayed=_mutation_begin(actor,body,'update' if pk else 'create',pk,batch_digest=batch_digest)
         if replayed:return public_record(actor, db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[record(actor,existing)['ID_Support']])),True
@@ -528,6 +531,17 @@ def save(actor,body,pk=None,*,batch_digest=None):
                 else:
                     prepared.update(IdEntiteFk=require_entity(actor),ID_CreateurFk=actor.pk)
                     identifier_=db.one('INSERT INTO support."T_Support"('+','.join(db.ident(key) for key in prepared)+') VALUES('+','.join('%s' for _ in prepared)+') RETURNING "ID_Support"',list(prepared.values()))['ID_Support']
+                    if body.get('modelId') not in (None, ''):
+                        from apps.support.processes import mutate_run
+
+                        try:
+                            mutate_run(actor, identifier_, {
+                                'action': 'start', 'modelId': body['modelId'], 'requestId': body['requestId'],
+                            })
+                        except APIError as exc:
+                            if exc.status_code == 422:
+                                raise APIError({'modelId': str(exc.detail)}, exc.default_code, 422) from exc
+                            raise
         except DatabaseError as exc:_database_error(exc)
         return public_record(actor, db.one('SELECT * FROM support."V_Support" WHERE "ID_Support"=%s',[identifier_])),False
 
@@ -671,10 +685,12 @@ def workbook(actor,raw,file_format='xlsx'):
 class SupportContextView(APIView):
     permission_classes=[HasModuleAccess]
     def get(self,request):
-        from apps.support.processes import can_read_models
+        from apps.support.processes import can_read_models, creation_journey_options
         if set(request.query_params)-{'currentId'}:raise APIError('Critère non autorisé.')
         current=record(request.user,request.query_params['currentId']) if request.query_params.get('currentId') else None
-        return ok({**references(request.user,current),'canReadProcessModels':can_read_models(request.user)})
+        return ok({**references(request.user,current),
+                   'canReadProcessModels':can_read_models(request.user),
+                   **creation_journey_options(request.user, current)})
 
 
 class SupportEntitiesView(APIView):

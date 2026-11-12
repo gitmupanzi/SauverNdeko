@@ -546,19 +546,31 @@ def available_actions(actor, ticket, current, stage, events):
     return actions
 
 
-def possible_models(ticket):
-    return db.query('''
-        SELECT "ID_Modele" AS id, "Nom" AS name FROM support."T_ModeleProcessus"
-        WHERE "IdEntiteFk"=%s AND "ID_TypeSupportFk"=%s AND "Actif"
-        ORDER BY lower("Nom"),"ID_Modele"
-    ''', [ticket['IdEntiteFk'], ticket['ID_TypeSupportFk']])
+def journey_model_choices(entity_id, type_id=None):
+    where = 'm."IdEntiteFk"=%s AND m."Actif"'
+    params = [entity_id]
+    if type_id is not None:
+        where += ' AND m."ID_TypeSupportFk"=%s'
+        params.append(type_id)
+    return db.query('SELECT id, name, "typeId", version, "stageCount" FROM ('
+                    + MODEL_SELECT + ' WHERE ' + where + ') model ORDER BY lower(name), id', params)
+
+
+def can_start_journey(actor):
+    return (capabilities(actor)['canManage']
+            and can_use_tab(actor, 'support', 'processus', 'manage'))
+
+
+def creation_journey_options(actor, current=None):
+    can_start = current is None and can_start_journey(actor) and process_available()
+    return {'canStartJourneyOnCreate': can_start,
+            'journeyModels': journey_model_choices(read_entity(actor)) if can_start else []}
 
 
 def start_allowed(actor, ticket):
     states = ticket['CircuitSnapshot']['states']
     return (not ticket['Archive'] and ticket['ID_StatutFk'] not in (states['closed'], states['resolved'])
-            and capabilities(actor)['canManage'] and read_entity(actor) == ticket['IdEntiteFk']
-            and can_use_tab(actor, 'support', 'processus', 'manage'))
+            and read_entity(actor) == ticket['IdEntiteFk'] and can_start_journey(actor))
 
 
 def run_detail(actor, ticket):
@@ -569,8 +581,9 @@ def run_detail(actor, ticket):
     run = run_record(ticket_id)
     if run is None:
         can_start = start_allowed(actor, ticket)
+        type_id = ticket['ID_TypeSupportFk']
         return {**empty, 'available': True, 'canStart': can_start,
-                'models': possible_models(ticket) if can_start else []}
+                'models': journey_model_choices(ticket['IdEntiteFk'], type_id) if can_start and type_id is not None else []}
     stages = run.pop('definition')
     run['modelName'] = stages['modelName']
     stages = stages['stages']
@@ -685,6 +698,8 @@ def start_run(actor, ticket, body, now):
         SELECT "ID_Version" AS id, "Definition" AS definition FROM support."T_VersionProcessus"
         WHERE "ID_ModeleFk"=%s ORDER BY "Numero" DESC LIMIT 1
     ''', [model_id])
+    if version is None:
+        raise validation_error('Ce modèle ne possède pas de version publiée.')
     ticket_id = ticket['ID_Support']
     definition = version['definition']
     db.query('''

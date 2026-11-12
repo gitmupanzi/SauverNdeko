@@ -1,3 +1,4 @@
+import {SupportBadge} from "./SupportBadge";
 import {useEffect,useId,useRef,useState} from "react";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
@@ -40,9 +41,11 @@ export default function SupportJourney({record,documents,active,refresh,disabled
     onDraftChange(false);
   }
 
-  function saved(){
+  function saved(data){
+    const isStart=selection?.action.key==="start";
+    const firstStep=data?.run?.current?.name;
     cancel();
-    setFeedback("Le parcours a été mis à jour.");
+    setFeedback(isStart?`Parcours démarré.${firstStep?` Première étape « ${firstStep} ».`:""}`:"Le parcours a été mis à jour.");
     query.reload();
     onChanged();
   }
@@ -53,11 +56,8 @@ export default function SupportJourney({record,documents,active,refresh,disabled
     {query.loading?<ListState role="status" loading title="Chargement du parcours…"/>:null}
     {query.data?.available===false?<p className="support-empty">Le suivi par étapes sera disponible après la mise à jour du module.</p>:null}
     {feedback?<p className="support-process-feedback" role="status"><AppIcon name="check-circle"/>{feedback}</p>:null}
-    {query.data?.available!==false&&query.data&&!run?<div className="support-process-actions">
-      <p className="support-empty">Ce dossier n’a pas de parcours associé.</p>
-      {query.data.canStart&&query.data.models?.length&&!selection?<ActionButton icon="plus" variant="primary" disabled={disabled} onClick={()=>select({key:"start"})}>Démarrer un parcours</ActionButton>:null}
-      {query.data.canStart&&!query.data.models?.length?<p className="record-editor-note">Pour ce type de ticket, activez un modèle dans Pilotage → Modèles de suivi.</p>:null}
-    </div>:null}
+    {query.data?.available!==false&&query.data&&!run&&!selection?<UnlinkedJourney record={record} data={query.data}
+      disabled={disabled} onStart={()=>select({key:"start"})}/>:null}
     {run?<><JourneySummary run={run}/>
       {!selection&&run.actions?.length?<div className="support-process-actions">{run.actions.map(item=>{
         const action=typeof item==="string"?{key:item}:item;
@@ -75,12 +75,31 @@ export default function SupportJourney({record,documents,active,refresh,disabled
   </section>;
 }
 
+function UnlinkedJourney({record,data,disabled,onStart}){
+  const hasModel=data.canStart&&data.models?.length>0;
+  let description="Le démarrage du parcours nécessite les droits de gestion du suivi dans l’entreprise du ticket.";
+  if(record.Archive){
+    description="Un parcours ne peut être démarré que sur un ticket actif.";
+  }else if(["resolved","closed"].includes(record.StatutCode)){
+    description="Le ticket doit être rouvert avant de pouvoir y associer un modèle de suivi.";
+  }else if(hasModel){
+    description="Choisissez un modèle pour démarrer la première étape sur ce ticket.";
+  }else if(data.canStart){
+    description=record.TypeSupport
+      ?`Aucun modèle actif pour le type « ${record.TypeSupport} ». Vous pouvez en activer un dans Modèles de suivi.`
+      :"Aucun modèle actif pour ce type de ticket. Vous pouvez en activer un dans Modèles de suivi.";
+  }
+  return <ListState icon="movements" title="Aucun parcours associé" description={description}
+    action={hasModel?<ActionButton icon="plus" variant="primary" disabled={disabled} onClick={onStart}>Associer un modèle de suivi</ActionButton>:null}/>;
+}
+
 function JourneySummary({run}){
   const step=run.current;
   const blockage=blockageLabel(step?.blockage);
-  const status=run.completedAt?"Terminé":step?.blockage?"Bloqué":step?.requiresReceipt&&!step.receivedAt?"En attente de réception":"En cours";
+  const [status,tone]=run.completedAt?["Terminé","success"]:step?.blockage?["Bloqué","danger"]
+    :step?.requiresReceipt&&!step.receivedAt?["En attente de réception","warning"]:["En cours","progress"];
   return <div className="support-process-summary">
-    <header><strong>{run.modelName}</strong><small>Version {run.version}</small><span className="erp-status is-neutral">{status}</span>
+    <header><strong>{run.modelName}</strong><small>Version {run.version}</small><SupportBadge value={status} tone={tone}/>
       {step?.late?<span className="erp-status is-warning">Étape en retard</span>:null}
       {run.globalLate?<span className="erp-status is-warning">Délai global dépassé</span>:null}</header>
     <dl className="support-info-grid">
@@ -156,7 +175,8 @@ function JourneyAction({selection,run,models,documents,disabled,url,onCancel,onS
   const heading=useRef(null);
   const {action,revision}=selection;
   const config=PROCESS_ACTIONS[action.key];
-  const [fields,setFields]=useState({modelId:"",reason:"",reasonId:"",targetPosition:"",information:"",responsibleId:"",documentId:""});
+  const isStart=action.key==="start";
+  const [fields,setFields]=useState(()=>({modelId:isStart&&models.length===1?String(models[0].id):"",reason:"",reasonId:"",targetPosition:"",information:"",responsibleId:"",documentId:""}));
   const [error,setError]=useState("");
   const mutation=useProcessMutation();
   const step=run?.current;
@@ -177,7 +197,7 @@ function JourneyAction({selection,run,models,documents,disabled,url,onCancel,onS
 
   async function submit(){
     if(!mutation.uncertain){
-      if(action.key==="start"&&!fields.modelId){setError("Choisissez un modèle de suivi.");return;}
+      if(isStart&&!fields.modelId){setError("Choisissez un modèle de suivi.");return;}
       if(action.key==="return"&&!fields.targetPosition){setError("Choisissez l’étape de retour.");return;}
       if(action.key==="assign"&&!fields.responsibleId){setError("Choisissez le nouveau responsable.");return;}
       if(reasons.length&&!fields.reasonId){setError("Choisissez un motif.");return;}
@@ -185,7 +205,7 @@ function JourneyAction({selection,run,models,documents,disabled,url,onCancel,onS
       if(needsInformation&&!fields.information.trim()){setError("Renseignez l’information demandée.");return;}
       if(needsDocument&&!fields.documentId){setError("Choisissez un justificatif dans les documents du dossier.");return;}
     }
-    const values={action:action.key,requestId:crypto.randomUUID(),...(action.key==="start"?{}:{revision})};
+    const values={action:action.key,requestId:crypto.randomUUID(),...(isStart?{}:{revision})};
     for(const key of ["modelId","reasonId","targetPosition","responsibleId","documentId"]){
       if(fields[key])values[key]=Number(fields[key]);
     }
@@ -204,7 +224,7 @@ function JourneyAction({selection,run,models,documents,disabled,url,onCancel,onS
   return <div className="support-process-action-form" aria-busy={mutation.busy} aria-label={config.label}>
     <h4 tabIndex={-1} ref={heading}>{action.key==="advance"&&step?.isLast?"Terminer le parcours":config.label}</h4>
     <div className="record-editor-grid">
-      {action.key==="start"?choice("modelId","Modèle de suivi *",models):null}
+      {isStart?choice("modelId","Modèle de suivi *",models):null}
       {action.key==="return"?choice("targetPosition","Étape de retour *",(run.returnTargets||[]).map(stage=>({id:stage.position,label:stage.name}))):null}
       {action.key==="assign"?choice("responsibleId","Nouveau responsable *",run.users||[]):null}
       {reasons.length?choice("reasonId","Motif *",reasons):null}
@@ -218,7 +238,7 @@ function JourneyAction({selection,run,models,documents,disabled,url,onCancel,onS
     {error||mutation.error?<p className="record-field-error" role="alert">{error||mutation.error}</p>:null}
     <div className="support-process-actions">
       <ActionButton onClick={onCancel} disabled={mutation.busy||mutation.uncertain}>Annuler</ActionButton>
-      <ActionButton icon={config.icon} variant="primary" onClick={submit} disabled={disabled||mutation.busy}>{mutation.busy?"Enregistrement…":mutation.uncertain?"Vérifier l’enregistrement":"Confirmer"}</ActionButton>
+      <ActionButton icon={config.icon} variant="primary" onClick={submit} disabled={disabled||mutation.busy}>{mutation.busy?"Enregistrement…":mutation.uncertain?"Vérifier l’enregistrement":isStart?"Démarrer le parcours":"Confirmer"}</ActionButton>
     </div>
   </div>;
 }

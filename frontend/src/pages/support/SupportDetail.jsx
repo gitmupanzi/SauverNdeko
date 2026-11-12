@@ -10,9 +10,10 @@ import AppIcon from "../../components/AppIcon";
 import ConsultationTabs from "../../components/ConsultationTabs";
 import SearchSelect from "../../components/SearchSelect";
 import {formatDate,SimpleTable} from "../logistique/logistiqueShared";
-import {SUPPORT_ROOT,SUPPORT_LABELS,supportUncertain} from "./supportForm";
-import SupportEditor from "./SupportEditor";
+import {SUPPORT_ROOT,SUPPORT_LABELS,SUPPORT_DETAIL_DRAWER,SUPPORT_EDIT_MODES,supportUncertain} from "./supportForm";
+import {useSupportEditor} from "./SupportEditor";
 import SupportAction from "./SupportAction";
+import {SupportBadge,SupportPriority,SupportStatus} from "./SupportBadge";
 import SupportJourney from "./SupportJourney";
 import {useProcessQuery} from "./supportProcess";
 
@@ -36,18 +37,50 @@ function RelatedRecords({record,data}){
   {assetOpen?<Immobilisation360 recordId={record.ID_ImmobilisationFk} references={assetReferences.data||{}} onClose={()=>setAssetOpen(false)}/>:null}
  </section>;
 }
-export default function SupportDetail({id,initialEdit=false,initialTab="synthese",canReadJourney=false,context,onClose,onChanged}){
- const scope=useEntityScope(),[state,setState]=useState({key:"",data:null,loading:true,error:""}),[retry,setRetry]=useState(0),[tab,setTab]=useState(initialTab),[editor,setEditor]=useState(initialEdit?"edit":null),[drafts,setDrafts]=useState({}),[operations,setOperations]=useState({}),key=scope.scopeKey+":"+id+":"+retry,valid=state.key===key,current=valid?state:{data:null,loading:true,error:""},hasDraft=Object.values(drafts).some(Boolean),inFlight=Object.values(operations).some(Boolean);
+export default function SupportDetail({id,initialEdit=null,initialTab="synthese",canReadJourney=false,context,onClose,onChanged}){
+ const scope=useEntityScope(),[state,setState]=useState({key:"",data:null,loading:true,error:""}),[retry,setRetry]=useState(0),[tab,setTab]=useState(initialTab),[editor,setEditor]=useState(initialEdit),[drafts,setDrafts]=useState({}),[operations,setOperations]=useState({}),key=scope.scopeKey+":"+id,valid=state.key===key,current=valid?state:{data:null,loading:true,error:""},hasDraft=Object.values(drafts).some(Boolean),inFlight=Object.values(operations).some(Boolean);
+ const editButtons=useRef({}),restoreEditFocus=useRef(null);
  function draftChanged(name,value){setDrafts(previous=>previous[name]===value?previous:{...previous,[name]:value});}
  function busyChanged(name,value){setOperations(previous=>previous[name]===value?previous:{...previous,[name]:value});}
- useEffect(()=>{const controller=new AbortController();setState({key,data:null,loading:true,error:""});requestJson(SUPPORT_ROOT+"/tickets/"+id,{requiresAuth:true,signal:controller.signal}).then(response=>{if(controller.signal.aborted)return;const matches=response?.success&&String(response.data?.record?.ID_Support)===String(id);setState({key,data:matches?response.data:null,loading:false,error:matches?"":response?.success?"La fiche reçue ne correspond pas au dossier demandé.":response?.message||"Le dossier n’a pas pu être chargé."});});return()=>controller.abort();},[key]);
+ useEffect(()=>{const controller=new AbortController();setState(previous=>({key,data:previous.key===key?previous.data:null,loading:true,error:""}));requestJson(SUPPORT_ROOT+"/tickets/"+id,{requiresAuth:true,signal:controller.signal}).then(response=>{if(controller.signal.aborted)return;const matches=response?.success&&String(response.data?.record?.ID_Support)===String(id);setState({key,data:matches?response.data:null,loading:false,error:matches?"":response?.success?"La fiche reçue ne correspond pas au dossier demandé.":response?.message||"Le dossier n’a pas pu être chargé."});});return()=>controller.abort();},[key,retry]);
  function changed(){setEditor(null);setRetry(value=>value+1);onChanged();}
  function mutationSaved(data){if(data?.record&&String(data.record.ID_Support)===String(id)){setState({key,data,loading:false,error:""});onChanged();}else changed();}
  const data=current.data,record=data?.record,canManage=data?.canManage===true,editable=canManage&&!record?.Archive&&record?.StatutCode!=="closed",canEdit=data?.canEdit??editable,canComment=data?.canComment??editable,canUpload=data?.canUpload??editable,transitions=data?.transitions||[];
- return <><RecordEditorFrame title={record?"Support · "+record.NumeroSupport:"Dossier Support"} subtitle={record?.Objet} icon="help" onClose={onClose} readOnly dirty={hasDraft} busy={inFlight} loading={current.loading} error={current.error} onReload={()=>setRetry(value=>value+1)} defaultWidth={1100} className="support-detail" storageKey="sauverndeko.support.detail.width">
-  {record?<>
-   <div className="support-detail-heading"><div><span className="support-record-code">{record.NumeroSupport}</span><h3>{record.Objet}</h3><small>{record.Entreprise||"Entreprise du dossier"} · Créé le {date(record.DateCreation)}</small></div><div className="support-badges"><span className="erp-status is-neutral">{record.Statut||"Non renseigné"}</span>{record.Priorite?<span className="erp-status is-neutral">{record.Priorite}</span>:null}{record.Archive?<span className="erp-status is-neutral">Archivé</span>:null}</div></div>
-   <div className="support-detail-actions">{canEdit?<ActionButton icon="edit" disabled={inFlight||hasDraft} onClick={()=>setEditor("edit")}>Modifier</ActionButton>:null}{transitions.map(action=><ActionButton key={action.key} disabled={inFlight||hasDraft} icon={action.requiresVerification?"shield":action.requiresResolution?"check-circle":"movements"} onClick={()=>setEditor(action)}>{action.label}</ActionButton>)}<ActionButton icon="refresh" disabled={inFlight||hasDraft} onClick={()=>setRetry(value=>value+1)}>Actualiser</ActionButton>{hasDraft?<small className="record-editor-note">Enregistrez ou annulez la saisie en cours pour poursuivre le traitement.</small>:null}</div>
+ const editContext=data?.context||context;
+ const {user}=useAuth();
+ const canWriteTicket=canEdit&&editContext?.canManage===true&&user?.permissions?.canWriteData===true;
+ const requestedMode=typeof editor==="string"&&Object.hasOwn(SUPPORT_EDIT_MODES,editor)?editor:null;
+ const editMode=record&&canWriteTicket?requestedMode:null;
+ const edit=useSupportEditor({record,context:editContext,mode:editMode,allowed:canWriteTicket,onSaved:savedRecord=>{
+  endEdit();
+  if(String(savedRecord?.ID_Support)===String(id))setState({key,data:{...data,record:savedRecord},loading:false,error:""});
+  setRetry(value=>value+1);
+  onChanged();
+ }});
+ function endEdit(){
+  restoreEditFocus.current=editMode;edit.reset();setEditor(null);
+ }
+ useEffect(()=>{
+  if(editor||!record||!restoreEditFocus.current)return;
+  const frame=requestAnimationFrame(()=>{
+   const mode=restoreEditFocus.current;
+   restoreEditFocus.current=null;
+   editButtons.current[mode]?.focus({preventScroll:true});
+  });
+  return()=>cancelAnimationFrame(frame);
+ },[editor,record]);
+ const waitingForEdit=requestedMode&&current.loading&&!record;
+ const frameProps=editMode?{...edit.frameProps,onClose:endEdit,className:"support-editor"}:{
+  title:waitingForEdit?SUPPORT_EDIT_MODES[requestedMode].label:record?"Support · "+record.NumeroSupport:"Dossier Support",
+  subtitle:record?.Objet,icon:waitingForEdit?SUPPORT_EDIT_MODES[requestedMode].icon:"help",
+  onClose,readOnly:true,dirty:hasDraft,busy:inFlight,loading:current.loading&&!record,error:current.error,
+  onReload:()=>setRetry(value=>value+1),className:"support-detail",
+ };
+ return <><RecordEditorFrame {...SUPPORT_DETAIL_DRAWER} {...frameProps}>
+  {editMode?edit.content:record?<>
+   <div className="support-detail-heading"><div><span className="support-record-code">{record.NumeroSupport}</span><h3>{record.Objet}</h3><small>{record.Entreprise||"Entreprise du dossier"} · Créé le {date(record.DateCreation)}</small></div><div className="support-badges"><SupportStatus value={record.Statut} code={record.StatutCode} id={record.ID_StatutFk} options={editContext?.references?.statuses}/>{record.Priorite?<SupportPriority value={record.Priorite} id={record.ID_PrioriteFk} options={editContext?.references?.priorities}/>:null}{record.Archive?<SupportBadge value="Archivé"/>:null}</div></div>
+   <div className="support-detail-actions">{canWriteTicket?Object.entries(SUPPORT_EDIT_MODES).map(([mode,{label,icon}])=>
+    <ActionButton key={mode} ref={element=>{editButtons.current[mode]=element;}} icon={icon} disabled={inFlight||hasDraft} onClick={()=>setEditor(mode)}>{label}</ActionButton>):null}{transitions.map(action=><ActionButton key={action.key} disabled={inFlight||hasDraft} icon={action.requiresVerification?"shield":action.requiresResolution?"check-circle":"movements"} onClick={()=>setEditor(action)}>{action.label}</ActionButton>)}<ActionButton icon="refresh" disabled={inFlight||hasDraft} onClick={()=>setRetry(value=>value+1)}>Actualiser</ActionButton>{hasDraft?<small className="record-editor-note">Enregistrez ou annulez la saisie en cours pour poursuivre le traitement.</small>:null}</div>
    <ConsultationTabs tabs={SUPPORT_DETAIL_TABS.filter(item=>item.key!=="parcours"||canReadJourney)} value={tab} onChange={setTab} label="Détail du dossier"/>
    {tab==="synthese"?<div className="support-summary"><section className="record-editor-section"><h3><AppIcon name="help"/>Demande</h3><p className="support-content">{record.Description||"Description non renseignée."}</p><Details items={[["Type",record.TypeSupport],["Catégorie",record.CategorieSupport],["Canal d’origine",record.CanalOrigine],...(data.canLinkRequester===false?[]:[["Demandeur",record.Demandeur]])]}/></section><section className="record-editor-section"><h3><AppIcon name="user"/>Affectation et suivi</h3><Details items={[["Responsable",record.Responsable||"À affecter"],["Service concerné",record.ServiceConcerne],["Échéance",date(record.DateEcheance)],["Dernière modification",date(record.DateModification)],["Résolution",date(record.DateResolution)],["Clôture",date(record.DateCloture)]]}/></section><RelatedRecords record={record} data={data}/></div>:null}
    {canReadJourney?<div hidden={tab!=="parcours"}><SupportJourney record={record} documents={data.documents||[]} active={tab==="parcours"||drafts.journey===true}
@@ -59,7 +92,7 @@ export default function SupportDetail({id,initialEdit=false,initialTab="synthese
    <div hidden={tab!=="historique"}><SupportHistory rows={data.history||[]}/></div>
   </>:null}
  </RecordEditorFrame>
- {editor==="edit"&&record?<SupportEditor record={record} context={data?.context||context} allowed={canEdit} onClose={()=>setEditor(null)} onSaved={changed}/>:editor&&typeof editor==="object"&&record?<SupportAction action={editor} record={record} context={{...(data?.context||context),references:{...(data?.context||context)?.references,resultats:data?.verificationResults||data?.references?.resultats||context?.references?.resultats||[]}}} onClose={()=>setEditor(null)} onSaved={data=>{setEditor(null);mutationSaved(data);}}/>:null}
+ {editor&&typeof editor==="object"&&record?<SupportAction action={editor} record={record} context={{...(data?.context||context),references:{...(data?.context||context)?.references,resultats:data?.verificationResults||data?.references?.resultats||context?.references?.resultats||[]}}} onClose={()=>setEditor(null)} onSaved={data=>{setEditor(null);mutationSaved(data);}}/>:null}
  </>;
 }
 

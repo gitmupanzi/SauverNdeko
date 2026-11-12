@@ -156,6 +156,16 @@
       ],
       "description": "Enregistrer les colonnes et les préférences d’export des modèles de suivi du Support.",
       "release": "2026.11.12"
+    },
+    {
+      "id": "20261112_05_motifs_suivi_support",
+      "file": "../migrations/20261112_05_motifs_suivi_support.sql",
+      "sha256": "d480bd7c37312fc37d38e71bdef28b4d85a14cef2285dea560c8a0dec61e297a",
+      "dependsOn": [
+        "20261112_04_registre_modeles_support"
+      ],
+      "description": "Alimenter le référentiel commun des motifs de blocage, retour et refus dans le Support.",
+      "release": "2026.11.12"
     }
   ]
 }

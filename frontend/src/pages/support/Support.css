@@ -79,6 +79,9 @@ html[data-theme=contrast] .support-dashboard { --erp-warning:#ffe36a; }
 .support-detail-heading h3 { margin:7px 0; font-size:22px; line-height:1.35; color:var(--erp-text); overflow-wrap:anywhere; }
 .support-detail-heading small { color:var(--erp-muted); font-size:11px; }
 .support-badges { display:flex; gap:7px; flex-wrap:wrap; }
+.erp-status.support-badge { overflow-wrap:anywhere; }
+html:not([data-theme="contrast"]) .support-badge.is-progress { background:#f3edff; color:#6238a4; }
+html[data-theme="dark"] .support-badge.is-progress { background:#34294f; color:#d6c1ff; }
 .support-detail-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
 .support-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
 .support-summary>.record-editor-section { margin:0; }

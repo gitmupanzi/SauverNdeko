@@ -22,7 +22,7 @@ const GROUPS=[
 ];
 
 export default function SupportPortal(){
- const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[state,setState]=useState(null);
+ const {user}=useAuth(),scope=useEntityScope(),[params,setParams]=useSearchParams(),[refresh,setRefresh]=useState(0),[state,setState]=useState(null),[newTicketOwner,setNewTicketOwner]=useState(null);
  const owner=scope.scopeKey+":"+accessSignature(user),contextKey=owner+":"+refresh;
  const current=state?.owner===owner?state:null;
  const loading=current?.key!==contextKey;
@@ -38,6 +38,11 @@ export default function SupportPortal(){
  const legacyStages=requested==="tickets"&&params.get("vue")==="suivi";
  const active=legacyStages?"processus":Object.hasOwn(rights,requested)?requested:canReadDashboard?"tableau-de-bord":"tickets";
  const access=rights[active];
+ const initialCreate=active==="tickets"&&newTicketOwner===owner;
+ const canCreateTicket=canReadTickets&&context?.canCreate===true&&user?.permissions?.canWriteData===true;
+ useEffect(()=>{
+  if(initialCreate||(newTicketOwner&&newTicketOwner!==owner))setNewTicketOwner(null);
+ },[initialCreate,newTicketOwner,owner]);
  const needsContext=canReadProcesses||(access&&active==="tickets");
  const modelsContextPending=active==="modeles"&&canReadProcesses&&!access&&loading;
  const showContextError=error&&(active==="tickets"||active==="processus"||active==="modeles");
@@ -74,9 +79,10 @@ export default function SupportPortal(){
       canReadProcesses={canReadProcesses} onChanged={onChanged}/>:
     active==="modeles"?<SupportProcessModels key={owner} refresh={refresh}/>:
     active==="processus"?<SupportStageRegister key={owner} context={context} refresh={refresh}
-      onShowTickets={()=>navigate("tickets")} onChanged={onChanged}/>:
+      onShowTickets={()=>navigate("tickets")} onShowModels={rights.modeles?()=>navigate("modeles"):undefined}
+      onNewTicket={canCreateTicket?()=>{setNewTicketOwner(owner);navigate("tickets");}:undefined} onChanged={onChanged}/>:
     <SupportRegister key={owner+":"+(params.get("filters")||"")} context={context} contextLoading={loading} contextError={error}
-      initial={initial} refresh={refresh} canReadJourney={rights.processus} onChanged={onChanged}/>}
+      initial={initial} initialCreate={initialCreate} refresh={refresh} canReadJourney={rights.processus} onChanged={onChanged}/>}
   </main>
  </div>;
 }

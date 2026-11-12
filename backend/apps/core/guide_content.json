@@ -1507,7 +1507,7 @@
             },
             {
               "title": "Décrire la demande",
-              "text": "Renseignez l’objet, le type et une description précise du problème ou du besoin."
+              "text": "Renseignez l’objet, le type et une description précise du problème ou du besoin. Si la demande doit suivre des étapes, choisissez un Modèle de suivi proposé pour ce type."
             },
             {
               "title": "Compléter le contexte",
@@ -1657,7 +1657,7 @@
             },
             {
               "title": "Démarrer le parcours",
-              "text": "Ouvrez le dossier, choisissez l’onglet Parcours et sélectionnez un modèle actif. Les règles du modèle sont conservées pour ce dossier."
+              "text": "Dans Nouveau dossier, choisissez le type de demande, puis un modèle actif si un suivi est nécessaire. La première étape démarre à l’enregistrement. Pour un dossier déjà ouvert, utilisez Associer un modèle de suivi dans l’onglet Parcours. Le dossier conserve la version utilisée au démarrage."
             },
             {
               "title": "Suivre le dossier",

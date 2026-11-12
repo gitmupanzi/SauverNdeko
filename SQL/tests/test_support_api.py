@@ -39,6 +39,7 @@ from rest_framework.test import APIClient
 from apps.accounts.authentication import Actor
 from apps.core import db
 from apps.core.field_references import reference_context,reference_options,save as reference_save
+from apps.core.management.commands import traiter_alertes_support
 from apps.support import portal
 
 BASE='/api/support/'
@@ -423,6 +424,63 @@ class SupportAPI(unittest.TestCase):
             payload['revision'] = revision
         return client.post(BASE + 'tickets/' + str(ticket['ID_Support']) + '/parcours', payload, format='json')
 
+    def test_create_ticket_and_start_published_model_atomically(self):
+        client = self.client()
+        model = self.process_model(self.create(), [{'name': 'Réception', 'requiresReceipt': True}])
+        body = self.body(modelId=model['id'])
+        ticket = self.status(client.post(BASE + 'tickets', body, format='json'), 201)
+        path = BASE + 'tickets/' + str(ticket['ID_Support']) + '/parcours'
+        run = self.status(client.get(path))['run']
+        self.assertEqual(run['modelName'], model['name'])
+        self.assertEqual(run['version'], model['version'])
+        self.assertEqual(run['current']['name'], 'Réception')
+        self.assertEqual([event['action'] for event in run['history']], ['start'])
+        self.assertIn(ticket['ID_Support'], [row['ticketId'] for row in self.status(
+            client.get(BASE + 'processus/suivi'))['items']])
+
+        replay = client.post(BASE + 'tickets', body, format='json')
+        self.assertEqual(self.status(replay), ticket)
+        self.assertTrue(replay.data['meta']['replayed'])
+        self.assertEqual(self.status(client.get(path))['run']['history'], run['history'])
+        self.status(client.post(BASE + 'tickets', {**body, 'modelId': None}, format='json'), 409)
+        self.status(self.edit(ticket, modelId=model['id']), 422)
+
+    def test_ticket_creation_only_lists_and_accepts_authorized_models(self):
+        client = self.client()
+        seed = self.create()
+        active = self.process_model(seed, [{'name': 'Réception'}])
+        inactive = self.process_model(seed, [{'name': 'Réception'}], active=False)
+        foreign = self.process_model(self.create(2), [{'name': 'Externe'}], client=self.client(2))
+        context = self.status(client.get(BASE + 'contexte'))
+        self.assertTrue(context['canStartJourneyOnCreate'])
+        self.assertEqual(context['journeyModels'], [{key: active[key] for key in ('id', 'name', 'typeId', 'version', 'stageCount')}])
+        global_context = self.status(self.client(all_entities=True).get(BASE + 'contexte'))
+        self.assertFalse(global_context['canStartJourneyOnCreate'])
+        self.assertEqual(global_context['journeyModels'], [])
+
+        other_type = next(option['id'] for option in self.refs['references']['types']
+                          if option['id'] != active['typeId'] and not option.get('disabled'))
+        for choice in ({'modelId': inactive['id']}, {'modelId': foreign['id']},
+                       {'modelId': active['id'], 'ID_TypeSupportFk': other_type}, {'modelId': False}):
+            body = self.body(**choice)
+            response = client.post(BASE + 'tickets', body, format='json')
+            self.status(response, 422)
+            self.assertIn('modelId', response.data['error']['details'])
+            self.assertIsNone(db.one('SELECT 1 FROM support."T_Support" WHERE "Objet"=%s', [body['Objet']]))
+
+        actor = self.actor(1)
+        actor._module_access['tabs']['support'] = {
+            'processus': {'canRead': True, 'canManage': False, 'canExport': False},
+        }
+        restricted = APIClient()
+        restricted.force_authenticate(actor)
+        restricted_context = self.status(restricted.get(BASE + 'contexte'))
+        self.assertFalse(restricted_context['canStartJourneyOnCreate'])
+        self.assertEqual(restricted_context['journeyModels'], [])
+        body = self.body(modelId=active['id'])
+        self.status(restricted.post(BASE + 'tickets', body, format='json'), 403)
+        self.assertIsNone(db.one('SELECT 1 FROM support."T_Support" WHERE "Objet"=%s', [body['Objet']]))
+
     def test_process_models_batch_atomic_replay_and_duplicate(self):
         ticket = self.create()
         prefix = 'Lot ' + uuid.uuid4().hex
@@ -695,6 +753,45 @@ class SupportAPI(unittest.TestCase):
         self.assertEqual(db.one(financial_counts), before)
 
 
+    def test_default_stage_reasons_are_shared_and_usable(self):
+        expected = {
+            'Pièce manquante', 'Information incomplète', 'Information à corriger',
+            'Justificatif non conforme', 'Validation en attente',
+            'Réponse externe en attente', 'Dossier hors périmètre',
+            'Critères non remplis', 'Doublon confirmé',
+        }
+        reasons_by_entity = [
+            {row['label']: row['id'] for row in self.status(
+                self.client(entity_index=index).get(BASE + 'processus')
+            )['references']['reasons'] if row['label'] in expected}
+            for index in (0, 1)
+        ]
+        reasons = reasons_by_entity[0]
+        self.assertEqual(set(reasons), expected)
+        self.assertEqual(reasons, reasons_by_entity[1])
+
+        ticket = self.create()
+        fields = {
+            'blockerReasonIds': 'Pièce manquante',
+            'returnReasonIds': 'Information à corriger',
+            'rejectReasonIds': 'Dossier hors périmètre',
+        }
+        model = self.process_model(ticket, [
+            {'name': 'Réception'},
+            {'name': 'Contrôle', 'allowReturn': True,
+             'validators': [{'userId': self.users[0]['IdUser']}], **{
+                field: [reasons[label]] for field, label in fields.items()
+            }},
+        ])
+        run = self.status(self.process_action(ticket, 'start', modelId=model['id']))['run']
+        run = self.status(self.process_action(ticket, 'advance', run['revision']))['run']
+        for key, label in (
+            ('blockerReasons', 'Pièce manquante'),
+            ('returnReasons', 'Information à corriger'),
+            ('rejectReasons', 'Dossier hors périmètre'),
+        ):
+            self.assertEqual(run['current'][key], [{'id': reasons[label], 'label': label}])
+
     def test_processes_categorical_reasons_and_multiple_validations(self):
         ticket = self.create()
         category_id = reference_context(
@@ -754,14 +851,20 @@ class SupportAPI(unittest.TestCase):
                 ("ID_SupportFk", "Type", "Occurrence", "CreeLe", "Statut", "Erreur", "TraiteLe")
             VALUES (%s, 'global', 0, %s, 'failed', 'Aucun responsable.', %s)
         ''', [unassigned['ID_Support'], previous, previous])
-        for dry_run, expected in (
-            (True, {'candidates': 4, 'sent': 0, 'failed': 0, 'skipped': 0}),
-            (False, {'candidates': 4, 'sent': 2, 'failed': 2, 'skipped': 0}),
-            (False, {'candidates': 0, 'sent': 0, 'failed': 0, 'skipped': 0}),
-        ):
-            output = io.StringIO()
-            call_command('traiter_alertes_support', dry_run=dry_run, stdout=output)
-            self.assertEqual(json.loads(output.getvalue()), expected)
+        assigned_id = int(assigned['ID_Support'])
+        unassigned_id = int(unassigned['ID_Support'])
+        due_alerts = traiter_alertes_support.DUE_ALERTS + (
+            f' AND p."ID_SupportFk" IN ({assigned_id}, {unassigned_id})'
+        )
+        with patch.object(traiter_alertes_support, 'DUE_ALERTS', due_alerts):
+            for dry_run, expected in (
+                (True, {'candidates': 4, 'sent': 0, 'failed': 0, 'skipped': 0}),
+                (False, {'candidates': 4, 'sent': 2, 'failed': 2, 'skipped': 0}),
+                (False, {'candidates': 0, 'sent': 0, 'failed': 0, 'skipped': 0}),
+            ):
+                output = io.StringIO()
+                call_command('traiter_alertes_support', dry_run=dry_run, stdout=output)
+                self.assertEqual(json.loads(output.getvalue()), expected)
         alerts = db.query('''
             SELECT a."Statut", a."Occurrence", n."IdUserFk", n."IdEntiteFk", n."IdAnnonceFk"
             FROM support."T_AlerteParcours" a
