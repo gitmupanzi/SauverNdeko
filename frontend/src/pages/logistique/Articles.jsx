@@ -60,7 +60,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const preferences=useTablePreferences("logistique.articles");
   const { user: currentUser } = useAuth();
-  const { openProduct, openProductLots, openOrder } = useConsultations();
+  const { openProduct, openProductLots, openProductStock, openOrder } = useConsultations();
   const {assign,refresh:refreshFolders}=useFollowupFolders();
   const [gridState, setGridState] = useState({ take: 25, skip: 0, sortBy: "NomArticle", sortDir: "asc" });
   const [serverMeta, setServerMeta] = useState(null);
@@ -69,6 +69,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const writable = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
   const canWrite = writable && tabRights(currentUser,"logistique","articles").canManage;
   const canReceive = canWrite && tabRights(currentUser,"logistique","commandes").canManage && tabRights(currentUser,"logistique","details").canManage;
+  const canReadStockCard = tabRights(currentUser,"logistique","mouvements").canRead;
   const canClassify = writable && tabRights(currentUser,"logistique","dossiers").canManage;
   const canExport = currentUser?.permissions?.canExportData !== false && tabRights(currentUser,"logistique","articles").canExport === true;
   const [search, setSearch] = useState(sharedTable?.searchValue || "");
@@ -182,13 +183,14 @@ export default function Articles({ title = "Articles", references:receivedRefere
     { key:"ValideArticle", label:"État de l’article", width:145, render:row => <ArticleStatus value={row.ValideArticle == null ? null : row.ValideArticle ? "Actif" : "Inactif"} tone={row.ValideArticle ? "success" : "neutral"}/> },
     { key:"actions", label:"Actions", width:120, sortable:false, render:row => <div className="erp-row-actions" onClick={event=>event.stopPropagation()}><button type="button" className="erp-row-consult" aria-label={"Consulter "+(row.NomArticle || "l’article")} title="Produit 360" onClick={()=>openProduct(row)}><AppIcon name="eye" size={18}/></button><RowActionsMenu documents={[recordExcel('articles',{ID_Article:row.ID_Article},'Fiche article')]} label={row.NomArticle || "Article"} items={[
       {label:"Consulter",icon:"eye",onSelect:()=>openProduct(row)},
+      ...(canReadStockCard?[{label:"Fiche de stock",icon:"movements",onSelect:()=>openProductStock(row,depotScope.depotId)}]:[]),
       {label:"Valorisation CUMP",icon:"cash",onSelect:()=>setValuation({id:row.ID_Article,currency:row.ID_DeviseFk})},
       {label:"Réceptionner du stock",icon:"stock-in",disabled:!canReceive||row.ValideArticle===false,reason:!canReceive?"Accès en consultation":row.ValideArticle===false?"Réactivez l’article pour réceptionner du stock.":"",onSelect:()=>handleReceipt(row)},
       {label:"Modifier",icon:"edit",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleEditArticle(row)},
       {label:row.ValideArticle===false?"Réactiver":"Désactiver",icon:row.ValideArticle===false?"check-circle":"close",disabled:!canWrite,reason:!canWrite?"Accès en consultation":"",onSelect:()=>handleDisableArticle(row)},
       {label:"Supprimer",icon:"trash",danger:true,disabled:!canWrite || !currentUser?.Is_Admin || row.ValideArticle !== false,reason:!canWrite?"Accès en consultation":!currentUser?.Is_Admin?"Réservé à l’administration de la plateforme":row.ValideArticle !== false?"Désactivez d’abord l’article.":"",onSelect:()=>handleDeleteArticle(row)},
     ]}/></div> },
-  ],[categoryLabelMap,typeLabelMap,unitLabelMap,openProduct,openProductLots,canWrite,canReceive,currentUser?.Is_Admin,openOrder]);
+  ],[categoryLabelMap,typeLabelMap,unitLabelMap,openProduct,openProductLots,openProductStock,canReadStockCard,depotScope.depotId,canWrite,canReceive,currentUser?.Is_Admin,openOrder]);
 
   useEffect(() => {
     let isMounted = true;

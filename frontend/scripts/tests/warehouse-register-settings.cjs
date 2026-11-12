@@ -19,16 +19,16 @@ const control=(tree,key)=>nodes(tree).find(node=>node.props.id?.endsWith(key)&&t
 async function bundle(contents,plugins=[]){const result=await esbuild.build({stdin:{contents,resolveDir:front,loader:'jsx'},bundle:true,write:false,platform:'node',format:'cjs',external:['react/jsx-runtime'],jsx:'automatic',define:{'import.meta.env':'{}'},loader:{'.css':'empty'},plugins,logLevel:'error'});const compiled=new Module(path.join(front,'draft-editors-proof.cjs'),module);compiled.filename=path.join(front,'draft-editors-proof.cjs');compiled.paths=Module._nodeModulePaths(front);compiled._compile(result.outputFiles[0].text,compiled.filename);return compiled.exports;}
 function mocks(entries){return{name:'editor-fixtures',setup(build){for(const[filter,name,source]of entries){build.onResolve({filter},()=>({path:name,namespace:name}));build.onLoad({filter:/.*/,namespace:name},()=>({contents:source,loader:'jsx',resolveDir:front}));}}};}
 
-globalThis.__scope={scopeKey:'company-7',canWrite:true};globalThis.__depot={depotId:'2',retry(){}};
+globalThis.__scope={scopeKey:'company-7',entityId:7,canWrite:true};globalThis.__depot={depotId:'2',retry(){}};
 globalThis.__user={IdUser:3,Is_Admin:true,permissions:{canExportData:true,canWriteData:true}};
-globalThis.__canExport=true;globalThis.__downloads=[];globalThis.__download=async()=>{};
+globalThis.__canExport=true;globalThis.__canExportInventory=true;globalThis.__downloads=[];globalThis.__download=async()=>{};
 globalThis.__prefs={ready:true,canExport:true,exportKeys:['NomDepot','CodeDepot'],tableKeys:['NomDepot','CodeDepot'],catalogue:[],contextKey:'company-7',error:''};
 const common=[
  [/^react$/,'hooks',`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useId=()=>globalThis.__hooks.id(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d),useMemo=f=>f();`],
  [/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],
  [/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>({user:globalThis.__user});`],
  [/\/contexts\/DepotScopeContext$/,'depot',`export const useDepotScope=()=>globalThis.__depot;export function DepotField(){}`],
- [/\/services\/moduleAccess$/,'rights',`export const moduleRights=()=>({canExport:globalThis.__canExport});`],
+ [/\/services\/moduleAccess$/,'rights',`export const moduleRights=()=>({canExport:globalThis.__canExport});export const tabRights=()=>({canRead:true,canManage:true,canExport:globalThis.__canExportInventory});`],
  [/\/services\/api$/,'api',`export const downloadApiFile=async(url,options)=>{globalThis.__downloads.push({url,...options});return globalThis.__download(url,options);};export const requestJson=async()=>({success:true,data:[],meta:{filteredCount:0}});`],
  [/\.\/useTablePreferences$/,'preferences',`export default function usePreferences(){return globalThis.__prefs;}`]
 ];
@@ -40,12 +40,20 @@ const common=[
  for(const patch of [{loading:true},{pending:true},{error:'Non disponible'},{count:0}]){opts={...opts,...patch};const before=globalThis.__downloads.length;tools=render();ok(tools.toolbarProps.exportDisabled);await tools.toolbarProps.exportFile();eq(globalThis.__downloads.length,before);opts={...opts,loading:false,pending:false,error:'',count:121};}
  globalThis.__canExport=false;eq(render().toolbarProps.exportFile,undefined);globalThis.__canExport=true;globalThis.__prefs={...globalThis.__prefs,ready:false};ok(render().toolbarProps.exportDisabled);globalThis.__prefs={...globalThis.__prefs,ready:true};
  globalThis.__download=async()=>{throw new Error('Fichier indisponible');};await render().toolbarProps.exportFile();eq(render().toolbarProps.error,'Fichier indisponible');globalThis.__download=()=>new Promise(()=>{});render().toolbarProps.exportFile();request=globalThis.__downloads.at(-1);ok(!request.signal.aborted);globalThis.__scope={...globalThis.__scope,scopeKey:'company-8'};render();await hook.flush();eq(request.signal.aborted,true);eq(render().columnsOpen,false);hook.unmount();
+ globalThis.__download=async()=>{};globalThis.__prefs={...globalThis.__prefs,exportKeys:['NomArticle','QteComptee','Ecart']};
+ const inventory=new Hooks(),inventoryOpts={query:{inventaireId:19,depotId:2,ecart:'negatif'},grid:{take:25,skip:25,sortBy:'Ecart',sortDir:'asc'},count:27,permissionTab:'inventaires'};
+ const renderInventory=()=>inventory.render(()=>useSettings('lignes-inventaires',inventoryOpts));
+ renderInventory();await inventory.flush();globalThis.__canExportInventory=false;eq(renderInventory().toolbarProps.exportFile,undefined);
+ globalThis.__canExportInventory=true;await renderInventory().toolbarProps.exportCsv();
+ url=new URL(globalThis.__downloads.at(-1).url,'https://example.invalid');
+ eq(url.pathname,'/api/logistique/lignes-inventaires/export.csv');eq(url.searchParams.get('inventaireId'),'19');eq(url.searchParams.get('depotId'),'2');eq(url.searchParams.get('ecart'),'negatif');eq(url.searchParams.get('sortBy'),'Ecart');eq(url.searchParams.has('skip'),false);inventory.unmount();
  const entries=[...common,
  [/\/hooks\/useLogisticsRegisterSettings$/,'settings-hook',`export default function useSettings(kind){return{preferences:globalThis.__prefs,columnsOpen:false,columnsAnchorRef:{current:null},tableProps:{tablePreferences:globalThis.__prefs,columnsPanelOpen:false},toolbarProps:{showSettings:false,exportFile(){},exportCsv(){}},open(){globalThis.__opened=kind;}};}`],
  [/\/components\/ConsultationProvider$/,'consult',`export const useConsultations=()=>({openProduct(){}});`],
  [/\/components\/RegisterSettingsButton$/,'settings',`export default function SettingsButton(){}`],
  [/\/components\/RegisterSurface$/,'surface',`export default function Surface(){}`],
  [/\/components\/RecordEditorFrame$/,'frame',`export default function Frame(){}`],
+ [/\/components\/AppIcon$/,'icon',`export default function Icon(){}`],
  [/\/components\/ActionButton$/,'button',`export default function Button(){}`],
  [/\/components\/RowActionsMenu$/,'actions',`export default function Actions(){}`],
  [/\/components\/DataTableToolbar$/,'toolbar',`export default function Toolbar(){}`],
@@ -56,7 +64,13 @@ const common=[
  [/\.\/logistiqueShared$/,'shared',`export function SimpleTable(){};export function StatusBanner(){};export const formatDate=x=>x,formatNumber=x=>x;`],
  [/\/services\/depots$/,'transport',`export const depotRead=async()=>({success:true,data:[],meta:{filteredCount:0}}),depotFailure=(r,f)=>f;export function depotWrite(){};export function depotRecord(){};export function depotRevision(){};export function depotUncertain(){};`]
  ];
- const pages=await bundle("export {default as Depots} from './src/pages/logistique/Depots';export {default as StocksDepots} from './src/pages/logistique/StocksDepots';export {default as Transferts} from './src/pages/logistique/Transferts';export {default as Inventaires} from './src/pages/logistique/Inventaires';",[mocks(entries)]);
- for(const [page,kind]of [['Depots','depots'],['StocksDepots','stocks-depots'],['Transferts','transferts'],['Inventaires','inventaires']]){const h=new Hooks();let tree=h.render(pages[page],{});await h.flush();tree=h.render(pages[page],{});const table=named(tree,'SimpleTable');ok(table,page+' table');eq(table.props.tablePreferences,globalThis.__prefs);ok(table.props.showControls!==false);const toolbar=table.props.toolbar;eq(toolbar.type.name,'Toolbar');eq(toolbar.props.showSettings,false);ok(typeof toolbar.props.exportFile==='function');ok(typeof toolbar.props.exportCsv==='function');const surface=named(tree,'Surface');const actionTree=page==='Inventaires'?tree:surface.props.actions;const settings=named(actionTree,'SettingsButton');ok(settings,page+' header settings');settings.props.onTableSettings();eq(globalThis.__opened,kind);h.unmount();}
- console.log(JSON.stringify({success:true,checks,scope:'Réglages des quatre registres, export exhaustif et droits, erreurs, changement entreprise; handlers simulés sans écriture métier'}));
+ const pages=await bundle("export {default as Depots} from './src/pages/logistique/Depots';export {default as StocksDepots} from './src/pages/logistique/StocksDepots';export {default as Transferts} from './src/pages/logistique/Transferts';export {default as Inventaires} from './src/pages/logistique/Inventaires';export {default as InventoryLines} from './src/pages/logistique/InventoryLines';",[mocks(entries)]);
+ const inventoryScope=globalThis.__scope;
+ globalThis.__scope={...inventoryScope,entityId:null};
+ const noCompany=new Hooks().render(pages.InventoryLines,{});
+ eq(named(noCompany,'ListState')?.props.title,'Choisissez une entreprise');
+ ok(!named(noCompany,'SimpleTable'));
+ globalThis.__scope=inventoryScope;
+ for(const [page,kind]of [['Depots','depots'],['StocksDepots','stocks-depots'],['Transferts','transferts'],['Inventaires','inventaires'],['InventoryLines','lignes-inventaires']]){const h=new Hooks();let component=pages[page],props={};if(page==='InventoryLines'){const scoped=h.render(component,props);component=scoped.type;props=scoped.props;eq(scoped.key,inventoryScope.scopeKey);}let tree=h.render(component,props);await h.flush();tree=h.render(component,props);const table=named(tree,'SimpleTable');ok(table,page+' table');eq(table.props.tablePreferences,globalThis.__prefs);ok(table.props.showControls!==false);const toolbar=table.props.toolbar;eq(toolbar.type.name,'Toolbar');eq(toolbar.props.showSettings,false);ok(typeof toolbar.props.exportFile==='function');ok(typeof toolbar.props.exportCsv==='function');const surface=named(tree,'Surface');const actionTree=page==='Inventaires'?tree:surface.props.actions;const settings=named(actionTree,'SettingsButton');ok(settings,page+' header settings');settings.props.onTableSettings();eq(globalThis.__opened,kind);h.unmount();}
+ console.log(JSON.stringify({success:true,checks,scope:'Réglages des cinq registres, export exhaustif et droits, erreurs, changement entreprise; handlers simulés sans écriture métier'}));
 })().catch(error=>{console.error(error);process.exit(1);});

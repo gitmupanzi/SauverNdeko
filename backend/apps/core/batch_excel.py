@@ -48,7 +48,7 @@ class ExcelPreviewMixin:
         return super().initialize_request(request, *args, **kwargs)
 
 
-def read_uploaded_workbook(request, *, allowed_fields=(), **kwargs):
+def read_uploaded_workbook(request, *, allowed_fields=(), file_field='fichier', **kwargs):
     """Un seul fichier ; les champs d'en-tête autorisés sont explicites."""
     try:
         length = int(request.META.get('CONTENT_LENGTH') or 0)
@@ -58,21 +58,23 @@ def read_uploaded_workbook(request, *, allowed_fields=(), **kwargs):
         raise too_large()
     if length < 0:
         raise invalid('La taille du fichier est invalide.')
-    if set(request.data) - {'fichier', *allowed_fields}:
+    if set(request.data) - {file_field, *allowed_fields}:
         raise invalid('Le fichier contient des paramètres non autorisés.')
-    if set(request.FILES) != {'fichier'} or len(request.FILES.getlist('fichier')) != 1:
+    if set(request.FILES) != {file_field} or len(request.FILES.getlist(file_field)) != 1:
         raise invalid('Choisissez un seul fichier Excel à importer.')
     if hasattr(request.data, 'getlist') and any(len(request.data.getlist(key)) != 1 for key in request.data):
         raise invalid('Les paramètres du fichier ne doivent pas être répétés.')
-    return read_workbook(request.FILES['fichier'], **kwargs)
+    return read_workbook(request.FILES[file_field], **kwargs)
 
 
-def _read_cells(worksheet, styled_numbers, *, headers, required_headers, max_rows, sheet_name, max_cell_length):
+def _read_cells(worksheet, styled_numbers, *, headers, required_headers, max_rows, sheet_name,
+                max_cell_length, with_row_numbers=False):
     aliases = {xlsx._header_key(str(label)): key for label, key in headers.items()}
     # Les noms physiques sont aussi acceptés, sans réécrire les en-têtes du fichier.
     aliases.update({xlsx._header_key(str(key)): key for key in headers.values()})
     worksheet.reset_dimensions()
     matrix, fields, total_length = [], [], 0
+    row_numbers = []
     for line, source in enumerate(worksheet.iter_rows(min_col=1, max_col=xlsx.MAX_COLUMNS), 1):
         if line > xlsx.MAX_SCAN_ROWS:
             raise invalid(f'La feuille {sheet_name} s’étend sur trop de lignes. Copiez les données dans le modèle.')
@@ -109,15 +111,17 @@ def _read_cells(worksheet, styled_numbers, *, headers, required_headers, max_row
         if total_length > xlsx.MAX_TOTAL_LENGTH:
             raise invalid('Les données du fichier sont trop volumineuses.')
         matrix.append(list(fields) if line == 1 else row)
+        if with_row_numbers:
+            row_numbers.append(line)
         if len(matrix) > max_rows + 1:
             raise invalid(f'Importez au maximum {max_rows} lignes à la fois.')
     if len(matrix) <= 1:
         raise invalid(f'La feuille {sheet_name} est vide. Ajoutez vos lignes sous les en-têtes.')
-    return matrix
+    return (matrix, row_numbers) if with_row_numbers else matrix
 
 
 def read_workbook(upload, *, sheet_name, headers, required_headers=(), max_rows=100,
-                  max_cell_length=xlsx.MAX_CELL_LENGTH):
+                  max_cell_length=xlsx.MAX_CELL_LENGTH, with_row_numbers=False):
     """Retourne [[champ canonique, ...], [valeur texte, ...], ...]."""
     if upload.size > MAX_UPLOAD_BYTES:
         raise too_large()
@@ -138,7 +142,7 @@ def read_workbook(upload, *, sheet_name, headers, required_headers=(), max_rows=
                 xlsx._check_xml_part(archive, archive.getinfo(sheet._worksheet_path), guard)
             return _read_cells(sheet, guard.styled_numbers, headers=headers,
                 required_headers=required_headers, max_rows=max_rows, sheet_name=sheet_name,
-                max_cell_length=max_cell_length)
+                max_cell_length=max_cell_length, with_row_numbers=with_row_numbers)
         finally:
             book.close()
     except APIError as exc:

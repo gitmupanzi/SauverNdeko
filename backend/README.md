@@ -22,7 +22,11 @@ Le fichier `backend/.env` est privé. Il contient notamment la connexion Postgre
 
 | Dossier | Responsabilité |
 |---|---|
-| `config/` | Paramètres local/production/maintenance, routes et WSGI/ASGI. |
+| [`manage.py`](manage.py) | Point d’entrée des commandes Django. |
+| [`config/`](config) | Paramètres local, production et maintenance, routes, WSGI et ASGI. |
+| [`database/migrations/`](database/migrations) | Scripts PostgreSQL métier versionnés et scripts de retour arrière documentés. |
+| [`database/releases/`](database/releases) | Manifeste des évolutions et socle de catalogue attesté. |
+| [`database/seeds/`](database/seeds) | Initialisation de référence pour une installation vierge. |
 | `apps/accounts/` | Authentification, profils, photos et récupération d'accès. |
 | `apps/core/` | Accès par entreprise, licences, référentiels, territoires, administration et maintenance. |
 | `apps/logistique/` | Articles, lots, bons, inventaires, documents, factures, règlements et immobilisations. |
@@ -30,7 +34,7 @@ Le fichier `backend/.env` est privé. Il contient notamment la connexion Postgre
 | `apps/catalogue/` | Offres de produits et annuaires de structures autorisés. |
 | `apps/professionnels/` | Profils professionnels et annuaire publié. |
 | `apps/communication/` | Discussions privées, annonces et notifications. |
-| `apps/support/` | Incidents et demandes d'assistance. |
+| `apps/support/` | Dossiers, parcours, validations et alertes. |
 
 Les modèles métier sont `managed=False` ; les lectures réutilisent les vues PostgreSQL et le registre des sources autorisées. Les écritures métier contrôlent les droits, la portée, les révisions et les demandes rejouées. Leurs audits partagent la transaction. Les triggers et fonctions PostgreSQL portent les effets de stock : aucun deuxième mouvement n'est ajouté en Python.
 
@@ -66,7 +70,7 @@ finally {
 
 ## Migrations et livraison
 
-Les migrations natives Django concernent uniquement `admin`, `auth`, `contenttypes` et `sessions` dans `public`. Les évolutions métier suivent [SQL/releases/manifest.json](../SQL/releases/manifest.json) et leur journal par base ; les SQL publiés restent immuables. `makemigrations`, `flush`, `syncdb`, les fausses migrations et les retours arrière sont bloqués. Ni le build, ni le démarrage, ni un push ne modifient automatiquement le schéma.
+La commande `migrate` utilise les migrations fournies par Django pour `admin`, `auth`, `contenttypes` et `sessions` dans le schéma `public`. La commande `migrer_metier` utilise le [manifeste PostgreSQL](database/releases/manifest.json) et le journal `systeme.T_MigrationSchema` de chaque base. Conserver le contenu et l’empreinte des scripts SQL publiés. `makemigrations`, `flush`, `syncdb`, les fausses migrations et les retours arrière sont bloqués. Ni le build, ni le démarrage, ni un push ne modifient automatiquement le schéma.
 
 Avant une mise à jour : sauvegarder la base et les médias, vérifier leur restauration sur copie, tester les migrations, puis appliquer avec le seul compte propriétaire de maintenance. Le compte du service web reste limité. Voir [les mises à jour sans recréation](../docs/mises-a-jour-base.md), [le parcours Render](../docs/deploiement-render.md) et [la maintenance depuis un poste](../docs/maintenance-render-depuis-poste.md).
 

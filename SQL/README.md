@@ -1,5 +1,7 @@
 # Structure et migrations PostgreSQL SauverNdeko
 
+Ce dossier réunit les sources canoniques PostgreSQL, les données d’initialisation et les recettes. Les [migrations versionnées](../backend/database/migrations) et le [manifeste de livraison](../backend/database/releases/manifest.json) se trouvent dans le backend.
+
 Les sources canoniques de structure sont mises à jour par périmètre vérifié. Les sections datées ci-dessous conservent l’historique des évolutions, des sauvegardes et des recettes. Les contrôles métier restent dans les vues, fonctions, contraintes et triggers commentés de PostgreSQL.
 
 État de livraison du 7 novembre 2026 : suivre le [manifeste et le journal métier](../docs/mises-a-jour-base.md) pour une mise à jour et consulter le [bilan Render](../docs/livraison-render-20261107.md) pour les preuves et limites actuelles, notamment l’installation vierge courante. Les procédures et nombres datés ci-dessous restent historiques. Les sauvegardes privées sont exclues de Git ; aucune sauvegarde n’est fournie avec les sources.
@@ -25,13 +27,13 @@ Lire le [rapport, les preuves, les limites et le retour arrière](../docs/fiabil
 
 ## Libellés des choix territoriaux — 4 novembre 2026
 
-`migrations/20261104_06_libelles_territoriaux.sql` installe `geolocalisation.V_ChoixTerritorial`, source commune des listes N0 à N5. Le format est `iso / province / AbrGenerique - nom / …`, jusqu’au niveau choisi. Par exemple : `COD / Kinshasa`, puis les subdivisions, zones, aires et sites réellement rattachés. Les types référencés distinguent les homonymes ZS, BCZS, Secteur, etc. Aucun rattachement sanitaire rapproché ne remplace implicitement un parent physique. Un ISO ou un type absent reçoit un repère neutre, sans inventer COD ni prendre NomGenerique à la place d’AbrGenerique.
+`backend/database/migrations/20261104_06_libelles_territoriaux.sql` installe `geolocalisation.V_ChoixTerritorial`, source commune des listes N0 à N5. Le format est `iso / province / AbrGenerique - nom / …`, jusqu’au niveau choisi. Par exemple : `COD / Kinshasa`, puis les subdivisions, zones, aires et sites réellement rattachés. Les types référencés distinguent les homonymes ZS, BCZS, Secteur, etc. Aucun rattachement sanitaire rapproché ne remplace implicitement un parent physique. Un ISO ou un type absent reçoit un repère neutre, sans inventer COD ni prendre NomGenerique à la place d’AbrGenerique.
 
 Les parents de saisie individuelle et groupée de Territoires, les filtres, les localisations d’entreprise et d’immobilisations et le filtre provincial de Structures réutilisent cette lecture. `V_DestinationLogistique` reprend le même libellé pour les bons ; ses autres colonnes et sa règle de cohérence sont conservées. Un N5 sans aire conserve son chemin direct vers N3. Une aire contradictoire avec la zone directe n’est pas présentée comme un rattachement cohérent ; le libellé le signale et le bon conserve son refus existant.
 
 Installation effectuée dans SauverNdeko après sauvegarde privée vérifiée : aucune table métier modifiée et aucune destination ajoutée ou retirée. Les trois canoniques de vues et de structure ont été actualisés par blocs ciblés, puis les deux structures globales restaurées dans des bases privées vides. La recette `tests/test_libelles_territoriaux_postgresql.py` a réussi ses 13 tests sur copie privée : chemins, homonymes, abréviations différentes des noms, valeurs manquantes, parents directs/hérités, cardinalité, permissions, API, rejeu et rollback. Les tests frontend Territoires, Administration et SearchSelect ainsi que la compilation ont réussi. Le serveur a été redémarré par le lanceur du projet ; les 362 contrôles GET de `verifier_backend` ont réussi en lecture seule. Le contrôle visuel Windows a été interrompu par l’outil de navigation ; il ne constitue pas une recette visuelle complète.
 
-Le retour `migrations/rollback/20261104_06_libelles_territoriaux.sql` restaure l’ancien libellé logistique et retire la nouvelle vue sans toucher aux données. Revenir d’abord au backend compatible, car les nouveaux sélecteurs utilisent cette vue. Les commentaires des deux vues et de leurs colonnes font partie des migrations et canoniques.
+Le retour `backend/database/migrations/rollback/20261104_06_libelles_territoriaux.sql` restaure l’ancien libellé logistique et retire la nouvelle vue sans toucher aux données. Revenir d’abord au backend compatible, car les nouveaux sélecteurs utilisent cette vue. Les commentaires des deux vues et de leurs colonnes font partie des migrations et canoniques.
 
 ## Caisse et classification des applications — 2 novembre 2026
 
@@ -46,8 +48,8 @@ Voir le [contrat PostgreSQL](documentation/Caisse_20261102.md), le [guide Caisse
 | SauverNdeko_Metier_Structure.sql | Structure des schémas métier, sans données. Pour une base vide ; les tables natives public sont créées séparément par les migrations Django. |
 | SauverNdeko_Structure.sql | Référence complète de structure, y compris les tables natives Django. Sans données ni historique django_migrations ; ce fichier n’est pas un installateur applicatif complet. |
 | Dossiers 0 à 7, fichiers Tables et View/views | Extraits canoniques par domaine : tables, séquences, contraintes, index, fonctions, triggers et vues commentées. Le domaine operations ne possède actuellement aucune vue et conserve uniquement son fichier Tables. Les dépendances entre domaines exigent le fichier global pour une installation complète. |
-| migrations/20261024_04_coherence_schemas_metier.sql | Évolution contrôlée d’une base existante au socle précédent ; déjà appliquée à la base locale. Aucun DML sur les données métier existantes. |
-| migrations/rollback/20261024_04_coherence_schemas_metier.sql | Retour arrière logique testé. Refuse de supprimer analytics si des événements existent et conserve les validations de clés étrangères. Revenir aussi au backend compatible avant de l’utiliser. |
+| backend/database/migrations/20261024_04_coherence_schemas_metier.sql | Évolution contrôlée d’une base existante au socle précédent ; déjà appliquée à la base locale. Aucun DML sur les données métier existantes. |
+| backend/database/migrations/rollback/20261024_04_coherence_schemas_metier.sql | Retour arrière logique testé. Refuse de supprimer analytics si des événements existent et conserve les validations de clés étrangères. Revenir aussi au backend compatible avant de l’utiliser. |
 | controles/Verifier_Commentaires_PostgreSQL.sql | Contrôle des commentaires en lecture seule. |
 | tests/test_metier_postgresql.py et tests/test_api_postgresql.py | Recettes actuelles vérifiées, exclusivement sur une base dédiée contenant la structure et des données fictives. |
 
@@ -55,7 +57,7 @@ Les exports canoniques ne remplacent pas une sauvegarde de données. Les premiè
 
 ## Base existante
 
-Depuis le 4 novembre 2026, le suivi des prochaines mises à jour est préparé dans `releases/manifest.json` et la commande Django `migrer_metier`. Le socle vérifie le catalogue existant sans rejouer les 65 anciens scripts. Les futures évolutions doivent être inscrites dans le manifeste avec leurs empreintes et dépendances ; leur réussite est journalisée dans `systeme.T_MigrationSchema`. Le plan est en lecture seule ; l'attestation initiale et l'application restent des opérations explicites de maintenance. Voir [le parcours complet](../docs/mises-a-jour-base.md) et [la préparation Render](../docs/deploiement-render.md).
+Depuis le 4 novembre 2026, le suivi des prochaines mises à jour est préparé dans `backend/database/releases/manifest.json` et la commande Django `migrer_metier`. Le socle vérifie le catalogue existant sans rejouer les 65 anciens scripts. Les futures évolutions doivent être inscrites dans le manifeste avec leurs empreintes et dépendances ; leur réussite est journalisée dans `systeme.T_MigrationSchema`. Le plan est en lecture seule ; l'attestation initiale et l'application restent des opérations explicites de maintenance. Voir [le parcours complet](../docs/mises-a-jour-base.md) et [la préparation Render](../docs/deploiement-render.md).
 
 Appliquer uniquement l’évolution nécessaire, avec contrôle des préconditions, sauvegarde adaptée au périmètre, limites de verrouillage et vérification avant/après. Ne pas rejouer les extraits canoniques sur la base courante. Les migrations historiques 01, 02 et 03 gardent leur contenu ; leur réapplication après la version 04 peut rétablir des définitions anciennes.
 
@@ -63,17 +65,17 @@ La migration 04 est transactionnelle et réexécutable. Son retour arrière ne c
 
 ## Référencement des champs — 28 octobre 2026
 
-`migrations/20261028_09_referencement_champs.sql` ajoute le catalogue des 60 vraies colonnes liées à `T_Generique`, leur défaut immuable et la résolution des correspondances courantes dans `T_Fk_Correspondance`. Les références historiques et les 60 FK sont conservées ; les tables partagées restent globales et les surcharges d’entreprise exigent un propriétaire durable. Les rôles de sécurité, codes de stock, devises et précisions gardent leurs protections. Cette évolution se prépare et se recette avant l’application contrôlée ; ne pas la lancer au démarrage ni la rejouer sur une instance déjà équipée.
+`backend/database/migrations/20261028_09_referencement_champs.sql` ajoute le catalogue des 60 vraies colonnes liées à `T_Generique`, leur défaut immuable et la résolution des correspondances courantes dans `T_Fk_Correspondance`. Les références historiques et les 60 FK sont conservées ; les tables partagées restent globales et les surcharges d’entreprise exigent un propriétaire durable. Les rôles de sécurité, codes de stock, devises et précisions gardent leurs protections. Cette évolution se prépare et se recette avant l’application contrôlée ; ne pas la lancer au démarrage ni la rejouer sur une instance déjà équipée.
 
 Lire [le contrat et les vérifications de référencement](documentation/Referencement_Champs_20261028.md). La recette SQL dédiée exige un socle08 dans une base privée locale ; les recettes de chaîne, CUMP et annulation d’inventaire vérifient aussi la compatibilité physique. Le paquet d’installation contient seulement les métadonnées immuables du nouveau catalogue, avec des révisions, dates et auteurs locaux ; il exclut les correspondances clientes et les préférences de l’instance source.
 
 ## Référentiels transversaux — 30 octobre 2026
 
-Après le socle09, `migrations/20261030_01_referentiels_transversaux.sql` prépare les catégories et valeurs communes ou privées d’entreprise, sans attribuer les données anciennes. Les propriétaires sont immuables ; les nouveaux doublons sont contrôlés dans leur portée effective et les doublons historiques sont conservés. Les champs métier gardent `ID_Generique` et leurs FK. Les cinq tables réelles sont présentées dans quatre pages : catégories, valeurs, référencement des champs et tableaux/exports. Voir [le contrat, la préservation et les recettes](documentation/Referentiels_Transversaux_20261030.md).
+Après le socle09, `backend/database/migrations/20261030_01_referentiels_transversaux.sql` prépare les catégories et valeurs communes ou privées d’entreprise, sans attribuer les données anciennes. Les propriétaires sont immuables ; les nouveaux doublons sont contrôlés dans leur portée effective et les doublons historiques sont conservés. Les champs métier gardent `ID_Generique` et leurs FK. Les cinq tables réelles sont présentées dans quatre pages : catégories, valeurs, référencement des champs et tableaux/exports. Voir [le contrat, la préservation et les recettes](documentation/Referentiels_Transversaux_20261030.md).
 
 La précision d’une unité privée suit son propriétaire sans nouvelle table de portée. L’unique politique correspondante du catalogue fermé est auditée ; les rôles de sécurité restent communs. Le paquet d’installation ne copie que les références communes et leurs précisions ; aucune référence privée d’entreprise, correspondance cliente ou préférence personnelle ne migre vers une installation neuve. Les recettes durables sont `tests/test_referentiels_transversaux_postgresql.py` et `tests/test_referentiels_installation.py`, exclusivement sur bases privées locales.
 
-`migrations/20261030_02_lectures_logistiques_dynamiques.sql` complète cette évolution : les huit vues logistiques concernées lisent les identifiants stockés sans filtre de famille numérique fixe. Les signes de mouvement utilisent `fn_effet_type_bon` et la garde de facture reconnaît les BS par `fn_nature_bon`. Les types historiques retirés des choix gardent leur effet et leurs libellés. Les deux migrations sont appliquées dans SauverNdeko après sauvegardes privées vérifiées et contrôles stricts des 69 tables ; aucun test métier fictif n’a été exécuté dans la source. La recette02 comporte 21 contrôles supplémentaires, dans `tests/test_lectures_logistiques_dynamiques.py`.
+`backend/database/migrations/20261030_02_lectures_logistiques_dynamiques.sql` complète cette évolution : les huit vues logistiques concernées lisent les identifiants stockés sans filtre de famille numérique fixe. Les signes de mouvement utilisent `fn_effet_type_bon` et la garde de facture reconnaît les BS par `fn_nature_bon`. Les types historiques retirés des choix gardent leur effet et leurs libellés. Les deux migrations sont appliquées dans SauverNdeko après sauvegardes privées vérifiées et contrôles stricts des 69 tables ; aucun test métier fictif n’a été exécuté dans la source. La recette02 comporte 21 contrôles supplémentaires, dans `tests/test_lectures_logistiques_dynamiques.py`.
 
 ## Nouvelle installation
 
@@ -102,7 +104,7 @@ Treize fichiers SQL ont été retirés le 24 octobre 2026 : huit anciens exemple
 
 Les fichiers conservés ont un rôle distinct :
 
-- migrations/ et migrations/rollback/ : historique des évolutions et retours arrière contrôlés ; ne pas supprimer les anciennes versions au seul motif qu’elles sont déjà appliquées.
+- backend/database/migrations/ et backend/database/migrations/rollback/ : historique des évolutions et retours arrière contrôlés ; ne pas supprimer les anciennes versions au seul motif qu’elles sont déjà appliquées.
 - controles/ et tests/ : contrôle documentaire en lecture seule et recettes métier sur base isolée.
 - documentation/ : décisions et résultats des interventions.
 - Dossiers de domaine : sources canoniques, scénarios métier et illustrations de conception. Les images et diagrammes restent des références historiques, sans garantie de refléter la version courante.
@@ -117,15 +119,15 @@ Voir le [bilan de l’audit et des corrections](documentation/Audit_Metier_20261
 
 Les exports canoniques ci-dessus restent des instantanés du socle du 24 octobre. Sur une installation issue de ces fichiers, appliquer ensuite, dans cet ordre :
 
-1. migrations/20261025_01_dossiers_suivi.sql : trois tables, trois vues et les contrôles de classement dans logistique.
-2. migrations/20261025_02_modules_entites.sql : trois tables, trois vues, une fonction et deux triggers dans systeme pour les applications des licences d’Entité.
-3. migrations/20261025_03_articles_poids_lots.sql : poids unitaire, unité de masse, InformationArticle, deux tables et deux vues de ventilation par lot, contrôles et commentaires ; extension de V_Article sans changement des colonnes historiques.
+1. backend/database/migrations/20261025_01_dossiers_suivi.sql : trois tables, trois vues et les contrôles de classement dans logistique.
+2. backend/database/migrations/20261025_02_modules_entites.sql : trois tables, trois vues, une fonction et deux triggers dans systeme pour les applications des licences d’Entité.
+3. backend/database/migrations/20261025_03_articles_poids_lots.sql : poids unitaire, unité de masse, InformationArticle, deux tables et deux vues de ventilation par lot, contrôles et commentaires ; extension de V_Article sans changement des colonnes historiques.
 
 Ces migrations sont installées sur la base locale SauverNdeko. Ne pas les rejouer sur cette base. La migration 02 conserve les licences, leurs dates, les utilisateurs et les privilèges ; elle reprend seulement les six applications optionnelles sur chaque licence existante avec Origine=reprise. L’accès effectif reste conditionné à l’Entité active, à la validité de la licence et au rôle.
 
 Les objets et toutes leurs colonnes métier sont commentés par COMMENT ON. Les vues V_LicenceModule et V_EntiteModuleActif évaluent la période à la lecture ; aucun traitement planifié de renouvellement ou de paiement n’est ajouté. Le socle est déclaré dans T_ModuleApplication et les restrictions dans T_RoleModule. Les activations sont gérées par le service de plateforme, pas par le CRUD générique.
 
-Le rollback de la migration 02 est séparé dans migrations/rollback/ et refuse la suppression si des réglages ont été modifiés après la reprise initiale. Revenir au backend compatible avant tout retour arrière. La sauvegarde complète SauverNdeko_avant_modules_20261025_032147.dump a été contrôlée par empreinte et lecture de son catalogue ; elle n’est pas une preuve de restauration complète.
+Le rollback de la migration 02 est séparé dans backend/database/migrations/rollback/ et refuse la suppression si des réglages ont été modifiés après la reprise initiale. Revenir au backend compatible avant tout retour arrière. La sauvegarde complète SauverNdeko_avant_modules_20261025_032147.dump a été contrôlée par empreinte et lecture de son catalogue ; elle n’est pas une preuve de restauration complète.
 
 Les anciens scripts de recette sur base dédiée décrivent le socle historique. Ils ne constituent pas la recette de la politique de licences ajoutée le 25 octobre. Pour ce lot, la base applicative a été interrogée en lecture seule ; les changements de configuration et d’interface ont été vérifiés en simulation sans créer de base de test ni de données métier fictives dans SauverNdeko.
 
@@ -143,7 +145,7 @@ Les images de production sont des fichiers privés dans backend/media/Article (o
 
 ## Devises logistiques — 25 octobre 2026
 
-La migration `migrations/20261025_04_devises_logistique.sql` est installée dans **SauverNdeko**, après sauvegarde complète `SauverNdeko_avant_devises_20261025_113840.dump` vérifiée par SHA-256 et lecture de son catalogue. Cette vérification ne constitue pas une restauration complète de la sauvegarde.
+La migration `backend/database/migrations/20261025_04_devises_logistique.sql` est installée dans **SauverNdeko**, après sauvegarde complète `SauverNdeko_avant_devises_20261025_113840.dump` vérifiée par SHA-256 et lecture de son catalogue. Cette vérification ne constitue pas une restauration complète de la sauvegarde.
 
 Le propriétaire a confirmé le rattachement de tous les montants existants à USD : un article, quatre bons, cinq mouvements, aucune écriture de règlement. Les empreintes des cinq tables Article, Commande, CommandeDetail, Mouvement et Règlements sont identiques avant/après, hors nouvelle référence de devise. Prix, quantités, dates et autres valeurs sont conservés. Le défaut USD des créations est résolu depuis le référentiel actif, sans identifiant numérique fixe. Les codes EUR/EURO sont normalisés à la lecture ; aucune conversion ni taux de change n’est créé.
 
@@ -166,7 +168,7 @@ Recette indépendante : 62 contrôles PostgreSQL/API de composition/restitution 
 
 ## Numérotation courte des documents — 25 octobre 2026
 
-La migration [20261025_08_numerotation_documents.sql](migrations/20261025_08_numerotation_documents.sql) est installée dans **SauverNdeko**. Elle a renommé les sept bons présents au moment de l’application, y compris le bon dont le code était absent. Aucun instantané de facture, règlement ni retour n’existait alors dans la base. Les nouvelles références sont `cmd-ID_Commande` pour les bons et `fac-ID_Commande` pour leur facture, sans zéros ajoutés. La référence de facture reste absente avant son émission.
+La migration [20261025_08_numerotation_documents.sql](../backend/database/migrations/20261025_08_numerotation_documents.sql) est installée dans **SauverNdeko**. Elle a renommé les sept bons présents au moment de l’application, y compris le bon dont le code était absent. Aucun instantané de facture, règlement ni retour n’existait alors dans la base. Les nouvelles références sont `cmd-ID_Commande` pour les bons et `fac-ID_Commande` pour leur facture, sans zéros ajoutés. La référence de facture reste absente avant son émission.
 
 Les fonctions PostgreSQL sont la source d’autorité : `fn_reserver_identite_commande()` réserve l’identité existante et retourne le code du bon ; `fn_code_commande(id)` produit `cmd-id` et `fn_code_facture(idBon)` produit `fac-idBon` sans réserver une seconde identité. Les triggers attribuent et protègent les codes, puis tracent leur première attribution dans l’audit existant, même pour une création SQL directe. Les identités déjà utilisées dans les documents ou l’audit ne sont pas réutilisées. L’API conserve aussi ses contrôles d’immutabilité et de rejeu.
 
@@ -182,9 +184,9 @@ Cette migration n’est **pas réexécutable** : elle contrôle les définitions
 
 Après les migrations du 25 octobre jusqu’à 20261025_13, appliquer dans l’ordre :
 
-1. [20261026_01_precision_referentiel.sql](migrations/20261026_01_precision_referentiel.sql) : transfère la précision et sa date de modification dans T_Generique, adapte les contrôles et la vue de comptage, puis supprime T_UniteStockPrecision avec RESTRICT.
-2. [20261026_02_destinations_typees.sql](migrations/20261026_02_destinations_typees.sql) : enrichit V_DestinationLogistique avec les types réels du référentiel à chaque niveau de la hiérarchie.
-3. [20261026_03_annulation_inventaire.sql](migrations/20261026_03_annulation_inventaire.sql) : conserve validation et comptages, ajoute l’annulation motivée et ses liens de compensation, protège les documents et lots historiques.
+1. [20261026_01_precision_referentiel.sql](../backend/database/migrations/20261026_01_precision_referentiel.sql) : transfère la précision et sa date de modification dans T_Generique, adapte les contrôles et la vue de comptage, puis supprime T_UniteStockPrecision avec RESTRICT.
+2. [20261026_02_destinations_typees.sql](../backend/database/migrations/20261026_02_destinations_typees.sql) : enrichit V_DestinationLogistique avec les types réels du référentiel à chaque niveau de la hiérarchie.
+3. [20261026_03_annulation_inventaire.sql](../backend/database/migrations/20261026_03_annulation_inventaire.sql) : conserve validation et comptages, ajoute l’annulation motivée et ses liens de compensation, protège les documents et lots historiques.
 
 Ces trois migrations sont installées dans SauverNdeko. Ne pas les rejouer. La sauvegarde complète locale .runtime/backups/SauverNdeko-avant-referentiel-annulation-20261026-094221.dump a été vérifiée par empreinte, catalogue et décodage intégral ; cela ne remplace pas un essai de restauration. Les empreintes des 22 tables métier contrôlées sont identiques avant/après, hors nouvelles colonnes de métadonnées NULL. Aucun inventaire réel n’a été annulé pour les essais.
 
@@ -198,11 +200,11 @@ Recette reproductible : définir SAUVERNDEKO_TEST_DATABASE_URL vers une base ind
 
 Les migrations suivantes sont installées dans SauverNdeko après les trois migrations 20261026_01 à 03. Respecter cet ordre sur une reprise compatible ; ne pas les rejouer sur la base locale déjà mise à jour. Une installation neuve utilise le paquet fermé décrit dans [le guide de livraison](../docs/livraison-logistique.md).
 
-1. [20261026_04_valorisation_cump.sql](migrations/20261026_04_valorisation_cump.sql) : coût moyen permanent PostgreSQL, arrêté motivé/révision de source, coûts d’origine des retours et journal append-only. Les coûts historiques incertains restent inconnus.
-2. [20261026_05_peremption_lots.sql](migrations/20261026_05_peremption_lots.sql) : conservation effective par lot, seuils et politique d’entreprise, stock sans lot, dérogations tracées. Le jour métier est Africa/Kinshasa.
-3. [20261026_06_performance_numerotation.sql](migrations/20261026_06_performance_numerotation.sql) : normalisation et index GIN ciblés de l’audit pour préserver la non-réutilisation des identités sans scanner tout l’historique à chaque bon.
-4. [20261026_07_registre_lots.sql](migrations/20261026_07_registre_lots.sql) : V_RegistreLots et V_RegistreMouvementLot, sources partagées des écrans et exports, propriétaires durables et unités.
-5. [20261026_08_corrections_inventaire_non_commerciales.sql](migrations/20261026_08_corrections_inventaire_non_commerciales.sql) : identification des bons correcteurs/compensateurs par FK, protections contre facturation et retours commerciaux dans les deux sens.
+1. [20261026_04_valorisation_cump.sql](../backend/database/migrations/20261026_04_valorisation_cump.sql) : coût moyen permanent PostgreSQL, arrêté motivé/révision de source, coûts d’origine des retours et journal append-only. Les coûts historiques incertains restent inconnus.
+2. [20261026_05_peremption_lots.sql](../backend/database/migrations/20261026_05_peremption_lots.sql) : conservation effective par lot, seuils et politique d’entreprise, stock sans lot, dérogations tracées. Le jour métier est Africa/Kinshasa.
+3. [20261026_06_performance_numerotation.sql](../backend/database/migrations/20261026_06_performance_numerotation.sql) : normalisation et index GIN ciblés de l’audit pour préserver la non-réutilisation des identités sans scanner tout l’historique à chaque bon.
+4. [20261026_07_registre_lots.sql](../backend/database/migrations/20261026_07_registre_lots.sql) : V_RegistreLots et V_RegistreMouvementLot, sources partagées des écrans et exports, propriétaires durables et unités.
+5. [20261026_08_corrections_inventaire_non_commerciales.sql](../backend/database/migrations/20261026_08_corrections_inventaire_non_commerciales.sql) : identification des bons correcteurs/compensateurs par FK, protections contre facturation et retours commerciaux dans les deux sens.
 
 La sauvegarde pré-déploiement .runtime/backups/avant-cump-peremption-20261026 a réellement été restaurée et comparée (61 tables, médias privés). Son dump SHA-256 est 7037a1c10e571ff7c592776f5f671e494fa9efbfd7562f3c3d7df5927c4ba91e. Les cinq migrations ont été appliquées dans une seule transaction ; les empreintes des 24 tables source contrôlées sont identiques avant/après, en excluant uniquement les nouvelles colonnes de métadonnées. Aucun coût d’ouverture réel n’a été arbitrairement confirmé : deux restent à compléter.
 
@@ -210,7 +212,7 @@ Recette intégrée sur base privée fraîche : 299 contrôles (45 CUMP, 49 pére
 
 ## Profil documentaire et clôture — 26 octobre 2026
 
-La migration [20261026_09_identite_documentaire.sql](migrations/20261026_09_identite_documentaire.sql) est installée après 01–08. Elle ajoute deux champs facultatifs sur T_Entite (identifiants déclaratifs génériques et mention), la fonction canonique fn_identite_documentaire et la vue V_IdentiteDocumentaire ; le trigger de création des identités les reprend dans les nouveaux documents uniquement. Les instantanés existants et leur protection immuable sont conservés. Aucun identifiant légal ni taux fiscal n’est inventé.
+La migration [20261026_09_identite_documentaire.sql](../backend/database/migrations/20261026_09_identite_documentaire.sql) est installée après 01–08. Elle ajoute deux champs facultatifs sur T_Entite (identifiants déclaratifs génériques et mention), la fonction canonique fn_identite_documentaire et la vue V_IdentiteDocumentaire ; le trigger de création des identités les reprend dans les nouveaux documents uniquement. Les instantanés existants et leur protection immuable sont conservés. Aucun identifiant légal ni taux fiscal n’est inventé.
 
 Sauvegarde préalable restaurée : .runtime/backups/avant-identite-documentaire-20261026, dump SHA-256 f24ea851aa6d6252a30c52fddea54fe61ea24d2761ffcfd91807ebe1c3091ef2. La migration atomique a conservé les empreintes des 26 tables source, hors les deux nouvelles colonnes de profil. Ne pas la rejouer sur l’instance locale.
 
@@ -219,15 +221,15 @@ Recettes privées : identité documentaire37 (révisions, rejeux, concurrence, S
 
 ## Politique dédiée de précision du stock — installée le 26 octobre 2026
 
-La migration [20261026_10_precision_stock_table.sql](migrations/20261026_10_precision_stock_table.sql), installée dans SauverNdeko après 01–09, crée `logistique.T_PrecisionStock` avec exactement quatre colonnes : identité technique, `ID_UniteFk`, `DecimalesStock` et `ModifieLe`. La FK pointe vers la même catégorie Unités de T_Generique que les articles. Les lecteurs SQL et backend utilisent la vue commune `V_PrecisionStock`. Les nouvelles unités sans politique conservent zéro décimale implicite.
+La migration [20261026_10_precision_stock_table.sql](../backend/database/migrations/20261026_10_precision_stock_table.sql), installée dans SauverNdeko après 01–09, crée `logistique.T_PrecisionStock` avec exactement quatre colonnes : identité technique, `ID_UniteFk`, `DecimalesStock` et `ModifieLe`. La FK pointe vers la même catégorie Unités de T_Generique que les articles. Les lecteurs SQL et backend utilisent la vue commune `V_PrecisionStock`. Les nouvelles unités sans politique conservent zéro décimale implicite.
 
 La reprise conserve les réglages et dates explicites et initialise les huit unités actives à zéro avec une date réelle lorsque le réglage est absent, avant de retirer les deux anciennes colonnes de T_Generique avec RESTRICT. Aucun stock, prix ou document n’est modifié. Les migrations historiques ne sont pas réécrites. La reprise réelle et les quatre colonnes/huit politiques sont vérifiées ; les empreintes des 63 tables source sont identiques hors les deux anciennes colonnes retirées de T_Generique. Sauvegarde vérifiée : `.runtime/backups/avant-precision-stock-20261026-171642`. Les 314 contrôles privés et quatre GET réels en lecture seule sont réussis ; le backend a été relancé sur 5000 et le frontend conservé sur 5174. Voir [la stratégie de reprise et les preuves de recette](documentation/Precision_Stock_20261026.md). Ne pas rejouer cette migration sur la base locale.
 
 ## Administration et réglages partagés — installés le 26 octobre 2026
 
-La migration [20261026_11_controles_administration.sql](migrations/20261026_11_controles_administration.sql) est installée dans SauverNdeko. Elle renforce les deux tables existantes de paramètres et correspondances FK : unicité même lorsque le contexte global est NULL, cohérence des portées, protection des paramètres, auteur/date imposés et audit SQL unique par écriture. Un paramètre système éditable conserve la modification de sa valeur. Aucune colonne supplémentaire ni copie des licences, modules ou droits n’est nécessaire : ces informations majeures sont déjà persistées dans `systeme`.
+La migration [20261026_11_controles_administration.sql](../backend/database/migrations/20261026_11_controles_administration.sql) est installée dans SauverNdeko. Elle renforce les deux tables existantes de paramètres et correspondances FK : unicité même lorsque le contexte global est NULL, cohérence des portées, protection des paramètres, auteur/date imposés et audit SQL unique par écriture. Un paramètre système éditable conserve la modification de sa valeur. Aucune colonne supplémentaire ni copie des licences, modules ou droits n’est nécessaire : ces informations majeures sont déjà persistées dans `systeme`.
 
-Le complément [20261026_12_commentaires_administration.sql](migrations/20261026_12_commentaires_administration.sql) documente les index implicites recréés et actualise les commentaires des vues d’audit. Il est installé après 11 et ne modifie aucune donnée ni règle.
+Le complément [20261026_12_commentaires_administration.sql](../backend/database/migrations/20261026_12_commentaires_administration.sql) documente les index implicites recréés et actualise les commentaires des vues d’audit. Il est installé après 11 et ne modifie aucune donnée ni règle.
 
 La sauvegarde `.runtime/backups/avant-controles-admin-20261026-195858` a été vérifiée par empreinte, catalogue et décodage intégral (dump SHA-256 `358305f36d4cfd07643a8e3666cdf384424e28860066bffb66e5f0862b275f28`). Les empreintes des 64 tables sont identiques avant et après la migration ; aucun compte, droit, réglage, stock ou document client n’a été modifié pour les essais. Ne pas rejouer cette migration sur l’instance locale.
 
@@ -253,7 +255,7 @@ Voir [stock initial et numérotation](documentation/Stock_Initial_Documents_2026
 
 ## Bons de commande sans mouvement — 28 octobre 2026
 
-La migration [20261028_05_bons_commande.sql](migrations/20261028_05_bons_commande.sql), installée après les migrations précédentes, ajoute **Bon de commande**, code `CMD`, à la catégorie partagée **Type de commande**. Les nouveaux documents reçoivent `BE-ID` pour une entrée effective, `BS-ID` pour une sortie effective et `CMD-ID` pour une commande préparatoire. Cette migration05 avait conservé les codes antérieurs ; leur harmonisation ultérieure relève de06 ci-dessous.
+La migration [20261028_05_bons_commande.sql](../backend/database/migrations/20261028_05_bons_commande.sql), installée après les migrations précédentes, ajoute **Bon de commande**, code `CMD`, à la catégorie partagée **Type de commande**. Les nouveaux documents reçoivent `BE-ID` pour une entrée effective, `BS-ID` pour une sortie effective et `CMD-ID` pour une commande préparatoire. Cette migration05 avait conservé les codes antérieurs ; leur harmonisation ultérieure relève de06 ci-dessous.
 
 `fn_nature_bon` et `fn_effet_type_bon` classent le type depuis le référentiel : un CMD explicite a un effet zéro ; un type inconnu retourne NULL et reste refusé. Les lignes CMD conservent quantités et prix convenus, sans mouvement, réservation, lot ou valorisation CUMP. La facturation, la restitution et la livraison physique sont interdites pour CMD, y compris par écriture SQL directe. Le type CMD ne peut pas être converti en BE/BS ; les opérations réelles ont leurs propres documents. Les trois vues de bons/lignes exposent `NatureBon` et le suivi indique « Sans facturation » sans créer de dette.
 
@@ -265,7 +267,7 @@ Recettes privées : 51 contrôles SQL CMD, 10 tests API, puis 112 contrôles de 
 
 ## Harmonisation des codes historiques — 28 octobre 2026
 
-Sur demande explicite du propriétaire, la migration [20261028_06_nomenclature_bons_historiques.sql](migrations/20261028_06_nomenclature_bons_historiques.sql) a aussi harmonisé les anciens bons : **17 codes modifiés**, quatre déjà conformes conservés. Chaque code est calculé depuis le même identifiant et le type réel du bon. Les bons n’ont pas changé d’identité, de type, de quantité, de montant ou d’entreprise.
+Sur demande explicite du propriétaire, la migration [20261028_06_nomenclature_bons_historiques.sql](../backend/database/migrations/20261028_06_nomenclature_bons_historiques.sql) a aussi harmonisé les anciens bons : **17 codes modifiés**, quatre déjà conformes conservés. Chaque code est calculé depuis le même identifiant et le type réel du bon. Les bons n’ont pas changé d’identité, de type, de quantité, de montant ou d’entreprise.
 
 `T_BonCodeHistorique` conserve le code antérieur exact, le nouveau code, l’entreprise, la date réelle, le motif, la migration et l’utilisateur PostgreSQL. Ce journal fermé refuse les écritures applicatives et ne possède aucune FK de suppression vers le bon, afin de conserver la correspondance après une suppression autorisée. Aucune colonne n’est ajoutée à `T_Commande` : les révisions et contenus idempotents existants conservent leur structure. Les vues `V_Commande`, `V_CommandeDetail` et `V_CommandeOverview` exposent `AncienCodeCmd` et `RenumeroteLe` par jointure sur l’identifiant.
 
@@ -279,7 +281,7 @@ Les six sources canoniques ont été régénérées après cette application. Le
 
 ## Identité courante et présentation des PDF — 28 octobre 2026
 
-La migration [20261028_07_identite_documents_entreprise.sql](migrations/20261028_07_identite_documents_entreprise.sql) est installée après sauvegarde et recette privée. Elle ajoute huit champs dans `systeme.T_Entite` : site web, téléphone secondaire facultatif, deux options de présentation activées par défaut et quatre champs cohérents de logo PNG privé (octets, MIME, SHA-256 et date). Sept contraintes nouvelles, y compris les deux NOT NULL, sont commentées. Les anciennes colonnes des entreprises et les **66 autres tables** restent inchangées ; aucun instantané, montant, audit, stock ou document historique n’est réécrit.
+La migration [20261028_07_identite_documents_entreprise.sql](../backend/database/migrations/20261028_07_identite_documents_entreprise.sql) est installée après sauvegarde et recette privée. Elle ajoute huit champs dans `systeme.T_Entite` : site web, téléphone secondaire facultatif, deux options de présentation activées par défaut et quatre champs cohérents de logo PNG privé (octets, MIME, SHA-256 et date). Sept contraintes nouvelles, y compris les deux NOT NULL, sont commentées. Les anciennes colonnes des entreprises et les **66 autres tables** restent inchangées ; aucun instantané, montant, audit, stock ou document historique n’est réécrit.
 
 `V_IdentiteDocumentaire` et `fn_identite_documentaire` exposent le profil courant avec `HasLogo` et les seules métadonnées de l’image. Les octets restent dans `T_Entite` et les routes binaires autorisées ; le nettoyage d’audit les retire récursivement. Chaque PDF généré ou régénéré utilise l’identité actuelle de son entreprise. Les tiers, montants, références et instantanés historiques restent conservés, comme les octets des PDF archivés. Les deux réglages persistés sont appliqués directement au téléchargement : le nom reste visible sans en-tête ; un pied désactivé est entièrement retiré, pagination comprise.
 
@@ -289,7 +291,7 @@ Recette finale sur des fixtures privées : **57 contrôles SQL**, **13 tests API
 
 ## Patrimoine et affectations — évolution 08 installée
 
-La migration [20261028_08_immobilisations_affectations.sql](migrations/20261028_08_immobilisations_affectations.sql) est installée après sauvegarde et recette privée. `T_Immobilisation` et `V_Immobilisation` conservent les biens de l’entreprise, leur code automatique IMMO-ID, leurs caractéristiques, quantités entières exactes et affectations. Une fiche individuelle ou avec numéro de série impose une pièce ; un groupe homogène est explicite. La valeur d’acquisition indicative est calculée en SQL, distincte du stock commercial, du CUMP et des amortissements. L’archivage conserve les données et l’audit transactionnel.
+La migration [20261028_08_immobilisations_affectations.sql](../backend/database/migrations/20261028_08_immobilisations_affectations.sql) est installée après sauvegarde et recette privée. `T_Immobilisation` et `V_Immobilisation` conservent les biens de l’entreprise, leur code automatique IMMO-ID, leurs caractéristiques, quantités entières exactes et affectations. Une fiche individuelle ou avec numéro de série impose une pièce ; un groupe homogène est explicite. La valeur d’acquisition indicative est calculée en SQL, distincte du stock commercial, du CUMP et des amortissements. L’archivage conserve les données et l’audit transactionnel.
 
 Les six métadonnées professionnelles facultatives de `T_Utilisateurs` restent séparées dans `V_User_Affectation` ; le profil public antérieur n’est pas élargi. L’administration les rassemble dans Utilisateurs ; la source Profils reste compatible. Les deux catalogues privés sont versionnés, sans effacer leurs anciens choix d’export ou les préférences personnelles. Le matricule est unique par entreprise sans distinction de casse. Les responsables et lieux appartiennent à la même entreprise ; leurs propriétaires ne peuvent pas changer tant qu’un bien leur reste lié. Les types et états réutilisent le référentiel générique et les correspondances configurables.
 
@@ -307,7 +309,7 @@ SQL06 refuse une base contenant déjà des profils tant que leur reprise n’a p
 
 Les deux structures globales et les extraits géographiques tables/vues intègrent ces évolutions, en conservant les autres contraintes et commentaires canoniques. Leur restauration dans deux bases privées vides a vérifié la nouvelle FK validée, les vues enrichies et le module territorial du catalogue : 69 tables, 84 vues et 163 triggers pour le global ; 59 tables, 84 vues et 163 triggers pour le métier. Aucune donnée géographique source n’est chargée dans ces restaurations. Une installation vierge reçoit ensuite le dictionnaire fermé et son catalogue de champs ; une base existante reçoit seulement les migrations versionnées nécessaires.
 
-Les migrations [20261030_03_portail_territorial.sql](migrations/20261030_03_portail_territorial.sql), [20261030_04_type_site_referentiel.sql](migrations/20261030_04_type_site_referentiel.sql) et [20261030_05_compteurs_territoriaux.sql](migrations/20261030_05_compteurs_territoriaux.sql) sont installées dans `SauverNdeko`, après sauvegardes vérifiées. Elles complètent les métadonnées, une clé étrangère manquante et les projections de lecture ; elles ne réécrivent aucun territoire, rattachement, stock ou document. La géographie reste commune à toutes les entreprises.
+Les migrations [20261030_03_portail_territorial.sql](../backend/database/migrations/20261030_03_portail_territorial.sql), [20261030_04_type_site_referentiel.sql](../backend/database/migrations/20261030_04_type_site_referentiel.sql) et [20261030_05_compteurs_territoriaux.sql](../backend/database/migrations/20261030_05_compteurs_territoriaux.sql) sont installées dans `SauverNdeko`, après sauvegardes vérifiées. Elles complètent les métadonnées, une clé étrangère manquante et les projections de lecture ; elles ne réécrivent aucun territoire, rattachement, stock ou document. La géographie reste commune à toutes les entreprises.
 
 La migration 03 autorise le module `territoires` dans le catalogue des interfaces et ajoute les treize définitions de tableaux et d’exports. Les définitions déjà présentes ne sont pas écrasées. La comparaison des 69 tables source identifie uniquement `referentiel.T_InterfaceTableau` comme modifiée : treize nouveaux catalogues et 23 catalogues antérieurs exactement conservés. Preuve privée : `.runtime/territoires-applied.json`.
 
@@ -323,7 +325,7 @@ Les créations et mutations sont vérifiées par **39 tests API PostgreSQL priv�
 
 ## Multi-dépôts — évolution du 7 novembre 2026
 
-L’extension canonique [20261107_02_multi_depots.sql](migrations/20261107_02_multi_depots.sql)
+L’extension canonique [20261107_02_multi_depots.sql](../backend/database/migrations/20261107_02_multi_depots.sql)
 ajoute les dépôts de chaque entreprise et les transferts internes avec réservation,
 expédition, transit, réceptions partielles, retours et constats d’écart motivés.
 Les quatre nouvelles tables, les vues, les fonctions, les colonnes et les triggers

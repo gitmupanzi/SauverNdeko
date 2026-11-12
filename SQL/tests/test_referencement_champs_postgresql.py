@@ -41,7 +41,7 @@ with psycopg.connect(DSN,autocommit=True,row_factory=dict_row) as c:
  tables=q("SELECT n.nspname s,t.relname t FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace WHERE t.relkind='r' AND n.nspname=ANY(%s) ORDER BY 1,2",[['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','systeme']]).fetchall()
  before={(r['s'],r['t']):table_rows(r['s'],r['t']) for r in tables}
  foreign_keys=q("SELECT conrelid::regclass::text table_name,conname,pg_get_constraintdef(oid,true) def FROM pg_constraint WHERE contype='f' AND confrelid='referentiel.\"T_Generique\"'::regclass ORDER BY 1,2").fetchall()
- source=ROOT/'SQL/migrations/20261028_09_referencement_champs.sql'
+ source=ROOT/'backend/database/migrations/20261028_09_referencement_champs.sql'
  q(source.read_text(encoding='utf8'))
  for key,old in before.items():
   actual=table_rows(*key)

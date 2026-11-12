@@ -2,6 +2,7 @@
 import json
 import subprocess
 from pathlib import Path
+from django.conf import settings
 from django.core.management.base import BaseCommand,CommandError
 from django.db import transaction
 from apps.core import db
@@ -156,12 +157,12 @@ class Command(BaseCommand):
             mappings=target/'correspondances.sql';mappings.write_bytes(closed_mapping_seed.read_bytes())
             support_present=bool(db.one('SELECT to_regclass(%s) relation',['support."T_Support"'])['relation'])
             if support_present:
-                support_seed=project/'SQL/8. Schema support/Support_Seed_Defaults.sql'
+                support_seed=settings.BASE_DIR/'database'/'seeds'/'support_defaults.sql'
                 if not support_seed.is_file():raise CommandError('Initialisation fermée du circuit Support indisponible.')
                 (target/'support.sql').write_bytes(support_seed.read_bytes())
             instructions=target/'LIRE-MOI.md'
             instructions.write_text("# Installation vierge SauverNdeko\n\nCe paquet ne contient aucun compte, entreprise, bien, stock, document client ou préférence personnelle. Seuls les catégories, valeurs et précisions d’unités communes sont incluses ; les références privées des entreprises sont exclues. Les correspondances sont une initialisation fermée du code ; aucune configuration privée de la base source n’est copiée.\n\nUtiliser une base vide PostgreSQL18 et créer l’extension pg_trgm dans public. Vérifier les SHA-256 du manifeste. Appliquer avec psql -X -v ON_ERROR_STOP=1 --single-transaction pour les deux premiers fichiers, dans cet ordre :\n\n1. structure.sql\n2. references.sql\n3. correspondances.sql (porte sa propre transaction)\n\nLe chargement des références communes conserve les doublons historiques sans fusionner leurs identifiants. Deux gardes d’identité sont suspendues uniquement dans cette transaction initiale et réactivées avant sa validation ; le chargement refuse un dictionnaire non vide. Le troisième fichier initialise les correspondances globales, notamment celles du patrimoine. Ne pas le rejouer sur une configuration cliente personnalisée sans examen. Configurer ensuite le backend vers la nouvelle base, appliquer les migrations natives Django dans public et créer le premier administrateur avec la commande dédiée. Les profils, logos, licences et données de l’entreprise de destination sont à renseigner après installation. La liste migrationsInCode inventorie les fichiers livrés ; elle ne prouve pas à elle seule leur installation sur une base existante.\n",encoding='utf8')
-            migrations=sorted((project/'SQL/migrations').glob('*.sql'))
+            migrations=sorted((settings.BASE_DIR/'database'/'migrations').glob('*.sql'))
             manifest={'format':2,'files':{'structure.sql':digest_file(structure),'references.sql':digest_file(refs),'correspondances.sql':digest_file(mappings),'LIRE-MOI.md':digest_file(instructions)},'installationOrder':['structure.sql','references.sql','correspondances.sql'],'dataTables':['referentiel.T_CategorieGenerique','referentiel.T_Generique','referentiel.T_InterfaceTableau','systeme.T_ModuleApplication','logistique.T_PrecisionStock'],'mappingSeed':'closed-code-defaults','constraintTriggerCommentsSupplemented':len(comments),'migrationsInCode':[{ 'name':p.name,'sha256':digest_file(p)} for p in migrations]}
             manifest['applicationCatalogueSeed']={'rows':application_count,'order':'parents-before-children','identityGuardsEnabled':True}
             if search_seed:

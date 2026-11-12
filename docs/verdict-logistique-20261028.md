@@ -42,4 +42,4 @@ La recette technique ne remplace pas l’acceptation utilisateur. La vérificati
 - [Stock initial et numérotation](../SQL/documentation/Stock_Initial_Documents_20261028.md).
 - [Préférences et exports](../SQL/documentation/Preferences_Tableaux_Exports_20261028.md).
 - [Traçabilité et contrôles SQL](../SQL/documentation/Tracabilite_Logistique_20261028.md).
-- Migrations : `20261028_01` à `20261028_04` dans `SQL/migrations` ; sources canoniques SQL synchronisées pour les installations neuves. Une base existante reçoit les migrations, jamais un rejeu des fichiers de structure.
+- Migrations : `20261028_01` à `20261028_04` dans `backend/database/migrations` ; sources canoniques SQL synchronisées pour les installations neuves. Une base existante reçoit les migrations, jamais un rejeu des fichiers de structure.

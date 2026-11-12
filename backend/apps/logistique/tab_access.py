@@ -20,6 +20,7 @@ REGISTER_TABS = {
     "stocks-depots": "stocks-depots",
     "transferts": "transferts",
     "inventaires": "inventaires",
+    "lignes-inventaires": "inventaires",
 }
 DOCUMENT_TABS = {
     "bon": "commandes",

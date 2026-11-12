@@ -13,7 +13,7 @@ DSN = os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL', '')
 location = urlsplit(DSN)
 if location.hostname not in {'localhost', '127.0.0.1', '::1'} or not location.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Une base privée locale sauverndeko_test_* est obligatoire, sans repli source.')
-MIGRATION = Path(__file__).resolve().parents[1] / 'migrations/20261103_03_annuaire_structures.sql'
+MIGRATION = Path(__file__).resolve().parents[2] / 'backend/database/migrations/20261103_03_annuaire_structures.sql'
 LEGACY = ['IdEntite','NomEntite','PhoneEntite','AdresseEntite','ValideEntite','T_Generique']
 PUBLIC = ['IdEntite','NomEntite','IdTypeEntiteFk','TypeEntite','AdresseEntite','PhoneEntite',
           'SiteWebEntite','PresentationPubliqueEntite','HasLogo','LogoMimeEntite','LogoSha256Entite']

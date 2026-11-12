@@ -15,6 +15,25 @@
 @media (max-width: 640px) { .consultation-dialog { width: 100vw; border: 0; }.consult-width-actions,.consult-resize { display: none; }.consult-header { padding: 15px 18px; }.consult-content { padding: 18px; }.consult-record-heading h3 { font-size: 21px; }.consult-fields { gap: 0 16px; }.consult-search label { width: 100%; } }
 @media (max-width: 380px) { .consult-fields { grid-template-columns: 1fr; } }
 
+.product-stock-card { display:grid; gap:14px; color:var(--erp-text); }
+.stock-card-period { display:flex; flex-wrap:wrap; align-items:end; gap:10px; padding:14px; border:1px solid var(--erp-border); border-radius:10px; background:var(--erp-surface); }
+.stock-card-period > div:first-child { flex:1 1 200px; }
+.stock-card-period label { display:block; color:var(--erp-muted); font-size:12px; }
+.stock-card-period label:not(:has(input)) { margin-bottom:4px; }
+.stock-card-period input { display:block; min-height:40px; margin-top:4px; padding:0 10px; border:1px solid var(--erp-border); border-radius:6px; color:var(--erp-text); background:var(--erp-surface); font:inherit; }
+.stock-card-period-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.product-stock-card .stock-card-metrics { grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr)); margin:0; }
+.stock-card-metrics dt,.stock-card-metrics small,.stock-card-note { color:var(--erp-muted); font-size:12px; }
+.stock-card-metrics dd { display:flex; align-items:baseline; flex-wrap:wrap; gap:5px; margin:4px 0 0; color:var(--erp-text); font-size:21px; font-variant-numeric:tabular-nums; font-weight:600; }
+.stock-card-metrics small { font-weight:400; }
+.stock-card-note { margin:0; }
+@media (max-width:540px) {
+  .stock-card-period > div:first-child { flex-basis:100%; }
+  .stock-card-period > label { flex:1 1 115px; }
+  .stock-card-period input { width:100%; }
+  .stock-card-period-actions { flex-basis:100%; }
+}
+
 /* Le statut de synthèse ne déplace pas les indicateurs pendant une lecture. */
 .erp-dashboard { position:relative; }
 .erp-dashboard-loading { position:absolute; top:5px; right:0; z-index:2; padding:4px 8px; border:1px solid var(--erp-border); border-radius:5px; background:var(--erp-surface); color:var(--erp-muted); font-size:11px; line-height:1.4; pointer-events:none; }

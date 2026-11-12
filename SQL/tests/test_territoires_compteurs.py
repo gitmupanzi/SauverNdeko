@@ -15,7 +15,7 @@ DSN = os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL', '')
 TARGET = urlsplit(DSN)
 if TARGET.hostname not in {'localhost', '127.0.0.1'} or not TARGET.path[1:].startswith('sauverndeko_test_'):
     raise RuntimeError('Recette réservée à une base privée locale sauverndeko_test_*.')
-MIGRATION = ROOT / 'SQL/migrations/20261030_05_compteurs_territoriaux.sql'
+MIGRATION = ROOT / 'backend/database/migrations/20261030_05_compteurs_territoriaux.sql'
 SQL = MIGRATION.read_text(encoding='utf8')
 COUNTERS = {0: ('Nb_Niveau_1',), 1: ('Nb_Niveau_2',), 2: ('Nb_Niveau_3',),
             3: ('Nb_Niveau_4', 'Nb_Niveau_5'), 4: ('Nb_Niveau_5',), 5: ()}

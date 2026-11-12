@@ -43,7 +43,7 @@ class BonsCommandeAPI(unittest.TestCase):
         # Les clones de structure n'ont pas le catalogue initial de données.
         # Reprendre uniquement la définition versionnée, jamais un réglage client.
         if not c.execute('SELECT 1 FROM referentiel."T_InterfaceTableau" WHERE "CleInterface"=\'logistique.commandes\'').fetchone():
-            source = (ROOT / 'SQL/migrations/20261028_02_preferences_tableaux.sql').read_text(encoding='utf8')
+            source = (ROOT / 'backend/database/migrations/20261028_02_preferences_tableaux.sql').read_text(encoding='utf8')
             entry = re.search(r"^\('logistique[.]commandes','logistique','(.*)'::jsonb\)[,;]$", source, re.MULTILINE)
             if not entry: raise RuntimeError('Catalogue versionné des bons absent de la migration02.')
             columns = json.loads(entry.group(1).replace("''", "'"))

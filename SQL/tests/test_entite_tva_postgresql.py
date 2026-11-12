@@ -151,7 +151,7 @@ with psycopg.connect(DSN, autocommit=True, row_factory=dict_row, options='-c tim
                  sql.Identifier(table['schemaname']), sql.Identifier(table['tablename'])), [added.get(name, []), added.get(name, [])]).fetchall()
 
     before = {r['schemaname'] + '.' + r['tablename']: rows(r) for r in tables}
-    migration = ROOT / 'SQL/migrations/20261102_01_entite_tva.sql'
+    migration = ROOT / 'backend/database/migrations/20261102_01_entite_tva.sql'
     q(migration.read_text(encoding='utf8'))
     for table in tables:
         name = table['schemaname'] + '.' + table['tablename']

@@ -390,6 +390,9 @@ SECTIONS = {
 def consultation(actor, kind, pk, section, raw):
     if kind not in SECTIONS:
         raise APIError("Fiche introuvable.", "NOT_FOUND", 404)
+    if kind == "produit" and section == "mouvements" and raw.get("ficheStock") == "1":
+        from .stock_card import stock_card
+        return stock_card(actor, pk, raw)
     pk = positive(pk)
     header = get_record(view("logistique", "V_Article" if kind == "produit" else "V_Commande"), actor, {"ID_Article" if kind == "produit" else "ID_Commande": pk})
     if kind=='produit':

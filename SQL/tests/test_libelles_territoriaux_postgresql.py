@@ -29,8 +29,8 @@ from apps.accounts.authentication import Actor
 from apps.core import db
 from apps.core.entity_locations import geographical_references
 
-MIGRATION = ROOT / 'SQL/migrations/20261104_06_libelles_territoriaux.sql'
-ROLLBACK = ROOT / 'SQL/migrations/rollback/20261104_06_libelles_territoriaux.sql'
+MIGRATION = ROOT / 'backend/database/migrations/20261104_06_libelles_territoriaux.sql'
+ROLLBACK = ROOT / 'backend/database/migrations/rollback/20261104_06_libelles_territoriaux.sql'
 PARENTS = {1: 'ID_Niveau_0_Fk', 2: 'ID_Niveau_1_FK', 3: 'ID_Niveau_2_FK', 4: 'ID_Niveau_3_Fk'}
 TYPE_FIELDS = {2: 'ID_TypeNiveau_2_Fk', 3: 'ID_TypeNiveau_2_Fk', 4: 'ID_TypeNiveau_4_Fk', 5: 'ID_TypeNiveau_5_Fk'}
 BASE = '/api/geolocalisation/territoires/references/'

@@ -145,6 +145,7 @@ def write_workbook(target, columns, rows, context):
         records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Sélection parmi les résultats filtrés" if context["raw"].get("selection") is not None else "Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
         for key, value in context["filters"].items():
             records.append(("Filtre · "+context.get("filterLabels", {}).get(key, LABELS.get(key, key)),value))
+        records.extend(context.get("document_metadata", ()))
         if context.get("folder"):
             for label,value in [("Type de dossier",context["folder"]["objectType"]),("Alimentation",context["folder"]["mode"]),("Critères du dossier",json.dumps(context["folder"]["rules"],ensure_ascii=False))]:
                 records.append((label,value))
@@ -185,6 +186,9 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
     from apps.core.tabular_exports import selected_scope
     raw = dict(raw)
     document_scope=raw.pop("documentScope",None)
+    if document_scope == "stock-card":
+        from .stock_card import stock_card_workbook
+        return stock_card_workbook(actor, kind, raw, file_format)
     if document_scope not in (None,"record"):
         raise APIError("Portée documentaire non autorisée.")
     if document_scope == "record":
@@ -214,7 +218,7 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
     label = {"immobilisations":"Registre des immobilisations","lots":"Registre des lots de stock","articles":"Registre des articles","commandes":"Registre des bons de stock","lignes":"Lignes des bons de stock","mouvements":"Historique des mouvements de stock","factures":"Registre des factures","reglements":"Écritures de règlement"}[kind]
     return scope_workbook(actor,kind,obj,raw,where,values,order,sort,direction,applied,label,file_format=file_format)
 
-def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label, file_format="xlsx"):
+def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, applied, label, file_format="xlsx", document_metadata=()):
     from apps.core.tabular_exports import selected_scope, write_tabular
     identities = {"V_Immobilisation":"ID_Immobilisation","V_Article":"ID_Article","V_Commande":"ID_Commande","V_CommandeDetail":["ID_CmdFk","ID_ArticleFk"],"V_Mouvement":"ID_Mvt","V_RegistreLots":"ID_LotArticle","V_SuiviReglements":"ID_Commande","V_Reglements":"ID_Reglement"}
     if raw.get("selection") is not None:
@@ -228,7 +232,7 @@ def scope_workbook(actor, key, obj, raw, where, values, order, sort, direction, 
     zone = document_zone(raw)
     generated = datetime.now(zone)
     scope = "Toutes les organisations autorisées" if actor.global_admin else "Organisation autorisée du compte"
-    context = {"title":label,"scope":scope,"generated":generated.strftime("%d/%m/%Y %H:%M"),"zone":str(zone),"tz":zone,"source":obj["schema"]+"."+obj["name"],"raw":raw,"filters":applied,"order":LABELS.get(sort,sort)+" "+direction.upper(),"folder":folder_context}
+    context = {"title":label,"scope":scope,"generated":generated.strftime("%d/%m/%Y %H:%M"),"zone":str(zone),"tz":zone,"source":obj["schema"]+"."+obj["name"],"raw":raw,"filters":applied,"order":LABELS.get(sort,sort)+" "+direction.upper(),"folder":folder_context,"document_metadata":document_metadata}
     output = SpooledTemporaryFile(max_size=8*1024*1024,mode="w+b")
     try:
         with connection.cursor() as cursor:

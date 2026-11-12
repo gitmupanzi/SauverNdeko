@@ -29,7 +29,7 @@ with psycopg.connect(DSN) as guard:
         raise RuntimeError('Base privée obligatoire.')
     if guard.execute("SELECT to_regclass('logistique.\"T_BonCodeHistorique\"') IS NOT NULL").fetchone()[0]:
         raise RuntimeError('Cette recette nécessite un clone05 neuf ; ne pas rejouer après06.')
-migrations = list((ROOT/'SQL/migrations').glob('20261028_06_*.sql'))
+migrations = list((ROOT/'backend/database/migrations').glob('20261028_06_*.sql'))
 if len(migrations)!=1: raise RuntimeError('Migration06 finale unique requise.')
 sys.path.insert(0,str(ROOT/'SQL/tests'))
 from test_bons_commande_api import BonsCommandeAPI
@@ -55,7 +55,7 @@ c=fixture.connection
 # Ce clone fictif impose sa référence unique avant de tester les restitutions.
 c.execute('UPDATE referentiel."T_Generique" SET "ValideGenerique"=false WHERE "ID_CategorieGeneriqueFk"=64 AND "AbrGenerique" ILIKE \'entr%%\' AND "ID_Generique"<>%s',[fixture.be])
 if not c.execute('SELECT 1 FROM referentiel."T_InterfaceTableau" WHERE "CleInterface"=\'logistique.lignes\'').fetchone():
-    source=(ROOT/'SQL/migrations/20261028_02_preferences_tableaux.sql').read_text(encoding='utf8')
+    source=(ROOT/'backend/database/migrations/20261028_02_preferences_tableaux.sql').read_text(encoding='utf8')
     entry=re.search(r"^\('logistique[.]lignes','logistique','(.*)'::jsonb\)[,;]$",source,re.MULTILINE)
     if not entry:raise RuntimeError('Catalogue des lignes versionné absent.')
     c.execute('INSERT INTO referentiel."T_InterfaceTableau" ("CleInterface","Module","Colonnes") VALUES (\'logistique.lignes\',\'logistique\',%s::jsonb)',[json.dumps(json.loads(entry.group(1).replace("''","'")),ensure_ascii=False)])

@@ -24,8 +24,8 @@ Avant l’intervention, 38 objets possédaient un commentaire et 1515 n’en ava
 
 ## Fichiers livrés
 
-- [Migration des commentaires](../migrations/20261024_01_commentaires_objets_postgresql.sql) : instructions COMMENT ON explicites, encadrées par une transaction, avec délais de verrouillage et d’exécution bornés.
-- [Retour arrière des commentaires](../migrations/rollback/20261024_01_commentaires_objets_postgresql.sql) : restitution exacte des commentaires du catalogue initial ; les commentaires auparavant absents sont remis à NULL.
+- [Migration des commentaires](../../backend/database/migrations/20261024_01_commentaires_objets_postgresql.sql) : instructions COMMENT ON explicites, encadrées par une transaction, avec délais de verrouillage et d’exécution bornés.
+- [Retour arrière des commentaires](../../backend/database/migrations/rollback/20261024_01_commentaires_objets_postgresql.sql) : restitution exacte des commentaires du catalogue initial ; les commentaires auparavant absents sont remis à NULL.
 - [Contrôle de couverture en lecture seule](../controles/Verifier_Commentaires_PostgreSQL.sql) : compte les objets documentés et liste les éventuels manquants, sans lire les données métier.
 
 La migration concerne l’état installé relevé. Un objet ou une signature absent fait échouer la transaction ; elle ne crée pas de table ou routine et ne masque pas une structure manquante. Appliquer les migrations de structure correspondantes avant de rejouer la documentation sur une autre installation.

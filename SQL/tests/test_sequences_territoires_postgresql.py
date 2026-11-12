@@ -11,7 +11,7 @@ DSN=os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL','')
 url=urlsplit(DSN)
 if url.hostname not in {'localhost','127.0.0.1','::1'} or not url.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Base privée locale sauverndeko_test_* obligatoire, sans repli source.')
-MIGRATION=Path(__file__).resolve().parents[1]/'migrations/20261103_05_sequences_territoires.sql'
+MIGRATION=Path(__file__).resolve().parents[2]/'backend/database/migrations/20261103_05_sequences_territoires.sql'
 TEXT=MIGRATION.read_text(encoding='utf8')
 BODY=TEXT.replace('BEGIN;','',1).rsplit('COMMIT;',1)[0]
 SUFFIXES=['0','1','1_Old','2','3','4','5']

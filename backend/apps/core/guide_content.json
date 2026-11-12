@@ -827,7 +827,7 @@
             },
             {
               "title": "Enregistrer puis consulter",
-              "text": "Contrôlez le résultat dans Produit 360."
+              "text": "Contrôlez le résultat dans Produit 360. Ouvrez Fiche de stock pour consulter les entrées, les sorties et les soldes d’une période, pour un dépôt ou toute l’entreprise, puis exporter la fiche."
             },
             {
               "title": "Reprendre un stock depuis Excel",
@@ -1157,6 +1157,10 @@
             {
               "title": "Corriger une validation",
               "text": "Si vous êtes habilité, utilisez ⋯ puis Annuler la validation avec un motif. Les mouvements compensateurs conservent l’historique d’origine."
+            },
+            {
+              "title": "Exporter le détail du comptage",
+              "text": "Dans Inventaires, cliquez sur le nombre d’articles ou sur ⋯ puis Voir les lignes. Dans Lignes d’inventaire, comparez le théorique, le physique et l’écart de chaque article. Utilisez Exporter pour télécharger les résultats filtrés en Excel ou CSV."
             }
           ],
           "example": {
@@ -1171,6 +1175,10 @@
             {
               "label": "Ouvrir Inventaires",
               "path": "/logistique?onglet=inventaires"
+            },
+            {
+              "label": "Ouvrir Lignes d’inventaire",
+              "path": "/logistique?onglet=lignes-inventaires"
             }
           ]
         },
@@ -1635,6 +1643,38 @@
             {
               "label": "Ouvrir Support",
               "path": "/support"
+            }
+          ]
+        },
+        {
+          "id": "parcours-support",
+          "title": "Organiser le traitement d’un dossier",
+          "summary": "Suivez les étapes, les responsabilités et les échéances d’un même dossier.",
+          "steps": [
+            {
+              "title": "Préparer le modèle",
+              "text": "Dans Pilotage → Modèles de suivi, choisissez votre entreprise. Créez un modèle ou téléchargez le modèle Excel pour en importer plusieurs. Vérifiez le panier avant de l’enregistrer. Pour chaque étape, indiquez qui la traite et quelles validations sont attendues."
+            },
+            {
+              "title": "Démarrer le parcours",
+              "text": "Ouvrez le dossier, choisissez l’onglet Parcours et sélectionnez un modèle actif. Les règles du modèle sont conservées pour ce dossier."
+            },
+            {
+              "title": "Suivre le dossier",
+              "text": "Consultez l’étape en cours et ses échéances. Utilisez les actions proposées pour réceptionner, valider ou transmettre. En cas de blocage ou de retour, indiquez le motif demandé."
+            }
+          ],
+          "example": {
+            "title": "Exemple d’intervention",
+            "text": "Un dossier de dépannage passe par Réception, Diagnostic puis Contrôle. L’équipe retrouve les dossiers en retard dans le menu Traitement → Suivi des étapes."
+          },
+          "notes": [
+            "Les étapes et leurs validations se consultent dans le parcours. La résolution et la clôture se gèrent dans le circuit du dossier."
+          ],
+          "links": [
+            {
+              "label": "Ouvrir le suivi des étapes",
+              "path": "/support?onglet=processus"
             }
           ]
         }

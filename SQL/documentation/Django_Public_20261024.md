@@ -26,7 +26,7 @@ Aucune table métier n’est enregistrée dans l’administration native afin de
 
 ## Commentaires et intégrité
 
-La migration SQL [20261024_03](../migrations/20261024_03_commentaires_django_public.sql) ajoute 162 commentaires : schéma (1), tables (10), colonnes (44), contraintes (68), index (30), séquences (9). Le [retour arrière](../migrations/rollback/20261024_03_commentaires_django_public.sql) ne restaure que les commentaires ; il ne supprime aucun objet ni donnée.
+La migration SQL [20261024_03](../../backend/database/migrations/20261024_03_commentaires_django_public.sql) ajoute 162 commentaires : schéma (1), tables (10), colonnes (44), contraintes (68), index (30), séquences (9). Le [retour arrière](../../backend/database/migrations/rollback/20261024_03_commentaires_django_public.sql) ne restaure que les commentaires ; il ne supprime aucun objet ni donnée.
 
 Le contrôle étendu à public trouve 1 720 objets/colonnes documentés et zéro commentaire manquant dans le périmètre applicatif : 40 tables, 39 vues, 1 064 colonnes, 300 contraintes, 172 index, 36 séquences, 27 fonctions, six procédures, 27 triggers et neuf schémas. Les objets d’extensions sont exclus selon le contrôle versionné. Tous les index natifs sont valides et toutes les contraintes natives validées.
 

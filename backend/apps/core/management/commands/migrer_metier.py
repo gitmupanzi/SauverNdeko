@@ -1,6 +1,5 @@
 """Plan et application des migrations SQL métier d'une livraison vérifiée."""
 import json
-from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -14,7 +13,10 @@ class Command(BaseCommand):
     requires_system_checks = []
 
     def add_arguments(self, parser):
-        parser.add_argument('--manifest', default=str(Path(settings.BASE_DIR).parent / 'SQL/releases/manifest.json'))
+        parser.add_argument(
+            '--manifest',
+            default=str(settings.BASE_DIR / 'database' / 'releases' / 'manifest.json'),
+        )
         parser.add_argument('--baseline', help='Socle existant à vérifier intégralement avant sa première attestation.')
         parser.add_argument('--apply', action='store_true')
         parser.add_argument('--check', action='store_true', help='Refuser un socle absent, une migration en attente ou une dérive.')

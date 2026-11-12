@@ -24,7 +24,7 @@ Les helpers communs sont `backend/apps/core/reference_labels.py` et `frontend/sr
 
 ## Migration
 
-`SQL/migrations/20261103_06_libelles_choix_generiques.sql` met à jour les projections catégorielles de `support."V_Support"` et `support."V_ResolutionSupport"` sans changer leurs types de colonnes ni les règles du circuit Support. Chaque colonne modifiée reçoit un commentaire. La migration est transactionnelle et rejouable ; elle ne réécrit aucune ligne métier ou valeur du dictionnaire.
+`backend/database/migrations/20261103_06_libelles_choix_generiques.sql` met à jour les projections catégorielles de `support."V_Support"` et `support."V_ResolutionSupport"` sans changer leurs types de colonnes ni les règles du circuit Support. Chaque colonne modifiée reçoit un commentaire. La migration est transactionnelle et rejouable ; elle ne réécrit aucune ligne métier ou valeur du dictionnaire.
 
 SHA-256 : `0671413986953240b07d14c0956a79cd5d401661f07c150f25bb9498ec029803`.
 

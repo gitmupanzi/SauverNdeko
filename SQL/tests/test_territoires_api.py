@@ -194,7 +194,7 @@ class TerritorialAPI(unittest.TestCase):
    with transaction.atomic():db.query('INSERT INTO geolocalisation."T_Niveau_5"("NomNiveau_5","ID_Niveau_3_Fk","ID_TypeNiveau_5_Fk") VALUES(%s,%s,%s)',['Type orphelin fictif',zone,2147483647])
   support=references(self.actor(),'niveaux5');self.assertTrue(support['options']['niveau5Types'])
  def test_25_type_site_migration_replay(self):
-  sql=(ROOT/'SQL/migrations/20261030_04_type_site_referentiel.sql').read_text(encoding='utf8')
+  sql=(ROOT/'backend/database/migrations/20261030_04_type_site_referentiel.sql').read_text(encoding='utf8')
   query='SELECT to_jsonb(c) AS row FROM referentiel."T_ChampReferentiel" c WHERE "SchemaName"=\'geolocalisation\' AND "TableName"=\'T_Niveau_5\' AND "ColumnName"=\'ID_TypeNiveau_5_Fk\''
   before=self.sql.execute(query).fetchone()['row'];fingerprint=self.sql.execute('SELECT md5(COALESCE(jsonb_agg(to_jsonb(n) ORDER BY "ID_Niveau_5"),\'[]\'::jsonb)::text) AS digest FROM geolocalisation."T_Niveau_5" n').fetchone()['digest']
   self.sql.execute(sql);self.sql.execute(sql);self.assertEqual(before,self.sql.execute(query).fetchone()['row']);self.assertEqual(fingerprint,self.sql.execute('SELECT md5(COALESCE(jsonb_agg(to_jsonb(n) ORDER BY "ID_Niveau_5"),\'[]\'::jsonb)::text) AS digest FROM geolocalisation."T_Niveau_5" n').fetchone()['digest'])

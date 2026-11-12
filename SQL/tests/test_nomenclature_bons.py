@@ -68,7 +68,7 @@ with psycopg.connect(DSN,autocommit=True,row_factory=dict_row) as direct:
  rules=['tr_numero_commande','tr_bon_initial_protection','proteger_bon_inventaire','proteger_bon_retour','tr_proteger_bon_facture','tr_lock_commande_cloturee','tr_crud_commande']
  definitions={name:direct.execute('SELECT pg_get_functiondef(to_regprocedure(%s)) definition',['logistique.'+name+'()']).fetchone()['definition'] for name in rules}
  emitted=datetime.now(timezone.utc)
- migration=ROOT/'SQL/migrations/20261028_06_nomenclature_bons_historiques.sql'
+ migration=ROOT/'backend/database/migrations/20261028_06_nomenclature_bons_historiques.sql'
  direct.execute(migration.read_text(encoding='utf8'))
  check(all(snapshot(row['schema'],row['name'])==before[row['schema']+'.'+row['name']] for row in tables if row['schema']+'.'+row['name'] not in ['logistique.T_Commande','referentiel.T_InterfaceTableau']),'Toutes les autres tables, anciens audits, factures, identités, lignes, mouvements, coûts et requêtes idempotentes restent strictement identiques')
  after={row['ID_Commande']:row for row in db.query('SELECT * FROM logistique."T_Commande"')}

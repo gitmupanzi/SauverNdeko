@@ -39,13 +39,19 @@ class PresentationCatalogueTests(unittest.TestCase):
         self.definition = namespace["definition_for"]("logistique")
 
     def test_logistique_defaults_follow_real_navigation_and_add_depots(self):
-        expected = ["dashboard", "dossiers", "tiers", "depots", "articles", "lots",
-                    "stocks-depots", "commandes", "details", "transferts", "mouvements",
-                    "inventaires", "factures", "reglements", "immobilisations"]
+        expected = ["dashboard", "dossiers", "tiers", "depots", "stocks-depots", "articles", "lots",
+                    "commandes", "details", "transferts", "mouvements",
+                    "inventaires", "lignes-inventaires", "factures", "reglements", "immobilisations"]
         self.assertEqual(list(self.definition["tabDefaults"]), expected)
         navigation = (ROOT / "frontend/src/pages/Logistique.jsx").read_text(encoding="utf-8-sig")
         declarations = navigation.split("const MAIN_TAB_DEFINITIONS = [", 1)[1].split("];", 1)[0]
         self.assertEqual(re.findall(r'key\s*:\s*["\']([^"\']+)', declarations), expected)
+        sidebar = navigation.split("function LogistiqueSidebar(", 1)[1].split("const navigation=", 1)[0]
+        groups = {label: re.findall(r'"([^"]+)"', keys)
+                  for label, keys in re.findall(r'label: "([^"]+)", keys: \[([^\]]+)\]', sidebar)}
+        self.assertEqual(groups["Dépôts et stocks"], expected[3:7])
+        self.assertEqual(groups["Opérations de stock"], expected[7:13])
+        self.assertEqual([key for keys in groups.values() for key in keys], expected)
         self.assertEqual(list(self.definition["dashboardBlockDefaults"]),
                          ["articles", "commandes", "factures", "alertes"])
 
@@ -58,17 +64,18 @@ class PresentationCatalogueTests(unittest.TestCase):
             self.assertEqual(result[field], expected)
         self.assertTrue(result["canManage"])
         self.assertEqual(result["entityId"], 7)
-        for key in ["depots", "stocks-depots", "transferts"]:
+        for key in ["depots", "stocks-depots", "transferts", "lignes-inventaires"]:
             self.assertIn(key, result["tabDefaults"])
             self.assertNotIn(key, result["hiddenTabs"])
 
     def test_new_tabs_can_be_named_hidden_and_restored(self):
         result = namespace["validate_values"](self.definition, {
             "tabLabels": {"depots": " Magasins ", "stocks-depots": "Disponibilités",
-                          "transferts": "Mouvements internes"},
-            "hiddenTabs": ["transferts", "depots"], "hiddenDashboardBlocks": []})
+                          "transferts": "Mouvements internes", "lignes-inventaires": "Détail des comptages"},
+            "hiddenTabs": ["transferts", "depots", "lignes-inventaires"], "hiddenDashboardBlocks": []})
         self.assertEqual(result["tabLabels"]["depots"], "Magasins")
-        self.assertEqual(result["hiddenTabs"], ["depots", "transferts"])
+        self.assertEqual(result["tabLabels"]["lignes-inventaires"], "Détail des comptages")
+        self.assertEqual(result["hiddenTabs"], ["depots", "transferts", "lignes-inventaires"])
         result = namespace["validate_values"](self.definition, {
             "tabLabels": {}, "hiddenTabs": [], "hiddenDashboardBlocks": []})
         self.assertEqual(result, {"tabLabels": {}, "hiddenTabs": [], "hiddenDashboardBlocks": []})

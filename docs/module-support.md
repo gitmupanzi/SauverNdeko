@@ -1,6 +1,37 @@
 # Support — prise en main et validation
 
-Le module est accessible à `/support` depuis Vos applications lorsque la licence et les droits du compte l’autorisent. Il regroupe les incidents, demandes d’assistance et réclamations. Les deux onglets sont **Tableau de bord** et **Tickets**.
+Le module est accessible à `/support` depuis Vos applications lorsque la licence et les droits du compte l’autorisent. La barre latérale présente le **Tableau de bord**, les **Modèles de suivi** selon les droits, les **Tickets** et le **Suivi des étapes** selon les droits. Un ticket peut être une réclamation, une demande, une intervention ou un autre dossier. Son parcours décrit ses étapes de traitement.
+
+## Configurer et suivre un parcours
+
+1. Dans **Pilotage → Modèles de suivi**, choisissez une entreprise puis créez un modèle. Renseignez ses étapes dans l’ordre de traitement, les affectations, les validations et les pièces ou informations attendues. Le registre propose la recherche, les filtres par type et état, les réglages de colonnes et les exports Excel et CSV. Pour créer plusieurs modèles, téléchargez le modèle Excel, puis importez le fichier et vérifiez les lignes dans le panier avant de les enregistrer.
+2. Ouvrez un dossier et choisissez un modèle actif dans **Parcours**. Les conditions applicables sont celles de la version au démarrage. La désactivation d’un modèle empêche les nouveaux démarrages et laisse les parcours engagés utilisables.
+3. Utilisez les actions proposées dans la fiche pour réceptionner ou transmettre le dossier, le bloquer avec un motif, demander un retour ou le valider. L’historique conserve chaque passage, y compris après un retour. L’état du ticket et la vérification de sa clôture suivent le circuit Support.
+4. Dans **Traitement → Suivi des étapes**, la recherche et les filtres permettent de retrouver les dossiers par étape, service, responsable, état ou retard. Les pièces restent accessibles dans **Documents** selon leur visibilité.
+
+Les délais sont saisis en minutes calendaires. Le délai global court depuis le démarrage jusqu’à la fin du parcours. Chaque passage dans une étape déclenche son propre délai, arrêté à la sortie de l’étape. Un blocage laisse courir les deux délais. La relance, si définie, est espacée du nombre de minutes choisi et calculée depuis la dernière tentative. Le traitement se lance avec `python manage.py traiter_alertes_support` sur le backend. Planifier cette commande selon la cadence de notification attendue. Elle adresse les alertes au responsable habilité de l’étape ou du dossier et enregistre les échecs. `--dry-run` compte les alertes à traiter sans écriture.
+
+Exemple de configuration à valider dans l’entreprise. Pour une demande liée à un décaissement, prévoir une réception, un contrôle, une validation et une transmission, avec 120 minutes par étape et un délai global choisi de 24 ou 48 heures. Le paiement et sa décision restent dans leur module métier.
+
+### Installation des parcours
+
+La migration additive `20261112_01_support_processus` crée les modèles, versions, parcours, passages, événements, alertes et la vue de suivi. `20261112_02_droits_processus_support` rend l’accès au suivi des étapes configurable dans les restrictions par utilisateur. Les deux migrations conservent les tickets et leurs relations existantes. Le catalogue de référencement réutilise les valeurs génériques. Les [migrations métier](mises-a-jour-base.md) définissent la procédure générale de livraison.
+
+1. Inventorier toutes les migrations en attente et identifier la base cible. Effectuer une sauvegarde PostgreSQL et des médias privés, puis vérifier la restauration sur une base isolée.
+2. Rejouer les migrations en attente sur cette copie et vérifier les totaux historiques, les contrôles métier, les droits et les accès aux pièces. Recueillir l’autorisation de production avant application.
+3. Sous maintenance, appliquer avec le compte prévu pour les migrations, contrôler les droits du compte applicatif et le résultat de `migrer_metier --check`, puis publier ensemble l’API et le frontend. Vérifier les tickets existants et un parcours de recette avant d’activer la tâche d’alertes.
+4. En cas de retour à la version précédente, suspendre la tâche d’alertes et garder le service en maintenance le temps de traiter les parcours engagés. Une restauration revient à la date de la sauvegarde. Après ouverture aux utilisateurs, relever et conserver les données créées depuis la sauvegarde avant toute restauration.
+
+Les entreprises doivent confirmer leurs délais, calendriers de travail, rôles de validation et motifs avant d’activer un modèle. Les heures ouvrées, la suspension des délais et les branches parallèles demandent une décision de conception dédiée.
+
+### Vérifications des parcours du 12 novembre 2026
+
+- Sur une copie PostgreSQL, les deux migrations s’appliquent et une nouvelle exécution les laisse en place sans les rejouer. L’empreinte du dossier historique est identique. Les contrôles PostgreSQL (334 assertions) et API (40 tests) passent.
+- Le paquet d’installation a été restauré dans une base vide. Le circuit Support standard est disponible et les données des entreprises de la base source ne sont pas reprises.
+- Dans Edge avec Django et PostgreSQL sur la copie, la liste de suivi ouvre le bon dossier. La réception et la transmission passent sur ordinateur. La fiche s’ouvre à 390 px sans défilement horizontal de la page.
+- La compilation Vite, le contrôle Django, les tests d’interface Support (243 assertions) et la suite des composants transversaux passent.
+
+Les migrations des parcours ont été vérifiées sur des bases isolées. L’installation en production et la planification des alertes restent à faire.
 
 ## Créer et retrouver un dossier
 
@@ -8,7 +39,7 @@ Choisir l’entreprise dans l’en-tête, puis **Nouveau dossier** dans Tickets.
 
 Les liens facultatifs vers un article, un bon de stock et une immobilisation sont contrôlés dans l’entreprise du dossier. Le numéro `SUP-…` est attribué automatiquement et ne peut pas être modifié. L’ajout et la modification utilisent le même formulaire.
 
-La liste propose recherche, filtres, tri, pagination, colonnes personnalisées et exports Excel/CSV. Le tableau de bord ouvre les populations correspondant aux indicateurs. La vue Kanban classe les dossiers selon leur circuit ; chaque colonne indique son effectif total et permet d’ouvrir la liste complète. Consulter un numéro ou une carte ouvre la même fiche.
+La liste propose recherche, filtres, tri, pagination, colonnes personnalisées et exports Excel/CSV. Dans le tableau de bord, les indicateurs **Tickets** et **Suivi des étapes** ouvrent leur liste sous la synthèse. Les graphiques par statut et priorité ouvrent également leurs dossiers. **Revenir à l’indicateur** ramène à la carte ou à la ligne du graphique. Les listes de parcours ouvrent directement l’onglet **Parcours** du dossier. La vue Kanban classe les dossiers selon leur circuit et chaque colonne permet d’ouvrir sa liste complète.
 
 Pour préparer plusieurs dossiers, utiliser **Télécharger le modèle Excel**, compléter la feuille **Tickets**, puis **Importer un fichier Excel**. Le fichier `.xlsx` est limité à 4 Mo et 100 dossiers. Les choix proposés dans le modèle correspondent à l’entreprise autorisée ; les listes acceptent leur identifiant ou un libellé exact non ambigu. L’import remplit seulement un panier : sélectionner chaque dossier pour vérifier les rubriques Demande, Affectation et Objets liés, corriger les erreurs ou retirer une ligne. Un autre fichier ajoute ses lignes au panier sans remplacer les corrections. **Enregistrer le panier** valide l’ensemble dans une seule transaction ; un dossier invalide annule les créations et leurs audits pour tout le lot. Les dossiers individuels restent accessibles par **Nouveau dossier**. Les pièces justificatives s’ajoutent après la création, dans la fiche du dossier.
 
@@ -25,7 +56,7 @@ Les actions disponibles dépendent des droits et de l’état du dossier. La ré
 
 ## Échanges, documents et historique
 
-La fiche contient Synthèse, Échanges, Résolutions, Documents et Historique. Les échanges et pièces peuvent être publics ou internes. **Public** signifie visible des personnes autorisées à consulter le dossier ; il ne rend rien accessible sur Internet. Les notes et pièces internes sont réservées aux gestionnaires habilités.
+La fiche contient Synthèse, Parcours selon les droits, Échanges, Résolutions, Documents et Historique. Les échanges et pièces peuvent être publics ou internes. **Public** signifie visible des personnes autorisées à consulter le dossier ; il ne rend rien accessible sur Internet. Les notes et pièces internes sont réservées aux gestionnaires habilités.
 
 Les pièces acceptées sont les PDF et images PNG/JPEG/WebP dans la limite de 8 Mo. Elles sont stockées de manière privée, avec contrôle au téléversement et au téléchargement. Une pièce peut être rattachée à un commentaire du même dossier. Les échanges, tentatives de résolution et événements antérieurs restent conservés.
 

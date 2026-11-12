@@ -39,7 +39,7 @@ from apps.logistique.valuation import ArticleValuationView, ArticleValuationExce
 from apps.logistique.lot_register import LotDetailView, LotMovementsView, LotMovementsExcelView
 from apps.logistique.inventories import InventoriesView, UnitPrecisionView
 from apps.logistique.depots import DepotsView, DepotStocksView
-from apps.logistique.depot_registers import DepotRegisterExportView
+from apps.logistique.depot_registers import DepotRegisterExportView, InventoryLinesView
 from apps.logistique.transfers import TransfersView
 from apps.logistique.immobilisation_lifecycle import ImmobilisationCycleView, ImmobilisationValuationView
 from apps.logistique.immobilisations import ImmobilisationsView, ImmobilisationReferencesView, ImmobilisationHistoryView, ImmobilisationExportView
@@ -62,7 +62,7 @@ from apps.logistique.article_xlsx import ArticleExcelPreviewView
 from apps.logistique.batch_creation import LogisticsBatchView
 from django.conf import settings
 from django.contrib import admin
-from django.urls import re_path
+from django.urls import include, re_path
 from apps.accounts.views import (
     LoginView,
     RegisterView,
@@ -166,6 +166,7 @@ urlpatterns = [
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/documents/?$", SupportDocumentsView.as_view()),
     re_path(r"^api/support/tickets/(?P<pk>[0-9]+)/?$", SupportTicketsView.as_view()),
     re_path(r"^api/support/tickets/?$", SupportTicketsView.as_view()),
+    re_path(r"^api/support/", include("apps.support.process_urls")),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/panier/?$",TerritorialBatchView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/modele-excel/?$",TerritorialExcelTemplateView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/import-excel/?$",TerritorialExcelImportView.as_view()),
@@ -226,7 +227,8 @@ urlpatterns = [
     re_path(r"^api/logistique/documents/(?P<kind>bon|facture|reglement|avoir|immobilisation)/(?P<pk>[0-9]+)/pieces(?:/(?P<piece_id>[0-9]+))?/?$", AttachmentsView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/avoirs/?$", OrderCreditsView.as_view()),
     re_path(r"^api/logistique/avoirs/(?P<pk>[0-9]+)(?:/(?P<operation>affectation|remboursement))?/?$", CreditView.as_view()),
-    re_path(r"^api/logistique/(?P<kind>depots|stocks-depots|transferts|inventaires)/export\.(?P<file_format>xlsx|csv)/?$", DepotRegisterExportView.as_view()),
+    re_path(r"^api/logistique/(?P<kind>depots|stocks-depots|transferts|inventaires|lignes-inventaires)/export\.(?P<file_format>xlsx|csv)/?$", DepotRegisterExportView.as_view()),
+    re_path(r"^api/logistique/lignes-inventaires/?$", InventoryLinesView.as_view()),
     re_path(r"^api/logistique/depots/(?P<pk>[0-9]+)/?$", DepotsView.as_view()),
     re_path(r"^api/logistique/depots/?$", DepotsView.as_view()),
     re_path(r"^api/logistique/stocks-depots/?$", DepotStocksView.as_view()),

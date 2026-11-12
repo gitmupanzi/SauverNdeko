@@ -29,7 +29,7 @@ Les contrôles PostgreSQL conservent le verrou commun sur l’unité. Les politi
 
 ## Livraison et recette
 
-La migration versionnée est `SQL/migrations/20261026_10_precision_stock_table.sql`. Elle est unique, transactionnelle et refuse un état source incomplet ou déjà converti. Ne pas la rejouer.
+La migration versionnée est `backend/database/migrations/20261026_10_precision_stock_table.sql`. Elle est unique, transactionnelle et refuse un état source incomplet ou déjà converti. Ne pas la rejouer.
 
 `SQL/3. Schema logistique/PrecisionStock_Tables_views.sql` décrit les définitions cibles sans DML de reprise. Il complète les instantanés historiques des domaines ; ceux-ci restent le socle ancien et ne doivent pas être rejoués sur une base existante. Une installation neuve utilise le paquet courant ou l’ordre complet des migrations.
 

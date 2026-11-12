@@ -1,7 +1,7 @@
 # Extension multi-dépôts — contrat canonique
 
 La définition SQL maintenue de cette extension est la migration
-[`20261107_02_multi_depots.sql`](../migrations/20261107_02_multi_depots.sql).
+[`20261107_02_multi_depots.sql`](../../backend/database/migrations/20261107_02_multi_depots.sql).
 Les exports historiques `Logistique_Tables.sql` et `Logistique_View.sql` restent
 le socle publié ; ils ne doivent pas être rejoués sur une base cliente.
 

@@ -95,7 +95,7 @@ class ClassificationSQL(unittest.TestCase):
         child='test_'+uuid.uuid4().hex[:16]
         self.c.execute('''INSERT INTO systeme."T_ModuleApplication"("CodeModule","Nom","TypeApplication","ModuleParentCode")
             VALUES(%s,'Fonction fictive','FONCTIONNALITE','catalogue')''',[child])
-        migration=(Path(__file__).resolve().parents[1]/'migrations/20261103_08_catalogue_accueil.sql').read_text(encoding='utf8')
+        migration=(Path(__file__).resolve().parents[2]/'backend/database/migrations/20261103_08_catalogue_accueil.sql').read_text(encoding='utf8')
         # Le fichier garde sa transaction en installation ; ici le savepoint de
         # recette permet de vérifier le refus sans commettre de donnée fictive.
         body=migration[migration.index('BEGIN;')+len('BEGIN;'):migration.rindex('COMMIT;')]

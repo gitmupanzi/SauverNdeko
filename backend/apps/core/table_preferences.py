@@ -66,6 +66,11 @@ def source_definition(actor, interface_key):
             raise APIError("Interface inconnue.", "NOT_FOUND", 404)
         obj, *_ = source(actor, kind)
         return obj, LABELS, module, None
+    if module == "support" and kind == "modeles":
+        from apps.support.model_columns import table_source, LABELS
+        from apps.support.processes import manage_models
+        manage_models(actor)
+        return table_source(), LABELS, module, "processus"
     if module == "support" and kind == "tickets":
         from apps.support.portal import table_source, LABELS
         require_tab(actor, module, kind)

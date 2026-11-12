@@ -26,6 +26,7 @@ const Depots=lazyView(()=>import("./logistique/Depots"),{label:"Chargement des d
 const StocksDepots=lazyView(()=>import("./logistique/StocksDepots"),{label:"Chargement des stocks…"});
 const Transferts=lazyView(()=>import("./logistique/Transferts"),{label:"Chargement des transferts…"});
 const Inventaires=lazyView(()=>import("./logistique/Inventaires"),{label:"Chargement de la vue…"});
+const InventoryLines=lazyView(()=>import("./logistique/InventoryLines"),{label:"Chargement des lignes…"});
 const Tiers=lazyView(()=>import("./logistique/Tiers"),{label:"Chargement de la vue…"});
 const ReferenceSettings=lazyView(()=>import("../components/ReferenceSettings"),{label:"Ouverture des réglages…",compact:true});
 const AlertesStock=lazyView(()=>import("./logistique/AlertesStock"),{label:"Chargement de la vue…"});
@@ -448,7 +449,8 @@ function LogistiqueSidebar({ collapsed, activeTab, mainTabs, onNavigate, onToggl
   const groups = [
     { label: "Pilotage", keys: ["dashboard", "dossiers"] },
     { label: "Relations", keys: ["tiers"] },
-    { label: "Stocks", keys: ["depots", "articles", "lots", "stocks-depots", "commandes", "details", "transferts", "mouvements", "inventaires"] },
+    { key: "stocks", label: "Dépôts et stocks", keys: ["depots", "stocks-depots", "articles", "lots"] },
+    { key: "operations-stock", label: "Opérations de stock", keys: ["commandes", "details", "transferts", "mouvements", "inventaires", "lignes-inventaires"] },
     { label: "Finances", keys: ["factures", "reglements"] },
     { label: "Patrimoine", keys: ["immobilisations"] },
   ];
@@ -534,14 +536,15 @@ const MAIN_TAB_DEFINITIONS = [
   { key: "dossiers", label: "Dossiers de suivi", icon: "folder" },
   { key: "tiers", label: "Clients et fournisseurs", icon: "users" },
   {key:"depots",label:"Dépôts",icon:"warehouse"},
+  {key:"stocks-depots",label:"Stocks par dépôt",icon:"collection"},
   { key: "articles", label: "Articles", icon: "bi-box-seam" },
   { key: "lots", label: "Lots de stock", icon: "tag" },
-  {key:"stocks-depots",label:"Stocks par dépôt",icon:"collection"},
   { key: "commandes", label: "Bons de stock", icon: "bi-receipt" },
   { key: "details", label: "Lignes des bons", icon: "bi-list-ul" },
   {key:"transferts",label:"Transferts internes",icon:"transfer"},
   { key: "mouvements", label: "Mouvements de stock", icon: "bi-arrow-left-right" },
   { key: "inventaires", label: "Inventaires", icon: "clipboard" },
+  { key: "lignes-inventaires", label: "Lignes d’inventaire", icon: "bi-list-ul" },
   { key: "factures", label: "Factures", icon: "document" },
   { key: "reglements", label: "Règlements", icon: "bi-wallet2" },
   { key: "immobilisations", label: "Immobilisations", icon: "building" },
@@ -549,6 +552,7 @@ const MAIN_TAB_DEFINITIONS = [
 
 const AUXILIARY_TABS = {audit:"mouvements", alertes:"articles", consommation:"mouvements", couverture:"mouvements"};
 function canReadLogisticsTab(user, key) {
+  if (key === "lignes-inventaires") return tabRights(user,"logistique","inventaires").canRead;
   const source = AUXILIARY_TABS[key];
   return source
     ? tabRights(user,"logistique","dashboard").canRead && tabRights(user,"logistique",source).canRead
@@ -568,6 +572,7 @@ function LogistiqueWorkspace() {
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [navigation,setNavigation]=useSearchParams();
   const requestedTab=navigation.get("onglet");
+  const inventoryFilter=navigation.get("inventaire") || "";
   const requestedKey=moduleTabKey(MAIN_TAB_DEFINITIONS,requestedTab,null) || (Object.hasOwn(AUXILIARY_TABS,requestedTab)?requestedTab:null);
   const defaultTab=presentedModuleTabs(MAIN_TAB_DEFINITIONS,{tabLabels,hiddenTabs}).find(item=>canReadLogisticsTab(user,item.key))?.key;
   const activeTab=requestedKey || defaultTab || "dashboard";
@@ -717,7 +722,14 @@ function LogistiqueWorkspace() {
   function handleNavigate(tabKey, options = {}) {
     if (!canReadLogisticsTab(user,tabKey)) return;
     startTransition(() => {
-      setNavigation(current=>{const next=new URLSearchParams(current);next.set("onglet",tabKey);if(tabKey!=="dossiers")next.delete("dossier");return next;},{replace:true});
+      setNavigation(current => {
+        const next = new URLSearchParams(current);
+        next.set("onglet", tabKey);
+        if (tabKey !== "dossiers") next.delete("dossier");
+        if (tabKey === "lignes-inventaires" && options.inventoryId) next.set("inventaire", String(options.inventoryId));
+        else next.delete("inventaire");
+        return next;
+      }, {replace: !options.inventoryId});
       if (options.create) updateSharedTableState(tabKey, { composerMode: "create" });
     });
   }
@@ -1063,7 +1075,10 @@ function LogistiqueWorkspace() {
                   <ReferenceSettings title={presentationTitle || mainTabs.find(tab=>tab.key===activeTab)?.label || activeTabConfig.title} mappings={genericMappingStates} directMappings={activeDirectMappings} references={references} categories={referenceCategories} loading={loadingSharedFkSettings} saving={savingSharedFkSettings} error={sharedFkSettingsError} supportError={genericSupportError} meta={sharedFkSettingsMeta} auditRows={visibleSharedFkAuditRows} auditLoading={loadingSharedFkAudit} auditError={sharedFkAuditError} canEdit={false} formatDateTime={formatDisplayDateTime} onClose={()=>setShowFkMappingPanel(false)} onChange={handleGenericCategoryDraftChange} onApply={handleApplyGenericCategoryOverride} onReset={handleResetGenericCategoryOverride} onApplyAll={handleApplyAllGenericCategoryOverrides} onResetAll={handleResetAllFkSettings} onRetry={()=>setReferenceVersion(version=>version+1)} />
                 ) : null}
 
-                {activeTab === "inventaires" ? <Inventaires title={presentationTitle}/> : null}
+                {activeTab === "inventaires" ? <Inventaires title={presentationTitle}
+                  onShowLines={row => handleNavigate("lignes-inventaires", {inventoryId: row.ID_Inventaire})}/> : null}
+                {activeTab === "lignes-inventaires" ? <InventoryLines title={presentationTitle}
+                  inventoryId={inventoryFilter} onClearInventory={() => handleNavigate("lignes-inventaires")}/> : null}
                 {activeTab === "immobilisations" ? (
                   <Immobilisations title={presentationTitle} refreshKey={refreshKey} onDataChanged={bumpRefresh}/>
                 ) : null}

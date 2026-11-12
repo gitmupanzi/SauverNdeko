@@ -87,7 +87,7 @@ Mesurer les plans PostgreSQL et les temps API sur un périmètre représentatif.
 
 Les huit schémas applicatifs de la base locale SauverNdeko possèdent désormais 1553 commentaires couvrant tables, vues, colonnes, fonctions/procédures, triggers, séquences, contraintes et index. Application, réexécution et retour arrière vérifiés sur une copie isolée sans données ; les textes sont vérifiés après commit dans la base locale et les définitions restent inchangées.
 
-Lire le [bilan et les précisions sur le catalogue installé](../../../../SQL/documentation/Commentaires_PostgreSQL_20261024.md). La [migration de référence](../../../../SQL/migrations/20261024_01_commentaires_objets_postgresql.sql) documente les objets existants ; pour un objet nouveau ou modifié, adapter son commentaire dans une nouvelle évolution versionnée. Les inspections décrites plus haut restent le modèle des futures interventions.
+Lire le [bilan et les précisions sur le catalogue installé](../../../../SQL/documentation/Commentaires_PostgreSQL_20261024.md). La [migration de référence](../../../database/migrations/20261024_01_commentaires_objets_postgresql.sql) documente les objets existants ; pour un objet nouveau ou modifié, adapter son commentaire dans une nouvelle évolution versionnée. Les inspections décrites plus haut restent le modèle des futures interventions.
 
 
 ## Fiabilisation logistique — évolution 20261024_02

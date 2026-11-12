@@ -1,6 +1,9 @@
 import {useEffect,useRef,useState} from "react";
+import {useAuth} from "../../contexts/AuthContext";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {requestJson,downloadApiFile} from "../../services/api";
+import {useConsultations} from "../../components/ConsultationProvider";
+import lazyView from "../../components/LazyView";
 import RecordEditorFrame from "../../components/RecordEditorFrame";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
@@ -10,12 +13,31 @@ import {formatDate,SimpleTable} from "../logistique/logistiqueShared";
 import {SUPPORT_ROOT,SUPPORT_LABELS,supportUncertain} from "./supportForm";
 import SupportEditor from "./SupportEditor";
 import SupportAction from "./SupportAction";
+import SupportJourney from "./SupportJourney";
+import {useProcessQuery} from "./supportProcess";
 
-export const SUPPORT_DETAIL_TABS=[{key:"synthese",label:"Synthèse",icon:"help"},{key:"echanges",label:"Échanges",icon:"mail"},{key:"resolutions",label:"Résolutions",icon:"check-circle"},{key:"documents",label:"Documents",icon:"document"},{key:"historique",label:"Historique",icon:"clock"}];
+export const SUPPORT_DETAIL_TABS=[{key:"synthese",label:"Synthèse",icon:"help"},{key:"parcours",label:"Parcours",icon:"movements"},{key:"echanges",label:"Échanges",icon:"mail"},{key:"resolutions",label:"Résolutions",icon:"check-circle"},{key:"documents",label:"Documents",icon:"document"},{key:"historique",label:"Historique",icon:"clock"}];
 const date=value=>value?formatDate(value):"—";
+const Immobilisation360=lazyView(()=>import("../logistique/Immobilisation360"),{label:"Chargement de l’immobilisation…",compact:true});
 function Details({items}){return <dl className="support-info-grid">{items.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value||"—"}</dd></div>)}</dl>;}
-export default function SupportDetail({id,initialEdit=false,context,onClose,onChanged}){
- const scope=useEntityScope(),[state,setState]=useState({key:"",data:null,loading:true,error:""}),[retry,setRetry]=useState(0),[tab,setTab]=useState("synthese"),[editor,setEditor]=useState(initialEdit?"edit":null),[drafts,setDrafts]=useState({}),[operations,setOperations]=useState({}),key=scope.scopeKey+":"+id+":"+retry,valid=state.key===key,current=valid?state:{data:null,loading:true,error:""},hasDraft=Object.values(drafts).some(Boolean),inFlight=Object.values(operations).some(Boolean);
+function RelatedRecords({record,data}){
+ const {user}=useAuth(),{openProduct,openOrder}=useConsultations();
+ const [assetOpen,setAssetOpen]=useState(false);
+ const canConsult=user?.permissions?.canAccessAdmin===true;
+ const assetReferences=useProcessQuery(assetOpen?"/api/logistique/immobilisations/references?immobilisationId="+encodeURIComponent(record.ID_ImmobilisationFk):null);
+ const links=[
+  {id:record.ID_ArticleFk,allowed:data.canLinkArticle,label:"Article",value:record.Article,open:canConsult?()=>openProduct({ID_Article:record.ID_ArticleFk,NomArticle:record.Article}):null},
+  {id:record.ID_CommandeFk,allowed:data.canLinkOrder,label:"Bon de stock",value:record.BonStock||record.Bon,open:canConsult?()=>openOrder({ID_Commande:record.ID_CommandeFk,CodeCmd:record.BonStock||record.Bon}):null},
+  {id:record.ID_ImmobilisationFk,allowed:data.canLinkAsset,label:"Immobilisation",value:record.Immobilisation,open:canConsult?()=>setAssetOpen(true):null},
+ ].filter(link=>link.id&&link.allowed===true);
+ if(!links.length)return null;
+ return <section className="record-editor-section is-wide"><h3><AppIcon name="folder"/>Objets liés</h3>
+  <Details items={links.map(link=>[link.label,link.open?<ActionButton icon="eye" onClick={link.open}>{link.value||"Consulter"}</ActionButton>:link.value])}/>
+  {assetOpen?<Immobilisation360 recordId={record.ID_ImmobilisationFk} references={assetReferences.data||{}} onClose={()=>setAssetOpen(false)}/>:null}
+ </section>;
+}
+export default function SupportDetail({id,initialEdit=false,initialTab="synthese",canReadJourney=false,context,onClose,onChanged}){
+ const scope=useEntityScope(),[state,setState]=useState({key:"",data:null,loading:true,error:""}),[retry,setRetry]=useState(0),[tab,setTab]=useState(initialTab),[editor,setEditor]=useState(initialEdit?"edit":null),[drafts,setDrafts]=useState({}),[operations,setOperations]=useState({}),key=scope.scopeKey+":"+id+":"+retry,valid=state.key===key,current=valid?state:{data:null,loading:true,error:""},hasDraft=Object.values(drafts).some(Boolean),inFlight=Object.values(operations).some(Boolean);
  function draftChanged(name,value){setDrafts(previous=>previous[name]===value?previous:{...previous,[name]:value});}
  function busyChanged(name,value){setOperations(previous=>previous[name]===value?previous:{...previous,[name]:value});}
  useEffect(()=>{const controller=new AbortController();setState({key,data:null,loading:true,error:""});requestJson(SUPPORT_ROOT+"/tickets/"+id,{requiresAuth:true,signal:controller.signal}).then(response=>{if(controller.signal.aborted)return;const matches=response?.success&&String(response.data?.record?.ID_Support)===String(id);setState({key,data:matches?response.data:null,loading:false,error:matches?"":response?.success?"La fiche reçue ne correspond pas au dossier demandé.":response?.message||"Le dossier n’a pas pu être chargé."});});return()=>controller.abort();},[key]);
@@ -25,12 +47,15 @@ export default function SupportDetail({id,initialEdit=false,context,onClose,onCh
  return <><RecordEditorFrame title={record?"Support · "+record.NumeroSupport:"Dossier Support"} subtitle={record?.Objet} icon="help" onClose={onClose} readOnly dirty={hasDraft} busy={inFlight} loading={current.loading} error={current.error} onReload={()=>setRetry(value=>value+1)} defaultWidth={1100} className="support-detail" storageKey="sauverndeko.support.detail.width">
   {record?<>
    <div className="support-detail-heading"><div><span className="support-record-code">{record.NumeroSupport}</span><h3>{record.Objet}</h3><small>{record.Entreprise||"Entreprise du dossier"} · Créé le {date(record.DateCreation)}</small></div><div className="support-badges"><span className="erp-status is-neutral">{record.Statut||"Non renseigné"}</span>{record.Priorite?<span className="erp-status is-neutral">{record.Priorite}</span>:null}{record.Archive?<span className="erp-status is-neutral">Archivé</span>:null}</div></div>
-   <div className="support-detail-actions">{canEdit?<ActionButton icon="edit" disabled={inFlight||hasDraft} onClick={()=>setEditor("edit")}>Modifier</ActionButton>:null}{transitions.map(action=><ActionButton key={action.key} disabled={inFlight||hasDraft} icon={action.requiresVerification?"shield":action.requiresResolution?"check-circle":"movements"} onClick={()=>setEditor(action)}>{action.label}</ActionButton>)}<ActionButton icon="refresh" disabled={inFlight||hasDraft} onClick={()=>setRetry(value=>value+1)}>Actualiser</ActionButton>{hasDraft?<small className="record-editor-note">Enregistrez ou retirez le message ou justificatif en cours pour poursuivre le traitement.</small>:null}</div>
-   <ConsultationTabs tabs={SUPPORT_DETAIL_TABS} value={tab} onChange={setTab} label="Détail du dossier"/>
-   {tab==="synthese"?<div className="support-summary"><section className="record-editor-section"><h3><AppIcon name="help"/>Demande</h3><p className="support-content">{record.Description||"Description non renseignée."}</p><Details items={[["Type",record.TypeSupport],["Catégorie",record.CategorieSupport],["Canal d’origine",record.CanalOrigine],...(data.canLinkRequester===false?[]:[["Demandeur",record.Demandeur]])]}/></section><section className="record-editor-section"><h3><AppIcon name="user"/>Affectation et suivi</h3><Details items={[["Responsable",record.Responsable||"À affecter"],["Service concerné",record.ServiceConcerne],["Échéance",date(record.DateEcheance)],["Dernière modification",date(record.DateModification)],["Résolution",date(record.DateResolution)],["Clôture",date(record.DateCloture)]]}/></section>{record.ID_ArticleFk||record.ID_CommandeFk||record.ID_ImmobilisationFk?<section className="record-editor-section is-wide"><h3><AppIcon name="folder"/>Objets liés</h3><Details items={[...(data.canLinkArticle===false?[]:[["Article",record.Article]]),...(data.canLinkOrder===false?[]:[["Bon de stock",record.BonStock||record.Bon]]),...(data.canLinkAsset===false?[]:[["Immobilisation",record.Immobilisation]])]}/></section>:null}</div>:null}
-   <div hidden={tab!=="echanges"}><SupportComments record={record} comments={data.comments||[]} canManage={canComment} onSaved={mutationSaved} onDraftChange={value=>draftChanged("comment",value)} onBusyChange={value=>busyChanged("comment",value)}/></div>
+   <div className="support-detail-actions">{canEdit?<ActionButton icon="edit" disabled={inFlight||hasDraft} onClick={()=>setEditor("edit")}>Modifier</ActionButton>:null}{transitions.map(action=><ActionButton key={action.key} disabled={inFlight||hasDraft} icon={action.requiresVerification?"shield":action.requiresResolution?"check-circle":"movements"} onClick={()=>setEditor(action)}>{action.label}</ActionButton>)}<ActionButton icon="refresh" disabled={inFlight||hasDraft} onClick={()=>setRetry(value=>value+1)}>Actualiser</ActionButton>{hasDraft?<small className="record-editor-note">Enregistrez ou annulez la saisie en cours pour poursuivre le traitement.</small>:null}</div>
+   <ConsultationTabs tabs={SUPPORT_DETAIL_TABS.filter(item=>item.key!=="parcours"||canReadJourney)} value={tab} onChange={setTab} label="Détail du dossier"/>
+   {tab==="synthese"?<div className="support-summary"><section className="record-editor-section"><h3><AppIcon name="help"/>Demande</h3><p className="support-content">{record.Description||"Description non renseignée."}</p><Details items={[["Type",record.TypeSupport],["Catégorie",record.CategorieSupport],["Canal d’origine",record.CanalOrigine],...(data.canLinkRequester===false?[]:[["Demandeur",record.Demandeur]])]}/></section><section className="record-editor-section"><h3><AppIcon name="user"/>Affectation et suivi</h3><Details items={[["Responsable",record.Responsable||"À affecter"],["Service concerné",record.ServiceConcerne],["Échéance",date(record.DateEcheance)],["Dernière modification",date(record.DateModification)],["Résolution",date(record.DateResolution)],["Clôture",date(record.DateCloture)]]}/></section><RelatedRecords record={record} data={data}/></div>:null}
+   {canReadJourney?<div hidden={tab!=="parcours"}><SupportJourney record={record} documents={data.documents||[]} active={tab==="parcours"||drafts.journey===true}
+    refresh={retry+":"+record._version} disabled={drafts.comment||drafts.document||operations.comment||operations.document}
+    onChanged={onChanged} onDraftChange={value=>draftChanged("journey",value)} onBusyChange={value=>busyChanged("journey",value)} onShowDocuments={()=>setTab("documents")}/></div>:null}
+   <div hidden={tab!=="echanges"}><SupportComments record={record} comments={data.comments||[]} canManage={canComment&&!drafts.journey&&!operations.journey} onSaved={mutationSaved} onDraftChange={value=>draftChanged("comment",value)} onBusyChange={value=>busyChanged("comment",value)}/></div>
    <div hidden={tab!=="resolutions"}><SupportResolutions rows={data.resolutions||[]}/></div>
-   <div hidden={tab!=="documents"}><SupportDocuments record={record} rows={data.documents||[]} comments={data.comments||[]} canManage={canUpload} canExport={data.canExport===true} onSaved={mutationSaved} onDraftChange={value=>draftChanged("document",value)} onBusyChange={value=>busyChanged("document",value)}/></div>
+   <div hidden={tab!=="documents"}><SupportDocuments record={record} rows={data.documents||[]} comments={data.comments||[]} canManage={canUpload&&!drafts.journey&&!operations.journey} canExport={data.canExport===true} onSaved={mutationSaved} onDraftChange={value=>draftChanged("document",value)} onBusyChange={value=>busyChanged("document",value)}/></div>
    <div hidden={tab!=="historique"}><SupportHistory rows={data.history||[]}/></div>
   </>:null}
  </RecordEditorFrame>

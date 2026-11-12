@@ -59,7 +59,7 @@ with psycopg.connect(DSN, autocommit=True, row_factory=dict_row) as c:
     tables = q("SELECT schemaname s,tablename t FROM pg_tables WHERE schemaname=ANY(%s) ORDER BY 1,2", [schemas]).fetchall()
     before = {(r['s'], r['t']): rows(r['s'], r['t']) for r in tables}
     fks = q("SELECT conrelid::regclass::text t,conname,pg_get_constraintdef(oid,true) def FROM pg_constraint WHERE contype='f' AND confrelid='referentiel.\"T_Generique\"'::regclass ORDER BY 1,2").fetchall()
-    path = ROOT/'SQL/migrations/20261030_01_referentiels_transversaux.sql'
+    path = ROOT/'backend/database/migrations/20261030_01_referentiels_transversaux.sql'
     q(path.read_text(encoding='utf8'))
     for (schema, table), old in before.items():
         current = rows(schema, table)

@@ -49,7 +49,7 @@ Le script historique d’annulation d’inventaire n’est pas déclaré réussi
 
 ## Principaux fichiers
 
-- Socle SQL : `SQL/migrations/20261107_02_multi_depots.sql`, `SQL/releases/manifest.json`, `SQL/documentation/Multi_Depots_Precontrole.sql` et `SQL/3. Schema logistique/Logistique_MultiDepots.md`.
+- Socle SQL : `backend/database/migrations/20261107_02_multi_depots.sql`, `backend/database/releases/manifest.json`, `SQL/documentation/Multi_Depots_Precontrole.sql` et `SQL/3. Schema logistique/Logistique_MultiDepots.md`.
 - Droits : `deploy/production/role-runtime.sql`.
 - Services : `backend/apps/logistique/depots.py`, `transfers.py`, puis adaptation des services et lectures existants des bons, stocks, lots, inventaires, retours et documents.
 - Interface : `frontend/src/contexts/DepotScopeContext.jsx`, `frontend/src/pages/logistique/Depots.jsx`, `StocksDepots.jsx`, `Transferts.jsx`, services API et adaptation des éditeurs et consultations existants.

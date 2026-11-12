@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -21,6 +22,7 @@ target = urlsplit(DSN)
 if target.hostname not in {'localhost', '127.0.0.1'} or not target.path[1:].startswith('sauverndeko_test_'):
     raise RuntimeError('Recette réservée au PostgreSQL privé local sauverndeko_test_*.')
 checks = []
+installation_seed = {'existingConfigurationPreserved': False}
 tag = uuid.uuid4().hex
 
 
@@ -55,15 +57,18 @@ with psycopg.connect(DSN, autocommit=True, row_factory=dict_row) as c:
         except psycopg.Error as error:
             assert error.sqlstate not in {'42601', '42703', '42883', '42P01', '42804'}, (label, str(error))
             check(True, label)
+            return error
         else:
             raise AssertionError('Accepté à tort : ' + label)
 
     check(one('SELECT current_database() db')['db'] == target.path[1:], 'Base effectivement privée')
     if one("SELECT to_regclass('support.\"T_Support\"') t")['t'] is None:
-        q((ROOT / 'SQL/migrations/20261030_06_support.sql').read_text(encoding='utf8'))
-    check(one('SELECT count(*) n FROM support."T_Support"')['n'] == 0, 'Migration sans création de dossiers fictifs')
+        q((ROOT / 'backend/database/migrations/20261030_06_support.sql').read_text(encoding='utf8'))
+        check(one('SELECT count(*) n FROM support."T_Support"')['n'] == 0, 'Migration sans création de dossiers fictifs')
+    count_before = one('SELECT count(*) n FROM support."T_Support"')['n']
     tables = q("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='support' AND c.relkind='r'").fetchall()
-    check({r['relname'] for r in tables} == {'T_Support', 'T_CommentaireSupport', 'T_ResolutionSupport', 'T_PieceSupport'}, 'Support contient uniquement données métier et liaisons manquantes')
+    table_names = {r['relname'] for r in tables}
+    check({'T_Support', 'T_CommentaireSupport', 'T_ResolutionSupport', 'T_PieceSupport'} <= table_names, 'Tables historiques du Support conservées')
     for row in q("SELECT c.relname,a.attname,col_description(c.oid,a.attnum) comment FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid WHERE n.nspname='support' AND c.relkind IN('r','v') AND a.attnum>0 AND NOT a.attisdropped"):
         check(bool(row['comment']), 'Colonne documentée : ' + row['relname'] + '.' + row['attname'])
     for row in q("SELECT p.proname,obj_description(p.oid,'pg_proc') comment FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='support'"):
@@ -234,10 +239,111 @@ with psycopg.connect(DSN, autocommit=True, row_factory=dict_row) as c:
         check(one('SELECT "ID_CategorieSupportFk" FROM support."T_Support" WHERE "ID_Support"=%s', [ticket['ID_Support']])['ID_CategorieSupportFk'] is None, 'Référence historique non réécrite après configuration')
         invalid_action = {**cfg, 'transitions': [{'from': 'new', 'to': 'closed', 'action': 'start'}]}
         rejected(lambda: q('UPDATE systeme."T_Admin_UI_Setting" SET "SettingValueJson"=%s WHERE "IdAdminUISetting"=%s', [Jsonb(invalid_action), setting['IdAdminUISetting']]), 'Action de circuit ne peut contourner le parcours de clôture')
-        # Dictionnaire standard d’installation ne recopie aucune surcharge du circuit.
-        check(one('SELECT systeme.fn_support_circuit_defaut() v')['v']['version'] == 1, 'Circuit d’installation neuf indépendant de la surcharge actuelle')
+        # Un dictionnaire déployé peut contenir des abréviations modifiées. Le
+        # circuit installé continue à utiliser ses identifiants. L’ancien
+        # résolveur est vérifié séparément si ses codes techniques manquent.
+        expected_codes = {
+            'ID_StatutFk': {f'support.status.{state}' for state in ('new', 'active', 'pending', 'resolved', 'closed')},
+            'ID_ResultatVerificationFk': {'support.verify.ok', 'support.verify.ko'},
+        }
+        dictionary = q('''
+            SELECT c."ColumnName" field, g."AbrGenerique" code
+            FROM referentiel."T_ChampReferentiel" c
+            JOIN referentiel."T_Generique" g ON g."ID_CategorieGeneriqueFk"=c."ID_CategorieDefautFk"
+            WHERE c."SchemaName"='support' AND c."ColumnName"=ANY(%s)
+              AND g."IdEntiteFk" IS NULL AND g."ValideGenerique"
+        ''', [list(expected_codes)]).fetchall()
+        missing_codes = sorted(code for field, codes in expected_codes.items() for code in codes
+                               if {'field': field, 'code': code} not in dictionary)
+        if missing_codes:
+            error = rejected(lambda: q('SELECT systeme.fn_support_circuit_defaut()'), 'La fonction historique refuse les codes techniques absents')
+            assert error.sqlstate == '23514' and 'Dictionnaire de circuit Support incomplet' in str(error)
+            installation_seed['historicalFunctionMissingCodes'] = missing_codes
+        else:
+            check(one('SELECT systeme.fn_support_circuit_defaut() v')['v']['version'] == 1, 'Fonction historique résout les codes techniques')
+        # Le paquet psql porte sa propre transaction. Ici, sa commande DO
+        # tourne seule dans une sous-transaction de recette annulée.
+        support_seed = (ROOT / 'backend/database/seeds/support_defaults.sql').read_text(encoding='utf8')
+        seed_body = support_seed.partition('BEGIN;\n')[2].rpartition('\nCOMMIT;')[0]
+        check(bool(seed_body.strip()), 'Script de circuit initial présent dans les données d’installation')
+        q(seed_body)
+        configured_query = 'SELECT "SettingValueJson" v FROM systeme."T_Admin_UI_Setting" WHERE "SettingKey"=%s AND "SettingScope"=%s'
+        check(one(configured_query, ['support.workflow', 'global'])['v']['version'] == 2, 'Le seed conserve une configuration existante')
+        installation_seed['existingConfigurationPreserved'] = True
         audit = one('SELECT "NewData","OldData","IdEntiteFk" FROM systeme."T_Audit_Log" WHERE "TableName"=%s AND "NewData"->>\'ID_Support\'=%s ORDER BY "IdLog" DESC LIMIT 1', ['support.T_Support', str(ticket['ID_Support'])])
         check(audit['IdEntiteFk'] == ea and audit['NewData']['_actor']['IdUser'] == actor, 'Audit existant contient propriétaire et acteur réels')
         check(audit['OldData'] is not None and audit['NewData']['requestId'], 'Audit conserve avant/après et preuve de requête')
 
-print(json.dumps({'passed': True, 'assertions': len(checks), 'database': target.path[1:]}))
+        if 'T_ModeleProcessus' in table_names:
+            check({
+                'T_ModeleProcessus', 'T_VersionProcessus', 'T_ParcoursSupport',
+                'T_EtapeParcours', 'T_EvenementParcours', 'T_AlerteParcours',
+            } <= table_names, 'Schéma des parcours complet')
+            rights = {
+                'IdEntiteFk': ea, 'IdUserFk': actor, 'CodeModule': 'support', 'CodeOnglet': 'processus',
+                'PeutConsulter': False, 'PeutGerer': False, 'PeutExporter': False,
+            }
+            restriction = insert('systeme', 'T_UtilisateurModule', rights)
+            check(restriction['CodeOnglet'] == 'processus' and not restriction['PeutConsulter'], 'Restriction individuelle sur les processus enregistrée')
+            error = rejected(lambda: insert('systeme', 'T_UtilisateurModule', {**rights, 'CodeOnglet': 'inexistant'}), 'Onglet sans droits contrôlés refusé')
+            check(error.diag.constraint_name == 'utilisateur_module_onglet_check', 'Catalogue des permissions conservé')
+            check(one('SELECT "ID_SupportFk" FROM support."V_ParcoursSupport" WHERE "ID_SupportFk"=%s', [ticket['ID_Support']]) is None, 'Dossier historique sans parcours automatique')
+            check(one('SELECT referentiel.fn_categories_champ(%s,%s,%s,%s) ids', ['support', 'T_EtapeParcours', 'ID_MotifBlocageFk', ea])['ids'], 'Motif rattaché au catalogue de références')
+            model_values = {'IdEntiteFk': ea, 'Nom': 'Parcours ' + tag, 'ID_TypeSupportFk': base['ID_TypeSupportFk'], 'CreePar': actor}
+            rejected(lambda: insert('support', 'T_ModeleProcessus', {**model_values, 'CreePar': other}), 'Auteur interentreprise refusé pour un modèle')
+            model = insert('support', 'T_ModeleProcessus', model_values)
+            definition = {'stages': [{'name': 'Instruction'}, {'name': 'Validation'}]}
+            version_values = {'ID_ModeleFk': model['ID_Modele'], 'Numero': 1, 'Definition': Jsonb(definition), 'CreePar': actor}
+            version = insert('support', 'T_VersionProcessus', version_values)
+            rejected(lambda: update('T_VersionProcessus', 'ID_Version', version['ID_Version'], {'Definition': Jsonb({'stages': [{'name': 'Réécriture'}]})}), 'Version publiée immuable')
+            context(actor, 'create')
+            tracked = create()
+            current_time = one('SELECT statement_timestamp() t')['t']
+            started = current_time - timedelta(hours=2)
+            due = current_time - timedelta(hours=1)
+            path_values = {
+                'ID_SupportFk': tracked['ID_Support'], 'IdEntiteFk': ea,
+                'ID_VersionFk': version['ID_Version'], 'DemarreLe': started, 'EcheanceGlobale': due,
+            }
+            rejected(lambda: insert('support', 'T_ParcoursSupport', {**path_values, 'ID_SupportFk': global_ticket['ID_Support'], 'IdEntiteFk': eb}), 'Parcours refuse une autre entreprise')
+            insert('support', 'T_ParcoursSupport', path_values)
+            newer_version = insert('support', 'T_VersionProcessus', {**version_values, 'Numero': 2, 'Definition': Jsonb({'stages': [{'name': 'Autre instruction'}]})})
+            rejected(lambda: insert('support', 'T_ParcoursSupport', {**path_values, 'ID_SupportFk': newer['ID_Support']}), 'Démarrage avec une ancienne version refusé')
+            rejected(lambda: update('T_ParcoursSupport', 'ID_SupportFk', tracked['ID_Support'], {'ID_VersionFk': newer_version['ID_Version']}), 'Version d’un dossier déjà démarré conservée')
+            stage_values = {
+                'ID_SupportFk': tracked['ID_Support'], 'Position': 1, 'EntreeLe': started, 'Echeance': due,
+                'ID_ResponsableFk': actor,
+            }
+            rejected(lambda: insert('support', 'T_EtapeParcours', {**stage_values, 'ID_ResponsableFk': other}), 'Responsable d’étape interentreprise refusé')
+            stage = insert('support', 'T_EtapeParcours', stage_values)
+            rejected(lambda: insert('support', 'T_EtapeParcours', {**stage_values, 'Position': 2}), 'Deux étapes ouvertes simultanément refusées')
+            rejected(lambda: update('T_ParcoursSupport', 'ID_SupportFk', tracked['ID_Support'], {'TermineLe': current_time}), 'Clôture d’un parcours avec une étape ouverte refusée')
+            view = one('SELECT * FROM support."V_ParcoursSupport" WHERE "ID_SupportFk"=%s', [tracked['ID_Support']])
+            check(view['NomEtape'] == 'Instruction' and view['EnRetardGlobal'] and view['EnRetardEtape'], 'Synthèse fondée sur la version figée et les échéances')
+            event_values = {
+                'ID_SupportFk': tracked['ID_Support'], 'ID_EtapeFk': stage['ID_Etape'], 'Action': 'approve',
+                'AuteurFk': actor, 'RequestId': uuid.uuid4(), 'PayloadHash': 'c' * 64,
+            }
+            event = insert('support', 'T_EvenementParcours', event_values)
+            rejected(lambda: insert('support', 'T_EvenementParcours', {**event_values, 'RequestId': uuid.uuid4()}), 'Validation répétée sur la même étape refusée')
+            rejected(lambda: insert('support', 'T_EvenementParcours', {**event_values, 'Action': 'receive'}), 'Rejeu de requête sur un parcours refusé')
+            rejected(lambda: update('T_EvenementParcours', 'ID_Evenement', event['ID_Evenement'], {'Motif': 'Réécriture'}), 'Historique du parcours immuable')
+            alert_values = {'ID_SupportFk': tracked['ID_Support'], 'Type': 'global', 'Occurrence': 0}
+            alert = insert('support', 'T_AlerteParcours', alert_values)
+            rejected(lambda: insert('support', 'T_AlerteParcours', alert_values), 'Alerte globale répétée refusée même sans identifiant d’étape')
+            rejected(lambda: update('T_AlerteParcours', 'ID_Alerte', alert['ID_Alerte'], {'DestinataireFk': other}), 'Destinataire d’une autre entreprise refusé')
+            rejected(lambda: update('T_AlerteParcours', 'ID_Alerte', alert['ID_Alerte'], {'Statut': 'sent', 'TraiteLe': current_time}), 'Envoi sans preuve de notification refusé')
+            notification = insert('communication', 'T_Communication', {'IdUserFk': actor, 'IdEntiteFk': ea, 'ContenuCommunication': 'Notification de recette.'})
+            update('T_AlerteParcours', 'ID_Alerte', alert['ID_Alerte'], {
+                'Statut': 'sent', 'DestinataireFk': actor, 'TraiteLe': current_time, 'ID_CommunicationFk': notification['IdCommunication'],
+            })
+            rejected(lambda: update('T_AlerteParcours', 'ID_Alerte', alert['ID_Alerte'], {'Statut': 'pending'}), 'Envoi validé conservé sans modification')
+            update('T_EtapeParcours', 'ID_Etape', stage['ID_Etape'], {'SortieLe': current_time})
+            update('T_ParcoursSupport', 'ID_SupportFk', tracked['ID_Support'], {'TermineLe': current_time})
+            view = one('SELECT * FROM support."V_ParcoursSupport" WHERE "ID_SupportFk"=%s', [tracked['ID_Support']])
+            check(view['ID_EtapeCourante'] is None and not view['EnRetardGlobal'] and not view['EnRetardEtape'], 'Parcours terminé retiré des retards courants')
+
+    check(one('SELECT count(*) n FROM support."T_Support"')['n'] == count_before, 'Aucun dossier fictif conservé après la recette')
+
+print(json.dumps({'passed': True, 'assertions': len(checks), 'database': target.path[1:],
+                  'installationSeed': installation_seed}))

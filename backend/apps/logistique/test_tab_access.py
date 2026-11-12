@@ -6,6 +6,7 @@ from django.urls import resolve
 
 from apps.core.responses import APIError
 from apps.core.views import mutation_response
+from apps.logistique.excel import register_workbook
 from apps.logistique.reads import restrict_order_source, row_source
 from apps.logistique.tab_access import enforce_logistics_request, restricted_fields, validate_invoice_changes
 
@@ -40,6 +41,16 @@ class LogisticsTabAccessTests(SimpleTestCase):
         ]:
             with self.subTest(path=path), self.assertRaises(APIError):
                 self.authorize(path, action)
+
+    def test_stock_card_export_checks_both_source_tabs(self):
+        self.deny("articles", "canExport")
+        for extension in ("xlsx", "csv"):
+            path = "/api/logistique/registre/mouvements/export." + extension
+            query = {"documentScope": "stock-card", "articleId": "2"}
+            with self.subTest(extension=extension):
+                self.assertTrue(self.authorize(path, "export"))
+                with self.assertRaises(APIError):
+                    register_workbook(self.actor, "mouvements", query, file_format=extension)
 
     def test_forbidden_lines_cannot_be_recovered_from_a_related_workspace(self):
         self.deny("details", "canRead", "canManage", "canExport")

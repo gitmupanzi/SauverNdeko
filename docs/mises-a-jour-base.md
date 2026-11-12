@@ -4,11 +4,13 @@
 
 Une nouvelle livraison peut ajouter une colonne, une table, une vue ou un trigger en conservant les données existantes. Le code et les migrations sont versionnés ensemble dans Git. Chaque base possède son propre journal `systeme.T_MigrationSchema` : les entreprises partageant une même base reçoivent une seule mise à jour du schéma ; des installations distinctes doivent chacune recevoir la livraison.
 
+Depuis la racine du dépôt, les scripts PostgreSQL métier se trouvent dans [`backend/database/migrations/`](../backend/database/migrations), avec le [manifeste de livraison](../backend/database/releases/manifest.json) et le socle dans `backend/database/releases/`. Le journal identifie chaque migration par sa version et son empreinte. Le déplacement des fichiers conserve donc les versions déjà appliquées.
+
 L'ORM Django et les migrations natives de `public` restent séparés des schémas métier. Les modèles métier conservent `managed=False`. Les commandes de démarrage, le build frontend et le simple chargement d'un `.env` n'exécutent aucune migration.
 
 ## Socle existant et première attestation
 
-`SQL/releases/manifest.json` désigne le socle `baseline-20261104.json`. Il décrit 4 863 objets du catalogue métier et inventorie les 65 anciens fichiers de migration. Cette photographie a été comparée à une restauration privée de la base ; elle ne prétend pas que chacun des anciens scripts a été exécuté individuellement.
+`backend/database/releases/manifest.json` désigne le socle `baseline-20261104.json`. Il décrit 4 863 objets du catalogue métier et inventorie les 65 anciens fichiers de migration. Cette photographie a été comparée à une restauration privée de la base ; elle ne prétend pas que chacun des anciens scripts a été exécuté individuellement.
 
 L'attestation vérifie le catalogue réel avant de créer une entrée de journal. Elle n'exécute aucun ancien script et ne permet pas de faire correspondre arbitrairement une ancienne base à la version courante. Un catalogue différent est refusé : les différences doivent être comprises et traitées par un parcours adapté.
 
@@ -19,10 +21,10 @@ Depuis la racine du projet, avec une connexion de maintenance explicitement choi
 backend/.venv/Scripts/python.exe backend/manage.py migrer_metier
 
 # Vérifier un premier socle ; aucune écriture sans --apply.
-backend/.venv/Scripts/python.exe backend/manage.py migrer_metier --baseline SQL/releases/baseline-20261104.json
+backend/.venv/Scripts/python.exe backend/manage.py migrer_metier --baseline backend/database/releases/baseline-20261104.json
 
 # Attester le socle correspondant exactement au catalogue installé.
-backend/.venv/Scripts/python.exe backend/manage.py migrer_metier --baseline SQL/releases/baseline-20261104.json --apply
+backend/.venv/Scripts/python.exe backend/manage.py migrer_metier --baseline backend/database/releases/baseline-20261104.json --apply
 ```
 
 La connexion doit autoriser l'écriture pour la dernière commande. Sur un serveur distant, utiliser l'environnement `config.maintenance`, `DATABASE_URL` explicite et les paramètres TLS adaptés. Ne pas donner ce compte propriétaire au serveur HTTP.
@@ -31,9 +33,9 @@ Une installation vierge suit d'abord `preparer_installation` / `installer_instan
 
 ## Ajouter une nouvelle migration
 
-1. Créer un **nouveau** fichier dans `SQL/migrations/`, par exemple `20261105_01_contact_secondaire.sql`. Ne pas modifier les fichiers historiques ou le socle attesté.
+1. Créer un **nouveau** fichier dans `backend/database/migrations/`, par exemple `20261105_01_contact_secondaire.sql`. Ne pas modifier les fichiers historiques ou le socle attesté.
 2. Écrire le SQL progressif, ses préconditions et les `COMMENT ON` utiles. La transaction est gérée par le moteur : aucun `BEGIN`, `COMMIT`, `ROLLBACK`, commande psql ou index `CONCURRENTLY` dans ce parcours.
-3. Ajouter l'entrée à la fin de `SQL/releases/manifest.json`, avec un identifiant unique, le fichier, ses dépendances, sa description, sa version et son empreinte.
+3. Ajouter l'entrée à la fin de `backend/database/releases/manifest.json`, avec un identifiant unique, le fichier, ses dépendances, sa description, sa version et son empreinte.
 4. Tester l'évolution sur une copie restaurée avec données représentatives : conservation, droits, anciennes références, vues et triggers, échec et rejeu.
 5. Actualiser les définitions canoniques concernées et les contrats backend/frontend. Un instantané complet de structure sert à une base vide ; il ne doit pas remplacer les tables d'une base cliente.
 

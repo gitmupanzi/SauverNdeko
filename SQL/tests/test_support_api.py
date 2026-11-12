@@ -13,7 +13,9 @@ import unittest
 import uuid
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 import psycopg
@@ -29,8 +31,10 @@ sys.path.insert(0,str(ROOT/'backend'))
 os.environ.update(DATABASE_URL=DSN,DJANGO_SETTINGS_MODULE='config.settings',SAUVERNDEKO_DB_READ_ONLY='0')
 import django;django.setup()
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.db import connections, transaction
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 from apps.accounts.authentication import Actor
 from apps.core import db
@@ -193,9 +197,35 @@ class SupportAPI(unittest.TestCase):
         saved=self.status(self.edit(row,Objet='Correction descriptive sans migration'));self.assertEqual(saved[field],row[field]);self.status(self.client().post(BASE+'tickets',self.body(),format='json'),422)
 
     def test_17_dashboard_detail_parity(self):
-        self.create();self.active();self.resolved();dashboard=self.status(self.client().get(BASE+'tableau-de-bord'))
-        for metric,indicator in [('ouverts','ouverts'),('enAttente','attente'),('enRetard','retard'),('resolus','resolus'),('clotures','clotures')]:
-            response=self.client().get(BASE+'tickets',{'indicator':indicator});self.status(response);self.assertEqual(response.data['meta']['filteredCount'],dashboard['metrics'][metric])
+        now = timezone.now()
+        soon = (now + timedelta(days=6, hours=23)).isoformat()
+        later = (now + timedelta(days=7, hours=1)).isoformat()
+        overdue = (now - timedelta(days=1)).isoformat()
+        unassigned = self.create(ID_ResponsableFk=None, DateEcheance=soon)
+        self.create(ID_ResponsableFk=self.users[0]['IdUser'], DateEcheance=later)
+        self.create(ID_ResponsableFk=self.users[0]['IdUser'], DateEcheance=overdue)
+        self.create(ID_ResponsableFk=self.users[0]['IdUser'], DateEcheance=None)
+        pending = self.action(self.create(ID_ResponsableFk=self.users[0]['IdUser'], DateEcheance=soon), 'start')
+        pending = self.action(pending, 'pause', motif='Attente de la preuve.')
+        resolved = self.action(self.create(ID_ResponsableFk=self.users[0]['IdUser'], DateEcheance=soon), 'start')
+        self.action(resolved, 'resolve', CauseIdentifiee='Cause de recette', SolutionAppliquee='Solution fictive.')
+        self.create(2, ID_ResponsableFk=None, DateEcheance=soon)
+
+        dashboard = self.status(self.client().get(BASE+'tableau-de-bord'))
+        pairs = [('ouverts', 'ouverts'), ('enAttente', 'attente'), ('enAttente', 'enAttente'),
+                 ('enRetard', 'retard'), ('enRetard', 'enRetard'), ('resolus', 'resolus'), ('clotures', 'clotures'),
+                 ('aEcheanceProchaine', 'echeance-prochaine'), ('sansResponsable', 'sans-responsable')]
+        expected = {
+            'aEcheanceProchaine': {unassigned['ID_Support'], pending['ID_Support']},
+            'sansResponsable': {unassigned['ID_Support']},
+        }
+        for metric, indicator in pairs:
+            with self.subTest(indicator=indicator):
+                response = self.client().get(BASE+'tickets', {'indicator': indicator})
+                rows = self.status(response)
+                self.assertEqual(response.data['meta']['filteredCount'], dashboard['metrics'][metric])
+                if metric in expected:
+                    self.assertEqual({row['ID_Support'] for row in rows}, expected[metric])
 
     def test_18_kanban_counts_and_no_duplicates(self):
         rows=[self.create() for _ in range(24)];kanban=self.status(self.client().get(BASE+'kanban'));group=next(item for item in kanban['columns'] if item['id']==rows[0]['ID_StatutFk']);self.assertEqual(len(group['rows']),20);self.assertTrue(group['hasMore']);self.assertGreaterEqual(group['count'],24)
@@ -372,6 +402,380 @@ class SupportAPI(unittest.TestCase):
         choices=portal.references(self.actor(),portal.record(self.actor(),row['ID_Support']))['references']['categories']
         self.assertEqual(next(item['label'] for item in choices if item['id']==identifier),'Valeur sans abréviation #'+str(identifier))
         self.assertEqual(self.get_detail(row)['record']['CategorieSupport'],'Valeur sans abréviation #'+str(identifier))
+
+    def process_model(self, ticket, stages, client=None, **changes):
+        client = client or self.client()
+        body = {
+            'name': 'Parcours de recette ' + uuid.uuid4().hex,
+            'typeId': ticket['ID_TypeSupportFk'],
+            'globalMinutes': 120,
+            'reminderMinutes': 30,
+            'stages': stages,
+            'requestId': str(uuid.uuid4()),
+            **changes,
+        }
+        return self.status(client.post(BASE + 'processus', body, format='json'), 201)
+
+    def process_action(self, ticket, action, revision=None, client=None, request_id=None, **data):
+        client = client or self.client()
+        payload = {'action': action, 'requestId': request_id or str(uuid.uuid4()), **data}
+        if revision is not None:
+            payload['revision'] = revision
+        return client.post(BASE + 'tickets/' + str(ticket['ID_Support']) + '/parcours', payload, format='json')
+
+    def test_process_models_batch_atomic_replay_and_duplicate(self):
+        ticket = self.create()
+        prefix = 'Lot ' + uuid.uuid4().hex
+        first = {'clientRowId': 'a', 'name': prefix + ' A', 'typeId': ticket['ID_TypeSupportFk'],
+                 'stages': [{'name': 'Réception'}, {'name': 'Validation'}]}
+        second = {**first, 'clientRowId': 'b', 'name': prefix + ' B', 'stages': []}
+        body = {'requestId': str(uuid.uuid4()), 'items': [first, second]}
+        client = self.client()
+        failed = client.post(BASE + 'processus/lot', body, format='json')
+        self.status(failed, 422)
+        self.assertEqual(failed.data['error']['details']['errors'][0]['clientRowId'], 'b')
+        self.assertEqual(self.status(client.get(BASE + 'processus', {'q': prefix}))['count'], 0)
+
+        second['stages'] = [{'name': 'Contrôle'}]
+        created = self.status(client.post(BASE + 'processus/lot', body, format='json'), 201)
+        self.assertEqual([(item['clientRowId'], item['stageCount']) for item in created['items']], [('a', 2), ('b', 1)])
+        replay = client.post(BASE + 'processus/lot', body, format='json')
+        self.assertEqual(self.status(replay), created)
+        self.assertTrue(replay.data['meta']['replayed'])
+        second['name'] += ' modifié'
+        self.status(client.post(BASE + 'processus/lot', body, format='json'), 409)
+        self.assertEqual(self.status(client.get(BASE + 'processus', {'q': prefix}))['count'], 2)
+
+        duplicate = {**second, 'name': first['name'].lower()}
+        attempted = client.post(BASE + 'processus/lot', {'requestId': str(uuid.uuid4()), 'items': [duplicate]}, format='json')
+        self.status(attempted, 422)
+        self.assertEqual(attempted.data['error']['details']['errors'][0]['clientRowId'], 'b')
+
+    def test_process_models_excel_template_and_preview_preserve_source_rows(self):
+        from openpyxl import load_workbook
+
+        client = self.client(export=False)
+        template = client.get(BASE + 'processus/modele.xlsx')
+        self.status(template)
+        workbook = load_workbook(io.BytesIO(b''.join(template.streaming_content)))
+        self.assertEqual(workbook.sheetnames, ['Modèles', 'Options', 'Informations'])
+        sheet = workbook['Modèles']
+        headers = {cell.value: cell.column for cell in sheet[1]}
+        name = 'Excel ' + uuid.uuid4().hex
+        type_id = self.create()['ID_TypeSupportFk']
+        for line, fields in {
+            2: {'Nom du modèle': name, 'Type de dossier': type_id, 'Nom de l’étape': 'Réception', 'Réception obligatoire': 'Oui'},
+            4: {'Nom du modèle': name, 'Nom de l’étape': 'Vérification', 'Responsable': 'Identifiant inconnu'},
+        }.items():
+            for label, value in fields.items():
+                sheet.cell(line, headers[label], value)
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        upload = SimpleUploadedFile('modeles.xlsx', output.getvalue())
+        preview = self.status(client.post(BASE + 'processus/import.xlsx', {'file': upload}, format='multipart'))
+        self.assertEqual(preview['items'][0]['typeId'], type_id)
+        self.assertEqual([stage['name'] for stage in preview['items'][0]['stages']], ['Réception', 'Vérification'])
+        self.assertIs(preview['items'][0]['stages'][0]['requiresReceipt'], True)
+        self.assertEqual(preview['items'][0]['stages'][1]['responsibleId'], 'Identifiant inconnu')
+        self.assertEqual([(issue['row'], issue['clientRowId']) for issue in preview['errors']], [(4, 'excel-2')])
+        self.assertEqual(self.status(client.get(BASE + 'processus', {'q': name}))['count'], 0)
+        self.status(self.client(manage=False).get(BASE + 'processus/modele.xlsx'), 403)
+        self.status(self.client(all_entities=True).get(BASE + 'processus/modele.xlsx'), 409)
+
+    def test_process_models_filters_exports_and_company_scope(self):
+        from openpyxl import load_workbook
+
+        ticket = self.create()
+        prefix = 'Export modèle ' + uuid.uuid4().hex
+        kept = self.process_model(ticket, [{'name': 'Étape 1'}], name=prefix + ' %', active=True)
+        self.process_model(ticket, [{'name': 'Étape 2'}], name=prefix + ' suite', active=False)
+        other_ticket = self.create(2)
+        other = self.process_model(other_ticket, [{'name': 'Étape externe'}], client=self.client(entity_index=1),
+                                   name=prefix + ' %')
+        client = self.client()
+        filtered = self.status(client.get(BASE + 'processus', {'q': prefix, 'typeId': ticket['ID_TypeSupportFk'],
+            'active': 'false', 'take': 1, 'skip': 0, 'sortBy': 'name', 'sortDir': 'desc'}))
+        self.assertEqual(filtered['count'], 1)
+        self.assertEqual(filtered['items'][0]['name'], prefix + ' suite')
+        self.assertIn(ticket['ID_TypeSupportFk'], {item['id'] for item in filtered['filterTypes']})
+        self.assertEqual(self.status(client.get(BASE + 'processus', {'q': prefix + ' %'}))['count'], 1)
+        columns = ['name', 'stageCount', 'entityName']
+        params = {'q': prefix, 'columns': json.dumps(columns), 'selection': json.dumps([kept['id'], other['id']])}
+        response = client.get(BASE + 'processus/export.xlsx', params)
+        self.status(response)
+        self.assertEqual(response['X-Export-Row-Count'], '1')
+        workbook = load_workbook(io.BytesIO(b''.join(response.streaming_content)), read_only=True)
+        rows = list(workbook.active.values)
+        self.assertEqual(rows[0], ('Modèle', 'Étapes', 'Entreprise'))
+        self.assertEqual(rows[1], (kept['name'], 1, kept['entityName']))
+        workbook.close()
+        response = client.get(BASE + 'processus/export.csv', params, HTTP_ACCEPT='text/csv')
+        self.status(response)
+        self.assertEqual(response['X-Export-Row-Count'], '1')
+        csv = b''.join(response.streaming_content).decode('utf-8-sig')
+        self.assertIn(kept['name'], csv)
+        self.assertNotIn(prefix + ' suite', csv)
+        self.status(self.client(export=False).get(BASE + 'processus/export.csv', params), 403)
+        self.status(client.get(BASE + 'processus/export.xlsx', {**params, 'columns': '["definition"]'}), 400)
+
+    def test_processes_company_scope_and_tab_rights(self):
+        one = self.create()
+        two = self.create(2)
+        model = self.process_model(one, [{'name': 'Réception'}])
+        self.assertTrue(self.status(self.client().get(BASE + 'contexte'))['canReadProcessModels'])
+        other = self.client(2)
+        self.status(other.get(BASE + 'processus/' + str(model['id'])), 404)
+        self.status(other.get(BASE + 'tickets/' + str(one['ID_Support']) + '/parcours'), 404)
+        self.status(self.process_action(two, 'start', client=other, modelId=model['id']), 422)
+        self.status(self.process_action(one, 'start', modelId=model['id']))
+        results = self.status(other.get(BASE + 'processus/suivi', {'entityId': self.entities[0]}))
+        self.assertEqual(results['items'], [])
+        admin = self.status(self.client(all_entities=True).get(BASE + 'processus/suivi',
+                                                              {'entityId': self.entities[0]}))
+        self.assertIn(one['ID_Support'], [row['ticketId'] for row in admin['items']])
+
+        actor = self.actor(1)
+        actor._module_access['tabs']['support'] = {
+            'processus': {'canRead': False, 'canManage': False, 'canExport': False},
+        }
+        restricted = APIClient()
+        restricted.force_authenticate(actor)
+        for path in ('processus', 'processus/suivi', 'tickets/' + str(one['ID_Support']) + '/parcours'):
+            self.status(restricted.get(BASE + path), 403)
+        self.status(restricted.get(BASE + 'tickets/' + str(one['ID_Support'])))
+        self.assertFalse(self.status(restricted.get(BASE + 'contexte'))['canReadProcessModels'])
+        dashboard = self.status(restricted.get(BASE + 'tableau-de-bord'))
+        self.assertEqual(dashboard['metrics'], self.status(self.client(1).get(BASE + 'tableau-de-bord'))['metrics'])
+        self.assertIsNone(dashboard['processes'])
+        actor._module_access['tabs']['support']['processus']['canRead'] = True
+        self.status(restricted.get(BASE + 'processus/suivi'))
+        self.status(restricted.get(BASE + 'processus'), 403)
+        self.assertFalse(self.status(restricted.get(BASE + 'contexte'))['canReadProcessModels'])
+
+    def test_process_dashboard_matches_each_filtered_list(self):
+        waiting, blocked, finished = [self.create() for _ in range(3)]
+        other = self.create(2)
+        reception = self.process_model(waiting, [{'name': 'Réception', 'requiresReceipt': True, 'minutes': 1}])
+        action = self.process_model(blocked, [{'name': 'Traitement'}])
+        second_company = self.client(entity_index=1)
+        other_model = self.process_model(other, [{'name': 'Traitement externe'}], client=second_company)
+        past = timezone.now() - timedelta(minutes=10)
+        with patch('apps.support.processes.timezone.now', return_value=past):
+            self.status(self.process_action(waiting, 'start', modelId=reception['id']))
+        for ticket, operation in ((blocked, 'block'), (finished, 'advance')):
+            run = self.status(self.process_action(ticket, 'start', modelId=action['id']))['run']
+            details = {'reason': 'En attente de pièces'} if operation == 'block' else {}
+            self.status(self.process_action(ticket, operation, run['revision'], **details))
+        self.status(self.process_action(other, 'start', modelId=other_model['id'], client=second_company))
+
+        dashboard = self.status(self.client().get(BASE + 'tableau-de-bord'))
+        self.assertEqual(dashboard['metrics']['enRetard'], 0)
+        self.assertEqual(dashboard['processes'], {'active': 2, 'late': 1, 'blocked': 1, 'awaitingReceipt': 1})
+        for indicator, tickets in {'active': [waiting, blocked], 'late': [waiting],
+                                   'blocked': [blocked], 'awaitingReceipt': [waiting]}.items():
+            results = self.status(self.client().get(BASE + 'processus/suivi', {'indicator': indicator}))
+            self.assertEqual(results['count'], dashboard['processes'][indicator])
+            self.assertEqual({item['ticketId'] for item in results['items']},
+                             {ticket['ID_Support'] for ticket in tickets})
+        self.status(self.client().get(BASE + 'processus/suivi', {'indicator': 'invalid'}), 422)
+        self.assertEqual(self.status(second_company.get(BASE + 'tableau-de-bord'))['processes']['active'], 1)
+        with patch('apps.support.processes.process_available', return_value=False):
+            self.assertIsNone(self.status(self.client().get(BASE + 'tableau-de-bord'))['processes'])
+
+    def test_processes_revision_replay_and_frozen_definition(self):
+        ticket = self.create()
+        model = self.process_model(ticket, [{'name': 'Étape publiée', 'requiresReceipt': True, 'minutes': 15}])
+        start_id = str(uuid.uuid4())
+        first = self.status(self.process_action(ticket, 'start', request_id=start_id, modelId=model['id']))['run']
+        replayed = self.process_action(ticket, 'start', request_id=start_id, modelId=model['id'])
+        self.assertTrue(replayed.data['meta']['replayed'])
+        self.assertEqual(self.status(replayed)['run']['revision'], first['revision'])
+        self.status(self.process_action(ticket, 'start', request_id=start_id, modelId=model['id'] + 1), 409)
+        self.status(self.process_action(ticket, 'receive', revision=0), 409)
+        edit = {key: model[key] for key in ('name', 'typeId', 'description', 'globalMinutes',
+                                          'reminderMinutes', 'active', 'revision')}
+        edit.update(stages=[{'name': 'Étape révisée', 'requiresReceipt': False}], requestId=str(uuid.uuid4()))
+        edit_url = BASE + 'processus/' + str(model['id'])
+        updated = self.status(self.client().put(edit_url, edit, format='json'))
+        self.assertEqual(updated['version'], 2)
+        conflict = {**edit, 'requestId': str(uuid.uuid4())}
+        self.status(self.client().put(edit_url, conflict, format='json'), 409)
+        ticket_again = self.create()
+        second = self.status(self.process_action(ticket_again, 'start', modelId=model['id']))['run']
+        self.assertEqual(second['current']['name'], 'Étape révisée')
+        original = self.status(self.process_action(ticket, 'receive', revision=first['revision']))['run']
+        self.assertEqual(original['current']['name'], 'Étape publiée')
+        self.assertEqual(original['version'], 1)
+        self.assertIsNotNone(original['current']['receivedAt'])
+        rendered = self.client().get(BASE + 'tickets/' + str(ticket['ID_Support']) + '/parcours').json()['data']['run']
+        elapsed = datetime.fromisoformat(rendered['current']['dueAt']) - datetime.fromisoformat(rendered['current']['enteredAt'])
+        self.assertEqual(elapsed.total_seconds(), 15 * 60)
+
+    def test_processes_validation_block_return_and_legacy_close(self):
+        financial_counts = '''
+            SELECT (SELECT count(*) FROM operations."T_Paiement") AS caisse,
+                   (SELECT count(*) FROM logistique."T_Reglements") AS reglements
+        '''
+        before = db.one(financial_counts)
+        ticket = self.active()
+        model = self.process_model(ticket, [
+            {'name': 'Traitement', 'requiresReceipt': True, 'requiresDocument': True,
+             'requiredInformation': 'Constat', 'validators': [{'userId': self.users[1]['IdUser']}]},
+            {'name': 'Contrôle', 'allowReturn': True},
+        ])
+        run = self.status(self.process_action(ticket, 'start', modelId=model['id']))['run']
+
+        def action(key, index=0, code=200, **data):
+            nonlocal run
+            response = self.process_action(ticket, key, run['revision'], self.client(index), **data)
+            result = self.status(response, code)
+            if code == 200:
+                run = result['run']
+            return response
+
+        self.assertNotIn('resolve', [item['key'] for item in self.get_detail(ticket)['transitions']])
+        legacy = {'action': 'resolve', '_version': ticket['_version'], 'requestId': str(uuid.uuid4()),
+                  'CauseIdentifiee': 'Cause fictive', 'SolutionAppliquee': 'Solution fictive'}
+        legacy_url = BASE + 'tickets/' + str(ticket['ID_Support']) + '/actions'
+        self.status(self.client().post(legacy_url, legacy, format='json'), 409)
+        action('approve', 1, 403)
+        action('receive')
+        action('block', code=422)
+        action('block', reason='Pièce attendue.')
+        self.assertEqual(run['current']['blockage'], 'Pièce attendue.')
+        action('approve', 1, 403)
+        action('unblock', reason='Pièce reçue.')
+        action('approve', code=403)
+        response = action('approve', 1)
+        event = run['history'][-1]
+        self.assertEqual(event['action'], 'approve')
+        self.assertEqual(run['current']['validationCount'], 1)
+        action('approve', 1, 403)
+        action('advance', code=422, information='Constat validé.')
+        self.assertEqual(response.data['data']['run']['current']['name'], 'Traitement')
+
+        document_payload = {
+            'requestId': str(uuid.uuid4()), '_version': ticket['_version'], 'Visibilite': 'interne',
+            'file': SimpleUploadedFile('parcours.pdf', b'%PDF-1.4\njustificatif\n%%EOF',
+                                       content_type='application/pdf'),
+        }
+        document_url = BASE + 'tickets/' + str(ticket['ID_Support']) + '/documents'
+        detail = self.status(self.client().post(document_url, document_payload, format='multipart'), 201)
+        piece = detail['documents'][0]['ID_PieceFk']
+        action('advance', information='Constat validé.', documentId=piece)
+        self.assertEqual(run['current']['name'], 'Contrôle')
+        self.assertEqual(run['history'][-1]['documentId'], piece)
+        reader = self.client(1, manage=False)
+        reader_run = self.status(reader.get(BASE + 'tickets/' + str(ticket['ID_Support']) + '/parcours'))['run']
+        self.assertNotIn('documentId', reader_run['history'][-1])
+        self.assertNotIn('information', reader_run['history'][-1])
+        self.status(reader.get(document_url + '/' + str(piece) + '/download'), 404)
+        original_step = run['steps'][0]['id']
+        action('return', targetPosition=1, reason='Reprise demandée.')
+        self.assertNotEqual(run['current']['id'], original_step)
+        self.assertEqual(run['current']['validationCount'], 0)
+        action('receive')
+        action('approve', 1)
+        action('advance', information='Reprise validée.', documentId=piece)
+        action('advance')
+        self.assertIsNone(run['current'])
+        self.assertIsNotNone(run['completedAt'])
+        self.assertEqual([step['position'] for step in run['steps']], [1, 2, 1, 2])
+        self.assertEqual(self.get_detail(ticket)['record']['StatutCode'], 'active')
+        updated = self.status(self.client().post(legacy_url, {
+            **legacy, '_version': detail['record']['_version'], 'requestId': str(uuid.uuid4()),
+        }, format='json'))
+        self.assertEqual(updated['record']['StatutCode'], 'resolved')
+        accepted = db.one('SELECT "CircuitSnapshot" FROM support."T_Support" WHERE "ID_Support"=%s',
+                          [ticket['ID_Support']])['CircuitSnapshot']['verification']['accepted']
+        verified = self.action(updated['record'], 'verify', 1, ID_ResultatVerificationFk=accepted,
+                               CommentaireVerification='Vérification de la résolution terminée.')
+        self.assertEqual(self.action(verified, 'close', 1)['StatutCode'], 'closed')
+        self.assertEqual(db.one(financial_counts), before)
+
+
+    def test_processes_categorical_reasons_and_multiple_validations(self):
+        ticket = self.create()
+        category_id = reference_context(
+            self.actor(), 'support', 'T_EtapeParcours', 'ID_MotifBlocageFk',
+        )['categoryIds'][0]
+        reason_id = db.one('''
+            INSERT INTO referentiel."T_Generique"
+                ("ID_CategorieGeneriqueFk","NomGenerique","AbrGenerique","ValideGenerique")
+            VALUES (%s,%s,%s,true) RETURNING "ID_Generique" AS id
+        ''', [category_id, 'Justification fictive ' + uuid.uuid4().hex, 'JUSTIFICATION'])['id']
+        model = self.process_model(ticket, [
+            {'name': 'Préparation', 'blockerReasonIds': [reason_id], 'rejectReasonIds': [reason_id],
+             'validators': [{'userId': self.users[index]['IdUser']} for index in (0, 1)]},
+            {'name': 'Transmission', 'allowReturn': True, 'returnReasonIds': [reason_id]},
+        ])
+        run = self.status(self.process_action(ticket, 'start', modelId=model['id']))['run']
+
+        def action(key, index=0, code=200, **data):
+            nonlocal run
+            result = self.status(self.process_action(ticket, key, run['revision'], self.client(index), **data), code)
+            if code == 200:
+                run = result['run']
+
+        self.assertEqual(run['current']['blockerReasons'], [{'id': reason_id, 'label': 'JUSTIFICATION'}])
+        action('block', code=422, reason='Motif absent')
+        action('reject', index=1, code=422, reason='Motif absent')
+        action('reject', index=1, reason='Reprise nécessaire', reasonId=reason_id)
+        self.assertEqual(run['history'][-1]['reasonLabel'], 'JUSTIFICATION')
+        self.assertEqual(run['current']['blockage'], 'Reprise nécessaire')
+        action('unblock', reason='Reprise effectuée')
+        action('approve', index=1)
+        action('advance', code=403)
+        action('approve')
+        self.assertEqual(run['current']['validationCount'], 2)
+        action('advance')
+        self.assertEqual(run['current']['returnReasons'], [{'id': reason_id, 'label': 'JUSTIFICATION'}])
+        action('return', code=422, targetPosition=1, reason='Motif absent')
+        action('return', targetPosition=1, reason='Dossier incomplet', reasonId=reason_id)
+        self.assertEqual(run['history'][-1]['reasonId'], reason_id)
+        self.assertEqual(run['current']['validationCount'], 0)
+
+    def test_processes_alerts_private_and_idempotent(self):
+        assigned = self.create(ID_ResponsableFk=self.users[0]['IdUser'])
+        unassigned = self.create()
+        model = self.process_model(
+            assigned, [{'name': 'Recevoir', 'minutes': 1}],
+            globalMinutes=1, reminderMinutes=30,
+        )
+        now = timezone.now()
+        past = now - timedelta(minutes=65)
+        with patch('apps.support.processes.timezone.now', return_value=past):
+            for ticket in (assigned, unassigned):
+                self.status(self.process_action(ticket, 'start', modelId=model['id']))
+        previous = now - timedelta(minutes=31)
+        db.query('''
+            INSERT INTO support."T_AlerteParcours"
+                ("ID_SupportFk", "Type", "Occurrence", "CreeLe", "Statut", "Erreur", "TraiteLe")
+            VALUES (%s, 'global', 0, %s, 'failed', 'Aucun responsable.', %s)
+        ''', [unassigned['ID_Support'], previous, previous])
+        for dry_run, expected in (
+            (True, {'candidates': 4, 'sent': 0, 'failed': 0, 'skipped': 0}),
+            (False, {'candidates': 4, 'sent': 2, 'failed': 2, 'skipped': 0}),
+            (False, {'candidates': 0, 'sent': 0, 'failed': 0, 'skipped': 0}),
+        ):
+            output = io.StringIO()
+            call_command('traiter_alertes_support', dry_run=dry_run, stdout=output)
+            self.assertEqual(json.loads(output.getvalue()), expected)
+        alerts = db.query('''
+            SELECT a."Statut", a."Occurrence", n."IdUserFk", n."IdEntiteFk", n."IdAnnonceFk"
+            FROM support."T_AlerteParcours" a
+            LEFT JOIN communication."T_Communication" n ON n."IdCommunication" = a."ID_CommunicationFk"
+            WHERE a."ID_SupportFk" IN (%s, %s)
+            ORDER BY a."Statut", a."Type"
+        ''', [assigned['ID_Support'], unassigned['ID_Support']])
+        self.assertEqual([row['Statut'] for row in alerts], ['failed', 'failed', 'failed', 'sent', 'sent'])
+        self.assertEqual(sorted(row['Occurrence'] for row in alerts), [0, 0, 0, 0, 1])
+        self.assertTrue(all(row['IdAnnonceFk'] is None for row in alerts))
+        for row in alerts[3:]:
+            self.assertEqual(row['IdUserFk'], self.users[0]['IdUser'])
+            self.assertEqual(row['IdEntiteFk'], self.entities[0])
+
 
 XLSX='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 if __name__=='__main__':unittest.main(verbosity=2)

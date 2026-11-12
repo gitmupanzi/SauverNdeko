@@ -578,7 +578,7 @@ if __name__ == '__main__':
              'backend/apps/logistique/immobilisations.py','backend/apps/logistique/inventories.py','backend/apps/logistique/quantities.py',
              'backend/apps/core/repository.py','backend/apps/core/reference_integration.py','backend/apps/core/ui_settings.py',
              'backend/apps/core/views.py',
-             'SQL/tests/test_field_references_api.py', 'SQL/migrations/20261028_09_referencement_champs.sql']
+             'SQL/tests/test_field_references_api.py', 'backend/database/migrations/20261028_09_referencement_champs.sql']
     output = ROOT/'.runtime/field-references-api/verification.json'; output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps({'passed': result.wasSuccessful(), 'tests': result.testsRun,
         'failures': len(result.failures), 'errors': len(result.errors), 'database': location.path[1:],

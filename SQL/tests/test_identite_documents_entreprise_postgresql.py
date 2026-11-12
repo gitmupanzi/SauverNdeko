@@ -35,7 +35,7 @@ with psycopg.connect(DSN,autocommit=True,row_factory=dict_row) as connection:
  before={row['schema']+'.'+row['name']:digest(row['schema'],row['name']) for row in tables}
  entities={row['IdEntite']:row for row in query('SELECT * FROM systeme."T_Entite"')}
  check(len(entities)>=2 and one('SELECT count(*) n FROM logistique."T_Facture"')['n']>0 and one('SELECT count(*) n FROM logistique."T_DocumentIdentite"')['n']>0,'Fixtures couvrent deux entreprises, factures émises et identités conservées')
- migration=ROOT/'SQL/migrations/20261028_07_identite_documents_entreprise.sql'
+ migration=ROOT/'backend/database/migrations/20261028_07_identite_documents_entreprise.sql'
  connection.execute(migration.read_text(encoding='utf8'))
  check(all(digest(row['schema'],row['name'])==before[row['schema']+'.'+row['name']] for row in tables if row['schema']+'.'+row['name']!='systeme.T_Entite'),'Migration conserve intégralement toutes les autres tables : finance, identité historique, coûts, mouvements, audits et journal des codes')
  added={'SiteWebEntite','AfficherEnteteDocument','AfficherPiedDocument','LogoEntite','LogoMimeEntite','LogoSha256Entite','LogoModifieLe','PhoneSecondaireEntite'}

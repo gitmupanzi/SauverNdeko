@@ -46,8 +46,8 @@ Le cycle de migration a aussi vérifié : retour exact aux définitions/commenta
 
 ## Fichiers et réutilisation
 
-- [Migration appliquée](../migrations/20261024_02_fiabilisation_logistique.sql).
-- [Retour arrière](../migrations/rollback/20261024_02_fiabilisation_logistique.sql).
+- [Migration appliquée](../../backend/database/migrations/20261024_02_fiabilisation_logistique.sql).
+- [Retour arrière](../../backend/database/migrations/rollback/20261024_02_fiabilisation_logistique.sql).
 - [Vues canoniques](<../3. Schema logistique/Logistique_View.sql>), alignées pour les deux vues modifiées.
 - [Recette](../../backend/tests/logistique.postgres.test.cjs) et [helpers de données fictives](../../backend/tests/helpers/logistique-postgres.cjs).
 - [Contrôle de couverture des commentaires](../controles/Verifier_Commentaires_PostgreSQL.sql).

@@ -14,7 +14,7 @@ DSN = os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL', '')
 LOCATION = urlsplit(DSN)
 if LOCATION.hostname not in {'localhost', '127.0.0.1', '::1'} or not LOCATION.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Copie privée locale sauverndeko_test_* obligatoire ; aucun repli source.')
-DIRECTORY = Path(__file__).resolve().parents[1] / 'migrations'
+DIRECTORY = Path(__file__).resolve().parents[2] / 'backend/database/migrations'
 MIGRATION = DIRECTORY / '20261104_04_integrite_uid_snis.sql'
 ROLLBACK = DIRECTORY / 'rollback/20261104_04_integrite_uid_snis.sql'
 

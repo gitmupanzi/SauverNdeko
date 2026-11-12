@@ -32,7 +32,7 @@ PROTECTED_TABS = {
         "tableau-de-bord": "Tableau de bord", "caisses": "Caisses",
         "ecritures": "Écritures", "clotures": "Clôtures",
     },
-    "support": {"tableau-de-bord": "Tableau de bord", "tickets": "Tickets"},
+    "support": {"tableau-de-bord": "Tableau de bord", "tickets": "Tickets", "processus": "Suivi des étapes"},
     "administration": {
         "tableau-de-bord": "Tableau de bord", "utilisateurs": "Utilisateurs", "roles": "Rôles",
         "permissions": "Permissions", "entites": "Entreprises", "licences": "Licences",
@@ -220,7 +220,8 @@ def enforce_request(actor,request,view):
     kwargs=getattr(view,"kwargs",{})
     action="read" if request.method in {"GET","HEAD","OPTIONS"} or path.rstrip('/').endswith('/apercu') else "manage"
     if path.rstrip('/').endswith(('.xlsx','.csv','.pdf','.docx')):action="export"
-    if path.rstrip("/").endswith(("/modele-excel", "/modele.xlsx", "/import-excel")):
+    if (path.rstrip("/").endswith(("/modele-excel", "/modele.xlsx", "/import-excel"))
+            or path.rstrip("/") == "/api/support/processus/import.xlsx"):
         action = "manage"
     if request.method in {"GET", "HEAD"} and path.startswith("/api/logistique/documents/") and kwargs.get("piece_id"):
         action = "export"

@@ -9,21 +9,23 @@ function mocks(entries){return{name:'fixtures',setup(build){entries.forEach(([fi
 async function bundle(contents,plugins=[]){const built=await esbuild.build({stdin:{contents,resolveDir:front,loader:'jsx'},bundle:true,jsx:'automatic',external:['react','react/jsx-runtime'],platform:'node',format:'cjs',write:false,define:{'import.meta.env':'{}'},loader:{'.css':'empty'},plugins,logLevel:'error'});const compiled=new Module(path.join(front,'support-proof.cjs'),module);compiled.filename=path.join(front,'support-proof.cjs');compiled.paths=Module._nodeModulePaths(front);compiled._compile(built.outputFiles[0].text,compiled.filename);return compiled.exports;}
 globalThis.requestAnimationFrame=fn=>fn();globalThis.document={getElementById:()=>({focus(){}})};globalThis.localStorage={getItem(){return null;},setItem(){}};
 globalThis.__scope={scopeKey:'A',entityId:'7'};globalThis.__user={IdUser:1,permissions:{canWriteData:true,canExportData:true},moduleAccess:{modules:{support:{canRead:true,canManage:true,canExport:true}}}};
-globalThis.__context={canCreate:true,canManage:true,canVerify:true,canExport:true,users:[{id:1,label:'Agent habilité'}],requesters:[{id:2,label:'Demandeur externe'}],references:{types:[{id:11,label:'Incident'}],categories:[{id:12,label:'Technique'}],priorities:[{id:13,label:'Normale'}],statuses:[{id:14,label:'Nouveau'}],channels:[{id:15,label:'Téléphone'}],services:[{id:16,label:'Informatique'}],resultats:[{id:17,label:'Conforme'}]},links:{articles:[{id:3,label:'Article'}],bons:[{id:4,label:'BE-4'}],immobilisations:[{id:5,label:'IMMO-5'}]}};
+globalThis.__context={canCreate:true,canManage:true,canVerify:true,canExport:true,canReadProcessModels:true,users:[{id:1,label:'Agent habilité'}],requesters:[{id:2,label:'Demandeur externe'}],references:{types:[{id:11,label:'Incident'}],categories:[{id:12,label:'Technique'}],priorities:[{id:13,label:'Normale'}],statuses:[{id:14,label:'Nouveau'}],channels:[{id:15,label:'Téléphone'}],services:[{id:16,label:'Informatique'}],resultats:[{id:17,label:'Conforme'}]},links:{articles:[{id:3,label:'Article'}],bons:[{id:4,label:'BE-4'}],immobilisations:[{id:5,label:'IMMO-5'}]}};
 globalThis.__record={ID_Support:42,NumeroSupport:'SUP-42',Objet:'Demande fictive',Description:'Description conservée',ID_DemandeurFk:2,ID_ResponsableFk:1,ID_TypeSupportFk:11,_version:'v1'};
-globalThis.__detail={record:globalThis.__record,canManage:true,canVerify:true,comments:[],documents:[],resolutions:[],history:[],transitions:[{key:'prendre',label:'Prendre en charge'}]};
+globalThis.__detail={record:globalThis.__record,canManage:true,canVerify:true,canExport:true,comments:[],documents:[],resolutions:[],history:[],transitions:[{key:'prendre',label:'Prendre en charge'}]};
 globalThis.__meta={filteredCount:1,totalCount:1,take:25,skip:0};globalThis.__calls=[];globalThis.__writes=[];globalThis.__results=[];globalThis.__downloads=[];
 const apiNames=[...fs.readFileSync(path.join(front,'src/services/api.js'),'utf8').matchAll(/export (?:async )?function (\w+)/g)].map(m=>m[1]).filter(n=>!['requestJson','downloadApiFile'].includes(n));
 const fixture=mocks([
- [/^react$/,'hooks',`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useId=()=>globalThis.__hooks.id(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d);`],
+ [/^react$/,'hooks',`export const Fragment=Symbol.for('react.fragment'),useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useId=()=>globalThis.__hooks.id(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d),useLayoutEffect=useEffect,useMemo=f=>f(),useCallback=f=>f,Children={toArray:x=>[].concat(x)},isValidElement=x=>Boolean(x?.type);`],
  [/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>({user:globalThis.__user});`],
  [/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],
- [/\/hooks\/useTablePreferences$/,'prefs',`export default function Preferences(){return {ready:true,canExport:true,exportKeys:['NumeroSupport','Objet'],error:''};}`],
+ [/\/hooks\/useTablePreferences$/,'prefs',`export default function Preferences(key){return {key,ready:true,canExport:true,exportKeys:key==='support.modeles'?['name','stageCount']:['NumeroSupport','Objet'],error:''};}`],
  [/\/hooks\/useReferencesRefresh$/,'refresh',`export default function ReferencesRefresh(){}`],
  [/\/components\/RecordEditorFrame$/,'frame',`export default function Frame(){}`],
  [/\/components\/ActionButton$/,'button',`export default function Button(){}`],
  [/\/components\/AppIcon$/,'icon',`export default function Icon(){}`],
  [/\/components\/ConsultationTabs$/,'tabs',`export default function Tabs(){}`],
+ [/\/components\/ConsultationProvider$/,'consultation',`export const useConsultations=()=>({openProduct(){},openOrder(){}});`],
+ [/\/components\/LazyView$/,'lazy',`export default function lazyView(){return function LazyView(){};}`],
  [/\/components\/SearchSelect$/,'select',`export default function Select(){}`],
  [/\/components\/RegisterSurface$/,'surface',`export default function Surface(){}`],
  [/\/components\/RegisterSettingsButton$/,'settings',`export default function Settings(){}`],
@@ -31,14 +33,14 @@ const fixture=mocks([
  [/\/components\/ExportMenu$/,'export-menu',`export default function ExportMenu(){}`],
  [/\/components\/RowActionsMenu$/,'actions',`export default function Actions(){}`],
  [/\/logistique\/logistiqueShared$/,'table',`export function SimpleTable(){};export const formatDate=x=>x;`],
- [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__results.shift()||{success:false,status:503};}if(globalThis.__holdReads)return globalThis.__holdReads;if(url.includes('/contexte'))return {success:true,data:globalThis.__context};if(url.includes('/tableau-de-bord'))return {success:true,data:globalThis.__dashboard};if(url.includes('/kanban'))return {success:true,data:globalThis.__kanban||{columns:[{id:14,label:'Nouveau',count:45,rows:[globalThis.__record],hasMore:true}]}};if(url.includes('?'))return {success:true,data:[globalThis.__record],meta:globalThis.__meta};return {success:true,data:globalThis.__detail};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});}${apiNames.map(name=>'export function '+name+'(){throw Error("Route hors Support inattendue");}').join(' ')}`],
- [/^react-router-dom$/,'router',`export function Link(){};export const useSearchParams=()=>[new URLSearchParams(),()=>{}];`],
+ [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__results.shift()||{success:false,status:503};}if(globalThis.__holdReads)return globalThis.__holdReads;if(url.includes('/processus?'))return {success:true,data:globalThis.__models};if(url.includes('/processus/suivi?'))return {success:true,data:globalThis.__monitor};if(url.endsWith('/parcours'))return {success:true,data:globalThis.__journey};if(url.includes('/contexte'))return {success:true,data:globalThis.__context};if(url.includes('/tableau-de-bord'))return {success:true,data:globalThis.__dashboard};if(url.includes('/kanban'))return {success:true,data:globalThis.__kanban||{columns:[{id:14,label:'Nouveau',count:45,rows:[globalThis.__record],hasMore:true}]}};if(url.includes('?'))return {success:true,data:[globalThis.__record],meta:globalThis.__meta};return {success:true,data:globalThis.__detail};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});}${apiNames.map(name=>'export function '+name+'(){throw Error("Route hors Support inattendue");}').join(' ')}`],
+ [/^react-router-dom$/,'router',`export function Link(){};export const useSearchParams=()=>[globalThis.__params||new URLSearchParams(),(...args)=>globalThis.__navigation?.push(args)];`],
  [/\/components\/ModuleSidebar$/,'sidebar',`export default function Sidebar(){}`],
  [/\/components\/ModuleHeader$/,'header',`export default function Header(){}`],
 ]);
 (async()=>{
- const p=await bundle(`export * from './src/pages/support/supportForm';export {default as Editor} from './src/pages/support/SupportEditor';export {default as Action} from './src/pages/support/SupportAction';export {default as Register,SupportReferences} from './src/pages/support/SupportRegister';export {default as Dashboard,SUPPORT_METRICS} from './src/pages/support/SupportDashboard';export {default as Detail,SUPPORT_DETAIL_TABS,supportHistoryLabel} from './src/pages/support/SupportDetail';`,[fixture]);
- eq(p.SUPPORT_ROOT,'/api/support');eq(p.SUPPORT_DETAIL_TABS.length,5);eq(p.SUPPORT_METRICS.length,6);eq(p.SUPPORT_FIELDS.filter(f=>f.required).map(f=>f.key),['Objet','Description']);
+ const p=await bundle(`export * from './src/pages/support/supportForm';export {default as Portal} from './src/pages/support/SupportPortal';export {SupportStageRegister,ProcessMonitor} from './src/pages/support/SupportProcesses';export {default as Editor} from './src/pages/support/SupportEditor';export {default as Action} from './src/pages/support/SupportAction';export {default as Register,SupportReferences} from './src/pages/support/SupportRegister';export {default as Dashboard} from './src/pages/support/SupportDashboard';export {default as Detail,SUPPORT_DETAIL_TABS,supportHistoryLabel} from './src/pages/support/SupportDetail';`,[fixture]);
+ eq(p.SUPPORT_ROOT,'/api/support');eq(p.SUPPORT_DETAIL_TABS.length,6);eq(p.SUPPORT_FIELDS.filter(f=>f.required).map(f=>f.key),['Objet','Description']);
  const initial=p.supportInitial(globalThis.__record);eq(initial.ID_ResponsableFk,'1');eq(initial.Description,'Description conservée');ok(p.supportValidation({...initial,Objet:''}).Objet);ok(p.supportValidation({...initial,Description:''}).Description);eq(p.supportValidation(initial),{});
  eq(p.supportOptions(globalThis.__context,{key:'ID_DemandeurFk',source:'requesters'},{}),[{id:2,label:'Demandeur externe',value:'2',disabled:false}]);
  eq(p.supportOptions({references:{types:[{id:111,name:'Nom complet',label:'Nom complet',abbr:'ABR'}]}},{key:'ID_TypeSupportFk',source:'types'})[0].label,'ABR');eq(p.supportOptions({references:{types:[{id:112,name:'Nom complet',label:'Nom complet',abbr:null}]}},{key:'ID_TypeSupportFk',source:'types'})[0].label,'Valeur sans abréviation #112');
@@ -62,7 +64,227 @@ const fixture=mocks([
  const filteredBlank=new Hooks(),fbr=()=>filteredBlank.render(p.Register,rp);fbr();await filteredBlank.flush();tree=fbr();mark(tree,'Tabs').props.onChange('kanban');fbr();await filteredBlank.flush();tree=fbr();eq(mark(tree,'ListState').props.title,'Aucun dossier pour ces critères');ok(button(tree,'Effacer les critères'));button(tree,'Effacer les critères').props.onClick();fbr();await filteredBlank.flush();tree=fbr();eq(mark(tree,'ListState').props.title,'Aucun dossier pour le moment');filteredBlank.unmount();
  const noCreate=new Hooks(),ncr=()=>noCreate.render(p.Register,{...rp,initial:{},context:{...globalThis.__context,canCreate:false}});ncr();await noCreate.flush();tree=ncr();mark(tree,'Tabs').props.onChange('kanban');ncr();await noCreate.flush();tree=ncr();eq(mark(tree,'ListState').props.action,null);noCreate.unmount();
  globalThis.__kanban={columns:[{id:14,label:'Nouveau',count:1,rows:[globalThis.__record]},{id:15,label:'Clos',count:0,rows:[]}]};const mixed=new Hooks(),mixedRender=()=>mixed.render(p.Register,{...rp,initial:{}});mixedRender();await mixed.flush();tree=mixedRender();mark(tree,'Tabs').props.onChange('kanban');mixedRender();await mixed.flush();tree=mixedRender();const lanes=nodes(tree).filter(node=>node.type?.name==='Button'&&Array.isArray(node.props.children)&&node.props.children[0]==='Voir les ');eq(lanes.length,2);eq(lanes.find(node=>node.props.children[1]==='0').props.disabled,true);eq(lanes.find(node=>node.props.children[1]==='1').props.disabled,false);mixed.unmount();delete globalThis.__kanban;
- globalThis.__dashboard={metrics:{ouverts:3,enAttente:1,enRetard:2,resolus:4,clotures:5,total:12},charts:{parStatut:[{id:14,label:'Nouveau',count:3}],parPriorite:[{id:null,label:'Sans priorité',count:1}]}};const dashboard=new Hooks(),navigation=[],dp={refresh:0,onNavigate:(...args)=>navigation.push(args)},dr=()=>dashboard.render(p.Dashboard,dp);dr();await dashboard.flush();tree=dr();const metric=nodes(tree).find(node=>node.type==='button'&&node.props.className==='admin-metric');metric.props.onClick();eq(navigation[0],['tickets',{indicator:'ouverts'}]);const chart=nodes(tree).find(node=>node.type==='button'&&node.props['aria-label']==='Sans priorité : 1 dossiers');chart.props.onClick();eq(navigation.at(-1),['tickets',{filters:{ID_PrioriteFk:'__null__'}}]);dashboard.unmount();
+ globalThis.__dashboard={metrics:{ouverts:3,enAttente:1,enRetard:2,aEcheanceProchaine:1,sansResponsable:1,resolus:4,clotures:5,total:12},processes:{active:2,late:0,blocked:1,awaitingReceipt:1},charts:{parStatut:[{id:14,label:'Nouveau',count:3}],parPriorite:[{id:null,label:'Sans priorité',count:1},{id:4,label:'Urgente',count:3}]}};
+ const dashboard=new Hooks(),navigation=[],dp={refresh:0,canReadProcesses:true,onChanged(){},onNavigate:(...args)=>navigation.push(args)},dr=()=>dashboard.render(p.Dashboard,dp);
+ dr();await dashboard.flush();tree=dr();const panels=nodes(tree).filter(node=>node.type?.name==='MetricsPanel');
+ eq(panels.map(panel=>panel.props.title),['À traiter','Activité des tickets','Suivi des étapes']);
+ const cards=panels[0].type(panels[0].props),[overdue,upcoming,unassigned]=nodes(cards).filter(node=>node.type==='button');
+ let focused=0,scrolled=0;const click={currentTarget:{isConnected:true,focus(){focused++;},scrollIntoView(){scrolled++;}}};
+ eq(overdue.props['data-tone'],'danger');upcoming.props.onClick(click);tree=dr();
+ const embedded=mark(tree,'SupportRegister');ok(embedded.props.embedded);eq(embedded.props.initial,{indicator:'echeance-prochaine'});
+ eq(embedded.props.initialSort,{sortBy:'DateEcheance',sortDir:'asc'});eq(navigation,[]);
+ const dueRegister=new Hooks();
+ dueRegister.render(p.Register,{...rp,embedded:true,initial:embedded.props.initial,initialSort:embedded.props.initialSort});
+ await dueRegister.flush();
+ const dueQuery=new URL(globalThis.__calls.filter(call=>call.url.includes('/tickets?')).at(-1).url,'https://example.invalid').searchParams;
+ eq(dueQuery.get('indicator'),'echeance-prochaine');eq(dueQuery.get('sortBy'),'DateEcheance');eq(dueQuery.get('sortDir'),'asc');
+ dueRegister.unmount();
+ button(tree,'Revenir à l’indicateur').props.onClick();eq(focused,1);eq(scrolled,1);tree=dr();ok(!mark(tree,'SupportRegister'));
+ unassigned.props.onClick(click);tree=dr();eq(mark(tree,'SupportRegister').props.initial,{indicator:'sans-responsable'});
+ const activity=nodes(panels[1].type(panels[1].props)).filter(node=>node.type==='button');
+ activity[1].props.onClick(click);tree=dr();eq(mark(tree,'SupportRegister').props.initial,{indicator:'ouverts'});
+ const distribution=nodes(tree).find(node=>node.type?.name==='Distribution'&&node.props.chart.key==='parPriorite');
+ const chart=nodes(distribution.type(distribution.props)).find(node=>node.type==='button');
+ ok(chart.props['aria-label'].includes('25'));eq(nodes(chart).find(node=>node.props.style?.width).props.style.width,'25%');
+ chart.props.onClick(click);tree=dr();
+ eq(mark(tree,'SupportRegister').props.initial,{filters:{ID_PrioriteFk:'__null__'}});
+ const processPanel=nodes(tree).filter(node=>node.type?.name==='MetricsPanel')[2];
+ const late=nodes(processPanel.type(processPanel.props)).filter(node=>node.type==='button')[1];ok(!late.props.disabled);late.props.onClick(click);tree=dr();
+ eq(mark(tree,'ProcessMonitor').props.indicator,'late');mark(tree,'ProcessMonitor').props.onOpenTicket(42);tree=dr();eq(mark(tree,'SupportDetail').props.initialTab,'parcours');eq(mark(tree,'SupportDetail').props.id,42);
+ button(tree,'Ouvrir les tickets').props.onClick();eq(navigation,[['tickets']]);dashboard.unmount();
+ const restrictedDashboard=new Hooks(),rdr=()=>restrictedDashboard.render(p.Dashboard,{...dp,canReadProcesses:false});rdr();await restrictedDashboard.flush();tree=rdr();eq(nodes(tree).filter(node=>node.type?.name==='MetricsPanel').map(panel=>panel.props.title),['À traiter','Activité des tickets']);restrictedDashboard.unmount();
+ const unified=new Hooks(),up={...rp,canReadJourney:true,context:{...rp.context,canReadProcessModels:true}},ur=()=>unified.render(p.Register,up);
+ ur();await unified.flush();tree=ur();
+ eq(mark(tree,'Tabs').props.tabs.map(tab=>tab.label),['Liste','Kanban']);ok(!mark(tree,'ProcessMonitor'));
+ ok(!mark(mark(tree,'Surface').props.actions,'Settings').props.extraItems);
+ const ticketActions=mark(mark(tree,'SimpleTable').props.columns.find(column=>column.key==='actions').render(globalThis.__record),'Actions');
+ ticketActions.props.items.find(item=>item.label==='Voir les étapes').onSelect();tree=ur();
+ eq(mark(tree,'SupportDetail').props.id,42);eq(mark(tree,'SupportDetail').props.initialTab,'parcours');unified.unmount();
+ {
+  const model={id:2,entityId:7,entityName:'École Pilote Test',name:'Dépannage',typeId:11,version:3,revision:9,active:true,stageCount:1,stages:[{name:'Diagnostic',validators:[]}]};
+  globalThis.__models={available:true,canManage:true,canExport:true,count:42,items:[model],references:globalThis.__context.references,
+    filterTypes:[{id:11,label:'Incident'},{id:23,label:'Plainte'}]};
+  globalThis.__params=new URLSearchParams();
+  globalThis.__navigation=[];
+  const previousContext=globalThis.__context,previousScope=globalThis.__scope;
+  const portal=new Hooks(),pr=()=>portal.render(p.Portal);
+  tree=pr();await portal.flush();tree=pr();
+  const menu=mark(tree,'Sidebar');
+  eq(menu.props.groups.flatMap(group=>group.items.map(item=>item.label)),['Tableau de bord','Modèles de suivi','Tickets','Suivi des étapes']);
+  menu.props.onNavigate('modeles');eq(globalThis.__navigation.at(-1),[{onglet:'modeles'}]);
+  globalThis.__params=new URLSearchParams('onglet=modeles');tree=pr();
+  const page=mark(tree,'SupportProcessModels'),models=new Hooks(),mr=()=>models.render(page.type,page.props);
+  ok(page);ok(!mark(tree,'SupportRegister'));ok(!mark(tree,'SupportStageRegister'));
+  tree=mr();eq(mark(tree,'ListState').props.title,'Chargement des modèles…');
+  await models.flush();tree=mr();
+  eq(mark(tree,'Surface').props.title,'Modèles de suivi');
+  const modelQuery=()=>new URL(globalThis.__calls.filter(call=>call.url.includes('/processus?')).at(-1).url,'https://example.test').searchParams;
+  const currentTable=()=>mark(tree,'SimpleTable'),modelToolbar=()=>mark(currentTable().props.toolbar,'Toolbar').props;
+  eq(currentTable().props.tablePreferences.key,'support.modeles');eq(currentTable().props.serverMeta.filteredCount,42);
+  ok(currentTable().props.enableSelection);eq(currentTable().props.getRowId(model),2);
+  currentTable().props.onServerChange({skip:25});mr();await models.flush();tree=mr();eq(modelQuery().get('skip'),'25');
+  modelToolbar().toggleFilters();modelToolbar().setSearch('  Dépannage ');tree=mr();ok(modelToolbar().pending);
+  const typeFilter=field(currentTable().props.toolbar,'typeId');eq(typeFilter.props.options.map(option=>option.value),['','11','23']);
+  typeFilter.props.onChange('23');field(currentTable().props.toolbar,'active').props.onChange('false');tree=mr();
+  modelToolbar().onApply();mr();await models.flush();tree=mr();
+  eq(modelQuery().get('q'),'Dépannage');eq(modelQuery().get('typeId'),'23');eq(modelQuery().get('active'),'false');eq(modelQuery().get('skip'),'0');
+  await modelToolbar().exportCsv();
+  let modelExport=new URL(globalThis.__downloads.at(-1).url,'https://example.test');
+  eq(modelExport.pathname,'/api/support/processus/export.csv');eq(modelExport.searchParams.get('typeId'),'23');
+  eq(JSON.parse(modelExport.searchParams.get('columns')),['name','stageCount']);
+  currentTable().props.onSelectionChange([model]);tree=mr();await mark(tree,'ExportMenu').props.exportFile();
+  modelExport=new URL(globalThis.__downloads.at(-1).url,'https://example.test');
+  eq(modelExport.pathname,'/api/support/processus/export.xlsx');eq(JSON.parse(modelExport.searchParams.get('selection')),[2]);
+  await button(mark(tree,'Surface').props.actions,'Télécharger le modèle Excel').props.onClick();
+  eq(globalThis.__downloads.at(-1).url,'/api/support/processus/modele.xlsx');
+  mark(mark(tree,'Surface').props.actions,'Settings').props.onTableSettings();tree=mr();ok(currentTable().props.columnsPanelOpen);
+  currentTable().props.onColumnsPanelClose();tree=mr();ok(!currentTable().props.columnsPanelOpen);
+  mark(mark(tree,'Surface').props.actions,'Settings').props.onReferences();tree=mr();
+  ok(mark(tree,'ModelReferences'));mark(tree,'ModelReferences').props.onClose();tree=mr();
+  button(mark(tree,'Surface').props.actions,'Nouveau modèle').props.onClick();tree=mr();
+  eq(mark(tree,'SupportProcessEditor').props.model,null);eq(mark(tree,'SupportProcessEditor').props.canManage,true);
+  mark(tree,'SupportProcessEditor').props.onClose();tree=mr();
+  currentTable().props.onRowConsult(model);tree=mr();
+  eq(mark(tree,'SupportProcessEditor').props.model,model);ok(mark(tree,'SupportProcessEditor').props.readOnly);
+  mark(tree,'SupportProcessEditor').props.onClose();tree=mr();
+  const rowActions=()=>mark(currentTable().props.columns.find(column=>column.key==='actions').render(model),'Actions').props.items;
+  eq(rowActions().map(item=>item.label),['Consulter','Modifier','Dupliquer','Désactiver']);
+  rowActions().find(item=>item.label==='Dupliquer').onSelect();tree=mr();
+  eq(mark(tree,'SupportProcessEditor').props.draft.name,'Dépannage (copie)');eq(mark(tree,'SupportProcessEditor').props.draft.active,false);
+  mark(tree,'SupportProcessEditor').props.onClose();tree=mr();
+  rowActions().find(item=>item.label==='Désactiver').onSelect();tree=mr();
+  const activation=mark(tree,'ModelActivation'),ah=new Hooks();const dialog=ah.render(activation.type,activation.props);
+  eq(mark(dialog,'Frame').props.title,'Désactiver le modèle');
+  globalThis.__results.push({success:true,data:{...model,active:false}});mark(dialog,'Frame').props.onSubmit();await ah.flush();tree=mr();await models.flush();tree=mr();
+  eq(globalThis.__writes.at(-1).url,'/api/support/processus/2');eq(JSON.parse(globalThis.__writes.at(-1).options.body).active,false);
+  eq(JSON.parse(globalThis.__writes.at(-1).options.body).revision,9);ah.unmount();
+  button(mark(tree,'Surface').props.actions,'Importer un fichier Excel').props.onClick();tree=mr();
+  const batch=mark(tree,'SupportProcessBatch'),bh=new Hooks(),batchRender=()=>bh.render(batch.type,batch.props);
+  let batchTree=batchRender();await bh.flush();batchTree=batchRender();
+  const fileField=()=>nodes(batchTree).find(node=>node.type==='input'&&node.props.type==='file');
+  const workbook=new File(['classeur'],'modeles.xlsx'),makeImportEvent=()=>({target:{files:[workbook],value:workbook.name}});
+  globalThis.__results.push({success:true,data:{items:[
+    {clientRowId:'excel-2',name:'Dépannage neuf',typeId:'Type inconnu',stages:[{name:''}]},
+    {clientRowId:'excel-3',name:'Plainte fictive',typeId:11,stages:[{name:'Traitement'}]},
+  ],errors:[{clientRowId:'excel-2',row:2,message:'Vérifiez le type et le nom de l’étape.'}]}});
+  await fileField().props.onChange(makeImportEvent());batchTree=batchRender();await bh.flush();batchTree=batchRender();
+  eq(globalThis.__writes.at(-1).url,'/api/support/processus/import.xlsx');
+  eq(globalThis.__writes.at(-1).options.body.get('file').name,'modeles.xlsx');
+  eq(mark(batchTree,'SupportProcessModelFields').props.values.active,true);
+  eq(mark(batchTree,'SupportProcessModelFields').props.values.typeId,'Type inconnu');
+  eq(mark(batchTree,'SupportProcessModelFields').props.values.stages[0].name,'');
+  const beforeInvalid=globalThis.__writes.length;mark(batchTree,'Frame').props.onSubmit();batchTree=batchRender();
+  eq(globalThis.__writes.length,beforeInvalid);
+  let fields=mark(batchTree,'SupportProcessModelFields').props;
+  fields.onChange({...fields.values,typeId:11,stages:[{...fields.values.stages[0],name:'Diagnostic'}]});batchTree=batchRender();
+  mark(batchTree,'Frame').props.onSubmit();batchTree=batchRender();eq(globalThis.__writes.length,beforeInvalid);
+  button(batchTree,'Confirmer la correction').props.onClick();batchTree=batchRender();
+  globalThis.__results.push({success:false,status:422,message:'Le panier doit être corrigé.',
+    error:{details:{errors:[{clientRowId:'excel-3',message:'Ce nom est déjà utilisé.'}]}}});
+  mark(batchTree,'Frame').props.onSubmit();await bh.flush();batchTree=batchRender();await bh.flush();batchTree=batchRender();
+  eq(JSON.parse(globalThis.__writes.at(-1).options.body).items.length,2);
+  eq(mark(batchTree,'SupportProcessModelFields').props.values.name,'Plainte fictive');
+  ok(nodes(batchTree).some(node=>node.props?.role==='alert'&&node.props.children==='Ce nom est déjà utilisé.'));
+  nodes(batchTree).find(node=>node.props?.['aria-label']==='Retirer le modèle 2').props.onClick();batchTree=batchRender();
+  globalThis.__results.push({success:false,status:503});mark(batchTree,'Frame').props.onSubmit();await bh.flush();batchTree=batchRender();
+  const attempt=globalThis.__writes.at(-1);eq(attempt.url,'/api/support/processus/lot');eq(JSON.parse(attempt.options.body).items.length,1);
+  eq(mark(batchTree,'Frame').props.submitLabel,'Vérifier l’enregistrement');ok(mark(batchTree,'SupportProcessModelFields').props.disabled);
+  globalThis.__results.push({success:true,data:{items:[{id:3}],count:1}});mark(batchTree,'Frame').props.onSubmit();await bh.flush();
+  eq(globalThis.__writes.at(-1).options.body,attempt.options.body);
+  tree=mr();await models.flush();tree=mr();ok(!mark(tree,'SupportProcessBatch'));bh.unmount();
+  rowActions().find(item=>item.label==='Modifier').onSelect();tree=mr();ok(!mark(tree,'SupportProcessEditor').props.readOnly);
+  const beforeReload=globalThis.__calls.length;
+  mark(tree,'SupportProcessEditor').props.onSaved();mr();await models.flush();tree=mr();
+  ok(!mark(tree,'SupportProcessEditor'));ok(globalThis.__calls.slice(beforeReload).some(call=>call.url.startsWith('/api/support/processus?')));
+  ok(nodes(tree).some(node=>node.props?.role==='status'));
+  models.unmount();
+  globalThis.__scope={scopeKey:'other',entityId:'8'};
+  globalThis.__context={...previousContext,canReadProcessModels:false};
+  tree=pr();ok(!mark(tree,'SupportProcessModels'));
+  await portal.flush();tree=pr();
+  ok(!mark(tree,'SupportProcessModels'));
+  eq(mark(tree,'Sidebar').props.groups.flatMap(group=>group.items.map(item=>item.key)),['tableau-de-bord','tickets','processus']);
+  portal.unmount();
+  globalThis.__context=previousContext;
+
+  globalThis.__scope={scopeKey:'all',globalAdmin:true,entities:[{id:7,label:'École Pilote Test'}]};
+  const readonly=new Hooks(),ro=()=>readonly.render(page.type,page.props);
+  ro();await readonly.flush();tree=ro();
+  ok(mark(mark(tree,'Surface').props.actions,'Settings'));
+  ok(!button(mark(tree,'Surface').props.actions,'Nouveau modèle'));
+  const allTable=mark(tree,'SimpleTable'),allActions=allTable.props.columns.find(column=>column.key==='actions');
+  eq(mark(allActions.render(model),'Actions').props.items.map(item=>item.label),['Consulter']);
+  const modelName=allTable.props.columns.find(column=>column.key==='name');
+  ok(nodes(modelName.render(model)).some(node=>node.type==='small'&&node.props.children==='École Pilote Test'));
+  allTable.props.onRowConsult(model);tree=ro();
+  eq(mark(tree,'SupportProcessEditor').props.canManage,false);
+  readonly.unmount();
+  globalThis.__scope=previousScope;
+
+  globalThis.__context={...previousContext,canReadProcessModels:false};
+  const denied=new Hooks(),restricted=()=>denied.render(p.Portal),beforeDenied=globalThis.__calls.length;
+  tree=restricted();ok(nodes(tree).some(node=>node.props?.role==='status'));
+  await denied.flush();tree=restricted();
+  ok(!mark(tree,'SupportProcessModels'));
+  eq(mark(tree,'Sidebar').props.groups.flatMap(group=>group.items.map(item=>item.key)),['tableau-de-bord','tickets','processus']);
+  ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('pas accès')));
+  eq(globalThis.__calls.slice(beforeDenied).map(call=>call.url),['/api/support/contexte']);
+  denied.unmount();
+  globalThis.__context=previousContext;
+  delete globalThis.__params;delete globalThis.__navigation;delete globalThis.__models;
+ }
+ {
+  globalThis.__params=new URLSearchParams('onglet=tickets&vue=suivi&source=ancien-lien');
+  globalThis.__navigation=[];
+  const beforeStages=globalThis.__calls.length,portal=new Hooks(),pr=()=>portal.render(p.Portal);
+  tree=pr();
+  const sidebar=mark(tree,'Sidebar');
+  eq(sidebar.props.activeKey,'processus');
+  eq(sidebar.props.groups.find(group=>group.key==='traitement').items.map(item=>item.label),['Tickets','Suivi des étapes']);
+  ok(!mark(tree,'SupportRegister'));
+  await portal.flush();
+  eq(globalThis.__navigation[0][0].toString(),'onglet=processus&source=ancien-lien');
+  eq(globalThis.__navigation[0][1],{replace:true});
+
+  globalThis.__params=globalThis.__navigation[0][0];tree=pr();await portal.flush();tree=pr();
+  const follow=mark(tree,'SupportStageRegister'),stage=new Hooks(),sr=()=>stage.render(p.SupportStageRegister,follow.props);
+  ok(follow);eq(follow.props.context,globalThis.__context);
+  tree=sr();eq(mark(tree,'Surface').props.title,'Suivi des étapes');
+  const monitorProps=mark(tree,'ProcessMonitor').props,monitor=new Hooks(),mor=()=>monitor.render(p.ProcessMonitor,monitorProps);
+  globalThis.__monitor={available:true,count:0,items:[]};
+  mor();await monitor.flush();tree=mor();
+  eq(mark(tree,'ListState').props.title,'Aucun parcours démarré');
+  button(tree,'Voir les tickets').props.onClick();eq(globalThis.__navigation.at(-1),[{onglet:'tickets'}]);
+  globalThis.__monitor={available:true,count:1,items:[{ticketId:42,number:'SUP-42',stageName:'Diagnostic'}]};
+  const populated=new Hooks(),pop=()=>populated.render(p.ProcessMonitor,monitorProps);
+  pop();await populated.flush();tree=pop();
+  const monitorTable=mark(tree,'SimpleTable');
+  eq(monitorTable.props.rows[0].stageName,'Diagnostic');
+  monitorTable.props.onRowConsult(monitorTable.props.rows[0]);tree=sr();
+  eq(mark(tree,'SupportDetail').props.id,42);eq(mark(tree,'SupportDetail').props.initialTab,'parcours');
+  ok(globalThis.__calls.slice(beforeStages).some(call=>call.url.includes('/processus/suivi?')));
+  ok(!globalThis.__calls.slice(beforeStages).some(call=>call.url.includes('/tickets?')));
+  populated.unmount();monitor.unmount();stage.unmount();portal.unmount();
+  const previousAccess=globalThis.__user.moduleAccess;
+  globalThis.__user.moduleAccess={...previousAccess,tabs:{support:{processus:{canRead:false}}}};
+  for(const url of ['onglet=processus','onglet=tickets&vue=suivi']){
+   globalThis.__params=new URLSearchParams(url);
+   const restricted=new Hooks(),beforeDenied=globalThis.__calls.length;
+   tree=restricted.render(p.Portal);await restricted.flush();
+   ok(!mark(tree,'SupportStageRegister'));
+   eq(mark(tree,'Sidebar').props.groups.find(group=>group.key==='traitement').items.map(item=>item.key),['tickets']);
+   ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('pas accès')));
+   eq(globalThis.__calls.length,beforeDenied);restricted.unmount();
+  }
+  globalThis.__user.moduleAccess=previousAccess;
+  delete globalThis.__params;delete globalThis.__navigation;delete globalThis.__monitor;
+ }
+ const embeddedHooks=new Hooks(),er=()=>embeddedHooks.render(p.Register,{...rp,embedded:true,initial:{indicator:'retard',filters:{ID_StatutFk:'14'}}});
+ er();await embeddedHooks.flush();tree=er();let embeddedToolbar=mark(mark(tree,'SimpleTable').props.toolbar,'Toolbar');
+ eq(embeddedToolbar.props.activeFilters,0);embeddedToolbar.props.setSearch('Incident');tree=er();mark(mark(tree,'SimpleTable').props.toolbar,'Toolbar').props.onApply();er();await embeddedHooks.flush();
+ tree=er();embeddedToolbar=mark(mark(tree,'SimpleTable').props.toolbar,'Toolbar');await embeddedToolbar.props.exportFile();
+ exported=new URL(globalThis.__downloads.at(-1).url,'http://test');eq(exported.searchParams.get('indicator'),'retard');eq(exported.searchParams.get('q'),'Incident');eq(JSON.parse(exported.searchParams.get('filters')),{ID_StatutFk:'14'});
+ embeddedToolbar.props.onReset();er();await embeddedHooks.flush();const resetUrl=new URL(globalThis.__calls.at(-1).url,'http://test');eq(resetUrl.searchParams.get('indicator'),'retard');eq(resetUrl.searchParams.get('q'),null);embeddedHooks.unmount();
  const detail=new Hooks(),ddp={id:42,context:globalThis.__context,onClose(){},onChanged(){}},ddr=()=>detail.render(p.Detail,ddp);ddr();await detail.flush();tree=ddr();eq(mark(tree,'Frame').props.title,'Support · SUP-42');eq(mark(tree,'Tabs').props.tabs.length,5);ok(mark(tree,'SupportComments'));ok(mark(tree,'SupportDocuments'));const commentComponent=mark(tree,'SupportComments'),documentComponent=mark(tree,'SupportDocuments');mark(tree,'SupportComments').props.onDraftChange(true);tree=ddr();ok(mark(tree,'Frame').props.dirty);ok(button(tree,'Modifier').props.disabled);mark(tree,'SupportComments').props.onBusyChange(true);tree=ddr();ok(mark(tree,'Frame').props.busy);detail.unmount();eq(p.supportHistoryLabel('COMMENT'),'Message ajouté');
  const comments=new Hooks(),commentSaved=[],commentDirty=[],commentProps={...commentComponent.props,onSaved:value=>commentSaved.push(value),onDraftChange:value=>commentDirty.push(value),onBusyChange(){}},co=()=>comments.render(commentComponent.type,commentProps);tree=co();await comments.flush();before=globalThis.__writes.length;await button(tree,'Ajouter le message').props.onClick();eq(globalThis.__writes.length,before);tree=co();ok(nodes(tree).some(node=>node.props?.role==='alert'));nodes(tree).find(node=>node.type==='textarea').props.onChange({target:{value:' Message de suivi '}});tree=co();await comments.flush();ok(commentDirty.at(-1));mark(tree,'Select').props.onChange('interne');tree=co();globalThis.__results.push({success:false,status:503});await button(tree,'Ajouter le message').props.onClick();tree=co();const commentAttempt=globalThis.__writes.at(-1);eq(commentAttempt.url,'/api/support/tickets/42/commentaires');eq(JSON.parse(commentAttempt.options.body).Contenu,'Message de suivi');eq(JSON.parse(commentAttempt.options.body).Visibilite,'interne');eq(JSON.parse(commentAttempt.options.body)._version,'v1');ok(nodes(tree).find(node=>node.type==='textarea').props.disabled);globalThis.__results.push({success:true,data:globalThis.__detail});await button(tree,'Vérifier l’enregistrement').props.onClick();eq(globalThis.__writes.at(-1).options.body,commentAttempt.options.body);eq(commentSaved.length,1);tree=co();await comments.flush();eq(nodes(tree).find(node=>node.type==='textarea').props.value,'');ok(!commentDirty.at(-1));comments.unmount();
  const documents=new Hooks(),docSaved=[],docProps={...documentComponent.props,onSaved:value=>docSaved.push(value),onDraftChange(){},onBusyChange(){}},du=()=>documents.render(documentComponent.type,docProps);tree=du();await documents.flush();before=globalThis.__writes.length;await button(tree,'Ajouter le justificatif').props.onClick();eq(globalThis.__writes.length,before);tree=du();let picker=nodes(tree).find(node=>node.type==='input'&&node.props.type==='file');picker.props.onChange({target:{files:[{type:'text/html',size:10}]}});tree=du();ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('PDF')));const sample=new File([new Uint8Array([1,2,3])],'preuve.pdf',{type:'application/pdf'});picker=nodes(tree).find(node=>node.type==='input'&&node.props.type==='file');picker.props.onChange({target:{files:[sample]}});tree=du();globalThis.__results.push({success:false,status:503});await button(tree,'Ajouter le justificatif').props.onClick();tree=du();const docAttempt=globalThis.__writes.at(-1);eq(docAttempt.url,'/api/support/tickets/42/documents');ok(docAttempt.options.body instanceof FormData);eq(docAttempt.options.body.get('_version'),'v1');eq(docAttempt.options.body.get('file').name,'preuve.pdf');ok(nodes(tree).find(node=>node.type==='input'&&node.props.type==='file').props.disabled);globalThis.__results.push({success:true,data:globalThis.__detail});await button(tree,'Vérifier l’enregistrement').props.onClick();eq(globalThis.__writes.at(-1).options.body,docAttempt.options.body);eq(docSaved.length,1);documents.unmount();
@@ -71,7 +293,7 @@ const fixture=mocks([
  for(const closed of [{Archive:false,StatutCode:'closed'},{Archive:true,StatutCode:'closed'}]){globalThis.__detail={...globalThis.__detail,record:{...globalThis.__record,...closed},canManage:true,canEdit:false,canComment:false,canUpload:false,transitions:[{key:closed.Archive?'restore':'reopen',label:closed.Archive?'Restaurer':'Rouvrir le dossier',requiresReason:true}]};const frozen=new Hooks();frozen.render(p.Detail,ddp);await frozen.flush();tree=frozen.render(p.Detail,ddp);ok(!button(tree,'Modifier'));ok(button(tree,closed.Archive?'Restaurer':'Rouvrir le dossier'));eq(mark(tree,'SupportComments').props.canManage,false);eq(mark(tree,'SupportDocuments').props.canManage,false);frozen.unmount();}
  globalThis.__detail={...globalThis.__detail,record:globalThis.__record};eq(p.supportHistoryLabel('start'),'Prise en charge');eq(p.supportHistoryLabel('verify'),'Vérification de la résolution');
  const isolated=new Hooks(),ir=()=>isolated.render(p.Register,rp);ir();await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows[0].ID_Support,42);let release;globalThis.__holdReads=new Promise(resolve=>release=resolve);globalThis.__scope={scopeKey:'B',entityId:'8'};tree=ir();eq(mark(tree,'SimpleTable').props.rows,[]);await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows,[]);ok(mark(tree,'SimpleTable').props.loading);release({success:true,data:[{...globalThis.__record,ID_Support:43,Objet:'Autre entreprise'}],meta:globalThis.__meta});await isolated.flush();tree=ir();eq(mark(tree,'SimpleTable').props.rows[0].ID_Support,43);isolated.unmount();delete globalThis.__holdReads;globalThis.__scope={scopeKey:'A',entityId:'7'};
- const catalogueSource=fs.readFileSync(path.join(root,'SQL/migrations/20261030_06_support.sql'),'utf8').split('FOR item IN SELECT * FROM (VALUES').at(-1).split('AS c(id,label,type,visible)')[0];const catalogue=[...catalogueSource.matchAll(/\('([^']+)','[^']+','[^']+',(?:true|false)\)/g)].map(match=>match[1]);eq(catalogue.length,17);
+ const catalogueSource=fs.readFileSync(path.join(root,'backend/database/migrations/20261030_06_support.sql'),'utf8').split('FOR item IN SELECT * FROM (VALUES').at(-1).split('AS c(id,label,type,visible)')[0];const catalogue=[...catalogueSource.matchAll(/\('([^']+)','[^']+','[^']+',(?:true|false)\)/g)].map(match=>match[1]);eq(catalogue.length,17);
  const configurable=new Hooks(),conf=()=>configurable.render(p.Register,rp);conf();await configurable.flush();tree=conf();const configuredTable=mark(tree,'SimpleTable');for(const key of catalogue)ok(configuredTable.props.columns.some(column=>column.key===key),'Colonne du catalogue sans présentation : '+key);const service=configuredTable.props.columns.find(column=>column.key==='ServiceConcerne');eq(service.render({ServiceConcerne:'Maintenance générale'}),'Maintenance générale');
  const realTable=await bundle(`export {SimpleTable} from './src/pages/logistique/logistiqueShared';`,[mocks([
   [/^react$/,'table-hooks',`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useMemo=f=>f(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d),useLayoutEffect=(f,d)=>globalThis.__hooks.effect(f,d);`],
@@ -96,5 +318,77 @@ const fixture=mocks([
  globalThis.__results.push({success:true,data:{matrix:[['Objet','Description','ID_TypeSupportFk','DateEcheance'],['À corriger','Description','Type inconnu importé','demain après-midi à confirmer']]}});await nodes(tree).find(node=>node.props?.type==='file').props.onChange({target:{files:[excel],value:'x'}});tree=rv();eq(field(tree,'DateEcheance').props.type,'text');eq(field(tree,'DateEcheance').props.value,'demain après-midi à confirmer');ok(field(tree,'DateEcheance').props['aria-invalid']);field(tree,'DateEcheance').props.onChange({target:{value:''}});tree=rv();eq(field(tree,'DateEcheance').props.type,'datetime-local');const unknownType=field(tree,'ID_TypeSupportFk');eq(unknownType.props.value,'Type inconnu importé');ok(unknownType.props.invalid);eq(unknownType.props.options.at(-1),{value:'Type inconnu importé',label:'Valeur à vérifier : Type inconnu importé',disabled:true});unknownType.props.onChange('11');tree=rv();field(tree,'Objet').props.onChange({target:{value:'Correction conservée'}});tree=rv();globalThis.__results.push({success:true,data:{matrix:[['Objet','Description'],['Second fichier','Autre description']]}});await nodes(tree).find(node=>node.props?.type==='file').props.onChange({target:{files:[excel],value:'x'}});tree=rv();eq(field(tree,'Objet').props.value,'Second fichier');eq(mark(tree,'Frame').props.submitLabel,'Enregistrer le panier (2)');const rowNav=nodes(tree).find(node=>node.type==='nav'&&node.props['aria-label']==='Dossiers du panier');nodes(rowNav).find(node=>node.type==='button').props.onClick();tree=rv();eq(field(tree,'Objet').props.value,'Correction conservée');const removeFirst=nodes(tree).find(node=>node.type?.name==='Button'&&node.props['aria-label']==='Retirer le dossier 1');removeFirst.props.onClick();tree=rv();eq(mark(tree,'Frame').props.submitLabel,'Enregistrer le panier (1)');eq(field(tree,'Objet').props.value,'Second fichier');revoked.unmount();
  const obsolete=new Hooks(),ob=()=>obsolete.render(batch.Batch,basketProps);tree=ob();await obsolete.flush();let release;const pendingUpload=new Promise(resolve=>{release=resolve;});globalThis.__results.push(pendingUpload);fileInput=nodes(tree).find(node=>node.props?.type==='file');const uploadPending=fileInput.props.onChange({target:{files:[excel],value:'x'}});globalThis.__scope={scopeKey:'OTHER',entityId:'8'};tree=ob();await obsolete.flush();release({success:true,data:{matrix:[['Objet','Description'],['Ancienne entreprise','Description']]}});await uploadPending;tree=ob();ok(mark(tree,'Frame').props.error.includes('entreprise a changé'));ok(!field(tree,'Objet'));obsolete.unmount();globalThis.__scope={scopeKey:'A',entityId:'7'};
  }
- console.log(JSON.stringify({success:true,checks,scope:'Helpers et handlers réels Support : création, conservation/rejeu, droits, contexte, transitions, listes/exports, kanban, KPI et fiches',limits:['DOM et API simulés ; pas de recette visuelle navigateur']}));
+ const process=await bundle(`
+   export {processQuery} from './src/pages/support/supportProcess';
+   export {processModelPayload} from './src/pages/support/SupportProcessEditor';
+ `,[fixture]);
+ const payload=process.processModelPayload({
+   name:'  Traitement ',description:' ',typeId:'11',active:true,revision:3,globalMinutes:'90',
+   stages:[{name:' Revue ',validators:[{target:'userId',userId:'2'}],requiresReceipt:true,
+     blockerReasonIds:['41'],returnReasonIds:['42'],rejectReasonIds:['43']}],
+ },'requete-fictive');
+ eq(payload.name,'Traitement');
+ eq(payload.typeId,11);
+ eq(payload.revision,3);
+ eq(payload.stages[0],{
+   name:'Revue',serviceId:null,roleId:null,responsibleId:null,minutes:null,
+   requiresReceipt:true,allowReturn:false,requiresDocument:false,requiredInformation:'',
+   validators:[{userId:2}],blockerReasonIds:[41],returnReasonIds:[42],rejectReasonIds:[43],
+ });
+ eq(Object.fromEntries(new URLSearchParams(process.processQuery({q:' dossier ',blocked:'false',stage:''},3,10))),
+   {q:' dossier ',blocked:'false',take:'10',skip:'20'});
+
+ const processDetail=new Hooks();
+ const processDetailProps={...ddp,canReadJourney:true,initialTab:'parcours'};
+ processDetail.render(p.Detail,processDetailProps);
+ await processDetail.flush();
+ const journeyComponent=mark(processDetail.render(p.Detail,processDetailProps),'SupportJourney');
+ ok(journeyComponent.props.active);
+ const visibleTabs=mark(processDetail.render(p.Detail,processDetailProps),'Tabs').props.tabs;
+ eq(visibleTabs.length,6);
+ globalThis.__journey={available:true,run:{
+   modelName:'Traitement',version:2,revision:5,
+   current:{id:70,name:'Revue',rejectReasons:[{id:43,label:'Contrôle incomplet'}]},
+   steps:[],history:[],alerts:[{id:1,type:'stage',position:1,occurrence:1,status:'failed'}],
+   actions:[{key:'reject',requiresReason:true}],
+ }};
+ const journey=new Hooks(),changes=[],journeyProps={...journeyComponent.props,onChanged:()=>changes.push(true)};
+ const renderJourney=()=>journey.render(journeyComponent.type,journeyProps);
+ renderJourney();
+ await journey.flush();
+ tree=renderJourney();
+ ok(mark(tree,'JourneyAlerts'));
+ ok(!button(tree,'Valider l’étape'));
+ button(tree,'Refuser la validation').props.onClick();
+ const actionComponent=mark(renderJourney(),'JourneyAction');
+ const journeyAction=new Hooks(),renderAction=()=>journeyAction.render(actionComponent.type,actionComponent.props);
+ tree=renderAction();
+ before=globalThis.__writes.length;
+ await button(tree,'Confirmer').props.onClick();
+ eq(globalThis.__writes.length,before);
+ tree=renderAction();
+ ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children==='Choisissez un motif.'));
+ eq(mark(tree,'Select').props.options.at(-1),{id:43,value:'43',label:'Contrôle incomplet',disabled:false});
+ mark(tree,'Select').props.onChange('43');
+ tree=renderAction();
+ nodes(tree).find(node=>node.type==='textarea').props.onChange({target:{value:' Élément manquant ' }});
+ tree=renderAction();
+ globalThis.__results.push({success:false,status:503});
+ await button(tree,'Confirmer').props.onClick();
+ const processAttempt=globalThis.__writes.at(-1);
+ const request=JSON.parse(processAttempt.options.body);
+ eq(processAttempt.url,'/api/support/tickets/42/parcours');
+ eq({action:request.action,revision:request.revision,reasonId:request.reasonId,reason:request.reason},
+   {action:'reject',revision:5,reasonId:43,reason:'Élément manquant'});
+ ok(/^[a-f0-9-]{36}$/.test(request.requestId));
+ tree=renderAction();
+ ok(mark(tree,'Select').props.disabled);
+ globalThis.__results.push({success:true,data:globalThis.__journey});
+ await button(tree,'Vérifier l’enregistrement').props.onClick();
+ eq(globalThis.__writes.at(-1).options.body,processAttempt.options.body);
+ eq(changes.length,1);
+ journeyAction.unmount();
+ journey.unmount();
+ processDetail.unmount();
+ console.log(JSON.stringify({success:true,checks,scope:'Helpers et handlers réels Support : création, conservation/rejeu, droits, contexte, transitions, listes/exports, kanban, KPI, fiches et parcours',limits:['DOM et API simulés ; pas de recette visuelle navigateur']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

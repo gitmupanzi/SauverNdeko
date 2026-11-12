@@ -82,7 +82,7 @@ if not db.one("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_
     old_cost=db.one('SELECT * FROM logistique."T_ValorisationOuverture" WHERE "ID_ArticleFk"=%s',[historical['ID_Article']])
     old_value=db.one('SELECT "ValeurStock" value FROM logistique."V_ValorisationStock" WHERE "ID_Article"=%s',[historical['ID_Article']])['value']
     with psycopg.connect(DSN,autocommit=True) as connection:
-        connection.execute((ROOT/'SQL/migrations/20261028_01_stock_initial_documents.sql').read_text(encoding='utf8'))
+        connection.execute((ROOT/'backend/database/migrations/20261028_01_stock_initial_documents.sql').read_text(encoding='utf8'))
     after=db.one('SELECT * FROM logistique."T_Mouvement" WHERE "ID_Mvt"=%s',[old_movement['ID_Mvt']])
     check({k:v for k,v in after.items() if k!='ID_cmdFk'}=={k:v for k,v in old_movement.items() if k!='ID_cmdFk'},'Reprise conserve id, quantite, prix, devise et dates du mouvement')
     check(after['ID_cmdFk'] is not None,'Reprise rattache le mouvement existant a un bon')

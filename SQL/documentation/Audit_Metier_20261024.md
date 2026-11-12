@@ -58,6 +58,6 @@ L’état testé ne constitue pas une certification de tous les parcours ERP ni 
 
 ## Sources et fichiers
 
-- [Migration appliquée](../migrations/20261024_04_coherence_schemas_metier.sql) et [retour arrière logique](../migrations/rollback/20261024_04_coherence_schemas_metier.sql).
+- [Migration appliquée](../../backend/database/migrations/20261024_04_coherence_schemas_metier.sql) et [retour arrière logique](../../backend/database/migrations/rollback/20261024_04_coherence_schemas_metier.sql).
 - [Guide des fichiers SQL](../README.md), recettes et règles de nouvelle installation.
 - [Comportement des triggers PostgreSQL 18](https://www.postgresql.org/docs/18/trigger-definition.html), [verrous](https://www.postgresql.org/docs/18/explicit-locking.html) et [validation des contraintes](https://www.postgresql.org/docs/18/sql-altertable.html).

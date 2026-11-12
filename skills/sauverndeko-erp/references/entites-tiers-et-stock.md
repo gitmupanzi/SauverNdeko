@@ -63,7 +63,7 @@ Au moment de cette décision : T_Client et Tiers 360 restent à construire ; les
 
 Pour la future migration et son API, vérifier sur données fictives : deux entreprises ne voient pas leurs tiers/documents réciproques ; les collaborateurs habilités partagent les objets de leur entreprise ; les droits d'action restent distincts ; le global consulte et agit dans chaque entreprise sans mélange ; changer l'affectation d'un créateur ne déplace pas les objets ; les FK, pièces et exports respectent le même périmètre. Les scénarios de réception/sortie/retour conservent un seul effet sur le stock.
 
-Sources à relire avant implémentation : backend/apps/accounts/authentication.py, backend/apps/core/permissions.py, backend/apps/core/module_access.py, backend/apps/core/models.py, backend/apps/logistique/order_composer.py, receipts.py, stock_returns.py, invoices.py, services.py, followup_folders.py et SQL/migrations/20261025_07_factures_snapshots.sql. Toute modification SQL conserve vues communes, contraintes, index et COMMENT ON versionnés.
+Sources à relire avant implémentation : backend/apps/accounts/authentication.py, backend/apps/core/permissions.py, backend/apps/core/module_access.py, backend/apps/core/models.py, backend/apps/logistique/order_composer.py, receipts.py, stock_returns.py, invoices.py, services.py, followup_folders.py et backend/database/migrations/20261025_07_factures_snapshots.sql. Toute modification SQL conserve vues communes, contraintes, index et COMMENT ON versionnés.
 
 ## Installation vérifiée le 25 octobre 2026
 

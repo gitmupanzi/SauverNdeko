@@ -8,18 +8,21 @@ from tempfile import SpooledTemporaryFile
 from django.db import connection
 from django.http import FileResponse
 from django.utils import timezone
+from rest_framework.views import APIView
 
 from apps.core import db
 from apps.core.module_access import require_module
+from apps.core.permissions import IsERPAdmin
 from apps.core.repository import clean, page, positive
-from apps.core.responses import APIError, ExactJSONRenderer
+from apps.core.responses import APIError, ExactJSONRenderer, ok
 from apps.core.tabular_exports import selected_scope, write_tabular
 from apps.core.table_preferences import export_keys
 from .excel import ExcelDownloadView, ExcelFileRenderer, CSVFileRenderer, XLSX_MEDIA_TYPE
 from .table_queries import document_zone
 
 
-KINDS = {'depots', 'stocks-depots', 'transferts', 'inventaires'}
+INVENTORY_REGISTERS = {'inventaires', 'lignes-inventaires'}
+KINDS = {'depots', 'stocks-depots', 'transferts'} | INVENTORY_REGISTERS
 LABELS = {
     'ID_Depot': 'N° dépôt', 'CodeDepot': 'Code', 'NomDepot': 'Dépôt',
     'AdresseDepot': 'Adresse', 'Principal': 'Principal', 'Actif': 'État',
@@ -37,6 +40,10 @@ LABELS = {
     'DateInventaire': 'Date et heure', 'NbEcarts': 'Écarts', 'Etat': 'État',
     'ValideLe': 'Validé le', 'AnnuleLe': 'Annulé le',
     'MotifAnnulation': 'Motif d’annulation',
+    'EtatInventaire': 'État de l’inventaire', 'CodeArticleInterne': 'Code article',
+    'Unite': 'Unité', 'QteTheorique': 'Quantité théorique', 'QteComptee': 'Quantité physique',
+    'Ecart': 'Écart', 'Justification': 'Justification', 'CodeCorrection': 'Bon de correction',
+    'CodeAnnulation': 'Bon d’annulation',
 }
 
 # Identifiants stables, explicitement distincts des secrets/preuves techniques.
@@ -69,23 +76,52 @@ FIELDS = {
         'MotifAnnulation': 'text', 'CreeLe': 'timestamp with time zone',
         'ModifieLe': 'timestamp with time zone',
     },
+    'lignes-inventaires': {
+        'CodeInventaire': 'text', 'DateInventaire': 'timestamp with time zone',
+        'NomDepot': 'text', 'NomArticle': 'text', 'CodeArticleInterne': 'text',
+        'QteTheorique': 'numeric', 'QteComptee': 'numeric', 'Unite': 'text',
+        'Ecart': 'numeric', 'Justification': 'text', 'EtatInventaire': 'text',
+        'Motif': 'text', 'CodeCorrection': 'text', 'CodeAnnulation': 'text',
+    },
 }
 VIEWS = {'depots': 'V_Depot', 'stocks-depots': 'V_StockDepot',
-         'transferts': 'V_TransfertDepot', 'inventaires': 'V_Inventaire'}
+         'transferts': 'V_TransfertDepot', 'inventaires': 'V_Inventaire',
+         'lignes-inventaires': 'V_InventaireLigne'}
 IDENTITIES = {'depots': 'ID_Depot', 'stocks-depots': ['ID_ArticleFk', 'ID_DepotFk'],
-              'transferts': 'ID_TransfertDepot', 'inventaires': 'ID_Inventaire'}
+              'transferts': 'ID_TransfertDepot', 'inventaires': 'ID_Inventaire',
+              'lignes-inventaires': ['ID_InventaireFk', 'ID_ArticleFk']}
 TITLES = {'depots': 'Dépôts', 'stocks-depots': 'Stocks par dépôt',
-          'transferts': 'Transferts internes', 'inventaires': 'Inventaires physiques'}
+          'transferts': 'Transferts internes', 'inventaires': 'Inventaires physiques',
+          'lignes-inventaires': 'Lignes d’inventaire'}
+
+INVENTORY_LINE_SOURCE = '''
+    (SELECT l."ID_InventaireFk", l."ID_ArticleFk", h."IdEntiteFk", h."ID_DepotFk",
+            h."CodeInventaire", h."DateInventaire", h."Etat" AS "EtatInventaire", h."Motif",
+            d."NomDepot", l."NomArticle", l."CodeArticleInterne", l."Unite", l."Decimales",
+            l."QteTheorique", l."QteComptee", l."Ecart", l."Justification",
+            l."ID_CommandeCorrectionFk", l."CodeCorrection",
+            l."ID_CommandeAnnulationFk", l."CodeAnnulation"
+     FROM logistique."V_InventaireLigne" l
+     JOIN logistique."V_Inventaire" h
+       ON h."ID_Inventaire"=l."ID_InventaireFk" AND h."IdEntiteFk"=l."IdEntiteFk"
+     LEFT JOIN logistique."T_Depot" d
+       ON d."ID_Depot"=h."ID_DepotFk" AND d."IdEntiteFk"=h."IdEntiteFk") v
+'''
+
+
+def register_access(actor, kind):
+    if kind in INVENTORY_REGISTERS:
+        from .inventories import access
+    else:
+        from .depots import access
+    return access(actor)
 
 
 def source(actor, kind):
     """Le catalogue de présentation n'étend jamais cette liste autorisée."""
     if kind not in KINDS:
         raise APIError('Registre inconnu.', 'NOT_FOUND', 404)
-    from .depots import access
-    if kind == 'inventaires':
-        from .inventories import access
-    access(actor)
+    register_access(actor, kind)
     return {'schema': 'logistique', 'name': VIEWS[kind],
             'primaryKey': IDENTITIES[kind],
             'columns': [{'column_name': key, 'data_type': typ} for key, typ in FIELDS[kind].items()]}
@@ -93,11 +129,9 @@ def source(actor, kind):
 
 def query_scope(actor, kind, raw):
     """Filtres et tri uniques pour la pagination et l'extraction complète."""
-    source(actor, kind)
-    from .depots import access, requested_depot
-    if kind == 'inventaires':
-        from .inventories import access
-    owner = access(actor)
+    obj = source(actor, kind)
+    from .depots import requested_depot
+    owner = register_access(actor, kind)
     clauses, values = ['TRUE'], []
     if owner is not None:
         clauses.append('v."IdEntiteFk"=%s'); values.append(owner)
@@ -138,6 +172,31 @@ def query_scope(actor, kind, raw):
                     clauses.append('v.' + db.ident(column) + '=%s'); values.append(identifier)
             sorts['ID_TransfertDepot'] = 'bigint'
             default_sort, default_dir = 'DateTransfert', 'desc'
+        elif kind == 'lignes-inventaires':
+            for parameter, key, label in (('inventaireId', 'ID_InventaireFk', 'Inventaire'),
+                                          ('articleId', 'ID_ArticleFk', 'Article')):
+                if raw.get(parameter) not in (None, '', 'all'):
+                    clauses.append('v.' + db.ident(key) + '=%s')
+                    values.append(positive(raw[parameter], label))
+            state = raw.get('etat') or 'all'
+            if state not in ('all', 'brouillon', 'valide', 'annule'):
+                raise APIError('État de l’inventaire invalide.')
+            if state != 'all':
+                clauses.append('v."EtatInventaire"=%s')
+                values.append(state)
+            differences = {'all': 'TRUE', 'avec': 'v."Ecart"<>0', 'sans': 'v."Ecart"=0',
+                           'positif': 'v."Ecart">0', 'negatif': 'v."Ecart"<0'}
+            difference = raw.get('ecart') or 'all'
+            if difference not in differences:
+                raise APIError('Filtre d’écart invalide.')
+            clauses.append(differences[difference])
+            from .ledger_registers import period_clause
+            period, period_values = period_clause(obj, 'DateInventaire', raw.get('dateFrom'), raw.get('dateTo'), raw)
+            if period:
+                clauses.append(period)
+                values.extend(period_values)
+            search = ['CodeInventaire', 'Motif', 'NomDepot', 'NomArticle', 'CodeArticleInterne', 'Justification']
+            default_sort, default_dir = 'DateInventaire', 'desc'
         else:
             search = ['CodeInventaire', 'Motif']
             default_sort, default_dir = 'DateInventaire', 'desc'
@@ -154,6 +213,8 @@ def query_scope(actor, kind, raw):
           JOIN logistique."T_Article" a ON a."ID_Article"=s."ID_ArticleFk"
           JOIN logistique."T_Depot" d ON d."ID_Depot"=s."ID_DepotFk"
           LEFT JOIN referentiel."T_Generique" u ON u."ID_Generique"=a."ID_UniteFk") v'''
+    elif kind == 'lignes-inventaires':
+        relation = INVENTORY_LINE_SOURCE
     else:
         relation = 'logistique.' + db.ident(VIEWS[kind]) + ' v'
     identity = IDENTITIES[kind]
@@ -165,7 +226,7 @@ def query_scope(actor, kind, raw):
 def listing(actor, kind, raw):
     relation, where, values, order, sort, direction = query_scope(actor, kind, raw)
     take, skip = page(raw)
-    if kind == 'inventaires':
+    if kind in INVENTORY_REGISTERS:
         take = min(take, 100)
     count = db.one('SELECT count(*) n FROM ' + relation + ' WHERE ' + where, values)['n']
     rows = db.query('SELECT v.* FROM ' + relation + ' WHERE ' + where + ' ORDER BY ' + order + ' LIMIT %s OFFSET %s', [*values, take, skip])
@@ -202,9 +263,11 @@ def workbook(actor, kind, raw, file_format):
     context = {'title': TITLES[kind], 'scope': company['NomEntite'] if company else 'Entreprises autorisées',
                'generated': timezone.now().astimezone(zone).strftime('%d/%m/%Y %H:%M'),
                'zone': str(zone), 'tz': zone, 'source': 'logistique.' + VIEWS[kind],
-               'raw': raw, 'filters': {key: raw[key] for key in ('actif', 'depotId', 'articleId', 'etat', 'depotSourceId', 'depotDestinationId') if raw.get(key)},
+               'raw': raw, 'filters': {key: raw[key] for key in ('actif', 'depotId', 'articleId', 'etat', 'depotSourceId', 'depotDestinationId', 'inventaireId', 'ecart') if raw.get(key)},
                'filterLabels': {'actif': 'État du dépôt', 'depotId': 'Dépôt · identifiant',
-                                'articleId': 'Article · identifiant', 'etat': 'État du transfert',
+                                'articleId': 'Article · identifiant',
+                                'etat': 'État de l’inventaire' if kind == 'lignes-inventaires' else 'État du transfert',
+                                'inventaireId': 'Inventaire · identifiant', 'ecart': 'Écart',
                                 'depotSourceId': 'Dépôt source · identifiant', 'depotDestinationId': 'Dépôt destination · identifiant'},
                'order': LABELS.get(sort, sort) + ' ' + direction}
     target = SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode='w+b')
@@ -239,3 +302,11 @@ class DepotRegisterExportView(ExcelDownloadView):
         response['X-Export-Row-Count'] = str(count)
         response['Cache-Control'] = 'no-store, private'
         return response
+
+
+class InventoryLinesView(APIView):
+    permission_classes = [IsERPAdmin]
+
+    def get(self, request):
+        rows, meta = listing(request.user, 'lignes-inventaires', request.query_params)
+        return ok(rows, meta=meta)

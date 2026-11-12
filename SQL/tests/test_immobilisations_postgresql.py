@@ -37,7 +37,7 @@ with psycopg.connect(DSN,autocommit=True,row_factory=dict_row) as c:
  tables=q("SELECT n.nspname schema,c.relname name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='r' AND n.nspname=ANY(%s) ORDER BY 1,2",[['analytics','communication','geolocalisation','logistique','operations','professionnel','referentiel','systeme']]).fetchall()
  before={(r['schema'],r['name']):rows(r['schema'],r['name']) for r in tables}
  old_profile=q("SELECT column_name FROM information_schema.columns WHERE table_schema='systeme' AND table_name='V_User_profil' ORDER BY ordinal_position").fetchall()
- source=ROOT/'SQL/migrations/20261028_08_immobilisations_affectations.sql'
+ source=ROOT/'backend/database/migrations/20261028_08_immobilisations_affectations.sql'
  q(source.read_text(encoding='utf8'))
  new_rh={'MatriculeUser','ID_ServiceFk','ID_FonctionFk','DateEmbauche','DateFinEmploi','ObservationProfessionnelle'}
  append_only={('referentiel','T_CategorieGenerique'):1,('referentiel','T_Generique'):6,('referentiel','T_InterfaceTableau'):1,('systeme','T_Fk_Correspondance'):3,('systeme','T_Audit_Log'):3}

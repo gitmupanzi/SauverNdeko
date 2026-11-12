@@ -81,6 +81,32 @@ ACTION_LABELS = {'start': 'Prendre en charge', 'pause': 'Mettre en attente',
                  'reopen': 'Rouvrir le dossier', 'archive': 'Archiver', 'restore': 'Restaurer'}
 
 
+OPEN_TICKET = """v."StatutCode" NOT IN ('resolved','closed')"""
+DASHBOARD_METRICS = {
+    'ouverts': OPEN_TICKET,
+    'enAttente': """v."StatutCode"='pending'""",
+    'enRetard': f'{OPEN_TICKET} AND v."DateEcheance"<statement_timestamp()',
+    'aEcheanceProchaine': (
+        f'{OPEN_TICKET} AND v."DateEcheance">=statement_timestamp()'
+        """ AND v."DateEcheance"<statement_timestamp()+interval '168 hours'"""
+    ),
+    'sansResponsable': f'{OPEN_TICKET} AND v."ID_ResponsableFk" IS NULL',
+    'resolus': """v."StatutCode"='resolved'""",
+    'clotures': """v."StatutCode"='closed'""",
+}
+TICKET_INDICATORS = {
+    'ouverts': 'ouverts',
+    'attente': 'enAttente',
+    'enAttente': 'enAttente',
+    'retard': 'enRetard',
+    'enRetard': 'enRetard',
+    'echeance-prochaine': 'aEcheanceProchaine',
+    'sans-responsable': 'sansResponsable',
+    'resolus': 'resolus',
+    'clotures': 'clotures',
+}
+
+
 def identifier(value, label='Identifiant'):
     if type(value) is bool or not re.fullmatch(r'[1-9][0-9]*', str(value)):
         raise APIError(label+' invalide.', 'SUPPORT_VALIDATION', 422)
@@ -177,14 +203,11 @@ def selection(actor, raw, action='read'):
                 raise APIError('Période invalide.')
             clauses.append('v."DateCreation"'+operator+'%s'); params.append(timezone.make_aware(datetime.combine(value,time.min)))
     indicator = raw.get('indicator')
-    indicators = {'ouverts': 'v."StatutCode" NOT IN (\'resolved\',\'closed\')',
-                  'attente': 'v."StatutCode"=\'pending\'', 'enAttente': 'v."StatutCode"=\'pending\'',
-                  'retard': 'v."DateEcheance"<statement_timestamp() AND v."StatutCode" NOT IN (\'resolved\',\'closed\')',
-                  'enRetard': 'v."DateEcheance"<statement_timestamp() AND v."StatutCode" NOT IN (\'resolved\',\'closed\')',
-                  'resolus': 'v."StatutCode"=\'resolved\'', 'clotures': 'v."StatutCode"=\'closed\''}
     if indicator:
-        if indicator not in indicators: raise APIError('Indicateur inconnu.')
-        clauses.append(indicators[indicator])
+        metric = TICKET_INDICATORS.get(indicator)
+        if metric is None:
+            raise APIError('Indicateur inconnu.')
+        clauses.append(DASHBOARD_METRICS[metric])
     obj = table_source(actor)
     columns = {column['column_name'] for column in obj['columns']}
     sort = raw.get('sortBy') or 'DateCreation'
@@ -301,6 +324,10 @@ def transition_options(actor, row):
         elif latest['ID_ResultatVerificationFk']!=circuit['verification']['accepted']:
             actions=[key for key in actions if key!='close']
     if current=='closed':actions.append('archive')
+    if any(action in {'resolve','close'} for action in actions):
+        from apps.support.processes import has_run
+        if has_run(row['ID_Support'], active_only=True):
+            actions=[action for action in actions if action not in {'resolve','close'}]
     return [{'key':key,'label':ACTION_LABELS[key],'requiresReason':key in {'pause','reopen','archive','restore'},
              'requiresResolution':key=='resolve','requiresVerification':key=='verify'} for key in actions]
 
@@ -489,6 +516,10 @@ def save(actor,body,pk=None,*,batch_digest=None):
             if old['ID_StatutFk']==old['CircuitSnapshot']['states']['closed']:
                 raise APIError('Rouvrez le dossier avant de le modifier.','SUPPORT_CLOSED',409)
         prepared=validate_fields(actor,{key:value for key,value in body.items() if key in EDIT_FIELDS},old)
+        if old and 'ID_TypeSupportFk' in prepared and prepared['ID_TypeSupportFk']!=old['ID_TypeSupportFk']:
+            from apps.support.processes import has_run
+            if has_run(old['ID_Support']):
+                raise APIError('Le type est conservé pour les dossiers qui suivent un parcours.','SUPPORT_PROCESS_CONFLICT',409)
         if not prepared:raise APIError('Aucune modification à enregistrer.','SUPPORT_VALIDATION',422)
         try:
             with transaction.atomic():
@@ -511,6 +542,10 @@ def perform_action(actor,pk,body):
         if replayed:return detail(actor,existing),True
         row=record(actor,pk,True);_write_access(actor,row);_revision(row,body)
         if row['Archive'] and action!='restore':raise APIError('Restaurez ce dossier avant de le traiter.','SUPPORT_ARCHIVED',409)
+        if action in {'resolve','close'}:
+            from apps.support.processes import has_run
+            if has_run(row['ID_Support'], active_only=True):
+                raise APIError('Terminez le parcours du dossier avant de le résoudre ou de le clôturer.','SUPPORT_PROCESS_CONFLICT',409)
         permitted={item['key'] for item in transition_options(actor,row)}
         if action not in permitted and action not in {'archive','restore'}:raise APIError('Cette action n’est pas disponible à cette étape.','SUPPORT_TRANSITION_INVALID',409)
         reason=_text(body.get('motif'),'motif',2000,required=action in {'pause','reopen','archive','restore'})
@@ -636,9 +671,10 @@ def workbook(actor,raw,file_format='xlsx'):
 class SupportContextView(APIView):
     permission_classes=[HasModuleAccess]
     def get(self,request):
+        from apps.support.processes import can_read_models
         if set(request.query_params)-{'currentId'}:raise APIError('Critère non autorisé.')
         current=record(request.user,request.query_params['currentId']) if request.query_params.get('currentId') else None
-        return ok(references(request.user,current))
+        return ok({**references(request.user,current),'canReadProcessModels':can_read_models(request.user)})
 
 
 class SupportEntitiesView(APIView):
@@ -703,19 +739,20 @@ class SupportDocumentDownloadView(DocumentDownloadView):
 class SupportDashboardView(APIView):
     permission_classes=[HasModuleAccess]
     def get(self,request):
+        from apps.support.processes import dashboard_metrics
+
         actor = request.user
         require_tab(actor, 'support', 'tableau-de-bord')
-        obj,where,values,*_=selection(actor,request.query_params.dict())
-        row=db.one('''SELECT count(*) AS total,
-            count(*) FILTER(WHERE v."StatutCode" NOT IN ('resolved','closed')) AS ouverts,
-            count(*) FILTER(WHERE v."StatutCode"='pending') AS "enAttente",
-            count(*) FILTER(WHERE v."DateEcheance"<statement_timestamp() AND v."StatutCode" NOT IN ('resolved','closed')) AS "enRetard",
-            count(*) FILTER(WHERE v."StatutCode"='resolved') AS resolus,
-            count(*) FILTER(WHERE v."StatutCode"='closed') AS clotures FROM support."V_Support" v WHERE '''+where,values)
+        _, where, values, *_ = selection(actor, request.query_params.dict())
+        counts = ', '.join(
+            f'count(*) FILTER (WHERE {predicate}) AS {db.ident(metric)}'
+            for metric, predicate in DASHBOARD_METRICS.items()
+        )
+        row = db.one(f'SELECT count(*) AS total, {counts} FROM support."V_Support" v WHERE ' + where, values)
         charts={}
         for name,field,label in [('parStatut','ID_StatutFk','Statut'),('parPriorite','ID_PrioriteFk','Priorite')]:
             charts[name]=db.query('SELECT v.'+db.ident(field)+' AS id,v.'+db.ident(label)+' AS label,count(*) AS count FROM support."V_Support" v WHERE '+where+' GROUP BY v.'+db.ident(field)+',v.'+db.ident(label)+' ORDER BY count DESC,label NULLS LAST,id',values)
-        return ok({'metrics':row,'charts':charts,**capabilities(actor)})
+        return ok({'metrics':row,'charts':charts,'processes':dashboard_metrics(actor),**capabilities(actor)})
 
 
 class SupportKanbanView(APIView):

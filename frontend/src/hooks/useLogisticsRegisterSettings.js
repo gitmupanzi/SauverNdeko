@@ -1,18 +1,19 @@
 import {useEffect,useRef,useState} from "react";
 import {useAuth} from "../contexts/AuthContext";
 import {useEntityScope} from "../contexts/EntityScopeContext";
-import {moduleRights} from "../services/moduleAccess";
+import {moduleRights,tabRights} from "../services/moduleAccess";
 import {downloadApiFile} from "../services/api";
 import useTablePreferences from "./useTablePreferences";
 
-// The four warehouse registers share the same persistent table/export contract.
-export default function useLogisticsRegisterSettings(kind,{query={},grid={},loading=false,pending=false,error="",count=0}={}){
+// Logistics registers share the same persistent table and export contract.
+export default function useLogisticsRegisterSettings(kind,{query={},grid={},loading=false,pending=false,error="",count=0,permissionTab=null}={}){
  const preferences=useTablePreferences("logistique."+kind),{user}=useAuth(),scope=useEntityScope();
  const columnsAnchorRef=useRef(null),request=useRef(null),[columnsOpen,setColumnsOpen]=useState(false),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
  const signature=JSON.stringify({query,sortBy:grid.sortBy,sortDir:grid.sortDir,scope:scope.scopeKey,account:user?.IdUser});
  useEffect(()=>{request.current?.abort();request.current=null;setExporting(false);setExportError("");return()=>request.current?.abort();},[signature]);
  useEffect(()=>{setColumnsOpen(false);},[scope.scopeKey,user?.IdUser]);
- const canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true;
+ const canExport=user?.permissions?.canExportData!==false&&moduleRights(user,"logistique").canExport===true
+  && (!permissionTab||tabRights(user,"logistique",permissionTab).canExport===true);
  const exportDisabled=loading||pending||Boolean(error)||!count||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length;
  async function exportFile(format="xlsx"){
   if(!canExport||exportDisabled||exporting)return;

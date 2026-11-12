@@ -40,13 +40,15 @@ Le catalogue commercial et les accès effectifs sont décrits dans [Modules et f
 
 | Dossier | Rôle |
 |---|---|
-| `frontend/` | Interfaces React, composants communs, tests d’interface et dépendances npm verrouillées. |
-| `backend/` | API Django, services métier, modèles non gérés par l’ORM et dépendances Python verrouillées. |
-| `SQL/` | Sources canoniques, migrations immuables, manifeste de versions, contrôles et recettes PostgreSQL. |
+| [`frontend/`](frontend) | Application React/Vite, ressources publiques, tests d’interface et dépendances npm. |
+| [`backend/`](backend/README.md) | API Django, services métier, configuration et migrations métier. |
+| [`SQL/`](SQL/README.md) | Instantanés de structure, sources canoniques par schéma, données d’initialisation et recettes PostgreSQL. |
 | `deploy/` | Construction Docker, configuration Render, maintenance et droits du compte web. |
 | `scripts/` | Lanceurs Windows, démarrage Render et contrôles techniques. |
 | `skills/` | Conventions du projet et charte documentaire. |
 | `docs/` | Guides, décisions, résultats de tests et limites connues. |
+
+Pour suivre un parcours dans le code, partez de [`frontend/src/App.jsx`](frontend/src/App.jsx) pour les routes et de [`frontend/src/pages/`](frontend/src/pages) pour les écrans. Les composants partagés sont dans [`frontend/src/components/`](frontend/src/components) et les appels API dans [`frontend/src/services/`](frontend/src/services). Côté Django, [`backend/config/urls.py`](backend/config/urls.py) regroupe les routes, [`backend/apps/`](backend/apps) contient les applications métier et [`backend/database/`](backend/database) contient les évolutions PostgreSQL et leur manifeste.
 
 Les données, médias privés, sauvegardes et preuves locales restent dans les emplacements exclus de Git. Les captures SQL historiques sont conservées comme références de conception et exclues de l’image Docker.
 

@@ -13,7 +13,7 @@ DSN=os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL','')
 location=urlsplit(DSN)
 if location.hostname not in {'localhost','127.0.0.1','::1'} or not location.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Base privée locale sauverndeko_test_* obligatoire, sans repli source.')
-MIGRATION=Path(__file__).resolve().parents[1]/'migrations/20261103_04_coordonnees_territoires.sql'
+MIGRATION=Path(__file__).resolve().parents[2]/'backend/database/migrations/20261103_04_coordonnees_territoires.sql'
 FIELDS=['AdresseTerritoire','TelephoneTerritoire','TelephoneSecondaireTerritoire','EmailTerritoire',
         'SiteWebTerritoire','InformationsAccueilTerritoire','CoordonneesModifieLe']
 

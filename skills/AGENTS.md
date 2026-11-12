@@ -14,6 +14,8 @@ SauverNdeko évolue vers un ERP modulaire commercialisable, multi-organisation e
 
 ## Conventions structurantes
 
+La [cartographie du dépôt](../README.md#organisation-du-dépôt) indique les points d’entrée Django et React. Les évolutions SQL métier sont dans [`backend/database/migrations/`](../backend/database/migrations) et leur [manifeste](../backend/database/releases/manifest.json) dans `backend/database/releases/`. Les migrations natives de Django s’appliquent au schéma `public` via `manage.py migrate`.
+
 1. Réutiliser les vues PostgreSQL communes avant de créer une lecture parallèle. Les écritures passent par les tables et les services métier, avec les triggers et procédures existants vérifiés.
 2. Chaque table, vue et colonne métier créée ou modifiée doit recevoir un commentaire PostgreSQL utile et versionné. Les commentaires de code ne remplacent pas COMMENT ON.
 3. Les calculs métier, agrégats exhaustifs et permissions appartiennent au serveur. Un indicateur, sa liste de détail et son export partagent le même périmètre autorisé.

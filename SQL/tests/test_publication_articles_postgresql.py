@@ -13,7 +13,7 @@ DSN = os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL', '')
 location = urlsplit(DSN)
 if location.hostname not in {'localhost', '127.0.0.1', '::1'} or not location.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Base privée sauverndeko_test_* obligatoire ; aucun repli source.')
-MIGRATION = Path(__file__).resolve().parents[1] / 'migrations/20261103_01_publication_articles.sql'
+MIGRATION = Path(__file__).resolve().parents[2] / 'backend/database/migrations/20261103_01_publication_articles.sql'
 
 
 class PublicationSQL(unittest.TestCase):

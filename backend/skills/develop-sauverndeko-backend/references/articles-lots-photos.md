@@ -1,6 +1,6 @@
 # Contrat Articles, photos et lots
 
-Évolution autorisée le 25/10/2026 : CRUD Article, poids, lots à réception, capture photo et informations complémentaires. Source : SQL/migrations/20261025_03_articles_poids_lots.sql. Les modèles restent unmanaged.
+Évolution autorisée le 25/10/2026 : CRUD Article, poids, lots à réception, capture photo et informations complémentaires. Source : backend/database/migrations/20261025_03_articles_poids_lots.sql. Les modèles restent unmanaged.
 
 ## Écritures Article
 

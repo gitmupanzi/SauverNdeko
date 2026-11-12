@@ -14,7 +14,8 @@ import OrderReturnHistory from "./OrderReturnHistory";
 import InvoiceEditor from "../pages/logistique/InvoiceEditor";
 import BonReturnEditor from "../pages/logistique/BonReturnEditor";
 import DataTableToolbar from "./DataTableToolbar";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import SearchSelect from "./SearchSelect";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import ConsultationTabs from "./ConsultationTabs";
 import { useAuth } from "../contexts/AuthContext";
 import { downloadApiFile } from "../services/api";
@@ -25,6 +26,12 @@ import { useRead } from "./ConsultationProvider";
 const PRODUCT_INDICATORS = new Set(["articles","articlesCategorie","alertesStock","ruptures","auditTotal","auditCoherents","auditEcarts","coherenceRate","couvertureCritique","peremptionProche","articlesPerimes"]);
 const ARTICLE_WEIGHT_INDICATORS = new Set(["articles", "articlesCategorie"]);
 const WEIGHT_FIELD_LABELS = { PoidsUnitaire: "Poids unitaire", PoidsStockKg: "Poids du stock (kg)" };
+const STOCK_CARD_LABELS = {
+  DateFicheStock:"Date et heure", NomDepot:"Dépôt", TypeMvt:"Mouvement",
+  EntreeFicheStock:"Entrée", SortieFicheStock:"Sortie", SoldeFicheStock:"Solde après mouvement",
+};
+const STOCK_CARD_COLUMNS = ["DateFicheStock", "NomDepot", "TypeMvt", "CodeCmd", "EntreeFicheStock", "SortieFicheStock", "SoldeFicheStock", "PUMvt", "MontantMvt"];
+const STOCK_CARD_EXPORT = "/api/logistique/registre/mouvements/export.";
 const LABELS = {stocks:"Stocks par dépôt",lots:"Lots", identite: "Synthèse", commandes: "Bons de stock", lignes: "Lignes", mouvements: "Mouvements", consommation: "Consommation", couverture: "Couverture", controle: "Contrôle", reglements: "Règlements", facture: "Facture" };
 const FIELD_LABELS = {TauxTVA:"TVA (%)",MontantHTFacture:"Montant HT",MontantTVA:"TVA",EtatPeremptionLot:"Conservation",MotifDerogationPeremption:"Motif de dérogation",DateDerogationPeremption:"Dérogation du",MontantFacture:"Montant facturé",DeviseCode:"Devise",MontantsParDevise:"Valeurs par devise",NumeroLot:"N° de lot",StockLot:"Stock du lot",Quantite:"Quantité",QuantiteSignee:"Quantité signée",DatePeremptionLot:"Péremption du lot",QuantiteEntree:"Entrées",QuantiteSortie:"Sorties", CodeArticleInterne: "Code", NomArticle: "Produit", RefArticle: "Référence", TypeArticle: "Type", CategorieArticle: "Catégorie", Unite: "Unité", QteArticle: "Stock actuel", QteMinArticle: "Seuil", QteACommander: "À commander", EtatStock: "État du stock", PUArticle: "Prix d’achat", PVArticle: "Prix de vente", ValeurStockAchat: "Valeur catalogue (achat)", MargeUnitaire: "Marge unitaire", DatePeremptionArticle: "Péremption", EtatPeremption: "État de péremption", NomComplet: "Responsable", ObsArticle: "Observation", CodeCmd: "Bon de stock", RefCmd: "Référence", TypeCmd: "Type", StatutCmd: "Statut", DateCmd: "Date", NomClientSaisi: "Tiers", NbLignes: "Lignes", MontantTTC: "Montant TTC", TotalRegleReel: "Réglé", ResteReel: "Reste", EtatPaiement: "Paiement", CodeFacture: "Facture", DateFacture: "Date de facture", MontantRegleFacture: "Réglé", DateEcheancePaiement: "Échéance", EtatControleCommande: "Contrôle", ObsCmd: "Observation", AbrUnite: "Unité", QteCmdDetail: "Quantité", PUCmdDetail: "Prix unitaire", MontantLigne: "Montant", DateMvt: "Date", NomTypeMvt: "Type", QteMvtSigned: "Quantité", PUMvt: "Prix unitaire", MontantMvt: "Montant", OrigineMouvement: "Origine", Mois: "Mois", ConsoMensuelle: "Consommation", ValeurConsoMensuelle: "Valeur", StockActuel: "Stock", ConsoMoyMensuelle: "Consommation moyenne", CouvertureMois: "Couverture · mois", EtatCouverture: "État", StockArticle: "Stock courant", StockMouvements: "Stock des mouvements", Ecart: "Écart", EtatAuditStock: "Contrôle", MontantRegle: "Réglé", DateReglement: "Date", TotalRegle: "Réglé", Reste: "Reste", EtatReglement: "Paiement", CodeFactureFk: "Facture", MontantResteFacture: "Solde à régler" };
 const SECTION_FIELDS = {lots:["NomArticle","NumeroLot","StockLot","Quantite","DateMvt","CodeCmd","DatePeremptionLot","EtatPeremptionLot","QuantiteEntree","QuantiteSortie","MotifDerogationPeremption","DateDerogationPeremption"],
@@ -47,6 +54,7 @@ function display(field, value, row={}) {
   if (value == null || value === "") return "—";
   if (field === "PoidsUnitaire") return [formatNumber(value), row.UnitePoids].filter(Boolean).join(" ");
   if (field === "PoidsStockKg") return formatNumber(value);
+  if (["EntreeFicheStock", "SortieFicheStock", "SoldeFicheStock"].includes(field)) return formatNumber(value);
   if (field === "Mois") return formatDate(value, {withTime:false});
   if (field === "DatePeremptionLot") return formatDate(value,{withTime:false});
   if (/^Date/.test(field)) return formatDate(value);
@@ -66,7 +74,7 @@ function ErrorState({ payload, retry }) {
 
 function parseFilters(value) { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { return {}; } }
 function compactFilters(filters) { return Object.fromEntries(Object.entries(filters).filter(([,value]) => String(value).trim()).map(([key,value]) => [key,String(value).trim()])); }
-export function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null, exportTabs = [], onSelectionChange, selectionResetKey=0, onReady }) {
+export function ResultTable({ remote, query, onQueryChange, fields, open, kind = null, exportPath = null, exportCsvPath = null, exportParams = null, exportEmpty = false, exportTabs = [], hiddenByDefault = [], onSelectionChange, selectionResetKey=0, onReady }) {
   const {user}=useAuth();
   const canExport=user?.permissions?.canExportData!==false&&exportTabs.length>0&&exportTabs.every(tab=>tabRights(user,"logistique",tab).canExport===true);
   const data = remote.payload;
@@ -97,8 +105,8 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
   const activeFilters = Object.keys(applied).length + Number(Boolean(query.q));
   const apply = () => onQueryChange({ q:search.trim(), columnFilters:JSON.stringify(draft), skip:0 });
   const reset = () => { setSearch(""); setFilters({}); onQueryChange({ q:"",columnFilters:"{}",skip:0 }); };
-  async function exportFile() {
-    if(!canExport||!exportPath||remote.loading||pending||exporting)return;
+  async function exportFile(path) {
+    if(!canExport||!path||remote.loading||pending||exporting)return;
     const controller = new AbortController();
     exportRequest.current?.abort(); exportRequest.current = controller;
     setExporting(true); setExportError("");
@@ -106,9 +114,10 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     const exportColumns = keys.flatMap(key =>
       key === "PoidsUnitaire" && available.includes("UnitePoids") ? [key, "UnitePoids"] : [key]
     );
-    const params = new URLSearchParams({ ...query, timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone, columns:JSON.stringify(exportColumns) });
+    const params = new URLSearchParams({ ...query, timeZone:query.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ...(exportParams || {columns:JSON.stringify(exportColumns)}) });
     params.delete("take"); params.delete("skip");
-    try { await downloadApiFile(exportPath + "?" + params,{ signal:controller.signal }); }
+    try { await downloadApiFile(path + "?" + params,{ signal:controller.signal }); }
     catch(error) { if (!controller.signal.aborted && error.name !== "AbortError") setExportError(error.message || "L’export a échoué."); }
     finally { if (!controller.signal.aborted) setExporting(false); }
   }
@@ -116,7 +125,7 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     const sqlType = types[field] || "";
     const numeric = /^(numeric|decimal|integer|bigint|smallint|real|double precision)$/.test(sqlType);
     const timestamp = /^timestamp/.test(sqlType) && field !== "Mois";
-    const label = WEIGHT_FIELD_LABELS[field] || FIELD_LABELS[field] || field;
+    const label = STOCK_CARD_LABELS[field] || WEIGHT_FIELD_LABELS[field] || FIELD_LABELS[field] || field;
     return { key:field,label:timestamp && label === "Date" ? "Date et heure" : label,width:/^Date/.test(field) ? 180 : undefined,align:numeric ? "right" : "left",filterType:numeric ? "number" : /^(date|timestamp)/.test(sqlType) ? "date" : sqlType === "boolean" ? "boolean" : "text",
       render:(row) => {
         if (["NomArticle","CodeArticleInterne"].includes(field) && (row.ID_Article || row.ID_ArticleFk) && tabRights(user,"logistique","articles").canRead) return <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open("produit",row.ID_Article || row.ID_ArticleFk,row.NomArticle); }}>{display(field,row[field],row)}</button>;
@@ -129,10 +138,53 @@ export function ResultTable({ remote, query, onQueryChange, fields, open, kind =
     const id = kind === "produit" ? row.ID_Article || row.ID_ArticleFk : row.ID_Commande || row.ID_CmdFk || row.ID_cmdFk;
     return id ? <button type="button" className="erp-object-link" onClick={(event) => { event.stopPropagation(); open(kind,id,row.NomArticle || row.CodeCmd || row.CodeFacture); }}>Consulter</button> : "—";
   }});
-  const toolbar = <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={Number(query.take || 25)} onTake={(take) => onQueryChange({take,skip:0})} filtersOpen={filtersOpen} toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={remote.loading} exportFile={exportPath&&canExport ? exportFile : null} exporting={exporting} exportDisabled={!data?.success || !data?.meta?.filteredCount} error={exportError} />;
+  const toolbar = <DataTableToolbar search={search} setSearch={setSearch} onApply={apply} onReset={reset} pending={pending} take={Number(query.take || 25)} onTake={(take) => onQueryChange({take,skip:0})} filtersOpen={filtersOpen} toggleFilters={() => setFiltersOpen(value => !value)} activeFilters={activeFilters} density={density} toggleDensity={() => setDensity(value => value === "airy" ? "compact" : "airy")} columnsOpen={columnsOpen} columnsButtonRef={columnsAnchorRef} toggleColumns={() => setColumnsOpen(value => !value)} loading={remote.loading} exportFile={exportPath&&canExport ? ()=>exportFile(exportPath) : null} exportCsv={exportCsvPath&&canExport ? ()=>exportFile(exportCsvPath) : null} exporting={exporting} exportDisabled={!data?.success || (!exportEmpty && !data?.meta?.filteredCount)} error={exportError} />;
   return <div className="erp-results" data-density={density} aria-busy={remote.loading}>
     {data && !data.success ? <ErrorState payload={data} retry={remote.retry} /> : null}
-    <SimpleTable columns={fields.includes("QteCmdDetail")?[{key:"__ordre",label:"N°",width:60,sortable:false,render:(_row,index)=>Number(query.skip||0)+index+1},...columns]:columns} defaultVisibleColumns={[...(fields.includes("QteCmdDetail")?["__ordre"]:[]),...columns.filter(column => column.key !== "DeviseCode").map(column => column.key)]} rows={data?.success ? data.data || [] : []} toolbar={toolbar} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={filters} onColumnFilterChange={(key,value) => setFilters(current => ({...current,[key]:value}))} onApplyColumnFilters={apply} showControls serverMeta={data?.meta} serverState={query} onServerChange={onQueryChange} enableSelection={Boolean(onSelectionChange)} onSelectionChange={onSelectionChange} selectionResetKey={selectionResetKey} loading={remote.loading} getRowId={(row,index) => ([row.ID_LotArticle || row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].some(Boolean) ? [row.ID_LotArticle || row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].join(":") : "row:"+index)} />
+    <SimpleTable columns={fields.includes("QteCmdDetail")?[{key:"__ordre",label:"N°",width:60,sortable:false,render:(_row,index)=>Number(query.skip||0)+index+1},...columns]:columns} defaultVisibleColumns={[...(fields.includes("QteCmdDetail")?["__ordre"]:[]),...columns.filter(column => column.key !== "DeviseCode" && !hiddenByDefault.includes(column.key)).map(column => column.key)]} rows={data?.success ? data.data || [] : []} toolbar={toolbar} columnsPanelOpen={columnsOpen} columnsAnchorRef={columnsAnchorRef} onColumnsPanelClose={()=>setColumnsOpen(false)} onVisibleColumnsChange={setVisibleColumns} filtersVisible={filtersOpen} columnFilters={filters} onColumnFilterChange={(key,value) => setFilters(current => ({...current,[key]:value}))} onApplyColumnFilters={apply} showControls serverMeta={data?.meta} serverState={query} onServerChange={onQueryChange} enableSelection={Boolean(onSelectionChange)} onSelectionChange={onSelectionChange} selectionResetKey={selectionResetKey} loading={remote.loading} getRowId={(row,index) => ([row.ID_LotArticle || row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].some(Boolean) ? [row.ID_LotArticle || row.ID_Mvt || row.IdReglement || row.ID_Commande || row.ID_CmdFk || row.ID_Article || "",row.ID_ArticleFk || "",row.Mois || ""].join(":") : "row:"+index)} />
+  </div>;
+}
+
+function ProductStockCard({ entry, base, open, update }) {
+  const prefix = useId();
+  const initial = {depotId:entry.query?.depotId || "", dateFrom:"", dateTo:""};
+  const query = { ...initial, take:25, skip:0, sortBy:"DateFicheStock", sortDir:"asc",
+    timeZone:"Africa/Kinshasa", ...entry.stockCardQuery };
+  const [filters,setFilters] = useState(() => ({depotId:query.depotId,dateFrom:query.dateFrom,dateTo:query.dateTo}));
+  const [depots,setDepots] = useState([]);
+  const remote = useRead(base + "/mouvements?" + new URLSearchParams({...query,ficheStock:"1"}));
+  const summary = remote.payload?.meta?.ficheStock;
+  useEffect(() => { if (summary?.depots) setDepots(summary.depots); },[summary]);
+  const updateQuery = patch => update({stockCardQuery:{...query,...patch}});
+  const hasPeriod = Boolean(query.dateFrom || query.dateTo);
+  const metrics = [
+    ["ouverture", "Stock d’ouverture"], ["entrees", "Entrées"],
+    ["sorties", "Sorties"], ["cloture", hasPeriod ? "Stock de clôture" : "Solde du journal"],
+  ];
+  return <div className="product-stock-card">
+    <form className="stock-card-period" onSubmit={event=>{event.preventDefault();updateQuery({...filters,skip:0});}}>
+      <div>
+        <label htmlFor={prefix+"-depot"}>Dépôt</label>
+        <SearchSelect id={prefix+"-depot"} label="Dépôt" value={String(filters.depotId)}
+          options={[{value:"",label:"Tous les dépôts"},...depots.map(depot=>({value:String(depot.id),label:depot.label}))]}
+          onChange={depotId=>setFilters(current=>({...current,depotId}))}/>
+      </div>
+      <label>Du<input type="date" value={filters.dateFrom} max={filters.dateTo || undefined} onChange={event=>setFilters(current=>({...current,dateFrom:event.target.value}))}/></label>
+      <label>Au<input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={event=>setFilters(current=>({...current,dateTo:event.target.value}))}/></label>
+      <div className="stock-card-period-actions">
+        <ActionButton type="submit" variant="primary" disabled={remote.loading}>Appliquer</ActionButton>
+        <ActionButton icon="reset" disabled={remote.loading || (!filters.depotId && !filters.dateFrom && !filters.dateTo && !query.depotId && !hasPeriod)}
+          onClick={()=>{const all={depotId:"",dateFrom:"",dateTo:""};setFilters(all);updateQuery({...all,skip:0});}}>Réinitialiser</ActionButton>
+      </div>
+    </form>
+    <dl className="product-overview-stock stock-card-metrics" aria-busy={remote.loading}>
+      {metrics.map(([key,label])=><div key={key}><dt>{label}</dt><dd>{formatNumber(summary?.[key])}{summary?.unite&&summary[key]!=null?<small>{summary.unite}</small>:null}</dd></div>)}
+    </dl>
+    {summary?.nonDates > 0 && hasPeriod ? <p className="stock-card-note">Les mouvements non datés sont repris dans le stock d’ouverture.</p> : null}
+    {query.q || Object.keys(parseFilters(query.columnFilters)).length ? <p className="stock-card-note">Les soldes tiennent compte de tous les mouvements du périmètre.</p> : null}
+    <ResultTable remote={remote} query={query} onQueryChange={updateQuery} fields={STOCK_CARD_COLUMNS} hiddenByDefault={["PUMvt","MontantMvt"]} open={open}
+      exportPath={STOCK_CARD_EXPORT+"xlsx"} exportCsvPath={STOCK_CARD_EXPORT+"csv"} exportEmpty
+      exportTabs={["articles","mouvements"]} exportParams={{documentScope:"stock-card",articleId:entry.id}}/>
   </div>;
 }
 
@@ -145,18 +197,19 @@ function ProductObjectContent({ entry, update, open, openFolder }) {
   const sectionKeys = [...new Set([...(header.payload?.data?.sections || ["identite"]), ...(tabRights(user,"logistique","stocks-depots").canRead?["stocks"]:[])])];
   const section = sectionKeys.includes(entry.section) ? entry.section : "identite";
   const tabPrefix = "consultation-"+entry.kind+"-"+entry.id;
-  const details = useRead(section === "identite"||section === "stocks" ? null : base + "/" + section + "?" + queryString);
+  const details = useRead(["identite","stocks","mouvements"].includes(section) ? null : base + "/" + section + "?" + queryString);
   const record = header.payload?.data?.record;
   if (header.loading && !record) return <p className="consult-loading" role="status">Chargement…</p>;
   if (!header.payload?.success) return <ErrorState payload={header.payload} retry={header.retry} />;
   return <>
     <div className="consult-object-overview">{entry.kind === "produit" ? <ProductHeading record={record}/> : <div className="consult-record-heading"><h3>{record.CodeCmd || "Bon de stock"}</h3><span>{record.StatutCmd || ""}</span></div>}
     <RecordFolderLinks data={header.payload.data.dossiers} recordId={entry.id} objectType={entry.kind === "produit"?"article":"bon"} hasInvoice={entry.kind==="commande" && Boolean(record.CodeFacture?.trim())} onOpen={openFolder}/></div>
-    <ConsultationTabs tabs={sectionKeys.map(key=>({key,label:LABELS[key] || key,icon:({identite:"box",lots:"box",commandes:"receipt",lignes:"list",mouvements:"movements",consommation:"chart",couverture:"clock",controle:"check-circle",reglements:"wallet",facture:"document"})[key] || "list"}))} value={section} onChange={key=>update({section:key,query:{...entry.query,take:25,skip:0}})} label={entry.kind==="produit"?"Rubriques du produit":"Rubriques du bon de stock"} idPrefix={tabPrefix}/>
+    <ConsultationTabs tabs={sectionKeys.map(key=>({key,label:key==="mouvements" ? "Fiche de stock" : LABELS[key] || key,icon:({identite:"box",lots:"box",commandes:"receipt",lignes:"list",mouvements:"movements",consommation:"chart",couverture:"clock",controle:"check-circle",reglements:"wallet",facture:"document"})[key] || "list"}))} value={section} onChange={key=>update({section:key,query:{...entry.query,take:25,skip:0}})} label={entry.kind==="produit"?"Rubriques du produit":"Rubriques du bon de stock"} idPrefix={tabPrefix}/>
     {sectionKeys.map(key=><section key={key} className="consultation-tabpanel" role="tabpanel" id={tabPrefix+"-panel-"+key} aria-labelledby={tabPrefix+"-tab-"+key} tabIndex={key===section?0:-1} hidden={key!==section}>
     {key===section?<>
     {section==="lots"&&entry.kind==="produit"?<p className="consult-note">{entry.query?.depotId?"Lots du dépôt sélectionné.":<>Stock identifié par lot : {formatNumber(record.StockVentileLots)} · Stock sans lot : {formatNumber(record.StockSansLot)}{record.Unite?" "+record.Unite:""}</>}</p>:null}
     {section === "stocks"?<StocksDepots embedded articleId={entry.id} selectedDepotId={entry.query?.depotId||""}/>:section === "identite" ? entry.kind === "produit" ? <ProductOverview record={record}/> : <><dl className="consult-fields">{ORDER_FIELDS.map((field) => <div key={field}><dt>{FIELD_LABELS[field]}</dt><dd>{display(field, record[field],record)}</dd></div>)}</dl></> :
+      section === "mouvements" ? <ProductStockCard entry={entry} base={base} open={open} update={update}/> :
       <ResultTable key={section} remote={details} query={entry.query} onQueryChange={(patch) => update({ query: { ...entry.query, ...patch } })} fields={SECTION_FIELDS[section] || []} open={open} />}
     </>:null}
     </section>)}

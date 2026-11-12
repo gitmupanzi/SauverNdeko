@@ -40,7 +40,7 @@ with psycopg.connect(DSN,autocommit=True) as c:
             'columns':c.execute("SELECT table_schema,table_name,column_name,ordinal_position,data_type FROM information_schema.columns WHERE table_schema=ANY(%s) ORDER BY 1,2,4",[schemas]).fetchall(),
         }
     before,old=data(),metadata()
-    path=ROOT/'SQL/migrations/20261030_02_lectures_logistiques_dynamiques.sql'
+    path=ROOT/'backend/database/migrations/20261030_02_lectures_logistiques_dynamiques.sql'
     c.execute(path.read_text(encoding='utf8'))
     current=metadata()
     check(data()==before,'Toutes les tables et données physiques sont conservées')

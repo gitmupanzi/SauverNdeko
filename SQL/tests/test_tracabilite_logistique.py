@@ -121,7 +121,7 @@ with transaction.atomic():
 before = db.query('SELECT to_jsonb(r) AS item FROM logistique."T_Reglements" r ORDER BY "ID_Reglement"')
 old_audit = db.query('SELECT to_jsonb(a) AS item FROM systeme."T_Audit_Log" a ORDER BY "IdLog"')
 with psycopg.connect(DSN, autocommit=True) as connection:
-    connection.execute((ROOT / "SQL/migrations/20261028_03_tracabilite_logistique.sql").read_text(encoding="utf8"))
+    connection.execute((ROOT / "backend/database/migrations/20261028_03_tracabilite_logistique.sql").read_text(encoding="utf8"))
 after = db.query('SELECT to_jsonb(r)-ARRAY[\'CreeParUserFk\',\'ModifieParUserFk\',\'CreeLe\',\'ModifieLe\'] AS item FROM logistique."T_Reglements" r ORDER BY "ID_Reglement"')
 check(before == after, "Migration conserve exactement les anciennes valeurs de reglement")
 check(old_audit == db.query('SELECT to_jsonb(a) AS item FROM systeme."T_Audit_Log" a ORDER BY "IdLog"'), "Migration conserve les journaux historiques")

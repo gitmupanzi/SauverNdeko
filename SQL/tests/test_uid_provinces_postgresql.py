@@ -16,9 +16,9 @@ DSN=os.environ.get('SAUVERNDEKO_TEST_DATABASE_URL','')
 target=urlsplit(DSN)
 if target.hostname not in {'localhost','127.0.0.1','::1'} or not target.path.lstrip('/').startswith('sauverndeko_test_'):
     raise RuntimeError('Restauration privée locale sauverndeko_test_* obligatoire ; aucun repli source.')
-ROOT=Path(__file__).resolve().parents[1]
-MIGRATION=ROOT/'migrations/20261104_03_uid_provinces_prouves.sql'
-ROLLBACK=ROOT/'migrations/rollback/20261104_03_uid_provinces_prouves.sql'
+ROOT=Path(__file__).resolve().parents[2]
+MIGRATION=ROOT/'backend/database/migrations/20261104_03_uid_provinces_prouves.sql'
+ROLLBACK=ROOT/'backend/database/migrations/rollback/20261104_03_uid_provinces_prouves.sql'
 OP='SNIS_PROVINCE_UID_20261104'
 SOURCE=MIGRATION.read_text('utf8')
 PLAN=json.loads(SOURCE.split('$provinces$',2)[1])

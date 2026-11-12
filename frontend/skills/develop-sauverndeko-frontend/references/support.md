@@ -1,20 +1,24 @@
 # Module Support
 
-`/support` utilise le shell ERP commun : `ModuleSidebar`, `ModuleHeader`, contexte d’entreprise, thèmes et contrôles du compte. Les onglets sont Tableau de bord et Tickets. Tickets désigne le registre de traitement ; la table principale reste `support.T_Support`.
+`/support` utilise le shell ERP commun avec `ModuleSidebar`, `ModuleHeader`, le contexte d’entreprise, les thèmes et les contrôles du compte. **Pilotage** contient **Tableau de bord** puis **Modèles de suivi** selon les droits. **Traitement** contient **Tickets** puis **Suivi des étapes** selon les droits. Tickets regroupe les dossiers de tout type dans les vues **Liste** et **Kanban**. L’ancien lien `?onglet=tickets&vue=suivi` redirige vers `?onglet=processus`, soumis au droit de lecture de l’onglet.
 
 ## Pilotage et registre
 
-Les six indicateurs du tableau de bord et les répartitions par statut/priorité viennent de `/api/support/tableau-de-bord`. Un clic ouvre Tickets avec le même critère serveur visible et effaçable. Ne jamais calculer un effectif exhaustif depuis les lignes de la page.
+La synthèse `/api/support/tableau-de-bord` fournit les indicateurs Tickets, les répartitions par statut et priorité et, selon les droits, les indicateurs Parcours. Un clic ouvre la liste paginée sous la synthèse et le bouton **Revenir à l’indicateur** rend le focus au déclencheur. Réutiliser le registre Tickets et le suivi des étapes, avec leur filtre d’origine conservé pendant les recherches, la réinitialisation et les exports disponibles. Les résultats du suivi ouvrent la fiche sur **Parcours**. Les délais de parcours et les échéances des tickets ont des compteurs distincts. Tous les effectifs proviennent du serveur.
 
 Tickets reprend `RegisterSurface`, `SimpleTable`, `DataTableToolbar`, `SearchSelect`, `RegisterSettingsButton` et les préférences `support.tickets`. Le registre propose recherche appliquée, tri, pagination serveur, filtres par responsable, type, catégorie, priorité, statut et période, archives et exports XLSX/CSV. Les exports portent sur les résultats filtrés complets ou la sélection. Les formats et colonnes proviennent du contrat commun ; aucun export de démonstration ni filtrage limité à une page.
 
-Le bouton Réglages reste dans l’en-tête. Il ouvre Tableau et exports ou Références. Références présente l’identité du champ, les catégories effectives, leurs identifiants, le défaut et leurs valeurs. La configuration se modifie dans le référencement central, pas dans une copie locale.
+Le bouton Réglages reste dans l’en-tête de Tickets. Il donne accès à **Tableau et exports** et **Références**. Références présente l’identité du champ, les catégories effectives, leurs identifiants, le défaut et leurs valeurs. La configuration se modifie dans le référencement central.
+
+L’onglet **Modèles de suivi** (`?onglet=modeles`) est accessible avec les droits de lecture Tickets et Suivi des étapes et la capacité serveur `canReadProcessModels`. Le registre réutilise la barre de recherche, les filtres, les réglages de colonnes (`support.modeles`), la pagination et le menu d’export Excel/CSV. En consultation consolidée, identifier l’entreprise sous le nom du modèle. La création, la modification et l’activation nécessitent `canManage` et une entreprise sélectionnée. Proposer de désactiver un modèle publié pour conserver les parcours historiques.
+
+Le modèle Excel comporte une ligne par étape. Regrouper les étapes d’un même modèle par son nom, puis réutiliser les champs de l’éditeur individuel pour les vérifier dans le panier. Les erreurs associées à un modèle restent signalées jusqu’à confirmation de leur correction. Les erreurs de structure exigent un classeur corrigé. Enregistrer le panier dans une transaction unique et rejouer la même requête après une réponse incertaine.
 
 La vue Kanban appelle `/api/support/kanban`. Chaque colonne porte un effectif serveur, un ensemble limité de cartes et un bouton vers la liste complète filtrée. Un nombre de cartes affichées ne représente jamais le nombre total de dossiers. Les cartes ouvrent la fiche par `ID_Support` ; ne pas déplacer arbitrairement une carte entre statuts sans action serveur autorisée.
 
 ## Dossier et traitement
 
-Le numéro et Consulter ouvrent la même fiche. `RecordEditorFrame` fournit les commandes de largeur, la fermeture, les protections du brouillon et le retour au focus. La fiche présente Synthèse, Échanges, Résolutions, Documents et Historique.
+Le numéro et Consulter ouvrent la même fiche. `RecordEditorFrame` fournit les commandes de largeur, la fermeture, les protections du brouillon et le retour au focus. La fiche présente Synthèse, Parcours selon les droits, Échanges, Résolutions, Documents et Historique.
 
 `SupportEditor` est commun à l’ajout et à la modification. Un dossier complet avec son traitement et sa description utilise une saisie individuelle ; il ne s’agit pas d’un panier de références similaires. Les rubriques sont Demande, Affectation et Objets liés. Les valeurs existantes et la révision doivent être rechargées, y compris celles devenues incompatibles avec une nouvelle catégorie. La création propose les défauts reçus du serveur et respecte `requiredFields`.
 
@@ -41,5 +45,7 @@ Les capacités viennent de l’API et des permissions du compte. Le contexte Tou
 Chaque mutation conserve `requestId`, `_version` et le corps exact envoyé. Une réponse réseau incertaine ou un échec serveur conserve ce même corps pour le bouton Vérifier l’enregistrement ; les champs restent figés pour éviter un nouvel enregistrement implicite. Un rejet de validation conserve la saisie et permet sa correction. Le serveur reste responsable des révisions, transactions, permissions, transitions et relations interentreprises.
 
 ## Vérifications
+
+Dans **Parcours**, afficher séparément l’état du dossier et l’étape actuelle, ses échéances, son responsable et l’historique des passages. Utiliser les actions, validations et preuves renvoyées par l’API avec la révision du parcours. Réutiliser les fenêtres latérales, les listes recherchables et les états de chargement du module. Les modèles désactivés restent consultables et les dossiers en cours gardent leur version de départ.
 
 `frontend/scripts/tests/support.cjs` exécute les helpers et handlers réels avec API/DOM simulés : création, révisions, brouillons, refus, rejeu, critères, pagination, exports, Kanban, indicateurs, messages, téléversement et téléchargements. La compilation Vite vérifie l’intégration à l’application. Ces tests ne remplacent pas une recette visuelle réelle dans le navigateur ni les tests PostgreSQL/API du parcours métier.

@@ -69,7 +69,7 @@ protected=['T_Article','T_Commande','T_CommandeDetail','T_Mouvement','T_LotArtic
 if one("SELECT to_regclass('logistique.\"T_ValorisationArrete\"') table_name")['table_name']:
     protected.append('T_ValorisationArrete')
 before={table:table_snapshot(table) for table in protected}
-migration=ROOT/'SQL/migrations/20261028_05_bons_commande.sql'
+migration=ROOT/'backend/database/migrations/20261028_05_bons_commande.sql'
 connection.execute(migration.read_text(encoding='utf8'))
 check(all(table_snapshot(t)==rows for t,rows in before.items()),'Installation05 ne réécrit aucun document, code, stock, lot, coût ou mouvement antérieur')
 cmdtype=one('SELECT "ID_Generique" id,"NomGenerique" label FROM referentiel."T_Generique" WHERE "ID_CategorieGeneriqueFk"=64 AND "AbrGenerique"=%s',['CMD'])

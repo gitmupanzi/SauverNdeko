@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 
 class DepotRegistersAPI(BonsCommandeAPI):
-    kinds = ('depots', 'stocks-depots', 'transferts', 'inventaires')
+    kinds = ('depots', 'stocks-depots', 'transferts', 'inventaires', 'lignes-inventaires')
 
     def depot(self, name=None, entity=0):
         response = self.client(entity).post('/api/logistique/depots', {
@@ -38,7 +38,7 @@ class DepotRegistersAPI(BonsCommandeAPI):
         self.assertEqual(response.status_code, 200, response.data)
         return response.data['data']
 
-    def test_register_01_four_persistent_catalogues_and_separate_scopes(self):
+    def test_register_01_persistent_catalogues_and_separate_scopes(self):
         for kind in self.kinds:
             with self.subTest(kind=kind):
                 snapshot = self.prefs(kind)
@@ -144,6 +144,73 @@ class DepotRegistersAPI(BonsCommandeAPI):
         self.assertEqual(rows[1][0], page.data['data'][0]['Motif'])
         self.assertTrue(all(row[1:] == ['1', '0'] for row in rows[1:]))
         self.assertEqual(before, self.state(article))
+
+    def test_inventory_lines_filter_pagination_and_selected_export(self):
+        kind = 'lignes-inventaires'
+        path = '/api/logistique/' + kind
+        article = self.article()
+        other_article = self.article(entity=1)
+        depot, other_depot = self.principal(), self.principal(entity=1)
+        prefix = 'Comptage détaillé ' + uuid.uuid4().hex
+
+        def inventory(entity, depot_id, article_id, quantity):
+            body = {'requestId': str(uuid.uuid4()), 'ID_DepotFk': depot_id,
+                    'DateInventaire': '2026-11-07T00:30:00+01:00', 'Motif': prefix,
+                    'lignes': [{'ID_ArticleFk': article_id, 'QteTheorique': '0', 'QteComptee': quantity,
+                                'Justification': 'Comptage', 'Lots': [], 'PUCorrection': '10'}]}
+            response = self.client(entity).post('/api/logistique/inventaires', body, format='json')
+            self.assertEqual(response.status_code, 201, response.data)
+            return response.data['data']['ID_Inventaire']
+
+        first = inventory(0, depot, article, '3')
+        second = inventory(0, depot, article, '1')
+        foreign = inventory(1, other_depot, other_article, '4')
+        params = {'q': prefix, 'dateFrom': '2026-11-07', 'dateTo': '2026-11-07',
+                  'etat': 'brouillon', 'ecart': 'positif', 'take': 1,
+                  'sortBy': 'Ecart', 'sortDir': 'desc'}
+        page = self.client().get(path, params)
+        self.assertEqual(page.status_code, 200, page.data)
+        self.assertEqual(page.data['meta']['filteredCount'], 2)
+        row = page.data['data'][0]
+        self.assertEqual(row['ID_InventaireFk'], first)
+        self.assertEqual(row['ID_DepotFk'], depot)
+        self.assertEqual(Decimal(row['QteTheorique']), Decimal('0'))
+        self.assertEqual(Decimal(row['QteComptee']), Decimal('3'))
+        self.assertEqual(Decimal(row['Ecart']), Decimal('3'))
+        self.assertEqual(self.client().get(path, {**params, 'skip': 1}).data['data'][0]['ID_InventaireFk'], second)
+        self.assertEqual(self.client().get(path, {**params, 'inventaireId': foreign}).data['data'], [])
+        self.assertEqual(self.client().get(path, {**params, 'depotId': other_depot}).status_code, 404)
+        self.assertEqual(self.client().get(path, {**params, 'ecart': 'sans'}).data['data'], [])
+        self.assertEqual(self.client().get(path, {**params, 'dateTo': '2026-11-06'}).status_code, 400)
+
+        columns = json.dumps(['CodeInventaire', 'DateInventaire', 'QteTheorique', 'QteComptee', 'Ecart'])
+        export = {**params, 'columns': columns}
+        csv_rows = self.csv_rows(kind, export)
+        self.assertEqual([row[0] for row in csv_rows[1:]], [f'inv-{first}', f'inv-{second}'])
+        export['selection'] = json.dumps([f'{second}:{article}', f'{foreign}:{other_article}'])
+        response = self.client().get(path + '/export.xlsx', export,
+                                     HTTP_ACCEPT='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertEqual(response.status_code, 200, getattr(response, 'data', None))
+        book = load_workbook(io.BytesIO(b''.join(response.streaming_content)), data_only=True)
+        try:
+            sheet = book['Données']
+            self.assertEqual(sheet.max_row, 2)
+            self.assertEqual(sheet['A2'].value, f'inv-{second}')
+            self.assertEqual(sheet['B2'].data_type, 'd')
+            self.assertEqual([sheet[key].value for key in ('C2', 'D2', 'E2')], [0, 1, 1])
+        finally:
+            book.close()
+
+        actor = self.actor()
+        actor._module_access['tabs'] = {'logistique': {'inventaires': {
+            'canRead': True, 'canManage': True, 'canExport': False,
+        }}}
+        client = APIClient()
+        client.force_authenticate(actor)
+        self.assertEqual(client.get(path, params).status_code, 200)
+        self.assertEqual(client.get(path + '/export.csv', HTTP_ACCEPT='text/csv').status_code, 403)
+        actor._module_access['tabs']['logistique']['inventaires']['canRead'] = False
+        self.assertEqual(client.get(path).status_code, 403)
 
     def test_register_06_permissions_forbidden_columns_and_read_only_exports(self):
         client = APIClient(); actor = self.actor()

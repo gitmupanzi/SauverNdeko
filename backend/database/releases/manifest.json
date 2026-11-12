@@ -116,6 +116,46 @@
       ],
       "description": "Étendre les restrictions individuelles aux onglets contrôlés côté serveur.",
       "release": "2026.11.09"
+    },
+    {
+      "id": "20261112_01_support_processus",
+      "file": "../migrations/20261112_01_support_processus.sql",
+      "sha256": "d5b85525aa89947cc6627b4ae1c3a28acef7fe0f0c8a72243f95b4e008f45a0a",
+      "dependsOn": [
+        "20261109_04_droits_onglets"
+      ],
+      "description": "Configurer et suivre des parcours Support versionnés avec étapes, validations, preuves et alertes privées.",
+      "release": "2026.11.12"
+    },
+    {
+      "id": "20261112_02_droits_processus_support",
+      "file": "../migrations/20261112_02_droits_processus_support.sql",
+      "sha256": "495361570786865b303784af586e619968738b17071246d882f89f0736ab97b4",
+      "dependsOn": [
+        "20261112_01_support_processus"
+      ],
+      "description": "Autoriser les restrictions individuelles sur l’onglet Processus du Support.",
+      "release": "2026.11.12"
+    },
+    {
+      "id": "20261112_03_registre_lignes_inventaires",
+      "file": "../migrations/20261112_03_registre_lignes_inventaires.sql",
+      "sha256": "905d67eb23b0b7bc3e61730a0730acf12fab0aa09f96e59efb03b2d3c8c873d8",
+      "dependsOn": [
+        "20261112_02_droits_processus_support"
+      ],
+      "description": "Enregistrer les colonnes et les exports du registre détaillé des inventaires physiques.",
+      "release": "2026.11.12"
+    },
+    {
+      "id": "20261112_04_registre_modeles_support",
+      "file": "../migrations/20261112_04_registre_modeles_support.sql",
+      "sha256": "20e0433e61aa077e8551f07a22fa61a7b1be36641dc3b3f75de9cbcb17c466bc",
+      "dependsOn": [
+        "20261112_03_registre_lignes_inventaires"
+      ],
+      "description": "Enregistrer les colonnes et les préférences d’export des modèles de suivi du Support.",
+      "release": "2026.11.12"
     }
   ]
 }
