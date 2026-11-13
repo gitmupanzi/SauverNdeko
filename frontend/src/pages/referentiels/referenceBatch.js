@@ -1,3 +1,5 @@
+import {categoricalKey} from "../../utils/categoricalValues";
+
 /** Saisie en mémoire : aucune ligne n'est écrite avant la validation du lot. */
 export const REFERENCE_BATCH_MAX = 200;
 export const REFERENCE_VISIBILITY = {
@@ -18,7 +20,7 @@ export function referenceBatchRow(kind, values = {}) {
     ? { clientRowId: referenceBatchId(), NomCategorieGenerique: "", ModuleCategorieGenerique: "", ValideCategorieGenerique: true, ...values }
     : { clientRowId: referenceBatchId(), NomGenerique: "", AbrGenerique: "", ObsGenerique: "", ValideGenerique: true, ...Object.fromEntries(Object.keys(REFERENCE_VISIBILITY).map(key => [key, true])), ...values };
 }
-export const referenceDuplicateKey = value => String(value ?? "").trim().replace(/\s+/gu, " ").toLocaleLowerCase("fr");
+export const referenceDuplicateKey = value => categoricalKey(value).replace(/\s+/gu, " ");
 const headerKey = value => referenceDuplicateKey(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 const HEADER_ALIASES = {
   categorie: "NomCategorieGenerique", nomcategorie: "NomCategorieGenerique", nomdelacategorie: "NomCategorieGenerique",

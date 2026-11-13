@@ -116,7 +116,7 @@ def source_sql(obj):
     if kind=='niveaux3' and derived:
         projections={'ID_Niveau_0':'p."ID_Niveau_0_Fk" AS "ID_Niveau_0"','NomNiveau_0':'c."NomNiveau_0"','ID_Niveau_1':'p."ID_Niveau_1"','NomNiveau_1':'p."NomNiveau_1"','ID_Niveau_2':'a."ID_Niveau_2"','NomNiveau_2':'a."NomNiveau_2"'}
         return '(SELECT v.*,'+','.join(projections[key] for key in sorted(derived))+' FROM '+base+' v LEFT JOIN geolocalisation."T_Niveau_2" a ON a."ID_Niveau_2"=v."ID_Niveau_2_FK" LEFT JOIN geolocalisation."T_Niveau_1" p ON p."ID_Niveau_1"=a."ID_Niveau_1_FK" LEFT JOIN geolocalisation."T_Niveau_0" c ON c."ID_Niveau_0"=p."ID_Niveau_0_Fk") v'
-    if kind=='niveaux4' and derived:return '(SELECT v.*,EXISTS(SELECT 1 FROM referentiel."T_Generique" g WHERE g."ID_Generique"=v."ID_DispoReseauNiveau_4" AND g."AbrGenerique" IS NOT NULL AND g."AbrGenerique"::text<>\'Sans reseau\') AS "AvecReseau" FROM '+base+' v) v'
+    if kind=='niveaux4' and derived:return '(SELECT v.*,EXISTS(SELECT 1 FROM referentiel."T_Generique" g WHERE g."ID_Generique"=v."ID_DispoReseauNiveau_4" AND lower(g."AbrGenerique" COLLATE pg_catalog."unicode") NOT IN (\'sans reseau\',\'sans réseau\')) AS "AvecReseau" FROM '+base+' v) v'
     if kind=='niveaux5' and derived:return '(SELECT v.*,a."ID_TypeNiveau_4_Fk" FROM '+base+' v LEFT JOIN geolocalisation."T_Niveau_4" a ON a."ID_Niveau_4"=v."ID_Niveau_4_Fk") v'
     if kind in GRAINS:return '(SELECT v.*,jsonb_build_array('+','.join('v.'+db.ident(key) for key in GRAINS[kind])+')::text AS "_rowId" FROM '+base+' v) v'
     return base+' v'

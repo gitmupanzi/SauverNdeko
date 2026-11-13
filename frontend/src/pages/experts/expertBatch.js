@@ -1,3 +1,5 @@
+import {categoricalKey} from "../../utils/categoricalValues";
+import {referenceDuplicateKey} from "../referentiels/referenceBatch";
 import {EXPERT_FIELDS,expertValues,expertErrors,expertPayload,expertOptions} from "./expertModel";
 import {validCommandeDate} from "../logistique/commandeForm";
 
@@ -14,7 +16,6 @@ export const EXPERT_BATCH_FIELDS=[
  {key:"NumeroIdentification",label:"Identification professionnelle",max:50},
  {key:"ObsProfessionnel",label:"Observations internes",area:true,max:5000},
 ];
-const canonical=value=>String(value??"").normalize("NFKC").trim().replace(/\s+/g," ").toLocaleLowerCase("fr");
 const enabled=option=>!option.disabled&&!option.incompatible;
 const allowedKeys=new Set([...EXPERT_FIELDS,"competenceIds","prestationIds"]);
 export function expertBatchOptions(refs,source){return expertOptions(refs?.[source]||[]).map(item=>({...item,disabled:item.disabled||item.incompatible}));}
@@ -22,7 +23,7 @@ function resolve(value,options){
  const raw=String(value??"").trim();if(!raw)return "";
  const available=options.filter(enabled);
  if(available.some(option=>option.value===raw))return raw;
- const matches=available.filter(option=>canonical(option.label)===canonical(raw));
+ const matches=available.filter(option=>referenceDuplicateKey(option.label)===referenceDuplicateKey(raw));
  return matches.length===1?matches[0].value:raw;
 }
 export function expertExcelRows(matrix,refs={},makeId=()=>crypto.randomUUID()){
@@ -33,7 +34,7 @@ export function expertExcelRows(matrix,refs={},makeId=()=>crypto.randomUUID()){
  return lines.map(line=>{
   const raw=Object.fromEntries(keys.map((key,index)=>[key,line[index]??""])),values=expertValues();
   for(const key of EXPERT_FIELDS)if(key in raw&&key!=="ContactAutorise")values[key]=String(raw[key]??"");
-  const contact=canonical(raw.ContactAutorise);
+  const contact=categoricalKey(raw.ContactAutorise);
   values.ContactAutorise=!["","oui","true","1","non","false","0"].includes(contact)?String(raw.ContactAutorise):!["non","false","0"].includes(contact);
   for(const field of EXPERT_BATCH_FIELDS.filter(item=>item.source))values[field.key]=resolve(values[field.key],expertBatchOptions(refs,field.source));
   for(const [key,source]of [["competenceIds","competences"],["prestationIds","prestations"]])values[key]=String(raw[key]??"").split(";").map(value=>value.trim()).filter(Boolean).map(value=>resolve(value,expertBatchOptions(refs,source)));

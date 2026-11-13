@@ -1,5 +1,6 @@
 """Nature d'un document résolue depuis le référentiel, sans déduire CMD d'un signe nul."""
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.responses import APIError
 
 
@@ -10,8 +11,9 @@ def type_context(identifier, *, required=True):
                  [identifier, identifier])
     kind = (row or {}).get('kind') or 'inconnu'
     effect = (row or {}).get('effect')
-    result = {'kind': kind, 'stockEffect': effect, 'sign': effect, 'canInvoice': kind == 'sortie'}
-    if required and result['kind'] == 'inconnu':
+    key = category_key(kind)
+    result = {'kind': kind, 'stockEffect': effect, 'sign': effect, 'canInvoice': key == 'sortie'}
+    if required and key == 'inconnu':
         raise APIError({'ID_TypeCmdFk': 'Choisissez un type de bon pris en charge.'}, 'ORDER_TYPE_UNSUPPORTED', 400)
     return result
 

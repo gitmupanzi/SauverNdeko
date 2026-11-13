@@ -12,6 +12,7 @@ from django.db import DatabaseError, transaction
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
@@ -84,7 +85,8 @@ def composition_data(actor,body,old=None,old_lines=None,*,max_lines=MAX_LINES):
     if header['DateCmd'] is None:composition_error('bon.DateCmd','Indiquez la date et l’heure du bon.')
     line_columns={column['column_name']:column for column in model('T_CommandeDetail')['columns'] if column['column_name']!='ID_CmdFk'}
     nature=type_context(header["ID_TypeCmdFk"])
-    outgoing=nature['kind']=='sortie'
+    kind = category_key(nature['kind'])
+    outgoing = kind == 'sortie'
     lines=[];seen=set();total=Decimal('0');total_quantity=0
     for index,item in enumerate(raw_lines):
         prefix='lignes.'+str(index)
@@ -108,7 +110,7 @@ def composition_data(actor,body,old=None,old_lines=None,*,max_lines=MAX_LINES):
         if total>MAX_AMOUNT:composition_error(prefix+'.PUCmdDetail','Le total du bon dépasse 9 999 999 999,99 dans sa devise.')
         raw_lots=item.get('Lots',[])
         try:
-            if nature['kind']=='commande':reject_order_lots(raw_lots)
+            if kind == 'commande':reject_order_lots(raw_lots)
             # Les anciennes ventilations partielles sont conservables, jamais étendues silencieusement.
             if old is not None and isinstance(raw_lots,list):
                 lot_sum=sum(exact_quantity(lot.get('Quantite'),'Quantite') for lot in raw_lots if isinstance(lot,dict))

@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.registry import model
 from apps.core.responses import APIError, ExactEncoder
 
@@ -91,7 +92,7 @@ def usage(record, actor):
     internal=bool(record.get('ID_TransfertDepotFk'))
     return {'revision':revision(record),'canEdit':not internal and not is_closed and not state['initial'],'editReason':reason,
             'canDelete':not delete_reason,'deleteReason':delete_reason,
-            'canChangeType':not fixed and not is_closed and nature['kind']!='commande','canChangeCurrency':not fixed and not is_closed,
+            'canChangeType':not fixed and not is_closed and category_key(nature['kind'])!='commande','canChangeCurrency':not fixed and not is_closed,
             'canChangeInvoiceCode':not internal and nature['canInvoice'] and not invoice and not links['reglements'] and not is_closed and not state['returns']['isReturn']}
 
 

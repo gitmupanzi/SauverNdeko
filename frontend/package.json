@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:ux": "node scripts/tests/app-icons.cjs && node scripts/tests/shared-list-ux.cjs && node scripts/tests/form-primitives.cjs && node scripts/tests/module-sidebar.cjs && node scripts/tests/module-header.cjs"
+    "test:ux": "node scripts/tests/app-icons.cjs && node scripts/tests/shared-list-ux.cjs && node scripts/tests/form-primitives.cjs && node scripts/tests/module-sidebar.cjs && node scripts/tests/module-header.cjs && node scripts/tests/categorical-stock.cjs && node scripts/tests/categorical-imports.cjs"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

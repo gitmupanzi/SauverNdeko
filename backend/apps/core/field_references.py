@@ -18,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from . import db
+from .category_values import category_key
 from .module_access import access_snapshot, module_for_object, require_module
 from .permissions import IsERPAdmin, scope_for
 from .registry import model
@@ -251,7 +252,7 @@ def reference_options(actor, schema, table, column, current=None, visibility=Non
         kinds = {row['id']: row for row in db.query('SELECT id,logistique.fn_nature_bon(id) AS kind,'
             'logistique.fn_effet_type_bon(id) AS effect FROM unnest(%s::integer[]) AS x(id)', [[row['id'] for row in result]])}
         result = [{**row, 'kind': kinds[row['id']]['kind'] or 'inconnu', 'stockEffect': kinds[row['id']]['effect'],
-                   'sign': kinds[row['id']]['effect'], 'canInvoice': kinds[row['id']]['kind'] == 'sortie'} for row in result]
+                   'sign': kinds[row['id']]['effect'], 'canInvoice': category_key(kinds[row['id']]['kind']) == 'sortie'} for row in result]
     return clean(result)
 
 

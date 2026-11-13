@@ -176,6 +176,16 @@
       ],
       "description": "Modes de validation par entreprise, piste de validation et contrôle de caisse.",
       "release": "2026.11.13"
+    },
+    {
+      "id": "20261113_02_comparaison_disponibilite_reseau",
+      "file": "../migrations/20261113_02_comparaison_disponibilite_reseau.sql",
+      "sha256": "94562b6c2d3fc014950992a31e234ca2d294a6b77ecf8c3318dd8d171a96dca1",
+      "dependsOn": [
+        "20261113_01_validation_caisse"
+      ],
+      "description": "Comparer les abréviations du réseau territorial indépendamment de la casse dans le rapport et son détail.",
+      "release": "2026.11.13"
     }
   ]
 }

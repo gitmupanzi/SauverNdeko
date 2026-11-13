@@ -2,6 +2,7 @@
 from datetime import date
 from decimal import Decimal
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.responses import APIError
 from apps.core.repository import positive
 from .quantities import quantity as exact_quantity
@@ -83,8 +84,8 @@ def initial_lots(article,rows):
 
 def outgoing_type(type_id):
     """Le sens est résolu dans le référentiel serveur, jamais reçu comme drapeau client."""
-    row=db.one("SELECT logistique.fn_nature_bon(%s)='sortie' AS outgoing",[type_id])
-    return bool(row and row["outgoing"])
+    row = db.one("SELECT logistique.fn_nature_bon(%s) AS kind", [type_id])
+    return category_key((row or {}).get("kind")) == "sortie"
 
 
 def stock_document_types(actor,*,lock=False):

@@ -3,6 +3,7 @@ import BusinessDocuments from "./BusinessDocuments";
 import CreditNotes from "../pages/logistique/CreditNotes";
 import { formatConsumptionMoney, formatCurrencyGroups } from "../utils/money";
 import { tabRights } from "../services/moduleAccess";
+import { categoricalKey } from "../utils/categoricalValues";
 import {isStockOrder,stockDocumentKind,canCreateStockInvoice} from "../utils/stockDocumentTypes";
 import { RecordFolderLinks } from "./FollowupFolderWidgets";
 import { useFollowupFolders } from "../contexts/FollowupFoldersContext";
@@ -64,8 +65,8 @@ function display(field, value, row={}) {
 }
 function StatusValue({ field, value }) {
   const label = String(value);
-  const tones = { "Rupture":"danger", "Périmé":"danger", "Périmés":"danger", "En retard":"danger", "Stock faible":"warning", "Faible":"warning", "En attente":"warning", "Partiel":"warning", "Partiellement réglée":"warning", "À régler":"warning", "Non facturée":"warning", "Disponible":"success", "Normal":"success", "Cohérent":"success", "Soldée":"success", "Réglée":"success", "Validée":"success", "En cours":"info", "Entrée":"info", "Sortie":"neutral" };
-  return <span className={"erp-status is-" + (tones[label] || "neutral")}>{display(field,value)}</span>;
+  const tones = { "rupture":"danger", "périmé":"danger", "périmés":"danger", "en retard":"danger", "stock faible":"warning", "faible":"warning", "en attente":"warning", "partiel":"warning", "partiellement réglée":"warning", "à régler":"warning", "non facturée":"warning", "disponible":"success", "normal":"success", "cohérent":"success", "soldée":"success", "réglée":"success", "validée":"success", "en cours":"info", "entrée":"info", "sortie":"neutral" };
+  return <span className={"erp-status is-" + (tones[categoricalKey(label)] || "neutral")}>{display(field,value)}</span>;
 }
 
 function ErrorState({ payload, retry }) {

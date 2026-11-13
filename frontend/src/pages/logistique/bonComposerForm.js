@@ -5,6 +5,13 @@ import {stockDocumentKind} from "../../utils/stockDocumentTypes";
 
 export const MAX_COMPOSITION_LINES=50;
 export const compositionDirection=stockDocumentKind;
+export function compositionCatalogueParams({query, grid, depotId, outgoing}) {
+  const params = new URLSearchParams({
+    q: query, ...grid, depotId, statut: "true", stockState: "all", contexte: "composition",
+  });
+  if (outgoing) params.set("columnFilters", JSON.stringify({QteArticle: ">0"}));
+  return params;
+}
 export function compositionType(references,values,record=null) {return references?.commandeTypes?.find(type=>String(type.id)===String(values.ID_TypeCmdFk))||(record&&String(record.ID_TypeCmdFk)===String(values.ID_TypeCmdFk)?{...record,id:record.ID_TypeCmdFk,label:record.TypeCmd,abbr:record.AbrTypeCmd,sign:record.SigneCommande}:null);}
 export function cataloguePrice(article,values,references,record=null) {
   if(article?.ID_DeviseFk==null||String(article.ID_DeviseFk)!==String(values.ID_DeviseFk))return "";

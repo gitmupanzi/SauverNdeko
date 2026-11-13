@@ -15,6 +15,7 @@ from django.db import transaction
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
@@ -239,7 +240,7 @@ def context(actor,command_id):
         if coherence['invalid']:source_reason='Rapprochez les lignes et mouvements du bon avant facturation.'
     returns=return_context(command_id)
     kind=db.one('SELECT logistique.fn_nature_bon(%s) AS nature',[parent.get('ID_TypeCmdFk')])
-    outgoing=bool(kind and kind['nature']=='sortie')
+    outgoing = bool(kind and category_key(kind['nature']) == 'sortie')
     owner=bool(actor.organisation) and snapshot['owner_entity']==actor.organisation and (not issued or issued['IdEntiteFk']==actor.organisation)
     manage=bool(actor.admin) and not settings.DB_READ_ONLY and can_use_tab(actor,MODULE,'factures','manage')
     reason=('La facturation sera disponible après installation de son socle.' if not ready else

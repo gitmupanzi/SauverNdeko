@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from django.db import transaction
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.registry import model, view, MODELS, VIEWS
 from apps.core.permissions import scope_for
 from apps.core.repository import get_record, coerce, positive, clean, audit, predicate
@@ -115,7 +116,7 @@ def mutate_line(actor, commande_id, body=None, article_id=None, operation="creat
         from apps.core.tenancy import assert_document
         assert_document(actor,commande)
         from .order_types import type_context, reject_order_lots
-        order_kind = type_context(commande.get('ID_TypeCmdFk'))['kind']
+        order_kind = category_key(type_context(commande.get('ID_TypeCmdFk'))['kind'])
         if order_kind == 'commande':
             reject_order_lots(lots)
             lots = None
@@ -383,7 +384,7 @@ def references(actor):
         if key not in {'currencies', 'commandeCurrencies'}:
             result[key] = reference_options(actor, 'logistique', table, column)
         if key == 'weightUnits':
-            result[key] = [item for item in result[key] if str(item.get('abbr') or '').strip().lower() in {'mg', 'g', 'kg', 't'}]
+            result[key] = [item for item in result[key] if category_key(item.get('abbr')) in {'mg', 'g', 'kg', 't'}]
         context = reference_context(actor, 'logistique', table, column)
         meta[key] = {**context,
             "referenceKey": key,

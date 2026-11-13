@@ -2,7 +2,6 @@
 import hashlib
 import hmac
 import json
-import unicodedata
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -13,6 +12,7 @@ from django.db import transaction
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
@@ -31,15 +31,10 @@ def field_error(key, message):
     raise APIError({key:message}, "RECEIPT_VALIDATION", 400)
 
 
-def normalized(value):
-    return "".join(char for char in unicodedata.normalize("NFD", str(value or ""))
-                   if not unicodedata.combining(char)).strip().lower()
-
-
 def entry_types(actor=None, *, lock=False):
     from apps.core.field_references import reference_options
     rows=[{**row,'abbreviation':row['abbr']} for row in reference_options(actor,'logistique','T_Commande','ID_TypeCmdFk')
-          if row.get('kind')=='entree']
+          if category_key(row.get('kind')) == 'entree']
     if lock and rows:
         db.query('SELECT g."ID_Generique" FROM referentiel."T_Generique" g JOIN '
             'referentiel."T_CategorieGenerique" c ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" '
@@ -50,7 +45,9 @@ def entry_types(actor=None, *, lock=False):
 
 
 def default_entry_type(rows):
-    exact=[row for row in rows if normalized(row["label"])=="entree" or normalized(row.get("abbreviation"))=="entree"]
+    entry_labels = {"entrée", "entree"}
+    exact = [row for row in rows if category_key(row["label"]) in entry_labels
+             or category_key(row.get("abbreviation")) in entry_labels]
     preferred=exact[0] if len(exact)==1 else rows[0] if len(rows)==1 else None
     return {"id":preferred["id"],"label":preferred["label"]} if preferred else None
 

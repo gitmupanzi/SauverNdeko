@@ -12,6 +12,7 @@ from django.http import FileResponse
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.batch_excel import ExcelPreviewMixin, build_template, read_uploaded_workbook
 from apps.core.module_access import require_tab
 from apps.core.permissions import HasModuleAccess
@@ -142,7 +143,7 @@ def option_lookup(refs):
         for item in options:
             if not item.get('disabled'):
                 ids.add(str(item['id']))
-                labels.setdefault(str(item['label'] or '').strip().casefold(), []).append(item['id'])
+                labels.setdefault(category_key(item['label']), []).append(item['id'])
         result[family] = ids, labels
     return result
 
@@ -152,13 +153,14 @@ def workbook_value(value, family, lookup):
         return value
     if family == 'bool':
         values = {'oui': True, 'true': True, '1': True, 'non': False, 'false': False, '0': False}
-        if value.casefold() in values:
-            return values[value.casefold()]
+        key = category_key(value)
+        if key in values:
+            return values[key]
         raise ValueError('saisissez Oui ou Non.')
     ids, labels = lookup[family]
     if value in ids:
         return int(value)
-    options = labels.get(value.casefold(), [])
+    options = labels.get(category_key(value), [])
     if len(options) == 1:
         return options[0]
     if options:

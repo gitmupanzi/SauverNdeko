@@ -3,6 +3,7 @@ import hashlib,hmac,json,uuid
 from django.db import transaction
 from rest_framework.views import APIView
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.repository import audit,clean,positive
@@ -77,7 +78,10 @@ class EntreprisesView(APIView):
 class TiersReferencesView(APIView):
     permission_classes=[IsERPAdmin]
     def get(self,request):
-        refs=references(request.user);refs['defaultTypeClientId']=next((x['id'] for x in refs['typesClients'] if x['label'].strip().lower()=='client'),None)
+        refs = references(request.user)
+        matches = [item['id'] for item in refs['typesClients']
+                   if not item.get('disabled') and category_key(item['label']) == 'client']
+        refs['defaultTypeClientId'] = matches[0] if len(matches) == 1 else None
         return ok(clean(refs))
 
 class TiersView(APIView):

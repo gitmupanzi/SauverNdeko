@@ -1,5 +1,6 @@
 """Liaisons de retours physiques : lecture des protections, sans effet de stock."""
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import can_use_tab
 from .tab_access import can_read_tabs, mask_order
 
@@ -116,7 +117,7 @@ def return_policy(actor,snapshot,*,writing=False):
         reason='Un bon de stock initial ou de reprise se corrige par un nouveau bon, sans restitution commerciale.'
     elif inventory_adjustment(snapshot['raw']['ID_Commande']):
         reason='Un bon d’inventaire se corrige par le comptage ou son annulation, sans restitution commerciale.'
-    elif snapshot['is_return'] or snapshot['nature']!='sortie':
+    elif snapshot['is_return'] or category_key(snapshot['nature']) != 'sortie':
         reason='Seul un bon de sortie peut recevoir une restitution.'
     elif not snapshot['lignes']:reason='Ce bon ne comporte aucun article sorti.'
     elif any(not row['SourceCoherente'] or Decimal(str(row['QteRestante']))<0 or Decimal(str(row['QteSansLotRestante']))<0 or any(Decimal(str(lot['QteRestante']))<0 for lot in row['Lots']) for row in snapshot['lignes']):
@@ -309,7 +310,7 @@ def annotate_return_context(rows,actor):
             reason=('Ce bon appartient à un transfert interne. Utilisez la fiche du transfert.' if row.get('ID_TransfertDepotFk') else
                     'Effectuez le retour dans l’organisation du bon.' if state['organisation']!=actor.organisation else
                     'Un bon d’inventaire ne permet pas de restitution commerciale.' if state['inventory_adjustment'] else
-                    'Ce document n’est pas une sortie originale.' if state['origin'] is not None or state['nature']!='sortie' else
+                    'Ce document n’est pas une sortie originale.' if state['origin'] is not None or category_key(state['nature']) != 'sortie' else
                     'Rapprochez les lignes et mouvements historiques avant un retour.' if not state['coherent'] else
                     'Tous les articles ont déjà été restitués.' if not state['remaining'] else
                     'Vérifiez la devise et le type de bon d’entrée dans le référentiel.' if not configured or not currency_valid else

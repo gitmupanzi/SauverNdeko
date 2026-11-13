@@ -5,6 +5,7 @@ import json
 from datetime import timedelta
 from urllib.parse import urlsplit
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.responses import APIError, ExactEncoder
 
 # Le stock varie avec les bons : il ne doit jamais être réécrit par l'édition d'identité.
@@ -106,7 +107,7 @@ def validate(data, old, actor):
     if weight_unit is not None and (not old or weight_unit != old.get('ID_UnitePoidsFk')):
         unit=db.one('SELECT "AbrGenerique","ID_CategorieGeneriqueFk","ValideGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s',[weight_unit])
         valid = db.one('SELECT referentiel.fn_valider_reference_champ(%s,%s,%s,%s,%s) AS valid', ['logistique','T_Article','ID_UnitePoidsFk',weight_unit,effective.get('IdEntiteFk') or actor.organisation])['valid']
-        if not unit or not valid or str(unit["AbrGenerique"] or "").strip().lower() not in {"mg","g","kg","t"}:
+        if not unit or not valid or category_key(unit["AbrGenerique"]) not in {"mg","g","kg","t"}:
             errors["ID_UnitePoidsFk"]="Choisissez une unité de masse."
     if effective.get("CodeArticleExterne") is not None and effective["CodeArticleExterne"]<1:errors["CodeArticleExterne"]="Le code externe doit être supérieur à zéro."
     if old is None:

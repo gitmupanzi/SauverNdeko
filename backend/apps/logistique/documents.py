@@ -19,6 +19,7 @@ from rest_framework.renderers import BaseRenderer
 from rest_framework.response import Response
 from apps.core.responses import ExactJSONRenderer
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.module_access import require_module
 from apps.core.permissions import IsERPAdmin
 from apps.core.registry import model, view
@@ -179,7 +180,7 @@ def document_data(actor,kind,object_id,document_type):
             result['thirdParty']=db.one('SELECT * FROM logistique."T_Client" WHERE "ID_Client"=%s AND "IdEntiteFk"=%s',[parent['ID_TiersFk'],entity])
         incoming=source.get('EstCommandeEntree') is True;outgoing=source.get('EstCommandeSortie') is True
         from .order_types import type_context
-        order=type_context(parent.get('ID_TypeCmdFk'),required=False)['kind']=='commande'
+        order=category_key(type_context(parent.get('ID_TypeCmdFk'),required=False)['kind'])=='commande'
         if document_type=='commande' and not order or document_type=='entree' and not incoming or document_type in {'sortie','livraison'} and not outgoing:
             raise APIError('Ce type de document ne correspond pas au bon.','DOCUMENT_TYPE_MISMATCH',409)
         result.update({'title':{'entree':'Bon d’entrée','sortie':'Bon de sortie','livraison':'Bon de livraison','commande':'Bon de commande'}[document_type],

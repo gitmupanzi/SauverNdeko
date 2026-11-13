@@ -1,3 +1,4 @@
+import {sameCategory} from "../../utils/categoricalValues";
 import {compareDecimal, decimalParts} from "../../utils/money";
 import {referenceLabel} from "../../utils/referenceOptions";
 
@@ -52,7 +53,7 @@ export function caisseResponseUncertain(response){return !response||response.suc
 export function caisseValues(kind,record=null,references={},defaults={}){
  const source=record||defaults,string=key=>source[key]==null?"":String(source[key]);
  if(kind==="caisses"){
-  const usd=(references.devises||[]).filter(item=>String(item.abbr||item.label||"").toUpperCase()==="USD"&&!item.disabled&&item.active!==false);
+  const usd=(references.devises||[]).filter(item=>sameCategory(item.abbr||item.label,"USD")&&!item.disabled&&item.active!==false);
   return {NomCaisse:string("NomCaisse"),IdDeviseFk:string("IdDeviseFk")||(!record&&usd.length===1?String(usd[0].id):""),IdTypeCaisseFk:string("IdTypeCaisseFk"),IdResponsableFk:string("IdResponsableFk"),Actif:source.Actif!==false,motif:""};
  }
  if(kind==="clotures")return {IdCaisseFk:string("IdCaisseFk"),ClotureLe:caisseDateInput(),MontantCompte:"",motif:""};

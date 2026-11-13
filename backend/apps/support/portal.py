@@ -20,6 +20,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 
 from apps.core import db
+from apps.core.category_values import category_key
 from apps.core.field_references import document_reference_actor, reference_context, reference_options
 from apps.core.module_access import can_read_tab, can_use_tab, require_module, require_tab
 from apps.core.permissions import HasModuleAccess
@@ -300,7 +301,7 @@ def references(actor, current=None):
         ('ID_CategorieSupportFk', 'categories', 'support.category.general', 'Général'),
     ):
         matches = [item['id'] for item in choices[alias] if not item.get('disabled')
-                   and (item.get('abbr') or '').strip().casefold() in {legacy, label.casefold()}]
+                   and category_key(item.get('abbr')) in {legacy, category_key(label)}]
         if len(matches) == 1:
             defaults[field] = matches[0]
     return {'references':choices,'fieldReferences':fields,'users':users,'requesters':requesters,'links':links,

@@ -1,3 +1,4 @@
+import {categoricalKey} from "../../utils/categoricalValues";
 import RegisterCategoryFilter from "../../components/RegisterCategoryFilter";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {useEffect,useId,useMemo,useRef,useState} from "react";
@@ -29,8 +30,7 @@ const INITIAL={factures:{...COMMON,payment:"all",late:"all",dueFrom:"",dueTo:""}
 const LABELS={q:"Recherche",client:"Tiers",deviseId:"Devise",dateFrom:"Du",dateTo:"Au",commandeId:"Facture",payment:"Paiement",late:"Retard",dueFrom:"Échéance du",dueTo:"Échéance au",modeId:"Mode",codeFacture:"Facture"};
 const PAYMENTS=[{value:"all",label:"Toutes les factures"},{value:"non-reglee",label:"Non réglées"},{value:"partielle",label:"Partiellement réglées"},{value:"reglee",label:"Soldées"},{value:"retard",label:"En retard"}];
 const DEFAULT_COLUMNS={factures:["CodeFacture","DateFacture","NomClientSaisi","MontantFacture","TotalRegle","Reste","EtatReglement","actions"],reglements:["DateReglement","CodeFactureFk","NomClientSaisi","ModeReglement","MontantRegle","actions"]};
-const normalise=value=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-function State({value}){if(value==null||value==="")return "—";const label=normalise(value),tone=/retard/.test(label)?"danger":/non |partiel|attente|a regler/.test(label)?"warning":/solde|reglee|paye/.test(label)?"success":"neutral";return <span className={"erp-status is-"+tone}>{value}</span>;}
+function State({value}){if(value==null||value==="")return "—";const label=categoricalKey(value),tone=/retard/.test(label)?"danger":/non |partiel|attente|[aà] r[ée]gler/.test(label)?"warning":/sold[ée]|r[ée]gl[ée]e|pay[ée]/.test(label)?"success":"neutral";return <span className={"erp-status is-"+tone}>{value}</span>;}
 
 export default function Reglements({title, references,refreshKey,onDataChanged,onToggleFkMappings,section,onSectionChange}){
  const {user}=useAuth(),scope=useEntityScope(),consultations=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),tabsId=useId();

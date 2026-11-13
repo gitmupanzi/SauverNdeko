@@ -1,11 +1,12 @@
 import {quantityError,quantityUnits} from "../../utils/quantities";
 import {compareDecimal, multiplyDecimal, sameCurrency} from "../../utils/money";
 import {stockDocumentKind} from "../../utils/stockDocumentTypes";
+import {categoricalKey} from "../../utils/categoricalValues";
 
 export function lineKey(row) { return String(row.ID_CmdFk ?? row.ID_Commande)+":"+String(row.ID_ArticleFk); }
 export const lineDirection=stockDocumentKind;
 export function closedBon(bon) {
-  return String(bon?.StatusFacture||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase()==="cloturee";
+  return /^cl[oô]tur[ée]e$/.test(categoricalKey(bon?.StatusFacture));
 }
 export function lineForm(row=null,bonId="") {
   return {ID_CmdFk:String(row?.ID_CmdFk??bonId??""),ID_ArticleFk:String(row?.ID_ArticleFk??""),QteCmdDetail:row?.QteCmdDetail==null?"":String(row.QteCmdDetail),PUCmdDetail:row?.PUCmdDetail==null?"":String(row.PUCmdDetail),ObsCmdDetail:row?.ObsCmdDetail||"",LieuCmdDetail:row?.LieuCmdDetail==null?"":String(row.LieuCmdDetail),RemiseCmdDetail:row?.RemiseCmdDetail??null,SelectCmdDetail:row?.SelectCmdDetail??null};

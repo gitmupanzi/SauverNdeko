@@ -1339,6 +1339,17 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_3"."ID_Niveau_2_FK" IS 'Unité géog
 -- Name: V_Niveau_4; Type: VIEW; Schema: geolocalisation; Owner: -
 --
 
+CREATE FUNCTION geolocalisation.fn_aire_avec_reseau(abreviation text)
+RETURNS boolean
+LANGUAGE sql IMMUTABLE PARALLEL SAFE
+SET search_path = pg_catalog
+AS $fonction$
+    SELECT COALESCE(lower(abreviation COLLATE pg_catalog."unicode") NOT IN ('sans reseau', 'sans réseau'), false)
+$fonction$;
+
+COMMENT ON FUNCTION geolocalisation.fn_aire_avec_reseau(text)
+IS 'Reconnaît les deux abréviations de réseau absent quelle que soit leur casse. Une valeur NULL ne déclare aucun réseau.';
+
 CREATE VIEW geolocalisation."V_Niveau_4" AS
  SELECT q."ID_Niveau_0",
     q."NomNiveau_0",
@@ -1483,7 +1494,7 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
                     ( SELECT count(*) AS count
                            FROM geolocalisation."T_Niveau_5" child
                           WHERE (child."ID_Niveau_4_Fk" = n4."ID_Niveau_4")) AS "Nb_Niveau_5",
-                    ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) AS "AvecReseau"
+                    geolocalisation.fn_aire_avec_reseau(g_reseau."AbrGenerique") AS "AvecReseau"
                    FROM (((((((((geolocalisation."T_Niveau_4" n4
                      LEFT JOIN geolocalisation."T_Niveau_3" n3 ON ((n4."ID_Niveau_3_Fk" = n3."ID_Niveau_3")))
                      LEFT JOIN geolocalisation."T_Niveau_2" n2 ON ((n3."ID_Niveau_2_FK" = n2."ID_Niveau_2")))
@@ -1502,7 +1513,7 @@ CREATE VIEW geolocalisation."V_Niveau_4" AS
 -- Name: VIEW "V_Niveau_4"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial partagé du niveau 4. Colonnes, calculs, compteurs et rattachements historiques conservés ; coordonnées professionnelles facultatives ajoutées par une jointure unique. Aucun territoire exclu en l’absence de coordonnées, aucune entreprise ou affiliation déduite. Les liens et informations d’accueil sont déclaratifs.';
+COMMENT ON VIEW geolocalisation."V_Niveau_4" IS 'Référentiel territorial partagé du niveau 4 avec rattachements, compteurs exacts des sites enfants et disponibilité déclarée du réseau.';
 
 --
 -- Name: COLUMN "V_Niveau_4"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -2262,12 +2273,12 @@ CREATE VIEW geolocalisation."V_RESEAU_AS_par_ZS" AS
     count(n4."ID_Niveau_4") AS "Nb_AS",
     sum(
         CASE
-            WHEN ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) THEN 1
+            WHEN geolocalisation.fn_aire_avec_reseau(g_reseau."AbrGenerique") THEN 1
             ELSE 0
         END) AS "Nb_AS_Avec_Reseau",
     round(((100.0 * (sum(
         CASE
-            WHEN ((g_reseau."AbrGenerique" IS NOT NULL) AND ((g_reseau."AbrGenerique")::text <> 'Sans reseau'::text)) THEN 1
+            WHEN geolocalisation.fn_aire_avec_reseau(g_reseau."AbrGenerique") THEN 1
             ELSE 0
         END))::numeric) / (NULLIF(count(n4."ID_Niveau_4"), 0))::numeric), 1) AS "Pct_AS_Avec_Reseau"
    FROM (((((geolocalisation."T_Niveau_3" n3
@@ -2282,7 +2293,7 @@ CREATE VIEW geolocalisation."V_RESEAU_AS_par_ZS" AS
 -- Name: VIEW "V_RESEAU_AS_par_ZS"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON VIEW geolocalisation."V_RESEAU_AS_par_ZS" IS 'Vue d''indicateurs connectivite : nombre et pourcentage d''Aires de Sante avec reseau par Zone de Sante.';
+COMMENT ON VIEW geolocalisation."V_RESEAU_AS_par_ZS" IS 'Nombre et part des aires avec réseau déclaré par zone, suivant la même comparaison que la liste détaillée des aires.';
 
 --
 -- Name: COLUMN "V_RESEAU_AS_par_ZS"."ID_Niveau_0"; Type: COMMENT; Schema: geolocalisation; Owner: -
@@ -2342,13 +2353,13 @@ COMMENT ON COLUMN geolocalisation."V_RESEAU_AS_par_ZS"."Nb_AS" IS 'Nombre d’ai
 -- Name: COLUMN "V_RESEAU_AS_par_ZS"."Nb_AS_Avec_Reseau"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON COLUMN geolocalisation."V_RESEAU_AS_par_ZS"."Nb_AS_Avec_Reseau" IS 'Nombre d’aires dont l’abréviation réseau est non NULL et différente exactement de Sans reseau. Expression projetée : sum( CASE WHEN g_reseau."AbrGenerique" IS NOT NULL AND g_reseau."AbrGenerique"::text <> ''Sans reseau''::text THEN 1 ELSE 0 END) AS "Nb_AS_Avec_Reseau".';
+COMMENT ON COLUMN geolocalisation."V_RESEAU_AS_par_ZS"."Nb_AS_Avec_Reseau" IS 'Nombre des aires avec un réseau déclaré selon la même règle que V_Niveau_4.AvecReseau.';
 
 --
 -- Name: COLUMN "V_RESEAU_AS_par_ZS"."Pct_AS_Avec_Reseau"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON COLUMN geolocalisation."V_RESEAU_AS_par_ZS"."Pct_AS_Avec_Reseau" IS 'Pourcentage des aires déclarées avec réseau sur le nombre d’aires ; arrondi à une décimale et NULL si dénominateur nul. Expression projetée : round(100.0 * sum( CASE WHEN g_reseau."AbrGenerique" IS NOT NULL AND g_reseau."AbrGenerique"::text <> ''Sans reseau''::text THEN 1 ELSE 0 END)::numeric / NULLIF(count(n4."ID_Niveau_4"), 0)::numeric, 1) AS "Pct_AS_Avec_Reseau".';
+COMMENT ON COLUMN geolocalisation."V_RESEAU_AS_par_ZS"."Pct_AS_Avec_Reseau" IS 'Pourcentage des aires avec un réseau déclaré, arrondi à une décimale. Affiche NULL quand la zone ne contient aucune aire.';
 
 --
 -- Name: V_Stats_N1_N2; Type: VIEW; Schema: geolocalisation; Owner: -
@@ -2697,7 +2708,7 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."uidSNIS" IS 'Identifiant SNIS en
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de sites directement rattachés à cette aire. Les sites rattachés seulement à une zone ne sont pas attribués arbitrairement à une aire.';
 
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indique un réseau renseigné, hors des abréviations « Sans reseau » et « Sans réseau » comparées sans tenir compte de la casse.';
 
 COMMENT ON COLUMN geolocalisation."V_Niveau_5"."NomNiveau_4" IS 'Nom courant de l’aire lorsque le site lui est réellement rattaché ; NULL si aucun rattachement à une aire.';
 
@@ -3024,7 +3035,7 @@ COMMENT ON COLUMN geolocalisation."V_Niveau_4"."Nb_Niveau_5" IS 'Nombre exact de
 -- Name: COLUMN "V_Niveau_4"."AvecReseau"; Type: COMMENT; Schema: geolocalisation; Owner: -
 --
 
-COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indicateur exact du rapport Réseau des aires : abréviation réseau renseignée et différente de « Sans reseau ». Ne constitue pas une certification de connectivité.';
+COMMENT ON COLUMN geolocalisation."V_Niveau_4"."AvecReseau" IS 'Indique un réseau renseigné, hors des abréviations « Sans reseau » et « Sans réseau » comparées sans tenir compte de la casse.';
 
 --
 -- Name: COLUMN "V_Niveau_4"."AdresseTerritoire"; Type: COMMENT; Schema: geolocalisation; Owner: -

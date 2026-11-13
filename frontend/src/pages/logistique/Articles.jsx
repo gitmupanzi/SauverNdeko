@@ -1,3 +1,4 @@
+import {categoricalKey} from "../../utils/categoricalValues";
 import {useDepotScope} from "../../contexts/DepotScopeContext";
 import {fieldCurrencyReferences} from "../../utils/money";
 import useTablePreferences from "../../hooks/useTablePreferences";
@@ -46,12 +47,12 @@ const EMPTY_FILTERS = { deviseId:"", categorieId:"", typeId:"", uniteId:"", stoc
 const DEFAULT_COLUMNS = ["NomArticle","CategorieArticle","TypeArticle","QteArticle","NombreLots","ValideArticle","actions"];
 
 function stockTone(value) {
-  const label = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const label = categoricalKey(value);
   return label.includes("rupture") ? "danger" : label.includes("faible") ? "warning" : label.includes("disponible") ? "success" : "neutral";
 }
 function expiryTone(value) {
-  const label = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-  return label.includes("perime") ? "danger" : /alerte|proche/.test(label) ? "warning" : label.includes("valide") ? "success" : "neutral";
+  const label = categoricalKey(value);
+  return /p[ée]rim[ée]/.test(label) ? "danger" : /alerte|proche/.test(label) ? "warning" : label.includes("valide") ? "success" : "neutral";
 }
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 

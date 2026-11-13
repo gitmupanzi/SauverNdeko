@@ -1,3 +1,4 @@
+import {categoricalKey, sameCategory} from "../utils/categoricalValues";
 import ModuleSidebar from "../components/ModuleSidebar";
 import AppIcon from "../components/AppIcon";
 import {useEntityScope} from "../contexts/EntityScopeContext";
@@ -547,32 +548,13 @@ function createInitialValues(fields) {
   }, {});
 }
 
-function normalizeCategoryName(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-function filterGenericsByCategory(generics, keywords, fallbackKeywords = []) {
-  const matchKeywords = (item, values) => {
-    const categoryName = normalizeCategoryName(item.NomCategorieGenerique);
-    return values.some((keyword) => categoryName.includes(keyword));
-  };
-
-  const primaryMatches = generics.filter((item) => matchKeywords(item, keywords));
-
-  if (primaryMatches.length > 0 || fallbackKeywords.length === 0) {
-    return primaryMatches;
-  }
-
-  return generics.filter((item) => matchKeywords(item, fallbackKeywords));
+function filterGenericsByCategory(generics, categoryPattern) {
+  return generics.filter(item => categoryPattern.test(categoricalKey(item.NomCategorieGenerique)));
 }
 
 function isTrueFlag(value) {
   if (value === true || value === 1) return true;
-  return ["true", "1", "yes", "oui"].includes(String(value ?? "").trim().toLowerCase());
+  return ["true", "1", "yes", "oui"].includes(categoricalKey(value));
 }
 
 function isFalseFlag(value) {
@@ -580,7 +562,7 @@ function isFalseFlag(value) {
     return true;
   }
 
-  const normalized = String(value ?? "").trim().toLowerCase();
+  const normalized = categoricalKey(value);
   return normalized === "false" || normalized === "0" || normalized === "no" || normalized === "non";
 }
 
@@ -2673,15 +2655,15 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
         referenceByField:fieldReferencesPayload.byField || {},
         entities: entitiesPayload?.success && Array.isArray(entitiesPayload.data) ? entitiesPayload.data : [],
         categories,
-        roles: roles.length > 0 ? roles : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique) === "role"),
+        roles: roles.length > 0 ? roles : filterGenericsByCategory(generics, /^r[ôo]le$/u),
         entityTypes:
           entityTypes.length > 0
             ? entityTypes
-            : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("typeentite")),
+            : filterGenericsByCategory(generics, /type[\s_-]*(?:(?:d['’]|de)[\s_-]*)?entit[ée]/u),
         licenseStatuses:
           licenseStatuses.length > 0
             ? licenseStatuses
-            : generics.filter((item) => normalizeCategoryName(item.NomCategorieGenerique).includes("statutlicence")),
+            : filterGenericsByCategory(generics, /statut[\s_-]*(?:de[\s_-]+(?:la[\s_-]+)?)?licence/u),
         niveaux0,
         niveaux1Old,
         niveaux1,
@@ -2704,7 +2686,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
         networkAvailabilities:
           networkAvailabilities.length > 0
             ? networkAvailabilities
-            : filterGenericsByCategory(generics, ["disporeseau", "reseau"]),
+            : filterGenericsByCategory(generics, /r[ée]seau/u),
         zsAsAccessRoutes,
         zsSiteAccessRoutes,
         roofTypes,
@@ -2846,7 +2828,7 @@ export default function Admin({ schemaOnly = "", moduleTitle = "Administration",
       const todayKey = new Date().toISOString().slice(0, 10);
       const activeUsers = users.filter((row) => row.ValideUser !== false).length;
       const adminUsers = users.filter((row) => Boolean(row.Is_Admin)).length;
-      const activeLicences = licences.filter((row) => String(row.statut_licence || "").toLowerCase() === "active").length;
+      const activeLicences = licences.filter((row) => sameCategory(row.statut_licence, "active")).length;
       const expiredLicences = licences.filter((row) => /expir/i.test(String(row.statut_licence || ""))).length;
       const todayLogins = logins.filter((row) => String(row.DateLogin || "").slice(0, 10) === todayKey).length;
       const activeMappings = fkRows.filter((row) => row.HasActiveMapping !== false).length;

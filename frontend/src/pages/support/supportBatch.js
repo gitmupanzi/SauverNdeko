@@ -1,7 +1,8 @@
+import {referenceDuplicateKey} from "../referentiels/referenceBatch";
 import {SUPPORT_FIELDS,supportInitial,supportValidation,supportOptions,supportPayload} from "./supportForm";
 
 export const SUPPORT_BATCH_MAX=100;
-const normalized=value=>String(value??"").normalize("NFKC").trim().replace(/\s+/g," ").toLocaleLowerCase("fr");
+
 export function supportBatchDateValid(value){
  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:\d{2})?$/.exec(String(value));
  if(!match||Number(match[1])<1)return false;
@@ -14,7 +15,26 @@ export function supportExcelRows(matrix,context={},makeId=()=>crypto.randomUUID(
  if(!keys.length||keys.some(key=>!allowed.has(key))||new Set(keys).size!==keys.length)throw new Error("Les colonnes du fichier ne sont pas reconnues.");
  const raw=matrix.slice(1).filter(row=>Array.isArray(row)&&row.some(value=>String(value??"").trim()));
  if(!raw.length||raw.length>SUPPORT_BATCH_MAX)throw new Error("Le panier attend de 1 à 100 dossiers.");
- return raw.map(row=>{const source={...context.defaults,...Object.fromEntries(keys.map((key,index)=>[key,row[index]??""]))},data=supportInitial(source);if(source.DateEcheance&&!supportBatchDateValid(source.DateEcheance))data.DateEcheance=String(source.DateEcheance);for(const field of SUPPORT_FIELDS){if(!field.source||!data[field.key])continue;const choices=supportOptions(context,field).filter(option=>!option.disabled),value=data[field.key].trim();if(choices.some(option=>String(option.value)===value)){data[field.key]=value;continue;}const matching=choices.filter(option=>normalized(option.label)===normalized(value));if(matching.length===1)data[field.key]=String(matching[0].value);}return {clientRowId:makeId(),data};});
+ return raw.map(row=>{
+  const source={...context.defaults,...Object.fromEntries(keys.map((key,index)=>[key,row[index]??""]))};
+  const data=supportInitial(source);
+  if(source.DateEcheance&&!supportBatchDateValid(source.DateEcheance))data.DateEcheance=String(source.DateEcheance);
+  for(const field of SUPPORT_FIELDS){
+   if(!field.source||!data[field.key])continue;
+   const choices=supportOptions(context,field).filter(option=>!option.disabled);
+   const value=data[field.key].trim();
+   if(choices.some(option=>String(option.value)===value)){
+    data[field.key]=value;
+    continue;
+   }
+   const matching=choices.filter(option=>{
+    const technicalCode=field.source==="bons"||option.abbr?.startsWith("support.");
+    return technicalCode?option.label===value:referenceDuplicateKey(option.label)===referenceDuplicateKey(value);
+   });
+   if(matching.length===1)data[field.key]=String(matching[0].value);
+  }
+  return {clientRowId:makeId(),data};
+ });
 }
 export function supportBatchValidation(rows,context={}){
  const errors={};

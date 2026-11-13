@@ -1,12 +1,20 @@
+import {categoricalKey} from "./categoricalValues";
+
 /** Classify a configured document without using a database ID or interpreting zero as an order. */
 export function stockDocumentKind(type) {
   if (!type) return "";
-  if (type.kind === "commande" || type.NatureBon === "commande" || [type.abbr, type.AbrTypeCmd, type.AbrGenerique].some(code => code === "CMD")) return "commande";
-  if (["entree", "sortie"].includes(type.kind || type.NatureBon)) return type.kind || type.NatureBon;
+  const kind = categoricalKey(type.kind);
+  const nature = categoricalKey(type.NatureBon);
+  const codes = [type.abbr, type.AbrTypeCmd, type.AbrGenerique].map(categoricalKey);
+  if (kind === "commande" || nature === "commande" || codes.includes("cmd")) return "commande";
+
+  const direction = kind || nature;
+  if (direction === "entree" || direction === "entrée") return "entree";
+  if (direction === "sortie") return "sortie";
   const sign=Number(type.sign ?? type.SigneCommande);
   if (sign === 1 || type.EstCommandeEntree === true) return "entree";
   if (sign === -1 || type.EstCommandeSortie === true) return "sortie";
-  const code=String(type.abbr || type.AbrTypeCmd || type.TypeCmd || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const code = categoricalKey(type.abbr || type.AbrTypeCmd || type.AbrGenerique || type.TypeCmd);
   return code === "be" || code.startsWith("entr") ? "entree" : code === "bs" || code.startsWith("sort") ? "sortie" : "";
 }
 

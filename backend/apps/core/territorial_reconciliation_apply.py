@@ -15,6 +15,7 @@ from django.conf import settings
 from django.db import connection, transaction
 from apps.accounts.authentication import actor_by_id
 from . import db
+from .category_values import category_key
 from .module_access import require_module
 from .repository import audit, set_admin_actor
 from .responses import APIError, ExactEncoder
@@ -173,7 +174,7 @@ def _inspect(plan, lock=False):
         if key not in guards:
             fail('Toute écriture UID exige sa photographie préalable.')
     as_choices = db.query('''SELECT g.* FROM referentiel."T_Generique" g JOIN referentiel."T_CategorieGenerique" c
-        ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE g."AbrGenerique"='AS'
+        ON c."ID_CategorieGenerique"=g."ID_CategorieGeneriqueFk" WHERE referentiel.fn_normaliser_libelle(g."AbrGenerique") = 'as'
         AND g."ValideGenerique" AND c."ValideCategorieGenerique" AND g."IdEntiteFk" IS NULL AND c."IdEntiteFk" IS NULL
         AND g."ID_CategorieGeneriqueFk"=ANY(referentiel.fn_categories_champ('geolocalisation','T_Niveau_4','ID_TypeNiveau_4_Fk',NULL))''')
     if len(as_choices) != 1:
@@ -331,7 +332,7 @@ def _inspect_links(plan, guards, current, desired, as_ref, labels, all_levels):
     for action in actions['rattachement_sanitaire']:
         target = zone(action['zone_id'])
         antenna = guarded('T_Niveau_2', action['antenne_id'])
-        if normalized(labels.get(antenna.get('ID_TypeNiveau_2_Fk'))) != 'antpev' or antenna.get('ID_Niveau_1_FK') != province_of_zone(target):
+        if category_key(labels.get(antenna.get('ID_TypeNiveau_2_Fk'))) not in {'ant pev', 'antpev', 'ant-pev', 'ant. pev'} or antenna.get('ID_Niveau_1_FK') != province_of_zone(target):
             fail('L’antenne PEV et la ZS doivent appartenir à la même province.')
         if action['zone_id'] in attached_zones:
             fail('Une zone possède plusieurs rattachements sanitaires proposés.')

@@ -1,3 +1,4 @@
+import {categoricalKey, sameCategory} from "../../utils/categoricalValues";
 import {parseExcelTsv, referenceBatchId} from "../referentiels/referenceBatch";
 import {caisseErrors, caisseOptions, caissePayload, caisseValues, cashboxOptions, validCaisseDate} from "./caisseModel";
 
@@ -25,8 +26,7 @@ const REFERENCE_FIELDS = {
 export const TEXT_LIMITS = {NomCaisse:160, LibellePaiement:255, ReferenceExterne:255, ObsPaiement:4000, motif:1000};
 export const isBatchDate = key => key === "DatePaiement" || key === "ClotureLe";
 export const isBatchAmount = key => key === "MontantCompte" || key === "MontantPaiement";
-const normalize = value => String(value ?? "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("fr");
-const header = value => normalize(value).replace(/[^a-z0-9]/g,"");
+const header = value => categoricalKey(value).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
 
 export function caisseBatchChoices(field, references) {
   if (field === "IdCaisseFk") return cashboxOptions(references);
@@ -96,22 +96,25 @@ function resolveChoice(field, value, references) {
   const choices = caisseBatchChoices(field, references);
   if (!choices) return value;
   if (field === "Actif") {
-    if (["oui", "actif", "active", "true", "1"].includes(normalize(value))) return true;
-    if (["non", "inactif", "inactive", "false", "0"].includes(normalize(value))) return false;
+    if (["oui", "actif", "active", "true", "1"].includes(categoricalKey(value))) return true;
+    if (["non", "inactif", "inactive", "false", "0"].includes(categoricalKey(value))) return false;
     return value;
   }
   if (field === "SensMouvement") {
-    if (normalize(value) === "entree") return "1";
-    if (normalize(value) === "sortie") return "-1";
+    if (sameCategory(value, "entrée") || sameCategory(value, "entree")) return "1";
+    if (["sortie", "décaissement", "decaissement"].includes(categoricalKey(value))) return "-1";
   }
-  const source = references[REFERENCE_FIELDS[field]] || (field === "IdCaisseFk" ? references.caisses : []) || [];
-  const byId = choices.find(option => option.value === value && !option.disabled);
+  const allowed = choices.filter(option => option.value && !option.disabled);
+  const byId = allowed.find(option => option.value === value);
   if (byId) return byId.value;
-  const matches = choices.filter(option => {
-    if (!option.value || option.disabled) return false;
-    const item = source.find(ref => String(ref.id ?? ref.IdCaisse) === option.value);
-    return [option.label, item?.NomCaisse, item?.CodeCaisse].some(label => label && normalize(label) === normalize(value));
-  });
+  if (field === "IdCaisseFk") {
+    const cashboxes = new Map((references.caisses || []).map(item => [String(item.IdCaisse), item]));
+    const exact = allowed.filter(option => option.label === value || cashboxes.get(option.value)?.CodeCaisse === value);
+    if (exact.length) return exact.length === 1 ? exact[0].value : value;
+    const matches = allowed.filter(option => sameCategory(cashboxes.get(option.value)?.NomCaisse, value));
+    return matches.length === 1 ? matches[0].value : value;
+  }
+  const matches = allowed.filter(option => sameCategory(option.label, value));
   return matches.length === 1 ? matches[0].value : value;
 }
 
