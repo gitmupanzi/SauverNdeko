@@ -9,13 +9,13 @@
 .caisse-dashboard-filters label { display:flex; flex:1 1 135px; flex-direction:column; min-width:0; gap:7px; color:var(--erp-text); font-size:12px; }
 .caisse-dashboard-filters .caisse-dashboard-query { flex:3 1 260px; }
 .caisse-dashboard-filters label>span { color:var(--erp-muted); }
-.caisse-dashboard-filters input,.caisse-fields input:not([type=checkbox]),.caisse-fields textarea { display:block; width:100%; min-width:0; min-height:42px; padding:9px 12px; border:1px solid var(--erp-border); border-radius:7px; color:var(--erp-text); background:var(--erp-surface); font:inherit; font-size:13px; }
+.caisse-fields input:not([type=checkbox]),.caisse-fields textarea { display:block; width:100%; min-width:0; min-height:42px; padding:9px 12px; border:1px solid var(--erp-border); border-radius:7px; color:var(--erp-text); background:var(--erp-surface); font:inherit; font-size:13px; }
 .caisse-fields input:disabled,.caisse-fields textarea:disabled { color:var(--erp-muted); background:var(--erp-hover); }
 .caisse-fields :is(input,textarea)[aria-invalid=true] { border-color:var(--erp-danger); }
 .caisse-fields textarea { resize:vertical; min-height:96px; }
 .caisse-fields small { color:var(--erp-muted); font-size:11px; line-height:1.6; }
 .caisse-fields .record-field-error { color:var(--erp-danger); }
-.caisse-module button:focus-visible,.caisse-fields input:focus-visible,.caisse-fields textarea:focus-visible,.caisse-dashboard-filters input:focus-visible,.caisse-value-link:focus-visible { outline:2px solid var(--erp-action); outline-offset:3px; }
+.caisse-module button:focus-visible,.caisse-fields input:focus-visible,.caisse-fields textarea:focus-visible,.caisse-value-link:focus-visible { outline:2px solid var(--erp-action); outline-offset:3px; }
 .caisse-period-note { margin:12px 0 22px; }
 .caisse-currency-blocks { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); gap:20px; }
 .caisse-currency-block { min-width:0; border:1px solid var(--erp-border); border-radius:12px; background:var(--erp-surface); overflow:hidden; }

@@ -12,6 +12,7 @@ import { useAuth } from "../contexts/AuthContext";
 import AppIcon from "../components/AppIcon";
 import { Link, useSearchParams } from "react-router-dom";
 import "./logistique/LogistiqueModern.css";
+import "../components/RegisterSurface.css";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import {
   fetchCompleteReferenceRows,

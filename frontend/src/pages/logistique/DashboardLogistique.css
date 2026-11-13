@@ -35,10 +35,9 @@
 .erp-dashboard .erp-dashboard-filters .admin-form-field { flex:0 0 136px; min-width:0; gap:5px; }
 .erp-dashboard .erp-dashboard-filters .erp-dashboard-query { flex:1 1 190px; }
 .erp-dashboard .erp-dashboard-filters .erp-dashboard-period { flex:0 0 148px; }
-.erp-dashboard .erp-dashboard-filters .admin-form-field input,.erp-dashboard .erp-dashboard-filters .admin-form-field select { height:40px; min-height:40px; min-width:0; max-width:100%; box-sizing:border-box; border:1px solid var(--erp-border); border-radius:5px; background:var(--erp-surface); color:var(--erp-text); }
 .erp-dashboard .erp-dashboard-search { position:relative; display:block; width:100%; }
 .erp-dashboard .erp-dashboard-search > .app-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--erp-muted); pointer-events:none; }
-.erp-dashboard .erp-dashboard-search > input { padding-left:33px; }
+.erp-dashboard .erp-dashboard-search > input[type="search"] { padding-left:33px; }
 .erp-dashboard .erp-detail-entry { margin-top:22px; }
 .erp-dashboard .erp-detail-header { background:var(--erp-surface); color:var(--erp-text); border-color:var(--erp-border); }
 .erp-dashboard .erp-detail-header h2 { color:var(--erp-text); font-size:18px; }

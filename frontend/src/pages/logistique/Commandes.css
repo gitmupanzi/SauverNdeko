@@ -1,5 +1,2 @@
 .commandes-register .commandes-saved-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
-.commandes-register .erp-register-filters input[type=date]{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--erp-border);border-radius:7px;color:var(--erp-text);background:var(--erp-surface);font:13px "Segoe UI",sans-serif;color-scheme:inherit;}
-.commandes-register .erp-register-filters input[type=date]:focus-visible{outline:2px solid var(--erp-link);outline-offset:2px;}
-.commandes-register .erp-register-filters input[aria-invalid=true]{border-color:var(--erp-danger);}
 .commandes-register .erp-table-error{display:flex;flex-wrap:wrap;align-items:center;gap:12px;}

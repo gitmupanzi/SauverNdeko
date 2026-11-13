@@ -12,7 +12,8 @@ common = ['src/components/ActionButton.css', 'src/components/DataTable.css',
           'src/components/TablePagination.css', 'src/components/ListState.css',
           'src/components/RowActionsMenu.css', 'src/components/RegisterSurface.css',
           'src/components/AppliedCriteria.css', 'src/pages/WorkspaceHome.css']
-files = [*base.FILES[:-1], *common]
+dashboard = ['src/pages/logistique/DashboardLogistique.css', 'src/pages/caisse/Caisse.css']
+files = [*base.FILES[:-1], *dashboard, *common]
 checks = 0
 failures = []
 
@@ -70,13 +71,25 @@ def matcher(order, width=1440, coarse=False, reduced=False):
     return result
 
 
-fixture = '''<html data-theme="THEME"><body><main class="logistics-modern erp-results erp-register"><form class="erp-table-toolbar">
+fixture = '''<html data-theme="THEME" style="color-scheme:SCHEME"><body style="color-scheme:SCHEME"><main class="logistics-modern erp-results erp-register"><form class="erp-table-toolbar">
 <label class="erp-table-search"><input data-probe="search"/></label>
 <button class="ui-action is-primary" data-probe="primary">Rechercher</button>
 <button class="ui-action is-secondary qa-hover" data-probe="secondary">Filtrer</button>
 <button class="ui-action is-secondary" disabled="disabled" data-probe="disabled">Réinitialiser</button>
 <button class="ui-action is-secondary is-active" aria-expanded="true" data-probe="filter">Filtrer <span class="erp-filter-count" data-probe="count">2</span></button>
 <label class="erp-table-size"><span data-probe="size">Lignes</span><select><option>25</option></select></label></form>
+<form class="erp-register-filters"><div class="erp-register-filter-grid">
+<label>Localité<input type="text" data-probe="filter-text" /></label>
+<label>Du<input type="date" class="qa-focus-visible" data-probe="filter-date" /></label>
+<label>Au<input type="date" aria-invalid="true" data-probe="filter-invalid" /></label>
+<label>Quantité<input type="number" disabled="disabled" data-probe="filter-disabled" /></label>
+</div></form>
+<section class="erp-dashboard"><form class="erp-dashboard-filters">
+<label class="admin-form-field">Du<input type="date" data-probe="filter-dashboard-date" /></label>
+<label class="admin-form-field erp-dashboard-query"><span class="erp-dashboard-search"><input type="search" data-probe="filter-dashboard-search" /></span></label>
+</form></section>
+<form class="caisse-dashboard-filters"><label>Au<input type="date" data-probe="filter-caisse-date" /></label></form>
+<div class="logistics-filter-grid"><label class="admin-form-field">Recherche<input type="search" data-probe="filter-audit" /></label></div>
 <p class="erp-table-pending" data-probe="pending">Validez la recherche</p><p class="erp-table-error" data-probe="error">Export indisponible</p>
 <div class="applied-criteria"><button class="applied-criterion" data-probe="criterion"><span>Recherche : <strong>Souris</strong></span></button><button class="applied-criterion" data-probe="criterion-disabled" disabled="disabled"><span>Catégorie : Bureautique</span></button></div>
 <div class="erp-data-grid"><div class="logistics-table-wrap"><table class="admin-table"><tbody><tr class="erp-grid-empty"><td>
@@ -93,14 +106,14 @@ fixture = '''<html data-theme="THEME"><body><main class="logistics-modern erp-re
 
 
 def computed_fixture(theme, rules):
-    root = base.cssselect2.ElementWrapper.from_html_root(ET.fromstring(fixture.replace('THEME', theme)))
+    root = base.cssselect2.ElementWrapper.from_html_root(ET.fromstring(fixture.replace('THEME', theme).replace('SCHEME', 'light' if theme == 'light' else 'dark')))
     computed = {}
     for node in root.iter_subtree():
         computed[node] = base.style(node, rules, computed.get(node.parent))
     return root, computed
 
 
-for order in [files, [*common, *base.FILES[:-1]]]:
+for order in [files, [*common, *dashboard, *base.FILES[:-1]]]:
     rules = matcher(order)
     for theme in ['light', 'dark', 'contrast']:
         root, computed = computed_fixture(theme, rules)
@@ -114,10 +127,22 @@ for order in [files, [*common, *base.FILES[:-1]]]:
             check(base.contrast(base.colour(foreground), base.colour(background)) >= 4.5,
                   (theme, name, foreground, background))
             check(computed[node]['opacity'] == '1', (theme, name, 'pas de texte estompé'))
+            if name.startswith('filter-'):
+                style = computed[node]
+                variables = style['variables']
+                surface = '--erp-raised' if name == 'filter-disabled' else '--erp-surface'
+                check(style.get('min-height') == '44px', (theme, name, 'hauteur commune'))
+                check(base.colour(background) == base.colour(variables[surface]), (theme, name, 'surface commune'))
+                if name == 'filter-invalid':
+                    check(style.get('border-color') == variables['--erp-danger'], (theme, name, 'bordure d’erreur'))
+                if name == 'filter-date':
+                    check(style.get('outline', 'none') != 'none', (theme, name, 'focus visible'))
+                if name == 'filter-dashboard-search':
+                    check(style.get('padding-left') == '33px', (theme, name, 'espace de l’icône'))
 
 for width in [320, 375, 768, 1440, 1920]:
     root, computed = computed_fixture('dark', matcher(files, width=width, coarse=True, reduced=True))
-    for name in ['primary', 'previous', 'next']:
+    for name in ['primary', 'previous', 'next', 'filter-text', 'filter-date', 'filter-dashboard-date', 'filter-caisse-date']:
         node = next(root.query_all('[data-probe="' + name + '"]'))
         check(float(computed[node]['min-height'].removesuffix('px')) >= 44, (width, name, 'hauteur tactile'))
     for name in ['previous', 'next']:

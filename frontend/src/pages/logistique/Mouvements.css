@@ -1,9 +1,6 @@
 .mouvements-register .erp-table-error{display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
 .mouvements-register .mouvements-filter-field,.mouvements-register .mouvements-record-filter{display:grid;align-content:start;gap:6px;min-width:0;}
 .mouvements-register .mouvements-filter-field>label,.mouvements-register .mouvements-record-filter>label{display:block;color:var(--erp-muted);font:12px "Segoe UI",sans-serif;}
-.mouvements-register .erp-register-filters input{min-width:0;width:100%;min-height:40px;padding:8px 10px;border:1px solid var(--erp-border);border-radius:7px;background:var(--erp-surface);color:var(--erp-text);font:13px "Segoe UI",sans-serif;color-scheme:inherit;}
-.mouvements-register .erp-register-filters input:focus-visible{outline:2px solid var(--erp-link);outline-offset:2px;}
-.mouvements-register .erp-register-filters input[aria-invalid=true]{border-color:var(--erp-danger);}
 .mouvements-register .mouvements-choice-search{display:flex;gap:6px;min-width:0;}
 .mouvements-register .mouvements-choice-search input{flex:1;}
 .mouvements-register .mouvements-choice-search .ui-action{flex:none;min-width:40px;min-height:40px;}

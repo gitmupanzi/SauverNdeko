@@ -23,8 +23,34 @@
 .erp-register-table .erp-data-grid .logistics-table-wrap::-webkit-scrollbar { height:7px; width:7px; }.erp-register-table .erp-data-grid .logistics-table-wrap::-webkit-scrollbar-thumb { background:var(--erp-border); border-radius:9px; }
 .erp-register-filters { margin:0 0 16px; padding:16px; border:1px solid var(--erp-border); border-radius:9px; background:var(--erp-raised); }
 .erp-register-filter-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 18px; }
-.erp-register-filters label { display:grid; gap:6px; margin:0; color:var(--erp-muted); font-size:12px; }
-.erp-register-filters select { width:100%; min-width:0; height:40px; padding:0 10px; border:1px solid var(--erp-border); border-radius:6px; color:var(--erp-text); background:var(--erp-surface); font:13px "Segoe UI",sans-serif; }
+.erp-register-filters label { display:grid; min-width:0; gap:6px; margin:0; color:var(--erp-muted); font-size:12px; }
+:is(.erp-register-filters,.caisse-dashboard-filters,.logistics-modern .erp-dashboard-filters,.logistics-modern .logistics-filter-grid) :is(input:where(:not([type]), [type="text"], [type="search"], [type="date"], [type="datetime-local"], [type="month"], [type="time"], [type="number"]), select:not(.categorical-select-native)) {
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  min-height:44px;
+  padding:10px 13px;
+  border:1px solid var(--erp-border);
+  border-radius:8px;
+  color:var(--erp-text);
+  background:var(--erp-surface);
+  font:13px "Segoe UI",sans-serif;
+  color-scheme:inherit;
+}
+:is(.erp-register-filters,.caisse-dashboard-filters,.logistics-modern .erp-dashboard-filters,.logistics-modern .logistics-filter-grid) input::placeholder { color:var(--erp-muted); opacity:1; }
+:is(.erp-register-filters,.caisse-dashboard-filters,.logistics-modern .erp-dashboard-filters,.logistics-modern .logistics-filter-grid) :is(input,select:not(.categorical-select-native)):focus-visible {
+  outline:2px solid var(--erp-link);
+  outline-offset:1px;
+  border-color:var(--erp-link);
+  box-shadow:none;
+}
+:is(.erp-register-filters,.caisse-dashboard-filters,.logistics-modern .erp-dashboard-filters,.logistics-modern .logistics-filter-grid) :is(input,select:not(.categorical-select-native))[aria-invalid="true"] { border-color:var(--erp-danger); }
+:is(.erp-register-filters,.caisse-dashboard-filters,.logistics-modern .erp-dashboard-filters,.logistics-modern .logistics-filter-grid) :is(input:where(:not([type]), [type="text"], [type="search"], [type="date"], [type="datetime-local"], [type="month"], [type="time"], [type="number"]), select:not(.categorical-select-native)):disabled {
+  color:var(--erp-muted);
+  background:var(--erp-raised);
+  cursor:not-allowed;
+}
 .erp-register-filters-footer { display:flex; justify-content:flex-end; margin-top:14px; }
 .erp-register-chips { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0 0 15px; }
 .erp-register-chip { display:flex; align-items:center; gap:7px; padding:5px 9px; border:1px solid var(--erp-action-border); border-radius:6px; background:var(--erp-action-soft); color:var(--erp-action); font:12px "Segoe UI",sans-serif; }

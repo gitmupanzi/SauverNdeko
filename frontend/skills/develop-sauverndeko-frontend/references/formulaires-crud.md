@@ -35,6 +35,8 @@ Tout filtre métier catégoriel et toute référence à choix simple utilisent [
 
 Les réglages techniques courts, tels que taille de page, densité et thème, gardent leur contrôle existant adapté. Dates, nombres, texte et cases de formulaire gardent aussi leur saisie propre. Une sélection multiple conserve un composant conçu pour plusieurs valeurs ; ne pas la réduire à ce sélecteur simple. Ces exceptions ne justifient pas un nouveau select natif pour un filtre métier catégoriel.
 
+Dans les panneaux de filtres, appliquer le style commun de RegisterSurface.css aux champs natifs de texte, de date et de nombre. Utiliser les couleurs du thème, un focus visible et une hauteur de 44 px. Les filtres intégrés aux en-têtes de tableau conservent leur format compact.
+
 ## Contrat du formulaire Article
 
 ArticleEditor.jsx est la base livrée pour les futurs CRUD. Charger la fiche fraîche et sa révision à l’ouverture d’une modification. Envoyer les champs modifiés avec _version. En cas de conflit, proposer de recharger ; ne pas écraser silencieusement une modification concurrente.
