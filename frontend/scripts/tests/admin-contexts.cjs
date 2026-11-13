@@ -37,10 +37,63 @@ globalThis.__auth={isAuthenticated:true,user:{IdUser:1,Is_Admin:true,permissions
  ]);
  const descendantPicker=node=>Array.isArray(node)?node.some(descendantPicker):Boolean(node&&(node.type?.name==='Picker'||descendantPicker(node.props?.children)));
  for(const title of ['Administration','Logistique','Référentiels','Support','Paramètres']){ok(descendantPicker(header.default({title})));ok(!descendantPicker(header.default({title,showEntityScope:false})));}
+ const discussions=await compile("export {default} from './src/pages/Discussions';",[
+ [/^react$/,'discussions-hooks','export const useState=v=>globalThis.__h.state(v),useEffect=(f,d)=>globalThis.__h.effect(f,d);'],
+ [/^react-router-dom$/,'discussions-router','export const useSearchParams=()=>[globalThis.__params,next=>{globalThis.__params=next;}];'],
+ [/\/contexts\/AuthContext$/,'discussions-auth','export const useAuth=()=>globalThis.__auth;'],
+ [/\/contexts\/EntityScopeContext$/,'discussions-scope','export const useEntityScope=()=>globalThis.__scope;'],
+ [/\/services\/api$/,'discussions-api','export async function requestJson(url){globalThis.__calls.push(url);return globalThis.__response;}'],
+ [/\/components\/ModuleSidebar$/,'discussions-sidebar','export default function Sidebar(){}'],
+ [/\/components\/ListState$/,'discussions-list-state','export default function State(){}'],
+ [/\/components\/ActionButton$/,'discussions-action','export default function Button(){}'],
+ [/\/discussions\/DiscussionMessages$/,'discussions-messages','export default function Messages(){}'],
+ [/\/discussions\/Announcements$/,'discussions-announcements','export default function Announcements(){}'],
+ [/\/demandes\/DemandRegister$/,'discussions-demands','export default function Demands(){}'],
+ ]);
+ const discussionsHooks=new Hooks();
+ const renderDiscussions=(query)=>{if(query!==undefined)globalThis.__params=new URLSearchParams(query);return discussionsHooks.render(discussions.default);};
+ function findByName(node,name){
+   if(Array.isArray(node))return node.map(item=>findByName(item,name)).find(Boolean);
+   if(node?.type?.name===name)return node;
+   return node?.props?.children?findByName(node.props.children,name):undefined;
+ }
+ const discussionPermissions={canRead:true};
+ globalThis.__auth={user:{moduleAccess:{modules:{discussions:discussionPermissions},tabs:{discussions:{annonces:{canRead:false}}}}}};
+ globalThis.__scope={entityId:'7',scopeKey:'company:7'};
+ globalThis.__response={success:true,data:{entityId:7,tabLabels:{demandes:'Demandes internes',messages:'Messagerie'},hiddenTabs:['messages']}};
+ let discussionTree=renderDiscussions('');
+ eq(findByName(discussionTree,'Sidebar').props.groups[0].items,[]);
+ await discussionsHooks.flush();
+ eq(globalThis.__calls.at(-1),'/api/discussions/presentation');
+ discussionTree=renderDiscussions();
+ eq(findByName(discussionTree,'Sidebar').props.groups[0].items.map(item=>item.label),['Demandes internes']);
+ eq(findByName(discussionTree,'Demands').props.title,'Demandes internes');
+ eq(findByName(discussionTree,'Messages').props.visible,false);
+ const messagesType=findByName(discussionTree,'Messages').type;
+ for(const query of ['discussion=2','type=structure&id=7','onglet=messages&discussion=2']){
+   discussionTree=renderDiscussions(query);
+   eq(findByName(discussionTree,'Messages').type,messagesType);
+   eq(findByName(discussionTree,'Messages').props,{visible:true,title:'Messagerie'});
+ }
+ findByName(discussionTree,'Sidebar').props.onNavigate('demandes');
+ eq(globalThis.__params.toString(),'onglet=demandes&discussion=2');
+ eq(findByName(renderDiscussions(),'Messages').props.visible,false);
+ eq(findByName(renderDiscussions('demande=8'),'Demands').props.title,'Demandes internes');
+ discussionTree=renderDiscussions('onglet=annonces');
+ eq(findByName(discussionTree,'Announcements'),undefined);
+ eq(findByName(discussionTree,'State').props.role,'alert');
+ globalThis.__scope={entityId:'8',scopeKey:'company:8'};
+ globalThis.__response={success:false};
+ renderDiscussions('');await discussionsHooks.flush();
+ discussionTree=renderDiscussions();
+ eq(findByName(discussionTree,'Sidebar').props.groups[0].items.map(item=>item.label),['Messages','Demandes']);
+ eq(findByName(discussionTree,'Messages').props.visible,true);
+ ok(findByName(discussionTree,'Button'));
+ discussionsHooks.unmount();
  const transport=await compile("export * from './src/services/entityScope';",[]);
  transport.configureEntityScope({userId:'1',entityId:'7',globalAdmin:true});
- for(const route of ['/api/systeme/administration/synthese','/api/systeme/administration/registres/licences?take=2','/api/systeme/administration/saisie-multiple/utilisateurs','/api/systeme/utilisateurs','/api/systeme/entites/7','/api/systeme/licences/4','/api/systeme/fk-correspondances','/api/systeme/admin-ui-settings','/api/systeme/personnel/references','/api/logistique/articles','/api/support/tickets/12/documents','/api/tableaux/support.tickets/preferences','/api/referentiel/champs-references','/api/tableaux/admin.utilisateurs/preferences']){const snapshot=transport.captureEntityScope(route);eq(snapshot.scoped,true);eq(snapshot.headers,{'X-Entite-ID':'7'});}
- for(const route of ['/api/systeme/administration-autre','/api/public/articles','/SauverNdeko/auth/me','https://example.invalid/api/systeme/administration'])eq(transport.captureEntityScope(route).headers,{});
+ for(const route of ['/api/systeme/administration/synthese','/api/systeme/administration/registres/licences?take=2','/api/systeme/administration/saisie-multiple/utilisateurs','/api/systeme/utilisateurs','/api/systeme/entites/7','/api/systeme/licences/4','/api/systeme/fk-correspondances','/api/systeme/admin-ui-settings','/api/systeme/personnel/references','/api/logistique/articles','/api/support/tickets/12/documents','/api/discussions/presentation','/api/tableaux/support.tickets/preferences','/api/referentiel/champs-references','/api/tableaux/admin.utilisateurs/preferences']){const snapshot=transport.captureEntityScope(route);eq(snapshot.scoped,true);eq(snapshot.headers,{'X-Entite-ID':'7'});}
+ for(const route of ['/api/systeme/administration-autre','/api/public/articles','/api/discussions','/api/discussions/start','/api/discussions/2/messages','/api/discussions/demandes','/SauverNdeko/auth/me','https://example.invalid/api/systeme/administration'])eq(transport.captureEntityScope(route).headers,{});
  const snapshot=transport.captureEntityScope('/api/systeme/administration/synthese');eq(transport.entityScopeIsCurrent(snapshot),true);transport.configureEntityScope({userId:'1',entityId:'8',globalAdmin:true});eq(transport.entityScopeIsCurrent(snapshot),false);transport.configureEntityScope({userId:'2',entityId:'8',globalAdmin:false});eq(transport.captureEntityScope('/api/systeme/administration/synthese').headers,{});
  transport.configureEntityScope({userId:'1',entityId:'7',globalAdmin:true});eq(transport.captureEntityScope('/api/parametres/profil').headers,{'X-Entite-ID':'7'});const settingsSnapshot=transport.captureEntityScope('/api/parametres/profil');transport.configureEntityScope({userId:'1',entityId:'8',globalAdmin:true});eq(transport.entityScopeIsCurrent(settingsSnapshot),false);
  console.log(JSON.stringify({success:true,checks,scope:'Contexte entreprise sans licence Logistique, droits conservés, réponses obsolètes et en-tête partagés'}));

@@ -74,7 +74,7 @@ function AnnouncementDetail({ item, received, canMarkRead, onRead, onClose }) {
   </DrawerDialog>;
 }
 
-export default function Announcements() {
+export default function Announcements({ title = "Annonces" }) {
   const prefix = useId();
   const [context, setContext] = useState(null);
   const [contextError, setContextError] = useState("");
@@ -140,7 +140,7 @@ export default function Announcements() {
 
   return <section aria-label="Annonces">
     <header className="communication-page-heading">
-      <div><h1>Annonces</h1><p>Les communications de votre entreprise et de la plateforme.</p></div>
+      <div><h1>{title}</h1><p>Les communications de votre entreprise et de la plateforme.</p></div>
       {context?.canPublish && <ActionButton icon="plus" variant="primary" onClick={() => { setNotice(""); setCompose(true); }}>Nouvelle annonce</ActionButton>}
     </header>
     {notice && <div className="communication-feedback is-success" role="status"><AppIcon name="check-circle" />{notice}</div>}

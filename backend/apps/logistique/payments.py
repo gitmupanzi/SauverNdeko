@@ -72,8 +72,16 @@ def linked_cash(row,actor):
 
 
 def cash_choices(actor,parent):
-    if not can_use_tab(actor, "caisse", "ecritures", "manage") or not cash_ready():return []
-    if parent.get('IdEntiteFk')!=actor.organisation:return []
+    from apps.caisse import services as cash_service, validation as cash_validation
+
+    entity = parent.get('IdEntiteFk')
+    if entity != actor.organisation or not can_use_tab(actor, 'caisse', 'ecritures', 'manage') or not cash_ready():
+        return []
+    rights = cash_service.capabilities(actor)
+    if not (rights['canCreateEntries'] and rights['canValidateEntries']):
+        return []
+    if cash_validation.settlement_policy_error(actor, entity):
+        return []
     return db.query('''SELECT "IdCaisse" AS id,"NomCaisse" AS label,"CodeCaisse" AS code
       FROM operations."T_Caisse" WHERE "IdEntiteFk"=%s AND "IdDeviseFk"=%s AND "Actif" IS TRUE
       ORDER BY "NomCaisse","IdCaisse"''',[parent['IdEntiteFk'],parent.get('ID_DeviseFk')])

@@ -34,7 +34,7 @@ function modelQuery(criteria,grid={}){
   return new URLSearchParams(Object.entries({...criteria,...grid}).filter(([,value])=>value!==""));
 }
 
-export default function SupportProcessModels({refresh}){
+export default function SupportProcessModels({title="Modèles de suivi",refresh}){
   const {user}=useAuth(),scope=useEntityScope(),prefix=useId();
   const anchor=useRef(null),download=useRef(null);
   const [drawer,setDrawer]=useState(null),[feedback,setFeedback]=useState("");
@@ -189,7 +189,7 @@ export default function SupportProcessModels({refresh}){
   ];
   function companyName(row){return row.entityName||companyOptions.find(option=>option.value===String(row.entityId))?.label||"—";}
 
-  return <RegisterSurface title="Modèles de suivi" subtitle="Définissez les étapes de traitement de vos tickets." actions={available?actions:null}>
+  return <RegisterSurface title={title} subtitle="Définissez les étapes de traitement de vos tickets." actions={available?actions:null}>
     <div className="erp-register-table erp-results" data-density={density} aria-busy={models.loading}>
       {showCompany?<p className="record-editor-note">Sélectionnez une entreprise pour gérer ses modèles.</p>:null}
       {feedback?<p className="admin-feedback" role="status"><AppIcon name="check-circle"/>{feedback}

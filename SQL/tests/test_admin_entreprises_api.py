@@ -274,11 +274,15 @@ class AdminEnterpriseAPI(unittest.TestCase):
     self.assertNotIn('CollectionRevision',admin);self.assertNotIn('Localisations',documentary)
     self.assertEqual(admin['canConfigure'],not application_readonly)
 
- def presentation_client(self,index=0,*,global_admin=False,scope=True,staff=True,logistics_read=True,settings_manage=True,cash_read=False):
+ def presentation_client(self,index=0,*,global_admin=False,scope=True,staff=True,logistics_read=True,settings_manage=True,cash_read=False,extra_modules=(),tab_rights=None):
   actor=self.actor(index,global_admin=global_admin,scope=scope,staff=staff)
   actor._module_access['modules']['logistique'].update(canRead=logistics_read,canManage=False)
   actor._module_access['modules']['parametres']={'canRead':True,'canManage':settings_manage,'reason':'MODULE_ROLE_FORBIDDEN'}
   actor._module_access['modules']['caisse']={'canRead':cash_read,'canManage':False,'reason':'MODULE_ROLE_FORBIDDEN'}
+  for key in extra_modules:
+   actor._module_access['modules'][key]={'canRead':True,'canManage':False,'reason':''}
+  for module,tabs in (tab_rights or {}).items():
+   actor._module_access['tabs'][module]={tab:{'canRead':allowed} for tab,allowed in tabs.items()}
   client=APIClient()
   client.force_authenticate(actor)
   return client
@@ -342,6 +346,7 @@ class AdminEnterpriseAPI(unittest.TestCase):
     VALUES(%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+INTERVAL '1 year',true,%s) RETURNING "IdLicence"''',
     [self.entities[index],status])['IdLicence']
   db.query('INSERT INTO systeme."T_LicenceModule"("IdLicenceFk","CodeModule") VALUES(%s,%s)',[licence,module])
+  return licence
 
  def test_32_presentation_validates_keys_and_guards_generic_crud(self):
   self.license_presentation_module('logistique')
@@ -408,6 +413,51 @@ class AdminEnterpriseAPI(unittest.TestCase):
   self.assertEqual(updated['hiddenDashboardBlocks'],['flux'])
   self.assertEqual(self.assert_status(other.get(CAISSE_PRESENTATION)),updated)
   self.assertEqual(self.assert_status(global_client.get(PRESENTATION_SETTINGS)),legacy)
+
+ def test_support_and_discussions_presentation_respect_licences_and_tab_access(self):
+  licence=self.license_presentation_module('support')
+  db.query('INSERT INTO systeme."T_LicenceModule"("IdLicenceFk","CodeModule") VALUES(%s,%s)',[licence,'discussions'])
+  self.license_presentation_module('discussions',index=1)
+  first=self.presentation_client(global_admin=True,extra_modules=('support','discussions'))
+  second=self.presentation_client(index=1,global_admin=True,extra_modules=('support','discussions'))
+  modules=self.assert_status(first.get(PRESENTATION_MODULES))['modules']
+  self.assertCountEqual([module['key'] for module in modules],['support','discussions'])
+  self.assertEqual(self.assert_status(second.get(PRESENTATION_MODULES))['modules'],
+                   [{'key':'discussions','label':'Discussions'}])
+  self.assert_status(second.get('/api/parametres/support/presentation'),403)
+
+  choices={
+   'support':({'tickets':'Dossiers'},['processus'],['graphiques']),
+   'discussions':({'demandes':'Demandes internes'},['annonces'],[]),
+  }
+  for module,(labels,hidden,blocks) in choices.items():
+   with self.subTest(module=module):
+    settings_url=f'/api/parametres/{module}/presentation'
+    module_url=f'/api/{module}/presentation'
+    defaults=self.assert_status(first.get(settings_url))
+    payload=self.presentation_body(defaults['revision'],tabLabels=labels,hiddenTabs=hidden,hiddenDashboardBlocks=blocks)
+    saved=self.assert_status(first.put(settings_url,payload,format='json'))
+    self.assertEqual(self.assert_status(first.get(module_url)),saved)
+    self.assertEqual(saved['tabLabels'],labels)
+    self.assertEqual(saved['hiddenTabs'],hidden)
+    self.assertEqual(saved['hiddenDashboardBlocks'],blocks)
+    self.assert_status(first.put(settings_url,payload,format='json'),409)
+    self.assert_status(first.put(settings_url,{**payload,'revision':saved['revision'],'hiddenDashboardBlocks':['inconnu']},format='json'),422)
+
+  restricted=self.presentation_client(extra_modules=('support','discussions'),tab_rights={
+   'support':{'tickets':False},
+   'discussions':{'messages':False,'demandes':True,'annonces':False},
+  },settings_manage=False)
+  self.assert_status(restricted.get('/api/support/presentation'),403)
+  self.assert_status(restricted.get('/api/discussions'),403)
+  allowed=self.assert_status(restricted.get('/api/discussions/presentation'))
+  self.assertEqual(allowed['tabLabels'],choices['discussions'][0])
+  self.assertFalse(allowed['canManage'])
+  self.assert_status(restricted.put('/api/parametres/discussions/presentation',
+    self.presentation_body(allowed['revision'],tabLabels={},hiddenDashboardBlocks=[]),format='json'),403)
+  other=self.assert_status(second.get('/api/parametres/discussions/presentation'))
+  self.assertEqual(other['tabLabels'],{})
+  self.assertEqual(other['hiddenTabs'],[])
 
 if __name__=='__main__':
  result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(AdminEnterpriseAPI))

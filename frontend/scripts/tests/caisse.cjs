@@ -9,7 +9,7 @@ function nodes(node,out=[]){if(!node||typeof node!=='object')return out;if(Array
 const named=(tree,name)=>nodes(tree).find(node=>node.type?.name===name),allNamed=(tree,name)=>nodes(tree).filter(node=>node.type?.name===name);
 const reactHooks=`export const useState=v=>globalThis.__hooks.state(v),useRef=v=>globalThis.__hooks.ref(v),useId=()=>globalThis.__hooks.id(),useEffect=(f,d)=>globalThis.__hooks.effect(f,d),useMemo=f=>f();`;
 globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;},scrollIntoView(){}})};globalThis.requestAnimationFrame=fn=>fn();globalThis.localStorage={getItem:()=>null,setItem(){}};globalThis.window={matchMedia:()=>({matches:true})};
-const scope={scopeKey:'user:7',entityId:'7',globalAdmin:false},context={entityId:7,canRead:true,canManage:true,canExport:true,readOnly:false},references={caisses:[{IdCaisse:3,CodeCaisse:'CAI-3',NomCaisse:'Principale',DeviseCode:'USD',IdDeviseFk:451,MontantCaisse:'90071992547409.93',Actif:true}],devises:[{id:451,abbr:'USD',label:'Dollar'}],typesCaisses:[],responsables:[],typesPaiements:[],tiers:[]};
+const scope={scopeKey:'user:7',entityId:'7',globalAdmin:false},context={entityId:7,readOnly:false,tabs:{caisses:{canRead:true,canManage:true,canExport:true},ecritures:{canRead:true,canManage:true,canExport:true},clotures:{canRead:true,canManage:true,canExport:true}},canCreateEntries:true,canEditDrafts:true,canValidateEntries:false},references={caisses:[{IdCaisse:3,CodeCaisse:'CAI-3',NomCaisse:'Principale',DeviseCode:'USD',IdDeviseFk:451,MontantCaisse:'90071992547409.93',Actif:true}],devises:[{id:451,abbr:'USD',label:'Dollar'}],typesCaisses:[],responsables:[],typesPaiements:[],tiers:[]};
 const common=[[/^react$/,'hooks',reactHooks],[/\/contexts\/EntityScopeContext$/,'scope',`export const useEntityScope=()=>globalThis.__scope;`],[/\/contexts\/AuthContext$/,'auth',`export const useAuth=()=>({user:globalThis.__user});`],[/\/services\/api$/,'api',`export const requestJson=(path,options)=>globalThis.__request(path,options);export async function downloadApiFile(path,options){globalThis.__exports.push({path,options});}`],[/\/hooks\/useTablePreferences$/,'preferences',`export default function useTablePreferences(key){globalThis.__tableKey=key;return {ready:true,canExport:true,catalogue:[{id:'CodeFactureFk',label:'Code facture'}],exportKeys:['CodePaiement','MontantPaiement'],error:''};}`]];
 const stubs=[[/\/CaisseReferences$/,'refs-drawer',`export default function References(){}`],[/\/components\/RegisterSettingsButton$/,'settings-button',`export default function SettingsButton(){}`],[/\/components\/RecordEditorFrame$/,'frame',`export default function Frame(){}`],[/\/components\/ConsultationTabs$/,'tabs',`export default function Tabs(){}`],[/\/components\/SearchSelect$/,'select',`export default function Select(){}`],[/\/components\/ActionButton$/,'button',`export default function Button(){}`],[/\/components\/AppIcon$/,'icon',`export default function Icon(){}`],[/\/components\/RegisterSurface$/,'surface',`export default function Surface(){}`],[/\/components\/DataTableToolbar$/,'toolbar',`export default function Toolbar(){}`],[/\/components\/RowActionsMenu$/,'menu',`export default function Menu(){}`],[/\/logistique\/logistiqueShared$/,'table',`export const formatDate=v=>String(v||'—'),asArrayPayload=v=>Array.isArray(v?.data)?v.data:[];export function SimpleTable(){}`]];
 (async()=>{
@@ -43,6 +43,11 @@ const stubs=[[/\/CaisseReferences$/,'refs-drawer',`export default function Refer
  const counted=domain.caisseBatchPaste('clotures','Caisse\tDate et heure du comptage\tMontant compté\tMotif\nPrincipale\t02/11/2026 12:30\t99,50\tÉcart\n3\t02/11/2026 12:40\t99,50\tÉcart',batchReferences);
  const closureIssues=domain.caisseBatchErrors('clotures',counted,batchReferences);
  ok(closureIssues[counted[0].clientRowId].IdCaisseFk);ok(closureIssues[counted[1].clientRowId].IdCaisseFk);
+ ok(closureIssues[counted[0].clientRowId]._version);
+ counted[0].balance={version:'9007199254740993',record:{NombreBrouillons:1}};
+ ok(domain.caisseBatchErrors('clotures',counted.slice(0,1),batchReferences)[counted[0].clientRowId]._version);
+ counted[0].balance.record.NombreBrouillons=0;
+ eq(domain.caisseBatchErrors('clotures',counted.slice(0,1),batchReferences),{});
  eq(domain.caisseBatchPayload('clotures',counted.slice(0,1),false,'count-fixture').rows[0]._version,'9007199254740993');
  globalThis.__scope={...scope};globalThis.__writes=[];globalThis.__batchResult=()=>({success:false,status:503});
  globalThis.__request=async(path,options)=>{__writes.push({path,options});return __batchResult(JSON.parse(options.body));};
@@ -61,6 +66,89 @@ const stubs=[[/\/CaisseReferences$/,'refs-drawer',`export default function Refer
  globalThis.__request=async(path,options)=>{__calls.push({path,options});return {success:true,data:{rows:[{IdPaiement:22,CodePaiement:'ECR-22',MontantPaiement:'1.00',EtatEcriture:'POSTED',IdReglementFk:9}],total:52,page:1,take:25}};};
  const register=await bundle("export {default} from './src/pages/caisse/CaisseRegister';",[...common,...stubs]);const rh=new Hooks(),rp={kind:'ecritures',context,references,refresh:0,onOpen:value=>globalThis.__opened=value},rr=()=>rh.render(register.default,rp);rr();await rh.flush();tree=rr();let table=named(tree,'SimpleTable');eq(table.props.serverMeta.filteredCount,52);eq(table.props.rows[0].IdPaiement,22);eq(table.props.enableSelection,false);table.props.onServerChange({skip:25});rr();await rh.flush();ok(__calls.at(-1).path.includes('page=2'));tree=rr();const action=named(tree,'SimpleTable').props.columns.find(c=>c.key==='actions').render(table.props.rows[0]);eq(named(action,'Menu').props.items.some(i=>i.label==='Contrepasser'),false);named(named(rr(),'SimpleTable').props.toolbar,'Toolbar').props.exportFile();await rh.flush();ok(__exports.at(-1).path.includes('/registres/ecritures.xlsx?'));ok(__exports.at(-1).path.includes('columns='));
  globalThis.__scope={...scope,scopeKey:'user:8',entityId:'8'};tree=rr();eq(named(tree,'SimpleTable').props.rows.length,0);eq(named(tree,'SimpleTable').props.loading,true);rh.unmount();
+ // La sélection transmet ses identifiants et ses révisions, indépendamment de la pagination.
+ globalThis.__scope={...scope};
+ globalThis.__request=async()=>({success:true,data:{rows:[
+  {IdPaiement:22,CodePaiement:'ECR-22',EtatEcriture:'DRAFT',_version:'12',ValidationAutorisee:true},
+  {IdPaiement:23,CodePaiement:'ECR-23',EtatEcriture:'DRAFT',_version:'99',ValidationAutorisee:false},
+ ],total:52,page:1,take:25}});
+ const validator=new Hooks(), vp={...rp,context:{...context,canValidateEntries:true},onOpen:value=>globalThis.__validationSelection=value.rows};
+ const vr=()=>validator.render(register.default,vp);
+ vr();await validator.flush();
+ table=named(vr(),'SimpleTable');eq(table.props.enableSelection,true);
+ table.props.onSelectionChange(table.props.rows);
+ allNamed(named(vr(),'SimpleTable').props.toolbar,'Button').find(node=>node.props.children==='Valider la sélection').props.onClick();
+ eq(__validationSelection.map(({id,_version})=>({id,_version})),[{id:22,_version:'12'},{id:23,_version:'99'}]);
+ validator.unmount();
+
+ // Un aperçu bloquant préserve les raisons et interdit la validation partielle.
+ const validation=await bundle("export {default} from './src/pages/caisse/CaisseValidation';",[...common,...stubs]);
+ const selected=__validationSelection;
+ const totals=[{currencyId:1,currency:'USD',entries:'2.00',exits:'0.00'},{currencyId:2,currency:'CDF',entries:'0.00',exits:'1800.00'}];
+ let block=true, attempts=[];
+ globalThis.__request=async(path,options)=>{
+  attempts.push({path,body:options.body});
+  if(path.endsWith('/apercu'))return {success:true,data:{count:2,totals,rows:[
+   {id:22,code:'ECR-22',eligible:true},{id:23,code:'ECR-23',eligible:!block,reason:'Écriture modifiée.'},
+  ]}};
+  return attempts.filter(attempt=>!attempt.path.endsWith('/apercu')).length===1
+   ? {success:false,status:503}:{success:true,data:{count:2,replayed:true}};
+ };
+ const validationProps={rows:selected,onClose(){},onSaved:value=>globalThis.__validationSaved=value};
+ const blocked=new Hooks(),blockedView=()=>blocked.render(validation.default,validationProps);
+ blockedView();await blocked.flush();
+ tree=blockedView();eq(nodes(tree).filter(n=>n.type==='dl').length,2);
+ ok(nodes(tree).some(n=>n.props.children==='Écriture modifiée.'));
+ nodes(tree).find(n=>n.type==='textarea').props.onChange({target:{value:'Contrôle journalier'}});
+ eq(named(blockedView(),'Frame').props.canSubmit,false);await named(blockedView(),'Frame').props.onSubmit();
+ eq(attempts.length,1);blocked.unmount();
+ block=false;
+ const confirming=new Hooks(),confirmView=()=>confirming.render(validation.default,validationProps);
+ confirmView();await confirming.flush();
+ nodes(confirmView()).find(n=>n.type==='textarea').props.onChange({target:{value:' Contrôle journalier '}});
+ eq(named(confirmView(),'Frame').props.canSubmit,true);
+ await named(confirmView(),'Frame').props.onSubmit();
+ eq(named(confirmView(),'Frame').props.submitLabel,'Vérifier la validation');
+ ok(nodes(confirmView()).find(n=>n.type==='textarea').props.disabled);
+ await named(confirmView(),'Frame').props.onSubmit();
+ eq(attempts.at(-2).body,attempts.at(-1).body);
+ eq(JSON.parse(attempts.at(-1).body).motif,'Contrôle journalier');
+ eq(__validationSaved.message,'2 écritures validées.');confirming.unmount();
+
+ // Le choix d’une validation indépendante exige un agent habilité.
+ const settings=await bundle("export {default} from './src/pages/caisse/CaisseValidationSettings';",[...common,...stubs]);
+ attempts=[];
+ let eligibleValidators=[{id:4,label:'Agent indépendant'},{id:5,label:'Agent de relève'}];
+ globalThis.__request=async(path,options)=>{
+  if(!options.method)return {success:true,data:{mode:'MANUAL',validatorIds:[],eligibleValidators,_version:'50',canManage:true}};
+  attempts.push({path,body:options.body});
+  return {success:true,data:{}};
+ };
+ const configure=new Hooks(),configurationProps={companyName:'Entreprise test',onClose(){},onSaved:value=>globalThis.__configurationSaved=value};
+ const settingsView=()=>configure.render(settings.default,configurationProps);
+ const settingsSelect=label=>allNamed(settingsView(),'Select').find(node=>node.props.label===label);
+ const addAgent=()=>settingsSelect('Ajouter un agent');
+ settingsView();await configure.flush();
+ settingsSelect('Mode pour les nouvelles écritures').props.onChange('OTHER_AGENT');
+ nodes(settingsView()).find(n=>n.type==='textarea').props.onChange({target:{value:'Séparation des tâches'}});
+ eq(named(settingsView(),'Frame').props.canSubmit,false);
+ await named(settingsView(),'Frame').props.onSubmit();eq(attempts.length,0);
+ addAgent().props.onChange('4');
+ addAgent().props.onChange('5');
+ eq(addAgent().props.options,[]);
+ eq(addAgent().props.disabled,true);
+ allNamed(settingsView(),'Button').find(node=>node.props['aria-label']==='Retirer Agent de relève').props.onClick();
+ eq(addAgent().props.options.map(({value})=>value),['5']);
+ eligibleValidators=[...eligibleValidators,{id:6,label:'Nouvel agent'}];
+ await allNamed(settingsView(),'Button').find(node=>node.props.children==='Actualiser les agents').props.onClick();
+ eq(addAgent().props.options.map(({value})=>value),['5','6']);
+ eq(settingsSelect('Mode pour les nouvelles écritures').props.value,'OTHER_AGENT');
+ eq(named(settingsView(),'Frame').props.canSubmit,true);
+ await named(settingsView(),'Frame').props.onSubmit();
+ const savedSettings=JSON.parse(attempts[0].body);
+ eq(savedSettings.validatorIds,[4]);eq(savedSettings.mode,'OTHER_AGENT');eq(savedSettings._version,'50');
+ ok(savedSettings.requestId);ok(__configurationSaved.message);configure.unmount();
+
  // Le règlement garde la caisse choisie et rejoue exactement la même demande.
  globalThis.__user={IdUser:2,IdEntiteFk:7,permissions:{canWriteData:true},moduleAccess:{modules:{logistique:{canRead:true,canManage:true},caisse:{canRead:true,canManage:true}}}};globalThis.__writes=[];globalThis.__paymentSaved=null;globalThis.__paymentResult={success:false,status:503};
  const preparation={success:true,data:{facture:{ID_Commande:88,CodeFacture:'FAC-88',CodeCmd:'BS-88',DeviseCode:'USD',MontantFacture:'100.00',Reste:'100.00'},defaults:{DateReglement:'2026-11-02T12:00:00+01:00'},references:{reglementModes:[{id:1,label:'Espèces',abbr:'Espèces'}],caisses:[{id:3,label:'Principale',code:'USD'}]}},meta:{revision:'payment-v1',canCreate:true,maximumAmount:'100.00'}};
@@ -68,5 +156,20 @@ const stubs=[[/\/CaisseReferences$/,'refs-drawer',`export default function Refer
  const payment=await bundle("export {default} from './src/pages/logistique/ReglementEditor';",[...common,...stubs,[/\/logistiqueShared$/,'payment-shared',`export const formatDate=v=>String(v||'—'),asArrayPayload=v=>Array.isArray(v?.data)?v.data:[];export function SimpleTable(){}`],[/\/hooks\/useReferencesRefresh$/,'references-refresh',`export default function refresh(){}`],[/\/components\/BusinessDocuments$/,'documents',`export default function Documents(){}`],[/\/components\/DrawerDialog$/,'drawer',`export default function Drawer(){}`]]);
  const ph=new Hooks(),pp={commandeId:88,onClose(){},onSaved:record=>globalThis.__paymentSaved=record},pr=()=>ph.render(payment.default,pp);pr();await ph.flush();tree=pr();eq(named(tree,'PaymentFrame').props.canSubmit,true);let cashSelect=allNamed(tree,'Select').find(node=>node.props.label==='Enregistrer en caisse');ok(cashSelect);cashSelect.props.onChange('3');allNamed(pr(),'Select').find(node=>node.props.label==='Mode de règlement').props.onChange('1');nodes(pr()).find(node=>node.type==='input'&&node.props.name==='MontantRegle').props.onChange({target:{value:'2,35'}});await named(pr(),'PaymentFrame').props.onSubmit();eq(__writes.length,1);const paymentBody=__writes[0].options.body;eq(JSON.parse(paymentBody).caisseId,'3');eq(JSON.parse(paymentBody).MontantRegle,'2.35');ok(JSON.parse(paymentBody).requestId);tree=pr();eq(allNamed(tree,'Select').find(node=>node.props.label==='Enregistrer en caisse').props.disabled,true);allNamed(tree,'Select').find(node=>node.props.label==='Enregistrer en caisse').props.onChange('4');eq(allNamed(pr(),'Select').find(node=>node.props.label==='Enregistrer en caisse').props.value,'3');globalThis.__paymentResult={success:true,data:{ID_Reglement:998}};await named(pr(),'PaymentFrame').props.onSubmit();eq(__writes.at(-1).options.body,paymentBody);eq(__paymentSaved.ID_Reglement,998);ph.unmount();
  const absent=new Hooks();globalThis.__request=async()=>({...preparation,data:{...preparation.data,references:{...preparation.data.references,caisses:[]}}});absent.render(payment.default,pp);await absent.flush();eq(allNamed(absent.render(payment.default,pp),'Select').some(node=>node.props.label==='Enregistrer en caisse'),false);absent.unmount();
- console.log(JSON.stringify({success:true,checks,coverage:['Montants exacts et fuseau Kinshasa','Périmètre Caisse distinct de Logistique','Formulaires partagés création/modification','Rejeu du même UUID et corps après réponse incertaine','Clôture avec révision serveur sans ajustement implicite','Pagination et exports serveurs','Écritures de règlement sans contrepassation indépendante','Données masquées immédiatement au changement d’entreprise'],limits:['Fixtures API/DOM ; aucune recette visuelle dans le navigateur']}));
+ // La série respecte les jours réels et garde les périodes sans mouvement à zéro.
+ const chart=await bundle("export {default, caisseFlowDays} from './src/pages/caisse/CaisseFlowChart';",common);
+ const daily=[{DateJour:'2026-11-07',Entrees:'10.25',Sorties:'5'},{DateJour:'2026-11-03',Entrees:'25',Sorties:'0'}];
+ const period={dateMin:'2026-11-02',dateMax:'2026-11-08'};
+ const points=chart.caisseFlowDays(daily,period);
+ eq(points.map(day=>new Date(day.timestamp).getUTCDate()),[2,3,4,6,7,8]);
+ eq(points.map(day=>String(day.Entrees)),['0','25','0','0','10.25','0']);
+ eq(chart.caisseFlowDays([],period),[]);
+ const chartHooks=new Hooks();
+ const chartProps={rows:daily,currency:'USD',filters:period};
+ const chartTree=chartHooks.render(chart.default,chartProps);
+ eq(nodes(chartTree).filter(node=>node.type==='polyline').length,2);
+ nodes(chartTree).find(node=>node.type==='input').props.onChange({target:{value:'4'}});
+ eq(nodes(chartHooks.render(chart.default,chartProps)).find(node=>node.type==='time').props.dateTime,'2026-11-07');
+ chartHooks.unmount();
+ console.log(JSON.stringify({success:true,checks,coverage:['Montants exacts et fuseau Kinshasa','Périmètre Caisse distinct de Logistique','Formulaires partagés création/modification','Rejeu du même UUID et corps après réponse incertaine','Clôture datée avec révision serveur et détection des brouillons','Aperçu multidevise et rejet des lignes bloquées','Rejeu exact de la validation et mode indépendant avec agent admissible','Pagination et exports serveurs','Écritures de règlement sans contrepassation indépendante','Données masquées immédiatement au changement d’entreprise'],limits:['Fixtures API/DOM ; aucune recette visuelle dans le navigateur']}));
 })().catch(error=>{console.error(error);process.exitCode=1;});

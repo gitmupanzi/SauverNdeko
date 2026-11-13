@@ -9,10 +9,10 @@ import SearchSelect from "../../components/SearchSelect";
 import {formatCurrency} from "../../utils/money";
 import {SimpleTable} from "../logistique/logistiqueShared";
 import "../logistique/LogisticsBatchComposer.css";
-import {CAISSE_REGISTERS, CAISSE_ROOT, validCaisseDate} from "./caisseModel";
+import {CAISSE_REGISTERS, CAISSE_ROOT, caisseAmount, validCaisseDate} from "./caisseModel";
 import {
   CAISSE_BATCH_FIELDS, CAISSE_BATCH_LABELS, MAX_CAISSE_BATCH_ROWS, TEXT_LIMITS, caisseBatchChoices,
-  caisseBatchErrors, caisseBatchFromMatrix, caisseBatchPaste, caisseBatchPayload, caisseBatchRow, closureBalance, isBatchAmount, isBatchDate,
+  caisseBatchErrors, caisseBatchFromMatrix, caisseBatchPaste, caisseBatchPayload, caisseBatchRow, isBatchAmount, isBatchDate,
 } from "./caisseBatch";
 
 const PAGE_SIZE = 10;
@@ -52,13 +52,15 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   const openedScope = useRef(identity);
   const currentScope = useRef(identity);
   currentScope.current = identity;
-  const canWrite = Boolean(scope.entityId && context?.tabs?.[kind]?.canManage && !context?.readOnly &&
+  const canManageOperation = kind === "ecritures" ? context?.canCreateEntries === true : context?.tabs?.[kind]?.canManage === true;
+  const canWrite = Boolean(scope.entityId && canManageOperation && !context?.readOnly &&
     user?.permissions?.canWriteData && openedScope.current === identity);
+  const legacyImmediate = kind === "ecritures" && context?.allowLegacyImmediate === true && context?.canValidateEntries === true;
   const currentAccess = useRef(canWrite);
   currentAccess.current = canWrite;
   const importing = excelBusy === "import";
   const frozen = !canWrite || busy || uncertain || importing;
-  const needsConfirmation = kind === "clotures" || validate;
+  const needsConfirmation = kind === "clotures" || legacyImmediate && validate;
   const rowsById = new Map(rows.map((row, index) => [row.clientRowId, index]));
 
   useEffect(() => {
@@ -94,17 +96,17 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
 
   function changeRow(id, field, value) {
     if (draftFrozen()) return;
-    const newCashbox = kind === "clotures" && field === "IdCaisseFk";
-    if (newCashbox) {
+    const resetBalance = kind === "clotures" && ["IdCaisseFk","ClotureLe","MontantCompte"].includes(field);
+    if (resetBalance) {
       balanceRequests.current.get(id)?.abort();
       balanceRequests.current.delete(id);
     }
     setRows(previous => previous.map(row => row.clientRowId === id ? {
       ...row, pristine:false, values:{...row.values, [field]:value},
-      ...(newCashbox ? {balance:closureBalance(references, value)} : {}),
+      ...(resetBalance ? {balance:null} : {}),
     } : row));
     setIssues(previous => ({...previous, [id]:{...previous[id], [field]:undefined, _line:undefined,
-      ...(newCashbox ? {_version:undefined} : {})}}));
+      ...(resetBalance ? {_version:undefined} : {})}}));
     setConfirmed(false);
   }
 
@@ -267,14 +269,18 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
   async function refreshBalance(row) {
     if (draftFrozen() || balanceRequests.current.has(row.clientRowId)) return;
     const controller = new AbortController();
-    const {clientRowId:id, values:{IdCaisseFk:cashId}} = row;
+    const {clientRowId:id, values:{IdCaisseFk:cashId, ClotureLe:date, MontantCompte:amount}} = row;
+    if (!cashId || !validCaisseDate(date)) return;
+    const params = new URLSearchParams({caisseId:cashId,date});
+    const counted = caisseAmount(amount,{zero:true});
+    if (counted != null) params.set("montantCompte",counted);
     balanceRequests.current.set(id, controller);
     setConfirmed(false);
     setRows(previous => previous.map(item => item.clientRowId === id ? {...item, balance:{loading:true}} : item));
     const isCurrent = () => alive.current && currentAccess.current && currentScope.current === identity &&
       balanceRequests.current.get(id) === controller && !controller.signal.aborted;
     try {
-      const response = await requestJson(CAISSE_ROOT+"/clotures/preparation?caisseId="+encodeURIComponent(cashId),
+      const response = await requestJson(CAISSE_ROOT+"/clotures/preparation?"+params,
         {requiresAuth:true, signal:controller.signal});
       if (!isCurrent()) return;
       const data = response?.data;
@@ -308,7 +314,7 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
         document.getElementById(prefix+"confirm")?.focus();
         return;
       }
-      const payload = caisseBatchPayload(kind, rows, validate);
+      const payload = caisseBatchPayload(kind, rows, legacyImmediate && validate);
       ticket.current = {payload, body:JSON.stringify(payload)};
     }
     const snapshot = ticket.current;
@@ -381,13 +387,26 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
     if (kind === "ecritures" && DETAILS.includes(key)) continue;
     columns.push({key, label:CAISSE_BATCH_LABELS[key], width:WIDTHS[key] || 144, sortable:false, render:row => field(row,key)});
     if (kind === "clotures" && key === "ClotureLe") {
-      columns.push({key:"balance", label:"Solde théorique", width:WIDTHS._version, sortable:false, render:row => {
+      columns.push({key:"balance", label:"Contrôle du comptage", width:230, sortable:false, render:row => {
         const issue = issues[row.clientRowId]?._version || row.balance?.error;
+        const balance = row.balance?.record;
+        const amount = field => formatCurrency(balance[field],balance.DeviseCode);
         return <div className="logistics-batch-cell caisse-batch-balance">
-          <span>{row.balance?.loading ? "Chargement…" : formatCurrency(row.balance?.record?.SoldeTheorique, row.balance?.record?.DeviseCode)}</span>
-          {row.values.IdCaisseFk ? <ActionButton id={prefix+row.clientRowId+"_version"} icon="refresh" className="is-icon"
-            aria-label={"Recharger le solde · ligne "+(rowsById.get(row.clientRowId)+1)}
-            disabled={frozen || row.balance?.loading} onClick={() => refreshBalance(row)}/> : null}
+          {row.values.IdCaisseFk ? <ActionButton id={prefix+row.clientRowId+"_version"} icon="refresh"
+            aria-label={"Vérifier le solde · ligne "+(rowsById.get(row.clientRowId)+1)}
+            disabled={frozen || row.balance?.loading || !validCaisseDate(row.values.ClotureLe)} onClick={() => refreshBalance(row)}>
+            {row.balance?.loading?"Vérification…":balance?"Actualiser":"Vérifier le solde"}
+          </ActionButton> : null}
+          {balance ? <dl className="caisse-count-breakdown">
+            <div><dt>Solde validé</dt><dd>{amount("SoldeValide")}</dd></div>
+            {Number(balance.NombreBrouillons) > 0 ? <>
+              <div><dt>Brouillons</dt><dd>{balance.NombreBrouillons}</dd></div>
+              <div><dt>Encaissements</dt><dd>{amount("EntreesBrouillon")}</dd></div>
+              <div><dt>Décaissements</dt><dd>{amount("SortiesBrouillon")}</dd></div>
+              <div><dt>Solde prévisionnel</dt><dd>{amount("SoldePrevisionnel")}</dd></div>
+            </> : null}
+            {balance.EcartComptage!=null?<div><dt>Écart constaté</dt><dd>{amount("EcartComptage")}</dd></div>:null}
+          </dl> : null}
           {issue ? <small className="record-field-error">{issue}</small> : null}
         </div>;
       }});
@@ -451,8 +470,12 @@ export default function CaisseBatchEditor({kind, defaults = {}, references, cont
         </p> : null}
         {excelError ? <p className="record-field-error" role="alert">{excelError}</p> : null}
       </>
-      {kind === "ecritures" ? <label className="caisse-batch-check"><input type="checkbox" checked={validate} disabled={frozen}
-        onChange={event => {setValidate(event.target.checked); setConfirmed(false);}}/>Valider immédiatement les écritures</label> : null}
+      {legacyImmediate ? <label className="caisse-batch-check"><input type="checkbox" checked={validate} disabled={frozen}
+        onChange={event => {setValidate(event.target.checked); setConfirmed(false);}}/>Valider immédiatement les écritures</label> :
+        kind === "ecritures" ? <p className="record-editor-note">{context?.validationMode==="AUTO"
+          ? "Les écritures conformes sont validées à l’enregistrement."
+          : context?.validationMode==="OTHER_AGENT" ? "Les écritures restent en brouillon jusqu’à leur validation par un autre agent habilité."
+          : "Les écritures sont enregistrées en brouillon."}</p> : null}
       {clearAsked ? <div className="record-discard" role="alert"><span>Retirer toutes les lignes ?</span><div>
         <ActionButton onClick={() => setClearAsked(false)}>Conserver</ActionButton><ActionButton icon="trash" onClick={clear}>Vider le panier</ActionButton>
       </div></div> : null}

@@ -164,4 +164,42 @@ class CaisseReglementsAPI(unittest.TestCase):
         self.assertEqual(self.balances(command,cash),before)
 
 
+    def test_10_choices_and_stale_selection_respect_validation_policy(self):
+        cash = self.cash()
+        command = self.invoice()
+        client = self.client()
+        path = '/api/caisse/parametres-validation'
+        agent = self.fixture.connection.execute('''INSERT INTO systeme."T_Utilisateurs"
+            ("NomUser","PrenomUser","EmailUser","MotdepasseUser","ValideUser","SexeUser","Is_Admin","Is_staff","IdEntiteFk")
+            VALUES('Règlement','Agent',%s,'inutilisable',true,'M',true,true,%s) RETURNING "IdUser"''',
+            [uuid.uuid4().hex + '@example.invalid', self.fixture.entities[0]]).fetchone()['IdUser']
+
+        def configure(mode, validators):
+            config = self.result(client.get(path))['data']
+            self.result(client.put(path, {
+                'mode': mode, 'validatorIds': validators, '_version': config['_version'],
+                'requestId': str(uuid.uuid4()), 'motif': 'Recette de la liaison Caisse et Logistique',
+            }, format='json'))
+
+        prep = self.prepared(command)
+        body = self.payload(prep, cash)
+        before = self.balances(command, cash)
+        try:
+            for mode, expected in (
+                ('OTHER_AGENT', 'CAISSE_SETTLEMENT_REQUIRES_OTHER_AGENT'),
+                ('MANUAL', 'CAISSE_SETTLEMENT_REQUIRES_DESIGNATED_AGENT'),
+            ):
+                with self.subTest(mode=mode):
+                    configure(mode, [agent])
+                    self.assertEqual(self.prepared(command)['data']['references']['caisses'], [])
+                    error = self.result(client.post('/api/logistique/reglements', body, format='json'), 409)['error']
+                    self.assertEqual(error['code'], expected)
+                    self.assertEqual(self.balances(command, cash), before)
+            configure('OTHER_AGENT', [agent])
+            self.result(client.post('/api/logistique/reglements', self.payload(self.prepared(command)), format='json'), 201)
+            self.assertEqual(self.balances(command, cash), {'cash': Decimal('0'), 'payments': 1, 'entries': 0})
+        finally:
+            configure('MANUAL', [])
+
+
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -97,6 +97,7 @@ function ModulePresentationSettings({entityId,entityName,module}) {
   const canManage = configuration?.canManage === true;
   const disabled = loading || busy || confirmReload;
   const labelHint = prefix+"-label-hint";
+  const dashboardBlocks = Object.entries(configuration?.dashboardBlockDefaults || {});
 
   function openEditor() {
     setValues(initial);
@@ -198,15 +199,15 @@ function ModulePresentationSettings({entityId,entityName,module}) {
           </div>)}
         </dl>
       </section>
-      <section className="record-editor-section">
+      {dashboardBlocks.length>0 ? <section className="record-editor-section">
         <h2><AppIcon name="dashboard"/>Blocs du tableau de bord</h2>
         <ul className="settings-presentation-blocks">
-          {Object.entries(configuration.dashboardBlockDefaults).map(([key,label]) => {
+          {dashboardBlocks.map(([key,label]) => {
             const hidden = initial.hiddenDashboardBlocks.includes(key);
             return <li key={key}><span>{label}</span><span className={"erp-status "+(hidden?"is-neutral":"is-success")}>{hidden?"Masqué":"Visible"}</span></li>;
           })}
         </ul>
-      </section>
+      </section> : null}
     </div> : null}
     {editing && configuration ? <RecordEditorFrame
       title="Modifier la présentation" subtitle={[module.label,entityName].filter(Boolean).join(" · ")} icon="sidebar" className="settings-presentation-editor"
@@ -241,16 +242,16 @@ function ModulePresentationSettings({entityId,entityName,module}) {
           </div>)}
         </div>
       </section>
-      <section className="record-editor-section">
+      {dashboardBlocks.length>0 ? <section className="record-editor-section">
         <h3 id={prefix+"-blocks"}><AppIcon name="dashboard"/>Blocs du tableau de bord</h3>
         <p className="record-editor-note">Cochez les blocs à afficher.</p>
         <div className="settings-presentation-blocks" role="group" aria-labelledby={prefix+"-blocks"}>
-          {Object.entries(configuration.dashboardBlockDefaults).map(([key,label]) => <label key={key} className="settings-presentation-option">
+          {dashboardBlocks.map(([key,label]) => <label key={key} className="settings-presentation-option">
             <input type="checkbox" checked={!values.hiddenDashboardBlocks.includes(key)} disabled={disabled}
               onChange={event => changeBlock(key,event.target.checked)}/>{label}
           </label>)}
         </div>
-      </section>
+      </section> : null}
       <ActionButton icon="reset" disabled={disabled || !customized} onClick={restoreDefaults}>Rétablir les valeurs par défaut</ActionButton>
     </RecordEditorFrame> : null}
   </>;

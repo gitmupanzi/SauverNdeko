@@ -39,15 +39,10 @@ export function caisseBatchChoices(field, references) {
   return null;
 }
 
-export function closureBalance(references, id) {
-  const record = references.caisses?.find(cash => String(cash.IdCaisse) === String(id));
-  return record ? {record, version:record._version} : null;
-}
-
 export function caisseBatchRow(kind, references, defaults = {}, imported) {
   const values = {...caisseValues(kind, null, references, defaults), ...imported};
   return {clientRowId:referenceBatchId(), values, pristine:!imported,
-    balance:kind === "clotures" ? closureBalance(references, values.IdCaisseFk) : null};
+    balance:null};
 }
 
 export function caisseBatchErrors(kind, rows, references) {
@@ -68,7 +63,11 @@ export function caisseBatchErrors(kind, rows, references) {
       }
     }
     if (kind === "clotures" && values.IdCaisseFk && !errors.IdCaisseFk) {
-      if (!/^[1-9]\d*$/.test(String(row.balance?.version ?? ""))) errors._version = "Chargez le solde de la caisse.";
+      if (!row.balance?.version) {
+        errors._version = "Vérifiez le solde à la date du comptage.";
+      } else if (Number(row.balance.record?.NombreBrouillons) > 0) {
+        errors._version = "Traitez les brouillons avant de clôturer cette caisse.";
+      }
       const first = cashboxLines.get(values.IdCaisseFk);
       if (first) {
         const message = "Une seule clôture par caisse dans ce panier.";

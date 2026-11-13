@@ -166,6 +166,16 @@
       ],
       "description": "Alimenter le référentiel commun des motifs de blocage, retour et refus dans le Support.",
       "release": "2026.11.12"
+    },
+    {
+      "id": "20261113_01_validation_caisse",
+      "file": "../migrations/20261113_01_validation_caisse.sql",
+      "sha256": "db1e45a3ca773cf31d4190626bdafcf9dd1c5c59051593f03e785ae8ddb6b807",
+      "dependsOn": [
+        "20261112_05_motifs_suivi_support"
+      ],
+      "description": "Modes de validation par entreprise, piste de validation et contrôle de caisse.",
+      "release": "2026.11.13"
     }
   ]
 }

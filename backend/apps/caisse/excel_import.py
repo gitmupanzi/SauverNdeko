@@ -79,7 +79,7 @@ def build_journal_template(actor, kind):
         ('Obligatoire', ', '.join(label for key, label, _ in fields if key in JOURNAL_REQUIRED[kind])),
         ('Date et heure', 'AAAA-MM-JJTHH:MM:SS ou JJ/MM/AAAA HH:MM:SS ; heure de Kinshasa. Aucune date n’est inventée pour une ligne importée.'),
         ('Montants', 'Montant positif, avec deux décimales au maximum ; le comptage peut être nul. La devise est celle de la caisse choisie.'),
-        ('Validation', 'L’import ne crée ni ne valide d’écriture. Les écritures sont des brouillons par défaut ; une validation immédiate exige un choix et une confirmation explicites.'
+        ('Validation', 'L’import prépare les lignes dans le panier. Le mode de validation de l’entreprise s’applique à l’enregistrement.'
             if kind == 'ecritures' else 'Les soldes théoriques et révisions ne viennent pas du fichier. Vérifiez les soldes et les comptages puis confirmez la clôture avant enregistrement.'),
         ('Codes et soldes', 'N’ajoutez ni code, solde théorique, révision ni option de validation au fichier. Ces informations restent sous contrôle du serveur.'),
         ('Contrôle', 'Le panier est modifiable avant enregistrement de l’ensemble. Une erreur annule toutes ses écritures.'),

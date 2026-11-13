@@ -36,14 +36,6 @@
 .caisse-flow-legend { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:15px; margin:10px 0; color:var(--erp-muted); font-size:10px; }
 .caisse-flow-legend span::before { content:""; display:inline-block; width:8px; height:8px; margin-right:6px; background:var(--erp-action); border-radius:2px; }
 .caisse-flow-legend span+span::before { background:var(--erp-muted); }
-.caisse-flow-row { display:grid; grid-template-columns:80px minmax(40px,1fr) minmax(105px,auto); align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--erp-border); }
-.caisse-flow-row time { font-size:10px; color:var(--erp-muted); }
-.caisse-flow-row>span { font-size:11px; text-align:right; color:var(--erp-text); font-variant-numeric:tabular-nums; }
-.caisse-flow-row small { display:block; color:var(--erp-muted); font-size:10px; margin-top:3px; }
-.caisse-flow-bars { display:flex; flex-direction:column; gap:5px; }
-.caisse-flow-bars>span { display:block; height:6px; border-radius:4px; min-width:0; }
-.caisse-flow-bars .is-in { background:var(--erp-action); }
-.caisse-flow-bars .is-out { background:var(--erp-muted); }
 .caisse-drill { scroll-margin-top:25px; margin-top:28px; outline:none; }
 .caisse-drill-back { display:flex; justify-content:space-between; gap:10px; margin-bottom:12px; }
 .caisse-drill-register { min-width:0; border:1px solid var(--erp-border); border-top:3px solid var(--erp-action); border-radius:12px; background:var(--erp-surface); overflow:visible; }
@@ -85,4 +77,4 @@
 .caisse-batch-balance { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px; font-variant-numeric:tabular-nums; }
 .caisse-batch-balance>small { width:100%; }
 @container(max-width:550px) { .caisse-field-grid,.caisse-summary { grid-template-columns:minmax(0,1fr); }.caisse-detail-heading { flex-wrap:wrap; } }
-@media(max-width:640px) { .caisse-kpi-grid { grid-template-columns:minmax(0,1fr); }.caisse-kpi { min-height:72px; }.caisse-dashboard-filters>button { flex:1 1 140px; }.caisse-flow-row { grid-template-columns:68px minmax(30px,1fr) minmax(96px,auto); gap:7px; }.caisse-drill-register>header { padding:16px; } }
+@media(max-width:640px) { .caisse-kpi-grid { grid-template-columns:minmax(0,1fr); }.caisse-kpi { min-height:72px; }.caisse-dashboard-filters>button { flex:1 1 140px; }.caisse-drill-register>header { padding:16px; } }

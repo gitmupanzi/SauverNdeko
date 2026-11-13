@@ -14,7 +14,7 @@ const pollingInterval = 20000;
 const validId = value => /^[1-9]\d*$/.test(String(value ?? "")) && Number.isSafeInteger(Number(value));
 const emptyList = { rows: [], meta: null, error: "", loading: true };
 
-export default function DiscussionMessages({ visible }) {
+export default function DiscussionMessages({ visible, title = "Discussions" }) {
   const [params, setParams] = useSearchParams();
   const [contactOpen, setContactOpen] = useState(false);
   const [list, setList] = useState(emptyList);
@@ -171,7 +171,7 @@ export default function DiscussionMessages({ visible }) {
       <div className={"communication-workspace" + (selectedId ? " has-thread" : "")}>
         <aside className="communication-inbox" aria-label="Conversations">
           <header className="communication-inbox-heading">
-            <h1>Discussions</h1>
+            <h1>{title}</h1>
             {canStart && <ActionButton icon="edit" className="communication-icon-action communication-new-chat"
               aria-label="Nouveau message" title="Nouveau message" onClick={() => setContactOpen(true)} />}
           </header>

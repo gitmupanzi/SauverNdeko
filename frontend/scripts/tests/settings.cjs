@@ -48,7 +48,7 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  globalThis.__delay=true;globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:8'};render();await ph.flush();globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:7',entityId:'7'};render();await ph.flush();globalThis.__pending.shift()({success:true,data:{canManage:true,profile:{...profile,IdEntite:8}}});await ph.flush();eq(named(render(),'Fields'),undefined);globalThis.__pending.shift()({success:true,data:{canManage:true,profile}});await ph.flush();eq(named(render(),'Fields').props.record.IdEntite,7);ph.unmount();
  const presentation={entityId:7,tabDefaults:{caisses:'Caisses',clotures:'Clôtures'},dashboardBlockDefaults:{flux:'Flux quotidiens'},
   tabLabels:{caisses:'Guichets'},hiddenDashboardBlocks:['flux'],revision:'v1',canManage:true};
- const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'}];
+ const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'},{key:'support',label:'Support'},{key:'discussions',label:'Discussions'}];
  const writes=[];
  let presentationModule='caisse';
  globalThis.__presentationApi=(path,options)=>{
@@ -72,6 +72,7 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  const sidebarItems=presentationItems(modulePage);
  eq(sidebarItems.map(({key,label})=>({key,label})),[
   {key:'presentation-logistique',label:'Logistique'},{key:'presentation-caisse',label:'Caisse'},
+  {key:'presentation-support',label:'Support'},{key:'presentation-discussions',label:'Discussions'},
  ]);
  eq(sidebar(modulePage).activeKey,'presentation-caisse');
  ok(!sidebar(modulePage).groups[0].items.some(item=>item.key==='presentation'));
@@ -97,9 +98,24 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  eq(writes[1],{entityId:7,revision:'v2',tabLabels:{},hiddenTabs:[],hiddenDashboardBlocks:[]});
  globalThis.__params=new URLSearchParams(sidebarItems[0].to.split('?')[1]);
  eq(named(renderPage(),'PresentationSettings').props.module.key,'logistique');
+ presentationModule='discussions';
+ const discussionData={...presentation,tabDefaults:{messages:'Messages',demandes:'Demandes',annonces:'Annonces'},dashboardBlockDefaults:{},tabLabels:{},hiddenDashboardBlocks:[]};
+ const previousApi=globalThis.__presentationApi;
+ globalThis.__presentationApi=(path,options)=>path==='/api/parametres/discussions/presentation'?{success:true,data:discussionData}:previousApi(path,options);
+ globalThis.__params=new URLSearchParams(sidebarItems[3].to.split('?')[1]);
+ const discussionPanel=named(renderPage(),'PresentationSettings');
+ eq(discussionPanel.props.module.key,'discussions');
+ const discussion=new Hooks();
+ const discussionSettings=named(sh.render(discussionPanel.type,discussionPanel.props),'ModulePresentationSettings');
+ const renderDiscussion=()=>discussion.render(discussionSettings.type,discussionSettings.props);
+ renderDiscussion();await discussion.flush();
+ ok(action(renderDiscussion(),'Modifier'));
+ ok(!nodes(renderDiscussion()).some(node=>node.props?.children==='Blocs du tableau de bord'));
+ discussion.unmount();
+ globalThis.__presentationApi=previousApi;
  globalThis.__params=new URLSearchParams('');
  eq(sidebar(renderPage()).activeKey,'entreprise');
- eq(presentationItems(renderPage()).length,2);
+ eq(presentationItems(renderPage()).length,4);
  globalThis.__scope={...globalThis.__scope,scopeKey:'user:8',entityId:'8'};
  globalThis.__params=new URLSearchParams('onglet=presentation&module=caisse');
  eq(presentationItems(renderPage()),[]);

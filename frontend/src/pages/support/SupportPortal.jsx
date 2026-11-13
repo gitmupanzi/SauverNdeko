@@ -4,6 +4,7 @@ import {useAuth} from "../../contexts/AuthContext";
 import {accessSignature,tabRights} from "../../services/moduleAccess";
 import {useEntityScope} from "../../contexts/EntityScopeContext";
 import {requestJson} from "../../services/api";
+import {presentedModuleTabs,useModulePresentation} from "../../hooks/useModulePresentation";
 import useReferencesRefresh from "../../hooks/useReferencesRefresh";
 import ModuleSidebar from "../../components/ModuleSidebar";
 import ActionButton from "../../components/ActionButton";
@@ -33,10 +34,16 @@ export default function SupportPortal(){
  const canReadProcesses=canReadTickets&&tabRights(user,"support","processus").canRead;
  const rights={"tableau-de-bord":canReadDashboard,tickets:canReadTickets,processus:canReadProcesses,
   modeles:canReadProcesses&&current?.data?.canReadProcessModels===true};
- const groups=GROUPS.map(group=>({...group,items:group.items.filter(item=>rights[item.key])})).filter(group=>group.items.length);
+ const {presentation,loading:presentationLoading,error:presentationError,retry:retryPresentation}=useModulePresentation("support",{...scope,scopeKey:owner,entityId:canReadTickets?scope.entityId:null});
+ const groups=presentationLoading?[]:GROUPS.map(group=>({
+  ...group,items:presentedModuleTabs(group.items.filter(item=>rights[item.key]),presentation),
+ })).filter(group=>group.items.length);
+ const visibleTabs=presentedModuleTabs(GROUPS.flatMap(group=>group.items),presentation);
+ const firstVisible=visibleTabs.find(item=>rights[item.key]||(item.key==="modeles"&&canReadProcesses&&!current))?.key;
  const requested=params.get("onglet");
  const legacyStages=requested==="tickets"&&params.get("vue")==="suivi";
- const active=legacyStages?"processus":Object.hasOwn(rights,requested)?requested:canReadDashboard?"tableau-de-bord":"tickets";
+ const active=legacyStages?"processus":Object.hasOwn(rights,requested)?requested:firstVisible;
+ const title=presentation?.tabLabels?.[active];
  const access=rights[active];
  const initialCreate=active==="tickets"&&newTicketOwner===owner;
  const canCreateTicket=canReadTickets&&context?.canCreate===true&&user?.permissions?.canWriteData===true;
@@ -73,15 +80,17 @@ export default function SupportPortal(){
   <main className="admin-main support-main">
    {scope.globalAdmin&&!scope.entityId?<p className="support-scope-note"><span>Toutes les entreprises · Choisissez une entreprise pour créer un dossier.</span></p>:null}
    {showContextError?<div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={onChanged}>Réessayer</ActionButton></div>:null}
-   {modelsContextPending?<p className="support-empty" role="status">Vérification de l’accès aux modèles…</p>:
-    !access?(showContextError?null:<div className="admin-error" role="alert">{requested?"Vous n’avez pas accès à cet onglet.":"Vous n’avez accès à aucun onglet du Support."}</div>):
-    active==="tableau-de-bord"?<SupportDashboard key={owner} refresh={refresh} onNavigate={navigate}
+   {presentationError?<div className="admin-error" role="status"><span>Les réglages d’affichage sont indisponibles. La présentation standard est utilisée.</span><ActionButton icon="refresh" onClick={retryPresentation}>Réessayer</ActionButton></div>:null}
+   {presentationLoading?<p className="record-editor-state" role="status">Chargement de la présentation…</p>:
+    modelsContextPending?<p className="support-empty" role="status">Vérification de l’accès aux modèles…</p>:
+    !access?(showContextError?null:<div className="admin-error" role="alert">{requested?"Vous n’avez pas accès à cet onglet.":canReadTickets?"Aucun onglet du Support n’est affiché dans le menu.":"Vous n’avez accès à aucun onglet du Support."}</div>):
+    active==="tableau-de-bord"?<SupportDashboard key={owner} title={title} hiddenDashboardBlocks={presentation?.hiddenDashboardBlocks} refresh={refresh} onNavigate={navigate}
       canReadProcesses={canReadProcesses} onChanged={onChanged}/>:
-    active==="modeles"?<SupportProcessModels key={owner} refresh={refresh}/>:
-    active==="processus"?<SupportStageRegister key={owner} context={context} refresh={refresh}
+    active==="modeles"?<SupportProcessModels key={owner} title={title} refresh={refresh}/>:
+    active==="processus"?<SupportStageRegister key={owner} title={title} context={context} refresh={refresh}
       onShowTickets={()=>navigate("tickets")} onShowModels={rights.modeles?()=>navigate("modeles"):undefined}
       onNewTicket={canCreateTicket?()=>{setNewTicketOwner(owner);navigate("tickets");}:undefined} onChanged={onChanged}/>:
-    <SupportRegister key={owner+":"+(params.get("filters")||"")} context={context} contextLoading={loading} contextError={error}
+    <SupportRegister title={title} key={owner+":"+(params.get("filters")||"")} context={context} contextLoading={loading} contextError={error}
       initial={initial} initialCreate={initialCreate} refresh={refresh} canReadJourney={rights.processus} onChanged={onChanged}/>}
   </main>
  </div>;

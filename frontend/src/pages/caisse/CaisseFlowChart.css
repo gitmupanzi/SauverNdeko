@@ -1,0 +1,21 @@
+.caisse-flow-chart { margin:0; }
+.caisse-flow-heading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 20px; }
+.caisse-flow-chart svg { display:block; width:100%; min-height:145px; max-height:280px; overflow:visible; }
+.caisse-flow-chart svg text { font-size:13px; fill:var(--erp-muted); }
+.caisse-flow-chart svg line, .caisse-flow-chart svg polyline { vector-effect:non-scaling-stroke; }
+.caisse-flow-gridline { stroke:var(--erp-border); stroke-width:1; }
+.caisse-flow-guide { stroke:var(--erp-muted); stroke-width:1; stroke-dasharray:2 4; }
+.caisse-flow-Entrees { --cash-chart-series:var(--erp-action); }
+.caisse-flow-Sorties { --cash-chart-series:var(--erp-text); }
+.caisse-flow-chart svg polyline { stroke:var(--cash-chart-series); stroke-width:2; stroke-linejoin:round; }
+.caisse-flow-chart svg .caisse-flow-Sorties polyline { stroke-dasharray:5 4; }
+.caisse-flow-chart svg circle { fill:var(--cash-chart-series); }
+.caisse-flow-chart .caisse-flow-legend span::before { width:14px; height:0; background:none; border:0; border-top:2px solid var(--cash-chart-series); vertical-align:middle; }
+.caisse-flow-chart .caisse-flow-legend span+span::before { border-top-style:dashed; }
+.caisse-flow-reading { display:flex; gap:8px 16px; flex-wrap:wrap; padding:10px 0 4px; color:var(--erp-muted); font-size:12px; }
+.caisse-flow-reading time, .caisse-flow-reading strong { color:var(--erp-text); }
+.caisse-flow-day { display:block; width:100%; accent-color:var(--erp-action); }
+@media(max-width:640px) {
+  .caisse-flow-chart svg text { font-size:21px; }
+  .caisse-flow-chart .caisse-flow-midmark { display:none; }
+}

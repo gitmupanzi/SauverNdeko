@@ -31,6 +31,10 @@ PROTECTED_TABS = {
     "caisse": {
         "tableau-de-bord": "Tableau de bord", "caisses": "Caisses",
         "ecritures": "Écritures", "clotures": "Clôtures",
+        "saisie-ecritures": "Saisir les écritures de caisse",
+        "modification-brouillons": "Modifier les brouillons de caisse",
+        "validation-ecritures": "Valider les écritures de caisse",
+        "parametres-validation": "Paramètres de validation de caisse",
     },
     "support": {"tableau-de-bord": "Tableau de bord", "tickets": "Tickets", "processus": "Suivi des étapes"},
     "administration": {

@@ -18,9 +18,17 @@ Dans **Nouvelle caisse**, **Télécharger le modèle Excel** fournit une feuille
 
 L’import prépare la saisie sans créer de caisse. Vérifiez et corrigez les lignes signalées, puis cliquez sur **Enregistrer l’ensemble**. Une erreur de lecture conserve le panier existant. Chaque caisse créée commence avec un solde nul ; le modèle ne permet pas d’importer un solde ou des écritures financières.
 
-Les écritures sont créées en brouillon par défaut. Vous pouvez confirmer la validation immédiate du panier. Pour les clôtures, vérifiez le solde affiché, saisissez le montant compté et le motif, puis confirmez. Si le solde change, rechargez la ligne et vérifiez de nouveau le comptage.
+Les paniers **Écritures** et **Clôtures** proposent également leur modèle Excel et l’import de fichiers .xlsx vers le panier (100 lignes, 4 Mo). Les références de caisse, de devise, de type et de mode sont celles de l’entreprise active. Vérifiez et corrigez les valeurs avant l’enregistrement. Le mode de validation s’applique lorsque vous enregistrez le panier. Le solde théorique et la révision de clôture viennent du serveur.
 
-Les paniers **Écritures** et **Clôtures** proposent également leur modèle Excel et l’import `.xlsx` vers le panier (100 lignes, 4 Mo). Les références de caisse, devise, type et mode sont celles de l’entreprise active. Vérifiez et corrigez les valeurs après import avant l’enregistrement. Un fichier ne valide jamais automatiquement une écriture et ne fournit ni solde théorique ni révision de clôture : ces informations sont rechargées depuis le serveur. Le motif et les confirmations habituelles restent nécessaires.
+## Choisir le mode de validation
+
+Les paramètres de validation s’appliquent à l’entreprise sélectionnée. Leur modification exige une habilitation dédiée et figure dans le journal d’audit.
+
+- **Validation manuelle.** Enregistrez l’écriture en brouillon, puis utilisez **Valider** ou **Valider la sélection** avec un compte habilité.
+- **Validation par un autre agent.** Un agent désigné et actuellement habilité valide le brouillon d’un autre auteur. Chaque agent désigné peut valider seul. Dans **Agents habilités**, recherchez puis choisissez chaque personne. Retirez au besoin un agent de la sélection, renseignez le motif et enregistrez. Si la liste est vide, vérifiez la licence Caisse de l’entreprise et les droits de ses agents actifs, puis cliquez sur **Actualiser les agents**.
+- **Validation automatique à l’enregistrement.** L’enregistrement applique les mêmes contrôles de caisse et valide les écritures conformes dans la transaction de saisie.
+
+Les nouvelles entreprises commencent en mode manuel. La migration conserve le fonctionnement des entreprises existantes. Une modification du mode s’applique aux prochaines écritures. Les brouillons conservent le mode fixé lors de leur création, et la validation tient compte des habilitations en vigueur.
 
 ## Ouvrir une caisse
 
@@ -40,15 +48,19 @@ Une écriture validée est conservée. Pour corriger une écriture autonome, uti
 
 ## Encaisser une facture Logistique
 
-Dans **Logistique → Règlements → Nouveau règlement**, choisir la facture et renseigner le règlement. Lorsque le compte dispose des droits de gestion Caisse, **Enregistrer en caisse** propose les caisses actives de la même entreprise et de la même devise. La sélection est facultative.
+Dans **Logistique → Règlements → Nouveau règlement**, choisir la facture et renseigner le règlement. Lorsque le compte dispose des droits de saisie et de validation, **Enregistrer en caisse** propose les caisses actives de la même entreprise et de la même devise, si la politique permet à ce compte de valider immédiatement. En mode **Validation par un autre agent**, saisissez le règlement dans Logistique, puis faites valider l’encaissement dans le journal Caisse par un agent désigné. La sélection est facultative.
 
 Avec une caisse sélectionnée, le règlement et son entrée validée sont enregistrés dans une seule transaction. Si un contrôle échoue, aucun des deux n’est conservé. Une nouvelle tentative ne crée pas de doublon. Sans sélection, le comportement du règlement existant est conservé, sans écriture de caisse implicite.
 
 Un règlement lié au journal de caisse ne peut plus être modifié ou supprimé isolément. Sa contrepassation directe est également refusée : une correction doit traiter ensemble la facture, le règlement et son effet financier. Les règlements historiques ne sont pas automatiquement repris en caisse.
 
-## Clôturer et contrôler
+## Contrôler et clôturer
 
-Choisir une caisse, relever l’encaisse physique puis enregistrer la date et l’heure de clôture. Le serveur capture le solde théorique et calcule l’écart avec le montant compté. Un écart exige une justification. La clôture ne corrige pas automatiquement le solde.
+Pour contrôler l’encaisse, ouvrez le journal, filtrez par caisse et par période, puis comparez le montant physique compté au solde validé et aux mouvements encore en brouillon. Le solde prévisionnel comprend les brouillons actifs. Les montants sont présentés dans la devise de la caisse.
+
+La prévisualisation d’une validation de sélection indique le nombre d’écritures, les entrées et sorties par devise ainsi que les motifs de blocage. Vérifiez les lignes choisies avant de confirmer. Si une ligne est bloquée ou a changé, rechargez la liste et corrigez la sélection avant de relancer la validation.
+
+Dans **Clôtures**, choisissez la caisse, renseignez l’heure et le montant compté, puis confirmez. Le serveur capture le solde théorique et calcule l’écart avec le montant compté. Un écart exige un motif. La validation de fin de journée reste une action volontaire, distincte de la clôture.
 
 Les clôtures restent immuables. Les contrôles refusent les clôtures incohérentes et les validations antidatées dans une période déjà clôturée. Les éventuelles régularisations sont des écritures distinctes, justifiées et validées dans la période ouverte.
 

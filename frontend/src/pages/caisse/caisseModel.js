@@ -7,7 +7,13 @@ export const CAISSE_REGISTERS={
  ecritures:{title:"Écritures de caisse",subtitle:"Encaissements, décaissements et contrepassations.",id:"IdPaiement",sort:"DatePaiement",direction:"desc",create:"Nouvelle écriture",icon:"movements",visible:["CodePaiement","DatePaiement","NomCaisse","LibellePaiement","SensMouvement","MontantPaiement","EtatEcriture","actions"]},
  clotures:{title:"Clôtures de caisse",subtitle:"Comptages physiques et écarts conservés dans l’historique.",id:"ID_ClotureCaisse",sort:"ClotureLe",direction:"desc",create:"Nouvelle clôture",icon:"check-circle",visible:["ID_ClotureCaisse","ClotureLe","NomCaisse","SoldeTheorique","MontantCompte","Ecart","Auteur","actions"]},
 };
-export const CAISSE_LABELS={CodeCaisse:"Code caisse",NomCaisse:"Caisse",DeviseCode:"Devise",MontantCaisse:"Solde disponible",Responsable:"Responsable",Actif:"État",NomEntite:"Entreprise",CodePaiement:"N° d’écriture",DatePaiement:"Date et heure",LibellePaiement:"Libellé",SensMouvement:"Sens",MontantPaiement:"Montant",EtatEcriture:"État",ReferenceExterne:"Référence",NomTiers:"Tiers",Auteur:"Auteur",Validateur:"Validateur",ObsPaiement:"Observations",CodeCompensateur:"Contrepassation",ID_ClotureCaisse:"Clôture",ClotureLe:"Date et heure",SoldeTheorique:"Solde théorique",MontantCompte:"Montant compté",Ecart:"Écart",Motif:"Motif"};
+export const CAISSE_VALIDATION_MODES = [
+ {value:"MANUAL",label:"Validation manuelle"},
+ {value:"OTHER_AGENT",label:"Validation par un autre agent"},
+ {value:"AUTO",label:"Validation automatique à l’enregistrement"},
+];
+export const caisseValidationLabel = mode => CAISSE_VALIDATION_MODES.find(option=>option.value===mode)?.label;
+export const CAISSE_LABELS={CodeCaisse:"Code caisse",NomCaisse:"Caisse",DeviseCode:"Devise",MontantCaisse:"Solde validé",EntreesBrouillon:"Encaissements en brouillon",SortiesBrouillon:"Décaissements en brouillon",SoldePrevisionnel:"Solde prévisionnel",ModeValidation:"Mode de validation",Responsable:"Responsable",Actif:"État",NomEntite:"Entreprise",CodePaiement:"N° d’écriture",DatePaiement:"Date et heure",LibellePaiement:"Libellé",SensMouvement:"Sens",MontantPaiement:"Montant",EtatEcriture:"État",ReferenceExterne:"Référence",NomTiers:"Tiers",Auteur:"Auteur",Validateur:"Validateur",ObsPaiement:"Observations",CodeCompensateur:"Contrepassation",ID_ClotureCaisse:"Clôture",ClotureLe:"Date et heure",SoldeTheorique:"Solde théorique",MontantCompte:"Montant compté",Ecart:"Écart",Motif:"Motif"};
 export const ENTRY_STATES=[{value:"",label:"Tous les états"},{value:"DRAFT",label:"Brouillons"},{value:"POSTED",label:"Validées"}];
 export const ENTRY_SENSES=[{value:"",label:"Tous les mouvements"},{value:"1",label:"Encaissements"},{value:"-1",label:"Décaissements"}];
 export function caisseTab(value){return Object.hasOwn(CAISSE_REGISTERS,value)?value:"tableau-de-bord";}

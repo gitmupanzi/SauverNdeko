@@ -12,7 +12,7 @@ from apps.core.permissions import HasModuleAccess
 from apps.core.responses import APIError, ExactJSONRenderer, ok
 from apps.core.tabular_exports import selected_scope, write_tabular
 from apps.logistique.excel import ExcelDownloadView, CSVFileRenderer, ExcelFileRenderer, MAX_EXPORT_ROWS, XLSX_MEDIA_TYPE
-from . import services as service
+from . import services as service, validation
 from .batches import CREATE, create_batch
 
 LABELS = {
@@ -29,6 +29,9 @@ LABELS = {
  'CodePaiementOrigine':'Écriture d’origine','CodeCompensateur':'Contrepassation','IdReglementFk':'Identifiant règlement',
  'ID_ClotureCaisse':'Identifiant clôture','ClotureLe':'Date et heure de clôture','MontantCompte':'Montant compté',
  'Ecart':'Écart de clôture','Motif':'Motif',
+ 'ModeValidation':'Mode de validation','MecanismeValidation':'Mécanisme de validation',
+ 'ValidationDesigneeRequise':'Agent désigné requis','EntreesBrouillon':'Entrées en brouillon',
+ 'SortiesBrouillon':'Sorties en brouillon','SoldePrevisionnel':'Solde prévisionnel',
 }
 
 
@@ -93,6 +96,24 @@ class EntryActionView(CashView):
     def post(self,request,pk,action): return ok(service.entry_action(request.user,pk,action,request.data))
 
 
+class ValidationSettingsView(CashView):
+    def get(self, request):
+        return ok(validation.configuration(request.user))
+
+    def put(self, request):
+        return ok(validation.configure(request.user, request.data))
+
+
+class ValidationPreviewView(CashView):
+    def post(self, request):
+        return ok(validation.preview(request.user, request.data))
+
+
+class ValidationSelectionView(CashView):
+    def post(self, request):
+        return ok(validation.confirm(request.user, request.data))
+
+
 class ClosuresView(CashView):
     def get(self,request,pk=None): return ok(service.detail(request.user,'clotures',pk) if pk else service.list_data(request.user,'clotures',request.query_params.dict()))
     def post(self,request,pk=None):
@@ -102,7 +123,10 @@ class ClosuresView(CashView):
 
 class ClosurePreparationView(CashView):
     def get(self,request):
-        return ok(service.closure_preparation(request.user, request.query_params.get('caisseId')))
+        return ok(service.closure_preparation(
+            request.user, request.query_params.get('caisseId'),
+            request.query_params.get('date'), request.query_params.get('montantCompte'),
+        ))
 
 
 class RegisterExportView(ExcelDownloadView):

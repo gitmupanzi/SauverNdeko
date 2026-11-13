@@ -33,7 +33,7 @@ const fixture=mocks([
  [/\/components\/ExportMenu$/,'export-menu',`export default function ExportMenu(){}`],
  [/\/components\/RowActionsMenu$/,'actions',`export default function Actions(){}`],
  [/\/logistique\/logistiqueShared$/,'table',`export function SimpleTable(){};export const formatDate=x=>x;`],
- [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__results.shift()||{success:false,status:503};}if(globalThis.__holdReads)return globalThis.__holdReads;if(url.includes('/processus?'))return {success:true,data:globalThis.__models};if(url.includes('/processus/suivi?'))return {success:true,data:globalThis.__monitor};if(url.endsWith('/parcours'))return {success:true,data:globalThis.__journey};if(url.includes('/contexte'))return {success:true,data:globalThis.__context};if(url.includes('/tableau-de-bord'))return {success:true,data:globalThis.__dashboard};if(url.includes('/kanban'))return {success:true,data:globalThis.__kanban||{columns:[{id:14,label:'Nouveau',count:45,rows:[globalThis.__record],hasMore:true}]}};if(url.includes('?'))return {success:true,data:[globalThis.__record],meta:globalThis.__meta};return {success:true,data:globalThis.__detail};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});}${apiNames.map(name=>'export function '+name+'(){throw Error("Route hors Support inattendue");}').join(' ')}`],
+ [/\/services\/api$/,'api',`export async function requestJson(url,options={}){globalThis.__calls.push({url,options});if(options.method){globalThis.__writes.push({url,options});return globalThis.__results.shift()||{success:false,status:503};}if(url==='/api/support/presentation')return {success:true,data:{entityId:globalThis.__scope.entityId,...globalThis.__supportPresentation}};if(globalThis.__holdReads)return globalThis.__holdReads;if(url.includes('/processus?'))return {success:true,data:globalThis.__models};if(url.includes('/processus/suivi?'))return {success:true,data:globalThis.__monitor};if(url.endsWith('/parcours'))return {success:true,data:globalThis.__journey};if(url.includes('/contexte'))return {success:true,data:globalThis.__context};if(url.includes('/tableau-de-bord'))return {success:true,data:globalThis.__dashboard};if(url.includes('/kanban'))return {success:true,data:globalThis.__kanban||{columns:[{id:14,label:'Nouveau',count:45,rows:[globalThis.__record],hasMore:true}]}};if(url.includes('?'))return {success:true,data:[globalThis.__record],meta:globalThis.__meta};return {success:true,data:globalThis.__detail};}export async function downloadApiFile(url,options){globalThis.__downloads.push({url,options});}${apiNames.map(name=>'export function '+name+'(){throw Error("Route hors Support inattendue");}').join(' ')}`],
  [/^react-router-dom$/,'router',`export function Link(){};export const useSearchParams=()=>[globalThis.__params||new URLSearchParams(),(...args)=>globalThis.__navigation?.push(args)];`],
  [/\/components\/ModuleSidebar$/,'sidebar',`export default function Sidebar(){}`],
  [/\/components\/ModuleHeader$/,'header',`export default function Header(){}`],
@@ -267,7 +267,7 @@ const fixture=mocks([
   ok(!mark(tree,'SupportProcessModels'));
   eq(mark(tree,'Sidebar').props.groups.flatMap(group=>group.items.map(item=>item.key)),['tableau-de-bord','tickets','processus']);
   ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('pas accès')));
-  eq(globalThis.__calls.slice(beforeDenied).map(call=>call.url),['/api/support/contexte']);
+  eq(globalThis.__calls.slice(beforeDenied).map(call=>call.url),['/api/support/presentation','/api/support/contexte']);
   denied.unmount();
   globalThis.__context=previousContext;
   delete globalThis.__params;delete globalThis.__navigation;delete globalThis.__models;
@@ -277,11 +277,13 @@ const fixture=mocks([
   globalThis.__navigation=[];
   const beforeStages=globalThis.__calls.length,portal=new Hooks(),pr=()=>portal.render(p.Portal);
   tree=pr();
+  ok(!mark(tree,'SupportRegister'));
+  await portal.flush();
+  tree=pr();
   const sidebar=mark(tree,'Sidebar');
   eq(sidebar.props.activeKey,'processus');
   eq(sidebar.props.groups.find(group=>group.key==='traitement').items.map(item=>item.label),['Tickets','Suivi des étapes']);
   ok(!mark(tree,'SupportRegister'));
-  await portal.flush();
   eq(globalThis.__navigation[0][0].toString(),'onglet=processus&source=ancien-lien');
   eq(globalThis.__navigation[0][1],{replace:true});
 
@@ -343,14 +345,26 @@ const fixture=mocks([
   for(const url of ['onglet=processus','onglet=tickets&vue=suivi']){
    globalThis.__params=new URLSearchParams(url);
    const restricted=new Hooks(),beforeDenied=globalThis.__calls.length;
-   tree=restricted.render(p.Portal);await restricted.flush();
+   restricted.render(p.Portal);await restricted.flush();tree=restricted.render(p.Portal);
    ok(!mark(tree,'SupportStageRegister'));
    eq(mark(tree,'Sidebar').props.groups.find(group=>group.key==='traitement').items.map(item=>item.key),['tickets']);
    ok(nodes(tree).some(node=>node.props?.role==='alert'&&node.props.children.includes('pas accès')));
-   eq(globalThis.__calls.length,beforeDenied);restricted.unmount();
+   eq(globalThis.__calls.slice(beforeDenied).map(call=>call.url),['/api/support/presentation']);restricted.unmount();
   }
   globalThis.__user.moduleAccess=previousAccess;
   delete globalThis.__params;delete globalThis.__navigation;delete globalThis.__monitor;
+ }
+ {
+  globalThis.__supportPresentation={tabLabels:{tickets:'Demandes internes'},hiddenTabs:['tableau-de-bord','modeles','processus'],hiddenDashboardBlocks:['attention']};
+  globalThis.__params=new URLSearchParams();
+  const presentation=new Hooks(),render=()=>presentation.render(p.Portal);
+  render();await presentation.flush();tree=render();
+  eq(mark(tree,'Sidebar').props.groups.flatMap(group=>group.items.map(item=>item.label)),['Demandes internes']);
+  eq(mark(tree,'SupportRegister').props.title,'Demandes internes');
+  globalThis.__params=new URLSearchParams('onglet=tableau-de-bord');
+  eq(mark(render(),'SupportDashboard').props.hiddenDashboardBlocks,['attention']);
+  presentation.unmount();
+  delete globalThis.__supportPresentation;delete globalThis.__params;
  }
  const embeddedHooks=new Hooks(),er=()=>embeddedHooks.render(p.Register,{...rp,embedded:true,initial:{indicator:'retard',filters:{ID_StatutFk:'14'}}});
  er();await embeddedHooks.flush();tree=er();let embeddedToolbar=mark(mark(tree,'SimpleTable').props.toolbar,'Toolbar');

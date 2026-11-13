@@ -1,0 +1,64 @@
+.caisse-validator-picker {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+}
+.caisse-validator-picker > .search-select-trigger { flex:1 1 15rem; width:auto; min-width:0; }
+.caisse-validator-picker > button { min-height:40px; }
+.caisse-validator-count { margin-top:12px; }
+.caisse-validator-list {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  list-style:none;
+  padding:0;
+  margin:8px 0 0;
+}
+.caisse-validator-list li {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  max-width:100%;
+  padding:4px 4px 4px 10px;
+  border:1px solid var(--erp-border);
+  border-radius:8px;
+}
+.caisse-validator-list li > span { min-width:0; overflow-wrap:anywhere; }
+.caisse-validator-list small { display:block; }
+.caisse-validator-list button { flex:none; min-width:36px; min-height:36px; }
+.caisse-validation-totals {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));
+  gap:8px;
+}
+.caisse-validation-rows {
+  list-style:none;
+  padding:0;
+  margin:14px 0;
+}
+.caisse-validation-rows li {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px 14px;
+  padding:10px 0;
+  border-bottom:1px solid var(--erp-border);
+}
+.caisse-count-breakdown {
+  width:100%;
+  margin:4px 0 0;
+}
+.caisse-count-breakdown div {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  column-gap:8px;
+}
+.caisse-count-breakdown dd {
+  margin:0;
+  font-weight:600;
+}

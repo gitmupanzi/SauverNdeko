@@ -8,7 +8,9 @@ from apps.professionnels.views import (ContextView as ProfessionalContextView, E
 from apps.caisse.views import (ContextView as CashContextView, EntitiesView as CashEntitiesView,
     ReferencesView as CashReferencesView, SynthesisView as CashSynthesisView, RegisterView as CashRegisterView,
     CashAccountsView, EntriesView as CashEntriesView, EntryActionView as CashEntryActionView,
-    ClosuresView as CashClosuresView, ClosurePreparationView, RegisterExportView as CashExportView)
+    ClosuresView as CashClosuresView, ClosurePreparationView, RegisterExportView as CashExportView,
+    ValidationSettingsView as CashValidationSettingsView, ValidationPreviewView as CashValidationPreviewView,
+    ValidationSelectionView as CashValidationSelectionView)
 from apps.caisse.excel_import import CashExcelPreviewView, CashExcelTemplateView
 from apps.logistique.batch_excel import LogisticsExcelPreviewView, LogisticsExcelTemplateView
 from apps.core.entity_settings import (EntitySettingsContextView, EntitySettingsChoicesView,
@@ -138,13 +140,16 @@ urlpatterns = [
     re_path(r"^api/caisse/(?P<kind>ecritures|clotures)/modele-excel/?$", CashExcelTemplateView.as_view()),
     re_path(r"^api/caisse/(?P<kind>ecritures|clotures)/import-excel/?$", CashExcelPreviewView.as_view()),
     re_path(r"^api/caisse/caisses(?:/(?P<pk>[0-9]+))?/?$", CashAccountsView.as_view()),
+    re_path(r"^api/caisse/parametres-validation/?$", CashValidationSettingsView.as_view()),
+    re_path(r"^api/caisse/ecritures/validation/apercu/?$", CashValidationPreviewView.as_view()),
+    re_path(r"^api/caisse/ecritures/validation/?$", CashValidationSelectionView.as_view()),
     re_path(r"^api/caisse/ecritures/(?P<pk>[0-9]+)/(?P<action>valider|contrepasser)/?$", CashEntryActionView.as_view()),
     re_path(r"^api/caisse/ecritures(?:/(?P<pk>[0-9]+))?/?$", CashEntriesView.as_view()),
     re_path(r"^api/caisse/clotures(?:/(?P<pk>[0-9]+))?/?$", CashClosuresView.as_view()),
     re_path(r"^api/parametres/contexte/?$", EntitySettingsContextView.as_view()),
     re_path(r"^api/parametres/presentation/?$", PresentationModulesView.as_view()),
-    re_path(r"^api/parametres/(?P<module_key>logistique|caisse)/presentation/?$", ModulePresentationSettingsView.as_view()),
-    re_path(r"^api/(?P<module_key>logistique|caisse)/presentation/?$", ModulePresentationView.as_view()),
+    re_path(r"^api/parametres/(?P<module_key>logistique|caisse|support|discussions)/presentation/?$", ModulePresentationSettingsView.as_view()),
+    re_path(r"^api/(?P<module_key>logistique|caisse|support|discussions)/presentation/?$", ModulePresentationView.as_view()),
     re_path(r"^api/guide/contexte/?$", GuideContextView.as_view()),
     re_path(r"^api/guide/entreprises/?$", GuideEntitiesView.as_view()),
     re_path(r"^api/guide/articles/(?P<module_key>[a-z][a-z0-9-]*)/(?P<article_id>[a-z][a-z0-9-]*)/?$", GuideArticleView.as_view()),

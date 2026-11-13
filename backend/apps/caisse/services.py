@@ -23,6 +23,8 @@ from apps.core.repository import positive, set_admin_actor
 from apps.core.responses import APIError, ExactEncoder
 from apps.core.tenancy import read_entity, require_entity
 
+from . import validation
+
 ZONE = ZoneInfo('Africa/Kinshasa')
 SOURCES = {
     'caisses': ('V_Caisse', 'T_Caisse', 'IdCaisse', 'CreeLe'),
@@ -59,7 +61,17 @@ def capabilities(actor):
     tab_rights = {key: {right: bool(rights[right] and tabs.get(key, rights)[right])
                         for right in ('canRead', 'canManage', 'canExport')}
                   for key in ('tableau-de-bord', *SOURCES)}
+    policy = validation.policy(entity) if entity else {'mode': 'MANUAL', 'allowLegacyImmediate': False}
+    def action_allowed(key):
+        return manage and can_use_tab(actor, 'caisse', key, 'manage')
+    manage_entries = action_allowed('ecritures')
+    can_validate = manage_entries and action_allowed(validation.VALIDATE)
     return {'entityId': entity, 'platformAdmin': actor.global_admin, 'canRead': True,
+            'canConfigureValidation': action_allowed(validation.CONFIGURE),
+            'canCreateEntries': manage_entries and action_allowed(validation.CREATE) and (policy['mode'] != 'AUTO' or can_validate),
+            'canEditDrafts': manage_entries and action_allowed(validation.EDIT),
+            'canValidateEntries': can_validate, 'validationMode': policy['mode'],
+            'allowLegacyImmediate': policy['allowLegacyImmediate'],
             'canManage': manage, 'canExport': bool(rights['canExport']), 'readOnly': settings.DB_READ_ONLY,
             'tabs': {key: {**item, 'canManage': manage and item['canManage']} for key, item in tab_rights.items()},
             'hiddenFields': {kind: sorted(hidden_fields(actor, kind) - SENSITIVE) for kind in SOURCES},
@@ -94,7 +106,7 @@ def hidden_fields(actor, kind, action='read'):
     fields = SENSITIVE.copy()
     if kind == 'caisses':
         if not can_use_tab(actor, 'caisse', 'ecritures', action):
-            fields.update({'NombreEcritures', 'NbBrouillons'})
+            fields.update({'NombreEcritures', 'NbBrouillons', 'EntreesBrouillon', 'SortiesBrouillon', 'SoldePrevisionnel'})
         if not can_use_tab(actor, 'caisse', 'clotures', action):
             fields.add('DerniereClotureLe')
     elif kind == 'ecritures':
@@ -149,18 +161,27 @@ def detail(actor, kind, pk, replayed=False):
     rights = capabilities(actor)
     manage = rights['tabs'][kind]['canManage'] and rights['entityId'] == row['IdEntiteFk']
     active = kind == 'ecritures' and manage and _scoped_record(actor, 'caisses', row['IdCaisseFk'])['Actif']
+    can_validate = (
+        active and rights['canValidateEntries']
+        and not validation.permission_reason(actor, row, validation.policy(rights['entityId'])['validatorIds'])
+    )
     return {'record': public_record(actor, kind, row), '_version': str(row.get('Revision', '')),
-        'canManage': bool(manage and (kind == 'caisses' or kind == 'ecritures' and row['EtatEcriture'] == 'DRAFT' and row['ValidePaiement'])),
-        'canValidate': bool(manage and active and kind == 'ecritures' and row['EtatEcriture'] == 'DRAFT' and row['ValidePaiement']),
-        'canReverse': bool(manage and active and kind == 'ecritures' and row['EtatEcriture'] == 'POSTED'
+        'canManage': bool(manage and (kind == 'caisses' or kind == 'ecritures' and rights['canEditDrafts']
+                          and row['EtatEcriture'] == 'DRAFT' and row['ValidePaiement'])),
+        'canValidate': bool(can_validate),
+        'canReverse': bool(rights['canValidateEntries'] and active and kind == 'ecritures' and row['EtatEcriture'] == 'POSTED'
             and row['ValidePaiement'] and not row.get('IdPaiementOrigineFk') and not row.get('IdCompensateurFk') and not row.get('IdReglementFk')),
         'replayed': replayed}
 
 
-def closure_preparation(actor, pk):
+def closure_preparation(actor, pk, date_value=None, counted=None):
     writable(actor, 'clotures')
     row = _scoped_record(actor, 'caisses', pk)
-    return {'record': {key: row[key] for key in ('IdCaisse', 'Actif', 'DeviseCode', 'SoldeTheorique')},
+    cutoff = parse_date(date_value, 'ClotureLe') if date_value else datetime.now(ZONE)
+    balance = db.one('SELECT * FROM operations.fn_caisse_controle_comptage(%s, %s)', [row['IdCaisse'], cutoff])
+    if counted not in (None, ''):
+        balance['EcartComptage'] = money(counted, 'MontantCompte', True) - balance['SoldeValide']
+    return {'record': {**{key: row[key] for key in ('IdCaisse', 'Actif', 'DeviseCode', 'SoldeTheorique')}, **balance},
             '_version': str(row['Revision']), 'canManage': True}
 
 
@@ -223,6 +244,10 @@ def envelope(actor, body, operation, pk=None, require_motif=False, batch_digest=
 
 def request_lock(actor, request_id, digest, motif):
     db.query("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", ['caisse:'+str(actor.pk)+':'+request_id])
+    set_request_metadata(actor, request_id, digest, motif)
+
+
+def set_request_metadata(actor, request_id, digest, motif):
     set_admin_actor(actor)
     db.query("SELECT set_config('operations.request_id',%s,true),set_config('operations.payload_hash',%s,true),set_config('operations.motif',%s,true)", [request_id, digest, motif or ''])
 
@@ -348,6 +373,8 @@ def create_cash(actor, body, *, batch_digest=None):
 def modify(actor, kind, pk, body):
     entity = writable(actor, kind)
     if kind not in {'caisses','ecritures'}: fail('Modification non autorisée.',status=405)
+    if kind == 'ecritures':
+        require_tab(actor, 'caisse', validation.EDIT, 'manage')
     request_id,digest,motif = envelope(actor,body,'modify-'+kind,int(pk))
     request_lock(actor,request_id,digest,motif)
     old = _scoped_record(actor,kind,pk,lock=True)
@@ -365,17 +392,32 @@ def modify(actor, kind, pk, body):
 @transaction.atomic
 def create_entry(actor, body, *, batch_digest=None):
     entity = writable(actor, 'ecritures')
+    require_tab(actor, 'caisse', validation.CREATE, 'manage')
     request_id,digest,motif = envelope(actor,body,'create-entry',batch_digest=batch_digest)
     if type(body.get('valider',False)) is not bool: fail('Choisissez un mode d’enregistrement valide.','valider')
     request_lock(actor,request_id,digest,motif)
     found = replay('ecritures',request_id,digest)
     if found: return detail(actor,'ecritures',found,True)
+    validation.lock_policy(entity)
+    policy = validation.policy(entity)
+    automatic = policy['mode'] == 'AUTO'
+    immediate = body.get('valider', False)
+    if immediate and not automatic and not policy['allowLegacyImmediate']:
+        fail('Enregistrez le brouillon puis utilisez l’action Valider.', 'valider')
+    if automatic or immediate:
+        require_tab(actor, 'caisse', validation.VALIDATE, 'manage')
     data = entry_values(actor,body.get('data'))
+    if automatic and data.get('ValidePaiement') is False:
+        fail('Une écriture inactive ne peut pas être enregistrée avec la validation automatique.', 'ValidePaiement')
     pk = insert('T_Paiement',{**data,'IdEntiteFk':entity,'IdUserFk':actor.pk,'EtatEcriture':'DRAFT',
         'CreationRequestId':request_id,'CreationPayloadHash':digest},'IdPaiement')
-    if body.get('valider'):
+    if automatic or immediate:
         old = _scoped_record(actor,'ecritures',pk,lock=True)
-        sql_action('valider',pk,actor,motif or 'Validation lors de la création',request_id,digest,old['Revision'])
+        if automatic:
+            db.query("SELECT set_config('operations.validation_automatique','1',true)")
+        sql_action('valider',pk,actor,motif or ('Validation automatique' if automatic else 'Validation lors de la création'),request_id,digest,old['Revision'])
+        if automatic:
+            db.query("SELECT set_config('operations.validation_automatique','',true)")
     return detail(actor,'ecritures',pk)
 
 
@@ -387,13 +429,20 @@ def sql_action(action, pk, actor, motif, request_id, digest, version):
 @transaction.atomic
 def entry_action(actor, pk, action, body):
     entity = writable(actor, 'ecritures')
+    require_tab(actor, 'caisse', validation.VALIDATE, 'manage')
     request_id,digest,motif = envelope(actor,body,action,int(pk),True)
     request_lock(actor,request_id,digest,motif)
+    if action == 'valider':
+        validation.lock_policy(entity)
     old = _scoped_record(actor,'ecritures',pk,lock=True)
     if old['IdEntiteFk'] != entity: fail('Entreprise différente.',status=403)
     found = replay('ecritures',request_id,digest,'ValidationRequestId' if action=='valider' else 'CreationRequestId')
     if found: return detail(actor,'ecritures',found,True)
     version = revision(body.get('_version'),old)
+    if action == 'valider':
+        review, _ = validation.inspection(actor, entity, {int(pk): str(version)}, lock=True)
+        if not review['rows'][0]['eligible']:
+            fail(review['rows'][0]['reason'], code='CAISSE_VALIDATION_SELECTION', status=409)
     return detail(actor,'ecritures',sql_action(action,int(pk),actor,motif,request_id,digest,version))
 
 
@@ -478,8 +527,14 @@ def list_data(actor,kind,raw):
     rows = db.query('SELECT v.* FROM '+source+' v WHERE '+where+' ORDER BY '+order+' LIMIT %s OFFSET %s',[*params,take,(page-1)*take])
     records = [public_record(actor, kind, row) for row in rows]
     if kind == 'ecritures':
+        rights = capabilities(actor)
+        entity = rights['entityId']
+        validators = set(validation.policy(entity)['validatorIds']) if rights['canValidateEntries'] else set()
         for row, record in zip(rows, records):
-            record['ContrepassationAutorisee'] = not bool(row.get('IdReglementFk'))
+            record['_version'] = str(row['Revision'])
+            record['ValidationAutorisee'] = bool(rights['canValidateEntries'] and entity == row['IdEntiteFk']
+                                                 and not validation.permission_reason(actor, row, validators))
+            record['ContrepassationAutorisee'] = rights['canValidateEntries'] and not bool(row.get('IdReglementFk'))
     return {'rows':records,'total':total,'page':page,'take':take}
 
 
@@ -531,7 +586,9 @@ def synthesis(actor,raw):
           COALESCE(sum(v."MontantPaiement") FILTER(WHERE v."SensMouvement"=1 AND v."EtatEcriture"='POSTED'),0) "Entrees",
           COALESCE(sum(v."MontantPaiement") FILTER(WHERE v."SensMouvement"=-1 AND v."EtatEcriture"='POSTED'),0) "Sorties",
           count(*) FILTER(WHERE v."EtatEcriture"='POSTED') "NombreEcritures",
-          count(*) FILTER(WHERE v."EtatEcriture"='DRAFT') "NombreBrouillons"
+          count(*) FILTER(WHERE v."EtatEcriture"='DRAFT') "NombreBrouillons",
+          COALESCE(sum(v."MontantPaiement") FILTER(WHERE v."SensMouvement"=1 AND v."EtatEcriture"='DRAFT'),0) "EntreesBrouillon",
+          COALESCE(sum(v."MontantPaiement") FILTER(WHERE v."SensMouvement"=-1 AND v."EtatEcriture"='DRAFT'),0) "SortiesBrouillon"
           FROM operations."V_JournalCaisse" v JOIN referentiel."T_Generique" g ON g."ID_Generique"=v."IdDeviseFk" WHERE '''+where+''' AND v."ValidePaiement" IS TRUE
           GROUP BY v."IdDeviseFk",g."ID_Generique"''',params)
         dates = db.query('''SELECT (v."DatePaiement" AT TIME ZONE 'Africa/Kinshasa')::date "DateJour",v."IdDeviseFk",coalesce(nullif(g."AbrGenerique",''),g."NomGenerique")::text "DeviseCode",
@@ -553,12 +610,14 @@ def synthesis(actor,raw):
         _,_,_,cash_where,cash_params,_,_ = read_source(actor,'caisses',{'filters':cash_filters})
         if filters.get('IdCaisseFk'):
             cash_where += ' AND v."IdCaisse"=%s'; cash_params.append(positive(filters['IdCaisseFk']))
+        forecast_column = ',sum(v."SoldePrevisionnel") "SoldePrevisionnel"' if read_entries else ''
         balances = db.query('''SELECT v."IdDeviseFk",v."DeviseCode",v."DeviseLibelle",sum(v."SoldeTheorique") "Solde",
-            count(*) "NombreCaisses" FROM operations."V_Caisse" v WHERE '''+cash_where+''' GROUP BY v."IdDeviseFk",v."DeviseCode",v."DeviseLibelle"''',cash_params)
+            count(*) "NombreCaisses"''' + forecast_column + ''' FROM operations."V_Caisse" v WHERE '''+cash_where+''' GROUP BY v."IdDeviseFk",v."DeviseCode",v."DeviseLibelle"''',cash_params)
     by_id = {row['IdDeviseFk']: {**row} for row in balances}
     if read_entries:
         for row in by_id.values():
-            row.update(Entrees=Decimal(0), Sorties=Decimal(0), NombreEcritures=0, NombreBrouillons=0)
+            row.update(Entrees=Decimal(0), Sorties=Decimal(0), NombreEcritures=0, NombreBrouillons=0,
+                       EntreesBrouillon=Decimal(0), SortiesBrouillon=Decimal(0))
     for row in flow:
         balance = {'Solde': Decimal(0), 'NombreCaisses': 0} if read_cash else {}
         by_id.setdefault(row['IdDeviseFk'], balance).update(row)
@@ -569,6 +628,13 @@ def synthesis(actor,raw):
 def record_reglement(actor,caisse_id,reglement_row,parent_row,request_id):
     """Enregistre l’encaissement optionnel d’un règlement déjà inséré, sans le dupliquer."""
     entity = writable(actor, 'ecritures')
+    require_tab(actor, 'caisse', validation.CREATE, 'manage')
+    require_tab(actor, 'caisse', validation.VALIDATE, 'manage')
+    validation.lock_policy(entity)
+    policy_error = validation.settlement_policy_error(actor, entity)
+    if policy_error:
+        code, message = policy_error
+        fail(message, code=code, status=409)
     cash = _scoped_record(actor,'caisses',positive(caisse_id),lock=True)
     if cash['IdEntiteFk'] != entity or parent_row['IdEntiteFk'] != entity or cash['IdDeviseFk'] != parent_row['ID_DeviseFk']:
         fail('Choisissez une caisse de cette entreprise dans la devise de la facture.',code='CAISSE_CURRENCY_MISMATCH',status=409)

@@ -36,7 +36,7 @@ class CaisseSQL(unittest.TestCase):
         cls.root = cls.user(None, "Global", True)
         cls.usd = cls.c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "AbrGenerique"=%s AND "IdEntiteFk" IS NULL', ["USD"]).fetchone()["id"]
         cls.cdf = cls.c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "AbrGenerique"=%s AND "IdEntiteFk" IS NULL', ["CDF"]).fetchone()["id"]
-        cls.motif = cls.c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE "AbrGenerique"=%s AND "IdEntiteFk" IS NULL', ["CAISSE_RECETTE"]).fetchone()["id"]
+        cls.motif = cls.c.execute('SELECT "ID_Generique" id FROM referentiel."T_Generique" WHERE ("AbrGenerique"=%s OR "NomGenerique"=%s) AND "IdEntiteFk" IS NULL ORDER BY ("AbrGenerique"=%s) DESC LIMIT 1', ["CAISSE_RECETTE", "Recette diverse", "CAISSE_RECETTE"]).fetchone()["id"]
 
     @classmethod
     def tearDownClass(cls):

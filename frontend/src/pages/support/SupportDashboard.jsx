@@ -81,7 +81,7 @@ function Distribution({chart,rows,selected,detailId,onSelect}){
   </section>;
 }
 
-export default function SupportDashboard({refresh,onNavigate,canReadProcesses,onChanged}){
+export default function SupportDashboard({title="Tableau de bord",hiddenDashboardBlocks=[],refresh,onNavigate,canReadProcesses,onChanged}){
   const id=useId();
   const [selected,setSelected]=useState(null);
   const [ticketId,setTicketId]=useState(null);
@@ -91,6 +91,10 @@ export default function SupportDashboard({refresh,onNavigate,canReadProcesses,on
   const ticketContext=useProcessQuery(selected&&!selected.process?SUPPORT_ROOT+"/contexte":null,refresh);
   const data=summary.data||summary.previousData;
   const processValues=canReadProcesses?data?.processes:null;
+  const showAttention=!hiddenDashboardBlocks.includes("attention");
+  const showActivity=!hiddenDashboardBlocks.includes("activite");
+  const showSteps=!hiddenDashboardBlocks.includes("etapes")&&(processValues||(canReadProcesses&&summary.loading));
+  const showCharts=!hiddenDashboardBlocks.includes("graphiques");
 
   function closeDetail(){
     if(scrollFrame.current!=null)cancelAnimationFrame(scrollFrame.current);
@@ -128,7 +132,7 @@ export default function SupportDashboard({refresh,onNavigate,canReadProcesses,on
   const detailId=id+"-detail";
   return <div className="support-dashboard">
     <header className="erp-register-heading">
-      <div><h1>Tableau de bord</h1><p>Demandes, incidents et suivi des dossiers.</p></div>
+      <div><h1>{title}</h1><p>Demandes, incidents et suivi des dossiers.</p></div>
       <div className="erp-register-actions">
         <ActionButton icon="list" onClick={()=>onNavigate("tickets")}>Ouvrir les tickets</ActionButton>
       </div>
@@ -136,21 +140,23 @@ export default function SupportDashboard({refresh,onNavigate,canReadProcesses,on
     {summary.error?<div className="admin-error" role="alert">
       <span>{summary.error}</span><ActionButton icon="refresh" onClick={summary.reload}>Réessayer</ActionButton>
     </div>:null}
-    <div className="support-dashboard-sections" aria-busy={summary.loading}>
-      <MetricsPanel title="À traiter" icon="alert" metrics={ATTENTION_METRICS} values={data?.metrics} loading={summary.loading}
-        selected={selected} detailId={detailId} onSelect={openDetail} priority/>
-      <MetricsPanel title="Activité des tickets" icon="help" metrics={ACTIVITY_METRICS} values={data?.metrics} loading={summary.loading}
-        selected={selected} detailId={detailId} onSelect={openDetail}/>
-      {processValues||(canReadProcesses&&summary.loading)?<MetricsPanel title="Suivi des étapes" icon="movements" metrics={STEP_METRICS}
+    {showAttention||showActivity||showSteps?<div className="support-dashboard-sections" aria-busy={summary.loading}>
+      {showAttention?<MetricsPanel title="À traiter" icon="alert" metrics={ATTENTION_METRICS} values={data?.metrics} loading={summary.loading}
+        selected={selected} detailId={detailId} onSelect={openDetail} priority/>:null}
+      {showActivity?<MetricsPanel title="Activité des tickets" icon="help" metrics={ACTIVITY_METRICS} values={data?.metrics} loading={summary.loading}
+        selected={selected} detailId={detailId} onSelect={openDetail}/>:null}
+      {showSteps?<MetricsPanel title="Suivi des étapes" icon="movements" metrics={STEP_METRICS}
         values={processValues} loading={summary.loading} selected={selected} detailId={detailId}
         onSelect={(event,metric)=>openDetail(event,metric,true)}/>:null}
-    </div>
+    </div>:null}
     {summary.loading&&!data?<p className="support-empty" role="status">Chargement de la synthèse…</p>:null}
-    {data?<div className="support-charts">
+    {data&&showCharts?<div className="support-charts">
       {CHARTS.map(chart=><Distribution key={chart.key} chart={chart} rows={data.charts?.[chart.key]||[]}
         selected={selected} detailId={detailId} onSelect={openDetail}/>)}
     </div>:null}
 
+    {!summary.loading&&!summary.error&&!showAttention&&!showActivity&&!showSteps&&!showCharts?
+      <p className="support-empty" role="status">Aucun bloc du tableau de bord n’est affiché.</p>:null}
     {selected&&(!selected.process||canReadProcesses)?<div ref={panel} className="support-dashboard-detail">
       <ActionButton ref={returnButton} className="erp-detail-return" icon="arrow-up" onClick={closeDetail}>Revenir à l’indicateur</ActionButton>
       <section id={detailId} className="erp-register-card support-dashboard-detail-card" aria-labelledby={id+"-detail-title"}>

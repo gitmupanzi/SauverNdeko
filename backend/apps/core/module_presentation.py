@@ -7,12 +7,12 @@ import unicodedata
 from django.conf import settings
 from django.db import transaction
 from psycopg.types.json import Jsonb
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from . import db
-from .module_access import MODULE_BY_KEY, access_snapshot, require_module
+from .module_access import MODULE_BY_KEY, access_snapshot, can_read_tab, require_module
 from .parsers import ExactJSONParser
-from .permissions import HasModuleAccess
 from .repository import set_admin_actor
 from .responses import APIError, ExactEncoder, ok
 from .tenancy import read_entity
@@ -60,6 +60,34 @@ PRESENTATIONS = {
             "synthese": "Indicateurs par devise",
             "flux": "Flux quotidiens",
         },
+    },
+    "support": {
+        "settingKey": "support.presentation",
+        "label": "Présentation du Support",
+        "tabDefaults": {
+            "tableau-de-bord": "Tableau de bord",
+            "modeles": "Modèles de suivi",
+            "tickets": "Tickets",
+            "processus": "Suivi des étapes",
+        },
+        "dashboardBlockDefaults": {
+            "attention": "À traiter",
+            "activite": "Activité des tickets",
+            "etapes": "Suivi des étapes",
+            "graphiques": "Graphiques",
+        },
+        "readableTabs": ("tickets",),
+    },
+    "discussions": {
+        "settingKey": "discussions.presentation",
+        "label": "Présentation des Discussions",
+        "tabDefaults": {
+            "messages": "Messages",
+            "demandes": "Demandes",
+            "annonces": "Annonces",
+        },
+        "dashboardBlockDefaults": {},
+        "readableTabs": ("messages", "demandes", "annonces"),
     },
 }
 
@@ -145,11 +173,23 @@ def presentation_data(definition, entity, row=None, *, can_manage=False):
             "canManage": bool(can_manage and (row is None or row["IsEditable"] is True))}
 
 
+def can_read_presentation_tabs(actor, module, definition):
+    readable_tabs = definition.get("readableTabs")
+    return readable_tabs is None or any(can_read_tab(actor, module, tab) for tab in readable_tabs)
+
+
+def require_presentation_access(actor, module, definition):
+    require_module(actor, module)
+    if not can_read_presentation_tabs(actor, module, definition):
+        raise APIError("Vous n’avez accès à aucun onglet de ce module.", "TAB_ACTION_FORBIDDEN", 403)
+
+
 def available_presentation_modules(actor, entity):
     if entity is None:
         return []
     rights = access_snapshot(actor)["modules"]
-    modules = [key for key in PRESENTATIONS if rights.get(key, {}).get("canRead")]
+    modules = [key for key, definition in PRESENTATIONS.items()
+               if rights.get(key, {}).get("canRead") and can_read_presentation_tabs(actor, key, definition)]
     if actor.global_admin and modules:
         # Le droit global de consulter un module ne constitue pas une licence de l’entreprise.
         licensed = {row["CodeModule"] for row in db.query('''SELECT "CodeModule"
@@ -166,7 +206,7 @@ def require_company_presentation(actor, module, entity):
 
 def read_presentation(actor, module, *, in_settings=False):
     definition = definition_for(module)
-    require_module(actor, module)
+    require_presentation_access(actor, module, definition)
     if in_settings:
         require_module(actor, "parametres")
     entity = read_entity(actor)
@@ -190,7 +230,7 @@ def read_presentation(actor, module, *, in_settings=False):
 @transaction.atomic
 def save_presentation(actor, module, body):
     definition = definition_for(module)
-    require_module(actor, module)
+    require_presentation_access(actor, module, definition)
     require_module(actor, "parametres", "manage")
     if not actor.admin:
         raise APIError("Ce réglage est réservé à l’administration de l’entreprise.", "FORBIDDEN", 403)
@@ -239,7 +279,9 @@ def save_presentation(actor, module, body):
 
 
 class ModulePresentationView(APIView):
-    permission_classes = [HasModuleAccess]
+    # Aucune donnée métier : chaque méthode vérifie les droits sur le module
+    # et le contexte, indépendamment des gardes des registres.
+    permission_classes = [IsAuthenticated]
     http_method_names = ["get", "head", "options"]
 
     def get(self, request, module_key):
@@ -252,6 +294,7 @@ class PresentationModulesView(ModulePresentationView):
     def get(self, request):
         if request.query_params:
             raise APIError("Aucun critère attendu pour les réglages d’affichage.")
+        require_module(request.user, "parametres")
         entity = read_entity(request.user)
         return ok({
             "entityId": entity,

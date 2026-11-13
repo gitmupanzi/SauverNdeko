@@ -42,6 +42,12 @@ class CaisseAPI(unittest.TestCase):
         cls.settings.enable()
         cls.sql=psycopg.connect(DSN,autocommit=True,row_factory=dict_row)
         cls.entities=[cls.sql.execute('INSERT INTO systeme."T_Entite"("NomEntite","EmailEntite","ValideEntite") VALUES(%s,%s,true) RETURNING "IdEntite" id', ['Caisse fictive '+uuid.uuid4().hex,uuid.uuid4().hex+'@example.invalid']).fetchone()['id'] for _ in range(2)]
+        # Reproduire l’état initial des entreprises présentes avant la migration.
+        with cls.sql.transaction():
+            cls.sql.execute('ALTER TABLE operations."T_ParametreValidationCaisse" DISABLE TRIGGER aa_parametre_validation_caisse')
+            for entity in cls.entities:
+                cls.sql.execute('INSERT INTO operations."T_ParametreValidationCaisse" ("IdEntiteFk", "AutoriseValidationImmediateHistorique") VALUES (%s, true)', [entity])
+            cls.sql.execute('ALTER TABLE operations."T_ParametreValidationCaisse" ENABLE TRIGGER aa_parametre_validation_caisse')
         cls.users=[cls.sql.execute('''INSERT INTO systeme."T_Utilisateurs"("NomUser","PrenomUser","EmailUser","MotdepasseUser","ValideUser","SexeUser","Is_Admin","Is_staff","IdEntiteFk")
          VALUES('Recette','Caisse',%s,'inutilisable',true,'M',true,true,%s) RETURNING *''',[uuid.uuid4().hex+'@example.invalid',entity]).fetchone() for entity in cls.entities]
         refs=cls.client().get(BASE+'/references')

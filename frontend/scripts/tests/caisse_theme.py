@@ -11,7 +11,7 @@ spec.loader.exec_module(base)
 FILES = [*base.FILES, 'src/components/ActionButton.css', 'src/components/RegisterSurface.css',
          'src/components/RecordEditor.css', 'src/components/DrawerDialog.css',
          'src/components/ConsultationTabs.css', 'src/pages/admin/AdminPortal.css',
-         'src/pages/caisse/Caisse.css']
+         'src/pages/caisse/CaisseFlowChart.css', 'src/pages/caisse/Caisse.css']
 checks = 0
 
 
@@ -28,7 +28,7 @@ def fixture(theme):
         <form class="caisse-dashboard-filters"><label><span data-probe="label">Du</span><input data-probe="date" /></label></form>
         <section class="caisse-currency-block"><header><div><h2 data-probe="currency">USD</h2><p data-probe="currency-name">Dollar</p></div></header>
           <div class="caisse-kpi-grid"><button class="caisse-kpi"><span data-probe="kpi-label">Solde disponible</span><strong data-probe="kpi-value">150,00 USD</strong></button></div>
-          <div class="caisse-flow-chart"><h3 data-probe="chart-title">Flux quotidiens</h3><div class="caisse-flow-row"><time data-probe="flow-date">02/11/2026</time><span data-probe="flow-value">150,00 USD<small data-probe="flow-out">0,00 USD</small></span></div></div>
+          <div class="caisse-flow-chart"><h3 data-probe="chart-title">Flux quotidiens</h3><div class="caisse-flow-reading"><time data-probe="flow-date">02/11/2026</time><span data-probe="flow-value">Encaissements <strong data-probe="flow-out">150,00 USD</strong></span></div></div>
         </section>
         <section class="caisse-drill-register"><header><h3 data-probe="drill-title">Encaissements</h3></header></section>
       </main>

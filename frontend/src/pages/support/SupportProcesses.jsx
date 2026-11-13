@@ -35,12 +35,12 @@ function Retry({error,onClick}){
   return error?<div className="admin-error" role="alert"><span>{error}</span><ActionButton icon="refresh" onClick={onClick}>Réessayer</ActionButton></div>:null;
 }
 
-export function SupportStageRegister({context,refresh,onShowTickets,onShowModels,onNewTicket,onChanged}){
+export function SupportStageRegister({title="Suivi des étapes",context,refresh,onShowTickets,onShowModels,onNewTicket,onChanged}){
   const [ticketId,setTicketId]=useState(null);
   const [columnsOpen,setColumnsOpen]=useState(false);
   const columnsAnchorRef=useRef(null);
   const canStartJourney=context?.canCreate===true&&context?.canStartJourneyOnCreate===true;
-  return <RegisterSurface title="Suivi des étapes" subtitle="Étapes, échéances et blocages des tickets associés à un modèle de suivi."
+  return <RegisterSurface title={title} subtitle="Étapes, échéances et blocages des tickets associés à un modèle de suivi."
     actions={<>
       <RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(open=>!open)}/>
       {onShowModels?<ActionButton icon="folder" onClick={onShowModels}>Modèles de suivi</ActionButton>:null}

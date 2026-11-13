@@ -11,7 +11,7 @@ import SearchSelect from "../../components/SearchSelect";
 import RowActionsMenu from "../../components/RowActionsMenu";
 import {SimpleTable,formatDate} from "../logistique/logistiqueShared";
 import {formatCurrency,compareDecimal} from "../../utils/money";
-import {CAISSE_ROOT,CAISSE_REGISTERS,CAISSE_LABELS,caisseQuery,caisseOptions,cashboxOptions,ENTRY_STATES,ENTRY_SENSES} from "./caisseModel";
+import {CAISSE_ROOT,CAISSE_REGISTERS,CAISSE_LABELS,caisseValidationLabel,caisseQuery,caisseOptions,cashboxOptions,ENTRY_STATES,ENTRY_SENSES} from "./caisseModel";
 import CaisseReferences from "./CaisseReferences";
 
 export function CaisseStatus({record}){
@@ -23,8 +23,16 @@ export default function CaisseRegister({kind,context,references={},refresh=0,ini
  const [criteria,setCriteria]=useState(()=>({q:"",filters:{},...initial})),[draft,setDraft]=useState(()=>({q:"",filters:{},...initial})),[grid,setGrid]=useState({take:25,skip:0,sortBy:definition.sort,sortDir:definition.direction});
  const [state,setState]=useState({owner:"",key:"",rows:[],meta:null,loading:true,error:""}),[retry,setRetry]=useState(0),[filtersOpen,setFiltersOpen]=useState(false),[settings,setSettings]=useState(false),[referencesOpen,setReferencesOpen]=useState(false),[density,setDensity]=useState("compact"),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
  const owner=scope.scopeKey+":"+kind,key=owner+":"+refresh+":"+retry+":"+JSON.stringify(criteria)+":"+JSON.stringify(grid),current=state.key===key?state:{rows:state.owner===owner?state.rows:[],meta:null,loading:true,error:""},pending=JSON.stringify(criteria)!==JSON.stringify(draft);
- const canManage=context?.tabs?.[kind]?.canManage===true&&Boolean(scope.entityId)&&!context?.readOnly,canExport=context?.tabs?.[kind]?.canExport===true;
- const createEntry=context?.tabs?.ecritures?.canManage===true,createClosure=context?.tabs?.clotures?.canManage===true;
+ const [selection,setSelection]=useState([]);
+ const scopedWrite=Boolean(scope.entityId)&&!context?.readOnly;
+ const canManage=context?.tabs?.[kind]?.canManage===true&&scopedWrite,canExport=context?.tabs?.[kind]?.canExport===true;
+ const createEntry=scopedWrite&&context?.canCreateEntries===true,createClosure=scopedWrite&&context?.tabs?.clotures?.canManage===true;
+ const canValidate=kind==="ecritures"&&scopedWrite&&context?.canValidateEntries===true;
+ const canEditDrafts=kind==="ecritures"&&scopedWrite&&context?.canEditDrafts===true;
+ const canCreate=kind==="ecritures"?createEntry:canManage;
+ function validate(rows){
+  onOpen({kind,mode:"valider",rows:rows.map(row=>({id:row.IdPaiement,_version:row._version,code:row.CodePaiement}))});
+ }
  const hidden=context?.hiddenFields?.[kind]||[], hiddenExports=context?.hiddenExportFields?.[kind]||[];
  const exportKeys=preferences.exportKeys.filter(key=>!hiddenExports.includes(key));
  function changeGrid(patch){setGrid(previous=>({...previous,...patch}));}
@@ -41,14 +49,15 @@ export default function CaisseRegister({kind,context,references={},refresh=0,ini
   });return()=>controller.abort();
  },[key]);
  useEffect(()=>{exportRequest.current?.abort();setExporting(false);setExportError("");return()=>exportRequest.current?.abort();},[key]);
- const moneyKeys=["MontantCaisse","MontantPaiement","SoldeTheorique","MontantCompte","SoldeApres","MontantSigne","EcartsRapprochement","Ecart"];
- const standard=kind==="caisses"?["CodeCaisse","NomCaisse","DeviseCode","MontantCaisse","SoldeTheorique","TypeCaisse","Responsable","Actif","NomEntite"]:kind==="ecritures"?["CodePaiement","DatePaiement","NomCaisse","LibellePaiement","SensMouvement","MontantPaiement","EtatEcriture","ReferenceExterne","NomTiers","Auteur","Validateur","CodeCompensateur","ObsPaiement","NomEntite"]:["ID_ClotureCaisse","ClotureLe","NomCaisse","SoldeTheorique","MontantCompte","Ecart","Auteur","Motif","NomEntite"];
+ const moneyKeys=["MontantCaisse","MontantPaiement","SoldeTheorique","MontantCompte","SoldeApres","MontantSigne","EcartsRapprochement","Ecart","EntreesBrouillon","SortiesBrouillon","SoldePrevisionnel"];
+ const standard=kind==="caisses"?["CodeCaisse","NomCaisse","DeviseCode","MontantCaisse","SoldeTheorique","TypeCaisse","Responsable","Actif","NomEntite","EntreesBrouillon","SortiesBrouillon","SoldePrevisionnel"]:kind==="ecritures"?["CodePaiement","DatePaiement","NomCaisse","LibellePaiement","SensMouvement","MontantPaiement","EtatEcriture","ReferenceExterne","NomTiers","Auteur","Validateur","ModeValidation","CodeCompensateur","ObsPaiement","NomEntite"]:["ID_ClotureCaisse","ClotureLe","NomCaisse","SoldeTheorique","MontantCompte","Ecart","Auteur","Motif","NomEntite"];
  const base=[...new Set([...standard,...preferences.catalogue.filter(column=>column.id!=="actions").map(column=>column.id)])].filter(column=>!hidden.includes(column));
  const columns=[...base.map(column=>({key:column,label:preferences.catalogue.find(item=>item.id===column)?.label||CAISSE_LABELS[column]||column,width:["LibellePaiement","Motif","ObsPaiement"].includes(column)?280:170,render:row=>{
   if(moneyKeys.includes(column))return column==="Ecart"?<button type="button" className={"caisse-value-link "+(compareDecimal(row.Ecart,"0")===0?"":"is-warning")} onClick={event=>{event.stopPropagation();onOpen({kind,id:row[definition.id]});}}>{formatCurrency(row[column],row.DeviseCode)}</button>:<span className="caisse-money">{formatCurrency(row[column],row.DeviseCode)}</span>;
   if(["DatePaiement","ClotureLe","CreeLe","ModifieLe","ValideLe","DerniereClotureLe"].includes(column))return formatDate(row[column]);
   if(column==="EtatEcriture"||column==="Actif")return <CaisseStatus record={row}/>;
   if(column==="SensMouvement")return <span className={"erp-status "+(String(row.SensMouvement)==="1"?"is-success":"is-neutral")}>{String(row.SensMouvement)==="1"?"Encaissement":"Décaissement"}</span>;
+  if(column==="ModeValidation")return caisseValidationLabel(row.ModeValidation)||"—";
   if(column==="Responsable")return row.Responsable||row.NomResponsable||"Non affecté";
   if(column==="ID_ClotureCaisse")return <strong>{"CL-"+row.ID_ClotureCaisse}</strong>;
   return typeof row[column]==="boolean"?(row[column]?"Oui":"Non"):row[column]??"—";
@@ -59,7 +68,8 @@ export default function CaisseRegister({kind,context,references={},refresh=0,ini
     ...(createEntry?[{label:"Nouvelle écriture",icon:"plus",disabled:row.Actif===false,onSelect:()=>onOpen({kind:"ecritures",defaults:{IdCaisseFk:row.IdCaisse},mode:"create"})}]:[]),
     ...(createClosure?[{label:"Clôturer la caisse",icon:"check-circle",disabled:row.Actif===false,onSelect:()=>onOpen({kind:"clotures",defaults:{IdCaisseFk:row.IdCaisse},mode:"create"})}]:[]),
    ]:[]),
-   ...(canManage&&kind==="ecritures"&&row.EtatEcriture==="DRAFT"&&row.ValidePaiement!==false?[{label:"Modifier le brouillon",icon:"edit",onSelect:()=>onOpen({kind,id:row.IdPaiement,mode:"edit"})},{label:"Valider",icon:"check-circle",onSelect:()=>onOpen({kind,id:row.IdPaiement,mode:"valider"})}]:[]),
+   ...(canEditDrafts&&row.EtatEcriture==="DRAFT"&&row.ValidePaiement!==false?[{label:"Modifier le brouillon",icon:"edit",onSelect:()=>onOpen({kind,id:row.IdPaiement,mode:"edit"})}]:[]),
+   ...(canValidate&&row.ValidationAutorisee===true?[{label:"Valider",icon:"check-circle",onSelect:()=>validate([row])}]:[]),
    ...(canManage&&kind==="ecritures"&&row.ValidePaiement!==false&&row.EtatEcriture==="POSTED"&&!row.IdCompensateurFk&&!row.IdPaiementOrigineFk&&row.ContrepassationAutorisee?[{label:"Contrepasser",icon:"reset",onSelect:()=>onOpen({kind,id:row.IdPaiement,mode:"contrepasser"})}]:[]),
   ]}/></div>}];
  async function exportFile(format){
@@ -72,12 +82,15 @@ export default function CaisseRegister({kind,context,references={},refresh=0,ini
  const activeFilters=Object.values(criteria.filters).filter(value=>value!==""&&value!=null).length+(criteria.q?1:0);
  const toolbar=<><DataTableToolbar showSettings={false} search={draft.q} setSearch={q=>setDraft(previous=>({...previous,q}))} onApply={apply} onReset={reset} pending={pending} take={grid.take} onTake={take=>changeGrid({take,skip:0})} filtersOpen={filtersOpen} toggleFilters={()=>setFiltersOpen(value=>!value)} filterControlsId={prefix+"-filters"} activeFilters={activeFilters} density={density} toggleDensity={()=>setDensity(value=>value==="compact"?"airy":"compact")} loading={current.loading} exportFile={canExport?()=>exportFile("xlsx"):undefined} exportCsv={canExport?()=>exportFile("csv"):undefined} exporting={exporting} exportDisabled={Boolean(current.error)||!current.meta?.filteredCount||!preferences.ready||!preferences.canExport||!exportKeys.length} error={exportError||preferences.error} placeholder={kind==="caisses"?"Rechercher une caisse ou un responsable…":kind==="clotures"?"Rechercher une caisse ou un motif…":"Rechercher un code, un libellé ou une référence…"}/>
   {filtersOpen?<form id={prefix+"-filters"} className="erp-register-filters" onSubmit={event=>{event.preventDefault();apply();}}><div className="erp-register-filter-grid">{filters.map(field=><label key={field.key}><span>{field.label}</span><SearchSelect label={field.label} value={String(draft.filters[field.key]??"")} options={field.options} onChange={value=>setDraft(previous=>({...previous,filters:{...previous.filters,[field.key]:value}}))}/></label>)}{kind!=="caisses"?[{key:"dateMin",label:"Du"},{key:"dateMax",label:"Au"}].map(field=><label key={field.key}><span>{field.label}</span><input type="date" value={draft.filters[field.key]||""} onChange={event=>setDraft(previous=>({...previous,filters:{...previous.filters,[field.key]:event.target.value}}))}/></label>):null}</div><div className="erp-register-filters-footer"><ActionButton variant="primary" type="submit" disabled={current.loading}>Appliquer les filtres</ActionButton></div></form>:null}
+  {canValidate&&selection.length>0&&!current.loading?<div className="erp-register-selection"><strong>{selection.length===1?"1 écriture sélectionnée":selection.length+" écritures sélectionnées"}</strong><ActionButton icon="check-circle" variant="primary" onClick={()=>validate(selection)}>Valider la sélection</ActionButton></div>:null}
   {activeFilters?<p className="caisse-filter-note">{activeFilters} critère{activeFilters>1?"s":""} appliqué{activeFilters>1?"s":""} · <button type="button" className="caisse-value-link" onClick={reset}>Tout afficher</button></p>:null}
  </>;
  const body=<div className="erp-register-table erp-results" data-density={density} aria-busy={current.loading}>
   {current.error?<div className="admin-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
-  <SimpleTable rows={current.rows} columns={columns} tablePreferences={preferences} getRowId={row=>row[definition.id]} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={current.meta} serverState={grid} onServerChange={changeGrid} enableSelection={false} loading={current.loading} toolbar={toolbar} onRowConsult={row=>onOpen({kind,id:row[definition.id]})} consultColumns={[definition.visible[0]]} columnsPanelOpen={settings} columnsAnchorRef={anchor} onColumnsPanelClose={()=>setSettings(false)} emptyMessage={current.error?"La liste est indisponible.":"Aucun résultat pour ces critères."}/>
+  <SimpleTable rows={current.rows} columns={columns} tablePreferences={preferences} getRowId={row=>row[definition.id]} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={current.meta} serverState={grid} onServerChange={changeGrid} enableSelection={canValidate} onSelectionChange={setSelection} selectionResetKey={key} loading={current.loading} toolbar={toolbar} onRowConsult={row=>onOpen({kind,id:row[definition.id]})} consultColumns={[definition.visible[0]]} columnsPanelOpen={settings} columnsAnchorRef={anchor} onColumnsPanelClose={()=>setSettings(false)} emptyMessage={current.error?"La liste est indisponible.":"Aucun résultat pour ces critères."}/>
  </div>;
- const actions=<><RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)} onReferences={()=>setReferencesOpen(true)}/>{onCreate?<ActionButton icon="plus" variant="primary" disabled={!canManage} onClick={()=>onCreate(kind)}>{definition.create}</ActionButton>:null}</>;
+ const validationSettings=!compact&&kind==="ecritures"&&scopedWrite&&context?.canConfigureValidation===true
+  ?[{label:"Paramètres de validation",icon:"check-circle",onSelect:()=>onOpen({kind,mode:"parametres-validation"})}]:[];
+ const actions=<><RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)} onReferences={()=>setReferencesOpen(true)} extraItems={validationSettings}/>{onCreate?<ActionButton icon="plus" variant="primary" disabled={!canCreate} onClick={()=>onCreate(kind)}>{definition.create}</ActionButton>:null}</>;
  return <>{compact?<section className="caisse-drill-register"><header><h3>{title||definition.title}</h3><div>{actions}</div></header>{body}</section>:<RegisterSurface title={title||definition.title} subtitle={definition.subtitle} actions={actions}>{body}</RegisterSurface>}{referencesOpen?<CaisseReferences references={references} onClose={()=>setReferencesOpen(false)}/>:null}</>;
 }
