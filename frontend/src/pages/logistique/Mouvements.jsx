@@ -8,6 +8,7 @@ import {useConsultations} from "../../components/ConsultationProvider";
 import RegisterSurface from "../../components/RegisterSurface";
 import RegisterSettingsButton from "../../components/RegisterSettingsButton";
 import DataTableToolbar from "../../components/DataTableToolbar";
+import DrawerDialog from "../../components/DrawerDialog";
 import ExportMenu from "../../components/ExportMenu";
 import SearchSelect from "../../components/SearchSelect";
 import RowActionsMenu from "../../components/RowDocumentActions";
@@ -20,7 +21,9 @@ import {requestJson,downloadApiFile} from "../../services/api";
 import {accessSignature,tabRights} from "../../services/moduleAccess";
 import {currencyOptions} from "../../utils/money";
 import {asArrayPayload,buildReferenceOptions,formatCurrency,formatDate,formatNumber,SimpleTable,StatusBanner} from "./logistiqueShared";
+import {commandeDateInput} from "./commandeForm";
 import StockReceiptEditor from "./StockReceiptEditor";
+import "../../components/RecordEditor.css";
 import "./Mouvements.css";
 
 const API="/api/logistique/registre/mouvements";
@@ -52,6 +55,50 @@ export function buildMovementQuery(criteria,grid={},columns){
  return params;
 }
 
+function DailyStockCardExport({criteria, depotId, depotLabel, filters, onClose}) {
+ const formId=useId(), request=useRef(null), dateInput=useRef(null);
+ const [day,setDay]=useState(()=>(criteria.dateFrom && criteria.dateFrom===criteria.dateTo)
+  ? criteria.dateFrom : commandeDateInput(new Date().toISOString()).slice(0,10));
+ const [busy,setBusy]=useState(false), [error,setError]=useState("");
+ useEffect(()=>{
+  const frame=requestAnimationFrame(()=>dateInput.current?.focus({preventScroll:true}));
+  return ()=>{cancelAnimationFrame(frame);request.current?.abort();};
+ },[]);
+
+ async function download(event) {
+  event.preventDefault();
+  if(!day||request.current)return;
+  const controller=new AbortController();
+  request.current=controller;
+  setBusy(true);
+  setError("");
+  const params=buildMovementQuery({...criteria,depotId,dateFrom:day,dateTo:day});
+  params.set("documentScope","daily-stock-card");
+  try {
+   await downloadApiFile(API+"/export.xlsx?"+params,{signal:controller.signal,filename:`Fiches-stock-${day}.xlsx`});
+   if(!controller.signal.aborted)onClose();
+  } catch(failure) {
+   if(!controller.signal.aborted){setError(failure.message||"Les fiches de stock n’ont pas pu être préparées.");setBusy(false);}
+  } finally {
+   request.current=null;
+  }
+ }
+
+ return <DrawerDialog title="Fiches de stock" subtitle="Rapport journalier" icon="download" onClose={onClose} defaultWidth={540} storageKey="sauverndeko.stock-card-export.width" bodyClassName="record-editor-body" footer={<footer className="record-editor-footer">
+  <span role="status">{busy?"Préparation du fichier…":""}</span><div><ActionButton onClick={onClose}>Annuler</ActionButton><ActionButton icon="download" variant="primary" type="submit" form={formId} disabled={busy||!day}>Télécharger Excel</ActionButton></div>
+ </footer>}>
+  {error?<p className="record-editor-error" role="alert">{error}</p>:null}
+  <form id={formId} onSubmit={download} aria-busy={busy}>
+   <section className="record-editor-section">
+    <label className="record-field"><span>Date du rapport</span><input ref={dateInput} type="date" required value={day} aria-describedby={formId+"-zone"} disabled={busy} onChange={event=>{setDay(event.target.value);setError("");}}/><small id={formId+"-zone"}>Heure de Kinshasa</small></label>
+    <p className="record-editor-note">{depotLabel}</p>
+    <p className="record-editor-note">Le classeur indique les stocks d’ouverture et de clôture, les entrées et les sorties. Les filtres du registre précisent le détail des mouvements sans modifier les soldes.</p>
+    {filters.length?<ul className="record-editor-note">{filters.map(([key,label,value])=><li key={key}>{label} · {value}</li>)}</ul>:null}
+   </section>
+  </form>
+ </DrawerDialog>;
+}
+
 // Les choix volumineux sont recherchés et paginés ; aucun catalogue tronqué en mémoire.
 function MovementRecordFilter({id,label,kind,value,selectedLabel,onChange,scopeKey}){
  const product=kind==="article",idKey=product?"ID_Article":"ID_Commande",path=product?"articles":"commandes",labelFor=product?articleLabel:orderLabel;
@@ -81,13 +128,14 @@ function MovementRecordFilter({id,label,kind,value,selectedLabel,onChange,scopeK
 }
 
 export default function Mouvements({title = "Mouvements de stock", references,refreshKey,sharedTable,onToggleFkMappings,onDataChanged}){
- const depotScope=useDepotScope();
+ const depotScope=useDepotScope(), entityScope=useEntityScope();
  const preferences=useTablePreferences("logistique.mouvements");
  const {user}=useAuth(),{openProduct,openOrder}=useConsultations(),{refresh:refreshFolders}=useFollowupFolders(),filterId=useId();
  const rights=tabRights(user,"logistique","mouvements"),canRead=Boolean(user?.permissions?.canAccessAdmin&&rights.canRead);
  const scopeKey=JSON.stringify([user?.IdUser,user?.IdEntiteFk,user?.permissions?.canAccessAdmin,user?.permissions?.canWriteData,user?.permissions?.canExportData,accessSignature(user)]);
  const canExport=canRead&&Boolean(user?.permissions)&&user.permissions.canExportData!==false&&rights.canExport===true;
- const canManage=useEntityScope().canWrite&&canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;
+ const articleRights=tabRights(user,"logistique","articles"),canExportStockCards=canExport&&articleRights.canRead&&articleRights.canExport===true;
+ const canManage=entityScope.canWrite&&canRead&&user?.permissions?.canWriteData===true&&rights.canManage===true;
  const managePermission=useRef(canManage);managePermission.current=canManage;
  const shared=useRef(sharedTable);shared.current=sharedTable;
  const previousScope=useRef(scopeKey),columnsAnchorRef=useRef(null),exportRequest=useRef(null);
@@ -97,6 +145,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
  const [filtersOpen,setFiltersOpen]=useState(false),[criteriaError,setCriteriaError]=useState(""),[columnsOpen,setColumnsOpen]=useState(false),[visibleColumns,setVisibleColumns]=useState(MOVEMENT_DEFAULT_COLUMNS);
  const [density,setDensity]=useState(()=>{try{return localStorage.getItem("sauverndeko.table.density")==="airy"?"airy":"compact";}catch{return "compact";}});
  const [selected,setSelected]=useState([]),[selectionReset,setSelectionReset]=useState(0),[exporting,setExporting]=useState(false),[exportError,setExportError]=useState("");
+ const [reportOpen,setReportOpen]=useState(false);
  const [receipt,setReceipt]=useState(null),[savedReceipt,setSavedReceipt]=useState(null),[feedback,setFeedback]=useState(null);
  const appliedColumnFilters=criteria.columnFilters||{},activeFilters=activeEntries(criteria).length+Object.keys(appliedColumnFilters).length;
  const pending=search.trim()!==criteria.q||Object.keys(EMPTY).some(key=>draft[key]!==criteria[key])||JSON.stringify(cleanColumns(columnDraft))!==JSON.stringify(appliedColumnFilters);
@@ -134,6 +183,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
   return()=>{active=false;};
  },[criteria,grid,refreshKey,revision,scopeKey]);
  useEffect(()=>{setExportError("");exportRequest.current?.abort();exportRequest.current=null;setExporting(false);return()=>{exportRequest.current?.abort();};},[criteria,grid.sortBy,grid.sortDir,scopeKey,denied]);
+ useEffect(()=>{setReportOpen(false);},[criteria,entityScope.scopeKey,depotScope.depotId]);
  async function exportData(format="xlsx",selection=null){
   if(!canExport||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||blocked||pending||exporting||!meta?.filteredCount||selection&&!selection.length)return;
   const controller=new AbortController();exportRequest.current?.abort();exportRequest.current=controller;setExporting(true);setExportError("");
@@ -171,10 +221,16 @@ export default function Mouvements({title = "Mouvements de stock", references,re
  const columnsByKey=Object.fromEntries(columns.map(column=>[column.key,column]));
  function valueLabel(key,value){return appliedLabels[key]||options[key]?.find(option=>option.value===String(value))?.label||(key==="dateFrom"||key==="dateTo"?formatDate(value):value);}
  const summary=meta?.summary;
+ const currentDepot=depotScope.depots.find(row=>String(row.id??row.ID_Depot)===depotScope.depotId);
+ const reportDepotLabel=depotScope.depotId?(currentDepot?.label??currentDepot?.NomDepot??"Dépôt sélectionné"):"Tous les dépôts";
+ const reportFilters=[...activeEntries(criteria).filter(([key])=>key!=="dateFrom"&&key!=="dateTo").map(([key,value])=>[key,LABELS[key],valueLabel(key,value)]),...Object.entries(appliedColumnFilters).map(([key,value])=>[`column-${key}`,columnsByKey[key]?.label||"Colonne",value])];
  if(contextChanged||!canRead||denied)return <div className="logistics-screen mouvements-register"><RegisterSurface title={title} subtitle="Journal des entrées, sorties et ajustements"><div className="erp-register-table" role={canRead&&!denied?"status":"alert"}>{contextChanged&&canRead?"Chargement du registre…":error||"Vous n’avez pas accès aux mouvements de stock."}{denied?<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton>:null}</div></RegisterSurface></div>;
  return <div className="logistics-screen mouvements-register">
   <div aria-live="polite"><StatusBanner feedback={feedback}/>{savedReceipt?<ActionButton icon="receipt" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée</ActionButton>:null}</div>
-  <RegisterSurface title={title} subtitle="Journal des entrées, sorties et ajustements" actions={<RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>} tabs={<RegisterCategoryFilter label="Sens du mouvement" value={criteria.sens} options={[{value:"all",label:"Tous les mouvements"},{value:"entree",label:"Entrées"},{value:"sortie",label:"Sorties"}]} onChange={chooseDirection} disabled={loading}/>}>
+  <RegisterSurface title={title} subtitle="Journal des entrées, sorties et ajustements" actions={<>
+   {canExportStockCards?<ActionButton icon="download" aria-haspopup="dialog" disabled={blocked||pending||exporting||!preferences.ready||!preferences.canExport} title={pending?"Appliquez les filtres avant l’export.":"Exporter les fiches de stock d’une journée"} onClick={event=>{event.currentTarget.focus({preventScroll:true});setReportOpen(true);}}>Fiches de stock</ActionButton>:null}
+   <RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>
+  </>} tabs={<RegisterCategoryFilter label="Sens du mouvement" value={criteria.sens} options={[{value:"all",label:"Tous les mouvements"},{value:"entree",label:"Entrées"},{value:"sortie",label:"Sorties"}]} onChange={chooseDirection} disabled={loading}/>}>
    <div className="erp-register-table erp-results" data-density={density} aria-busy={loading}>
     {selected.length?<div className="erp-register-selection"><strong>{formatNumber(selected.length)} mouvement{selected.length===1?"":"s"} sélectionné{selected.length===1?"":"s"}</strong>{selected.length===1?<><ActionButton icon="box" disabled={blocked||!hasProduct(selected[0])} onClick={()=>product(selected[0])}>Article</ActionButton>{hasOrder(selected[0])?<ActionButton icon="receipt" disabled={blocked} onClick={()=>order(selected[0])}>Bon de stock</ActionButton>:null}</>:null}{canExport?<ExportMenu selection exportFile={()=>exportData("xlsx",selected)} exportCsv={()=>exportData("csv",selected)} disabled={blocked||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length} exporting={exporting}/>:null}<ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" disabled={loading} onClick={()=>{setSelectionReset(value=>value+1);shared.current?.clearSelectedRow?.();}}/></div>:null}
     {error?<div className="erp-table-error" role="alert">{error}<ActionButton icon="refresh" disabled={loading} onClick={()=>setRevision(value=>value+1)}>Réessayer</ActionButton></div>:null}
@@ -190,6 +246,7 @@ export default function Mouvements({title = "Mouvements de stock", references,re
     <div className="mouvements-register-footer">{summary?<p role="status">{formatNumber(summary.total)} mouvement{Number(summary.total)===1?"":"s"} · {formatNumber(summary.articles)} article{Number(summary.articles)===1?"":"s"} · {formatNumber(summary.bons)} bon{Number(summary.bons)===1?"":"s"}</p>:null}<p>Heures : Africa/Kinshasa · Journal en lecture seule</p></div>
    </div>
   </RegisterSurface>
+  {reportOpen&&canExportStockCards&&preferences.canExport?<DailyStockCardExport criteria={criteria} depotId={depotScope.depotId} depotLabel={reportDepotLabel} filters={reportFilters} onClose={()=>setReportOpen(false)}/>:null}
   {receipt!=null?<StockReceiptEditor key={scopeKey+receipt} articleId={receipt} references={references} onClose={()=>setReceipt(null)} onSaved={received}/>:null}
  </div>;
 }

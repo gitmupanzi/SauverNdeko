@@ -54,18 +54,15 @@ def export_columns(obj, raw):
     wanted = list(wanted)
     return [{**available[k],"label":LABELS[k],**({"data_type":"text"} if k.startswith("ID_") else {})} for k in wanted]
 
-def write_workbook(target, columns, rows, context):
+def write_workbook(target, columns, rows, context, *, sheet_name="Données", detail=None):
     charter = json.loads((ASSETS / "charte_sauverndeko.json").read_text(encoding="utf-8"))
     palette = charter["palette"]
     book = xlsxwriter.Workbook(target, {"constant_memory":True,"strings_to_formulas":False,"strings_to_urls":False,"default_date_format":"dd/mm/yyyy hh:mm"})
-    count, precise_text = 0, 0
-    seen_currencies = set()
     monetary_export = any(field["column_name"].startswith(("Cout","Valeur")) or field["column_name"] in AMOUNT_FIELDS or field["column_name"] == "MontantsParDevise" for field in columns)
     try:
         book.set_properties({"title":context["title"],"subject":"Liste filtrée complète","author":"SauverNdeko","comments":"Valeurs issues de la vue autorisée, sans recalcul métier."})
-        sheet = book.add_worksheet("Données")
+        sheet = book.add_worksheet(sheet_name)
         base = {"font_name":charter["excel"]["police"],"font_size":11,"font_color":palette["texte"],"valign":"vcenter"}
-        info_fmt = book.add_format({**base,"font_size":10,"font_color":palette["texte_secondaire"],"text_wrap":True})
         header_fmt = book.add_format({**base,"bold":True,"font_color":charter["excel"]["entete_texte"],"bg_color":charter["excel"]["entete_fond"],"text_wrap":True,"border":1,"border_color":charter["excel"]["bordure"]})
         styles = {}
         for zebra in [False,True]:
@@ -73,76 +70,22 @@ def write_workbook(target, columns, rows, context):
             common = {**base,"bg_color":bg,"bottom":1,"bottom_color":charter["excel"]["bordure"]}
             for kind, num_fmt, align in [("text","@","left"),("number","#,##0.###","right"),("integer","#,##0","right"),("weight","#,##0.######","right"),("stockWeight","#,##0.###############","right"),("amount","#,##0.00","right"),("date","dd/mm/yyyy","left"),("datetime","dd/mm/yyyy hh:mm","left")]:
                 styles[zebra,kind] = book.add_format({**common,"num_format":num_fmt,"align":align,"text_wrap":kind=="text"})
-        last_column = len(columns)-1
-        header_row = 0
-        for col, field in enumerate(columns):
-            sheet.write_string(header_row,col,field["label"],header_fmt)
-            width = 30 if field["column_name"] in {"NomArticle","NomClientSaisi"} else 23 if field["data_type"] in DATES else 21
-            sheet.set_column(col,col,width)
-        sheet.set_row(header_row,32)
-        sheet.freeze_panes(header_row+1,1)
-        for row in rows:
-            if monetary_export:
-                currency_parts = row.get("MontantsParDevise")
-                if isinstance(currency_parts,list) and currency_parts:
-                    seen_currencies.update(part.get("code") or None for part in currency_parts if isinstance(part,dict))
-                else:
-                    seen_currencies.add(row.get("DeviseCode") or None)
-            count += 1
-            if count > MAX_EXPORT_ROWS:
-                raise APIError("L’export dépasse 100 000 lignes. Affinez les filtres.","EXPORT_TOO_LARGE",413)
-            line = header_row + count
-            height = 24
-            for col, field in enumerate(columns):
-                key, typ = field["column_name"],field["data_type"]
-                value = row.get(key)
-                zebra = count % 2 == 0
-                if key == "PoidsStockKg":
-                    kind = "stockWeight"
-                elif key == "PoidsUnitaire" or key.startswith("Cout"):
-                    kind = "weight"
-                elif key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")):
-                    kind = "amount"
-                else:
-                    kind = "number"
-                if value is None:
-                    sheet.write_blank(line,col,None,styles[zebra,"number" if typ in NUMERIC else "text"])
-                elif typ in NUMERIC:
-                    number = Decimal(str(value))
-                    if not number.is_finite():
-                        raise APIError("Valeur numérique non exportable.")
-                    if len(number.normalize().as_tuple().digits) > 15:
-                        sheet.write_string(line,col,str(value),styles[zebra,"text"])
-                        precise_text += 1
-                    else:
-                        if kind == "number":
-                            kind = "integer" if number == number.to_integral_value() else "number"
-                        sheet.write_number(line,col,float(number),styles[zebra,kind])
-                elif isinstance(value,datetime):
-                    if timezone.is_aware(value):
-                        value = value.astimezone(context["tz"]).replace(tzinfo=None)
-                    sheet.write_datetime(line,col,value,styles[zebra,"datetime"])
-                elif isinstance(value,date):
-                    sheet.write_datetime(line,col,datetime.combine(value,datetime.min.time()),styles[zebra,"date"])
-                else:
-                    text = ("Oui" if value else "Non") if isinstance(value,bool) else json.dumps(value,ensure_ascii=False,cls=ExactEncoder) if isinstance(value,(dict,list)) else str(value)
-                    if len(text)>32767:
-                        raise APIError("Une valeur dépasse la limite d’une cellule Excel.","EXPORT_CELL_TOO_LONG",413)
-                    sheet.write_string(line,col,text,styles[zebra,"text"])
-                    height = max(height,min(90,18*(1+len(text)//28)))
-            sheet.set_row(line,height)
-        sheet.autofilter(header_row,0,header_row+count,len(columns)-1)
-        sheet.set_landscape()
-        sheet.set_paper(9)
-        sheet.fit_to_pages(1,0)
-        sheet.repeat_rows(header_row)
-        sheet.print_area(0,0,header_row+count,last_column)
-        sheet.set_margins(.4,.4,.6,.6)
-        sheet.set_footer("&LSauverNdeko&CPage &P sur &N&R"+context["generated"])
+        count, precise_text, seen_currencies = write_sheet(
+            sheet, columns, rows, context, header_fmt, styles, monetary_export,
+        )
+        detail_count = None
+        if detail:
+            name, detail_columns, detail_rows = detail
+            detail_count, detail_precision, _ = write_sheet(
+                book.add_worksheet(name), detail_columns, detail_rows, context, header_fmt, styles,
+            )
+            precise_text += detail_precision
         info = book.add_worksheet("Informations")
         info.set_column(0,0,28)
         info.set_column(1,1,100)
-        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée","Sélection parmi les résultats filtrés" if context["raw"].get("selection") is not None else "Tous les résultats filtrés"),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
+        records = [("Document",context["title"]),("Logiciel","SauverNdeko"),("Périmètre",context["scope"]),("Portée",context.get("coverage") or ("Sélection parmi les résultats filtrés" if context["raw"].get("selection") is not None else "Tous les résultats filtrés")),("Lignes exportées",count),("Généré le",context["generated"]),("Fuseau horaire",context["zone"]),("Source",context["source"]),("Recherche de l’indicateur",context["raw"].get("populationQ",context["raw"].get("q",""))),("Recherche dans la liste",context["raw"].get("q","")),("Du",context["raw"].get("dateFrom","")),("Au",context["raw"].get("dateTo","")),("Tri",context["order"]),("Colonnes",", ".join(f["label"] for f in columns)),("Charte",charter["version"]),("Devises",", ".join(sorted(code for code in seen_currencies if code))+(" ; non renseignée" if None in seen_currencies else "") if monetary_export and count else "Aucune ligne" if monetary_export else "Aucun montant exporté")]
+        if detail_count is not None:
+            records.append(("Lignes · " + name, detail_count))
         for key, value in context["filters"].items():
             records.append(("Filtre · "+context.get("filterLabels", {}).get(key, LABELS.get(key, key)),value))
         records.extend(context.get("document_metadata", ()))
@@ -171,6 +114,79 @@ def write_workbook(target, columns, rows, context):
         book.close()
     return count
 
+
+def write_sheet(sheet, columns, rows, context, header_fmt, styles, monetary_export=False):
+    count, precise_text = 0, 0
+    seen_currencies = set()
+    last_column = len(columns)-1
+    header_row = 0
+    for col, field in enumerate(columns):
+        sheet.write_string(header_row,col,field["label"],header_fmt)
+        width = 30 if field["column_name"] in {"NomArticle","NomClientSaisi"} else 23 if field["data_type"] in DATES else 21
+        sheet.set_column(col,col,width)
+    sheet.set_row(header_row,32)
+    sheet.freeze_panes(header_row+1,1)
+    for row in rows:
+        if monetary_export:
+            currency_parts = row.get("MontantsParDevise")
+            if isinstance(currency_parts,list) and currency_parts:
+                seen_currencies.update(part.get("code") or None for part in currency_parts if isinstance(part,dict))
+            else:
+                seen_currencies.add(row.get("DeviseCode") or None)
+        count += 1
+        if count > MAX_EXPORT_ROWS:
+            raise APIError("L’export dépasse 100 000 lignes. Affinez les filtres.","EXPORT_TOO_LARGE",413)
+        line = header_row + count
+        height = 24
+        for col, field in enumerate(columns):
+            key, typ = field["column_name"],field["data_type"]
+            value = row.get(key)
+            zebra = count % 2 == 0
+            if key == "PoidsStockKg":
+                kind = "stockWeight"
+            elif key == "PoidsUnitaire" or key.startswith("Cout"):
+                kind = "weight"
+            elif key.startswith(("Montant","PU","PV","Valeur","TotalRegle","Reste","Marge")):
+                kind = "amount"
+            else:
+                kind = "number"
+            if value is None:
+                sheet.write_blank(line,col,None,styles[zebra,"number" if typ in NUMERIC else "text"])
+            elif typ in NUMERIC:
+                number = Decimal(str(value))
+                if not number.is_finite():
+                    raise APIError("Valeur numérique non exportable.")
+                if len(number.normalize().as_tuple().digits) > 15:
+                    sheet.write_string(line,col,str(value),styles[zebra,"text"])
+                    precise_text += 1
+                else:
+                    if kind == "number":
+                        kind = "integer" if number == number.to_integral_value() else "number"
+                    sheet.write_number(line,col,float(number),styles[zebra,kind])
+            elif isinstance(value,datetime):
+                if timezone.is_aware(value):
+                    value = value.astimezone(context["tz"]).replace(tzinfo=None)
+                sheet.write_datetime(line,col,value,styles[zebra,"datetime"])
+            elif isinstance(value,date):
+                sheet.write_datetime(line,col,datetime.combine(value,datetime.min.time()),styles[zebra,"date"])
+            else:
+                text = ("Oui" if value else "Non") if isinstance(value,bool) else json.dumps(value,ensure_ascii=False,cls=ExactEncoder) if isinstance(value,(dict,list)) else str(value)
+                if len(text)>32767:
+                    raise APIError("Une valeur dépasse la limite d’une cellule Excel.","EXPORT_CELL_TOO_LONG",413)
+                sheet.write_string(line,col,text,styles[zebra,"text"])
+                height = max(height,min(90,18*(1+len(text)//28)))
+        sheet.set_row(line,height)
+    sheet.autofilter(header_row,0,header_row+count,len(columns)-1)
+    sheet.set_landscape()
+    sheet.set_paper(9)
+    sheet.fit_to_pages(1,0)
+    sheet.repeat_rows(header_row)
+    sheet.print_area(0,0,header_row+count,last_column)
+    sheet.set_margins(.4,.4,.6,.6)
+    sheet.set_footer("&LSauverNdeko&CPage &P sur &N&R"+context["generated"])
+    return count, precise_text, seen_currencies
+
+
 def indicator_workbook(actor, key, raw):
     obj,condition,_,label,_,_,fixed = resolve_indicator(key,raw)
     obj = restrict_order_source(obj, actor, action="export")
@@ -189,6 +205,9 @@ def register_workbook(actor, kind, raw, file_format="xlsx"):
     if document_scope == "stock-card":
         from .stock_card import stock_card_workbook
         return stock_card_workbook(actor, kind, raw, file_format)
+    if document_scope == "daily-stock-card":
+        from .daily_stock_cards import daily_stock_card_workbook
+        return daily_stock_card_workbook(actor, kind, raw, file_format)
     if document_scope not in (None,"record"):
         raise APIError("Portée documentaire non autorisée.")
     if document_scope == "record":

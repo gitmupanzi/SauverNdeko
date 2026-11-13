@@ -52,6 +52,22 @@ class LogisticsTabAccessTests(SimpleTestCase):
                 with self.assertRaises(APIError):
                     register_workbook(self.actor, "mouvements", query, file_format=extension)
 
+    def test_daily_stock_cards_check_both_source_tabs(self):
+        query = {"documentScope": "daily-stock-card", "dateFrom": "2026-11-12", "dateTo": "2026-11-12"}
+        for tab in ("articles", "mouvements"):
+            self.tabs.clear()
+            self.deny(tab, "canExport")
+            with self.subTest(tab=tab), self.assertRaises(APIError) as denied:
+                register_workbook(self.actor, "mouvements", query)
+            self.assertEqual(denied.exception.status_code, 403)
+
+    def test_daily_stock_cards_require_one_day_and_excel(self):
+        query = {"documentScope": "daily-stock-card", "dateFrom": "2026-11-12"}
+        with self.assertRaisesMessage(APIError, "Choisissez une seule date"):
+            register_workbook(self.actor, "mouvements", {**query, "dateTo": "2026-11-13"})
+        with self.assertRaisesMessage(APIError, "disponible en Excel"):
+            register_workbook(self.actor, "mouvements", {**query, "dateTo": query["dateFrom"]}, file_format="csv")
+
     def test_forbidden_lines_cannot_be_recovered_from_a_related_workspace(self):
         self.deny("details", "canRead", "canManage", "canExport")
         self.assertTrue(self.authorize("/api/logistique/consultations/commande/19"))
