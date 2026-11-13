@@ -107,7 +107,7 @@ class ProfessionalsAPI(unittest.TestCase):
         client.force_authenticate(cls.actor(index, **rights))
         return client
 
-    def create(self, user=None, **changes):
+    def create(self, user=None, *, publish=False, client=None, **changes):
         user = user or self.account(self.entities[0])
         data = {'IdUserFk': user['IdUser'], 'IdTypeProfessionnelFk': self.typ, 'IdSecteurFk': self.sector,
                 'TitrePublic': 'Profil de recette', 'PresentationPublique': 'Description publique de recette.',
@@ -115,7 +115,9 @@ class ProfessionalsAPI(unittest.TestCase):
                 'ExperienceAns': 8, 'ContactAutorise': True}
         data.update(changes)
         body = {'data': data, 'competenceIds': [self.skill], 'prestationIds': [self.service], 'affiliations': [], 'requestId': str(uuid.uuid4())}
-        result = self.client().post(BASE+'/profils', body, format='json')
+        if publish is not None:
+            body['publish'] = publish
+        result = (client or self.client()).post(BASE+'/profils', body, format='json')
         self.assertEqual(result.status_code, 201, result.data)
         return result.data['data'], body
 
@@ -142,7 +144,7 @@ class ProfessionalsAPI(unittest.TestCase):
         user = user or self.account(self.entities[0])
         body = {'data': {'IdUserFk': user['IdUser'], 'IdTypeProfessionnelFk': self.typ,
             'IdSecteurFk': self.sector, 'TitrePublic': 'Profil fictif avec photo', 'PresentationPublique': 'Description de recette uniquement.'},
-            'photoDataUrl': photo or self.image_url(), 'requestId': str(uuid.uuid4()), **extra}
+            'photoDataUrl': photo or self.image_url(), 'requestId': str(uuid.uuid4()), 'publish': False, **extra}
         response = (client or self.client()).post(BASE+'/profils', body, format='json')
         self.assertEqual(response.status_code, 201, response.data)
         return response.data['data'], body
@@ -712,6 +714,73 @@ class ProfessionalsAPI(unittest.TestCase):
             self.assertEqual(response.status_code, 413, response.data)
             self.assertEqual(response.data['error']['code'], 'PROFESSIONAL_BODY_TOO_LARGE')
             self.assertEqual(list(folder.rglob('*.jpg')), [])
+
+
+
+    def test_30_publication_default_and_company_setting(self):
+        preferences = BASE + '/contexte'
+        other = self.client(index=1)
+        client = self.client()
+        self.assertIs(client.get(preferences).data['data']['defaultProfileVisibility'], True)
+        public, _ = self.create(publish=None)
+        self.assertIs(public['record']['Publie'], True)
+        self.assertIs(self.create(publish=False)[0]['record']['Publie'], False)
+        payload = {'enabled': False, 'motif': 'Préparer les fiches en brouillon'}
+        self.assertEqual(self.client(user=self.reader).put(preferences, payload, format='json').status_code, 403)
+        try:
+            changed = client.put(preferences, payload, format='json')
+            self.assertEqual(changed.status_code, 200, changed.data)
+            self.assertIs(changed.data['data']['defaultProfileVisibility'], False)
+            self.assertIs(other.get(preferences).data['data']['defaultProfileVisibility'], True)
+            self.assertIs(self.create(publish=None)[0]['record']['Publie'], False)
+            self.assertIs(self.create(publish=True)[0]['record']['Publie'], True)
+            pk = public['record']['IdProfessionnel']
+            self.assertEqual(other.get(f'{BASE}/annuaire/{pk}').status_code, 200)
+            event = self.sql.execute('''SELECT "NewData" FROM systeme."T_Audit_Log"
+                WHERE "Operation"='PROFESSIONAL_PUBLICATION_SETTINGS' AND "IdEntiteFk"=%s
+                ORDER BY "IdLog" DESC LIMIT 1''', [self.entities[0]]).fetchone()
+            self.assertEqual(event['NewData']['motif'], payload['motif'])
+        finally:
+            client.put(preferences, {'enabled': True, 'motif': 'Fin de recette'}, format='json')
+
+    def test_31_bulk_publication_is_atomic_scoped_and_replayable(self):
+        client = self.client()
+        endpoint = BASE + '/profils/actions'
+        first, _ = self.create()
+        second, _ = self.create()
+        incomplete, _ = self.create(PresentationPublique=None)
+        foreign, _ = self.create(self.account(self.entities[1]), client=self.client(index=1))
+
+        def selection(*profiles):
+            return [{'id': profile['record']['IdProfessionnel'], '_version': profile['_version']}
+                    for profile in profiles]
+
+        def batch(operation, *profiles):
+            return {'requestId': str(uuid.uuid4()), 'action': operation,
+                    'motif': 'Recette de publication groupée', 'rows': selection(*profiles)}
+
+        first_id = first['record']['IdProfessionnel']
+        self.assertEqual(client.post(endpoint, batch('publier', first, incomplete), format='json').status_code, 422)
+        self.assertEqual(client.get(f'{BASE}/annuaire/{first_id}').status_code, 404)
+        self.assertEqual(client.post(endpoint, batch('publier', first, foreign), format='json').status_code, 404)
+        self.assertEqual(client.get(f'{BASE}/annuaire/{first_id}').status_code, 404)
+
+        request = batch('publier', first, second)
+        published = client.post(endpoint, request, format='json')
+        self.assertEqual(published.status_code, 200, published.data)
+        self.assertEqual(published.data['data']['count'], 2)
+        replay = client.post(endpoint, request, format='json')
+        self.assertEqual(replay.data, published.data)
+        conflict = client.post(endpoint, {**request, 'rows': selection(incomplete)}, format='json')
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(client.post(endpoint, batch('depublier', first, second), format='json').status_code, 409)
+        self.assertEqual(client.get(f'{BASE}/annuaire/{first_id}').status_code, 200)
+
+        current = [client.get(f"{BASE}/profils/{profile['record']['IdProfessionnel']}").data['data']
+                   for profile in (first, second)]
+        withdraw = client.post(endpoint, batch('depublier', *current), format='json')
+        self.assertEqual(withdraw.status_code, 200, withdraw.data)
+        self.assertEqual(client.get(f'{BASE}/annuaire/{first_id}').status_code, 404)
 
 
 if __name__ == '__main__':

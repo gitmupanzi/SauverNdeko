@@ -38,12 +38,15 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  ]);
  const [excelRow]=p.logisticsBatchFromMatrix('articles',excelCells,openingRefs,{hasHeaders:true});
  eq(excelRow.values.CodeArticleInterne,'000123');eq(excelRow.values.InformationArticle,'Ligne 1\nLigne 2');
- eq(excelRow.values.DatePeremptionArticle,'2027-11-30');eq(excelRow.values.VisibleCatalogue,false);
+ eq(excelRow.values.DatePeremptionArticle,'2027-11-30');eq(excelRow.values.VisibleCatalogue,true);
  eq(excelRow.initialLots[0].NumeroLot,'0012');eq(excelCells.length,2);
  throws(()=>p.logisticsBatchFromMatrix('articles',[['Article'],['Nom','Colonne en trop']],openingRefs,{hasHeaders:true}),/ligne 2/i);
 
  eq(p.logisticsBatchRow('articles',openingRefs).values.VisibleCatalogue,true);
- eq(openingRows.map(row=>row.values.VisibleCatalogue),[false,false]);
+ eq(openingRows.map(row=>row.values.VisibleCatalogue),[true,true]);
+ const visibilityTable=[['Article','Visible dans l’annuaire'],['Privé','Non'],['Public','Oui'],['Par défaut','']];
+ eq(p.logisticsBatchFromMatrix('articles',visibilityTable,openingRefs,{hasHeaders:true}).map(article=>article.values.VisibleCatalogue),[false,true,true]);
+ eq(p.logisticsBatchFromMatrix('articles',visibilityTable,refs,{hasHeaders:true}).map(article=>article.values.VisibleCatalogue),[false,true,false]);
  eq(openingRows[0].values.DatePeremptionArticle,'2027-11-30');
  eq(p.logisticsRowPayload('articles',openingRows[0]).DatePeremptionArticle,'2027-11-30');
  eq(p.validateLogisticsBatch('articles',openingRows,openingRefs,'',true),{header:{},rows:{}});
@@ -143,7 +146,7 @@ const refs={defaultTypeClientId:3,defaultCurrencyId:451,typesClients:[{id:3,labe
  eq(mark(openingTree,'SimpleTable').props.rows.length,2);
  await mark(openingTree,'Frame').props.onSubmit();openingTree=renderOpening();
  const openingBody=globalThis.__calls[0].options.body,openingData=JSON.parse(openingBody);
- eq(openingData.openingReceipt,true);eq(openingData.rows.map(row=>row.data.VisibleCatalogue),[false,false]);
+ eq(openingData.openingReceipt,true);eq(openingData.rows.map(row=>row.data.VisibleCatalogue),[true,true]);
  ok(input(openingTree,'group-opening-stock').props.disabled);
  const openingResult={requestId:openingData.requestId,count:2,records:openingData.rows.map(({clientRowId})=>({clientRowId}))};
  globalThis.__responses.push({success:true,status:201,data:openingResult});

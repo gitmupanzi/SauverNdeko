@@ -1093,6 +1093,18 @@
         {
           "table_schema": "geolocalisation",
           "table_name": "T_Niveau_2",
+          "column_name": "PublierDansAnnuaire",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "geolocalisation.fn_publication_annuaire_defaut(2)",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_2",
           "column_name": "ID_Niveau_2",
           "data_type": "integer",
           "is_nullable": "NO",
@@ -1575,6 +1587,18 @@
         "ID_Niveau_3"
       ],
       "columns": [
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_3",
+          "column_name": "PublierDansAnnuaire",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "geolocalisation.fn_publication_annuaire_defaut(3)",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
         {
           "table_schema": "geolocalisation",
           "table_name": "T_Niveau_3",
@@ -2129,6 +2153,18 @@
         {
           "table_schema": "geolocalisation",
           "table_name": "T_Niveau_4",
+          "column_name": "PublierDansAnnuaire",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "geolocalisation.fn_publication_annuaire_defaut(4)",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_4",
           "column_name": "ID_Niveau_4",
           "data_type": "integer",
           "is_nullable": "NO",
@@ -2612,6 +2648,18 @@
         "ID_Niveau_5"
       ],
       "columns": [
+        {
+          "table_schema": "geolocalisation",
+          "table_name": "T_Niveau_5",
+          "column_name": "PublierDansAnnuaire",
+          "data_type": "boolean",
+          "is_nullable": "NO",
+          "column_default": "geolocalisation.fn_publication_annuaire_defaut(5)",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "is_identity": "NO"
+        },
         {
           "table_schema": "geolocalisation",
           "table_name": "T_Niveau_5",

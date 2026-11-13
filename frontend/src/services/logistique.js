@@ -53,6 +53,10 @@ function articleWrite(path, method, payload, photo) {
   const body=new FormData();body.set("payload",JSON.stringify(payload));body.set("photo",photo,"photo.jpg");
   return requestJson("/api/logistique"+path,{method,requiresAuth:true,body});
 }
+export function setLogistiqueArticlePublication(ids, visible) {
+  return articleWrite("/articles/publication", "POST", { ids, visible });
+}
+
 export function createLogistiqueArticle(payload, photo) {return articleWrite("/articles","POST",payload,photo);}
 
 export function updateLogistiqueArticle(id, payload, photo) {return articleWrite("/articles/"+id,"PUT",payload,photo);}

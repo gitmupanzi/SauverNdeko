@@ -20,7 +20,7 @@ from apps.support.portal import (SupportContextView, SupportEntitiesView, Suppor
     SupportKanbanView, SupportTicketsView, SupportActionsView, SupportCommentsView,
     SupportDocumentsView, SupportDocumentDownloadView, SupportExcelView, SupportCSVView)
 from apps.support.batches import SupportTemplateView, SupportExcelPreviewView, SupportBatchView
-from apps.core.territorial_portal import TerritorialOverviewView,TerritorialRegisterView,TerritorialReferencesView,TerritorialExcelView,TerritorialCSVView
+from apps.core.territorial_portal import TerritorialOverviewView,TerritorialRegisterView,TerritorialReferencesView,TerritorialExcelView,TerritorialCSVView,TerritorialPublicationView
 from apps.core.territorial_batches import TerritorialBatchView
 from apps.core.territorial_excel import TerritorialExcelTemplateView, TerritorialExcelImportView
 from apps.core.table_preferences import TablePreferencesView
@@ -57,6 +57,7 @@ from apps.logistique.payments import PaymentPreparationView, PaymentBatchView
 from apps.logistique.invoices import InvoiceView
 from apps.logistique.stock_returns import StockReturnsView
 from apps.logistique.order_composer import OrderComposerView, OrderCompositionView
+from apps.logistique.article_publication import ArticlePublicationView
 from apps.logistique.receipts import ArticleReceiptView
 from apps.accounts.photos import ProfilePhotoView
 from apps.logistique.photos import ArticlePhotoView, PublicArticlePhotoView
@@ -126,6 +127,7 @@ urlpatterns = [
     re_path(r"^api/professionnels/annuaire/(?P<pk>[0-9]+)/photo/?$", ProfessionalPublicPhotoView.as_view()),
     re_path(r"^api/professionnels/profils/(?P<pk>[0-9]+)/photo/?$", ProfessionalManagementPhotoView.as_view()),
     re_path(r"^api/professionnels/annuaire(?:/(?P<pk>[0-9]+))?/?$", ProfessionalDirectoryView.as_view()),
+    re_path(r"^api/professionnels/profils/actions/?$", ProfileActionView.as_view()),
     re_path(r"^api/professionnels/profils/(?P<pk>[0-9]+)/actions/?$", ProfileActionView.as_view()),
     re_path(r"^api/professionnels/profils(?:/(?P<pk>[0-9]+))?/?$", ProfessionalProfilesView.as_view()),
     re_path(r"^api/caisse/contexte/?$", CashContextView.as_view()),
@@ -175,6 +177,7 @@ urlpatterns = [
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/panier/?$",TerritorialBatchView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/modele-excel/?$",TerritorialExcelTemplateView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/import-excel/?$",TerritorialExcelImportView.as_view()),
+    re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/publication/?$",TerritorialPublicationView.as_view()),
     re_path(r"^api/geolocalisation/territoires/synthese/?$",TerritorialOverviewView.as_view()),
     re_path(r"^api/geolocalisation/territoires/references/(?P<kind>[a-z0-9-]+)/?$",TerritorialReferencesView.as_view()),
     re_path(r"^api/geolocalisation/territoires/registres/(?P<kind>[a-z0-9-]+)/export\.xlsx$",TerritorialExcelView.as_view()),
@@ -258,6 +261,7 @@ urlpatterns = [
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/facture/?$", InvoiceView.as_view()),
     re_path(r"^api/logistique/commandes/(?P<pk>[0-9]+)/composition/?$", OrderCompositionView.as_view()),
     re_path(r"^api/logistique/commandes/composees/?$", OrderComposerView.as_view()),
+    re_path(r"^api/logistique/articles/publication/?$", ArticlePublicationView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/receptions/?$", ArticleReceiptView.as_view()),
     re_path(r"^api/logistique/articles/(?P<pk>[0-9]+)/photo/?$", ArticlePhotoView.as_view()),
     re_path(r"^api/public/articles/(?P<pk>[0-9]+)/photo/?$", PublicArticlePhotoView.as_view(), {"kind":"articles"}),

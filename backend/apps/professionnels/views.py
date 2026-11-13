@@ -37,6 +37,9 @@ class ContextView(ProfessionalView):
     def get(self, request):
         return ok(service.capabilities(request.user))
 
+    def put(self, request):
+        return ok(service.publication_settings(request.user, request.data))
+
 
 class EntitiesView(ProfessionalView):
     def get(self, request):
@@ -71,7 +74,9 @@ class ProfilesView(ProfessionalView):
 
 
 class ProfileActionView(ProfessionalView):
-    def post(self, request, pk):
+    def post(self, request, pk=None):
+        if pk is None:
+            return ok(service.publication_batch(request.user, request.data))
         return ok(service.action(request.user, pk, request.data))
 
 

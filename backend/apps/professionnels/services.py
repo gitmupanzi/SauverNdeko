@@ -18,7 +18,7 @@ from apps.core import db
 from apps.core.field_references import reference_context, reference_options
 from apps.core.module_access import access_snapshot, can_use_tab, require_module, require_tab
 from apps.core.reference_integration import entity_actor
-from apps.core.repository import positive, set_admin_actor
+from apps.core.repository import audit, positive, set_admin_actor
 from apps.core.responses import APIError, ExactEncoder
 from apps.core.tenancy import read_entity, require_entity
 from .photos import parse_photo, photo_transaction, save_photo
@@ -39,6 +39,7 @@ REFERENCES = {
     'typesLiens': ('T_Professionnel_Entite', 'IdTypeLienFk'),
 }
 PRIVATE_FIELDS = {'CreationRequestId', 'CreationPayloadHash', 'RechercheVecteur', 'TexteRecherche'}
+PUBLISH_FIELDS = ('IdSecteurFk', 'TitrePublic', 'PresentationPublique')
 ACTIONS = {'publier', 'depublier', 'archiver', 'reactiver'}
 
 
@@ -50,13 +51,14 @@ def capabilities(actor):
     require_module(actor, 'professionnels')
     rights = access_snapshot(actor)['modules']['professionnels']
     entity = read_entity(actor)
-    owner = db.one('SELECT "ValideEntite" active FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
+    owner = db.one('SELECT "ValideEntite" active,"PartageProfilsPublicParDefaut" publication FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity]) if entity else None
     manage = bool(actor.admin and can_use_tab(actor, 'professionnels', 'profils', 'manage')
                   and entity and owner and owner['active'] is not False and not settings.DB_READ_ONLY)
     return {'entityId': entity, 'activeEntityId': entity, 'platformAdmin': actor.global_admin,
             'canRead': can_use_tab(actor, 'professionnels', 'annuaire'),
             'canReadRegistry': bool(actor.admin and rights['canManage'] and can_use_tab(actor, 'professionnels', 'profils')),
             'canManage': manage, 'canPublish': manage, 'readOnly': settings.DB_READ_ONLY,
+            'defaultProfileVisibility': owner['publication'] if manage else None,
             'policyReason': '' if manage else 'Choisissez une entreprise active pour gérer ses profils.' if actor.global_admin and not entity else 'Consultation uniquement.'}
 
 
@@ -66,6 +68,28 @@ def writable(actor):
     if not actor.admin:
         fail('Votre rôle ne permet pas de gérer les profils professionnels.', code='PROFESSIONAL_FORBIDDEN', status=403)
     return require_entity(actor)
+
+
+@transaction.atomic
+def publication_settings(actor, body):
+    owner = writable(actor)
+    if not isinstance(body, dict) or set(body) != {'enabled', 'motif'} or type(body['enabled']) is not bool:
+        fail('Choisissez Oui ou Non et indiquez le motif du changement.')
+    motive = text_value(body['motif'], 'motif', 1000, required=True)
+    row = db.one(
+        'SELECT "PartageProfilsPublicParDefaut" AS publication FROM systeme."T_Entite" '
+        'WHERE "IdEntite"=%s AND "ValideEntite" IS TRUE FOR UPDATE', [owner]
+    )
+    if not row:
+        fail('Choisissez une entreprise active.', code='ENTITY_REQUIRED', status=403)
+    enabled = body['enabled']
+    if row['publication'] != enabled:
+        set_admin_actor(actor)
+        db.query('UPDATE systeme."T_Entite" SET "PartageProfilsPublicParDefaut"=%s WHERE "IdEntite"=%s', [enabled, owner])
+        audit({'schema': 'systeme', 'name': 'T_Entite'}, 'PROFESSIONAL_PUBLICATION_SETTINGS',
+              {'PartageProfilsPublicParDefaut': row['publication']},
+              {'PartageProfilsPublicParDefaut': enabled, 'motif': motive}, actor, entity_id=owner)
+    return capabilities(actor)
 
 
 def scope(actor, alias='v'):
@@ -348,6 +372,8 @@ def text_value(raw, field, limit=255, required=False):
 
 def envelope(actor, body, operation, pk=None, *, batch_digest=None):
     allowed = {'data', 'competenceIds', 'prestationIds', 'affiliations', 'requestId', '_version', 'motif', 'photoDataUrl', 'removePhoto'} if operation in {'create', 'update'} else {'action', 'requestId', '_version', 'motif'}
+    if operation == 'create':
+        allowed.add('publish')
     if not isinstance(body, dict) or set(body)-allowed:
         fail('Demande invalide.')
     try:
@@ -536,8 +562,16 @@ def create(actor, body, *, _photo_files, _batch_digest=None):
     if replayed:
         return detail(actor, replayed, True)
     values = profile_values(actor, body.get('data'))
+    publication = body.get('publish')
+    if 'publish' in body and type(publication) is not bool:
+        fail('Choisissez Oui ou Non.', 'publish')
+    if publication is None:
+        preference = db.one('SELECT "PartageProfilsPublicParDefaut" AS publication FROM systeme."T_Entite" WHERE "IdEntite"=%s', [owner])
+        publication = bool(preference and preference['publication'] and all(values.get(field) for field in PUBLISH_FIELDS))
+    if publication:
+        _check_publication(entity_actor(actor, owner), values)
     photo_change = parse_photo(body)
-    values.update(IdEntiteFk=owner, ValideProfessionnel=True, Publie=False, CreeParUserFk=actor.pk,
+    values.update(IdEntiteFk=owner, ValideProfessionnel=True, Publie=publication, CreeParUserFk=actor.pk,
                   ModifieParUserFk=actor.pk, CreationRequestId=request_id, CreationPayloadHash=digest)
     row = db.one('INSERT INTO professionnel."T_Professionnel"('+','.join(db.ident(k) for k in values)+') VALUES('+','.join(['%s']*len(values))+') RETURNING "IdProfessionnel"', list(values.values()))
     pk = row['IdProfessionnel']
@@ -569,14 +603,22 @@ def modify(actor, pk, body, *, _photo_files):
     return detail(actor, pk)
 
 
+def _check_publication(actor, values):
+    for field in PUBLISH_FIELDS:
+        if not values.get(field):
+            fail('Complétez cette information avant de publier le profil.', field)
+    for field in ('IdTypeProfessionnelFk', 'IdSecteurFk', 'IdSpecialiteFk'):
+        _valid_reference(actor, 'T_Professionnel', field, values.get(field))
+
+
 @transaction.atomic
-def action(actor, pk, body):
+def action(actor, pk, body, *, _batch_digest=None):
     owner = writable(actor)
     pk = positive(pk)
     operation = body.get('action') if isinstance(body, dict) else None
     if operation not in ACTIONS:
         fail('Action non autorisée.')
-    request_id, digest, motive = envelope(actor, body, operation, pk)
+    request_id, digest, motive = envelope(actor, body, operation, pk, batch_digest=_batch_digest)
     _request(actor, request_id, digest, motive, operation)
     old = record(actor, pk, lock=True)
     if old['IdEntiteFk'] != owner:
@@ -584,15 +626,15 @@ def action(actor, pk, body):
     if _replay(request_id, digest, pk):
         return detail(actor, pk, True)
     _revision(body.get('_version'), old)
+    if _batch_digest is not None:
+        if old['ValideProfessionnel'] is not True:
+            fail('Réactivez ce profil avant de modifier sa publication.', code='PROFILE_ARCHIVED', status=409)
+        if old['Publie'] is (operation == 'publier'):
+            return
     if operation == 'publier' and old['ValideProfessionnel'] is not True:
         fail('Réactivez ce profil avant de le publier.', code='PROFILE_ARCHIVED', status=409)
     if operation == 'publier':
-        for field in ('IdSecteurFk', 'TitrePublic', 'PresentationPublique'):
-            if not old.get(field):
-                fail('Complétez cette information avant de publier le profil.', field)
-        ref_actor = entity_actor(actor, owner)
-        for field in ('IdTypeProfessionnelFk', 'IdSecteurFk', 'IdSpecialiteFk'):
-            _valid_reference(ref_actor, 'T_Professionnel', field, old.get(field))
+        _check_publication(entity_actor(actor, owner), old)
     values = {'ModifieParUserFk': actor.pk}
     if operation in {'publier', 'depublier'}:
         values['Publie'] = operation == 'publier'
@@ -601,4 +643,60 @@ def action(actor, pk, body):
     else:
         values.update(ValideProfessionnel=True, Publie=False)
     db.query('UPDATE professionnel."T_Professionnel" SET '+','.join(db.ident(key)+'=%s' for key in values)+' WHERE "IdProfessionnel"=%s', [*values.values(), pk])
-    return detail(actor, pk)
+    if _batch_digest is None:
+        return detail(actor, pk)
+
+
+@transaction.atomic
+def publication_batch(actor, body):
+    owner = writable(actor)
+    if not isinstance(body, dict) or set(body) != {'requestId', 'action', 'motif', 'rows'}:
+        fail('Vérifiez le format de la sélection.')
+    operation = body['action']
+    if operation not in ('publier', 'depublier'):
+        fail('Action non autorisée.')
+    try:
+        request_id = uuid.UUID(str(body['requestId']))
+    except (TypeError, ValueError):
+        fail('Identifiant de demande requis.', 'requestId')
+    motive = text_value(body['motif'], 'motif', 1000, required=True)
+    rows = body['rows']
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 100:
+        fail('Sélectionnez de 1 à 100 profils.')
+    versions = {}
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {'id', '_version'}:
+            fail('Vérifiez la sélection des profils.')
+        pk = positive(row['id'])
+        version = row['_version']
+        if pk in versions or not isinstance(version, str) or not re.fullmatch(r'[1-9][0-9]{0,18}', version):
+            fail('Rechargez les profils avant de les sélectionner.')
+        versions[pk] = version
+
+    selected = sorted(versions.items())
+    proof = {'actor': actor.pk, 'entity': owner, 'action': operation, 'motif': motive, 'rows': selected}
+    digest = hashlib.sha256(json.dumps(proof, sort_keys=True).encode('utf8')).hexdigest()
+    db.query('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))', [f'professionnel:publication:{request_id}'])
+    previous = db.one(
+        '''SELECT "NewData"->>'digest' AS digest FROM systeme."T_Audit_Log"
+           WHERE "TableName"='professionnel.T_Professionnel'
+             AND "Operation"='PUBLICATION_BATCH' AND "NewData"->>'requestId'=%s
+           ORDER BY "IdLog" DESC LIMIT 1''', [str(request_id)]
+    )
+    result = {'count': len(selected), 'action': operation}
+    if previous:
+        if previous['digest'] != digest:
+            fail('Cette demande a déjà été utilisée avec un autre contenu.', code='IDEMPOTENCY_CONFLICT', status=409)
+        return result
+    for pk, version in selected:
+        try:
+            action(actor, pk, {'requestId': str(uuid.uuid5(request_id, f'publication:{pk}')),
+                               'action': operation, 'motif': motive, '_version': version},
+                   _batch_digest=digest)
+        except APIError as error:
+            if error.status_code == 422 and 'PresentationPublique' in error.detail:
+                fail(f'Le profil n° {pk} doit avoir une présentation avant d’être publié.')
+            raise
+    audit({'schema': 'professionnel', 'name': 'T_Professionnel'}, 'PUBLICATION_BATCH',
+          new={**result, 'requestId': str(request_id), 'digest': digest}, actor=actor, entity_id=owner)
+    return result

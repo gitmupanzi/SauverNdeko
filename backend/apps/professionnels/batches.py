@@ -62,12 +62,14 @@ def _row_errors(detail):
 @transaction.atomic
 def create_batch(actor, body):
     service.writable(actor)
-    if not isinstance(body, dict) or set(body) != {'requestId', 'rows'}:
+    if not isinstance(body, dict) or not {'requestId', 'rows'} <= body.keys() or set(body) - {'requestId', 'rows', 'publish'}:
         invalid(header={'rows': 'Vérifiez le format du panier.'})
     try:
         request_id = uuid.UUID(str(body.get('requestId')))
     except (AttributeError, TypeError, ValueError):
         invalid(header={'requestId': 'Identifiant de demande invalide.'})
+    if 'publish' in body and type(body['publish']) is not bool:
+        invalid(header={'publish': 'Choisissez Oui ou Non.'})
     rows = body.get('rows')
     if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_ROWS:
         invalid(header={'rows': 'Ajoutez de 1 à 100 profils.'})
@@ -107,9 +109,12 @@ def create_batch(actor, body):
         raise APIError('Le panier dépasse 2 Mo. Enregistrez moins de profils à la fois.', 'PROFESSIONAL_BATCH_TOO_LARGE', 413)
     digest = hashlib.sha256(canonical).hexdigest()
     records, replays = [], []
+    published_count = 0
     for index, row in enumerate(rows):
         payload = {key: value for key, value in row.items() if key != 'clientRowId'}
         payload['requestId'] = str(uuid.uuid5(request_id, f'professionnels:{actor.pk}:{index}'))
+        if 'publish' in body:
+            payload['publish'] = body['publish']
         try:
             # Savepoint par ligne : une contrainte ne casse pas la lecture des
             # autres erreurs. L'exception finale annule le lot et ses audits.
@@ -130,9 +135,10 @@ def create_batch(actor, body):
         else:
             records.append({'clientRowId': row['clientRowId'], 'id': result['record']['IdProfessionnel']})
             replays.append(result.get('replayed') is True)
+            published_count += int(result['record'].get('Publie') is True)
     if issues:
         invalid(issues)
-    return {'requestId': str(request_id), 'count': len(records), 'records': records}, all(replays)
+    return {'requestId': str(request_id), 'count': len(records), 'publishedCount': published_count, 'records': records}, all(replays)
 
 
 class ProfessionalTemplateView(ExcelDownloadView):
@@ -158,7 +164,7 @@ class ProfessionalTemplateView(ExcelDownloadView):
             ('Périmètre', 'Les profils appartiennent à l’entreprise active. Aucun compte utilisateur n’est créé par cet import.'),
             ('Obligatoire', 'Utilisateur, Secteur, Profession et Titre professionnel.'),
             ('Plusieurs choix', 'Séparez les compétences et services par ; (point-virgule). Utilisez les identifiants de la feuille Options ou leurs libellés exacts.'),
-            ('Publication', 'Tous les profils sont créés en brouillon ; la publication reste une action explicite.'),
+            ('Publication', 'Choisissez dans le panier si les profils sont publiés à l’enregistrement. Une présentation est obligatoire pour publier.'),
             ('Compte', 'Un seul profil par compte. Les comptes et références doivent être autorisés pour l’entreprise.'),
             ('Détails', 'Vérifiez les champs dans le panier. Les affiliations sont modifiables dans ses détails ; ajoutez les photos ensuite dans la fiche individuelle.'),
             ('Limites', 'Titre : 180 caractères ; présentation : 10 000 ; observations internes : 5 000 ; expérience entière de 0 à 100 ans.'),

@@ -37,7 +37,7 @@ const fixture=mocks([
  [/\/components\/ModuleHeader$/,'header',`export default function Header(){}`],
 ]);
 (async()=>{
- const p=await bundle(`export * from './src/pages/territoires/territorialDefinitions';export * from './src/pages/territoires/territorialForm';export * from './src/pages/territoires/territorialBatch';export * from './src/pages/territoires/territorialDrilldowns';export {default as Batch} from './src/pages/territoires/TerritoryBatchComposer';export {default as Editor} from './src/pages/territoires/TerritoryEditor';export {default as References} from './src/pages/territoires/TerritoryReferences';export {default as Dashboard,territoryMetricTarget} from './src/pages/territoires/TerritoryDashboard';export {default as Register,TerritoryDelete,territoryFilterFields,territoryCell} from './src/pages/territoires/TerritoryRegister';export {default as Portal,territoryInitialFilters} from './src/pages/OrganisationTerritoriale';`,[fixture]);
+ const p=await bundle(`export * from './src/pages/territoires/territorialDefinitions';export * from './src/pages/territoires/territorialForm';export * from './src/pages/territoires/territorialBatch';export * from './src/pages/territoires/territorialDrilldowns';export {default as Batch} from './src/pages/territoires/TerritoryBatchComposer';export {default as Editor} from './src/pages/territoires/TerritoryEditor';export {default as PublicationEditor} from './src/pages/territoires/TerritoryPublicationEditor';export {default as References} from './src/pages/territoires/TerritoryReferences';export {default as Dashboard,territoryMetricTarget} from './src/pages/territoires/TerritoryDashboard';export {default as Register,TerritoryDelete,territoryFilterFields,territoryCell} from './src/pages/territoires/TerritoryRegister';export {default as Portal,territoryInitialFilters} from './src/pages/OrganisationTerritoriale';`,[fixture]);
  eq(Object.keys(p.TERRITORY_REGISTERS).length,13);eq(Object.values(p.TERRITORY_REGISTERS).filter(d=>d.editable).length,7);eq(p.territoryTabKey('geolocalisation.V_Niveau_3'),'niveaux3');eq(p.territoryTabKey('V_AS_sans_Site'),'as-sans-site');eq(p.territoryTabKey('unknown'),'tableau-de-bord');eq(new Set(Object.values(p.TERRITORY_REGISTERS).map(d=>d.preference)).size,13);ok(p.TERRITORY_REGISTERS.niveaux3.visible.includes('NomNiveau_2'));ok(!p.TERRITORY_REGISTERS.niveaux3.visible.includes('ID_Niveau_2_FK'));
  for(const kind of Object.keys(p.TERRITORY_REGISTERS).filter(k=>p.TERRITORY_REGISTERS[k].editable)){const fields=p.territoryFields(kind);ok(fields.length>0);ok(!fields.some(f=>f.name===p.TERRITORY_REGISTERS[kind].pk));if(kind!=='niveaux1-historique')ok(fields.some(f=>f.name==='uidSNIS'));}
  let baseline=p.territoryValues('niveaux3',globalThis.__record);eq(baseline.SelectNiveau_3,'');eq(p.territoryPayload('niveaux3',{...baseline,NomNiveau_3:' Nouveau nom '},baseline),{NomNiveau_3:'Nouveau nom'});eq(p.territoryPayload('niveaux3',{...baseline,PopulationNiveau_3:'12345678901234567890'},baseline).PopulationNiveau_3,'12345678901234567890');eq(p.territoryPayload('niveaux3',{...baseline,SelectNiveau_3:'false'},baseline),{SelectNiveau_3:false});eq(p.territoryPayload('niveaux3',baseline,baseline),{});
@@ -134,6 +134,36 @@ const fixture=mocks([
  // Un nouvel import invalide conserve toutes les lignes déjà corrigées.
  globalThis.__writeResults.push({success:false,status:400,message:'Classeur invalide'});await uploadInput(tree).props.onChange({currentTarget:{files:[excelFile],value:'x'}});tree=xr();eq(mark(tree,'SimpleTable').props.rows.length,2);ok(mark(tree,'Frame').props.error.includes('Classeur invalide'));const beforeBadFile=globalThis.__writes.length;await uploadInput(tree).props.onChange({currentTarget:{files:[{name:'fichier.xls',size:1}],value:'x'}});tree=xr();eq(globalThis.__writes.length,beforeBadFile);eq(mark(tree,'SimpleTable').props.rows[1].values.EmailTerritoire,'contact@example.invalid');
  globalThis.__writeResults.push({success:false,status:503});await mark(tree,'Frame').props.onSubmit();tree=xr();const xt=globalThis.__writes.at(-1),xb=JSON.parse(xt.options.body);eq(xt.url,'/api/geolocalisation/territoires/registres/niveaux3/panier');eq(xb.header,{ID_Niveau_2_FK:8});eq(xb.rows[1].CodeNiveau_3,'0009');eq(xb.rows[1].ID_TypeNiveau_2_Fk,8);eq(xb.rows[1].AdresseTerritoire,'Rue A\nBureau B');eq(xb.rows[1].HorairesOuvertureTerritoire,'Lundi\nMardi');eq(xb.rows[1].PublierCoordonneesAnnuaire,false);ok(uploadInput(tree).props.disabled);globalThis.__writeResults.push({success:true,data:{requestId:xb.requestId,createdCount:2,rows:xb.rows.map((row,index)=>({rowId:row.rowId,record:{ID_Niveau_3:800+index}}))}});await mark(tree,'Frame').props.onSubmit();eq(globalThis.__writes.at(-1).options.body,xt.options.body);eq(xs.length,1);xh.unmount();
+ const publicationField=p.TERRITORY_PUBLICATION_FIELD;
+ for(const kind of ['niveaux2','niveaux3','niveaux4','niveaux5']){
+  ok(p.territoryFields(kind).some(candidate=>candidate.name===publicationField));
+  ok(!Object.hasOwn(p.territoryPayload(kind,p.territoryValues(kind)),publicationField));
+  eq(p.territoryPayload(kind,{...p.territoryValues(kind),[publicationField]:'false'})[publicationField],false);
+ }
+ ok(!p.territoryHasPublication('niveaux1'));
+ eq(p.territoryPublicationChoices({publicationDefault:false},true)[0].label,'Par défaut · Non');
+ const defaultHooks=new Hooks(), publicationChanges=[];
+ const defaultProps={kind:'niveaux3',confirmation:{published:true},canWrite:true,onClose(){},onSaved:result=>publicationChanges.push(result)};
+ let publicationTree=defaultHooks.render(p.PublicationEditor,defaultProps);
+ ok(!mark(publicationTree,'Frame').props.canSubmit);
+ mark(publicationTree,'Select').props.onChange('false');
+ publicationTree=defaultHooks.render(p.PublicationEditor,defaultProps);
+ ok(mark(publicationTree,'Frame').props.canSubmit);
+ globalThis.__writeResults.push({success:true,data:{published:false}});
+ await mark(publicationTree,'Frame').props.onSubmit();
+ eq(globalThis.__writes.at(-1).options.method,'PATCH');
+ eq(JSON.parse(globalThis.__writes.at(-1).options.body),{published:false});
+ eq(publicationChanges,[{published:false}]);
+ defaultHooks.unmount();
+ const bulkHooks=new Hooks();
+ publicationTree=bulkHooks.render(p.PublicationEditor,{...defaultProps,confirmation:{ids:[1,2],published:false}});
+ eq(mark(publicationTree,'Frame').props.submitLabel,'Retirer');
+ globalThis.__writeResults.push({success:true,data:{updatedCount:2}});
+ await mark(publicationTree,'Frame').props.onSubmit();
+ eq(globalThis.__writes.at(-1).options.method,'POST');
+ eq(JSON.parse(globalThis.__writes.at(-1).options.body),{ids:[1,2],published:false});
+ eq(publicationChanges.at(-1),{updatedCount:2});
+ bulkHooks.unmount();
  // Une réponse tardive d’import ne s’applique ni à un autre contexte ni après révocation.
  for(const revoke of [false,true]){const late=new Hooks(),lateProps={...bp},lr=()=>late.render(p.Batch,lateProps);lr();await late.flush();tree=lr();let finish;globalThis.__deferredWrite=new Promise(resolve=>finish=resolve);const pending=uploadInput(tree).props.onChange({currentTarget:{files:[excelFile],value:'x'}});if(revoke)lateProps.canWrite=false;else globalThis.__scope={scopeKey:'AUTRE',entityId:'8'};tree=lr();await late.flush();finish({success:true,data:{matrix:xmatrix}});await pending;tree=lr();eq(mark(tree,'SimpleTable')?.props.rows?.some(row=>row.values.NomNiveau_3==='Zone importée')||false,false);eq(xs.length,1);late.unmount();delete globalThis.__deferredWrite;globalThis.__scope={scopeKey:'A',entityId:'7'};}
  globalThis.__support=excelSupport;

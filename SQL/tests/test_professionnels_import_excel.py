@@ -19,7 +19,7 @@ from django.conf import settings
 if not settings.configured:
     settings.configure(SECRET_KEY='professional-memory-tests', BASE_DIR=ROOT / 'backend',
         DATABASES={'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': ':memory:'}},
-        INSTALLED_APPS=[], USE_TZ=True, TIME_ZONE='Africa/Kinshasa', DB_READ_ONLY=False,
+        INSTALLED_APPS=['django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions'], USE_TZ=True, TIME_ZONE='Africa/Kinshasa', DB_READ_ONLY=False,
         DATA_UPLOAD_MAX_MEMORY_SIZE=3 * 1024 * 1024,
         REST_FRAMEWORK={'DEFAULT_AUTHENTICATION_CLASSES': [], 'UNAUTHENTICATED_USER': None})
 import django

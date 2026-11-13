@@ -112,6 +112,39 @@ def depot_source(obj,raw):
     columns=[*obj['columns'],*[{'column_name':key,'data_type':'numeric','is_nullable':'YES'} for key in ('StockEntreprise','StockDepot','StockDisponible','StockReserve')]]
     return {**obj,'columns':columns,'_depot_scope':selected,'_row_source':'(SELECT '+','.join(fields)+' FROM '+row_source(obj).strip().removesuffix(' v')+' a JOIN logistique."V_StockDepot" s ON s."ID_ArticleFk"=a."ID_Article" AND s."ID_DepotFk"='+str(selected)+' JOIN logistique."V_ArticlePeremptionDepot" p ON p."ID_Article"=a."ID_Article" AND p."ID_DepotFk"=s."ID_DepotFk") v'}
 
+
+COMPOSITION_COLUMNS = {
+    "ID_Article", "IdEntiteFk", "NomArticle", "CodeArticleInterne", "CodeArticleExterne",
+    "RefArticle", "ValideArticle", "ID_TypeArticleFk", "ID_CategorieArticleFk",
+    "ID_UniteFk", "AbrTypeArticle", "AbrCategorieArticle", "TypeArticle",
+    "CategorieArticle", "AbrUnite", "Unite", "PUArticle", "PVArticle", "ID_DeviseFk",
+    "QteArticle",
+}
+
+
+def composition_depot_source(obj, raw):
+    depot = positive(raw["depotId"], "Dépôt")
+    columns = [col for col in obj["columns"] if col["column_name"] in COMPOSITION_COLUMNS]
+    columns.extend(
+        {"column_name": name, "data_type": data_type, "is_nullable": "NO"}
+        for name, data_type in (
+            ("ID_DepotFk", "bigint"),
+            ("DecimalesStock", "smallint"),
+            ("StockDepot", "numeric"),
+            ("StockDisponible", "numeric"),
+            ("StockReserve", "numeric"),
+            ("StockEntreprise", "numeric"),
+        )
+    )
+    return {
+        **obj,
+        "columns": columns,
+        "_composition_depot": True,
+        "_depot_scope": depot,
+        "_row_source": '(SELECT * FROM logistique."V_ArticleCompositionDepot" '
+        'WHERE "ID_DepotFk"=' + str(depot) + ') v',
+    }
+
 def source_for_indicator(key, name):
     obj = view("logistique", name)
     if key in {"articles", "articlesCategorie"}:
@@ -312,7 +345,6 @@ def register_source(kind, raw, for_export=False):
         return obj,states[state],filters
     article = kind == "articles"
     obj = view("logistique", "V_Article" if article else "V_Commande")
-    if article:obj=depot_source(obj,raw)
     if not article:
         # La vue commune ne produit jamais une somme de quantités d’unités différentes.
         names=[col["column_name"] for col in obj["columns"] if col["column_name"]!="QteTotale"]
@@ -324,7 +356,15 @@ def register_source(kind, raw, for_export=False):
         context = raw.get("contexte")
         if context not in (None,"","composition"):
             raise APIError("Contexte de catalogue non autorisé.")
-        if context == "composition":obj = {**obj,"_composition_scope":True}
+        if context == "composition":
+            obj = {**obj, "_composition_scope": True}
+        compact = (
+            context == "composition"
+            and not for_export
+            and raw.get("depotId") not in (None, "", "all")
+            and all(raw.get(key) in (None, "", "all") for key in ("stockState", "peremption"))
+        )
+        obj = composition_depot_source(obj, raw) if compact else depot_source(obj, raw)
     mapping = {"typeId": "ID_TypeArticleFk", "categorieId": "ID_CategorieArticleFk", "uniteId": "ID_UniteFk"} if article else {"typeId": "ID_TypeCmdFk", "statutId": "ID_StatutCmdFk", "client": "ID_TiersFk"}
     for key, field in mapping.items():
         if raw.get(key) not in (None, ""):
@@ -365,6 +405,8 @@ def register(actor, kind, raw):
     obj = restrict_order_source(obj, actor, invoices=kind == "factures")
     article = kind == "articles"
     rows, meta, (where, values) = read_page(obj, actor, raw, condition, filters)
+    if obj.get("_composition_depot"):
+        return rows, meta
     if kind in {"mouvements","factures","reglements","lots"}:
         from .ledger_registers import annotate_metadata
         return rows,annotate_metadata(kind,obj,actor,raw,where,values,meta)

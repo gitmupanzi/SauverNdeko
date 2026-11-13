@@ -1,7 +1,7 @@
 """Annuaire des structures et territoires authentifié, distinct des entreprises ERP.
 
-La projection SQL conserve les types territoriaux inclus et masque les coordonnées sans
-publication explicite. Une identité associe toujours niveau et clé physique.
+La projection SQL masque les contacts sans publication explicite. La position
+géographique appartient au territoire publié lui-même. Une identité associe niveau et clé physique.
 Les lectures n'accordent aucun droit de gestion et ne créent aucun contact.
 """
 from rest_framework.views import APIView
@@ -14,8 +14,39 @@ from apps.core.responses import APIError, ok
 from . import products
 
 SOURCE = 'geolocalisation."V_StructureSanitairePublique"'
+CHOICES = 'geolocalisation."V_ChoixTerritorial"'
+DETAIL_COLUMNS = '''v.*, subdivision."TypeTerritoire" AS "TypeNiveau_2",
+    zone."TypeTerritoire" AS "TypeNiveau_3", area."TypeTerritoire" AS "TypeNiveau_4",
+    position.latitude, position.longitude'''
+DETAIL_JOINS = f'''
+    LEFT JOIN {CHOICES} subdivision ON subdivision.niveau=2 AND subdivision.id=v."ID_Niveau_2"
+    LEFT JOIN {CHOICES} zone ON zone.niveau=3 AND zone.id=v."ID_Niveau_3"
+    LEFT JOIN {CHOICES} area ON area.niveau=4 AND area.id=v."ID_Niveau_4"
+    LEFT JOIN LATERAL (
+        SELECT p.latitude, p.longitude
+        FROM (
+            SELECT n."LatitudeNiveau_2" latitude, n."LongitudeNiveau_2" longitude
+            FROM geolocalisation."T_Niveau_2" n
+            WHERE v."NiveauStructure"=2 AND n."ID_Niveau_2"=v."ID_Structure"
+            UNION ALL
+            SELECT n."LatitudeNiveau_3", n."LongitudeNiveau_3"
+            FROM geolocalisation."T_Niveau_3" n
+            WHERE v."NiveauStructure"=3 AND n."ID_Niveau_3"=v."ID_Structure"
+            UNION ALL
+            SELECT n."LatitudeNiveau_4", n."LongitudeNiveau_4"
+            FROM geolocalisation."T_Niveau_4" n
+            WHERE v."NiveauStructure"=4 AND n."ID_Niveau_4"=v."ID_Structure"
+            UNION ALL
+            SELECT n."LatitudeNiveau_5", n."LongitudeNiveau_5"
+            FROM geolocalisation."T_Niveau_5" n
+            WHERE v."NiveauStructure"=5 AND n."ID_Niveau_5"=v."ID_Structure"
+        ) p
+        WHERE p.latitude BETWEEN -90 AND 90 AND p.longitude BETWEEN -180 AND 180
+          AND (p.latitude <> 0 OR p.longitude <> 0)
+    ) position ON TRUE'''
 PARAMETERS = {'q', 'typeId', 'level', 'provinceId', 'locality', 'take', 'skip', 'sortBy', 'sortDir'}
-LEVELS = [{'id': 3, 'label': 'Niveau 3'}, {'id': 4, 'label': 'Niveau 4'},
+LEVELS = [{'id': 2, 'label': 'Niveau 2 — Antennes et subdivisions'},
+          {'id': 3, 'label': 'Niveau 3'}, {'id': 4, 'label': 'Niveau 4'},
           {'id': 5, 'label': 'Niveau 5 — Structures et sites'}]
 
 
@@ -38,8 +69,8 @@ def pattern(value):
 
 def level(value):
     identifier = positive(value, 'Niveau territorial')
-    if identifier not in {3, 4, 5}:
-        raise APIError('Choisissez un niveau territorial 3, 4 ou 5.', 'STRUCTURE_QUERY_INVALID', 400)
+    if identifier not in {item["id"] for item in LEVELS}:
+        raise APIError('Choisissez un niveau territorial de 2 à 5.', 'STRUCTURE_QUERY_INVALID', 400)
     return identifier
 
 
@@ -52,7 +83,11 @@ def can_manage_territories(actor):
 
 def projected(row):
     def territory(number):
-        return {'id': row.get('ID_Niveau_' + str(number)), 'name': row.get('NomNiveau_' + str(number))}
+        return {'id': row.get(f'ID_Niveau_{number}'), 'name': row.get(f'NomNiveau_{number}'),
+                'type': row.get(f'TypeNiveau_{number}')}
+
+    latitude, longitude = row.get('latitude'), row.get('longitude')
+    position = {'latitude': float(latitude), 'longitude': float(longitude)} if latitude is not None and longitude is not None else None
     return {'key': row['StructureKey'], 'level': row['NiveauStructure'], 'id': row['ID_Structure'],
             'name': row.get('NomStructure'), 'code': row.get('CodeStructure'),
             'typeId': row['ID_TypeStructureFk'], 'type': row.get('TypeStructure'),
@@ -60,7 +95,8 @@ def projected(row):
             'secondaryPhone': row.get('TelephoneSecondaireTerritoire'), 'email': row.get('EmailTerritoire'),
             'website': row.get('SiteWebTerritoire'), 'reception': row.get('InformationsAccueilTerritoire'),
             'hours': row.get('HorairesOuvertureTerritoire'), 'contactsPublished': row['CoordonneesPubliees'] is True,
-            'province': territory(1), 'subdivision': territory(2), 'zone': territory(3), 'area': territory(4)}
+            'position': position, 'province': territory(1), 'subdivision': territory(2),
+            'zone': territory(3), 'area': territory(4)}
 
 
 def selection(params):
@@ -101,11 +137,13 @@ def listing(params):
     order = db.ident(column) + ' COLLATE pg_catalog."und-x-icu" ' + direction.upper() + \
         ' NULLS LAST,"NiveauStructure" ASC,"ID_Structure" ASC'
     where, values = selection(params)
-    result = db.one('''WITH population AS MATERIALIZED (SELECT v.* FROM ''' + SOURCE + ''' v WHERE ''' + where + '''),
-        page AS (SELECT * FROM population ORDER BY ''' + order + ''' LIMIT %s OFFSET %s)
+    result = db.one(f'''
+        WITH population AS MATERIALIZED (SELECT v.* FROM {SOURCE} v WHERE {where}),
+        page AS (SELECT * FROM population ORDER BY {order} LIMIT %s OFFSET %s),
+        enriched AS (SELECT {DETAIL_COLUMNS} FROM page v {DETAIL_JOINS})
         SELECT (SELECT count(*) FROM population) total,
-        COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY ''' + order + ''') FROM page p),'[]'::jsonb) rows''',
-        [*values, take, skip])
+               COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY {order}) FROM enriched p), '[]'::jsonb) rows
+        ''', [*values, take, skip])
     return {'rows': [projected(row) for row in result['rows']], 'total': result['total'], 'take': take, 'skip': skip}
 
 
@@ -123,7 +161,8 @@ def references(actor):
 
 
 def detail(actor, structure_level, pk):
-    row = db.one('SELECT * FROM ' + SOURCE + ' WHERE "NiveauStructure"=%s AND "ID_Structure"=%s',
+    row = db.one(f'SELECT {DETAIL_COLUMNS} FROM {SOURCE} v {DETAIL_JOINS} '
+                 'WHERE v."NiveauStructure"=%s AND v."ID_Structure"=%s',
                  [level(structure_level), positive(pk, 'Structure sanitaire')])
     if not row:
         raise APIError('Cette structure ou ce territoire est introuvable.', 'NOT_FOUND', 404)

@@ -2,7 +2,7 @@
 
 ## Objet et sources vérifiées
 
-Le parcours `/pharmacies` consulte les structures et territoires de niveaux 3,
+Le parcours `/pharmacies` consulte désormais les structures et territoires de niveaux 2, 3,
 4 et 5 de `geolocalisation`, avec tous leurs types communs actifs : centres de
 santé, hôpitaux, pharmacies, mais aussi districts, secteurs, groupements et autres
 unités enregistrées. Une pharmacie est enregistrée au niveau 5. Le nom technique
@@ -85,7 +85,7 @@ un calcul « ouvert maintenant », une permanence ou une pharmacie de garde.
 Le consentement porte sur l’adresse, les téléphones, l’e-mail, le site, l’accueil
 et les horaires de cette seule fiche. Son retrait masque immédiatement ces champs
 dans l’annuaire et conserve les données du registre territorial privé. Les
-contacts N1/N2 restent gérables dans leurs fiches sans créer d’entrées N1/N2.
+contacts du N1 restent gérables dans leurs fiches. Ceux du N2 peuvent être publiés via leur fiche.
 Aucun contact n’est hérité d’un parent.
 
 Les vues privées `V_Niveau_1` à `V_Niveau_5` conservent leurs colonnes, leur ordre
@@ -99,16 +99,16 @@ extension.
 
 ## Projection fermée
 
-`geolocalisation.V_StructureSanitairePublique` réutilise `V_Niveau_3/4/5` avec
+`geolocalisation.V_StructureSanitairePublique` réutilise `V_Niveau_2/3/4/5` avec
 `UNION ALL`, au grain niveau territorial + identifiant. Ses 23 colonnes sont :
 
 | Colonnes, dans l’ordre | Sens |
 |---|---|
-| `StructureKey`, `NiveauStructure`, `ID_Structure` | clé `n3:<id>`, `n4:<id>` ou `n5:<id>`, niveau entier et identifiant physique |
+| `StructureKey`, `NiveauStructure`, `ID_Structure` | clé `n2:<id>`, `n3:<id>`, `n4:<id>` ou `n5:<id>`, niveau entier et identifiant physique |
 | `NomStructure`, `CodeStructure` | nom et code territoriaux, éventuellement absents |
 | `ID_TypeStructureFk`, `TypeStructure` | identifiant central et `AbrGenerique` ; repli neutre `Valeur sans abréviation #<id>` |
 | `ID_Niveau_1`, `NomNiveau_1`, `ID_Niveau_2`, `NomNiveau_2` | province et subdivision issues des vues communes |
-| `ID_Niveau_3`, `NomNiveau_3`, `ID_Niveau_4`, `NomNiveau_4` | propre niveau ou rattachement applicable ; N3 n’a pas de N4 |
+| `ID_Niveau_3`, `NomNiveau_3`, `ID_Niveau_4`, `NomNiveau_4` | propre niveau ou rattachement applicable, absent au-delà du niveau concerné |
 | `AdresseTerritoire`, `TelephoneTerritoire`, `TelephoneSecondaireTerritoire`, `EmailTerritoire`, `SiteWebTerritoire`, `InformationsAccueilTerritoire`, `HorairesOuvertureTerritoire` | valeurs de la seule fiche liée avec consentement true, sinon NULL |
 | `CoordonneesPubliees` | true si la fiche liée porte le consentement ; ne signifie pas coordonnées complètes ou vérifiées |
 
@@ -134,7 +134,7 @@ persistée, ni discussion, ni transaction commerciale.
 Cartes et Tableau conservent les mêmes critères. La fiche latérale utilise une
 clé URL telle que `structure=n5:7` et conserve filtres et page au retour. Un ancien
 identifiant `structure=7` ne choisit aucun niveau ou entreprise supposé.
-`canManageTerritories` ouvre la gestion N3/N4/N5 selon les droits réels de cette
+`canManageTerritories` ouvre la gestion N2 à N5 selon les droits réels de cette
 destination ; son absence ne ferme pas la lecture Structures. Aucun territoire
 n’est transmis comme `companyId`, logo ERP ou destinataire de Discussions.
 

@@ -14,6 +14,8 @@ import ArticleEditor from "./ArticleEditor";
 import LogisticsBatchComposer from "./LogisticsBatchComposer";
 import StockReceiptEditor from "./StockReceiptEditor";
 import ArticleActionDrawer from "./ArticleActionDrawer";
+import ArticlePublicationDrawer from "./ArticlePublicationDrawer";
+import EntityProfileEditor from "../../components/EntityProfileEditor";
 import { useFollowupFolders } from "../../contexts/FollowupFoldersContext";
 import RowActionsMenu from "../../components/RowDocumentActions";
 import {recordExcel} from "../../utils/rowDocuments";
@@ -56,7 +58,7 @@ function expiryTone(value) {
 }
 function ArticleStatus({ value, tone }) { return value == null || value === "" ? "—" : <span className={"erp-status is-"+tone}>{value}</span>; }
 
-export default function Articles({ title = "Articles", references:receivedReferences, refreshKey, onDataChanged, sharedTable, onToggleFkMappings }) {
+export default function Articles({ title = "Articles", references:receivedReferences, refreshKey, onDataChanged, onPublicationDefaultChanged, sharedTable, onToggleFkMappings }) {
  const depotScope=useDepotScope();
  const references=fieldCurrencyReferences(receivedReferences,"articleCurrencies");
   const preferences=useTablePreferences("logistique.articles");
@@ -67,7 +69,8 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const [serverMeta, setServerMeta] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
-  const writable = useEntityScope().canWrite && currentUser?.permissions?.canWriteData === true;
+  const scope = useEntityScope();
+  const writable = scope.canWrite && currentUser?.permissions?.canWriteData === true;
   const canWrite = writable && tabRights(currentUser,"logistique","articles").canManage;
   const canReceive = canWrite && tabRights(currentUser,"logistique","commandes").canManage && tabRights(currentUser,"logistique","details").canManage;
   const canReadStockCard = tabRights(currentUser,"logistique","mouvements").canRead;
@@ -79,6 +82,9 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [expiryPolicyOpen,setExpiryPolicyOpen]=useState(false);
+  const [publicationSettingsOpen,setPublicationSettingsOpen]=useState(false);
+  const [publication,setPublication]=useState(null);
+  const canConfigurePublication = canWrite && currentUser?.canAccessAdmin === true;
   const columnsAnchorRef = useRef(null);
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_COLUMNS);
   const [density, setDensity] = useState(() => { try { return localStorage.getItem("sauverndeko.table.density") === "airy" ? "airy" : "compact"; } catch { return "compact"; } });
@@ -125,6 +131,18 @@ export default function Articles({ title = "Articles", references:receivedRefere
   const [savedRecord,setSavedRecord]=useState(null);
   const selectedArticle = sharedTable?.selectedRow || null;
   function handleReceipt(article){if(canReceive&&article.ValideArticle!==false)setReceipt(article.ID_Article);}
+  function published(result){
+    setPublication(null);
+    setSelectedRows([]);
+    setSelectionResetKey(key=>key+1);
+    sharedTable?.clearSelectedRow?.();
+    const count=result.changed;
+    const message=count
+      ? `${count} article${count===1?"":"s"} ${publication.visible?(count===1?"publié":"publiés"):(count===1?"retiré":"retirés")} ${publication.visible?"dans":"de"} l’annuaire.`
+      : "La visibilité des articles sélectionnés est déjà à jour.";
+    setFeedback({type:"success",message});
+    onDataChanged?.();
+  }
   function received(result){setReceipt(null);setSavedRecord(result.article);setSavedReceipt(result.bon);setFeedback({type:"success",message:"Réception enregistrée."});refreshFolders();onDataChanged?.();}
   function savedBatch(result){
     setBatchOpen(false);
@@ -239,7 +257,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
     <div className="logistics-screen">
       <div aria-live="polite"><StatusBanner feedback={feedback} />{savedRecord?<button type="button" className="application-back" onClick={()=>openProduct(savedRecord)}>Consulter l’article<AppIcon name="arrow-up-right"/></button>:null}{savedReceipt?<button type="button" className="application-back" onClick={()=>openOrder(savedReceipt)}>Consulter le bon d’entrée<AppIcon name="arrow-up-right"/></button>:null}</div>
       <RegisterSurface title={title} subtitle="Catalogue et suivi du stock" actions={<>
-        <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings}/>
+        <>{currentUser?.Is_Admin===true?<ActionButton icon="calendar" onClick={()=>setExpiryPolicyOpen(true)} disabled={!canWrite}>Conservation</ActionButton>:null}</><RegisterSettingsButton buttonRef={columnsAnchorRef} expanded={columnsOpen} onTableSettings={()=>setColumnsOpen(true)} onReferences={onToggleFkMappings} extraItems={canConfigurePublication?[{icon:"globe",label:"Publication dans l’annuaire",onSelect:()=>setPublicationSettingsOpen(true)}]:[]}/>
         <ActionButton icon="plus" variant="primary" onClick={handleNewArticle} disabled={!canWrite} title={!canWrite ? "Accès en consultation" : "Créer un article"}>Nouvel article</ActionButton>
         <ActionButton icon="list" onClick={()=>setBatchOpen(true)} disabled={!canWrite}>Ajouter plusieurs articles</ActionButton>
       </>} tabs={<RegisterCategoryFilter label="État du stock" value={criteria.stockState} options={[{value:"all",label:"Tous les articles"},{value:"disponible",label:"Disponibles"},{value:"faible",label:"Stock faible"},{value:"rupture",label:"Ruptures"}]} onChange={chooseStock}/>}>
@@ -247,6 +265,7 @@ export default function Articles({ title = "Articles", references:receivedRefere
           {selectedRows.length ? <div className="erp-register-selection"><strong>{selectedRows.length === 1 ? selectedRows[0].NomArticle || "Article sélectionné" : selectedRows.length+" articles sélectionnés"}</strong>
             {selectedRows.length === 1 ? <ActionButton icon="eye" onClick={() => openProduct(selectedRows[0])}>Consulter</ActionButton> : null}
             {canClassify ? <ActionButton icon="folder" onClick={()=>assign(selectedRows.map(row=>row.ID_Article))} disabled={loading}>Classer</ActionButton> : null}
+            {canWrite?<><ActionButton icon="globe" disabled={loading||pending} onClick={()=>setPublication({ids:selectedRows.map(row=>Number(row.ID_Article)),visible:true})}>Publier dans l’annuaire</ActionButton><ActionButton icon="close" disabled={loading||pending} onClick={()=>setPublication({ids:selectedRows.map(row=>Number(row.ID_Article)),visible:false})}>Retirer de l’annuaire</ActionButton></>:null}
             {canExport?<ExportMenu selection exportFile={()=>exportArticles("xlsx",selectedRows)} exportCsv={()=>exportArticles("csv",selectedRows)} disabled={loading||pending||exporting||!preferences.ready||!preferences.canExport||!preferences.exportKeys.length||Boolean(error)} exporting={exporting}/>:null}
             {canWrite && selectedRows.length===1 && selectedArticle ? <><ActionButton icon="edit" onClick={() => handleEditArticle(selectedArticle)}>Modifier</ActionButton><ActionButton onClick={() => handleDisableArticle(selectedArticle)} >{selectedArticle.ValideArticle===false?"Réactiver":"Désactiver"}</ActionButton><ActionButton icon="trash" onClick={() => handleDeleteArticle(selectedArticle)} disabled={!currentUser?.Is_Admin || selectedArticle.ValideArticle !== false} title={selectedArticle.ValideArticle !== false ? "Désactivez d’abord l’article." : "Supprimer définitivement"}>Supprimer</ActionButton></> : null}
             <ActionButton icon="close" className="is-icon" aria-label="Effacer la sélection" onClick={() => { setSelectionResetKey(key => key+1); sharedTable?.clearSelectedRow?.(); }}/>
@@ -267,6 +286,8 @@ export default function Articles({ title = "Articles", references:receivedRefere
         </div>
       </RegisterSurface>
 
+      {publicationSettingsOpen&&canConfigurePublication?<EntityProfileEditor mode="edit" initialTab="article-publication" onClose={()=>setPublicationSettingsOpen(false)} onSaved={record=>{setPublicationSettingsOpen(false);onPublicationDefaultChanged?.(record.PartageArticlesPublicParDefaut);setFeedback({type:"success",message:"Préférence de publication enregistrée."});}}/>:null}
+      {publication&&canWrite?<ArticlePublicationDrawer selection={publication} onClose={()=>setPublication(null)} onSaved={published}/>:null}
       {expiryPolicyOpen?<ExpiryPolicyEditor onClose={()=>setExpiryPolicyOpen(false)} onSaved={()=>{onDataChanged?.();refreshFolders?.();}}/>:null}
       {valuation?<StockValuation articleId={valuation.id} defaultCurrencyId={valuation.currency} onClose={()=>setValuation(null)} onSaved={()=>onDataChanged?.()}/>:null}
       {editor?<ArticleEditor key={editor.id||"new"} articleId={editor.id} references={references} onClose={()=>setEditor(null)} onSaved={saved}/>:null}

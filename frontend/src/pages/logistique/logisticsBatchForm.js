@@ -13,7 +13,7 @@ const OPENING_RECEIPT_BATCH_LIMIT=600;
 export const logisticsBatchLimit=(kind,openingReceipt=false)=>kind==="articles"&&openingReceipt?OPENING_RECEIPT_BATCH_LIMIT:DEFAULT_BATCH_LIMIT;
 export const BATCH_KINDS={
  tiers:{title:"Nouveau tiers",plural:"tiers",icon:"user",name:"Nom",columns:["Nom","Nature","ID_TypeClientFk","Email","Telephone"],paste:["Nom","ID_TypeClientFk","Nature","Email","Telephone","Adresse"]},
- articles:{title:"Ajouter plusieurs articles",plural:"articles",icon:"box",name:"NomArticle",columns:["NomArticle","RefArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","ID_DeviseFk","PUArticle","PVArticle","DatePeremptionArticle","VisibleCatalogue"],paste:["NomArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","PUArticle","PVArticle","ID_DeviseFk","DatePeremptionArticle","NumeroLot","DatePeremptionLot"]},
+ articles:{title:"Ajouter plusieurs articles",plural:"articles",icon:"box",name:"NomArticle",columns:["NomArticle","RefArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","ID_DeviseFk","PUArticle","PVArticle","DatePeremptionArticle","VisibleCatalogue"],paste:["NomArticle","ID_CategorieArticleFk","ID_TypeArticleFk","ID_UniteFk","QteArticle","PUArticle","PVArticle","ID_DeviseFk","DatePeremptionArticle","NumeroLot","DatePeremptionLot","VisibleCatalogue"]},
  immobilisations:{title:"Nouvelle immobilisation",plural:"immobilisations",icon:"building",name:"NomImmobilisation",columns:["NomImmobilisation","Reference","ID_CategorieFk","Quantite","PrixUnitaire","ID_DeviseFk","ID_ServiceFk","LocalisationComplement"],paste:["NomImmobilisation","ID_CategorieFk","Reference","Quantite","PrixUnitaire","ID_DeviseFk","ID_ServiceFk","motif"]},
 };
 export const BATCH_LABELS={NumeroLot:"N° de lot",DatePeremptionLot:"Date de péremption du lot",VisibleCatalogue:"Visible dans l’annuaire",Nom:"Nom du tiers",Nature:"Nature",ID_TypeClientFk:"Type de tiers",Email:"E-mail",Telephone:"Téléphone",Adresse:"Adresse",NomArticle:"Article",RefArticle:"Référence",ID_CategorieArticleFk:"Catégorie",ID_TypeArticleFk:"Type",ID_UniteFk:"Unité",QteArticle:"Stock initial",PUArticle:"Prix d’achat",PVArticle:"Prix de vente",ID_DeviseFk:"Devise",NomImmobilisation:"Nom du bien",Reference:"Référence",ID_CategorieFk:"Type de matériel",Quantite:"Quantité",PrixUnitaire:"Prix unitaire",ID_ServiceFk:"Service",motif:"Motif",CodeArticleInterne:"Code interne",CodeArticleExterne:"Code externe",QteMinArticle:"Seuil minimum",PoidsUnitaire:"Poids unitaire",ID_UnitePoidsFk:"Unité de poids",DatePeremptionArticle:"Date de péremption",NbreJoursAlerteArticle:"Jours d’alerte",InformationArticle:"Informations",ObsArticle:"Observations",Observations:"Observations",Caracteristiques:"Caractéristiques",NumeroSerie:"N° de série",DateEntree:"Date et heure d’entrée",DateAcquisition:"Date d’acquisition",DateMiseEnService:"Date de mise en service",SuiviIndividuel:"Suivi individuel",LocalisationComplement:"Localisation (texte libre)",ID_ResponsableFk:"Responsable",ID_LocalisationFk:"Localisation",ID_EtatFk:"État du matériel",Actif:"Actif",ValideArticle:"Actif",ObsClient:"Informations",IdUserFk:"Compte utilisateur",IdProfessionnelFk:"Professionnel",IdEntiteRepresenteeFk:"Entreprise représentée"};
@@ -134,12 +134,10 @@ export function logisticsBatchFromMatrix(kind,matrix,references,{hasHeaders=fals
   const row={...logisticsBatchRow(kind,references),_pristine:false};
   if(kind==="articles"){
    row.values.QteArticle="";
-   row.values.VisibleCatalogue=false;
   }
   let lotNumber="",lotExpiry="";
   cells.forEach((raw,column)=>{
    const field=columns[column],token=normal(raw);
-   if(kind==="articles"&&field==="VisibleCatalogue")return;
    if(field==="NumeroLot"){lotNumber=raw.trim();return;}
    if(field==="DatePeremptionLot"){lotExpiry=dateInput(raw);return;}
    if(field==="motif"){row.motif=raw;return;}if(raw.trim()===""&&["Actif","ValideArticle","SuiviIndividuel","VisibleCatalogue"].includes(field))return;

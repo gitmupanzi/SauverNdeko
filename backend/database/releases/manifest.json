@@ -186,6 +186,46 @@
       ],
       "description": "Comparer les abréviations du réseau territorial indépendamment de la casse dans le rapport et son détail.",
       "release": "2026.11.13"
+    },
+    {
+      "id": "20261113_03_publication_territoires",
+      "file": "../migrations/20261113_03_publication_territoires.sql",
+      "sha256": "49ff57df189c9e61ba9e683a58a86866cd3e834f575bb4ae08b683b8a4a16ea4",
+      "dependsOn": [
+        "20261113_02_comparaison_disponibilite_reseau"
+      ],
+      "description": "Publication dans l’annuaire et réglage par niveau territorial.",
+      "release": "2026.11.13"
+    },
+    {
+      "id": "20261113_04_publication_profils",
+      "file": "../migrations/20261113_04_publication_profils.sql",
+      "sha256": "c971aff29bcb831c8dee84fb7479dd4ac1c69d5a3ae22e04b9654760c8398ed5",
+      "dependsOn": [
+        "20261113_03_publication_territoires"
+      ],
+      "description": "Publication proposée par entreprise pour les nouveaux profils professionnels.",
+      "release": "2026.11.13"
+    },
+    {
+      "id": "20261113_05_catalogue_composition_depot",
+      "file": "../migrations/20261113_05_catalogue_composition_depot.sql",
+      "sha256": "84c00cce0f57d96fa455e665d91efbd8cce651abcbfc4b9166d4d2a4c7cc4cad",
+      "dependsOn": [
+        "20261113_04_publication_profils"
+      ],
+      "description": "Catalogue des bons et transferts fondé sur le stock disponible du dépôt.",
+      "release": "2026.11.13"
+    },
+    {
+      "id": "20261113_06_publication_territoires_niveau_2",
+      "file": "../migrations/20261113_06_publication_territoires_niveau_2.sql",
+      "sha256": "4f089346ce740416d6ce76ee511f0dc5c46eed4c768a3c855b48f120212ef37a",
+      "dependsOn": [
+        "20261113_05_catalogue_composition_depot"
+      ],
+      "description": "Publication du niveau 2 dans l’annuaire territorial et réglage par défaut.",
+      "release": "2026.11.13"
     }
   ]
 }

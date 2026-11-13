@@ -1095,6 +1095,10 @@ function LogistiqueWorkspace() {
                     references={references}
                     refreshKey={refreshKey}
                     onDataChanged={bumpRefresh}
+                    onPublicationDefaultChanged={visible=>{
+                      setBaseReferences(previous=>previous?{...previous,defaultArticleVisibility:visible}:previous);
+                      bumpRefresh();
+                    }}
                     sharedTable={sharedTableFeatures.articles}
                     onToggleFkMappings={() => setShowFkMappingPanel((current) => !current)}
                   />

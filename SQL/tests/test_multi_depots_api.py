@@ -1,4 +1,5 @@
 """Recette multi-dépôts sur copie privée locale uniquement, jamais la base de l'entreprise."""
+import json
 import unittest
 import uuid
 from decimal import Decimal
@@ -140,6 +141,36 @@ class MultiDepotsAPI(BonsCommandeAPI):
         fefo = self.client().get(f'/api/logistique/articles/{article}/lots/fefo', {'depotId': destination, 'quantite': '4'})
         self.assertEqual(fefo.status_code, 200, fefo.data)
         self.assertEqual(Decimal(str(fefo.data['data']['Lots'][0]['Quantite'])), Decimal('4'))
+
+    def test_multi_outbound_composition_uses_available_quantity_in_selected_depot(self):
+        article = self.stocked()
+        destination = self.other_depot()['ID_Depot']
+        transfer, _ = self.transfer(article, destination, qty='6')
+        self.transition(transfer, 'valider')
+        name = self.connection.execute(
+            'SELECT "NomArticle" FROM logistique."T_Article" WHERE "ID_Article"=%s', [article],
+        ).fetchone()['NomArticle']
+        params = {
+            'q': name, 'take': 10, 'skip': 0, 'sortBy': 'NomArticle', 'sortDir': 'asc',
+            'statut': 'true', 'stockState': 'all', 'contexte': 'composition',
+            'columnFilters': json.dumps({'QteArticle': '>0'}),
+        }
+        endpoint = '/api/logistique/registre/articles'
+        response = self.client().get(endpoint, {**params, 'depotId': self.depot_id()})
+        self.assertEqual(response.status_code, 200, response.data)
+        row = next(row for row in response.data['data'] if row['ID_Article'] == article)
+        self.assertEqual(Decimal(str(row['QteArticle'])), Decimal('4'))
+        self.assertEqual(Decimal(str(row['StockDepot'])), Decimal('10'))
+        self.assertEqual(Decimal(str(row['StockReserve'])), Decimal('6'))
+
+        response = self.client().get(endpoint, {**params, 'depotId': destination})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['data'], [])
+        params.pop('columnFilters')
+        response = self.client().get(endpoint, {**params, 'depotId': destination})
+        self.assertEqual(response.status_code, 200, response.data)
+        row = next(row for row in response.data['data'] if row['ID_Article'] == article)
+        self.assertEqual(Decimal(str(row['QteArticle'])), Decimal('0'))
 
     def test_multi_06_receipt_and_initial_article_use_selected_depot_once(self):
         destination=self.other_depot()['ID_Depot'];article=self.article()

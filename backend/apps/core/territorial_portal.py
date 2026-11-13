@@ -93,6 +93,12 @@ DRILLDOWNS = {
     'population-sites':{'Pop_Cum_Sites':_drill('niveaux5',{'ID_Niveau_3':'ID_Niveau_3','ID_TypeNiveau_5_Fk':'ID_TypeNiveau_5_Fk'},mode='sources',label='Voir les sites sources')},
 }
 
+PUBLICATION_FIELD = 'PublierDansAnnuaire'
+PUBLICATION_LEVELS = {f'niveaux{level}': level for level in (2, 3, 4, 5)}
+PUBLICATION_SETTINGS = 'geolocalisation."T_ParametrePublicationAnnuaire"'
+LABELS[PUBLICATION_FIELD] = 'Publié dans l’annuaire'
+
+
 def _column(name,kind='integer'):
     return {'column_name':name,'data_type':kind,'is_nullable':'YES','character_maximum_length':None,'numeric_precision':None,'numeric_scale':None,'column_default':None,'is_identity':'NO'}
 
@@ -106,12 +112,23 @@ def source(actor,kind,action='read'):
     if kind in GRAINS:additions=[_column('_rowId','text')]
     if kind=='niveaux4':additions.append(_column('AvecReseau','boolean'))
     if kind=='niveaux5':additions.append(_column('ID_TypeNiveau_4_Fk'))
+    if kind in PUBLICATION_LEVELS:additions.append(_column(PUBLICATION_FIELD,'boolean'))
     known={c['column_name'] for c in columns};derived=[c for c in additions if c['column_name'] not in known];columns.extend(derived)
     obj.update(columns=columns,primaryKey=[pk],territorialKind=kind,territorialDerived={c['column_name'] for c in derived})
     return obj,pk,sort,None
 
 def source_sql(obj):
-    kind=obj['territorialKind'];base=db.qualified(obj['schema'],obj['name']);derived=obj['territorialDerived']
+    base = _base_source_sql(obj)
+    kind = obj['territorialKind']
+    if PUBLICATION_FIELD not in obj['territorialDerived']:
+        return base
+    table = db.qualified('geolocalisation', MODELS[kind])
+    key = db.ident(SOURCES[kind][2])
+    return f'(SELECT v.*, publication.{db.ident(PUBLICATION_FIELD)} FROM {base} JOIN {table} publication ON publication.{key} = v.{key}) v'
+
+
+def _base_source_sql(obj):
+    kind=obj['territorialKind'];base=db.qualified(obj['schema'],obj['name']);derived=obj['territorialDerived']-{PUBLICATION_FIELD}
     if kind=='niveaux2' and derived:return '(SELECT v.*,'+','.join({'ID_Niveau_0':'p."ID_Niveau_0_Fk" AS "ID_Niveau_0"','ID_Niveau_1':'v."ID_Niveau_1_FK" AS "ID_Niveau_1"'}[key] for key in sorted(derived))+' FROM '+base+' v LEFT JOIN geolocalisation."T_Niveau_1" p ON p."ID_Niveau_1"=v."ID_Niveau_1_FK") v'
     if kind=='niveaux3' and derived:
         projections={'ID_Niveau_0':'p."ID_Niveau_0_Fk" AS "ID_Niveau_0"','NomNiveau_0':'c."NomNiveau_0"','ID_Niveau_1':'p."ID_Niveau_1"','NomNiveau_1':'p."NomNiveau_1"','ID_Niveau_2':'a."ID_Niveau_2"','NomNiveau_2':'a."NomNiveau_2"'}
@@ -206,7 +223,13 @@ def references(actor,kind,current_id=None):
             alias=GENERIC_ALIASES.get(column,column);alias=alias.get(level,column) if isinstance(alias,dict) else alias
             options[alias]=choices
             options[column]=choices
-    return {'options':clean(options),'fieldReferences':clean(field_refs),'shared':True,**capabilities(actor,kind)}
+    result = {'options':clean(options),'fieldReferences':clean(field_refs),'shared':True,**capabilities(actor,kind)}
+    if kind in PUBLICATION_LEVELS:
+        result['publicationDefault'] = db.one(
+            'SELECT geolocalisation.fn_publication_annuaire_defaut(%s) AS enabled',
+            [PUBLICATION_LEVELS[kind]],
+        )['enabled']
+    return result
 
 def validate_body(kind,data,old=None):
     """Valider les nouvelles saisies sans invalider un historique inchangé."""
@@ -355,6 +378,65 @@ class TerritorialReferencesView(APIView):
     def get(self,request,kind):
         if set(request.query_params)-{'currentId'}:raise APIError('Critère non autorisé.')
         return ok(references(request.user,kind,request.query_params.get('currentId')))
+
+def publication_request(actor, kind, data, *, bulk=False):
+    obj, key, _, _ = source(actor, kind, 'manage')
+    db.ensure_writable()
+    if not actor.global_admin:
+        raise APIError('Le découpage partagé est géré par la plateforme.', 'GLOBAL_ADMIN_REQUIRED', 403)
+    if kind not in PUBLICATION_LEVELS:
+        raise APIError('Publication indisponible pour ce niveau.', 'NOT_FOUND', 404)
+    expected = {'published', 'ids'} if bulk else {'published'}
+    if not isinstance(data, dict) or set(data) != expected or type(data['published']) is not bool:
+        raise APIError('Indiquez si les fiches doivent être publiées.')
+    published = data['published']
+    if bulk:
+        items = data['ids']
+        if not isinstance(items, list) or not 1 <= len(items) <= 1000:
+            raise APIError('Sélectionnez de 1 à 1 000 lignes.')
+        ids = [positive(item) for item in items]
+        if len(set(ids)) != len(ids):
+            raise APIError('La sélection contient des identifiants invalides ou en double.')
+        return publish_territories(actor, kind, key, ids, published)
+    level = PUBLICATION_LEVELS[kind]
+    with transaction.atomic():
+        hierarchy_lock()
+        old = db.one(f'SELECT "PublierParDefaut" FROM {PUBLICATION_SETTINGS} WHERE "Niveau"=%s FOR UPDATE', [level])
+        if old is None:
+            raise APIError('Réglage de publication indisponible.', 'NOT_FOUND', 404)
+        if old['PublierParDefaut'] != published:
+            db.query(f'UPDATE {PUBLICATION_SETTINGS} SET "PublierParDefaut"=%s WHERE "Niveau"=%s RETURNING "Niveau"', [published, level])
+            audit({'schema': obj['schema'], 'name': 'T_ParametrePublicationAnnuaire'}, 'TERRITORIAL_PUBLICATION_DEFAULT',
+                  old={'Niveau': level, **old}, new={'Niveau': level, 'PublierParDefaut': published}, actor=actor)
+    return {'published': published}
+
+
+def publish_territories(actor, kind, key, ids, published):
+    table = db.qualified('geolocalisation', MODELS[kind])
+    identifier, column = db.ident(key), db.ident(PUBLICATION_FIELD)
+    selected = f'{identifier}=ANY(%s::integer[])'
+    with transaction.atomic():
+        hierarchy_lock()
+        rows = db.query(f'SELECT {identifier}, {column} FROM {table} WHERE {selected} ORDER BY {identifier} FOR UPDATE', [ids])
+        if len(rows) != len(ids):
+            raise APIError('Certaines fiches ont disparu. Actualisez la sélection.', 'NOT_FOUND', 404)
+        changed = [row[key] for row in rows if row[PUBLICATION_FIELD] != published]
+        if changed:
+            db.query(f'UPDATE {table} SET {column}=%s WHERE {selected} RETURNING {identifier}', [published, changed])
+            audit(model(MODELS[kind]), 'TERRITORIAL_PUBLICATION_BATCH',
+                  old={'ids':changed, PUBLICATION_FIELD:not published}, new={'ids':changed, PUBLICATION_FIELD:published}, actor=actor)
+    return {'updatedCount': len(changed)}
+
+
+class TerritorialPublicationView(APIView):
+    permission_classes = [IsERPAdmin]
+
+    def patch(self, request, kind):
+        return ok(publication_request(request.user, kind, request.data))
+
+    def post(self, request, kind):
+        return ok(publication_request(request.user, kind, request.data, bulk=True))
+
 
 class TerritorialExcelView(ExcelDownloadView):
     def get(self,request,kind):

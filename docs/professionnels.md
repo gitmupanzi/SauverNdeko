@@ -7,7 +7,7 @@ Le module `/experts` présente des professionnels selon leurs compétences et le
 - **Annuaire** : recherche par besoin, nom ou métier, critères, pagination et choix Cartes/Tableau. Une seule représentation de la liste est affichée à la fois.
 - **Profil professionnel** : présentation, compétences et services, structures et contact. Le lien depuis la recherche globale ouvre la fiche du même identifiant.
 - **Profils professionnels** : registre de gestion réservé aux administrateurs autorisés. Le formulaire commun sert à créer et à modifier la fiche, avec ses compétences, prestations et affiliations sauvegardées ensemble.
-- **Publication** : une création est un brouillon. Publier, retirer, archiver et réactiver sont des actions distinctes et tracées. Les comptes, entreprises et profils inactifs ne figurent pas dans l’annuaire.
+- **Publication** : la case **Publier dans l’annuaire** est cochée à la création par défaut. Le réglage se modifie par entreprise dans **Profils professionnels → Réglages → Publication dans l’annuaire**. Publier, retirer, archiver et réactiver sont des actions tracées. Les comptes, entreprises et profils inactifs ne figurent pas dans l’annuaire.
 - **Contact** : la discussion existante est réutilisée. Un profil doit être publié, actif et accepter les contacts ; les droits de messagerie restent applicables. Le contact avec soi-même est refusé.
 
 Les discussions avec un professionnel sont privées entre le demandeur et le compte professionnel. Une affiliation ou le rôle d’administrateur de son entreprise ne rend pas automatiquement participant à cet échange.
@@ -16,7 +16,7 @@ Le guide intégré contient cinq parcours pour ce module. Les exemples y sont fi
 
 ### Un profil enregistré n’apparaît pas dans la recherche
 
-Vérifier son statut dans **Profils professionnels** : le bouton **Enregistrer le brouillon** ne publie pas la fiche. Sélectionner l’entreprise propriétaire, compléter la présentation et ouvrir l’action de publication du profil. Les informations requises sont indiquées dans la fiche. Une fois publié et actif, le profil peut être retrouvé par son nom ou ses compétences déclarées dans l’annuaire.
+Sélectionnez l’entreprise propriétaire, renseignez le profil et sa présentation, puis cliquez sur **Enregistrer et publier**. Décochez la case pour conserver un brouillon. Pour publier ou retirer des fiches existantes, sélectionnez les lignes dans **Profils professionnels**, choisissez l’action et indiquez le motif. Une fois publié et actif, le profil peut être retrouvé par son nom ou ses compétences déclarées dans l’annuaire.
 
 ### Importer des profils depuis Excel
 
@@ -24,7 +24,7 @@ Dans **Profils professionnels**, sélectionner l’entreprise puis télécharger
 
 **Importer un fichier Excel** prépare un panier modifiable, sans créer de fiche. Vérifier et corriger chaque ligne, ses compétences, ses services et ses structures, puis enregistrer l’ensemble. Les compétences et services multiples se séparent par un point-virgule dans le fichier, avec leurs identifiants ou les abréviations exactes proposées. Une valeur inconnue ou ambiguë reste à corriger ; elle ne crée pas de référence. Les structures se complètent dans les détails du panier ; les photos se gèrent ensuite dans la fiche individuelle.
 
-L’entreprise propriétaire provient uniquement du contexte autorisé. L’import ne crée aucun compte et ne publie pas de profil. Toutes les fiches sont enregistrées en **brouillon** dans une transaction unique ; une erreur annule aussi les autres créations et leurs audits tout en conservant la saisie dans le panier. Après une réponse réseau incertaine, vérifier la même demande avant de la modifier ou d’en créer une autre. Le formulaire individuel reste disponible pour les fiches détaillées.
+L’entreprise propriétaire provient uniquement du contexte autorisé. L’import utilise des comptes existants. La case de publication s’applique à toutes les fiches du panier. Une présentation est requise pour chaque fiche à publier. Les fiches sont enregistrées dans une transaction unique. En cas d’erreur, les créations et leurs audits sont annulés et la saisie reste disponible dans le panier. Après une réponse réseau incertaine, vérifier la même demande avant de la modifier ou d’en créer une autre. Le formulaire individuel reste disponible pour les fiches détaillées.
 
 Les routes dédiées sont `GET /api/professionnels/profils/modele-excel`, `POST /api/professionnels/profils/import-excel` (multipart `fichier`, lecture seule) et `POST /api/professionnels/profils/batch`. Ce dernier reçoit `{requestId, rows:[{clientRowId, data, competenceIds, prestationIds, affiliations}]}` ; `data` reprend les champs du formulaire individuel. Le service individuel recontrôle comptes, références dynamiques, entreprise et affiliations lors de la confirmation. La demande du lot entier est liée à chaque preuve de rejeu. Aucune table ni migration supplémentaire n’est nécessaire.
 

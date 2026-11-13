@@ -65,6 +65,12 @@ class StructuresDirectoryAPI(unittest.TestCase):
 
     def test_13_contact_type_uses_abbreviation_with_same_reference(self):
         self.publish(IdTypeEntiteFk=self.typ)
+        self.connection.execute(
+            """INSERT INTO systeme."T_LicenceModule" ("IdLicenceFk","CodeModule","Actif")
+            SELECT "IdLicence",'discussions',true FROM systeme."T_Licence" WHERE "IdEntiteFk"=%s
+            ON CONFLICT DO NOTHING""",
+            [self.entities[1]],
+        )
         original = self.connection.execute('SELECT "NomGenerique","AbrGenerique" FROM referentiel."T_Generique" WHERE "ID_Generique"=%s', [self.typ]).fetchone()
         try:
             self.connection.execute('UPDATE referentiel."T_Generique" SET "NomGenerique"=%s,"AbrGenerique"=%s WHERE "ID_Generique"=%s',
@@ -276,7 +282,7 @@ class StructuresDirectoryAPI(unittest.TestCase):
             body = {'data':{'IdUserFk':user,'IdTypeProfessionnelFk':typ,'IdSecteurFk':refs['secteurs'][0]['id'],
                            'IdSpecialiteFk':refs['specialites'][0]['id'],'TitrePublic':'Expert fictif '+self.tag,
                            'PresentationPublique':'Présentation de recette fictive'},
-                    'affiliations':affiliates,'competenceIds':[],'prestationIds':[],'requestId':str(uuid.uuid4())}
+                    'affiliations':affiliates,'competenceIds':[],'prestationIds':[],'requestId':str(uuid.uuid4()),'publish':False}
             profile = self.data(self.client().post('/api/professionnels/profils',body,format='json'),201)
             if publish:
                 profile = self.data(self.client().post('/api/professionnels/profils/'+str(profile['record']['IdProfessionnel'])+'/actions',

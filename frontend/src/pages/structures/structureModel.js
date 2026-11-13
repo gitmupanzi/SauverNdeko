@@ -5,10 +5,29 @@ export const STRUCTURE_PAGE_SIZES=[10,25,50,100];
 export function structureId(record={}){return validStructureKey(record.key);}
 export function structureName(record={}){return record.name||"Structure ou territoire";}
 export function validStructureId(value){return /^[1-9]\d*$/.test(String(value??""))?String(value):"";}
-export function validStructureKey(value){return /^n[345]:[1-9]\d*$/.test(String(value??""))?String(value):"";}
+export function validStructureKey(value){return /^n[2345]:[1-9]\d*$/.test(String(value??""))?String(value):"";}
 export function structureTarget(value){const key=validStructureKey(value);if(!key)return null;const [level,id]=key.slice(1).split(":");return {key,level:Number(level),id};}
-export function structureLevelLabel(value){return {3:"Niveau 3",4:"Niveau 4",5:"Niveau 5 — Structures et sites"}[value]||"Structure ou territoire";}
-export function structureTerritory(record={}){return [...new Set([record.area?.name,record.zone?.name,record.subdivision?.name,record.province?.name].filter(value=>value&&value!==record.name))].join(" · ");}
+export function structureLevelLabel(value){return {2:"Niveau 2 — Antennes et subdivisions",3:"Niveau 3",4:"Niveau 4",5:"Niveau 5 — Structures et sites"}[value]||"Structure ou territoire";}
+export function typedTerritory(territory) {
+ if (!territory?.name) return "";
+ const type = territory.type?.trim();
+ return type ? type + " " + territory.name : territory.name;
+}
+export function structureTerritory(record = {}) {
+ // Les niveaux 2 à 4 figurent aussi comme ancêtres de leur propre ligne dans la projection.
+ return [[4, record.area], [3, record.zone], [2, record.subdivision], [1, record.province]]
+  .filter(([level]) => level !== Number(record.level))
+  .map(([, territory]) => typedTerritory(territory))
+  .filter(Boolean)
+  .join(" · ");
+}
+export function structureMapUrl(position) {
+ const {latitude, longitude} = position || {};
+ if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+     Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || (latitude === 0 && longitude === 0)) return "";
+ const query = new URLSearchParams({api: "1", query: latitude + "," + longitude});
+ return "https://www.google.com/maps/search/?" + query;
+}
 export function structureLocation(params){
  const criteria=Object.fromEntries(Object.keys(EMPTY_STRUCTURE_CRITERIA).map(key=>[key,params.get(key)||""])),take=Number(params.get("take")),skip=Number(params.get("skip"));
  return {criteria,grid:{take:STRUCTURE_PAGE_SIZES.includes(take)?take:25,skip:Number.isSafeInteger(skip)&&skip>=0?skip:0,sortBy:params.get("sortBy")==="type"?"type":"name",sortDir:params.get("sortDir")==="desc"?"desc":"asc"},focusKey:validStructureKey(params.get("structure")),invalidFocus:Boolean(params.get("structure")&&!validStructureKey(params.get("structure")))};

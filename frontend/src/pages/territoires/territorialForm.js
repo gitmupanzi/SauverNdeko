@@ -1,7 +1,11 @@
-import {territoryFields} from "./territorialDefinitions";
+import {TERRITORY_PUBLICATION_FIELD,territoryFields} from "./territorialDefinitions";
 import {referenceOptions,retainReference} from "../../utils/referenceOptions";
 
 export const OPTIONAL_BOOLEAN=[{value:"",label:"Non renseigné"},{value:"true",label:"Oui"},{value:"false",label:"Non"}];
+export function territoryPublicationChoices(support,creating){
+ const label=support?.publicationDefault===false?"Non":"Oui";
+ return creating?[{value:"",label:"Par défaut · "+label},...OPTIONAL_BOOLEAN.slice(1)]:OPTIONAL_BOOLEAN.slice(1);
+}
 export function territoryTypeReference(kind,support){
  const field=territoryFields(kind).find(item=>/^niveau[345]Types$/.test(item.optionsSource||""));
  if(!field||!support)return null;
@@ -41,5 +45,5 @@ export function territoryErrors(kind,values,baseline,support){
  return errors;
 }
 export function territoryPayload(kind,values,baseline){
- const result={};territoryFields(kind).forEach(field=>{if(baseline&&values[field.name]===baseline[field.name])return;const value=String(values[field.name]??"").trim();result[field.name]=value===""?null:field.type==="checkbox"?value==="true":field.type==="select"?Number(value):field.type==="number"?value.replace(",","."):value;});return result;
+ const result={};territoryFields(kind).forEach(field=>{if(baseline&&values[field.name]===baseline[field.name])return;const value=String(values[field.name]??"").trim();if(field.name===TERRITORY_PUBLICATION_FIELD&&value==="")return;result[field.name]=value===""?null:field.type==="checkbox"?value==="true":field.type==="select"?Number(value):field.type==="number"?value.replace(",","."):value;});return result;
 }

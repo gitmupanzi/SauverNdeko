@@ -100,3 +100,11 @@
 @container(max-width:640px) { .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading h2 { font-size:20px; } }
 @media(max-width:640px) { .expert-directory { padding:14px; } .expert-directory-card { padding:18px; } .expert-fields,.expert-capability-grid,.expert-summary { grid-template-columns:1fr; } .expert-profile-heading { align-items:flex-start; } .expert-pagination>div { width:100%; justify-content:space-between; } }
 @media(prefers-reduced-motion:reduce) { .expert-directory-card { transition:none; } }
+
+.expert-publication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem 0;
+}

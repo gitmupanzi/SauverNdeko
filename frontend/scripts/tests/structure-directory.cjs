@@ -18,7 +18,12 @@ async function settle(hooks,component,props={}){await tick();hooks.render(compon
 (async()=>{
  const pure=await bundle("export * from './src/pages/structures/structureModel';export * from './src/services/entityScope';");
  eq(pure.structureLocation(new URLSearchParams('take=999&skip=-3&sortBy=price&sortDir=wrong&structure=7')).grid,{take:25,skip:0,sortBy:'name',sortDir:'asc'});
- for(const invalid of ['7','n2:7','n5:0','n5:-1','n5:7/path','n5:7:8'])eq(pure.validStructureKey(invalid),'');
+ for(const invalid of ['7','n1:7','n5:0','n5:-1','n5:7/path','n5:7:8'])eq(pure.validStructureKey(invalid),'');
+ const subdivision={...common,key:'n2:7',level:2,id:7,name:'Subdivision A',type:'Ant PEV',subdivision:{id:7,name:'Subdivision A'},zone:null};
+ eq(pure.structureTarget('n2:7'),{key:'n2:7',level:2,id:'7'});
+ eq(pure.structureTerritory(subdivision),'Province A');
+ eq(pure.structureDetail({success:true,data:{record:subdivision}},'n2:7'),{record:subdivision});
+ ok(pure.structureLevelLabel(2).includes('subdivisions'));
  eq(pure.structureTarget('n5:7'),{key:'n5:7',level:5,id:'7'});eq(pure.structureLocation(new URLSearchParams('structure=n4%3A7')).focusKey,'n4:7');eq(pure.structureLocation(new URLSearchParams('structure=7')).invalidFocus,true);
  eq(pure.sanitaryRows({success:true,data:{rows:records,total:3}}),{rows:records,total:3});eq(pure.sanitaryRows({success:true,data:{rows:[records[0],records[0]],total:2}}),null);eq(pure.sanitaryRows({success:true,data:{rows:[{...records[0],key:'n5:7'}],total:1}}),null);eq(pure.sanitaryRows({success:true,data:{rows:[],total:null}}),null);eq(pure.structureDetail({success:true,data:{record:records[0]}},'n5:7'),null);
  eq(pure.structureId(records[0]),'n3:7');eq(pure.structureName({name:null}),'Structure ou territoire');eq(pure.structureTerritory(records[2]),'Aire A · Zone A · Subdivision A · Province A');eq(pure.structureOptions([],'49').at(-1),{value:'49',label:'Valeur sélectionnée indisponible',disabled:true});eq(pure.structureOptions([], '', 'Toutes les provinces')[0].label,'Toutes les provinces');

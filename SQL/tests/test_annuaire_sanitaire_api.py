@@ -62,7 +62,7 @@ class SanitaryDirectoryAPI(unittest.TestCase):
         self.assertEqual(len(rows), 3)
         self.assertEqual({row['level'] for row in rows}, {3, 4, 5})
         required = {'key', 'level', 'id', 'name', 'code', 'typeId', 'type', 'address', 'phone', 'secondaryPhone',
-                    'email', 'website', 'reception', 'hours', 'contactsPublished', 'province', 'subdivision', 'zone', 'area'}
+                    'email', 'website', 'reception', 'hours', 'contactsPublished', 'position', 'province', 'subdivision', 'zone', 'area'}
         for row in rows:
             self.assertEqual(set(row), required)
             self.assertEqual(row['key'], 'n' + str(row['level']) + ':' + str(row['id']))
@@ -74,6 +74,25 @@ class SanitaryDirectoryAPI(unittest.TestCase):
         encoded = json.dumps(rows)
         for forbidden in ('IdEntite', 'ObsNiveau', 'geometry', 'Latitude', 'logoUrl', 'canContact', 'IdUser'):
             self.assertNotIn(forbidden, encoded)
+
+    def test_own_position_and_ancestor_types(self):
+        chain = self.chain()
+        self.connection.execute(
+            'UPDATE geolocalisation."T_Niveau_3" SET "LatitudeNiveau_3"=-4.4, "LongitudeNiveau_3"=15.4 WHERE "ID_Niveau_3"=%s',
+            [chain[3]['ID_Niveau_3']],
+        )
+        self.connection.execute(
+            'UPDATE geolocalisation."T_Niveau_5" SET "LatitudeNiveau_5"=-4.5, "LongitudeNiveau_5"=15.5 WHERE "ID_Niveau_5"=%s',
+            [chain[5]['ID_Niveau_5']],
+        )
+        results = {row['level']: row for row in self.listing()['rows']}
+        self.assertEqual(results[3]['position'], {'latitude': -4.4, 'longitude': 15.4})
+        self.assertIsNone(results[4]['position'])
+        self.assertEqual(results[5]['position'], {'latitude': -4.5, 'longitude': 15.5})
+        for parent in ('zone', 'area'):
+            self.assertEqual(results[5][parent]['type'], self.tag + '-T')
+        detail = self.data(self.client(local=True).get(BASE + '/5/' + str(chain[5]['ID_Niveau_5'])))
+        self.assertEqual(detail['record'], results[5])
 
     def test_02_contact_publication_is_explicit_reversible_and_not_inherited(self):
         chain = self.chain()
