@@ -65,6 +65,12 @@ export function reportPeriodDates({ debut, fin }, today = reportToday()) {
   return { debut: debut + "-01", fin: fin === today.slice(0, 7) ? today : lastDay };
 }
 
+export function recentReportDates(months, today = reportToday()) {
+  const [year, month] = today.split("-").map(Number);
+  const first = new Date(Date.UTC(year, month - months, 1));
+  return { debut: first.toISOString().slice(0, 10), fin: today };
+}
+
 export function analysisPath(period, view) {
   const params = new URLSearchParams(period || {});
   if (view) params.set("vue", view);

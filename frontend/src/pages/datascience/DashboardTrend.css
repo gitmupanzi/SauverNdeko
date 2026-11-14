@@ -1,0 +1,103 @@
+.data-science-trend {
+  display: grid;
+  grid-template-columns: max(3rem, var(--trend-axis-width)) minmax(var(--trend-min-width), 1fr);
+  min-height: 12rem;
+  padding-bottom: 2.35rem;
+}
+.data-science-trend-axis,
+.data-science-trend-plot {
+  position: relative;
+}
+.data-science-trend-axis span {
+  position: absolute;
+  inset-inline-end: .65rem;
+  transform: translateY(-50%);
+  color: var(--erp-muted);
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.data-science-trend-plot {
+  display: grid;
+  grid-template-columns: repeat(var(--trend-months), minmax(0, 1fr));
+  border-inline-start: 1px solid var(--erp-border);
+}
+.data-science-trend-plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.data-science-trend-gridline {
+  stroke: var(--erp-border);
+}
+.data-science-trend-demandes {
+  --trend-color: var(--data-science-requests);
+}
+.data-science-trend-recherches {
+  --trend-color: var(--data-science-fulfilled);
+}
+.data-science-trend-plot path {
+  fill: none;
+  stroke: var(--trend-color);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.data-science-trend-plot path.data-science-trend-recherches {
+  stroke-dasharray: 5 4;
+}
+.data-science-legend i[class^="data-science-trend-"],
+.data-science-trend-month i {
+  background: var(--trend-color);
+}
+.data-science-trend-month i {
+  position: absolute;
+  z-index: 1;
+  width: .65rem;
+  height: .65rem;
+  border: 1px solid var(--erp-surface);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.data-science-trend-month button {
+  position: relative;
+  width: 100%;
+  height: calc(100% + 2.15rem);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--erp-text);
+  cursor: pointer;
+}
+.data-science-trend-month button:hover,
+.data-science-trend-month button:focus-visible {
+  background: color-mix(in srgb, var(--erp-action) 10%, transparent);
+  border-color: var(--erp-action-border);
+}
+.data-science-trend-month button:focus-visible {
+  outline: 2px solid var(--erp-action);
+  outline-offset: -2px;
+}
+.data-science-trend-month button span,
+.data-science-trend-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.15rem;
+  padding-inline: .15rem;
+  text-align: center;
+  font-size: .75rem;
+  line-height: 1.2;
+}
+.data-science-trend-month button span {
+  position: absolute;
+  inset: auto 0 0;
+}
+.data-science-trend-gap {
+  position: relative;
+  top: 100%;
+  color: var(--erp-muted);
+}

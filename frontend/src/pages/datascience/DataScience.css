@@ -39,59 +39,41 @@
   gap: 8px;
 }
 .data-science-summary-actions .ui-action { min-height: 44px; }
-.data-science-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 188px), 1fr));
-  gap: 8px;
-  margin: 0;
+.data-science-dashboard { min-width: 0; }
+.data-science-dashboard-form { display: grid; min-width: 0; gap: 8px; }
+.data-science-dashboard-form .erp-dashboard-filters > .ui-action { min-height: 44px; }
+.data-science-dashboard .erp-dashboard-period .search-select-trigger { min-height: 44px; }
+.data-science-dashboard-dimensions {
+  flex: 1 0 100%;
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  margin-top: 3px;
+  border-top: 1px solid var(--erp-border);
 }
-.data-science-summary-item {
+.data-science-dashboard-dimensions[hidden] { display: none; }
+.data-science-applied-filters {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-  border: 1px solid var(--erp-border, #dce5f0);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--erp-raised, #f6f8fc);
-  overflow-wrap: anywhere;
-}
-.data-science-summary-item dt {
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  color: var(--erp-muted, #53647a);
-  font-size: .875rem;
-}
-.data-science-summary-item dt svg { flex: none; }
-.data-science-summary-item dd {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-.data-science-summary-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 44px;
-  min-height: 44px;
   padding: 0;
-  border: 0;
-  background: none;
-  color: var(--data-science-requests);
-  font: inherit;
-  cursor: pointer;
+  margin: 0;
+  list-style: none;
 }
-.data-science-summary-link:hover { text-decoration: underline; }
-.data-science-summary-link:focus-visible {
-  outline: 2px solid var(--data-science-requests);
-  outline-offset: 2px;
+.data-science-applied-filters li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 4px 9px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  background: var(--erp-raised);
+  font-size: .8rem;
 }
+.data-science-dashboard.erp-dashboard .erp-group-grid .erp-kpi.is-informative:hover {
+  background: color-mix(in srgb, var(--erp-raised) 70%, var(--erp-surface));
+  border-color: transparent;
+}
+.data-science-dashboard.erp-dashboard .erp-kpi.is-informative .erp-kpi-main { cursor: default; }
+.data-science-dashboard-detail { border-top: 3px solid var(--erp-action); }
 .data-science-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .data-science-controls .ui-action { min-height: 44px; }
 .data-science-field { min-width: 0; display: grid; gap: 5px; }

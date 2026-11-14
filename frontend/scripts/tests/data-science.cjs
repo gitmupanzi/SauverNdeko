@@ -73,7 +73,7 @@ function plugin() {
 
 async function bundle() {
   const output = await esbuild.build({
-    stdin: { contents: 'export {default as DataScience} from "./src/pages/DataScience"; export {default as Series} from "./src/pages/datascience/DemandSeries"; export {default as ProvinceMatrix, provinceMatrix} from "./src/pages/datascience/ProvinceMatrix"; export * from "./src/pages/datascience/analysisModel"; export {configureEntityScope, entityScopeIsCurrent} from "./src/services/entityScope"; export {mayOpen} from "./src/services/moduleAccess";', resolveDir: front },
+    stdin: { contents: 'export {default as DataScience} from "./src/pages/DataScience"; export {default as Series} from "./src/pages/datascience/DemandSeries"; export {default as ProvinceMatrix, provinceMatrix} from "./src/pages/datascience/ProvinceMatrix"; export {default as ScienceDashboard} from "./src/pages/datascience/ScienceDashboard"; export {default as DashboardTrend} from "./src/pages/datascience/DashboardTrend"; export * from "./src/pages/datascience/dashboardModel"; export * from "./src/pages/datascience/analysisModel"; export {configureEntityScope, entityScopeIsCurrent} from "./src/services/entityScope"; export {mayOpen} from "./src/services/moduleAccess";', resolveDir: front },
     bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", plugins: [plugin()],
   });
   const filename = path.join(front, "data-science-proof.cjs");
@@ -105,16 +105,24 @@ function find(tree, matches) {
 function mountPage(DataScience) {
   const shell = new Hooks();
   let child = null;
+  let dashboard = null;
   const renderShell = () => shell.render(DataScience);
   function renderWorkspace() {
     const workspace = find(renderShell(), node => typeof node.type === "function" && Object.hasOwn(node.props, "active"));
     if (child?.key !== workspace.key || child?.type !== workspace.type) {
       child?.hooks.dispose();
+      dashboard?.dispose();
+      dashboard = null;
       child = { key: workspace.key, type: workspace.type, hooks: new Hooks() };
     }
     return child.hooks.render(workspace.type, workspace.props);
   }
-  return { renderShell, renderWorkspace, dispose() { child?.hooks.dispose(); shell.dispose(); } };
+  function renderDashboard(Component) {
+    const node = find(renderWorkspace(), item => item.type === Component);
+    dashboard ||= new Hooks();
+    return dashboard.render(node.type, node.props);
+  }
+  return { renderShell, renderWorkspace, renderDashboard, dispose() { child?.hooks.dispose(); dashboard?.dispose(); shell.dispose(); } };
 }
 
 const period = { debut: "2026-01", fin: "2026-03" };
@@ -135,7 +143,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
 
 (async () => {
   const {
-    analysisPath, analysisPayload, periodError, periodMonths, reportDatePeriod, reportPeriodDates, reportToday, seriesRows, configureEntityScope, entityScopeIsCurrent, mayOpen, DEMAND_MEASURES, SEARCH_MEASURES, Series, DataScience, ProvinceMatrix, provinceMatrix,
+    analysisPath, analysisPayload, periodError, periodMonths, reportDatePeriod, reportPeriodDates, reportToday, recentReportDates, seriesRows, configureEntityScope, entityScopeIsCurrent, mayOpen, DEMAND_MEASURES, SEARCH_MEASURES, Series, DataScience, ScienceDashboard, DashboardTrend, dashboardAnalysis, ProvinceMatrix, provinceMatrix,
   } = await bundle();
   assert.equal(analysisPath(period), "/api/data-science/indicateurs/demandes?debut=2026-01&fin=2026-03");
   assert.deepEqual(periodMonths(period), ["2026-01", "2026-02", "2026-03"]);
@@ -144,6 +152,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.match(periodError({ debut: "2026-21", fin: "2026-22" }), /AAAA-MM/);
   const today = "2026-11-14";
   assert.equal(reportToday(new Date("2026-11-13T23:00:00Z")), today);
+  assert.deepEqual(recentReportDates(3, "2026-02-04"), { debut: "2025-12-01", fin: "2026-02-04" });
   assert.deepEqual(reportPeriodDates(period, today), { debut: "2026-01-01", fin: "2026-03-31" });
   assert.deepEqual(reportPeriodDates({ debut: "2025-12", fin: "2026-11" }, today), { debut: "2025-12-01", fin: today });
   assert.deepEqual(reportDatePeriod({ debut: "2024-02-29", fin: "2024-02-29" }, today).period, { debut: "2024-02", fin: "2024-02" });
@@ -167,6 +176,16 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(analysisPayload({ ...data, cellules: [{ ...demand, mois: "2026-05" }] }), null);
   assert.equal(analysisPayload({ ...data, statutCollecte: "indisponible" }).collecteDisponible, false);
   assert.equal(analysisPayload({ ...data, cellules: [{ ...demand, satisfaites: 0 }] }).cellules[0].satisfaites, 0);
+  const totals = dashboardAnalysis(model.cellules, period, true);
+  assert.deepEqual(totals.points.map(point => [point.demandes, point.recherches]), [[11, null], [null, null], [5, 10]]);
+  assert.equal(totals.groups[0].metrics.find(item => item.key === "demandes").value, 16);
+  assert.equal(totals.groups[0].metrics.find(item => item.key === "satisfaites").value, null);
+  assert.deepEqual(totals.populations.get("besoins").rows.map(row => row.key), [model.cellules[1].key]);
+  assert.equal(dashboardAnalysis(model.cellules, period, false).groups.some(group => group.key === "recherches"), false);
+  assert.equal(dashboardAnalysis([], period, false).groups[0].metrics[0].value, null);
+  const trend = DashboardTrend({ points: totals.points, showResearch: true, onMonth() {} });
+  assert.equal(nodes(trend).filter(node => node.type === "button").length, 2);
+  assert.equal(nodes(trend).filter(node => node.type === "path")[0].props.d.match(/M/g).length, 2);
 
   const selection = [];
   const graph = Series({ rows: model.cellules.slice(0, 1), period, measures: DEMAND_MEASURES, onMonth: (...args) => selection.push(args) });
@@ -253,10 +272,6 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   const title = tree => text(find(tree, node => node.type === "h1"));
   const table = tree => find(tree, node => node.type === "tableFixture");
   const action = (tree, label) => find(tree, node => node.type === "ActionButton" && text(node) === label);
-  const dashboardSummary = tree => {
-    const component = find(tree, node => typeof node.type === "function" && Object.hasOwn(node.props, "canOpenResearch"));
-    return component.type(component.props);
-  };
 
   globalThis.__dataScienceSearch = "";
   const denied = { ...tenant, Is_Admin: true, moduleAccess: { platformAdmin: false } };
@@ -271,7 +286,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(mayOpen(administrator, "/data-science"), true);
   const page = mountPage(DataScience);
   const { renderWorkspace, renderShell } = page;
-  let tree = renderWorkspace();
+  let tree = page.renderDashboard(ScienceDashboard);
   assert.equal(sidebar(renderShell()).props.activeKey, "tableau-de-bord");
   assert.deepEqual(tabs(renderShell()), ["tableau-de-bord", "demandes", "recherches", "perimetre"]);
   assert.equal(sidebar(renderShell()).props.headerProps.showEntityScope, true);
@@ -281,9 +296,38 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(globalRequest.scope.headers, {});
   globalRequest.resolve(answer(globalScope));
   await nextTurn();
-  tree = renderWorkspace();
-  action(dashboardSummary(tree), "Explorer les recherches");
-  action(dashboardSummary(tree), "Explorer les demandes").props.onClick();
+  tree = page.renderDashboard(ScienceDashboard);
+  action(tree, "Explorer les recherches");
+  const applyDashboard = current => find(current, node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  const indicatorPanel = current => find(current, node => node.props?.activeMetric !== undefined && node.props?.groups);
+  const dashboard = () => page.renderDashboard(ScienceDashboard);
+  const searchField = find(tree, node => node.type === "input" && node.props.type === "search");
+  searchField.props.onChange({ target: { value: "hygiene" } });
+  tree = dashboard();
+  assert.equal(indicatorPanel(tree).props.groups[1].metrics[0].value, 10);
+  applyDashboard(tree);
+  tree = dashboard();
+  const indicators = indicatorPanel(tree).props;
+  assert.equal(indicators.groups[0].metrics[0].value, 16);
+  assert.equal(indicators.groups[1].metrics[0].value, null);
+  const trigger = { getClientRects: () => [1], focus() { this.restored = true; } };
+  indicators.onMetric("demandes", indicators.groups[0].metrics[1], trigger);
+  tree = dashboard();
+  assert.deepEqual(table(tree).props.rows.map(row => row.nature), ["besoin_sans_resultat"]);
+  action(tree, "Revenir à l’indicateur").props.onClick();
+  assert.equal(trigger.restored, true);
+  tree = dashboard();
+  find(tree, node => node.type === DashboardTrend).props.onMonth("2026-01", trigger);
+  assert.deepEqual(table(dashboard()).props.rows.map(row => row.mois), ["2026-01"]);
+  tree = dashboard();
+  action(tree, "Filtrer").props.onClick();
+  tree = dashboard();
+  find(tree, node => node.type === "SearchSelect" && node.props.label === "Nature du signal").props.onChange('"demande_suivie"');
+  applyDashboard(dashboard());
+  tree = dashboard();
+  assert.equal(indicatorPanel(tree).props.groups[0].metrics[0].value, 11);
+  assert.equal(indicatorPanel(tree).props.groups[0].metrics[1].value, null);
+  action(tree, "Explorer les demandes").props.onClick();
 
   tree = renderWorkspace();
   const request = latestRead("demandes");
@@ -398,9 +442,10 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(requestForTenant.scope.headers, {});
   requestForTenant.resolve(answer(company(7), { cellules: [demand] }));
   await nextTurn();
-  const tenantSummary = dashboardSummary(tenantPage.renderWorkspace());
+  const tenantSummary = tenantPage.renderDashboard(ScienceDashboard);
   action(tenantSummary, "Explorer les demandes");
   assert(!nodes(tenantSummary).some(node => node.type === "ActionButton" && text(node) === "Explorer les recherches"));
+  assert(!nodes(tenantSummary).some(node => node.type === "SearchSelect" && node.props.label === "Terme de maladie"));
   tenantPage.dispose();
 
   const restrictedUser = {
@@ -415,7 +460,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   const lastRequest = latestRead("tableau-de-bord");
   lastRequest.resolve(answer(company(7), { cellules: [demand] }));
   await nextTurn();
-  assert(!nodes(dashboardSummary(dashboardOnly.renderWorkspace())).some(node => node.type === "ActionButton" && text(node) === "Explorer les demandes"));
+  assert(!nodes(dashboardOnly.renderDashboard(ScienceDashboard)).some(node => node.type === "ActionButton" && text(node) === "Explorer les demandes"));
   dashboardOnly.dispose();
   assert(lastRequest.options.signal.aborted);
   console.log("Module Data science : agrégats, confidentialité, graphique, filtres, navigation et chargement vérifiés.");

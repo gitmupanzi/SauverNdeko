@@ -13,6 +13,7 @@ import { SimpleTable } from "./logistique/logistiqueShared";
 import DemandSeries, { natureLabel, sourceLabel } from "./datascience/DemandSeries";
 import ProvinceMatrix from "./datascience/ProvinceMatrix";
 import ResearchScope from "./datascience/ResearchScope";
+import ScienceDashboard from "./datascience/ScienceDashboard";
 import { analysisPath, analysisPayload, DEMAND_MEASURES, formatCount, monthLabel, publishedOptions, reportDatePeriod, reportPeriodDates, reportToday, SEARCH_MEASURES, STOCK_MEASURES } from "./datascience/analysisModel";
 import "./logistique/LogistiqueModern.css";
 import "./admin/AdminPortal.css";
@@ -61,39 +62,20 @@ function measureColumns(measures) {
   }));
 }
 
-function DashboardSummary({ rows, researchRows, canOpenDemands, canOpenResearch, onNavigate }) {
-  const provinces = new Set(rows.flatMap(row => row.territory === null ? [] : [row.territory]));
-  const categories = new Set(rows.flatMap(row => row.category === null ? [] : [row.category]));
-  const indicators = [
-    { label: "Groupes de demandes publiés", value: rows.length, icon: "chart", target: canOpenDemands ? "demandes" : null },
-    { label: "Provinces représentées", value: provinces.size, icon: "globe" },
-    { label: "Catégories de produits représentées", value: categories.size, icon: "tag" },
-  ];
-  if (researchRows.length) indicators.push({ label: "Groupes de recherches publiés", value: researchRows.length, icon: "search", target: canOpenResearch ? "recherches" : null });
-  return (
-    <section className="data-science-panel" aria-label="Synthèse des données publiées">
-      <div className="data-science-panel-header">
-        <div>
-          <h2>Synthèse</h2>
-          <p>Couverture des données consultables sur la période.</p>
-        </div>
-        <div className="data-science-summary-actions">
-          {canOpenDemands && <ActionButton icon="arrow-right" onClick={() => onNavigate("demandes")}>Explorer les demandes</ActionButton>}
-          {canOpenResearch && <ActionButton icon="arrow-right" onClick={() => onNavigate("recherches")}>Explorer les recherches</ActionButton>}
-        </div>
-      </div>
-      {(rows.length > 0 || researchRows.length > 0) && <dl className="data-science-summary">
-        {indicators.filter(indicator => indicator.value > 0).map(({ label, value, icon, target }) => (
-          <div key={label} className="data-science-summary-item">
-            <dt><AppIcon name={icon} /> {label}</dt>
-            <dd>{target
-              ? <button type="button" className="data-science-summary-link" aria-label={label + " · " + formatCount(value)} onClick={() => onNavigate(target)}>{formatCount(value)} <AppIcon name="chevron-right" size={14} /></button>
-              : formatCount(value)}</dd>
-          </div>
-        ))}
-      </dl>}
-    </section>
-  );
+function renderDashboardDetails({ rows, measure }, detail) {
+  const includesResearch = rows.some(row => row.nature === "recherche");
+  const includesDemands = rows.some(row => row.nature !== "recherche");
+  const dimensions = includesResearch
+    ? [...SEARCH_COLUMNS, ...(includesDemands ? DETAILS_COLUMNS.slice(-1) : [])] : DETAILS_COLUMNS;
+  const measures = [
+    ...(includesDemands ? DEMAND_MEASURES : []),
+    ...(includesResearch ? SEARCH_MEASURES : []),
+  ].filter(item => !measure || item.key === measure);
+  return <div className="data-science-table">
+    <SimpleTable key={detail.key || detail.mois} tableLabel={detail.label} rows={rows}
+      columns={[...dimensions, ...measureColumns(measures)]} getRowId={row => row.key} defaultPinnedColumns={[]}
+      showControls={false} enableSelection={false} defaultRowsPerPage={12} />
+  </div>;
 }
 
 function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, onNavigate }) {
@@ -118,9 +100,6 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
   const loading = !current;
   const data = current ? request.payload : null;
   const rows = useMemo(() => (data?.cellules || []).filter(row => research === (row.nature === "recherche")), [data, research]);
-  const researchRows = dashboard && canOpenResearch ? data?.cellules.filter(row => row.nature === "recherche") || [] : [];
-  const dashboardShowsResearch = dashboard && !rows.length && researchRows.length > 0;
-  const displayedRows = dashboardShowsResearch ? researchRows : rows;
   const activeFilters = filters[active] || {};
   const activeDetail = detail?.view === active ? detail : null;
 
@@ -139,9 +118,10 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
         entityId ? parsed.perimetre?.type === "entreprise" && String(parsed.perimetre.entrepriseId) === String(entityId)
           : !parsed.perimetre || parsed.perimetre.type === "global"
       ) ? parsed : null;
-      const error = payload ? "" : result?.status === 403
-        ? "Votre compte ne peut pas consulter ces analyses."
-        : "Les résultats n’ont pas pu être chargés.";
+      const error = payload ? "" : {
+        403: "Votre compte ne peut pas consulter ces analyses.",
+        422: "Réduisez la période pour consulter les résultats.",
+      }[result?.status] || "Les résultats n’ont pas pu être chargés.";
       setRequest({ path, attempt, payload, error });
       if (payload) setDraft(previous => previous.debut || previous.fin ? previous : reportPeriodDates(payload.periode));
     }
@@ -161,14 +141,15 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
   }
 
   function submitPeriod(event) {
-    event.preventDefault();
+    event?.preventDefault();
     const { period: months, error } = reportDatePeriod(draft, today);
     setPeriodMessage(error);
-    if (error) return;
-    setPeriod(months);
+    if (error) return false;
+    if (months.debut !== data?.periode.debut || months.fin !== data?.periode.fin) setPeriod(months);
     setFilters({});
     setSeries({});
     setDetail(null);
+    return true;
   }
 
   function resetPeriod() {
@@ -186,14 +167,31 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
     detailHeading.current?.focus();
   }
 
+  const feedback = <>
+    {loading && <ListState title="Chargement des analyses…" loading role="status" />}
+    {!loading && request.error && (
+      <ListState title="Analyse indisponible" description={request.error} icon="alert" role="alert"
+        action={<ActionButton onClick={() => setAttempt(value => value + 1)} icon="refresh">Réessayer</ActionButton>} />
+    )}
+    {data && !data.collecteDisponible && (
+      <ListState title="Collecte indisponible" description="Les données de cette analyse ne sont pas accessibles pour le moment." icon="document" />
+    )}
+  </>;
+
+  if (dashboard) {
+    return <ScienceDashboard data={data} loading={loading} dateDraft={draft} onDate={updateDate}
+      onDates={dates => { setDraft(dates); setPeriodMessage(""); }} today={today} periodMessage={periodMessage}
+      onSubmitPeriod={submitPeriod} onResetPeriod={resetPeriod} canOpenDemands={canOpenDemands}
+      canOpenResearch={canOpenResearch} showResearch={canOpenResearch && !entityId} onNavigate={onNavigate}
+      renderDetails={renderDashboardDetails}>{feedback}</ScienceDashboard>;
+  }
+
   return (
     <>
         <header className="erp-register-heading data-science-heading">
           <div>
-            <h1>{dashboard ? "Tableau de bord" : research ? "Recherches déclarées" : "Demandes et besoins"}</h1>
-            <p>{dashboard
-              ? "Consultez les demandes et l’évolution des besoins déclarés."
-              : research ? "Explorez les recherches déclarées par catégorie de produit, terme de maladie et province."
+            <h1>{research ? "Recherches déclarées" : "Demandes et besoins"}</h1>
+            <p>{research ? "Explorez les recherches déclarées par catégorie de produit, terme de maladie et province."
                 : "Explorez les besoins signalés après une recherche sans résultat et leur issue déclarée."}</p>
           </div>
         </header>
@@ -218,20 +216,8 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
           {periodMessage && <p className="data-science-period-error" role="alert" id={prefix + "-period-error"}>{periodMessage}</p>}
         </form>
         <div aria-busy={loading} className="data-science-results">
-          {loading ? <ListState title="Chargement des analyses…" loading role="status" /> : null}
-          {!loading && request.error ? (
-            <ListState title="Analyse indisponible" description={request.error} icon="alert" role="alert"
-              action={<ActionButton onClick={() => setAttempt(value => value + 1)} icon="refresh">Réessayer</ActionButton>} />
-          ) : null}
-          {data && !data.collecteDisponible ? (
-            <ListState title="Collecte indisponible" description="Les données de cette analyse ne sont pas accessibles pour le moment." icon="document" />
-          ) : null}
-          {dashboard && data?.collecteDisponible && <DashboardSummary rows={rows} researchRows={researchRows}
-            canOpenDemands={canOpenDemands} canOpenResearch={canOpenResearch} onNavigate={onNavigate} />}
-          {dashboardShowsResearch && <DemandSeries key={active} rows={researchRows} period={data.periode}
-            measures={SEARCH_MEASURES} selected={series[active]} onSelect={value => setSeries(previous => ({ ...previous, [active]: value }))}
-            onMonth={canOpenResearch ? () => onNavigate("recherches") : undefined} />}
-          {data?.collecteDisponible && !displayedRows.length ? (
+          {feedback}
+          {data?.collecteDisponible && !rows.length ? (
             <ListState title="Aucune donnée publiable pour cette période" description="Essayez une autre période. Les petits groupes sont masqués pour protéger la confidentialité." icon="chart" />
           ) : null}
           {data?.collecteDisponible && rows.length > 0 ? (
