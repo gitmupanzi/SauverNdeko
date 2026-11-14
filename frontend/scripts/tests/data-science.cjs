@@ -47,15 +47,23 @@ class Hooks {
 const mock = {
   react: 'export const useState=v=>globalThis.__dataScienceHooks.state(v),useMemo=f=>f(),useRef=v=>globalThis.__dataScienceHooks.reference(v),useId=()=>"proof",useEffect=(run,dep)=>globalThis.__dataScienceHooks.effect(run,dep);',
   jsx: 'export const jsx=(type,props,key)=>({type,props,key}),jsxs=jsx,Fragment="fragment";',
-  router: 'export const useSearchParams=()=>[new URLSearchParams(globalThis.__dataScienceSearch),next=>{globalThis.__dataScienceSearch=new URLSearchParams(next).toString();}];',
+  router: 'export const Link="Link",useSearchParams=()=>[new URLSearchParams(globalThis.__dataScienceSearch),next=>{globalThis.__dataScienceSearch=new URLSearchParams(next).toString();}];',
   auth: 'export const useAuth=()=>({user:globalThis.__dataScienceUser});',
   scope: 'export const useEntityScope=()=>globalThis.__dataScienceScope;',
-  api: 'import {captureEntityScope} from "./src/services/entityScope"; export const requestJson=(url,options)=>new Promise(resolve=>globalThis.__dataScienceReads.push({url,options,scope:captureEntityScope(url),resolve}));',
-  table: 'export const SimpleTable="tableFixture";',
+  api: `import {captureEntityScope} from "./src/services/entityScope";
+    export function requestJson(url,options){
+      const scope=captureEntityScope(url);
+      if(url==="/api/data-science/presentation"){
+        const entityId=Number(globalThis.__dataScienceScope.entityId);
+        return {then:read=>read({success:true,data:{entityId,...globalThis.__dataSciencePresentation}})};
+      }
+      return new Promise(resolve=>globalThis.__dataScienceReads.push({url,options,scope,resolve}));
+    }`,
+  table: 'export const SimpleTable="tableFixture",formatDate=value=>value||"—";',
 };
 const names = new Map([
   ["react", "react"], ["react/jsx-runtime", "jsx"], ["react-router-dom", "router"],
-  ["../contexts/AuthContext", "auth"], ["../contexts/EntityScopeContext", "scope"], ["../services/api", "api"], ["../../services/api", "api"], ["./logistique/logistiqueShared", "table"],
+  ["../contexts/AuthContext", "auth"], ["../contexts/EntityScopeContext", "scope"], ["../services/api", "api"], ["../../services/api", "api"], ["./logistique/logistiqueShared", "table"], ["../logistique/logistiqueShared", "table"],
 ]);
 function plugin() {
   return { name: "data-science-proof", setup(build) {
@@ -73,7 +81,7 @@ function plugin() {
 
 async function bundle() {
   const output = await esbuild.build({
-    stdin: { contents: 'export {default as DataScience} from "./src/pages/DataScience"; export {default as Series} from "./src/pages/datascience/DemandSeries"; export {default as ProvinceMatrix, provinceMatrix} from "./src/pages/datascience/ProvinceMatrix"; export {default as ScienceDashboard} from "./src/pages/datascience/ScienceDashboard"; export {default as DashboardTrend} from "./src/pages/datascience/DashboardTrend"; export * from "./src/pages/datascience/dashboardModel"; export * from "./src/pages/datascience/analysisModel"; export {configureEntityScope, entityScopeIsCurrent} from "./src/services/entityScope"; export {mayOpen} from "./src/services/moduleAccess";', resolveDir: front },
+    stdin: { contents: 'export {default as DataScience} from "./src/pages/DataScience"; export {default as Series} from "./src/pages/datascience/DemandSeries"; export {default as ProvinceMatrix, provinceMatrix} from "./src/pages/datascience/ProvinceMatrix"; export {default as ScienceDashboard} from "./src/pages/datascience/ScienceDashboard"; export {default as DashboardTrend} from "./src/pages/datascience/DashboardTrend"; export * from "./src/pages/datascience/dashboardModel"; export * from "./src/pages/datascience/analysisModel"; export {captureEntityScope, configureEntityScope, entityScopeIsCurrent} from "./src/services/entityScope"; export {mayOpen} from "./src/services/moduleAccess";', resolveDir: front },
     bundle: true, write: false, platform: "node", format: "cjs", jsx: "automatic", plugins: [plugin()],
   });
   const filename = path.join(front, "data-science-proof.cjs");
@@ -105,24 +113,28 @@ function find(tree, matches) {
 function mountPage(DataScience) {
   const shell = new Hooks();
   let child = null;
-  let dashboard = null;
-  const renderShell = () => shell.render(DataScience);
+  let register = null;
+  const renderShell = () => { shell.render(DataScience); return shell.render(DataScience); };
   function renderWorkspace() {
     const workspace = find(renderShell(), node => typeof node.type === "function" && Object.hasOwn(node.props, "active"));
     if (child?.key !== workspace.key || child?.type !== workspace.type) {
       child?.hooks.dispose();
-      dashboard?.dispose();
-      dashboard = null;
+      register?.hooks.dispose();
+      register = null;
       child = { key: workspace.key, type: workspace.type, hooks: new Hooks() };
     }
     return child.hooks.render(workspace.type, workspace.props);
   }
-  function renderDashboard(Component) {
+  function renderChild(Component) {
     const node = find(renderWorkspace(), item => item.type === Component);
-    dashboard ||= new Hooks();
-    return dashboard.render(node.type, node.props);
+    if (register?.key !== node.key || register?.type !== node.type) {
+      register?.hooks.dispose();
+      register = { key: node.key, type: node.type, hooks: new Hooks() };
+    }
+    return register.hooks.render(node.type, node.props);
   }
-  return { renderShell, renderWorkspace, renderDashboard, dispose() { child?.hooks.dispose(); dashboard?.dispose(); shell.dispose(); } };
+  return { renderShell, renderWorkspace, renderDashboard: renderChild, renderChild,
+    dispose() { child?.hooks.dispose(); register?.hooks.dispose(); shell.dispose(); } };
 }
 
 const period = { debut: "2026-01", fin: "2026-03" };
@@ -143,7 +155,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
 
 (async () => {
   const {
-    analysisPath, analysisPayload, periodError, periodMonths, reportDatePeriod, reportPeriodDates, reportToday, recentReportDates, seriesRows, configureEntityScope, entityScopeIsCurrent, mayOpen, DEMAND_MEASURES, SEARCH_MEASURES, Series, DataScience, ScienceDashboard, DashboardTrend, dashboardAnalysis, ProvinceMatrix, provinceMatrix,
+    analysisPath, analysisPayload, periodError, periodMonths, reportDatePeriod, reportPeriodDates, reportToday, recentReportDates, seriesRows, captureEntityScope, configureEntityScope, entityScopeIsCurrent, mayOpen, DEMAND_MEASURES, SEARCH_MEASURES, Series, DataScience, ScienceDashboard, DashboardTrend, dashboardAnalysis, ProvinceMatrix, provinceMatrix,
   } = await bundle();
   assert.equal(analysisPath(period), "/api/data-science/indicateurs/demandes?debut=2026-01&fin=2026-03");
   assert.deepEqual(periodMonths(period), ["2026-01", "2026-02", "2026-03"]);
@@ -193,8 +205,9 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert.match(monthButton.props["aria-label"], /Demandes 11.*Satisfaites —/);
   assert.equal(nodes(graph).filter(node => node.props?.className === "is-unavailable").length, 2);
   assert.equal(nodes(graph).filter(node => node.props?.className === "data-science-chart-empty").length, 2);
-  monthButton.props.onClick();
-  assert.deepEqual(selection, [["2026-01", model.cellules[0].seriesKey]]);
+  const chartButton = { focus() {} };
+  monthButton.props.onClick({ currentTarget: chartButton });
+  assert.deepEqual(selection, [["2026-01", model.cellules[0].seriesKey, chartButton]]);
   const researchGraph = Series({ rows: model.cellules.slice(2), period, measures: SEARCH_MEASURES, onMonth() {} });
   assert.match(find(researchGraph, node => node.type === "button").props["aria-label"], /Recherches déclarées 10.*Avec résultat —/);
 
@@ -224,8 +237,8 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   find(matrix, node => node.type === "SearchSelect" && node.props.label === "Série à comparer").props.onChange(twoProvinces.value);
   matrix = matrixHooks.render(ProvinceMatrix, matrixProps);
   const zero = find(matrix, node => node.type === "button" && text(node) === "0");
-  zero.props.onClick();
-  assert.deepEqual(matrixClicks, [["2026-02", geography.cellules[1].seriesKey]]);
+  zero.props.onClick({ currentTarget: chartButton });
+  assert.deepEqual(matrixClicks, [["2026-02", geography.cellules[1].seriesKey, chartButton]]);
   assert.equal(nodes(matrix).filter(node => node.type === "abbr").length, 4);
   find(matrix, node => node.type === "SearchSelect" && node.props.label === "Mesure à afficher").props.onChange("satisfaites");
   matrix = matrixHooks.render(ProvinceMatrix, matrixProps);
@@ -272,6 +285,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   const title = tree => text(find(tree, node => node.type === "h1"));
   const table = tree => find(tree, node => node.type === "tableFixture");
   const action = (tree, label) => find(tree, node => node.type === "ActionButton" && text(node) === label);
+  const toolbar = tree => find(table(tree).props.toolbar, node => node.type === "DataTableToolbar").props;
 
   globalThis.__dataScienceSearch = "";
   const denied = { ...tenant, Is_Admin: true, moduleAccess: { platformAdmin: false } };
@@ -333,65 +347,89 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   const request = latestRead("demandes");
   request.resolve(answer(globalScope, { cellules: [demand, unmet] }));
   await nextTurn();
-  tree = renderWorkspace();
+  const AnalysisRegister = find(renderWorkspace(), node => node.type?.name === "AnalysisRegister").type;
+  const register = () => page.renderChild(AnalysisRegister);
+  tree = register();
   assert.deepEqual(table(tree).props.rows.map(row => row.nature), ["demande_suivie", "besoin_sans_resultat"]);
-  assert.match(text(tree), /Définitions et limites/);
-  assert.match(text(tree), /5 contributeurs distincts/);
-  const dateFields = current => nodes(current).filter(node => node.type === "input" && node.props.type === "date");
+  assert.match(text(renderWorkspace()), /Définitions et limites/);
+  assert.match(text(renderWorkspace()), /5 contributeurs distincts/);
+  const settings = current => find(find(current, node => node.type === "RegisterSurface").props.actions, node => node.type === "RegisterSettingsButton");
+  settings(tree).props.onTableSettings();
+  assert.equal(table(register()).props.columnsPanelOpen, true);
+  toolbar(tree).onTake(10);
+  toolbar(tree).toggleDensity();
+  toolbar(tree).toggleFilters();
+  tree = register();
+  assert.equal(table(tree).props.rowsPerPage, 10);
+  assert.equal(find(tree, node => node.props?.["data-density"]).props["data-density"], "airy");
+  const dateFields = current => nodes(table(current).props.toolbar).filter(node => node.type === "input" && node.props.type === "date");
   assert.deepEqual(dateFields(tree).map(node => node.props.value), ["2026-01-01", "2026-03-31"]);
-  assert.match(text(tree), /Mois affichés/);
+  assert.match(text(table(tree).props.toolbar), /Mois affichés/);
   action(tree, "Comparaison par province").props.onClick();
-  tree = renderWorkspace();
+  tree = register();
   const matrixPanel = find(tree, node => node.type === ProvinceMatrix);
   matrixPanel.props.onMonth("2026-01", matrixPanel.props.rows[0].seriesKey);
-  tree = renderWorkspace();
+  tree = register();
   assert.deepEqual(table(tree).props.rows.map(row => row.mois), ["2026-01"]);
 
   sidebar(renderShell()).props.onNavigate("recherches");
-  tree = renderWorkspace();
-  assert.match(title(tree), /Recherches déclarées/);
+  tree = register();
+  assert.match(find(tree, node => node.type === "RegisterSurface").props.title, /Recherches déclarées/);
   latestRead("recherches").resolve(answer(globalScope, { cellules: [search] }));
   await nextTurn();
-  tree = renderWorkspace();
+  tree = register();
   assert.deepEqual(table(tree).props.rows.map(row => row.nature), ["recherche"]);
-  assert.match(text(tree), /Aucune correspondance maladie–produit validée/);
-  const condition = find(tree, node => node.type === "SearchSelect" && node.props.label === "Terme de maladie");
+  assert.match(text(renderWorkspace()), /Aucune correspondance maladie–produit validée/);
+  toolbar(tree).setSearch("aucune correspondance");
+  assert.equal(table(register()).props.rows.length, 1);
+  assert.equal(toolbar(register()).pending, true);
+  toolbar(register()).onApply();
+  assert.equal(table(register()).props.rows.length, 0);
+  assert.equal(toolbar(register()).exportFile, undefined);
+  const searchChip = find(table(register()).props.toolbar, node => node.type === "button" && node.props["aria-label"]?.startsWith("Retirer Recherche"));
+  searchChip.props.onClick();
+  assert.equal(table(register()).props.rows.length, 1);
+  toolbar(register()).toggleFilters();
+  tree = register();
+  const condition = find(table(tree).props.toolbar, node => node.type === "SearchSelect" && node.props.label === "Terme de maladie");
   assert.deepEqual(condition.props.options.map(item => item.label), ["Tous les termes", "Terme de référence"]);
   condition.props.onChange('"309"');
-  tree = renderWorkspace();
+  tree = register();
   assert.equal(table(tree).props.rows.length, 1);
   assert.deepEqual(dateFields(tree).map(node => node.props.value), ["2026-01-01", "2026-03-31"]);
   const beforeInvalidRange = reads.length;
   dateFields(tree)[0].props.onChange({ target: { value: "2026-03-18" } });
   dateFields(tree)[1].props.onChange({ target: { value: "2026-03-17" } });
-  const submit = current => find(current, node => node.type === "form").props.onSubmit({ preventDefault() {} });
-  submit(renderWorkspace());
-  tree = renderWorkspace();
-  assert.match(text(find(tree, node => node.type === "p" && node.props.role === "alert")), /précéder/);
+  const submit = current => find(table(current).props.toolbar, node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  submit(register());
+  tree = register();
+  assert.match(text(find(table(tree).props.toolbar, node => node.type === "p" && node.props.role === "alert")), /précéder/);
   assert.equal(reads.length, beforeInvalidRange);
   dateFields(tree)[0].props.onChange({ target: { value: "2026-02-18" } });
-  submit(renderWorkspace());
-  renderWorkspace();
+  submit(register());
+  register();
   const custom = latestRead("recherches", "&debut=2026-02&fin=2026-03");
   custom.resolve(answer(globalScope, { periode: { debut: "2026-02", fin: "2026-03" }, cellules: [] }));
   await nextTurn();
-  tree = renderWorkspace();
+  tree = register();
   assert.deepEqual(dateFields(tree).map(node => node.props.value), ["2026-02-18", "2026-03-17"]);
-  assert.match(text(tree), /Mois affichés · févr.*mars/);
-  action(tree, "Période par défaut").props.onClick();
-  tree = renderWorkspace();
+  assert.match(text(table(tree).props.toolbar), /Mois affichés · févr.*mars/);
+  toolbar(tree).onReset();
+  tree = register();
   assert(request.options.signal.aborted);
   assert(custom.options.signal.aborted);
   assert.match(find(tree, node => node.type === "ListState").props.title, /Chargement/);
   const failed = latestRead("recherches");
   failed.resolve({ success: false, status: 403 });
   await nextTurn();
-  tree = renderWorkspace();
+  tree = register();
   find(tree, node => node.type === "ListState" && node.props.action).props.action.props.onClick();
   renderWorkspace();
   const pending = latestRead("recherches");
 
   setScope({ user: administrator, entityId: "7" });
+  assert.deepEqual(captureEntityScope("/api/data-science/presentation").headers, { "X-Entite-ID": "7" });
+  assert.equal(captureEntityScope("/api/data-science/perimetre").scoped, false);
   globalThis.__dataScienceSearch = "onglet=demandes";
   tree = renderWorkspace();
   assert(pending.options.signal.aborted);
@@ -402,7 +440,7 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   tree = renderWorkspace();
   assert(stale.options.signal.aborted);
   assert.equal(entityScopeIsCurrent(stale.scope), false);
-  assert(!nodes(tree).some(node => node.type === "tableFixture"));
+  assert.equal(table(register()).props.rows.length, 0);
   const selected = latestRead("demandes");
   assert.deepEqual(selected.scope.headers, { "X-Entite-ID": "8" });
   assert(entityScopeIsCurrent(selected.scope));
@@ -410,16 +448,16 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   stale.resolve(answer(company(7), { cellules: [{ ...demand, produitLibelle: "Données de A" }] }));
   await nextTurn();
   tree = renderWorkspace();
-  assert(!nodes(tree).some(node => node.type === "tableFixture"));
+  assert.equal(table(register()).props.rows.length, 0);
   selected.resolve(answer(company(7), { cellules: [{ ...demand, produitLibelle: "Réponse fournisseur incohérente" }] }));
   await nextTurn();
   tree = renderWorkspace();
-  assert(!nodes(tree).some(node => node.type === "tableFixture"));
-  find(tree, node => node.type === "ListState" && node.props.action).props.action.props.onClick();
+  assert.equal(table(register()).props.rows.length, 0);
+  find(register(), node => node.type === "ListState" && node.props.action).props.action.props.onClick();
   renderWorkspace();
   latestRead("demandes").resolve(answer(company(8), { cellules: [{ ...demand, produitLibelle: "Données de B" }] }));
   await nextTurn();
-  assert.deepEqual(table(renderWorkspace()).props.rows.map(row => row.produitLibelle), ["Données de B"]);
+  assert.deepEqual(table(register()).props.rows.map(row => row.produitLibelle), ["Données de B"]);
   page.dispose();
 
   setScope({ user: tenant, entityId: "7" });
@@ -463,5 +501,51 @@ const nextTurn = () => new Promise(resolve => setImmediate(resolve));
   assert(!nodes(dashboardOnly.renderDashboard(ScienceDashboard)).some(node => node.type === "ActionButton" && text(node) === "Explorer les demandes"));
   dashboardOnly.dispose();
   assert(lastRequest.options.signal.aborted);
+
+  globalThis.__dataSciencePresentation = {tabLabels:{demandes:"Suivi des besoins"},hiddenTabs:["tableau-de-bord"]};
+  setScope({ user: tenant, entityId: "7" });
+  globalThis.__dataScienceSearch = "";
+  const presentationPage = mountPage(DataScience);
+  const presentationShell = presentationPage.renderShell();
+  assert.deepEqual(tabs(presentationShell), ["demandes"]);
+  assert.equal(sidebar(presentationShell).props.activeKey,"demandes");
+  assert.equal(sidebar(presentationShell).props.groups[0].items[0].label,"Suivi des besoins");
+  assert.equal(find(presentationPage.renderWorkspace(), node => node.type === AnalysisRegister).props.title,"Suivi des besoins");
+  presentationPage.dispose();
+  globalThis.__dataSciencePresentation = undefined;
+
+  setScope({ user: administrator });
+  globalThis.__dataScienceSearch = "onglet=perimetre";
+  const scopePage = mountPage(DataScience);
+  const scopeNode = find(scopePage.renderShell(), node => node.type?.name === "ResearchScope");
+  const scopeHooks = new Hooks();
+  const renderScope = () => scopeHooks.render(scopeNode.type, scopeNode.props);
+  renderScope();
+  const scopeRequest = reads.at(-1);
+  assert.equal(scopeRequest.url, "/api/data-science/perimetre");
+  scopeRequest.resolve({success:true,data:{entreprises:[
+    {id:7,nom:"École Pilote",debuteLe:"2026-01-01"}, {id:8,nom:"Autre entreprise",debuteLe:null},
+  ]}});
+  await nextTurn();
+  let scopeTree = renderScope();
+  toolbar(scopeTree).setSearch("ecole");
+  scopeTree = renderScope();
+  assert.equal(table(scopeTree).props.rows.length, 2);
+  toolbar(scopeTree).onApply();
+  scopeTree = renderScope();
+  assert.deepEqual(table(scopeTree).props.rows.map(row => row.id), [7]);
+  settings(scopeTree).props.onTableSettings();
+  assert.equal(table(renderScope()).props.columnsPanelOpen, true);
+  toolbar(renderScope()).onReset();
+  scopeTree = renderScope();
+  assert.equal(table(scopeTree).props.rows.length, 2);
+  assert.equal(toolbar(scopeTree).exportCsv, undefined);
+  table(scopeTree).props.onRowConsult(table(scopeTree).props.rows[0]);
+  const editor = find(renderScope(), node => node.type?.name === "ParticipationEditor");
+  const readOnlyEditor = new Hooks().render(editor.type, {...editor.props,canManage:false});
+  assert.equal(readOnlyEditor.props.readOnly, true);
+  assert.equal(readOnlyEditor.props.canSubmit, false);
+  scopeHooks.dispose();
+  scopePage.dispose();
   console.log("Module Data science : agrégats, confidentialité, graphique, filtres, navigation et chargement vérifiés.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

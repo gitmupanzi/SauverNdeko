@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import ActionButton from "../../components/ActionButton";
 import AppIcon from "../../components/AppIcon";
 import ListState from "../../components/ListState";
@@ -6,15 +7,9 @@ import SearchSelect from "../../components/SearchSelect";
 import DashboardIndicators from "./DashboardIndicators";
 import DashboardTrend from "./DashboardTrend";
 import { dashboardAnalysis } from "./dashboardModel";
-import { monthLabel, publishedOptions, recentReportDates } from "./analysisModel";
+import { matchesAnalysisSearch, monthLabel, publishedOptions, recentReportDates, REPORT_PERIODS } from "./analysisModel";
 import { natureLabel, sourceLabel } from "./DemandSeries";
 
-const PERIODS = [
-  { value: "12", label: "12 derniers mois" },
-  { value: "3", label: "3 derniers mois" },
-  { value: "1", label: "Ce mois" },
-  { value: "custom", label: "Personnalisée" },
-];
 const DIMENSIONS = [
   ["territory", "Province", "Toutes les provinces", row => row.territoireLibelle],
   ["category", "Catégorie de produit", "Toutes les catégories", row => row.produitLibelle],
@@ -23,16 +18,6 @@ const DIMENSIONS = [
   ["condition", "Terme de maladie", "Tous les termes", row => row.pathologieLibelle],
 ];
 
-function fold(value) {
-  return value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("fr");
-}
-
-function matchesSearch(row, terms) {
-  const label = fold([row.territoireLibelle, row.produitLibelle, row.condition !== null && row.pathologieLibelle,
-    sourceLabel(row), natureLabel(row)].filter(Boolean).join(" "));
-  return terms.every(term => label.includes(term));
-}
-
 function choices(rows, key, label, selected) {
   const values = publishedOptions(key === "condition" ? rows.filter(row => row.condition !== null) : rows, key, label);
   return selected && !values.some(item => item.value === selected.value) ? [...values, selected] : values;
@@ -40,7 +25,8 @@ function choices(rows, key, label, selected) {
 
 export default function ScienceDashboard({
   data, loading, dateDraft, onDate, onDates, today, periodMessage, onSubmitPeriod, onResetPeriod,
-  canOpenDemands, canOpenResearch, showResearch, onNavigate, children, renderDetails,
+  title = "Tableau de bord", canOpenDemands, canOpenResearch, showResearch, onNavigate, children, renderDetails,
+  hiddenBlocks, canConfigurePresentation,
 }) {
   const id = useId();
   const detailHeading = useRef(null);
@@ -53,12 +39,14 @@ export default function ScienceDashboard({
   const [detail, setDetail] = useState(null);
   const visible = useMemo(() => (data?.cellules || []).filter(row => showResearch || row.nature !== "recherche"), [data, showResearch]);
   const filtered = useMemo(() => {
-    const terms = fold(criteria.q.trim()).split(/\s+/).filter(Boolean);
     const selected = Object.entries(criteria.choices);
     return visible.filter(row => selected.every(([key, option]) => JSON.stringify(row[key]) === option.value)
-      && (!terms.length || matchesSearch(row, terms)));
+      && matchesAnalysisSearch([row.territoireLibelle, row.produitLibelle, row.condition !== null && row.pathologieLibelle,
+        sourceLabel(row), natureLabel(row)], criteria.q));
   }, [visible, criteria]);
   const { groups, points, populations } = useMemo(() => dashboardAnalysis(filtered, data?.periode, showResearch), [filtered, data, showResearch]);
+  const displayedGroups = groups.filter(group => !hiddenBlocks?.includes(group.key));
+  const trendVisible = !hiddenBlocks?.includes("evolution");
   const filters = DIMENSIONS.filter(([key]) => key !== "condition" || showResearch);
   const filterCount = Object.keys(criteria.choices).length;
   const activeLabels = [criteria.q.trim(), ...filters.flatMap(([key, label]) =>
@@ -111,10 +99,13 @@ export default function ScienceDashboard({
     <div className="erp-dashboard data-science-dashboard">
       <header className="erp-register-heading data-science-heading">
         <div>
-          <h1>Tableau de bord</h1>
+          <h1>{title}</h1>
           <p>Demandes, recherches et couverture des données publiées.</p>
         </div>
         <div className="data-science-summary-actions">
+          {canConfigurePresentation && <Link className="ui-action is-secondary" to="/parametres?onglet=presentation&module=data-science">
+            <AppIcon name="settings" /> Paramètres d’affichage
+          </Link>}
           {canOpenDemands && <ActionButton icon="arrow-right" onClick={() => onNavigate("demandes")}>Explorer les demandes</ActionButton>}
           {canOpenResearch && <ActionButton icon="arrow-right" onClick={() => onNavigate("recherches")}>Explorer les recherches</ActionButton>}
         </div>
@@ -130,7 +121,7 @@ export default function ScienceDashboard({
           </label>
           <label className="admin-form-field erp-dashboard-period" htmlFor={id + "-period"}>
             <span>Période</span>
-            <SearchSelect id={id + "-period"} label="Période" value={periodMode} options={PERIODS} onChange={value => {
+            <SearchSelect id={id + "-period"} label="Période" value={periodMode} options={REPORT_PERIODS} onChange={value => {
               setPeriodMode(value);
               if (value !== "custom") onDates(recentReportDates(Number(value), today));
             }} />
@@ -175,14 +166,16 @@ export default function ScienceDashboard({
         {children}
         {data?.collecteDisponible && (
           <>
-            <p className="data-science-reading-note">Les indicateurs et la courbe couvrent les groupes publiés.</p>
-            <DashboardIndicators groups={groups} activeMetric={detail} detailsId={id + "-detail"}
+            {(displayedGroups.length > 0 || trendVisible) &&
+              <p className="data-science-reading-note">Les résultats couvrent les groupes publiés.</p>}
+            <DashboardIndicators groups={displayedGroups} activeMetric={detail} detailsId={id + "-detail"}
               onMetric={(groupKey, metric, source) => openDetail({ groupKey, key: metric.key, label: metric.label }, source)} />
-            {filtered.length ? (
+            {filtered.length > 0 && trendVisible && (
               <DashboardTrend points={points} showResearch={points.some(point => point.recherches !== null)}
                 detailsId={detail ? id + "-detail" : undefined}
                 onMonth={(mois, source) => openDetail({ mois, label: monthLabel(mois) }, source)} />
-            ) : (
+            )}
+            {!filtered.length && (displayedGroups.length > 0 || trendVisible) && (
               <ListState title={visible.length ? "Aucune donnée pour ces critères" : "Aucune donnée publiable pour cette période"}
                 description={visible.length ? "Modifiez les filtres pour élargir les résultats." : "Les groupes sous le seuil de confidentialité sont masqués."}
                 icon="chart" />

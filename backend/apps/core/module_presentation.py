@@ -89,6 +89,23 @@ PRESENTATIONS = {
         "dashboardBlockDefaults": {},
         "readableTabs": ("messages", "demandes", "annonces"),
     },
+    "data-science": {
+        "settingKey": "data-science.presentation",
+        "label": "Présentation de Data Science",
+        "tabDefaults": {
+            "tableau-de-bord": "Tableau de bord",
+            "demandes": "Demandes et besoins",
+            "recherches": "Recherches déclarées",
+            "perimetre": "Périmètre de l’étude",
+        },
+        "dashboardBlockDefaults": {
+            "demandes": "Demandes et besoins",
+            "couverture": "Couverture des données",
+            "evolution": "Évolution mensuelle",
+        },
+        "readableTabs": ("tableau-de-bord", "demandes", "recherches", "perimetre"),
+        "respectTabRights": True,
+    },
 }
 
 PRESENTATION_SETTING_KEYS = frozenset(item["settingKey"] for item in PRESENTATIONS.values())
@@ -166,11 +183,41 @@ def stored_values(definition, row):
     return None
 
 
-def presentation_data(definition, entity, row=None, *, can_manage=False):
+def visible_definition(actor, module, definition):
+    if not definition.get("respectTabRights"):
+        return definition
+    visible_tabs = {
+        key: label for key, label in definition["tabDefaults"].items()
+        if can_read_tab(actor, module, key)
+    }
+    visible_blocks = definition["dashboardBlockDefaults"] if "tableau-de-bord" in visible_tabs else {}
+    return {**definition, "tabDefaults": visible_tabs, "dashboardBlockDefaults": visible_blocks}
+
+
+def presentation_data(definition, entity, row=None, *, can_manage=False, visible=None):
+    visible = definition if visible is None else visible
     values = stored_values(definition, row) or {"tabLabels": {}, "hiddenTabs": [], "hiddenDashboardBlocks": []}
-    return {"entityId": entity, **values, "tabDefaults": definition["tabDefaults"],
-            "dashboardBlockDefaults": definition["dashboardBlockDefaults"], "revision": revision_for(row),
+    tabs, blocks = visible["tabDefaults"], visible["dashboardBlockDefaults"]
+    return {"entityId": entity,
+            "tabLabels": {key: value for key, value in values["tabLabels"].items() if key in tabs},
+            "hiddenTabs": [key for key in values["hiddenTabs"] if key in tabs],
+            "hiddenDashboardBlocks": [key for key in values["hiddenDashboardBlocks"] if key in blocks],
+            "tabDefaults": tabs, "dashboardBlockDefaults": blocks, "revision": revision_for(row),
             "canManage": bool(can_manage and (row is None or row["IsEditable"] is True))}
+
+
+def preserve_unavailable_values(values, previous, definition, visible):
+    if previous is None or visible is definition:
+        return values
+    tabs, blocks = visible["tabDefaults"], visible["dashboardBlockDefaults"]
+    return {
+        "tabLabels": {**values["tabLabels"],
+                      **{key: value for key, value in previous["tabLabels"].items() if key not in tabs}},
+        "hiddenTabs": [key for key in definition["tabDefaults"]
+                       if key in (values if key in tabs else previous)["hiddenTabs"]],
+        "hiddenDashboardBlocks": [key for key in definition["dashboardBlockDefaults"]
+                                  if key in (values if key in blocks else previous)["hiddenDashboardBlocks"]],
+    }
 
 
 def can_read_presentation_tabs(actor, module, definition):
@@ -207,13 +254,14 @@ def require_company_presentation(actor, module, entity):
 def read_presentation(actor, module, *, in_settings=False):
     definition = definition_for(module)
     require_presentation_access(actor, module, definition)
+    visible = visible_definition(actor, module, definition)
     if in_settings:
         require_module(actor, "parametres")
     entity = read_entity(actor)
     if entity is None:
         if not actor.global_admin:
             raise APIError("Votre compte doit être rattaché à une entreprise.", "ORGANISATION_REQUIRED", 403)
-        return presentation_data(definition, None)
+        return presentation_data(definition, None, visible=visible)
     company = db.one('SELECT "ValideEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s', [entity])
     if company is None:
         raise APIError("Entreprise introuvable.", "NOT_FOUND", 404)
@@ -224,7 +272,7 @@ def read_presentation(actor, module, *, in_settings=False):
         require_company_presentation(actor, module, entity)
     elif can_manage:
         can_manage = module in available_presentation_modules(actor, entity)
-    return presentation_data(definition, entity, setting_row(entity, definition), can_manage=can_manage)
+    return presentation_data(definition, entity, setting_row(entity, definition), can_manage=can_manage, visible=visible)
 
 
 @transaction.atomic
@@ -245,7 +293,8 @@ def save_presentation(actor, module, body):
     revision = body["revision"]
     if revision is not None and (not isinstance(revision, str) or not 1 <= len(revision) <= 128):
         raise APIError("Rechargez les réglages avant d’enregistrer.", "PRESENTATION_VALIDATION", 422)
-    values = validate_values(definition, {key: body[key] for key in PRESENTATION_FIELDS & body.keys()})
+    visible = visible_definition(actor, module, definition)
+    values = validate_values(visible, {key: body[key] for key in PRESENTATION_FIELDS & body.keys()})
 
     company = db.one('SELECT "ValideEntite" FROM systeme."T_Entite" WHERE "IdEntite"=%s FOR SHARE', [entity])
     if company is None or company["ValideEntite"] is not True:
@@ -260,9 +309,10 @@ def save_presentation(actor, module, body):
         raise APIError("Ce réglage est protégé et reste en consultation.", "SETTING_PROTECTED", 409)
     previous = stored_values(definition, row)
     if "hiddenTabs" not in body and previous is not None:
-        values["hiddenTabs"] = previous["hiddenTabs"]
+        values["hiddenTabs"] = [key for key in previous["hiddenTabs"] if key in visible["tabDefaults"]]
+    values = preserve_unavailable_values(values, previous, definition, visible)
     if (row is None and not any(values.values())) or previous == values:
-        return presentation_data(definition, entity, row, can_manage=True)
+        return presentation_data(definition, entity, row, can_manage=True, visible=visible)
 
     set_admin_actor(actor)
     if row:
@@ -275,7 +325,7 @@ def save_presentation(actor, module, body):
              "SettingValueJson","ValideSetting","IsEditable","IsSystem")
             VALUES ('entite',%s,%s,%s,%s,'json',%s,true,true,true)''',
             [str(entity), setting_key, definition["label"], module, Jsonb(values)])
-    return presentation_data(definition, entity, setting_row(entity, definition), can_manage=True)
+    return presentation_data(definition, entity, setting_row(entity, definition), can_manage=True, visible=visible)
 
 
 class ModulePresentationView(APIView):

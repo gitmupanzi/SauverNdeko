@@ -85,12 +85,20 @@ export default function CaisseRegister({kind,context,references={},refresh=0,ini
   {canValidate&&selection.length>0&&!current.loading?<div className="erp-register-selection"><strong>{selection.length===1?"1 écriture sélectionnée":selection.length+" écritures sélectionnées"}</strong><ActionButton icon="check-circle" variant="primary" onClick={()=>validate(selection)}>Valider la sélection</ActionButton></div>:null}
   {activeFilters?<p className="caisse-filter-note">{activeFilters} critère{activeFilters>1?"s":""} appliqué{activeFilters>1?"s":""} · <button type="button" className="caisse-value-link" onClick={reset}>Tout afficher</button></p>:null}
  </>;
+ const tableSettingsActions = [
+  { label: "Références", icon: "list", onSelect: () => setReferencesOpen(true) },
+ ];
+ if (!compact && kind === "ecritures" && scopedWrite && context?.canConfigureValidation === true) {
+  tableSettingsActions.push({
+   label: "Paramètres de validation",
+   icon: "check-circle",
+   onSelect: () => onOpen({ kind, mode: "parametres-validation" }),
+  });
+ }
  const body=<div className="erp-register-table erp-results" data-density={density} aria-busy={current.loading}>
   {current.error?<div className="admin-error" role="alert"><span>{current.error}</span><ActionButton icon="refresh" onClick={()=>setRetry(value=>value+1)}>Réessayer</ActionButton></div>:null}
-  <SimpleTable rows={current.rows} columns={columns} tablePreferences={preferences} getRowId={row=>row[definition.id]} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={current.meta} serverState={grid} onServerChange={changeGrid} enableSelection={canValidate} onSelectionChange={setSelection} selectionResetKey={key} loading={current.loading} toolbar={toolbar} onRowConsult={row=>onOpen({kind,id:row[definition.id]})} consultColumns={[definition.visible[0]]} columnsPanelOpen={settings} columnsAnchorRef={anchor} onColumnsPanelClose={()=>setSettings(false)} emptyMessage={current.error?"La liste est indisponible.":"Aucun résultat pour ces critères."}/>
+  <SimpleTable rows={current.rows} columns={columns} tablePreferences={preferences} tableSettingsActions={tableSettingsActions} getRowId={row=>row[definition.id]} defaultVisibleColumns={definition.visible} defaultPinnedColumns={[]} serverMeta={current.meta} serverState={grid} onServerChange={changeGrid} enableSelection={canValidate} onSelectionChange={setSelection} selectionResetKey={key} loading={current.loading} toolbar={toolbar} onRowConsult={row=>onOpen({kind,id:row[definition.id]})} consultColumns={[definition.visible[0]]} columnsPanelOpen={settings} columnsAnchorRef={anchor} onColumnsPanelClose={()=>setSettings(false)} emptyMessage={current.error?"La liste est indisponible.":"Aucun résultat pour ces critères."}/>
  </div>;
- const validationSettings=!compact&&kind==="ecritures"&&scopedWrite&&context?.canConfigureValidation===true
-  ?[{label:"Paramètres de validation",icon:"check-circle",onSelect:()=>onOpen({kind,mode:"parametres-validation"})}]:[];
- const actions=<><RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)} onReferences={()=>setReferencesOpen(true)} extraItems={validationSettings}/>{onCreate?<ActionButton icon="plus" variant="primary" disabled={!canCreate} onClick={()=>onCreate(kind)}>{definition.create}</ActionButton>:null}</>;
+ const actions=<><RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)}/>{onCreate?<ActionButton icon="plus" variant="primary" disabled={!canCreate} onClick={()=>onCreate(kind)}>{definition.create}</ActionButton>:null}</>;
  return <>{compact?<section className="caisse-drill-register"><header><h3>{title||definition.title}</h3><div>{actions}</div></header>{body}</section>:<RegisterSurface title={title||definition.title} subtitle={definition.subtitle} actions={actions}>{body}</RegisterSurface>}{referencesOpen?<CaisseReferences references={references} onClose={()=>setReferencesOpen(false)}/>:null}</>;
 }

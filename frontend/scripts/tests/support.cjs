@@ -176,9 +176,10 @@ const fixture=mocks([
   eq(modelExport.pathname,'/api/support/processus/export.xlsx');eq(JSON.parse(modelExport.searchParams.get('selection')),[2]);
   await button(mark(tree,'Surface').props.actions,'Télécharger le modèle Excel').props.onClick();
   eq(globalThis.__downloads.at(-1).url,'/api/support/processus/modele.xlsx');
-  mark(mark(tree,'Surface').props.actions,'Settings').props.onTableSettings();tree=mr();ok(currentTable().props.columnsPanelOpen);
-  currentTable().props.onColumnsPanelClose();tree=mr();ok(!currentTable().props.columnsPanelOpen);
-  mark(mark(tree,'Surface').props.actions,'Settings').props.onReferences();tree=mr();
+  const modelSettings=mark(mark(tree,'Surface').props.actions,'Settings');
+  ok(!modelSettings.props.onReferences);modelSettings.props.onTableSettings();tree=mr();ok(currentTable().props.columnsPanelOpen);
+  const referenceAction=currentTable().props.tableSettingsActions.find(item=>item.label==='Références');ok(referenceAction);
+  currentTable().props.onColumnsPanelClose();referenceAction.onSelect();tree=mr();ok(!currentTable().props.columnsPanelOpen);
   ok(mark(tree,'ModelReferences'));mark(tree,'ModelReferences').props.onClose();tree=mr();
   button(mark(tree,'Surface').props.actions,'Nouveau modèle').props.onClick();tree=mr();
   eq(mark(tree,'SupportProcessEditor').props.model,null);eq(mark(tree,'SupportProcessEditor').props.canManage,true);

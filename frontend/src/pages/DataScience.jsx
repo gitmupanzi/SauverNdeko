@@ -1,20 +1,20 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import AppIcon from "../components/AppIcon";
 import ListState from "../components/ListState";
 import ModuleSidebar from "../components/ModuleSidebar";
-import SearchSelect from "../components/SearchSelect";
 import { useAuth } from "../contexts/AuthContext";
 import { useEntityScope } from "../contexts/EntityScopeContext";
+import { presentedModuleTabs, useModulePresentation } from "../hooks/useModulePresentation";
 import { requestJson } from "../services/api";
 import { moduleRights, tabRights } from "../services/moduleAccess";
 import { SimpleTable } from "./logistique/logistiqueShared";
-import DemandSeries, { natureLabel, sourceLabel } from "./datascience/DemandSeries";
-import ProvinceMatrix from "./datascience/ProvinceMatrix";
+import { natureLabel, sourceLabel } from "./datascience/DemandSeries";
+import AnalysisRegister from "./datascience/AnalysisRegister";
 import ResearchScope from "./datascience/ResearchScope";
 import ScienceDashboard from "./datascience/ScienceDashboard";
-import { analysisPath, analysisPayload, DEMAND_MEASURES, formatCount, monthLabel, publishedOptions, reportDatePeriod, reportPeriodDates, reportToday, SEARCH_MEASURES, STOCK_MEASURES } from "./datascience/analysisModel";
+import { analysisPath, analysisPayload, DEMAND_MEASURES, formatCount, monthLabel, reportDatePeriod, reportPeriodDates, reportToday, SEARCH_MEASURES, STOCK_MEASURES } from "./datascience/analysisModel";
 import "./logistique/LogistiqueModern.css";
 import "./admin/AdminPortal.css";
 import "./datascience/DataScience.css";
@@ -36,6 +36,7 @@ const FILTERS = [
   { key: "nature", label: "Nature du signal", all: "Toutes les natures", getLabel: natureLabel },
 ];
 const CONDITION_FILTER = { key: "condition", label: "Terme de maladie", all: "Tous les termes", getLabel: row => row.pathologieLibelle };
+const RESEARCH_FILTERS = [...FILTERS.slice(0, 3), CONDITION_FILTER];
 const DETAILS_COLUMNS = [
   { key: "mois", label: "Mois", width: 125, render: row => monthLabel(row.mois) },
   { key: "produitLibelle", label: "Catégorie de produit", width: 180 },
@@ -78,30 +79,21 @@ function renderDashboardDetails({ rows, measure }, detail) {
   </div>;
 }
 
-function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, onNavigate }) {
+function AnalysisWorkspace({ active, title, entityId, canOpenDemands, canOpenResearch, showResearch, presentation, onNavigate }) {
   const dashboard = active === DASHBOARD;
   const research = active === "recherches";
   const measures = research ? SEARCH_MEASURES : DEMAND_MEASURES;
-  const filtersForView = research ? [...FILTERS.slice(0, 3), CONDITION_FILTER] : FILTERS;
-  const prefix = useId();
-  const detailHeading = useRef(null);
   const [draft, setDraft] = useState({ debut: "", fin: "" });
   const [period, setPeriod] = useState(null);
   const [attempt, setAttempt] = useState(0);
   const [periodMessage, setPeriodMessage] = useState("");
   const [request, setRequest] = useState({ path: "", payload: null, error: "" });
-  const [filters, setFilters] = useState({});
-  const [series, setSeries] = useState({});
-  const [detail, setDetail] = useState(null);
-  const [chart, setChart] = useState("monthly");
   const today = reportToday();
   const path = analysisPath(period, active);
   const current = request.path === path && request.attempt === attempt;
   const loading = !current;
   const data = current ? request.payload : null;
   const rows = useMemo(() => (data?.cellules || []).filter(row => research === (row.nature === "recherche")), [data, research]);
-  const activeFilters = filters[active] || {};
-  const activeDetail = detail?.view === active ? detail : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,9 +121,6 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
     return () => controller.abort();
   }, [path, attempt, entityId]);
 
-  const filtered = rows.filter(row => filtersForView.every(({ key }) =>
-    !activeFilters[key] || JSON.stringify(row[key]) === activeFilters[key]));
-  const detailRows = activeDetail ? filtered.filter(row => row.mois === activeDetail.mois && row.seriesKey === activeDetail.key) : filtered;
   const columns = [...(research ? SEARCH_COLUMNS : DETAILS_COLUMNS), ...measureColumns(measures), OFFER_COLUMN];
   if (!research && data?.rapprochementDisponible) columns.push(...measureColumns(STOCK_MEASURES));
 
@@ -140,31 +129,24 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
     setPeriodMessage("");
   }
 
-  function submitPeriod(event) {
-    event?.preventDefault();
+  function submitPeriod() {
     const { period: months, error } = reportDatePeriod(draft, today);
     setPeriodMessage(error);
     if (error) return false;
     if (months.debut !== data?.periode.debut || months.fin !== data?.periode.fin) setPeriod(months);
-    setFilters({});
-    setSeries({});
-    setDetail(null);
     return true;
+  }
+
+  function updateDates(dates) {
+    setDraft(dates);
+    setPeriodMessage("");
   }
 
   function resetPeriod() {
     setPeriod(null);
     setDraft({ debut: "", fin: "" });
     setPeriodMessage("");
-    setFilters({});
-    setSeries({});
-    setDetail(null);
     setAttempt(value => value + 1);
-  }
-
-  function selectMonth(mois, key) {
-    setDetail({ view: active, mois, key });
-    detailHeading.current?.focus();
   }
 
   const feedback = <>
@@ -179,110 +161,37 @@ function AnalysisWorkspace({ active, entityId, canOpenDemands, canOpenResearch, 
   </>;
 
   if (dashboard) {
-    return <ScienceDashboard data={data} loading={loading} dateDraft={draft} onDate={updateDate}
-      onDates={dates => { setDraft(dates); setPeriodMessage(""); }} today={today} periodMessage={periodMessage}
+    return <ScienceDashboard title={title} data={data} loading={loading} dateDraft={draft} onDate={updateDate}
+      onDates={updateDates} today={today} periodMessage={periodMessage}
       onSubmitPeriod={submitPeriod} onResetPeriod={resetPeriod} canOpenDemands={canOpenDemands}
-      canOpenResearch={canOpenResearch} showResearch={canOpenResearch && !entityId} onNavigate={onNavigate}
+      canOpenResearch={canOpenResearch} showResearch={showResearch} onNavigate={onNavigate}
+      hiddenBlocks={presentation?.hiddenDashboardBlocks} canConfigurePresentation={presentation?.canManage === true}
       renderDetails={renderDashboardDetails}>{feedback}</ScienceDashboard>;
   }
 
   return (
     <>
-        <header className="erp-register-heading data-science-heading">
-          <div>
-            <h1>{research ? "Recherches déclarées" : "Demandes et besoins"}</h1>
-            <p>{research ? "Explorez les recherches déclarées par catégorie de produit, terme de maladie et province."
-                : "Explorez les besoins signalés après une recherche sans résultat et leur issue déclarée."}</p>
-          </div>
-        </header>
-        <form className="data-science-panel data-science-period" onSubmit={submitPeriod} noValidate>
-          <div className="data-science-panel-header">
-            <div><h2><AppIcon name="calendar" /> Période d’observation</h2><p id={prefix + "-period-hint"}>Les résultats couvrent les mois civils sélectionnés, sur 12 mois au maximum.</p></div>
-          </div>
-          <div className="data-science-controls">
-            {[["debut", "Du"], ["fin", "Au"]].map(([key, label]) => (
-              <label key={key} className="admin-form-field data-science-field">
-                <span>{label}</span>
-                <input type="date" max={today} required value={draft[key]} onChange={event => updateDate(key, event.target.value)}
-                  aria-invalid={Boolean(periodMessage)} aria-describedby={prefix + (periodMessage ? "-period-error" : "-period-hint")} />
-              </label>
-            ))}
-            <ActionButton icon="search" variant="primary" type="submit" disabled={loading}>Afficher</ActionButton>
-            <ActionButton icon="reset" onClick={resetPeriod} disabled={loading}>Période par défaut</ActionButton>
-          </div>
-          {data?.collecteDisponible && <p className="data-science-reading-note data-science-period-applied">
-            Mois affichés · {monthLabel(data.periode.debut)}{data.periode.fin !== data.periode.debut && " – " + monthLabel(data.periode.fin)}
-          </p>}
-          {periodMessage && <p className="data-science-period-error" role="alert" id={prefix + "-period-error"}>{periodMessage}</p>}
-        </form>
-        <div aria-busy={loading} className="data-science-results">
-          {feedback}
-          {data?.collecteDisponible && !rows.length ? (
-            <ListState title="Aucune donnée publiable pour cette période" description="Essayez une autre période. Les petits groupes sont masqués pour protéger la confidentialité." icon="chart" />
-          ) : null}
-          {data?.collecteDisponible && rows.length > 0 ? (
-            <>
-              <section className="data-science-panel">
-                <div className="data-science-panel-header">
-                  <h2><AppIcon name="search" /> Explorer les données</h2>
-                  {Object.values(activeFilters).some(Boolean) && <ActionButton icon="reset" onClick={() => { setFilters(previous => ({ ...previous, [active]: {} })); setDetail(null); }}>Effacer les filtres</ActionButton>}
-                </div>
-                <div className="data-science-controls data-science-filters">
-                  {filtersForView.map(({ key, label, all, getLabel }) => (
-                    <label className="data-science-field" key={key} htmlFor={prefix + "-" + key}>
-                      <span>{label}</span>
-                      <SearchSelect id={prefix + "-" + key} label={label} value={activeFilters[key] || ""} onChange={value => {
-                        setFilters(previous => ({ ...previous, [active]: { ...activeFilters, [key]: value } }));
-                        setDetail(null);
-                      }} options={[{ value: "", label: all }, ...publishedOptions(rows, key, getLabel)]} />
-                    </label>
-                  ))}
-                </div>
-              </section>
-              <div className="data-science-chart-choice" role="group" aria-label="Affichage de l’analyse">
-                <ActionButton icon="chart" variant={chart === "monthly" ? "primary" : "secondary"}
-                  aria-pressed={chart === "monthly"} onClick={() => setChart("monthly")}>Évolution mensuelle</ActionButton>
-                <ActionButton icon="dashboard" variant={chart === "province" ? "primary" : "secondary"}
-                  aria-pressed={chart === "province"} onClick={() => setChart("province")}>Comparaison par province</ActionButton>
-              </div>
-              {chart === "province" ? (
-                <ProvinceMatrix key={active} rows={filtered} period={data.periode} measures={measures} onMonth={selectMonth} />
-              ) : (
-                <DemandSeries key={active} rows={filtered} period={data.periode} measures={measures} selected={series[active]}
-                  onSelect={value => { setSeries(previous => ({ ...previous, [active]: value })); setDetail(null); }} onMonth={selectMonth} />
-              )}
-              <section className="data-science-panel" aria-labelledby={prefix + "-details"}>
-                <div className="data-science-panel-header">
-                  <div><h2 ref={detailHeading} tabIndex={-1} id={prefix + "-details"}>Détail par mois et par province</h2>
-                    {activeDetail && <p>Mois sélectionné · {monthLabel(activeDetail.mois)}</p>}
-                  </div>
-                  {activeDetail && <ActionButton icon="reset" onClick={() => setDetail(null)}>Afficher toutes les séries filtrées</ActionButton>}
-                </div>
-                {detailRows.length ? (
-                  <div className="data-science-table">
-                    <SimpleTable key={JSON.stringify([active, activeFilters, activeDetail])} tableLabel={research ? "Détail des recherches déclarées" : "Détail des demandes et besoins"}
-                      rows={detailRows} columns={columns} getRowId={row => row.key} defaultPinnedColumns={[]}
-                      showControls={false} enableSelection={false} defaultRowsPerPage={12} />
-                  </div>
-                ) : <ListState title="Aucune donnée pour ces filtres" description="Modifiez les critères pour consulter d’autres données publiées." />}
-              </section>
-            </>
-          ) : null}
-          {research && data?.collecteDisponible && !data.associationMaladieProduitDisponible &&
-            <p className="data-science-reading-note"><AppIcon name="link" /><span>Aucune correspondance maladie–produit validée n’est disponible.</span></p>}
-          {data?.collecteDisponible && (
-            <details className="data-science-panel data-science-method">
-              <summary>Définitions et limites</summary>
-              <p>{research
-                ? "Les recherches décrivent un usage déclaré de la plateforme. Un terme recherché ne constitue pas un diagnostic."
-                : "Les demandes sont regroupées par mois de création. Les résultats de traitement sont déclarés."}</p>
-              <p>Chaque cellule correspond à une catégorie ou un terme, une province, un mois, un annuaire et une nature de signal. Les graphiques reprennent les effectifs publiés pour ces cellules.</p>
-              <p>{data.seuilConfidentialite
-                ? "Le seuil de confidentialité annoncé est de " + formatCount(data.seuilConfidentialite) + " contributeurs distincts. "
-                : ""}Une cellule non publiée et une valeur indisponible sont distinctes d’un zéro publié.</p>
-            </details>
-          )}
-        </div>
+      <AnalysisRegister key={active} title={title}
+        subtitle={research ? "Recherches par catégorie de produit, terme de maladie et province."
+          : "Besoins signalés et issue déclarée des demandes."}
+        rows={rows} data={data} columns={columns} measures={measures} filterFields={research ? RESEARCH_FILTERS : FILTERS}
+        loading={loading} feedback={feedback} dateDraft={draft} today={today} customPeriod={Boolean(period)}
+        periodMessage={periodMessage} onDate={updateDate} onDates={updateDates}
+        onApplyPeriod={submitPeriod} onResetPeriod={resetPeriod} />
+      {research && data?.collecteDisponible && !data.associationMaladieProduitDisponible &&
+        <p className="data-science-reading-note"><AppIcon name="link" /><span>Aucune correspondance maladie–produit validée n’est disponible.</span></p>}
+      {data?.collecteDisponible && (
+        <details className="data-science-panel data-science-method">
+          <summary>Définitions et limites</summary>
+          <p>{research
+            ? "Les recherches décrivent un usage déclaré de la plateforme. Un terme recherché ne constitue pas un diagnostic."
+            : "Les demandes sont regroupées par mois de création. Les résultats de traitement sont déclarés."}</p>
+          <p>Chaque cellule correspond à une catégorie ou un terme, une province, un mois, un annuaire et une nature de signal. Les graphiques reprennent les effectifs publiés pour ces cellules.</p>
+          <p>{data.seuilConfidentialite
+            ? "Le seuil de confidentialité annoncé est de " + formatCount(data.seuilConfidentialite) + " contributeurs distincts. "
+            : ""}Une cellule non publiée et une valeur indisponible sont distinctes d’un zéro publié.</p>
+        </details>
+      )}
     </>
   );
 }
@@ -293,19 +202,28 @@ export default function DataScience() {
   const [params, setParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const platformAdmin = user?.moduleAccess?.platformAdmin === true;
-  const groups = GROUPS.map(group => ({
+  const moduleAllowed = moduleRights(user, MODULE).canRead;
+  const { presentation, loading: loadingPresentation, error: presentationError, retry } = useModulePresentation(MODULE,
+    { ...scope, entityId: moduleAllowed ? scope.entityId : null });
+  const allowedGroups = GROUPS.map(group => ({
     ...group,
     items: group.items.filter(({ key }) =>
       (platformAdmin || !["recherches", "perimetre"].includes(key)) && tabRights(user, MODULE, key).canRead),
   })).filter(group => group.items.length);
-  const allowed = new Set(groups.flatMap(group => group.items.map(item => item.key)));
-  const tab = params.get("onglet");
-  const knownTab = GROUPS.some(group => group.items.some(item => item.key === tab));
-  const active = knownTab ? tab : (allowed.has(DASHBOARD) ? DASHBOARD : [...allowed][0]);
+  const tabs = allowedGroups.flatMap(group => group.items);
+  const allowed = new Set(tabs.map(item => item.key));
+  const groups = loadingPresentation ? [] : allowedGroups.map(group => ({
+    ...group, items: presentedModuleTabs(group.items, presentation),
+  })).filter(group => group.items.length);
+  const visibleTabs = groups.flatMap(group => group.items);
+  const requested = params.get("onglet");
+  const knownTab = GROUPS.some(group => group.items.some(item => item.key === requested));
+  const active = knownTab ? requested : visibleTabs[0]?.key;
+  const title = presentation?.tabLabels?.[active] || tabs.find(item => item.key === active)?.label;
   const navigate = key => {
     if (allowed.has(key)) setParams(key === DASHBOARD ? {} : { onglet: key });
   };
-  if (!moduleRights(user, MODULE).canRead || !allowed.size) {
+  if (!moduleAllowed || !allowed.size) {
     return <main className="data-science-denied"><ListState title="Votre compte ne peut pas consulter Data science" icon="shield" /></main>;
   }
   return (
@@ -314,12 +232,19 @@ export default function DataScience() {
         collapsed={collapsed} onToggle={() => setCollapsed(value => !value)} storageKey="sauverndeko.data-science.navigation"
         headerProps={{ showEntityScope: active !== "perimetre" }} />
       <main className="admin-main data-science-main">
-        {!allowed.has(active)
+        {presentationError && <div className="admin-error" role="status">
+          <span>Les réglages d’affichage sont indisponibles. La présentation standard est utilisée.</span>
+          <ActionButton icon="refresh" onClick={retry}>Réessayer</ActionButton>
+        </div>}
+        {loadingPresentation ? <ListState title="Chargement de la présentation…" loading role="status" />
+          : !active ? <ListState title="Aucun onglet affiché dans le menu" icon="sidebar" />
+          : !allowed.has(active)
           ? <ListState title="Vous n’avez pas accès à cet onglet" icon="shield"
-            action={<ActionButton icon="arrow-right" onClick={() => navigate([...allowed][0])}>Ouvrir les analyses disponibles</ActionButton>} />
-          : active === "perimetre" ? <ResearchScope canManage={tabRights(user, MODULE, "perimetre").canManage} />
-            : <AnalysisWorkspace key={scope.scopeKey} active={active} entityId={scope.entityId}
-              canOpenDemands={allowed.has("demandes")} canOpenResearch={allowed.has("recherches")} onNavigate={navigate} />}
+            action={visibleTabs.length ? <ActionButton icon="arrow-right" onClick={() => navigate(visibleTabs[0].key)}>Ouvrir les analyses disponibles</ActionButton> : null} />
+          : active === "perimetre" ? <ResearchScope key={scope.scopeKey} title={title} canManage={tabRights(user, MODULE, "perimetre").canManage} />
+            : <AnalysisWorkspace key={scope.scopeKey} active={active} title={title} entityId={scope.entityId} presentation={presentation}
+              canOpenDemands={visibleTabs.some(item => item.key === "demandes")} canOpenResearch={visibleTabs.some(item => item.key === "recherches")}
+              showResearch={allowed.has("recherches") && !scope.entityId} onNavigate={navigate} />}
       </main>
     </div>
   );

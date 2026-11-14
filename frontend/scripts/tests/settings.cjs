@@ -48,7 +48,7 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  globalThis.__delay=true;globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:8'};render();await ph.flush();globalThis.__scope={...globalThis.__scope,scopeKey:'waiting:7',entityId:'7'};render();await ph.flush();globalThis.__pending.shift()({success:true,data:{canManage:true,profile:{...profile,IdEntite:8}}});await ph.flush();eq(named(render(),'Fields'),undefined);globalThis.__pending.shift()({success:true,data:{canManage:true,profile}});await ph.flush();eq(named(render(),'Fields').props.record.IdEntite,7);ph.unmount();
  const presentation={entityId:7,tabDefaults:{caisses:'Caisses',clotures:'Clôtures'},dashboardBlockDefaults:{flux:'Flux quotidiens'},
   tabLabels:{caisses:'Guichets'},hiddenDashboardBlocks:['flux'],revision:'v1',canManage:true};
- const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'},{key:'support',label:'Support'},{key:'discussions',label:'Discussions'}];
+ const modules=[{key:'logistique',label:'Logistique'},{key:'caisse',label:'Caisse'},{key:'support',label:'Support'},{key:'discussions',label:'Discussions'},{key:'data-science',label:'Data Science'}];
  const writes=[];
  let presentationModule='caisse';
  globalThis.__presentationApi=(path,options)=>{
@@ -73,6 +73,7 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  eq(sidebarItems.map(({key,label})=>({key,label})),[
   {key:'presentation-logistique',label:'Logistique'},{key:'presentation-caisse',label:'Caisse'},
   {key:'presentation-support',label:'Support'},{key:'presentation-discussions',label:'Discussions'},
+  {key:'presentation-data-science',label:'Data Science'},
  ]);
  eq(sidebar(modulePage).activeKey,'presentation-caisse');
  ok(!sidebar(modulePage).groups[0].items.some(item=>item.key==='presentation'));
@@ -112,12 +113,30 @@ globalThis.document={getElementById:id=>({focus(){globalThis.__focus=id;}})};glo
  ok(action(renderDiscussion(),'Modifier'));
  ok(!nodes(renderDiscussion()).some(node=>node.props?.children==='Blocs du tableau de bord'));
  discussion.unmount();
+ const dataScienceItem=sidebarItems.find(item=>item.key==='presentation-data-science');
+ eq(dataScienceItem.to,'/parametres?onglet=presentation&module=data-science');
+ globalThis.__params=new URLSearchParams(dataScienceItem.to.split('?')[1]);
+ const dataSciencePanel=named(renderPage(),'PresentationSettings');
+ eq(sidebar(renderPage()).activeKey,'presentation-data-science');
+ eq(dataSciencePanel.props.module.key,'data-science');
+ const dataScienceSettings=named(sh.render(dataSciencePanel.type,dataSciencePanel.props),'ModulePresentationSettings');
+ const dataScience=new Hooks();
+ const renderDataScience=()=>dataScience.render(dataScienceSettings.type,dataScienceSettings.props);
+ const dataScienceData={...presentation,tabDefaults:{'tableau-de-bord':'Tableau de bord',demandes:'Demandes et besoins'},
+   dashboardBlockDefaults:{demandes:'Demandes et besoins'},tabLabels:{demandes:'Demandes de l’entreprise'},
+   hiddenTabs:[],hiddenDashboardBlocks:[]};
+ globalThis.__presentationApi=(path,options)=>path==='/api/parametres/data-science/presentation'?{success:true,data:dataScienceData}:previousApi(path,options);
+ renderDataScience();await dataScience.flush();
+ tree=renderDataScience();
+ ok(nodes(tree).some(node=>node.type==='dd'&&node.props.children==='Demandes de l’entreprise'));
+ ok(nodes(tree).some(node=>node.type==='h2'&&node.props.children==='Data Science'));
+ dataScience.unmount();
  globalThis.__presentationApi=previousApi;
  globalThis.__params=new URLSearchParams('');
  eq(sidebar(renderPage()).activeKey,'entreprise');
- eq(presentationItems(renderPage()).length,4);
+ eq(presentationItems(renderPage()).length,5);
  globalThis.__scope={...globalThis.__scope,scopeKey:'user:8',entityId:'8'};
- globalThis.__params=new URLSearchParams('onglet=presentation&module=caisse');
+ globalThis.__params=new URLSearchParams('onglet=presentation&module=data-science');
  eq(presentationItems(renderPage()),[]);
  await mh.flush();
  tree=renderPage();

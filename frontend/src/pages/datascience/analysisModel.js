@@ -71,6 +71,22 @@ export function recentReportDates(months, today = reportToday()) {
   return { debut: first.toISOString().slice(0, 10), fin: today };
 }
 
+export const REPORT_PERIODS = [
+  { value: "12", label: "12 derniers mois" },
+  { value: "3", label: "3 derniers mois" },
+  { value: "1", label: "Ce mois" },
+  { value: "custom", label: "Personnalisée" },
+];
+
+const foldSearch = text => text.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("fr");
+
+export function matchesAnalysisSearch(labels, query) {
+  const terms = foldSearch(query.trim()).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const text = foldSearch(labels.filter(Boolean).join(" "));
+  return terms.every(term => text.includes(term));
+}
+
 export function analysisPath(period, view) {
   const params = new URLSearchParams(period || {});
   if (view) params.set("vue", view);

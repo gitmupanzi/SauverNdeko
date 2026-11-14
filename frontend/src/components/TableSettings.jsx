@@ -8,11 +8,12 @@ import "./TableSettings.css";
 
 const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-export default function TableSettings({ preferences, onClose, title = "Réglages du tableau", pinnedKeys = [], onTogglePinned, onResetWidths }) {
+export default function TableSettings({ preferences, onClose, title = "Réglages du tableau", pinnedKeys = [], onTogglePinned, onResetWidths, additionalActions = [] }) {
   const id = useId(), initialised = useRef(false), dragged = useRef(null), moveFocus = useRef(null);
   const [usage, setUsage] = useState("table"), [query, setQuery] = useState(""), [notice, setNotice] = useState("");
   const [drafts, setDrafts] = useState({ table: [], export: [] });
   const catalogue = preferences.catalogue || [], busy = preferences.busy, loading = preferences.loading;
+  const hasExportOptions = preferences.hasExportOptions !== false;
   useEffect(() => {
     if (!preferences.ready || initialised.current) return;
     initialised.current = true;
@@ -43,7 +44,7 @@ export default function TableSettings({ preferences, onClose, title = "Réglages
     const result = await preferences.save(usage, selected);
     if (!result) return;
     setDrafts(current => ({ ...current, [usage]: preferenceIds(result.columns, result[usage]?.columns, usage) }));
-    setNotice(usage === "table" ? "Présentation enregistrée." : "Options d’export enregistrées.");
+    setNotice(preferences.local ? "Réglages appliqués." : usage === "table" ? "Présentation enregistrée." : "Options d’export enregistrées.");
   }
   async function reset() {
     if (!canEdit) return;
@@ -54,13 +55,13 @@ export default function TableSettings({ preferences, onClose, title = "Réglages
   }
   function switchUsage(next) { if (busy) return; setUsage(next); setQuery(""); setNotice(""); }
 
-  return <RecordEditorFrame title={title} subtitle="Préférences personnelles" icon="settings" onClose={onClose}
+  return <RecordEditorFrame title={title} subtitle={preferences.local ? "Préférences de cet affichage" : "Préférences personnelles"} icon="settings" onClose={onClose}
     defaultWidth={690} storageKey="sauverndeko.table-settings.width" className="table-settings"
     busy={busy} loading={loading} dirty={dirty && preferences.ready} canSubmit={canEdit && activeDirty && selected.length > 0}
-    onSubmit={save} submitLabel="Enregistrer par défaut" error={preferences.error} onReload={preferences.retry}>
+    onSubmit={save} submitLabel={preferences.local ? "Appliquer" : "Enregistrer par défaut"} error={preferences.error} onReload={preferences.retry}>
     <ConsultationTabs idPrefix={id} value={usage} onChange={switchUsage} label="Réglages du tableau et de l’export" tabs={[
       { key: "table", label: "Colonnes du tableau", icon: "columns", disabled: busy },
-      { key: "export", label: "Options d’export", icon: "download", disabled: busy },
+      ...(hasExportOptions ? [{ key: "export", label: "Options d’export", icon: "download", disabled: busy }] : []),
     ]}/>
     <section id={id + "-panel-" + usage} role="tabpanel" aria-labelledby={id + "-tab-" + usage} className="table-settings-panel">
       <div className="table-settings-context"><div><strong>{usage === "table" ? "Présentation du tableau" : "Colonnes Excel et CSV"}</strong><p>{usage === "table" ? "Choisissez les colonnes et leur ordre." : "Ces choix sont indépendants du tableau affiché."}</p></div><span className="table-settings-source">{preferences.data?.[usage]?.personal ? "Personnel" : "Référence"}</span></div>
@@ -93,5 +94,10 @@ export default function TableSettings({ preferences, onClose, title = "Réglages
       </>}
       <p className="table-settings-notice" role="status" aria-live="polite">{notice}</p>
     </section>
+    {additionalActions.length > 0 && <section className="table-settings-related" aria-label="Réglages du module">
+      {additionalActions.map(({ label, icon, onSelect }) => <ActionButton key={label} icon={icon} disabled={busy || dirty}
+        onClick={() => { onClose(false); onSelect(); }}>{label}</ActionButton>)}
+      {dirty && <p>Enregistrez ou rétablissez les réglages du tableau avant d’ouvrir une autre rubrique.</p>}
+    </section>}
   </RecordEditorFrame>;
 }

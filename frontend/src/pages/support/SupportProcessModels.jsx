@@ -125,8 +125,7 @@ export default function SupportProcessModels({title="Modèles de suivi",refresh}
 
   const actions=(
     <>
-      <RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)}
-        onReferences={Object.keys(references).length?()=>open("references"):undefined}/>
+      <RegisterSettingsButton buttonRef={anchor} expanded={settings} onTableSettings={()=>setSettings(true)}/>
       {canManage?<>
         <ActionButton icon="download" disabled={models.loading||downloading}
           onClick={()=>downloadFile("/modele.xlsx","Le modèle Excel n’a pas pu être téléchargé.")}>Télécharger le modèle Excel</ActionButton>
@@ -210,6 +209,7 @@ export default function SupportProcessModels({title="Modèles de suivi",refresh}
             defaultVisibleColumns={DEFAULT_COLUMNS} defaultPinnedColumns={[]} loading={models.loading} showSearch={false}
             serverMeta={{filteredCount:count,take:grid.take}} serverState={grid} onServerChange={changeGrid}
             enableSelection={canExport} selectionResetKey={selectionReset} onSelectionChange={setSelected}
+            tableSettingsActions={Object.keys(references).length ? [{ label: "Références", icon: "list", onSelect: () => open("references") }] : []}
             columnsPanelOpen={settings} columnsAnchorRef={anchor} onColumnsPanelClose={()=>setSettings(false)}
             onRowConsult={row=>open("read",row)} consultColumns={["name"]} toolbar={toolbar}
             emptyMessage={chips.length?"Aucun modèle pour ces critères.":"Aucun modèle de suivi."}

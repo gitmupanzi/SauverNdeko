@@ -16,3 +16,5 @@
 .table-settings-notice { min-height:18px; margin:12px 0 0; color:var(--erp-action); font-size:12px; }.table-settings-empty,.table-settings-unavailable { color:var(--erp-muted); font-size:12px; padding:12px 0; margin:0; }
 .table-settings :is(button,input):focus-visible { outline:2px solid var(--erp-link); outline-offset:3px; }
 @media(max-width:640px) { .table-settings .record-editor-body { padding:12px; }.table-settings-panel { padding:12px; }.table-settings-column { gap:3px; padding-inline:4px; }.table-settings-move button { width:26px; }.table-settings-grip { width:24px; }.table-settings-position { display:none; } }
+.table-settings-related { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0 0; }
+.table-settings-related p { flex-basis: 100%; margin: 0; color: var(--erp-muted); font-size: .8rem; }

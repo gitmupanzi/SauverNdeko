@@ -120,6 +120,9 @@
 .data-science-chart small { grid-row: 3; text-align: center; line-height: 1.15; color: var(--erp-muted, #53647a); }
 .data-science-chart-empty > span { grid-row: 2; color: var(--erp-muted, #53647a); }
 .data-science-table { min-width: 0; }
+.data-science-register-period,
+.data-science-register-detail { margin-bottom: 12px; }
+.data-science-register-detail:is(h2) { font-size: 1.04rem; }
 .data-science-reading-note { display: flex; align-items: start; gap: 8px; font-size: .85rem; line-height: 1.5; }
 .data-science-reading-note svg { flex: none; margin-top: 2px; }
 .data-science-denied { padding: 24px; }

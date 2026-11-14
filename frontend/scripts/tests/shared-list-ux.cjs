@@ -104,6 +104,26 @@ function expand(node){if(!node||typeof node!=='object')return node;if(Array.isAr
  tree=controlled.render(SimpleTable,{...controlledProps,page:2});
  eq(nodes(tree).filter(node=>node.type==='tr'&&node.props.onClick).length,50);
  eq(nodes(tree).find(node=>node.type==='tr'&&node.props.onClick).key,'51');
+ tree=controlled.render(SimpleTable,{...controlledProps,page:2,rowsPerPage:10});
+ eq(nodes(tree).filter(node=>node.type==='tr'&&node.props.onClick).length,10);
+ eq(nodes(tree).find(node=>node.type==='tr'&&node.props.onClick).key,'11');
+
+ const register=new Hooks(), settingsProps={...props,showControls:true,columnsPanelOpen:true,toolbar:'toolbar personnalisée'};
+ const preferencesFor=screen=>find(screen,node=>node.props?.preferences?.ready).props.preferences;
+ tree=register.render(SimpleTable,settingsProps);
+ let preference=preferencesFor(tree);
+ eq(preference.canExport,false);
+ eq(preference.hasExportOptions,false);
+ eq(preference.save('export',['name']),null);
+ eq(preference.save('table',['quantity','name']).table.columns,['quantity','name']);
+ tree=register.render(SimpleTable,settingsProps);
+ eq(nodes(tree).filter(node=>node.type==='th'&&node.props['data-column-key']).map(node=>node.props['data-column-key']),['quantity','name']);
+ eq(preferencesFor(tree).reset('table').table.columns,['name','quantity','actions']);
+ tree=new Hooks().render(SimpleTable,{...settingsProps,toolbar:null});
+ preference=preferencesFor(tree);
+ eq(preference.canExport,true);
+ eq(preference.hasExportOptions,true);
+ eq(preference.save('export',['quantity','actions','name']).export.columns,['quantity','name']);
  tree=new Hooks().render(SimpleTable,{...props,rows:[]});eq(find(tree,n=>n.type===ListState).props.loading,false);ok(find(tree,n=>n.type===ListState).props.description);
  tree=new Hooks().render(SimpleTable,{...props,rows:[],loading:true});eq(find(tree,n=>n.type===ListState).props.title,'Chargement des résultats…');eq(find(tree,n=>n.type===ListState).props.description,undefined);
 

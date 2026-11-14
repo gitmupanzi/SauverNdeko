@@ -53,7 +53,7 @@ export default function DemandSeries({ rows, period, measures, selected, onSelec
                 if (!row) return <div key={mois} className="data-science-chart-empty"><span>—</span><small>{label}</small></div>;
                 const metrics = measures.map(measure => measure.label + " " + formatCount(row[measure.key]));
                 return (
-                  <button key={mois} type="button" aria-label={label + " · " + metrics.join(" · ")} title={metrics.join(" · ")} onClick={() => onMonth(mois, row.seriesKey)}>
+                  <button key={mois} type="button" aria-label={label + " · " + metrics.join(" · ")} title={metrics.join(" · ")} onClick={event => onMonth(mois, row.seriesKey, event.currentTarget)}>
                     <strong>{formatCount(row[measures[0].key])}</strong>
                     <span className="data-science-bars" aria-hidden="true">
                       {measures.map(({ key, color }) => (

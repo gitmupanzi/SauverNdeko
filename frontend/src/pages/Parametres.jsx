@@ -16,7 +16,7 @@ import "./Parametres.css";
 export const SETTINGS_TABS=[{key:"entreprise",label:"Entreprise",icon:"building",editor:"identity"},{key:"fiscalite",label:"Fiscalité",icon:"percent",editor:"fiscalite"},{key:"documents",label:"Documents",icon:"document",editor:"documents"},{key:"localisation",label:"Localisation",icon:"globe",editor:"localisation"},{key:"presentation",label:"Présentation",icon:"sidebar"}];
 export const settingsTab=(value,tabs=SETTINGS_TABS)=>tabs.find(item=>item.key===value)||tabs[0];
 const COMPANY_TABS=SETTINGS_TABS.filter(item=>item.key!=="presentation");
-const PRESENTATION_ICONS={logistique:"box",caisse:"wallet",support:"help",discussions:"chat"};
+const PRESENTATION_ICONS={logistique:"box",caisse:"wallet",support:"help",discussions:"chat","data-science":"chart"};
 const presentationKey=module=> "presentation-"+module.key;
 function Details({items}){return <dl className="settings-details">{items.map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value==null||value===""?"Non renseigné":value}</dd></div>)}</dl>;}
 

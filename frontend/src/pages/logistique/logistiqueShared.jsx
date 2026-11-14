@@ -3,8 +3,8 @@ import { compareDecimal, withCurrencyColumn, formatConsumptionMoney } from "../.
 export { formatCurrency } from "../../utils/money";
 import CategoricalSelect from "../../components/CategoricalSelect";
 import TablePagination from "../../components/TablePagination";
-import ColumnPicker from "../../components/ColumnPicker";
 import TableSettings from "../../components/TableSettings";
+import { preferenceIds, preferenceReference } from "../../utils/tablePreferences";
 import AppIcon from "../../components/AppIcon";
 import ActionButton from "../../components/ActionButton";
 import ListState from "../../components/ListState";
@@ -484,6 +484,7 @@ export function SimpleTable({
   selectionResetKey = 0,
   defaultSortColumn = "",
   defaultRowsPerPage = DEFAULT_ROWS_PER_PAGE,
+  rowsPerPage: controlledRowsPerPage,
   rowsPerPageOptions = [10, 25, 50, 100],
   page,
   onPageChange,
@@ -506,6 +507,7 @@ export function SimpleTable({
   onColumnFilterChange,
   onApplyColumnFilters,
   tablePreferences = null,
+  tableSettingsActions,
   tableLabel = "Liste des résultats",
 }) {
   const tableWrapRef = useRef(null);
@@ -545,7 +547,8 @@ export function SimpleTable({
   const [localPage, setLocalPage] = useState(1);
   const [localRowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
   const serverMode = typeof onServerChange === "function";
-  const rowsPerPage = serverMode ? Number(serverState.take || serverMeta?.take || defaultRowsPerPage) : localRowsPerPage;
+  const rowsPerPage = serverMode ? Number(serverState.take || serverMeta?.take || defaultRowsPerPage)
+    : controlledRowsPerPage ?? localRowsPerPage;
   const currentPage = serverMode ? Math.floor(Number(serverState.skip || 0) / rowsPerPage) + 1 : (page ?? localPage);
   const sortConfig = serverMode ? { column: serverState.sortBy || serverMeta?.sortBy || "", direction: serverState.sortDir || serverMeta?.sortDir || "" } : localSortConfig;
   function setCurrentPage(next) {
@@ -577,6 +580,7 @@ export function SimpleTable({
   const [visibleColumns, setVisibleColumns] = useState(() => defaultVisibleColumns
     ? [...new Set(defaultVisibleColumns)].filter(key => columns.some(column => column.key === key))
     : columns.map(column => column.key));
+  const [localExportColumns, setLocalExportColumns] = useState(null);
   const [columnWidths, setColumnWidths] = useState(() =>
     Object.fromEntries(columns.map((column) => [column.key, getColumnDefaultWidth(column)]))
   );
@@ -800,17 +804,6 @@ export function SimpleTable({
     });
   }
 
-  function handleToggleVisibleColumn(columnKey) {
-    setVisibleColumns((current) => {
-      if (current.includes(columnKey)) {
-        return current.length === 1 ? current : current.filter((value) => value !== columnKey);
-      }
-
-      const next = [...current, columnKey];
-      return columns.filter((column) => next.includes(column.key)).map((column) => column.key);
-    });
-  }
-
   function handleTogglePinnedColumn(columnKey) {
     setPinnedColumns((current) =>
       current.includes(columnKey) ? current.filter((value) => value !== columnKey) : [...current, columnKey]
@@ -948,9 +941,39 @@ export function SimpleTable({
   }
 
 
-  const exportableColumns = tablePreferences?.ready
-    ? tablePreferences.exportKeys.map(key => columns.find(column => column.key === key)).filter(column => column && column.key !== "actions")
-    : effectiveVisibleColumns.filter((column) => column.key !== "actions");
+  const localExportEnabled = !toolbar;
+  const localCatalogue = controlsOpen && !tablePreferences ? columns.map((column, index) => ({
+    id: column.key, label: column.label, defaultOrder: index,
+    defaultVisible: !defaultVisibleColumns || defaultVisibleColumns.includes(column.key),
+    defaultExport: !defaultVisibleColumns || defaultVisibleColumns.includes(column.key),
+    exportable: localExportEnabled && column.key !== "actions" && column.exportable !== false,
+  })) : [];
+  const defaultExportColumns = defaultVisibleColumns ?? columns.map(column => column.key);
+  const localExportKeys = (localExportColumns ?? defaultExportColumns).filter(key =>
+    columns.some(column => column.key === key && key !== "actions" && column.exportable !== false));
+  function localSettingsData(tableKeys, exportKeys) {
+    return { columns: localCatalogue, table: { columns: tableKeys }, export: { columns: exportKeys } };
+  }
+  function setLocalPreference(usage, requested) {
+    const next = preferenceIds(localCatalogue, requested, usage);
+    if (usage === "table" && next.length) {
+      setVisibleColumns(next);
+      return localSettingsData(next, localExportKeys);
+    }
+    if (usage !== "export" || !localExportEnabled) return null;
+    setLocalExportColumns(next);
+    return localSettingsData(visibleColumns, next);
+  }
+  const settingsPreferences = tablePreferences ?? {
+    local: true, ready: true, canExport: localExportEnabled, hasExportOptions: localExportEnabled, catalogue: localCatalogue,
+    tableKeys: visibleColumns, exportKeys: localExportKeys,
+    data: localSettingsData(visibleColumns, localExportKeys),
+    save: setLocalPreference,
+    reset: usage => setLocalPreference(usage, preferenceReference(localCatalogue, usage)),
+  };
+  const exportKeys = tablePreferences?.ready ? tablePreferences.exportKeys : localExportKeys;
+  const exportableColumns = exportKeys.map(key => columns.find(column => column.key === key))
+    .filter(column => column && column.key !== "actions");
   const exportBaseFilename = String(exportFilename || "logistique-tableau").replace(/\.(csv|xls|xlsx|pdf)$/i, "");
   const exportRows =
     selectedRowIds.length > 0
@@ -989,7 +1012,7 @@ export function SimpleTable({
                 </select>
               </label>
 
-              <ActionButton ref={columnsTrigger} icon={tablePreferences ? "settings" : "columns"} disabled={loading} aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>{tablePreferences ? "Réglages" : "Colonnes"}</ActionButton>
+              <ActionButton ref={columnsTrigger} icon="settings" disabled={loading} aria-haspopup="dialog" aria-expanded={controlsOpen} onClick={()=>setControlsOpen(current=>!current)}>Réglages</ActionButton>
 
               <div ref={exportMenuRef} className="admin-scroll-menu" aria-label="Options d'export logistique">
                 <ActionButton icon="download"
@@ -999,7 +1022,7 @@ export function SimpleTable({
                     setShowNavigationMenu(false);
                     setShowExportMenu((current) => !current);
                   }}
-                  disabled={loading || !exportRows.length}
+                  disabled={loading || !exportRows.length || !exportableColumns.length}
                   aria-expanded={showExportMenu}
                   aria-haspopup="true"
                 >
@@ -1124,7 +1147,10 @@ export function SimpleTable({
           </div>
 
           </>}
-          {tablePreferences ? controlsOpen ? <TableSettings key={tablePreferences.contextKey} preferences={tablePreferences} onClose={()=>closeColumns(true)} pinnedKeys={pinnedColumns} onTogglePinned={handleTogglePinnedColumn} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))}/> : null : <ColumnPicker open={controlsOpen} anchorRef={columnsTrigger} onClose={closeColumns} columns={columns} visibleKeys={visibleColumns} pinnedKeys={pinnedColumns} onToggleVisible={handleToggleVisibleColumn} onTogglePinned={handleTogglePinnedColumn} onShowAll={()=>setVisibleColumns(columns.map(column=>column.key))} onResetWidth={handleResetColumnWidth} onResetWidths={()=>setColumnWidths(Object.fromEntries(columns.map(column=>[column.key,getColumnDefaultWidth(column)])))} />}
+          {controlsOpen && <TableSettings key={settingsPreferences.contextKey} preferences={settingsPreferences}
+            onClose={(returnFocus = true) => closeColumns(returnFocus)} additionalActions={tableSettingsActions}
+            pinnedKeys={pinnedColumns} onTogglePinned={handleTogglePinnedColumn}
+            onResetWidths={() => setColumnWidths(Object.fromEntries(columns.map(column => [column.key, getColumnDefaultWidth(column)])))} />}
         </section>
       ) : null}
 

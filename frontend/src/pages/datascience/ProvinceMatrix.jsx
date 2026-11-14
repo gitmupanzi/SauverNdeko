@@ -89,7 +89,7 @@ export default function ProvinceMatrix({ rows, period, measures, onMonth }) {
                         <td key={months[index]}>
                           <button type="button" className="data-science-matrix-value" style={{ "--matrix-intensity": intensity + "%" }}
                             aria-label={label + " · " + monthLabel(cell.mois) + " · " + measure.label + " · " + accessible}
-                            onClick={() => onMonth(cell.mois, cell.seriesKey)}>{formatCount(value)}</button>
+                            onClick={event => onMonth(cell.mois, cell.seriesKey, event.currentTarget)}>{formatCount(value)}</button>
                         </td>
                       );
                     })}

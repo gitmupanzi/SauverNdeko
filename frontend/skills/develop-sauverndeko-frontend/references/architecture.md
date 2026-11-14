@@ -75,7 +75,7 @@ La préférence sauverndeko.table.density change uniquement l’espacement. Elle
 
 ## Colonnes, pagination et résumé du projet
 
-ColumnPicker remplace la grille des réglages par un menu ancré : recherche locale, visibilité, colonne figée et largeur automatique. Le menu utilise la couche native popover lorsqu’elle est disponible, fonctionne dans une fiche 360, se ferme par Échap ou clic extérieur et restitue le focus au déclencheur. Ces réglages ne déclenchent pas de lecture métier.
+TableSettings est le tiroir commun des tableaux avec recherche de colonnes, visibilité, ordre, gel et largeurs automatiques. SimpleTable réutilise le même tiroir pour les préférences locales et les préférences personnelles inscrites au catalogue. À la fermeture, le focus revient au déclencheur.
 
 TablePagination affiche la plage réellement présentée et les pages disponibles. Quand tous les résultats tiennent sur une page, le pied indique Tous les résultats sont affichés ; les boutons précédent/suivant ne sont pas proposés. La barre de recherche reste visible même après un résultat vide, afin de pouvoir réinitialiser.
 
