@@ -12,7 +12,6 @@ REFERENCE_FEATURE = {
     "type": "FONCTIONNALITE", "commercialisable": False,
     "parentModule": None, "showInWorkspace": True, "base": True, "platformOnly": False,
 }
-
 def reference_feature(actor):
     if not actor.admin:
         return []
@@ -31,7 +30,9 @@ def workspace_cards(actor, *, catalogue=False):
     cards = []
     for module in WORKSPACE_MODULES:
         key = module["key"]
-        classification = metadata[key]
+        classification = metadata.get(key)
+        if classification is None:
+            continue
         if classification["platformOnly"] and not actor.global_admin:
             continue
         if catalogue:
@@ -46,6 +47,7 @@ def workspace_cards(actor, *, catalogue=False):
             **classification, **rights[key],
         })
     references = reference_feature(actor)
+
     if catalogue:
         references = [{**item, "canRead": True, "available": True} for item in references]
     return cards + references

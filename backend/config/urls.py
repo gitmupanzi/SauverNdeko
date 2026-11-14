@@ -86,6 +86,8 @@ from apps.core.views import (
 from apps.core.ui_settings import UISettingsView
 from apps.core.module_presentation import ModulePresentationView, ModulePresentationSettingsView, PresentationModulesView
 from apps.core.workspace import WorkspaceModulesView, WorkspaceCatalogueView
+from apps.core.research_entities import ResearchEntitiesView
+from apps.core.research_indicators import ScientificDemandIndicatorsView, ResearchScopeView
 from apps.core.application_licences import OrganisationApplicationsView, LicenceApplicationsView, LicenceModulesView, RoleApplicationsView
 from apps.core.user_module_access import UserApplicationsView
 from apps.catalogue.views import PublicView
@@ -98,6 +100,7 @@ from apps.communication.announcements import AnnouncementContextView, Announceme
 from apps.communication.demandes import (SourceContextView as DemandeSourceView, DemandesView,
     DemandeDetailView, DemandeTransitionView, DemandeDiscussionView, DemandeRoutingView)
 from apps.communication.notifications import NotificationsView, NotificationReadView, ReceivedAnnouncementsView
+from apps.communication.besoins import BesoinIssueView, BesoinsOptionsView, BesoinsView
 from apps.logistique.views import DetailView, StockView, DashboardView, ReferencesView
 
 from apps.logistique.excel import IndicatorExcelView, RegisterExcelView, FolderExcelView
@@ -284,6 +287,9 @@ urlpatterns = [
     re_path(r"^api/logistique/indicateurs/(?P<key>[A-Za-z]+)/?$", IndicatorReadView.as_view()),
     re_path(r"^api/logistique/consultations/(?P<kind>produit|commande)/(?P<pk>[0-9]+)(?:/(?P<section>[a-z]+))?/?$", ConsultationReadView.as_view()),
     re_path(r"^api/workspace/modules/?$", WorkspaceModulesView.as_view()),
+    re_path(r"^api/data-science/indicateurs/demandes/?$", ScientificDemandIndicatorsView.as_view()),
+    re_path(r"^api/data-science/entreprises/?$", ResearchEntitiesView.as_view()),
+    re_path(r"^api/data-science/perimetre/?$", ResearchScopeView.as_view()),
     re_path(r"^api/recherches(?:/(?P<pk>[0-9]+))?/?$", RecherchesView.as_view()),
     re_path(
         r"^api/systeme/admin-ui-settings/audit/?$",
@@ -309,6 +315,9 @@ urlpatterns = [
     re_path(r"^api/notifications/?$", NotificationsView.as_view()),
     re_path(r"^api/notifications/(?P<pk>[0-9]+)/read/?$", NotificationReadView.as_view()),
     re_path(r"^api/discussions/start/?$", StartView.as_view()),
+    re_path(r"^api/discussions/besoins/options/?$", BesoinsOptionsView.as_view()),
+    re_path(r"^api/discussions/besoins/(?P<pk>[0-9]{1,18})/issue/?$", BesoinIssueView.as_view()),
+    re_path(r"^api/discussions/besoins/?$", BesoinsView.as_view()),
     re_path(r"^api/discussions/demandes/contexte-source/?$", DemandeSourceView.as_view()),
     re_path(r"^api/discussions/demandes/routage/?$", DemandeRoutingView.as_view()),
     re_path(r"^api/discussions/demandes/?$", DemandesView.as_view()),

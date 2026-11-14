@@ -13,13 +13,19 @@ WORKSPACE_MODULES = (
     {"key": "caisse", "label": "Caisse", "description": "Caisses, encaissements, décaissements et clôtures.", "path": "/caisse", "icon": "wallet2", "tone": "teal", "admin": True},
     {"key": "territoires", "label": "Organisation territoriale", "description": "Découpage administratif et pyramide sanitaire.", "path": "/territoires", "icon": "diagram-3", "tone": "teal", "admin": True},
     {"key": "support", "label": "Support", "description": "Incidents, assistance et réclamations.", "path": "/support", "icon": "headset", "tone": "sky"},
+    {"key": "data-science", "label": "Data Science", "description": "Indicateurs sur les demandes, les besoins et leur suivi.", "path": "/data-science", "icon": "chart", "tone": "teal"},
     {"key": "parametres", "label": "Paramètres", "description": "Entreprise, documents et fiscalité.", "path": "/parametres", "icon": "gear", "tone": "teal"},
     {"key": "guide", "label": "Guide utilisateur", "description": "Parcours, exemples et conseils pour vos applications.", "path": "/guide", "icon": "book", "tone": "sky"},
     {"key": "administration", "label": "Administration", "description": "Utilisateurs, organisations et paramètres.", "path": "/admin", "icon": "sliders", "tone": "slate", "admin": True},
 )
 MODULE_BY_KEY={item["key"]:item for item in WORKSPACE_MODULES}
 PLATFORM_MODULES = {"territoires"}
+PLATFORM_TABS = {"data-science": {"recherches", "perimetre"}}
 PROTECTED_TABS = {
+    "data-science": {
+        "tableau-de-bord": "Tableau de bord", "demandes": "Demandes et besoins",
+        "recherches": "Recherches déclarées", "perimetre": "Périmètre de l’étude",
+    },
     "logistique": {
         "dashboard": "Tableau de bord", "dossiers": "Dossiers de suivi",
         "tiers": "Clients et fournisseurs", "depots": "Dépôts", "articles": "Articles",
@@ -89,13 +95,19 @@ def storage_ready():
     return db.one("SELECT bool_and(to_regclass(x) IS NOT NULL) AS ready FROM unnest(%s::text[]) AS t(x)",[names])["ready"]
 
 
+def check_catalogue(rows):
+    missing = MODULE_BY_KEY.keys() - {row["CodeModule"] for row in rows}
+    # Data Science is installed separately from the pre-existing catalogue.
+    if missing - {"data-science"}:
+        raise APIError("Le catalogue des applications est incomplet.", "MODULE_CONFIGURATION_UNAVAILABLE", 503)
+
+
 def application_metadata():
     """Classification commerciale persistante ; aucun changement d’habilitation."""
     rows=db.query('''SELECT "CodeModule","TypeApplication","Commercialisable","ModuleParentCode","AfficherDansEspace",
         "EstSocle","ReservePlateforme"
         FROM systeme."T_ModuleApplication" WHERE "CodeModule"=ANY(%s::text[])''',[list(MODULE_BY_KEY)])
-    if len(rows)!=len(MODULE_BY_KEY):
-        raise APIError('Le catalogue des applications est incomplet.','MODULE_CONFIGURATION_UNAVAILABLE',503)
+    check_catalogue(rows)
     return {row['CodeModule']:{'type':row['TypeApplication'],'commercialisable':row['Commercialisable'],
                              'parentModule':row['ModuleParentCode'],
                              'showInWorkspace':row['AfficherDansEspace'],'base':row['EstSocle'],
@@ -104,8 +116,8 @@ def application_metadata():
 def legacy_rights(actor,key):
     item=MODULE_BY_KEY[key]
     read = actor.global_admin if key in PLATFORM_MODULES else not item.get("admin") or actor.admin
-    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels","structures"} and actor.admin) or (key=="territoires" and actor.global_admin)
-    return {"canRead":read,"canManage":manage and read,"canExport":read}
+    manage=key=="discussions" or (key in {"caisse","logistique","administration","support","parametres","professionnels","structures"} and actor.admin) or (key in {"territoires", "data-science"} and actor.global_admin)
+    return {"canRead":read,"canManage":manage and read,"canExport":read and key!="data-science"}
 
 def access_snapshot(actor):
     cached=getattr(actor,"_module_access",None)
@@ -116,7 +128,7 @@ def access_snapshot(actor):
         modules = {
             key: {**legacy_rights(actor, key), "available": True, "base": metadata[key]["base"],
                   "reason": "", "includedBy": None}
-            for key in MODULE_BY_KEY
+            for key in metadata
         }
     else:
         if not storage_ready():raise APIError("La configuration des applications est indisponible.","MODULE_CONFIGURATION_UNAVAILABLE",503)
@@ -124,7 +136,7 @@ def access_snapshot(actor):
          EXISTS(SELECT 1 FROM systeme."V_EntiteModuleActif" e WHERE e."IdEntiteFk"=%s AND e."CodeModule"=m."CodeModule") AS "Disponible",
          EXISTS(SELECT 1 FROM systeme."V_LicenceModule" l WHERE l."IdEntiteFk"=%s AND (l."CodeModule"=m."CodeModule" OR l."CodeModule"=m."CodeIncluant")) AS "LicenceConnue"
          FROM systeme."T_ModuleApplication" m LEFT JOIN systeme."T_RoleModule" r ON r."CodeModule"=m."CodeModule" AND r."IdEntiteFk"=%s AND r."IdRoleFk"=%s WHERE m."CodeModule"=ANY(%s::text[])''',[actor.organisation,actor.organisation,actor.organisation,actor.row.get("IdRoleFk"),list(MODULE_BY_KEY)])
-        if len(rows)!=len(MODULE_BY_KEY):raise APIError("Le catalogue des applications est incomplet.","MODULE_CONFIGURATION_UNAVAILABLE",503)
+        check_catalogue(rows)
         modules={}
         for row in rows:
             key = row["CodeModule"]
@@ -158,8 +170,13 @@ def access_snapshot(actor):
                 "includedBy": None if row["EstSocle"] else row["CodeIncluant"],
             }
     tabs = {
-        key: {tab: restrict(modules[key], restrictions.get((key, tab))) for tab in protected}
-        for key, protected in PROTECTED_TABS.items()
+        key: {
+            tab: (restrict(modules[key], restrictions.get((key, tab)))
+                  if actor.global_admin or tab not in PLATFORM_TABS.get(key, ())
+                  else dict.fromkeys(RIGHT_FIELDS, False))
+            for tab in protected
+        }
+        for key, protected in PROTECTED_TABS.items() if key in modules
     }
     result={"platformAdmin":actor.global_admin,"entityId":actor.organisation,"readOnly":settings.DB_READ_ONLY,"modules":modules,"tabs":tabs}
     actor._module_access=result
@@ -202,6 +219,8 @@ def require_tab(actor, key, tab, action="read"):
 
 def can_use_tab(actor, key, tab, action="read"):
     if tab not in PROTECTED_TABS.get(key, {}):
+        return False
+    if not actor.global_admin and tab in PLATFORM_TABS.get(key, ()):
         return False
     snapshot = access_snapshot(actor)
     right = ACTION_RIGHTS[action]
@@ -259,7 +278,7 @@ def enforce_request(actor,request,view):
     elif path.startswith('/api/discussions'):
         key='discussions'
         group = route[2] if len(route) > 2 else ""
-        tab = group if group in {"annonces", "demandes"} else "messages"
+        tab = "demandes" if group == "besoins" else group if group in {"annonces", "demandes"} else "messages"
         # La lecture d’un fil met uniquement à jour le marqueur du compte.
         tab_action = "read" if route[-1] == "lecture" else action
         require_tab(actor, key, tab, tab_action)

@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from . import db
 from .application_licences import catalogue_rows, company_catalogue, entity_scope, platform_write, validate_versions
-from .module_access import PROTECTED_TABS, RIGHT_FIELDS, individual_rule_rows, individual_rules
+from .module_access import PLATFORM_TABS, PROTECTED_TABS, RIGHT_FIELDS, individual_rule_rows, individual_rules
 from .permissions import IsERPAdmin
 from .repository import audit, clean, positive
 from .responses import APIError, ok
@@ -22,6 +22,7 @@ def individual_catalogue():
         catalogue.extend(
             {"CodeModule": f"{code}.{tab}", "Nom": f"{module['Nom']} · {label}"}
             for tab, label in PROTECTED_TABS.get(code, {}).items()
+            if tab not in PLATFORM_TABS.get(code, ())
         )
     return catalogue
 

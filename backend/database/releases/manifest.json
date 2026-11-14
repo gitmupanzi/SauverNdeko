@@ -226,6 +226,36 @@
       ],
       "description": "Publication du niveau 2 dans l’annuaire territorial et réglage par défaut.",
       "release": "2026.11.13"
+    },
+    {
+      "id": "20261114_01_analyse_recherches_annuaire",
+      "file": "../migrations/20261114_01_analyse_recherches_annuaire.sql",
+      "sha256": "7d037a7409e0dd98363b3752c5093fb2375d207a80833c285e467cba12f36fdf",
+      "dependsOn": [
+        "20261113_06_publication_territoires_niveau_2"
+      ],
+      "description": "Enregistrer les besoins et recherches partagés volontairement dans le périmètre de l’étude.",
+      "release": "2026.11.14"
+    },
+    {
+      "id": "20261114_02_perimetre_indicateurs_recherche",
+      "file": "../migrations/20261114_02_perimetre_indicateurs_recherche.sql",
+      "sha256": "650dfbd927769769082c439acceddbb11757435627964c1acb34b119c513ff9e",
+      "dependsOn": [
+        "20261114_01_analyse_recherches_annuaire"
+      ],
+      "description": "Appliquer le seuil de confidentialité des analyses par entreprise avant consolidation.",
+      "release": "2026.11.14"
+    },
+    {
+      "id": "20261114_03_licence_data_science",
+      "file": "../migrations/20261114_03_licence_data_science.sql",
+      "sha256": "739dd847443616d998b7af5ffc019fd7142a7dcf472c9a95a9ffe1b3a3fbf508",
+      "dependsOn": [
+        "20261114_02_perimetre_indicateurs_recherche"
+      ],
+      "description": "Ajouter Data Science aux modules activables sur licence.",
+      "release": "2026.11.14"
     }
   ]
 }

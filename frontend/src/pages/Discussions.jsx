@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import ModuleSidebar from "../components/ModuleSidebar";
 import ListState from "../components/ListState";
 import ActionButton from "../components/ActionButton";
@@ -34,6 +34,7 @@ function requestedTab(params) {
 }
 
 export default function Discussions() {
+  const location = useLocation();
   const {user} = useAuth();
   const scope = useEntityScope();
   const { presentation, loading, error, retry } = useModulePresentation("discussions", scope);
@@ -80,7 +81,8 @@ export default function Discussions() {
         {requested && !canReadActive && <ListState icon="shield" role="alert" title="Vous n’avez pas accès à cet onglet." />}
         {!requested && !loading && !active && <ListState icon="shield" title={readableItems.length ? "Aucun onglet visible" : "Aucun onglet accessible"} />}
         {canReadActive && active === "annonces" && <Announcements title={titles?.annonces} />}
-        {canReadActive && active === "demandes" && <DemandRegister title={titles?.demandes} />}
+        {canReadActive && active === "demandes" && <DemandRegister title={titles?.demandes}
+          intake={location.state?.newNeed} navigationKey={location.key} />}
       </main>
     </div>
   );

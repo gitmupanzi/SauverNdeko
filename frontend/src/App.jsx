@@ -33,6 +33,7 @@ const OrganisationTerritoriale=lazyView(()=>import("./pages/OrganisationTerritor
 const Support=lazyView(()=>import("./pages/support/SupportPortal"),{label:"Ouverture du support…"});
 const Parametres=lazyView(()=>import("./pages/Parametres"),{label:"Ouverture des paramètres…"});
 const GuideUtilisateur=lazyView(()=>import("./pages/GuideUtilisateur"),{label:"Ouverture du guide utilisateur…"});
+const DataScience=lazyView(()=>import("./pages/DataScience"),{label:"Ouverture des analyses…"});
 
 function SearchResultGroup({ title, items, onSelect }) {
   return (
@@ -402,5 +403,6 @@ export default function App() {
   if (location.pathname === "/support") return <ModuleGate><Support key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/parametres") return <ModuleGate><Parametres key={scopeKey} /></ModuleGate>;
   if (location.pathname === "/guide") return <ModuleGate><GuideUtilisateur key={scopeKey} /></ModuleGate>;
+  if (location.pathname === "/data-science") return <ModuleGate><DataScience key={scopeKey} /></ModuleGate>;
   return <ModuleGate><ApplicationShell key={scopeKey} /></ModuleGate>;
 }

@@ -11,7 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { requestJson } from "../services/api";
 import "./WorkspaceHome.css";
 
-const WORKSPACE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/discussions", "/logistique", "/caisse", "/territoires", "/support", "/parametres", "/guide", "/admin", "/referentiels"]);
+const WORKSPACE_PATHS = new Set(["/catalogue", "/produits", "/pharmacies", "/experts", "/discussions", "/logistique", "/caisse", "/territoires", "/support", "/parametres", "/guide", "/admin", "/referentiels", "/data-science"]);
 
 export default function WorkspaceHome() {
   const { user } = useAuth();

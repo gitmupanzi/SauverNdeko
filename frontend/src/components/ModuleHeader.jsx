@@ -22,7 +22,7 @@ export default function ModuleHeader({ title, onRequestLogout, showEntityScope=t
     <div className="module-header-start">{menuToggle}<nav className="module-location" aria-label="Fil d’Ariane" inert={menuOpen}><Link to="/espace" className="module-apps-link" aria-label="Toutes les applications" title="Applications"><AppIcon name="apps" /></Link><AppIcon name="chevron-right" className="module-location-separator" size={14}/><span className="module-header-title" aria-current="page" title={title}>{title}</span></nav></div>
     {user?.permissions?.canWriteData === false ? <span className="module-read-only" title="Les modifications sont momentanément indisponibles.">Consultation</span> : null}
     <div className="module-header-actions" inert={menuOpen}>
-      {showEntityScope&&["Logistique","Caisse","Professionnels","Structures","Référentiels","Administration","Support","Paramètres","Guide utilisateur"].includes(title)?<EntityScopePicker/>:null}
+      {showEntityScope&&["Logistique","Caisse","Professionnels","Structures","Référentiels","Administration","Support","Paramètres","Guide utilisateur","Data Science","Data science"].includes(title)?<EntityScopePicker/>:null}
       <AccountControls onRequestLogout={onRequestLogout} />
     </div>
   </header>;
